@@ -17,6 +17,7 @@ export default function App() {
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [search, setSearch] = useState('');
   const [pendingTemplate, setPendingTemplate] = useState<number | null>(null);
+  const [pendingCitizen, setPendingCitizen] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const [s, c, p] = await Promise.all([
@@ -67,7 +68,7 @@ export default function App() {
   function renderScreen() {
     switch (route) {
       case 'editor':
-        return <EditorScreen templateId={pendingTemplate} />;
+        return <EditorScreen templateId={pendingTemplate} citizenId={pendingCitizen} />;
       case 'templates':
         return (
           <TemplatesScreen
@@ -81,7 +82,15 @@ export default function App() {
       case 'archive':
         return <ArchiveScreen />;
       case 'citizens':
-        return <CitizensScreen />;
+        return (
+          <CitizensScreen
+            onInsertIntoEditor={(id) => {
+              setPendingCitizen(id);
+              navigate('editor');
+            }}
+            onChanged={() => void refresh()}
+          />
+        );
       case 'letterhead':
         return <LetterheadScreen />;
       case 'search':

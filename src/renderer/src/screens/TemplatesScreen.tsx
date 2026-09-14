@@ -10,6 +10,7 @@ import type { DraftRow, TemplateDetail, TemplateStats, TemplateSummary } from '@
 import { renderBody } from '@shared/template';
 import { mmToPx, type Letterhead } from '@shared/letterhead';
 import TemplateDesigner from './TemplateDesigner';
+import { errorText } from '../lib/errors';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -137,7 +138,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
         imported.warnings.length ? 'warn' : 'ok'
       );
     } catch (e) {
-      say(e instanceof Error ? cleanError(e.message) : 'تعذّر الاستيراد', 'warn');
+      say(errorText(e, 'تعذّر الاستيراد'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -156,7 +157,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       const path = await window.diwan.templates.export(id);
       if (path) say(path.endsWith('.docx') ? 'صُدّر مستند Word' : 'صُدّر النموذج — يُستورد ثانيةً');
     } catch (e) {
-      say(e instanceof Error ? cleanError(e.message) : 'تعذّر التصدير', 'warn');
+      say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -168,7 +169,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       const result = await window.diwan.templates.exportLibrary();
       if (result) say('صُدّرت المكتبة: ' + nf.format(result.count) + ' نموذجًا');
     } catch (e) {
-      say(e instanceof Error ? cleanError(e.message) : 'تعذّر التصدير', 'warn');
+      say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -187,7 +188,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
           : 'استُرجع ' + result.added + ' نموذجًا'
       );
     } catch (e) {
-      say(e instanceof Error ? cleanError(e.message) : 'تعذّر الاسترجاع', 'warn');
+      say(errorText(e, 'تعذّر الاسترجاع'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -532,10 +533,6 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       )}
     </main>
   );
-}
-
-function cleanError(message: string): string {
-  return message.replace(/^Error invoking remote method[^:]*:\s*(Error:\s*)?/, '');
 }
 
 function Chip({

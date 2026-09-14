@@ -16,6 +16,7 @@ import {
   type VariableSource
 } from '@shared/template';
 import { mmToPx, type Letterhead } from '@shared/letterhead';
+import { errorText } from '../lib/errors';
 
 const inputCls =
   'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
@@ -133,7 +134,7 @@ export default function TemplateDesigner({
       await window.diwan.templates.save(input);
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message.replace(/^Error invoking remote method[^:]*:\s*/, '') : 'تعذّر الحفظ');
+      setError(errorText(e, 'تعذّر الحفظ'));
     } finally {
       setSaving(false);
     }

@@ -59,6 +59,62 @@ export type CitizenSummary = {
   lastIssuedAt: string | null;
 };
 
+export type Attachment = {
+  id: number;
+  citizenId: number;
+  docType: string;
+  filePath: string;
+  fileFormat: string | null;
+  dpi: number | null;
+  ocrText: string | null;
+  ocrAccuracy: number | null;
+  scannedAt: string | null;
+  sha256: string | null;
+};
+
+export type CitizenDocumentRow = {
+  id: number;
+  serial: string;
+  docType: string | null;
+  destination: string | null;
+  purpose: string | null;
+  templateId: number | null;
+  copies: number;
+  fee: number;
+  issuedDate: string;
+  status: string;
+};
+
+export type CitizenInput = {
+  id: number | null;
+  fullName: string;
+  nationalId: string | null;
+  jobTitle: string | null;
+  workplace: string | null;
+  employeeCode: string | null;
+  serviceStatus: string | null;
+  birthDate: string | null;
+  birthPlace: string | null;
+  enrollmentDept: string | null;
+  address: string | null;
+  housingCardNo: string | null;
+  landmark: string | null;
+  phone: string | null;
+  photoPath: string | null;
+  category: string | null;
+  notes: string | null;
+  verified: boolean;
+};
+
+export type CitizenDetail = Omit<CitizenInput, 'verified'> & {
+  id: number;
+  verified: boolean;
+  attachments: Attachment[];
+  documents: CitizenDocumentRow[];
+};
+
+export type ScannerDevice = { id: string; name: string };
+
 export type CitizenStats = {
   activeFiles: number;
   verifiedFiles: number;
@@ -161,7 +217,26 @@ export type DiwanApi = {
     }): Promise<CitizenSummary[]>;
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<CitizenStats>;
-    get(id: number): Promise<Record<string, unknown> | null>;
+    get(id: number): Promise<CitizenDetail | null>;
+    save(input: CitizenInput): Promise<CitizenDetail>;
+    usage(id: number): Promise<number>;
+    delete(id: number): Promise<void>;
+    exportExcel(id: number): Promise<string | null>;
+  };
+  attachments: {
+    /** يستورد ملفًا من الحاسوب إلى مخزن التطبيق ويقيّده مستمسكًا. */
+    importFile(citizenId: number, docType: string): Promise<Attachment | null>;
+    scan(citizenId: number, docType: string, dpi: number): Promise<Attachment>;
+    rename(id: number, docType: string): Promise<void>;
+    ocr(id: number): Promise<{ text: string; confidence: number }>;
+    print(id: number): Promise<boolean>;
+    copyToClipboard(id: number): Promise<boolean>;
+    exportZip(citizenId: number): Promise<{ path: string; count: number } | null>;
+    delete(id: number): Promise<void>;
+  };
+  scanner: {
+    list(): Promise<ScannerDevice[]>;
+    ocrAvailable(): Promise<boolean>;
   };
   documents: {
     peekSerial(prefix: string, year: number): Promise<string>;

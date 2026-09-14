@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
 import type { TemplateInput } from '@shared/template';
+import type { CitizenInput } from '@shared/api';
 
 /** الجسر الوحيد بين الواجهة والنظام. لا Node في الواجهة إطلاقًا. */
 const invoke = ipcRenderer.invoke.bind(ipcRenderer);
@@ -44,7 +45,27 @@ const api: DiwanApi = {
       invoke('citizens:list', opts ?? {}),
     categories: () => invoke('citizens:categories'),
     stats: () => invoke('citizens:stats'),
-    get: (id: number) => invoke('citizens:get', id)
+    get: (id: number) => invoke('citizens:get', id),
+    save: (input: CitizenInput) => invoke('citizens:save', input),
+    usage: (id: number) => invoke('citizens:usage', id),
+    delete: (id: number) => invoke('citizens:delete', id),
+    exportExcel: (id: number) => invoke('citizens:exportExcel', id)
+  },
+  attachments: {
+    importFile: (citizenId: number, docType: string) =>
+      invoke('attachments:importFile', citizenId, docType),
+    scan: (citizenId: number, docType: string, dpi: number) =>
+      invoke('attachments:scan', citizenId, docType, dpi),
+    rename: (id: number, docType: string) => invoke('attachments:rename', id, docType),
+    ocr: (id: number) => invoke('attachments:ocr', id),
+    print: (id: number) => invoke('attachments:print', id),
+    copyToClipboard: (id: number) => invoke('attachments:copy', id),
+    exportZip: (citizenId: number) => invoke('attachments:exportZip', citizenId),
+    delete: (id: number) => invoke('attachments:delete', id)
+  },
+  scanner: {
+    list: () => invoke('scanner:list'),
+    ocrAvailable: () => invoke('scanner:ocrAvailable')
   },
   documents: {
     peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year)

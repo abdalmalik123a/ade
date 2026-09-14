@@ -76,9 +76,9 @@ function injectTokens(body: string, f: Fields): string {
   return out.replace(/\n/g, '<br/>');
 }
 
-type Props = { templateId?: number | null };
+type Props = { templateId?: number | null; citizenId?: number | null };
 
-export default function EditorScreen({ templateId = null }: Props) {
+export default function EditorScreen({ templateId = null, citizenId = null }: Props) {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
   const [letterheadId, setLetterheadId] = useState<number | null>(null);
@@ -108,6 +108,20 @@ export default function EditorScreen({ templateId = null }: Props) {
   }, []);
 
   const set = useCallback((patch: Partial<Fields>) => setF((prev) => ({ ...prev, ...patch })), []);
+
+  // استيراد مواطن قادم من سجل المواطنين (زرّ «إدراج في محرر الكتب»).
+  useEffect(() => {
+    if (citizenId === null) return;
+    void window.diwan.citizens.get(citizenId).then((c) => {
+      if (!c) return;
+      set({
+        name: c.fullName,
+        nationalId: c.nationalId ?? '',
+        jobTitle: c.jobTitle ?? '',
+        jobStatus: c.serviceStatus ?? ''
+      });
+    });
+  }, [citizenId, set]);
 
   const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
   const template = templates.find((t) => t.id === activeTemplate) ?? null;

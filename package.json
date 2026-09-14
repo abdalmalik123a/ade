@@ -23,7 +23,8 @@
     "better-sqlite3": "^13.0.3",
     "docx": "^9.1.0",
     "exceljs": "^4.4.0",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@fontsource/ibm-plex-sans": "^5.1.0",
