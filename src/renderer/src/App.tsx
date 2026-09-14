@@ -4,7 +4,7 @@ import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
 import EditorRaw from './screens/raw/EditorRaw';
-import ArchiveRaw from './screens/raw/ArchiveRaw';
+import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensRaw from './screens/raw/CitizensRaw';
 import TemplatesRaw from './screens/raw/TemplatesRaw';
 import LetterheadScreen from './screens/LetterheadScreen';
@@ -13,7 +13,7 @@ import SearchScreen from './screens/SearchScreen';
 const SCREENS: Record<RouteKey, () => JSX.Element> = {
   editor: EditorRaw,
   templates: TemplatesRaw,
-  archive: ArchiveRaw,
+  archive: ArchiveScreen,
   citizens: CitizensRaw,
   letterhead: LetterheadScreen,
   search: SearchScreen

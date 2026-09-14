@@ -1,3 +1,5 @@
+import type { Letterhead, LetterheadLayout } from './letterhead';
+
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
 
 export type OfficeSettings = {
@@ -22,6 +24,35 @@ export type PrinterInfo = {
   ready: boolean;
 };
 
+/** صفّ في سجل الصادر — الأعمدة الثمانية التي يعرضها التصميم. */
+export type DocumentRow = {
+  id: number;
+  serial: string;
+  citizenName: string;
+  nationalId: string | null;
+  docType: string | null;
+  destination: string | null;
+  issuedTime: string;
+  copies: number;
+  fee: number;
+};
+
+/** مؤشرات اليوم في أعلى شاشة الأرشيف. */
+export type ArchiveStats = {
+  issuedToday: number;
+  issuedYesterday: number;
+  revenueToday: number;
+  topTemplate: { title: string; count: number; share: number } | null;
+};
+
+export type Seal = {
+  id: number;
+  name: string;
+  kind: string | null;
+  imagePath: string | null;
+  authorityId: number | null;
+};
+
 export type DiwanApi = {
   settings: {
     get(): Promise<OfficeSettings>;
@@ -32,5 +63,36 @@ export type DiwanApi = {
   };
   printers: {
     list(): Promise<PrinterInfo[]>;
+  };
+  archive: {
+    stats(): Promise<ArchiveStats>;
+    today(): Promise<DocumentRow[]>;
+  };
+  letterheads: {
+    list(): Promise<Letterhead[]>;
+    get(id: number): Promise<Letterhead | null>;
+    save(input: {
+      id: number | null;
+      name: string;
+      authorityId: number | null;
+      layout: LetterheadLayout;
+    }): Promise<Letterhead>;
+    setDefault(id: number): Promise<void>;
+    delete(id: number): Promise<void>;
+  };
+  seals: {
+    list(): Promise<Seal[]>;
+    add(input: { name: string; kind: string; imagePath: string | null }): Promise<Seal>;
+    delete(id: number): Promise<void>;
+  };
+  files: {
+    pickImage(bucket: string): Promise<string | null>;
+    saveAs(payload: {
+      data: Uint8Array;
+      suggestedName: string;
+      filterName: string;
+      ext: string;
+    }): Promise<string | null>;
+    reveal(path: string): Promise<void>;
   };
 };
