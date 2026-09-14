@@ -1,0 +1,103 @@
+/* الخطوط والأيقونات محليًا — لا اتصال بـ CDN. التطبيق يعمل مقطوعًا عن الإنترنت. */
+@import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-700.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import 'material-symbols/outlined.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── الطبقة الأساس: منقولة من <style> في ملفات التصميم ─────────────── */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  main > :first-child {
+    margin-top: 0 !important;
+  }
+  main > :last-child {
+    margin-bottom: 0 !important;
+  }
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* ملفات التصميم تطلب "IBM Plex Sans"، وهو خط بلا محارف عربية.
+   النصّ النثري في DESIGN.md يحدّد IBM Plex Sans Arabic للعربية —
+   فتُقدَّم العربية عليه، وتبقى الأرقام والرموز اللاتينية على IBM Plex Sans. */
+:root {
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+/* الأرقام في المبالغ وأرقام الصادر والتواريخ: أعمدة مستقيمة إلزاميًا. */
+.tabular,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  user-select: none;
+}
+
+/* ── ورقة A4 الافتراضية ──────────────────────────────────────────────
+   794px = 210mm عند 96dpi، وهو المقياس الذي يفترضه سلوك التصميم. */
+.a4-sheet {
+  width: 794px;
+  min-height: 1123px; /* 297mm */
+}
+
+/* ── الطباعة: ما تراه في المعاينة هو ما يخرج من الطابعة ──────────────
+   يُخفى كل شيء عدا الورقة، وتُلغى كل التحويلات والقيود. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+  .print-sheet {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    transform: none !important;
+    box-shadow: none !important;
+    width: 210mm;
+    min-height: 297mm;
+  }
+}
+
+/* مواضع الصور التي يملؤها المكتب (صورة المواطن، المستمسك الممسوح).
+   التصميم كان يحمل صورًا تجريبية خارجية — حُذفت لأن المنظومة تبدأ فارغة وتعمل محليًا. */
+img[data-placeholder='image'] {
+  background: theme('colors.surface-container-high');
+  object-fit: cover;
+}

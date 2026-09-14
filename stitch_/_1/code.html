@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"inverse-primary":"#bec6e0","surface-container-highest":"#d3e4fe","surface-tint":"#565e74","on-primary-container":"#7c839b","tertiary-container":"#2f1500","on-primary-fixed":"#131b2e","tertiary-fixed":"#ffdcc3","on-secondary-fixed-variant":"#004395","surface":"#f8f9ff","tertiary":"#000000","primary":"#000000","on-surface":"#0b1c30","surface-container-lowest":"#ffffff","on-tertiary-fixed-variant":"#6e3900","tertiary-fixed-dim":"#ffb77d","primary-container":"#131b2e","inverse-on-surface":"#eaf1ff","on-primary":"#ffffff","error":"#ba1a1a","inverse-surface":"#213145","surface-container":"#e5eeff","surface-container-low":"#eff4ff","outline-variant":"#c6c6cd","on-primary-fixed-variant":"#3f465c","on-secondary-container":"#fefcff","background":"#f8f9ff","on-background":"#0b1c30","on-tertiary":"#ffffff","on-tertiary-container":"#c76c00","on-secondary-fixed":"#001a42","surface-bright":"#f8f9ff","on-tertiary-fixed":"#2f1500","surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","outline":"#76777d","on-error-container":"#93000a","secondary":"#0058be","secondary-fixed-dim":"#adc6ff","error-container":"#ffdad6","secondary-container":"#2170e4","primary-fixed-dim":"#bec6e0","secondary-fixed":"#d8e2ff","on-secondary":"#ffffff","surface-dim":"#cbdbf5","primary-fixed":"#dae2fd","on-surface-variant":"#45464d","on-error":"#ffffff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","margin":"1.5rem","gutter":"1rem","space-md":"1rem","space-lg":"1.5rem","space-sm":"0.5rem","gutter-compact":"0.5rem","space-xl":"2rem","margin-dock":"0.75rem"},"fontFamily":{"headline-sm":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"label-sm":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"label-lg":["IBM Plex Sans"],"code-sm":["IBM Plex Sans"],"body-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"]},"fontSize":{"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"18px","fontWeight":"500"}],"headline-xl":["32px",{"lineHeight":"44px","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"30px","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"16px","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"24px","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","fontWeight":"500"}],"code-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"20px","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"36px","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"28px","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased select-none"><aside class="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-hidden"><div class="flex flex-col flex-1"><div class="h-16 px-space-lg flex items-center justify-between bg-surface-container-low"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary"><span class="material-symbols-outlined text-[20px]">account_balance</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">ديوان 2.4</span><span class="font-label-sm text-label-sm text-on-surface-variant">منظومة الكتب والتحارير</span></div></div><div class="flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container-highest text-secondary"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold">محلي</span></div></div><div class="px-space-md py-space-sm"><div class="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">الوحدات الإدارية الرئيسية</div><nav class="space-y-1" data-active-classes="bg-primary-container text-on-primary rounded-lg font-semibold"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="smart-editor-a4-preview" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">edit_document</span><span class="font-label-lg text-label-lg">المحرر الذكي ومعاينة A4</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-container-high text-on-surface-variant">نشط</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="templates-library-drafts" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">description</span><span class="font-label-lg text-label-lg">مكتبة النماذج والمسودات</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">142</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-all bg-primary-container text-on-primary rounded-lg font-semibold" data-path="transactions-archive-ledger" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">inventory_2</span><span class="font-label-lg text-label-lg">سجل المعاملات والأرشيف</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">اليوم 18</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="citizens-identity-records" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">badge</span><span class="font-label-lg text-label-lg">سجل المواطنين والمستمسكات</span></div></a></nav></div><div class="px-space-md pt-space-xs"><div class="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">أدوات التوثيق</div><div class="space-y-1"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="header-seal-configuration" href="#"><span class="material-symbols-outlined text-[20px]">verified</span><span class="font-label-lg text-label-lg">إعدادات الترويسة والأختام</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="administrative-archive-search" href="#"><span class="material-symbols-outlined text-[20px]">manage_search</span><span class="font-label-lg text-label-lg">البحث والتقارير الدورية</span></a></div></div></div><div class="p-space-md bg-surface-container-low space-y-space-sm"><div class="p-space-sm rounded-lg bg-surface-container-lowest flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-secondary text-[22px]">print</span><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-semibold">HP LaserJet A4</span><span class="font-label-sm text-label-sm text-on-surface-variant">جاهزة للطباعة الإدارية</span></div></div><div class="flex flex-col items-end"><span class="font-label-sm text-label-sm text-secondary font-bold">88%</span><div class="w-10 h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full bg-secondary w-[88%]"></div></div></div></div><div class="flex items-center justify-between pt-space-xs"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-bold">مُشغّل معتمد 01</span><span class="font-label-sm text-label-sm text-on-surface-variant">مكتب الاستنساخ المركزي</span></div></div><button class="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="تبديل الحساب أو خروج" type="button"><span class="material-symbols-outlined text-[20px]">logout</span></button></div></div></aside><div class="pr-72"><header class="fixed top-0 right-72 left-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg gap-space-md"><div class="flex items-center gap-space-md flex-1 max-w-xl"><div class="relative w-full"><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full h-10 pr-10 pl-16 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary shadow-[0_1px_8px_rgba(0,0,0,0.04)]" placeholder="بحث شامل وسريع (مواطن، رقم صادر، نموذج، كتاب رسمي)..." type="text"/><span class="absolute left-3 top-1/2 -translate-y-1/2 font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-mono">Ctrl+F</span></div><div class="hidden xl:flex items-center gap-space-xs px-space-md py-1.5 rounded-lg bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><span class="material-symbols-outlined text-secondary text-[18px]">article</span><span class="font-label-sm text-label-sm text-on-surface-variant">المعاملة:</span><span class="font-label-md text-label-md font-semibold truncate max-w-[140px]">تأييد سكن / مواطن</span></div></div><div class="flex items-center gap-space-sm"><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span>تبديل النموذج</span></button><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">save</span><span>حفظ مسودة</span></button><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span><span>تصدير PDF</span></button><button class="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">print</span><span class="font-bold">طباعة فورية</span><span class="font-code-sm text-code-sm opacity-70">Ctrl+P</span></button></div></header><main class="relative pt-16 bg-surface min-h-screen w-full"><div class="flex flex-col w-full p-space-lg gap-space-lg">
+<!-- Performance Metric Strip / High-Density Desk Ledger -->
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- Total Issues Issued Today -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden group">
+<div class="flex flex-col gap-space-xs z-10">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">الكتب الصادرة اليوم</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">148</span>
+<span class="font-label-sm text-label-sm text-secondary font-semibold">وثيقة رسمية</span>
+</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-secondary text-[16px]">trending_up</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">+18.4%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">مقارنة بالأمس</span>
+</div>
+</div>
+<div class="w-14 h-14 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container z-10 shadow-sm">
+<span class="material-symbols-outlined text-[28px]">article</span>
+</div>
+<!-- Subtle Decorative Ink Ambient Curve -->
+<svg class="absolute left-0 bottom-0 opacity-15 w-28 h-16 pointer-events-none text-secondary" fill="none" stroke="currentColor" viewbox="0 0 100 50">
+<path d="M0 45 Q 25 10 50 35 T 100 15" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+</div>
+<!-- Revenue Collected Today -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden group">
+<div class="flex flex-col gap-space-xs z-10">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">الإيراد المالي المستوفى</span>
+<div class="flex items-baseline gap-space-xs">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">372,500</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">د.ع</span>
+</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-secondary text-[16px]">payments</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">تم تدقيق الجباية النقدية</span>
+</div>
+</div>
+<div class="w-14 h-14 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container z-10 shadow-sm">
+<span class="material-symbols-outlined text-[28px]">account_balance_wallet</span>
+</div>
+</div>
+<!-- Most Demanded Official Template -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden">
+<div class="flex flex-col gap-space-xs z-10 max-w-[65%]">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">النموذج الأكثر طلباً</span>
+<span class="font-headline-md text-headline-md text-on-surface truncate font-bold">تأييد سكن معنون</span>
+<div class="flex items-center gap-space-xs mt-1">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high font-label-sm text-label-sm text-secondary font-bold">64 معاملة</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">(43% من المجموع)</span>
+</div>
+</div>
+<div class="w-14 h-14 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container z-10 shadow-sm">
+<span class="material-symbols-outlined text-[28px]">stars</span>
+</div>
+</div>
+<!-- Paper & Consumables Telemetry Strip -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">مؤشر رصيد مستلزمات الطباعة</span>
+<span class="flex items-center gap-1 font-label-sm text-label-sm text-secondary font-bold">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+          جاهزية قياسية
+        </span>
+</div>
+<div class="grid grid-cols-2 gap-space-md mt-2">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">ورق A4 الملكي</span>
+<span class="font-bold text-on-surface">680 ورقة</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 74%;"></div>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">حبر التونر الليزري</span>
+<span class="font-bold text-on-surface">88%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 88%;"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Filter, Search & Bulk Operations Command Deck -->
+<section class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex flex-col gap-space-md">
+<div class="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-space-md">
+<!-- Search & Temporal Parameters -->
+<div class="flex flex-wrap items-center gap-space-sm flex-1">
+<div class="relative flex-1 min-w-[280px]">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">filter_alt</span>
+<input class="w-full h-10 pr-10 pl-4 rounded-lg bg-surface-container-low text-on-surface placeholder:text-on-surface-variant font-body-sm text-body-sm focus:outline-none focus:bg-surface-container-lowest shadow-sm transition-all" id="ledgerSearchInput" placeholder="ابحث برقم الصادر، اسم المواطن، البطاقة الوطنية، أو الجهة..." type="text"/>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-md h-10 rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
+<select class="bg-transparent font-label-md text-label-md text-on-surface focus:outline-none cursor-pointer">
+<option>اليوم: الأحد 27 تشرين الأول</option>
+<option>الأمس (تصفية كاملة)</option>
+<option>آخر 7 أيام عمل</option>
+<option>الشهر الحالي (تشرين الأول)</option>
+<option>تخصيص نطاق زمني...</option>
+</select>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-low px-space-md h-10 rounded-lg shadow-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">badge</span>
+<select class="bg-transparent font-label-md text-label-md text-on-surface focus:outline-none cursor-pointer">
+<option value="all">كافة المشغلين (الكل)</option>
+<option value="op1">مشغل 01 - أحمد عبد الله</option>
+<option value="op2">مشغل 02 - زينب قاسم</option>
+<option value="op3">مشغل 03 - حيدر صباح</option>
+</select>
+</div>
+</div>
+<!-- High Priority Batch Action Palette -->
+<div class="flex flex-wrap items-center gap-space-sm justify-end">
+<button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-secondary text-on-secondary hover:bg-secondary-container transition-all font-label-md text-label-md shadow-sm font-semibold" type="button">
+<span class="material-symbols-outlined text-[18px]">print_connect</span>
+<span>طباعة المحددة دفعة واحدة</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-lowest/25 text-on-secondary text-[11px] font-bold mr-1">3</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-label-md shadow-sm" type="button">
+<span class="material-symbols-outlined text-secondary text-[18px]">table_chart</span>
+<span>تقرير إحصائي Excel</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-label-md shadow-sm" title="إنشاء نسخة مشفرة في السحابة المحلية" type="button">
+<span class="material-symbols-outlined text-primary text-[18px]">cloud_sync</span>
+<span>نسخ احتياطي فوري</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Workspace Split Core: Transactions Ledger Table (Left/Center) + Realtime A4 Inspector (Right) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Central Transactions Register (8 Columns on Wide Screens) -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl shadow-md overflow-hidden flex flex-col">
+<!-- Ledger Header & Row Selection Summary -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">سجل الصادر اليومي المعتمد</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold">148 سجل موثق</span>
+</div>
+<div class="flex items-center gap-space-md font-label-sm text-label-sm text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+            تحديث أرشيف حي (مُتصل)
+          </span>
+</div>
+</div>
+<!-- Responsive Table Scaffold -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-right border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider select-none">
+<th class="p-space-md w-12 text-center">
+<input class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</th>
+<th class="p-space-md font-bold">رقم الصادر</th>
+<th class="p-space-md font-bold">المواطن والمستمسك</th>
+<th class="p-space-md font-bold">الوثيقة الرسمية</th>
+<th class="p-space-md font-bold">الجهة الموجه إليها</th>
+<th class="p-space-md font-bold">التوقيت والنسخ</th>
+<th class="p-space-md font-bold">الرسوم</th>
+<th class="p-space-md font-bold text-center">الإجراءات</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y-0" id="transactionsTableBody">
+<!-- Row 1: Active Inspected Item -->
+<tr class="bg-surface-container-highest/60 hover:bg-surface-container-high transition-colors cursor-pointer group" onclick="selectLedgerRecord(1)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input checked="" class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container font-bold text-secondary text-label-md">ص/2024/9184</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9184', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">كرار ضياء مهدي الربيعي</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 199482019482</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  تأييد سكن معنون
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">مصرف الرشيد / فرع اليرموك (32)</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">11:42 ص</span>
+<span class="text-[11px] text-on-surface-variant">نسختان (2)</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">2,500 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group" onclick="selectLedgerRecord(2)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input checked="" class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container-low font-bold text-on-surface text-label-md">ص/2024/9183</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9183', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">مروة جاسم محمد العزاوي</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 198901239102</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  براءة ذمة وظيفية
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">وزارة التعليم العالي والبحث العلمي</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">11:35 ص</span>
+<span class="text-[11px] text-on-surface-variant">نسخة أصلية (1)</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">3,000 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group" onclick="selectLedgerRecord(3)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input checked="" class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container-low font-bold text-on-surface text-label-md">ص/2024/9182</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9182', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">سالم حاتم عبد الرزاق</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 197600392811</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  شهادة استمرار بالخدمة
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">هيئة التقاعد الوطنية / المقر العام</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">11:18 ص</span>
+<span class="text-[11px] text-on-surface-variant">3 نسخ مختومة</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">5,000 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group" onclick="selectLedgerRecord(4)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container-low font-bold text-on-surface text-label-md">ص/2024/9181</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9181', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">هناء عزيز غائب الشمري</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 200119847120</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  تأييد كفالة ضامنة
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">صندوق الإسكان العراقي / بغداد</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">10:55 ص</span>
+<span class="text-[11px] text-on-surface-variant">نسخة واحدة (1)</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">2,500 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group" onclick="selectLedgerRecord(5)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container-low font-bold text-on-surface text-label-md">ص/2024/9180</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9180', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">وسام طه ياسين الدوري</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 198402918451</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  تعهد خطي ملزم
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">مديرية المرور العامة / القاطع الجنوبي</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">10:40 ص</span>
+<span class="text-[11px] text-on-surface-variant">نسخة مصدقة (1)</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">2,000 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group" onclick="selectLedgerRecord(6)">
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<input class="rounded text-secondary focus:ring-0 cursor-pointer w-4 h-4 accent-secondary" type="checkbox"/>
+</td>
+<td class="p-space-md font-mono">
+<div class="flex items-center gap-1">
+<span class="px-2 py-1 rounded bg-surface-container-low font-bold text-on-surface text-label-md">ص/2024/9179</span>
+<button class="p-1 text-on-surface-variant hover:text-on-surface rounded" onclick="copyText('ص/2024/9179', event)" title="نسخ رقم الصادر" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-bold text-on-surface text-label-lg">أنور ناطق جميل البياتي</span>
+<span class="font-mono text-label-sm text-on-surface-variant">وطنية: 199048102941</span>
+</div>
+</td>
+<td class="p-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low font-semibold text-label-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  تأييد سكن معنون
+                </span>
+</td>
+<td class="p-space-md font-medium text-on-surface">شركة توزيع المنتجات النفطية</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-mono text-label-sm text-on-surface font-semibold">10:15 ص</span>
+<span class="text-[11px] text-on-surface-variant">نسخة أصلية (1)</span>
+</div>
+</td>
+<td class="p-space-md font-mono font-bold text-on-surface">2,500 د.ع</td>
+<td class="p-space-md text-center" onclick="event.stopPropagation()">
+<div class="flex items-center justify-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm" title="إعادة طباعة طبق الأصل" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all" title="تعديل المتغيرات السريعة" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_square</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination & High Speed Operator Status -->
+<div class="p-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+<span>عرض السجلات 1 - 6 من أصل 148 معاملة مسجلة</span>
+<span class="hidden sm:inline">|</span>
+<span class="hidden sm:inline">معدل الإنجاز: 2.8 دقيقة / وثيقة</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface disabled:opacity-40 transition-colors shadow-sm" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-primary text-on-primary font-bold font-label-md text-label-md flex items-center justify-center shadow-sm" type="button">1</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center shadow-sm" type="button">2</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center shadow-sm" type="button">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="w-8 h-8 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center shadow-sm" type="button">25</button>
+<button class="p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Quick Document Inspector (Simulated ISO A4 Preview & Cryptographic Verification) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md sticky top-20">
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex flex-col gap-space-md">
+<!-- Inspector Card Header -->
+<div class="flex items-center justify-between pb-space-sm border-b-0">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[22px]">find_in_page</span>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">فحص المعاينة الفورية</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">النسخة الرقمية الصادرة المعتمدة</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary font-mono font-bold text-label-sm" id="inspectedSerial">ص/2024/9184</span>
+</div>
+<!-- Simulated True A4 Sheet Physical Viewport -->
+<div class="w-full bg-surface-container-high/40 p-space-md rounded-lg flex items-center justify-center">
+<div class="w-full max-w-[320px] aspect-[1/1.414] bg-surface-container-lowest rounded shadow-lg p-space-md flex flex-col justify-between relative overflow-hidden text-on-surface text-[10px] leading-relaxed select-none">
+<!-- Document Crest & Official Heading -->
+<div class="flex flex-col items-center text-center gap-0.5">
+<div class="flex items-center justify-between w-full font-bold text-[8px] text-on-surface-variant">
+<span>جمهورية العراق</span>
+<div class="w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px]">account_balance</span>
+</div>
+<span>مجلس الوزراء الموقر</span>
+</div>
+<div class="h-0.5 w-full bg-on-surface/10 my-1"></div>
+<div class="flex justify-between w-full text-[7px] text-on-surface-variant font-mono">
+<span>العدد: ص/2024/9184</span>
+<span>التاريخ: 27-10-2024</span>
+</div>
+</div>
+<!-- Subject & Body Watermarked Area -->
+<div class="flex flex-col gap-1.5 my-auto relative">
+<div class="font-bold text-center text-[10px] text-on-surface underline">كتاب تأييد سكن ومحل إقامة</div>
+<p class="text-justify text-[8px] leading-[14px] text-on-surface-variant" id="inspectorBodyPreview">
+                إلى / <span class="font-bold text-on-surface">إدارة مصرف الرشيد المحترمين</span><br/>
+                نؤيد لكم بأن المواطن <strong class="text-on-surface" id="inspectorCitizenName">كرار ضياء مهدي الربيعي</strong>، الحامل للبطاقة الوطنية رقم (199482019482)، يسكن بصورة فعلية ودائمة ضمن الرقعة الجغرافية لمنطقتنا (بغداد / الكرخ - محلة 604 - زقاق 12 - دار 8)، وقد زُوّد بهذا التأييد بناءً على طلبه لتقديمه إلى جهتكم الموقرة...
+              </p>
+<!-- Subtle Circular Stamp Simulation -->
+<div class="absolute -left-1 bottom-0 w-16 h-16 rounded-full border border-secondary/20 flex flex-col items-center justify-center text-secondary rotate-[-12deg] pointer-events-none p-1 bg-surface-container-highest/10">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span class="text-[6px] font-bold">صادر ورسمي</span>
+<span class="text-[5px] font-mono">2024-10-27</span>
+</div>
+</div>
+<!-- Document Footer: Security Barcode & Officer Signature Placeholder -->
+<div class="pt-2 flex items-end justify-between border-t-0">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-0.5 font-mono text-[6px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[10px]">qr_code_2</span>
+<span>SHA256: 8f9b...a10</span>
+</div>
+<span class="text-[7px] font-semibold text-on-surface-variant">المصادق: مدير الإدارة</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[6px] text-on-surface-variant">توقيع وختم الحي</span>
+<div class="h-4 w-12 border-b border-dashed border-on-surface/30"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Meta Security & Operator Verification Details -->
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col gap-1.5 font-label-sm text-label-sm">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">المشغل المنفّذ:</span>
+<span class="font-bold text-on-surface">مُشغّل معتمد 01 (أحمد عبد الله)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">البصمة الرقمية للوثيقة:</span>
+<span class="font-mono text-[10px] text-secondary">DOC-SEC-9184-IQ</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">حالة الأرشفة المركزية:</span>
+<span class="text-secondary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">cloud_done</span>
+              مؤرشف ومزامن فورياً
+            </span>
+</div>
+</div>
+<!-- Quick High-Fidelity Trigger Actions -->
+<div class="flex flex-col gap-space-xs">
+<button class="w-full flex items-center justify-center gap-space-xs h-11 rounded-lg bg-primary text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md font-bold shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">print</span>
+<span>إعادة طباعة فورية (نسخة طبق الأصل)</span>
+</button>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="flex items-center justify-center gap-1 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition-colors font-label-sm text-label-sm font-semibold" type="button">
+<span class="material-symbols-outlined text-secondary text-[16px]">picture_as_pdf</span>
+<span>تحميل PDF موثق</span>
+</button>
+<button class="flex items-center justify-center gap-1 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface transition-colors font-label-sm text-label-sm font-semibold" type="button">
+<span class="material-symbols-outlined text-secondary text-[16px]">share</span>
+<span>مشاركة مع المواطن</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Clerical Fast Keyboard Shortcuts Guide -->
+<div class="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">keyboard</span>
+          اختصارات لوحة المفاتيح لإنجاز الصادر السريع:
+        </span>
+<div class="grid grid-cols-2 gap-space-xs pt-1 font-mono text-label-sm text-label-sm text-on-surface">
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-low">
+<span class="text-on-surface-variant font-body-sm">طباعة فورية:</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-bold text-secondary">Ctrl+P</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-low">
+<span class="text-on-surface-variant font-body-sm">البحث السريع:</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-bold text-secondary">Ctrl+F</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-low">
+<span class="text-on-surface-variant font-body-sm">تحديد الكل:</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-bold text-secondary">Ctrl+A</span>
+</div>
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-low">
+<span class="text-on-surface-variant font-body-sm">نسخ السجل:</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container font-bold text-secondary">Ctrl+C</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Ledger Script for Quick Document Inspector Switcher & Copy Tool -->
+<script>
+    const sampleRecords = {
+      1: {
+        serial: "ص/2024/9184",
+        name: "كرار ضياء مهدي الربيعي",
+        dest: "إدارة مصرف الرشيد المحترمين",
+        type: "كتاب تأييد سكن ومحل إقامة",
+        text: "نؤيد لكم بأن المواطن كرار ضياء مهدي الربيعي، الحامل للبطاقة الوطنية رقم (199482019482)، يسكن بصورة فعلية ودائمة ضمن الرقعة الجغرافية لمنطقتنا (بغداد / الكرخ - محلة 604 - زقاق 12 - دار 8)، وقد زُوّد بهذا التأييد بناءً على طلبه لتقديمه إلى جهتكم الموقرة..."
+      },
+      2: {
+        serial: "ص/2024/9183",
+        name: "مروة جاسم محمد العزاوي",
+        dest: "وزارة التعليم العالي والبحث العلمي",
+        type: "براءة ذمة وظيفية وأكاديمية",
+        text: "تشهد الدائرة بأن الموظفة مروة جاسم محمد العزاوي قد أتمت تسليم كافة العهد الإدارية والمالية المودعة بذمتها وفق الأصول المرعية، ولا يترتب عليها أي التزام مالي أو إداري حتى تاريخ تحرير هذا الكتاب..."
+      },
+      3: {
+        serial: "ص/2024/9182",
+        name: "سالم حاتم عبد الرزاق",
+        dest: "هيئة التقاعد الوطنية / المقر العام",
+        type: "شهادة استمرار بالخدمة الفعلية",
+        text: "نؤيد بأن السيد سالم حاتم عبد الرزاق لا يزال مستمراً في أداء مهامه الوظيفية الرسمية ضمن ملاك دائرتنا بصورة منتظمة وبسيرة مهنية متميزة، زُوّد بهذا الكتاب لغرض إنجاز معاملة التقاعد التكميلي..."
+      },
+      4: {
+        serial: "ص/2024/9181",
+        name: "هناء عزيز غائب الشمري",
+        dest: "صندوق الإسكان العراقي / بغداد",
+        type: "تأييد كفالة ضامنة",
+        text: "تؤيد الدائرة بأن السيدة هناء عزيز غائب موظفة على الملاك الدائم ويحق لها كفالة المقترضين وفق التعليمات والضوابط المعمول بها لضمان تسديد الأقساط الشهرية المستحقة..."
+      },
+      5: {
+        serial: "ص/2024/9180",
+        name: "وسام طه ياسين الدوري",
+        dest: "مديرية المرور العامة / القاطع الجنوبي",
+        type: "تعهد خطي ملزم",
+        text: "بناءً على المعاملة المرورية المقدمة، يتعهد المواطن وسام طه ياسين بتحمل كامل التبعات القانونية والمادية حيال المركبة المسجلة أصولياً..."
+      },
+      6: {
+        serial: "ص/2024/9179",
+        name: "أنور ناطق جميل البياتي",
+        dest: "شركة توزيع المنتجات النفطية",
+        type: "كتاب تأييد سكن معنون",
+        text: "نؤيد لكم صحة سكن المواطن أنور ناطق جميل في قاطعنا البلدي، وذلك لتجديد وتثبيت البطاقة الوقودية السكنية المخصصة للأسرة..."
+      }
+    };
+
+    function selectLedgerRecord(id) {
+      const rec = sampleRecords[id];
+      if (!rec) return;
+
+      const serialEl = document.getElementById('inspectedSerial');
+      const nameEl = document.getElementById('inspectorCitizenName');
+      const bodyEl = document.getElementById('inspectorBodyPreview');
+
+      if (serialEl) serialEl.innerText = rec.serial;
+      if (nameEl) nameEl.innerText = rec.name;
+      if (bodyEl) {
+        bodyEl.innerHTML = `إلى / <span class="font-bold text-on-surface">${rec.dest}</span><br/>${rec.text}`;
+      }
+
+      // Highlight active row visually
+      const rows = document.querySelectorAll('#transactionsTableBody tr');
+      rows.forEach((r, idx) => {
+        if (idx === id - 1) {
+          r.classList.add('bg-surface-container-highest/60');
+          r.classList.remove('bg-transparent');
+        } else {
+          r.classList.remove('bg-surface-container-highest/60');
+        }
+      });
+    }
+
+    function copyText(text, event) {
+      if (event) event.stopPropagation();
+      navigator.clipboard?.writeText(text).then(() => {
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[16px] text-secondary">check</span>';
+        setTimeout(() => {
+          btn.innerHTML = orig;
+        }, 1200);
+      }).catch(() => {});
+    }
+
+    // Client-side quick filter behavior
+    document.getElementById('ledgerSearchInput')?.addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#transactionsTableBody tr');
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+  </script>
+</div></main></div></body></html>

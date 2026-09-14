@@ -1,0 +1,72 @@
+import { join } from 'node:path';
+import { app, BrowserWindow, shell, protocol, net } from 'electron';
+import { pathToFileURL } from 'node:url';
+import { getDb, closeDb, storeDir } from './db';
+import { registerIpc } from './ipc';
+
+// مخطط مخصّص لعرض ملفات المخزن (الصور والمستمسكات) دون فتح file:// على كامل القرص.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'diwan', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+]);
+
+let mainWindow: BrowserWindow | null = null;
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 1600,
+    height: 1000,
+    minWidth: 1280,
+    minHeight: 800,
+    show: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#f8f9ff', // لون surface من توكنات التصميم
+    title: 'ديوان — منظومة الكتب والتحارير',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      spellcheck: false
+    }
+  });
+
+  mainWindow.once('ready-to-show', () => mainWindow?.show());
+
+  // أي رابط خارجي يُفتح في المتصفح، لا داخل نافذة التطبيق.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  } else {
+    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+}
+
+app.whenReady().then(() => {
+  // diwan://store/<relative-path> → ملف داخل مخزن التطبيق فقط
+  protocol.handle('diwan', (request) => {
+    const url = new URL(request.url);
+    if (url.hostname !== 'store') return new Response('not found', { status: 404 });
+    const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    if (rel.includes('..')) return new Response('forbidden', { status: 403 });
+    return net.fetch(pathToFileURL(join(storeDir(), rel)).toString());
+  });
+
+  getDb();
+  registerIpc();
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', () => {
+  closeDb();
+  if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', closeDb);

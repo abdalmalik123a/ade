@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"inverse-primary":"#bec6e0","surface-container-highest":"#d3e4fe","surface-tint":"#565e74","on-primary-container":"#7c839b","tertiary-container":"#2f1500","on-primary-fixed":"#131b2e","tertiary-fixed":"#ffdcc3","on-secondary-fixed-variant":"#004395","surface":"#f8f9ff","tertiary":"#000000","primary":"#000000","on-surface":"#0b1c30","surface-container-lowest":"#ffffff","on-tertiary-fixed-variant":"#6e3900","tertiary-fixed-dim":"#ffb77d","primary-container":"#131b2e","inverse-on-surface":"#eaf1ff","on-primary":"#ffffff","error":"#ba1a1a","inverse-surface":"#213145","surface-container":"#e5eeff","surface-container-low":"#eff4ff","outline-variant":"#c6c6cd","on-primary-fixed-variant":"#3f465c","on-secondary-container":"#fefcff","background":"#f8f9ff","on-background":"#0b1c30","on-tertiary":"#ffffff","on-tertiary-container":"#c76c00","on-secondary-fixed":"#001a42","surface-bright":"#f8f9ff","on-tertiary-fixed":"#2f1500","surface-container-high":"#dce9ff","surface-variant":"#d3e4fe","outline":"#76777d","on-error-container":"#93000a","secondary":"#0058be","secondary-fixed-dim":"#adc6ff","error-container":"#ffdad6","secondary-container":"#2170e4","primary-fixed-dim":"#bec6e0","secondary-fixed":"#d8e2ff","on-secondary":"#ffffff","surface-dim":"#cbdbf5","primary-fixed":"#dae2fd","on-surface-variant":"#45464d","on-error":"#ffffff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-xs":"0.25rem","margin":"1.5rem","gutter":"1rem","space-md":"1rem","space-lg":"1.5rem","space-sm":"0.5rem","gutter-compact":"0.5rem","space-xl":"2rem","margin-dock":"0.75rem"},"fontFamily":{"headline-sm":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"label-sm":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"label-lg":["IBM Plex Sans"],"code-sm":["IBM Plex Sans"],"body-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"]},"fontSize":{"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"18px","fontWeight":"500"}],"headline-xl":["32px",{"lineHeight":"44px","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"30px","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"16px","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"24px","fontWeight":"400"}],"label-lg":["14px",{"lineHeight":"20px","fontWeight":"500"}],"code-sm":["12px",{"lineHeight":"18px","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"20px","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"36px","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"28px","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased select-none"><aside class="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-hidden"><div class="flex flex-col flex-1"><div class="h-16 px-space-lg flex items-center justify-between bg-surface-container-low"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary"><span class="material-symbols-outlined text-[20px]">account_balance</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">ديوان 2.4</span><span class="font-label-sm text-label-sm text-on-surface-variant">منظومة الكتب والتحارير</span></div></div><div class="flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container-highest text-secondary"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold">محلي</span></div></div><div class="px-space-md py-space-sm"><div class="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">الوحدات الإدارية الرئيسية</div><nav class="space-y-1" data-active-classes="bg-primary-container text-on-primary rounded-lg font-semibold"><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="smart-editor-a4-preview" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">edit_document</span><span class="font-label-lg text-label-lg">المحرر الذكي ومعاينة A4</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-container-high text-on-surface-variant">نشط</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="templates-library-drafts" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">description</span><span class="font-label-lg text-label-lg">مكتبة النماذج والمسودات</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">142</span></a><a class="flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="transactions-archive-ledger" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">inventory_2</span><span class="font-label-lg text-label-lg">سجل المعاملات والأرشيف</span></div><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">اليوم 18</span></a><a aria-current="page" class="flex items-center justify-between px-space-md py-space-sm transition-all bg-primary-container text-on-primary rounded-lg font-semibold" data-path="citizens-identity-records" href="#"><div class="flex items-center gap-space-md"><span class="material-symbols-outlined text-[20px]">badge</span><span class="font-label-lg text-label-lg">سجل المواطنين والمستمسكات</span></div></a></nav></div><div class="px-space-md pt-space-xs"><div class="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">أدوات التوثيق</div><div class="space-y-1"><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="header-seal-configuration" href="#"><span class="material-symbols-outlined text-[20px]">verified</span><span class="font-label-lg text-label-lg">إعدادات الترويسة والأختام</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="administrative-archive-search" href="#"><span class="material-symbols-outlined text-[20px]">manage_search</span><span class="font-label-lg text-label-lg">البحث والتقارير الدورية</span></a></div></div></div><div class="p-space-md bg-surface-container-low space-y-space-sm"><div class="p-space-sm rounded-lg bg-surface-container-lowest flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-secondary text-[22px]">print</span><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-semibold">HP LaserJet A4</span><span class="font-label-sm text-label-sm text-on-surface-variant">جاهزة للطباعة الإدارية</span></div></div><div class="flex flex-col items-end"><span class="font-label-sm text-label-sm text-secondary font-bold">88%</span><div class="w-10 h-1.5 bg-surface-container-high rounded-full overflow-hidden"><div class="h-full bg-secondary w-[88%]"></div></div></div></div><div class="flex items-center justify-between pt-space-xs"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="flex flex-col"><span class="font-label-md text-label-md text-on-surface font-bold">مُشغّل معتمد 01</span><span class="font-label-sm text-label-sm text-on-surface-variant">مكتب الاستنساخ المركزي</span></div></div><button class="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="تبديل الحساب أو خروج" type="button"><span class="material-symbols-outlined text-[20px]">logout</span></button></div></div></aside><div class="pr-72"><header class="fixed top-0 right-72 left-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg gap-space-md"><div class="flex items-center gap-space-md flex-1 max-w-xl"><div class="relative w-full"><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full h-10 pr-10 pl-16 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary shadow-[0_1px_8px_rgba(0,0,0,0.04)]" placeholder="بحث شامل وسريع (مواطن، رقم صادر، نموذج، كتاب رسمي)..." type="text"/><span class="absolute left-3 top-1/2 -translate-y-1/2 font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-mono">Ctrl+F</span></div><div class="hidden xl:flex items-center gap-space-xs px-space-md py-1.5 rounded-lg bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><span class="material-symbols-outlined text-secondary text-[18px]">article</span><span class="font-label-sm text-label-sm text-on-surface-variant">المعاملة:</span><span class="font-label-md text-label-md font-semibold truncate max-w-[140px]">تأييد سكن / مواطن</span></div></div><div class="flex items-center gap-space-sm"><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span>تبديل النموذج</span></button><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">save</span><span>حفظ مسودة</span></button><button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">picture_as_pdf</span><span>تصدير PDF</span></button><button class="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]" type="button"><span class="material-symbols-outlined text-[18px]">print</span><span class="font-bold">طباعة فورية</span><span class="font-code-sm text-code-sm opacity-70">Ctrl+P</span></button></div></header><main class="relative pt-16 bg-surface min-h-screen w-full"><div class="flex flex-col w-full">
+<!-- Status Ribbon & Macro Statistics -->
+<div class="px-space-lg pt-space-md pb-space-lg">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md pb-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs text-secondary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span>منظومة التوثيق الرقمي والملفات المركزية المعتمدة</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="text-on-surface-variant">تحديث حي 09:42 ص</span>
+</div>
+<div class="font-headline-xl text-headline-xl text-on-surface tracking-tight mt-0.5">
+          سجل المواطنين والمستمسكات الرسمية (Vault 3.0)
+        </div>
+</div>
+<!-- Quick Action Commands -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="flex items-center gap-space-xs px-space-md h-11 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-all font-label-lg text-label-lg shadow-sm" type="button">
+<span class="material-symbols-outlined text-[20px] text-secondary">document_scanner</span>
+<span>فحص الماسح الضوئي (WIA)</span>
+<span class="px-1.5 py-0.2 rounded-full bg-secondary text-on-secondary font-code-sm text-code-sm">متصل</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-lg h-11 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-lg text-label-lg shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">person_add</span>
+<span class="font-semibold">+ إضافة ملف مواطن مع سحب المستمسك</span>
+<span class="font-code-sm text-code-sm opacity-60">F2</span>
+</button>
+</div>
+</div>
+<!-- 4 KPI Banners with Inset Progressions & Rich Indicators -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- KPI 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="absolute -left-6 -top-6 w-24 h-24 bg-surface-container-high/40 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">الملفات المسجلة النشطة</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-1">1,840</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">folder_shared</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+            موثقة بالرقم الوطني
+          </span>
+<span class="font-label-sm text-label-sm text-secondary font-bold bg-surface-container-highest px-2 py-0.5 rounded">100% مدققة</span>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">المستمسكات المقروءة بالماسح</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-1">5,410</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">document_scanner</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[16px]">analytics</span>
+            دقة استخراج النصوص OCR
+          </span>
+<span class="font-label-sm text-label-sm text-on-surface font-bold">99.4%</span>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">الإنجاز التلقائي للشهر</span>
+<div class="flex items-baseline gap-space-xs mt-1">
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold">782</span>
+<span class="font-label-md text-label-md text-on-surface-variant">معاملة موثقة</span>
+</div>
+</div>
+<!-- Mini SVG Sparkline -->
+<svg class="w-20 h-9 text-secondary overflow-visible" fill="none" viewbox="0 0 100 40">
+<path d="M0 32 Q 25 36 35 24 T 65 14 T 85 8 L 100 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
+<path d="M0 32 Q 25 36 35 24 T 65 14 T 85 8 L 100 4 L 100 40 L 0 40 Z" fill="currentColor" fill-opacity="0.08"></path>
+</svg>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">معدل التسريع الإداري</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">+28% أسرع من الشهر الفائت</span>
+</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">جاهزية التكرار السريع</span>
+<span class="font-headline-xl text-headline-xl text-on-surface font-bold mt-1">94%</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">bolt</span>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">توليد الكتب بضغطة واحدة</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">متوسط 2.1 ثانية/كتاب</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Workspace: Split 2-Column High-Density Layout -->
+<div class="px-space-lg pb-space-xl grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT COLUMN: Citizen Registry Directory & Quick Finder (xl:col-span-4) -->
+<div class="xl:col-span-4 flex flex-col gap-space-md">
+<!-- Directory Search & Sector Filter -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[20px]">badge</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">دليل المواطنين والموظفين</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-mono">1,840 ملف</span>
+</div>
+<!-- Filter Input -->
+<div class="relative w-full mt-1">
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full h-10 pr-9 pl-4 rounded-lg bg-surface-container-low text-on-surface text-body-sm font-body-sm focus:outline-none focus:bg-surface-container-lowest shadow-inner transition-colors" placeholder="البحث بالاسم الثلاثي، الرقم الوطني، أو المحلة..." type="text" value="سمير صالح مهدي"/>
+</div>
+<!-- Category Tags Bar -->
+<div class="flex items-center gap-1 overflow-x-auto py-1 no-scrollbar">
+<button class="px-space-sm py-1 rounded text-label-sm font-label-sm bg-primary-container text-on-primary font-bold whitespace-nowrap" type="button">الكل (1,840)</button>
+<button class="px-space-sm py-1 rounded text-label-sm font-label-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest whitespace-nowrap transition-colors" type="button">تربية وتعليم (512)</button>
+<button class="px-space-sm py-1 rounded text-label-sm font-label-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest whitespace-nowrap transition-colors" type="button">متقاعدين (380)</button>
+<button class="px-space-sm py-1 rounded text-label-sm font-label-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest whitespace-nowrap transition-colors" type="button">عقود وأجراء (290)</button>
+<button class="px-space-sm py-1 rounded text-label-sm font-label-sm bg-surface-container-high text-on-surface hover:bg-surface-container-highest whitespace-nowrap transition-colors" type="button">عقارات وسكن (658)</button>
+</div>
+</div>
+<!-- Quick Directory List Cards -->
+<div class="flex flex-col gap-space-xs max-h-[820px] overflow-y-auto pr-0.5">
+<!-- Active Selected Citizen Card -->
+<div class="bg-surface-container-highest/60 rounded-xl p-space-md shadow-sm relative overflow-hidden cursor-pointer transition-all">
+<div class="absolute right-0 top-0 bottom-0 w-1.5 bg-secondary"></div>
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-surface-container-high shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Official formal studio portrait photo of an Iraqi middle-aged male civil servant with trimmed mustache wearing a dark navy suit and white shirt against a neutral administrative light gray studio background with sharp studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRJZ9MiLMvFgsKnlblaHCm8j3AbW0Blfd9GWw2BDAmDIX0bW5qj4OYqheQVmxTrww_AWSGklXG4Xj2ndBRlag_Wc-r84n4I5DVdDVO2qsvkLjFwzeGUqm5cJOUfzmZJSfhxQXLY7GqLqy1Z_A5YohZMg0gWBXsiQaokjqN2zaLbY6BoaRWElNQMkakvDDai-4rvqxckWRs9umWwZQuy5x5UND94baihdNJYa2NDrFS4N-vTFxkEl4d"/>
+<span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-secondary ring-2 ring-surface-container-lowest"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold truncate">سمير صالح مهدي جبر</span>
+<span class="material-symbols-outlined text-secondary text-[16px]" title="ملف مدقق ورسمي">verified</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">معلم جامعي أقدم - تربية بغداد الرصافة الأولى</span>
+<span class="font-code-sm text-code-sm text-secondary font-mono tracking-wider mt-0.5">ID: 198420918230</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-secondary text-on-secondary font-label-sm text-label-sm shrink-0">النشط حالياً</span>
+</div>
+<!-- Card Bottom Utility -->
+<div class="mt-space-sm pt-space-xs flex items-center justify-between bg-surface-container-lowest/80 rounded-lg p-space-xs px-space-sm">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-on-surface-variant">4 مستمسكات ممسوحة</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono">آخر معاملة: أمس</span>
+</div>
+<button class="flex items-center gap-1 px-2 py-1 rounded bg-surface-container text-secondary hover:bg-secondary hover:text-on-secondary font-label-sm text-label-sm font-bold transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">post_add</span>
+<span>إنشاء كتاب فوري</span>
+</button>
+</div>
+</div>
+<!-- Citizen Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:bg-surface-container-low transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-surface-container-high shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Official biometric identification portrait photograph of an Iraqi senior retired citizen with gray hair wearing traditional clean modern attire, captured in front of an institutional solid light blue photography background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjCJFhb6lWu6qvJa0Ma9FSh9mZqpTwsy9gMQVRP4_FarfQ3rJXyIo0IyLufi_IrLezpDWzRIXac8tf6d3bPqbDuB31-XTdOzjQiNO37GeSKPMerOYQUYXqxiKtYPNkQkpuBOlnQn4MeruFtlLDckJXgcNY5KebmV8pZLalKT3adLpS4Ly3J5xpe_NDsZ_pVAJmTLCGi3LagnSQpX1BC1FE0UeIQaWxaLbznoG3CPZ55ZpiOQRCNe3L"/>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">حسين عبد الأمير كاظم الربيعي</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">متقاعد مدني - وزارة النقل والمواصلات</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant font-mono tracking-wider mt-0.5">ID: 196144810291</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm shrink-0">متقاعد</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">3 مستمسكات • معاملة تقاعد</span>
+<button class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>فتح الملف</span>
+</button>
+</div>
+</div>
+<!-- Citizen Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:bg-surface-container-low transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-surface-container-high shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Formal identification studio portrait of an Iraqi professional woman in civil service wearing headscarf hijab and an elegant dark gray blazer with passport-style bright neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuANXagw8kbvIUjsUdZUgXzxY7FYOuxaJoCLFHnzH9ndLA53ljH8ddzv89WEhwQRh1SQEzCVDlpfLtrGmL_JOif3e4IxuQCtcM9HlLHH16IHU25QYNyKstG1kN5LFak3DunzBA4D-6d-P-EqlLnwe8jCEXwKL6KaP-kni6e2TiPGTpQk3KQq9zHu4acC6-auzcz3YLzN7HwAeyGGwOR9WfVqcQOFuzBp4UpbcNIvbjOdSy6tnXOtYr6N"/>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">زينب طارق جاسم الحمداني</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">مهندسة معمارية - دائرة الإسكان والتعمير</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant font-mono tracking-wider mt-0.5">ID: 199173820491</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm shrink-0">عقود وزارية</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">5 مستمسكات • ترقية وظيفية</span>
+<button class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>فتح الملف</span>
+</button>
+</div>
+</div>
+<!-- Citizen Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:bg-surface-container-low transition-all cursor-pointer">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-surface-container-high shadow-sm">
+<img class="w-full h-full object-cover" data-alt="Official administrative headshot portrait of a young Iraqi male citizen wearing a crisp white collared shirt with formal pose against a neutral clean wall background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGesS10N9UTlDPFfZHPwB91xxmf_AiRu7OSqzBI8qMJZzeg9ReAXyv1ANoW2ZZ-aXymwdhJcGbm5Lw6bj3Vg7M15MFMPP9Bk9mGUcavQ8qGYJUbGm7p9xbBiPwTZpKnfn8KUdM0kAQqHlN69Uqtg3D3XSrU8UbOSZLBic0u2AGznH8NkNynVtc0E954llB9cj_tqbvVtTObQkn4rzUo9j662q56ucJ2dDnJv8-umpR-T7BwQhsuYqv"/>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold truncate">مقتدى كريم فيصل الدليمي</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">كاسب / صاحب عقار - بلدية الكرخ</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant font-mono tracking-wider mt-0.5">ID: 199855219012</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm shrink-0">عقارات</span>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">2 مستمسكات • سند وتأييد</span>
+<button class="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>فتح الملف</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Active Citizen Dossier, Vault, and Ledger (xl:col-span-8) -->
+<div class="xl:col-span-8 flex flex-col gap-space-lg">
+<!-- Section A: Primary Citizen Identification & Quick Injector Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden">
+<!-- Header Banner with Status & Inject Button -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container-low p-space-md rounded-lg">
+<div class="flex items-center gap-space-md">
+<div class="relative w-16 h-16 rounded-lg overflow-hidden bg-surface-container-high shadow-md shrink-0">
+<img class="w-full h-full object-cover" data-alt="Close up high-resolution official portrait photography of Samir Saleh Mahdi, an Iraqi government teacher wearing a dark charcoal suit jacket with silver lapel pin against an official studio gray backcloth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcySqTcysKxqWE17gZToAo0Hs5iCa33QHkEq436zJzzmUW5n0i2rN6O23iPrxPrM3E9uRsQQve7EtZFwVqWJkEHk_-IwR-HwNcVDMJbOTNtFnTUzSiZuAnNZWT3vhiBDiBhjDbd3zcwmZrNqiiMblx1h7xzrFQ9ObBDZTfP-JW0uD6bPXDseIbcc7FqqJoQahyWIhjafa6MT1o85AZZaff04sXqHPsTEiilV5WYxMhv4Gqd9OTo4nM"/>
+<div class="absolute bottom-0 inset-x-0 bg-primary-container text-on-primary text-center text-[10px] font-bold py-0.5">رسمي 4×6</div>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">سمير صالح مهدي جبر العماري</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                  موثق ومعتمد رسمياً
+                </span>
+</div>
+<div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm mt-0.5">
+<span>تاريخ الفتح الأولي: 14 شباط 2021</span>
+<span>•</span>
+<span>رمز الموظف: EDU-BG-88410</span>
+</div>
+</div>
+</div>
+<!-- Main Productivity CTA -->
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="flex items-center gap-space-xs px-space-lg h-11 rounded-lg bg-secondary text-on-secondary hover:opacity-95 transition-all font-label-lg text-label-lg shadow-md" type="button">
+<span class="material-symbols-outlined text-[20px]">output</span>
+<span class="font-bold">إدراج في محرر الكتب الآن</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/20 font-code-sm text-code-sm">Ctrl + Enter</span>
+</button>
+<button class="w-11 h-11 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest flex items-center justify-center transition-colors shadow-sm" title="تعديل بيانات المواطن" type="button">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+</div>
+<!-- Structured Metadata Data Grid (3 Columns) -->
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-space-md pt-space-xs">
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">الرقم الوطني الموحد</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-lg text-body-lg text-on-surface font-mono font-bold">198420918230</span>
+<button class="text-secondary hover:text-on-surface transition-colors" title="نسخ" type="button"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">العنوان الوظيفي والدرجة</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">معلم جامعي أقدم / الدرجة الثالثة</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">دائرة الانتساب الرسمية</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">مديرية تربية بغداد الرصافة 1</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">تاريخ ومحل الولادة</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-semibold">12/08/1984 - بغداد</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">رقم بطاقة السكن والمكتب</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-mono font-semibold">R-491028 (مكتب الكرادة)</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">المحلة والزقاق والدار</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-semibold">محلة 903، زقاق 14، دار 8/أ</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">أقرب نقطة دالة</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-semibold truncate">قرب ساحة الواثق - الكرادة خارج</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-space-sm rounded-lg flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant font-semibold">رقم هاتف الاتصال المعتمد</span>
+<div class="flex items-center justify-between mt-1">
+<span class="font-body-md text-body-md text-on-surface font-mono font-semibold" dir="ltr">+964 770 184 9201</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section B: Digital Document Vault (خزنة المستمسكات الرسمية الممسوحة ضوئياً) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<!-- Vault Header & Tools -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">lock_clock</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">خزنة المستمسكات الرسمية الممسوحة ضوئياً</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-code-sm text-code-sm">4 وثائق مأرشفة</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">مستندات مشفرة ومطابقة للأصل عبر تقنية المسح فائق الدقة 600 DPI</span>
+</div>
+</div>
+<!-- Scanner Direct Triggers -->
+<div class="flex items-center gap-space-xs">
+<button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[18px]">photo_library</span>
+<span>تصدير الكل ZIP</span>
+</button>
+<button class="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md font-semibold" type="button">
+<span class="material-symbols-outlined text-[18px]">scanner</span>
+<span>مسح ضوئي فوري (Scanner)</span>
+</button>
+</div>
+</div>
+<!-- 4 Document Vault Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md pt-space-xs">
+<!-- Document 1: البطاقة الوطنية الموحدة -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col justify-between group shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col gap-space-xs">
+<div class="relative w-full h-36 rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High quality realistic scan of an official Iraqi National Unified Identification Smart Card showing front face with microprint security guilloche pattern watermarks eagle crest and bilingual Arabic Kurdish typography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2W8ucBIrFuxmXCwOCPD_WyacfbGW8Hd7zHFAvyMSlXEnkm7kLPZRLrfqwVDLe42qfcNKNzNqw__Oa6yV7W6OieRwRG1FNDGWm1wgtkwoQpeCXUsKplC09Rbj_XcDwWjZW8QBi7Ra8yuXHRfltEWsUb_xgkKLAYF7-XoglR4cCunB52Nb8OdbFzL0xKmJQgS-i_Xa4OEs0Nkim-ZyjKFaB8JwUguKvkV7VwRkzUzv3vw1xMynAGkPm"/>
+<span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-primary-container/85 text-on-primary font-label-sm text-label-sm font-bold backdrop-blur-sm">الوجه والظهر</span>
+<span class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-secondary font-code-sm text-code-sm font-bold">600 DPI</span>
+</div>
+<div class="flex flex-col mt-1 px-1">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">البطاقة الوطنية الموحدة</span>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>تم الفحص: 10/01/2024</span>
+<span class="text-secondary font-semibold">OCR 99.8%</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-1 mt-space-sm pt-space-xs">
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="استخراج النصوص OCR" type="button">
+<span class="material-symbols-outlined text-[16px]">raw_on</span>
+</button>
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="طباعة فورية ملونة" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+</button>
+<button class="h-8 rounded bg-surface-container text-secondary hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-colors" title="معاينة بكامل الشاشة" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Document 2: بطاقة السكن الرسمية -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col justify-between group shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col gap-space-xs">
+<div class="relative w-full h-36 rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Official scanned document preview of Iraqi Residence Card Certificate with security stamp ink seal government Ministry of Interior administrative crest and serialized reference number." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXN75j0QYOuNTthK8LECG3kgZh73y7ggD-D9XnkJ2byxJPbyQuQrBhHJKQ9y2UvQEqustrjV7LPGtixRyjhsIB8p1YIObPzfRVzDxXuqzPjuMoYxpfdk8SzNPoUrIHxF_Axd4raStL8J8ErnyP3wVNoGQf2_EIXU5VxMO5zgURr0ect_MhBEWM1Ro64VaRVGR0mAkwfS-9k2pX60DOAc8NCuBO9B3cdyl-aDgjSc-KcVxkM88tArLk"/>
+<span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-bold backdrop-blur-sm">مصدق مختارياً</span>
+<span class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-secondary font-code-sm text-code-sm font-bold">PDF / A</span>
+</div>
+<div class="flex flex-col mt-1 px-1">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">بطاقة السكن الرسمية</span>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>تم الفحص: 02/03/2024</span>
+<span class="text-secondary font-semibold">OCR 98.9%</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-1 mt-space-sm pt-space-xs">
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="استخراج النصوص OCR" type="button">
+<span class="material-symbols-outlined text-[16px]">raw_on</span>
+</button>
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="طباعة فورية ملونة" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+</button>
+<button class="h-8 rounded bg-surface-container text-secondary hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-colors" title="معاينة بكامل الشاشة" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Document 3: أمر التعيين والمباشرة الوزاري -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col justify-between group shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col gap-space-xs">
+<div class="relative w-full h-36 rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High contrast administrative scanned A4 ministerial appointment decree order on official Iraqi governmental letterhead with red verification wax seal ribbon and ministerial signatures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA626fBi_KUNsYakNAn4iCi0UKhKhJ9a88NC09U1fL5_UZ6ZoK5JiUxRLZc83vz55UZCH6wJHukXCNY-ourGlUGtSg4jdUhlie-1hTzPuGL2BcMZdY5nDwSdhW8YLQu4nOXiQnyOMqEmY6ya5RFlAC7pnDfz31JsLViVWt4Kofe0I_9YYOF8YLpTy6KFUjTwa0VwBfSZtksEfCZozZTV4d6Im0uoQSBURQogZx8uaKOkNUazCCcphQI"/>
+<span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-primary-container/85 text-on-primary font-label-sm text-label-sm font-bold backdrop-blur-sm">أمر وزاري</span>
+<span class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-secondary font-code-sm text-code-sm font-bold">صادر 1840</span>
+</div>
+<div class="flex flex-col mt-1 px-1">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">أمر التعيين والمباشرة</span>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>تم الفحص: 14/02/2021</span>
+<span class="text-secondary font-semibold">OCR 99.4%</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-1 mt-space-sm pt-space-xs">
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="استخراج النصوص OCR" type="button">
+<span class="material-symbols-outlined text-[16px]">raw_on</span>
+</button>
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="طباعة فورية ملونة" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+</button>
+<button class="h-8 rounded bg-surface-container text-secondary hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-colors" title="معاينة بكامل الشاشة" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Document 4: الصورة الشخصية المفرغة 4×6 -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex flex-col justify-between group shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col gap-space-xs">
+<div class="relative w-full h-36 rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center p-2">
+<!-- Alpha grid background effect -->
+<div class="w-full h-full rounded flex items-center justify-center bg-[radial-gradient(#d3e4fe_1px,transparent_1px)] [background-size:8px_8px]">
+<img class="h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300" data-alt="Cutout biometric passport photo of Samir Saleh Mahdi isolated transparent background ready for administrative stamps and official badges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpwhEnORp2dPHonnPQ9-P-gffhGq0GSqprMF9UD-ZxLGeNtJ7srl8hCI5QvtMlJm8xK7GmughNUMWC0Iff9W2cJahT14OMw7JJbTR-KdoaiBYcwrXKXYKu538S_8k0QATt8C5RV1L7R8i8FHuabvXLXDsMil8T_wj4iepKilqYnnQfEo6Rv6kn2bpgGKJgKp7A_iwdg0fKnwMi4Whac_gT98mQeJ0iLaZ0FCJ6Zfa5BMVpLbR3Kg8y"/>
+</div>
+<span class="absolute top-2 right-2 px-2 py-0.5 rounded bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold backdrop-blur-sm">مفرغة PNG</span>
+<span class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-code-sm text-code-sm font-bold">4×6 سم</span>
+</div>
+<div class="flex flex-col mt-1 px-1">
+<span class="font-label-lg text-label-lg text-on-surface font-bold truncate">الصورة الشخصية الرسمية</span>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>صالحة لجميع المعاملات</span>
+<span class="text-secondary font-semibold">جاهزة للختم</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-1 mt-space-sm pt-space-xs">
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="نسخ إلى الحافظة" type="button">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+<button class="h-8 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" title="طباعة ورق صور" type="button">
+<span class="material-symbols-outlined text-[16px]">view_in_ar_new</span>
+</button>
+<button class="h-8 rounded bg-surface-container text-secondary hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-colors" title="إدراج في الترويسة" type="button">
+<span class="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Drag and Drop Scanner Ingestion Zone -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col md:flex-row items-center justify-between gap-space-md shadow-inner">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-secondary shadow-sm shrink-0">
+<span class="material-symbols-outlined text-[28px]">cloud_upload</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">إضافة أو سحب مستمسك جديد لهذا المواطن</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">قم بسحب الملفات إلى هنا (PDF، JPG، PNG) أو السحب مباشرة من جهاز الماسح الضوئي WIA</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-sm" type="button">
+              استعراض من الحاسوب
+            </button>
+<button class="flex items-center gap-1 px-space-md h-10 rounded-lg bg-secondary text-on-secondary hover:opacity-95 transition-all font-label-md text-label-md font-semibold shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+<span>بدء مسح الورقة الحالية</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Section C: Transaction Ledger & Instant Repeat Engine (أرشيف المعاملات والكتب السابقة) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<!-- Ledger Header with Quick Filter -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">history_edu</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">سجل المعاملات والكتب الإدارية الصادرة للمواطن</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-code-sm text-code-sm">4 كتب سابقة</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">نظام التكرار الفوري: تحديث التأريخ والصادر آلياً بنقرة واحدة دون إعادة الطباعة اليدوية</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">الميزة الجوهرية:</span>
+<span class="px-2 py-1 rounded bg-surface-container-highest text-secondary font-label-sm text-label-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+              تكرار في ثانيتين
+            </span>
+</div>
+</div>
+<!-- Ledger Table -->
+<div class="overflow-x-auto rounded-xl shadow-inner bg-surface-container-low">
+<table class="w-full text-right border-collapse">
+<thead>
+<tr class="bg-surface-container-high text-on-surface-variant font-label-md text-label-md">
+<th class="p-space-md font-bold">رقم الصادر / الرمز</th>
+<th class="p-space-md font-bold">نوع الكتاب الإداري</th>
+<th class="p-space-md font-bold">الجهة المعنون إليها</th>
+<th class="p-space-md font-bold">تاريخ الإصدار</th>
+<th class="p-space-md font-bold">الحالة الإجرائية</th>
+<th class="p-space-md font-bold text-center">الإجراء السريع</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container font-body-sm text-body-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="p-space-md font-mono text-on-surface font-bold">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span>ص / 10842</span>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">كتاب تأييد استمرار بالخدمة</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">لأغراض الكفالة المصرفية والمخصصات</span>
+</div>
+</td>
+<td class="p-space-md text-on-surface">مصرف الرافدين / فرع الفردوس (8)</td>
+<td class="p-space-md font-mono text-on-surface-variant">12/04/2024</td>
+<td class="p-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-semibold">مسلّم ومؤرشف</span>
+</td>
+<td class="p-space-md text-center">
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-on-secondary hover:opacity-95 shadow-sm font-label-sm text-label-sm font-bold transition-transform active:scale-95" title="ينشئ نفس الكتاب الآن مع رقم صادر جديد وتأريخ اليوم فوراً" type="button">
+<span class="material-symbols-outlined text-[16px]">sync_saved_locally</span>
+<span>تكرار وتحديث التأريخ (ثانيتان)</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="p-space-md font-mono text-on-surface font-bold">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span>ص / 08921</span>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">كتاب عدم ممانعة إيفاد ودراسة</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">إكمال متطلبات الدراسات العليا</span>
+</div>
+</td>
+<td class="p-space-md text-on-surface">وزارة التعليم العالي والبحث العلمي</td>
+<td class="p-space-md font-mono text-on-surface-variant">18/11/2023</td>
+<td class="p-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-semibold">مكتمل رسمياً</span>
+</td>
+<td class="p-space-md text-center">
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface shadow-sm font-label-sm text-label-sm font-bold transition-all active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">replay</span>
+<span>تكرار المعاملة</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="p-space-md font-mono text-on-surface font-bold">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span>ص / 05419</span>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">تأييد سكن مصدق وموثق إلكترونياً</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">مع ختم المختار وتوقيع المجلس المحلي</span>
+</div>
+</td>
+<td class="p-space-md text-on-surface">دائرة الأحوال المدنية والجوازات</td>
+<td class="p-space-md font-mono text-on-surface-variant">05/06/2023</td>
+<td class="p-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-semibold">منتهي الصلاحية</span>
+</td>
+<td class="p-space-md text-center">
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-secondary text-on-secondary hover:opacity-95 shadow-sm font-label-sm text-label-sm font-bold transition-transform active:scale-95" title="تجديد تأييد السكن لنفس العنوان مع تاريخ اليوم" type="button">
+<span class="material-symbols-outlined text-[16px]">autorenew</span>
+<span>تجديد فوري لليوم</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="p-space-md font-mono text-on-surface font-bold">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+<span>ص / 01103</span>
+</div>
+</td>
+<td class="p-space-md">
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">كتاب شكر وتقدير وظيفي</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">بناءً على جهود الامتحانات الوزارية العامة</span>
+</div>
+</td>
+<td class="p-space-md text-on-surface">إلى الموظف مباشرة / ملف الأضبارة</td>
+<td class="p-space-md font-mono text-on-surface-variant">29/08/2022</td>
+<td class="p-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">محفوظ بالأضبارة</span>
+</td>
+<td class="p-space-md text-center">
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm font-semibold transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">print</span>
+<span>إعادة طباعة الأصل</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Ledger Footer Summary -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-sm pt-space-xs text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex items-center gap-space-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">memory</span>
+              محفوظ في قاعدة بيانات الأرشيف المحلي (SQLite 3.42)
+            </span>
+<span>•</span>
+<span>بصمة التوثيق SHA-256: 9b2d8f...301a</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-2 py-1 rounded hover:bg-surface-container text-on-surface transition-colors" type="button">تصدير السجل كملف Excel</button>
+<span>|</span>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-on-surface transition-colors" type="button">عرض السجل الجنائي / البراءة</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Client-side Interactive Micro-Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Notification feedback for quick repetition and injection
+      const quickBtns = document.querySelectorAll('button');
+      quickBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          if (btn.innerText.includes('تكرار وتحديث') || btn.innerText.includes('تجديد فوري')) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> جاري التوليد...';
+            setTimeout(() => {
+              btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> تم إصدار الكتاب في 1.8 ثانية!';
+              btn.classList.add('bg-primary-container', 'text-on-primary');
+              setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-primary-container', 'text-on-primary');
+              }, 3000);
+            }, 600);
+          }
+        });
+      });
+
+      // Keyboard Shortcut binding Ctrl + Enter
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          alert('تم تحويل كامل مستمسكات وبيانات المواطن (سمير صالح مهدي) تلقائياً إلى "المحرر الذكي A4" وهو جاهز للصياغة.');
+        }
+      });
+    });
+  </script>
+</div></main></div></body></html>
