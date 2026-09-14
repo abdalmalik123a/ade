@@ -45,6 +45,46 @@ export type ArchiveStats = {
   topTemplate: { title: string; count: number; share: number } | null;
 };
 
+export type CitizenSummary = {
+  id: number;
+  fullName: string;
+  nationalId: string | null;
+  jobTitle: string | null;
+  workplace: string | null;
+  category: string | null;
+  photoPath: string | null;
+  verified: number;
+  attachmentCount: number;
+  lastIssuedAt: string | null;
+};
+
+export type CitizenStats = {
+  activeFiles: number;
+  verifiedFiles: number;
+  attachments: number;
+  ocrAccuracy: number | null;
+  issuedThisMonth: number;
+};
+
+export type TemplateSummary = {
+  id: number;
+  code: string | null;
+  title: string;
+  subtitle: string | null;
+  category: string | null;
+  subjectLine: string | null;
+  bodyHtml: string;
+  printCount: number;
+  issuedThisMonth: number;
+  variables: string[];
+};
+
+export type TemplateStats = {
+  activeTemplates: number;
+  drafts: number;
+  issuedThisMonth: number;
+};
+
 export type Seal = {
   id: number;
   name: string;
@@ -83,6 +123,25 @@ export type DiwanApi = {
   seals: {
     list(): Promise<Seal[]>;
     add(input: { name: string; kind: string; imagePath: string | null }): Promise<Seal>;
+    delete(id: number): Promise<void>;
+  };
+  citizens: {
+    list(opts?: {
+      query?: string;
+      category?: string | null;
+      limit?: number;
+    }): Promise<CitizenSummary[]>;
+    categories(): Promise<{ name: string; count: number }[]>;
+    stats(): Promise<CitizenStats>;
+    get(id: number): Promise<Record<string, unknown> | null>;
+  };
+  documents: {
+    peekSerial(prefix: string, year: number): Promise<string>;
+  };
+  templates: {
+    list(category?: string | null): Promise<TemplateSummary[]>;
+    categories(): Promise<{ name: string; count: number }[]>;
+    stats(): Promise<TemplateStats>;
     delete(id: number): Promise<void>;
   };
   files: {

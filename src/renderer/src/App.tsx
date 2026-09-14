@@ -3,21 +3,12 @@ import type { RouteKey } from '@shared/routes';
 import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
-import EditorRaw from './screens/raw/EditorRaw';
+import EditorScreen from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
-import CitizensRaw from './screens/raw/CitizensRaw';
-import TemplatesRaw from './screens/raw/TemplatesRaw';
+import CitizensScreen from './screens/CitizensScreen';
+import TemplatesScreen from './screens/TemplatesScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
-
-const SCREENS: Record<RouteKey, () => JSX.Element> = {
-  editor: EditorRaw,
-  templates: TemplatesRaw,
-  archive: ArchiveScreen,
-  citizens: CitizensRaw,
-  letterhead: LetterheadScreen,
-  search: SearchScreen
-};
 
 export default function App() {
   const [route, setRoute] = useState<RouteKey>('editor');
@@ -25,25 +16,34 @@ export default function App() {
   const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0 });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [search, setSearch] = useState('');
+  const [pendingTemplate, setPendingTemplate] = useState<number | null>(null);
+
+  const refresh = useCallback(async () => {
+    const [s, c, p] = await Promise.all([
+      window.diwan.settings.get(),
+      window.diwan.counts.sidebar(),
+      window.diwan.printers.list()
+    ]);
+    setSettings(s);
+    setCounts(c);
+    setPrinters(p);
+  }, []);
 
   useEffect(() => {
-    void (async () => {
-      const [s, c, p] = await Promise.all([
-        window.diwan.settings.get(),
-        window.diwan.counts.sidebar(),
-        window.diwan.printers.list()
-      ]);
-      setSettings(s);
-      setCounts(c);
-      setPrinters(p);
-    })();
-  }, []);
+    void refresh();
+  }, [refresh]);
 
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+  // العدّادات تتغيّر بإصدار كتاب أو إضافة نموذج.
+  const navigate = useCallback(
+    (key: RouteKey) => {
+      setRoute(key);
+      void refresh();
+    },
+    [refresh]
+  );
 
-  // Ctrl+P — الطباعة الفورية، كما يعلن زرّ الهيدر.
+  const handlePrint = useCallback(() => window.print(), []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
@@ -52,44 +52,66 @@ export default function App() {
       }
       if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) {
         e.preventDefault();
-        setRoute('templates');
+        navigate('templates');
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handlePrint]);
-
-  const Screen = SCREENS[route];
+  }, [handlePrint, navigate]);
 
   const selectedPrinter =
     printers.find((p) => p.name === settings?.defaultPrinter) ??
     printers.find((p) => p.isDefault) ??
     null;
 
+  function renderScreen() {
+    switch (route) {
+      case 'editor':
+        return <EditorScreen templateId={pendingTemplate} />;
+      case 'templates':
+        return (
+          <TemplatesScreen
+            onOpenInEditor={(id) => {
+              setPendingTemplate(id);
+              navigate('editor');
+            }}
+          />
+        );
+      case 'archive':
+        return <ArchiveScreen />;
+      case 'citizens':
+        return <CitizensScreen />;
+      case 'letterhead':
+        return <LetterheadScreen />;
+      case 'search':
+        return <SearchScreen />;
+    }
+  }
+
   return (
     <>
       <Sidebar
         active={route}
-        onNavigate={setRoute}
+        onNavigate={navigate}
         counts={counts}
         printerName={selectedPrinter?.displayName ?? null}
         printerReady={selectedPrinter?.ready ?? false}
         supplyPercent={null}
-        operatorName={settings?.operatorName || 'لم يُسجَّل مشغّل'}
-        officeName={settings?.officeName || 'لم يُسمَّ المكتب بعد'}
-        onSignOut={() => setRoute('letterhead')}
+        operatorName={settings?.operatorName || 'لم يُسجّل مشغّل'}
+        officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
+        onSignOut={() => navigate('letterhead')}
       />
       <div className="pr-72">
         <Header
           transaction={null}
           search={search}
           onSearch={setSearch}
-          onSwapTemplate={() => setRoute('templates')}
+          onSwapTemplate={() => navigate('templates')}
           onSaveDraft={() => undefined}
           onExportPdf={() => undefined}
           onPrint={handlePrint}
         />
-        <Screen />
+        {renderScreen()}
       </div>
     </>
   );

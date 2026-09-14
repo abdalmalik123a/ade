@@ -2,6 +2,9 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { registerFileIpc } from './files';
+import { registerTemplateIpc } from './templates';
+import { registerCitizenIpc } from './citizens';
+import { registerDocumentIpc } from './documents';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -56,6 +59,9 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
 export function registerIpc(): void {
   registerLetterheadIpc();
   registerFileIpc();
+  registerTemplateIpc();
+  registerCitizenIpc();
+  registerDocumentIpc();
 
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 
