@@ -75,6 +75,7 @@ export default function App() {
               setPendingTemplate(id);
               navigate('editor');
             }}
+            onChanged={() => void refresh()}
           />
         );
       case 'archive':

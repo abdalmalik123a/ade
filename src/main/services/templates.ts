@@ -1,30 +1,54 @@
 import type { Database } from 'better-sqlite3';
-import type { TemplateSummary, TemplateStats } from '@shared/api';
+import type { TemplateInput, TemplateVariable } from '@shared/template';
+import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow } from '@shared/api';
 
-/** منطق مكتبة النماذج. دوالّ نقيّة تأخذ الاتصال وسيطًا فتُختبر بلا Electron. */
+/** منطق مكتبة النماذج والمسودات. دوالّ نقيّة تأخذ الاتصال وسيطًا. */
+
+const SUMMARY = `t.id, t.code, t.title, t.subtitle, t.category,
+  t.subject_line AS subjectLine, t.body_html AS bodyHtml,
+  t.letterhead_id AS letterheadId, t.print_count AS printCount`;
+
+const MONTH_COUNT = `(SELECT COUNT(*) FROM documents d
+   WHERE d.template_id = t.id
+     AND strftime('%Y-%m', d.issued_at) = strftime('%Y-%m','now','localtime')) AS issuedThisMonth`;
+
+function loadVariables(db: Database, templateId: number): TemplateVariable[] {
+  return db
+    .prepare(
+      `SELECT token, COALESCE(label, token) AS label, COALESCE(source,'manual') AS source,
+              required FROM template_variables
+       WHERE template_id = ? ORDER BY sort_order, id`
+    )
+    .all(templateId)
+    .map((r) => {
+      const row = r as { token: string; label: string; source: string; required: number };
+      return {
+        token: row.token,
+        label: row.label,
+        source: row.source as TemplateVariable['source'],
+        required: row.required === 1
+      };
+    });
+}
 
 export function listTemplates(db: Database, category?: string | null): TemplateSummary[] {
-  const where = category ? 'WHERE t.is_active = 1 AND t.category = ?' : 'WHERE t.is_active = 1';
   const rows = db
     .prepare(
-      `SELECT t.id, t.code, t.title, t.subtitle, t.category, t.subject_line AS subjectLine,
-              t.body_html AS bodyHtml, t.print_count AS printCount,
-              (SELECT COUNT(*) FROM documents d
-                WHERE d.template_id = t.id
-                  AND strftime('%Y-%m', d.issued_at) = strftime('%Y-%m','now','localtime')
-              ) AS issuedThisMonth
-       FROM templates t ${where}
+      `SELECT ${SUMMARY}, ${MONTH_COUNT} FROM templates t
+       WHERE t.is_active = 1 AND (? IS NULL OR t.category = ?)
        ORDER BY t.print_count DESC, t.title`
     )
-    .all(...(category ? [category] : [])) as Omit<TemplateSummary, 'variables'>[];
+    .all(category ?? null, category ?? null) as Omit<TemplateSummary, 'variables'>[];
 
-  const vars = db.prepare(
-    'SELECT token FROM template_variables WHERE template_id = ? ORDER BY sort_order, id'
-  );
-  return rows.map((r) => ({
-    ...r,
-    variables: (vars.all(r.id) as { token: string }[]).map((v) => v.token)
-  }));
+  return rows.map((r) => ({ ...r, variables: loadVariables(db, r.id).map((v) => v.token) }));
+}
+
+export function getTemplate(db: Database, id: number): TemplateDetail | null {
+  const row = db
+    .prepare(`SELECT ${SUMMARY}, ${MONTH_COUNT} FROM templates t WHERE t.id = ?`)
+    .get(id) as Omit<TemplateDetail, 'variables'> | undefined;
+  if (!row) return null;
+  return { ...row, variables: loadVariables(db, id) };
 }
 
 /** التصنيفات تُشتقّ مما أدخله المكتب فعلًا — لا قائمة مبرمَجة. */
@@ -50,6 +74,132 @@ export function templateStats(db: Database): TemplateStats {
   };
 }
 
+/** الكود يجب أن يبقى فريدًا — وإلا ضاع تمييز النموذج في الأرشيف. */
+export function isCodeTaken(db: Database, code: string, exceptId: number | null): boolean {
+  const row = db
+    .prepare('SELECT id FROM templates WHERE code = ? AND (? IS NULL OR id <> ?)')
+    .get(code, exceptId, exceptId) as { id: number } | undefined;
+  return Boolean(row);
+}
+
+export function saveTemplate(db: Database, input: TemplateInput): TemplateDetail {
+  const title = input.title.trim();
+  if (!title) throw new Error('عنوان النموذج مطلوب');
+  const code = input.code?.trim() || null;
+  if (code && isCodeTaken(db, code, input.id)) {
+    throw new Error(`الكود «${code}» مستعمل في نموذج آخر`);
+  }
+
+  const id = db.transaction(() => {
+    let templateId = input.id;
+    if (templateId === null) {
+      const info = db
+        .prepare(
+          `INSERT INTO templates (code, title, subtitle, category, letterhead_id,
+                                  body_html, subject_line, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)`
+        )
+        .run(
+          code,
+          title,
+          input.subtitle?.trim() || null,
+          input.category?.trim() || null,
+          input.letterheadId,
+          input.bodyHtml,
+          input.subjectLine?.trim() || null
+        );
+      templateId = Number(info.lastInsertRowid);
+    } else {
+      db.prepare(
+        `UPDATE templates SET code = ?, title = ?, subtitle = ?, category = ?,
+                              letterhead_id = ?, body_html = ?, subject_line = ?,
+                              updated_at = datetime('now')
+         WHERE id = ?`
+      ).run(
+        code,
+        title,
+        input.subtitle?.trim() || null,
+        input.category?.trim() || null,
+        input.letterheadId,
+        input.bodyHtml,
+        input.subjectLine?.trim() || null,
+        templateId
+      );
+    }
+
+    // المتغيّرات تُستبدل كاملةً: هي مشتقّة من المتن، فلا معنى لدمج جزئي.
+    db.prepare('DELETE FROM template_variables WHERE template_id = ?').run(templateId);
+    const insert = db.prepare(
+      `INSERT INTO template_variables (template_id, token, label, source, required, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    input.variables.forEach((v, i) => {
+      insert.run(templateId, v.token, v.label, v.source, v.required ? 1 : 0, i);
+    });
+    return templateId;
+  })();
+
+  return getTemplate(db, id)!;
+}
+
 export function deleteTemplate(db: Database, id: number): void {
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
+}
+
+/** كم كتابًا صدر عن هذا النموذج — يُسأل قبل الحذف فلا يُمحى ما له أثر في الأرشيف. */
+export function templateUsage(db: Database, id: number): number {
+  return (
+    db.prepare('SELECT COUNT(*) AS n FROM documents WHERE template_id = ?').get(id) as {
+      n: number;
+    }
+  ).n;
+}
+
+// ── المسودات ─────────────────────────────────────────────────────────
+export function listDrafts(db: Database): DraftRow[] {
+  return db
+    .prepare(
+      `SELECT d.id, COALESCE(d.title,'') AS title, d.template_id AS templateId,
+              t.title AS templateTitle, d.citizen_id AS citizenId,
+              c.full_name AS citizenName, d.values_json AS valuesJson,
+              d.body_html AS bodyHtml, d.updated_at AS updatedAt
+       FROM drafts d
+       LEFT JOIN templates t ON t.id = d.template_id
+       LEFT JOIN citizens c ON c.id = d.citizen_id
+       ORDER BY d.updated_at DESC`
+    )
+    .all() as DraftRow[];
+}
+
+export function saveDraft(
+  db: Database,
+  input: {
+    id: number | null;
+    templateId: number | null;
+    citizenId: number | null;
+    title: string;
+    values: Record<string, string>;
+    bodyHtml: string;
+  }
+): number {
+  const json = JSON.stringify(input.values);
+  if (input.id === null) {
+    const info = db
+      .prepare(
+        `INSERT INTO drafts (template_id, citizen_id, title, values_json, body_html)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(input.templateId, input.citizenId, input.title, json, input.bodyHtml);
+    return Number(info.lastInsertRowid);
+  }
+  db.prepare(
+    `UPDATE drafts SET template_id = ?, citizen_id = ?, title = ?, values_json = ?,
+                       body_html = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(input.templateId, input.citizenId, input.title, json, input.bodyHtml, input.id);
+  return input.id;
+}
+
+export function deleteDraft(db: Database, id: number): void {
+  db.prepare('DELETE FROM drafts WHERE id = ?').run(id);
 }

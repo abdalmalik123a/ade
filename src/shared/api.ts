@@ -1,4 +1,5 @@
 import type { Letterhead, LetterheadLayout } from './letterhead';
+import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
 
@@ -74,9 +75,36 @@ export type TemplateSummary = {
   category: string | null;
   subjectLine: string | null;
   bodyHtml: string;
+  letterheadId: number | null;
   printCount: number;
   issuedThisMonth: number;
   variables: string[];
+};
+
+export type TemplateDetail = Omit<TemplateSummary, 'variables'> & {
+  variables: TemplateVariable[];
+};
+
+export type DraftRow = {
+  id: number;
+  title: string;
+  templateId: number | null;
+  templateTitle: string | null;
+  citizenId: number | null;
+  citizenName: string | null;
+  valuesJson: string;
+  bodyHtml: string | null;
+  updatedAt: string;
+};
+
+export type ImportedTemplate = {
+  title: string;
+  subtitle: string | null;
+  category: string | null;
+  code: string | null;
+  subjectLine: string | null;
+  body: string;
+  warnings: string[];
 };
 
 export type TemplateStats = {
@@ -140,8 +168,25 @@ export type DiwanApi = {
   };
   templates: {
     list(category?: string | null): Promise<TemplateSummary[]>;
+    get(id: number): Promise<TemplateDetail | null>;
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<TemplateStats>;
+    save(input: TemplateInput): Promise<TemplateDetail>;
+    usage(id: number): Promise<number>;
+    delete(id: number): Promise<void>;
+    importFile(): Promise<ImportedTemplate | null>;
+    backup(): Promise<string | null>;
+  };
+  drafts: {
+    list(): Promise<DraftRow[]>;
+    save(input: {
+      id: number | null;
+      templateId: number | null;
+      citizenId: number | null;
+      title: string;
+      values: Record<string, string>;
+      bodyHtml: string;
+    }): Promise<number>;
     delete(id: number): Promise<void>;
   };
   files: {

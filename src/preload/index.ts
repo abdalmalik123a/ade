@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
+import type { TemplateInput } from '@shared/template';
 
 /** الجسر الوحيد بين الواجهة والنظام. لا Node في الواجهة إطلاقًا. */
 const invoke = ipcRenderer.invoke.bind(ipcRenderer);
@@ -50,9 +51,26 @@ const api: DiwanApi = {
   },
   templates: {
     list: (category?: string | null) => invoke('templates:list', category ?? null),
+    get: (id: number) => invoke('templates:get', id),
     categories: () => invoke('templates:categories'),
     stats: () => invoke('templates:stats'),
-    delete: (id: number) => invoke('templates:delete', id)
+    save: (input: TemplateInput) => invoke('templates:save', input),
+    usage: (id: number) => invoke('templates:usage', id),
+    delete: (id: number) => invoke('templates:delete', id),
+    importFile: () => invoke('templates:importFile'),
+    backup: () => invoke('templates:backup')
+  },
+  drafts: {
+    list: () => invoke('drafts:list'),
+    save: (input: {
+      id: number | null;
+      templateId: number | null;
+      citizenId: number | null;
+      title: string;
+      values: Record<string, string>;
+      bodyHtml: string;
+    }) => invoke('drafts:save', input),
+    delete: (id: number) => invoke('drafts:delete', id)
   },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
