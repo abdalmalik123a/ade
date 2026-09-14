@@ -143,6 +143,56 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     }
   }
 
+  async function removeTemplate(id: number, title: string) {
+    await window.diwan.templates.delete(id);
+    await reload(active);
+    onChanged?.();
+    say('حُذف النموذج: ' + title);
+  }
+
+  async function exportOne(id: number) {
+    setBusy(true);
+    try {
+      const path = await window.diwan.templates.export(id);
+      if (path) say(path.endsWith('.docx') ? 'صُدّر مستند Word' : 'صُدّر النموذج — يُستورد ثانيةً');
+    } catch (e) {
+      say(e instanceof Error ? cleanError(e.message) : 'تعذّر التصدير', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportLibrary() {
+    setBusy(true);
+    try {
+      const result = await window.diwan.templates.exportLibrary();
+      if (result) say('صُدّرت المكتبة: ' + nf.format(result.count) + ' نموذجًا');
+    } catch (e) {
+      say(e instanceof Error ? cleanError(e.message) : 'تعذّر التصدير', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function restoreLibrary() {
+    setBusy(true);
+    try {
+      const result = await window.diwan.templates.restoreLibrary();
+      if (!result) return;
+      await reload(active);
+      onChanged?.();
+      say(
+        result.skipped > 0
+          ? 'استُرجع ' + result.added + ' نموذجًا، وتُخطّي ' + result.skipped + ' لتكرار الكود'
+          : 'استُرجع ' + result.added + ' نموذجًا'
+      );
+    } catch (e) {
+      say(e instanceof Error ? cleanError(e.message) : 'تعذّر الاسترجاع', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function backup() {
     setBusy(true);
     try {
@@ -271,6 +321,14 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </div>
 
             <div className="flex items-center gap-space-sm shrink-0 self-end lg:self-auto">
+              <button
+                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all"
+                type="button"
+                onClick={() => void openDesigner(null)}
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                <span>إضافة نموذج</span>
+              </button>
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
                   search
@@ -369,6 +427,8 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
                 onOpen={() => onOpenInEditor?.(t.id)}
                 onEdit={() => void openDesigner(t.id)}
                 onZoom={() => setZoomed(t)}
+                onExport={() => void exportOne(t.id)}
+                onDelete={() => void removeTemplate(t.id, t.title)}
               />
             ))}
           </div>
@@ -391,6 +451,24 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             >
               <span className="material-symbols-outlined text-[18px]">file_upload</span>
               <span>استيراد نموذج DOCX / XML</span>
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+              type="button"
+              disabled={busy || items.length === 0}
+              onClick={() => void exportLibrary()}
+            >
+              <span className="material-symbols-outlined text-[18px]">drive_file_move</span>
+              <span>تصدير المكتبة كاملة</span>
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+              type="button"
+              disabled={busy}
+              onClick={() => void restoreLibrary()}
+            >
+              <span className="material-symbols-outlined text-[18px]">restore_page</span>
+              <span>استرجاع مكتبة</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
@@ -553,14 +631,26 @@ function TemplateCard({
   letterheads,
   onOpen,
   onEdit,
-  onZoom
+  onZoom,
+  onExport,
+  onDelete
 }: {
   template: TemplateSummary;
   letterheads: Letterhead[];
   onOpen: () => void;
   onEdit: () => void;
   onZoom: () => void;
+  onExport: () => void;
+  onDelete: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [usage, setUsage] = useState<number | null>(null);
+
+  async function askDelete() {
+    setUsage(await window.diwan.templates.usage(template.id));
+    setConfirming(true);
+  }
+
   const letterhead =
     letterheads.find((l) => l.id === template.letterheadId) ??
     letterheads.find((l) => l.isDefault) ??
@@ -591,13 +681,35 @@ function TemplateCard({
             </span>
           )}
         </div>
-        <div className="flex flex-col items-center shrink-0">
-          <span className="font-headline-md text-headline-md text-on-surface font-bold tabular">
-            {nf.format(template.issuedThisMonth)}
-          </span>
-          <span className="font-label-sm text-label-sm text-on-surface-variant text-center">
-            طبعة هذا الشهر
-          </span>
+        <div className="flex items-center gap-space-xs shrink-0">
+          <div className="flex flex-col items-center">
+            <span className="font-headline-md text-headline-md text-on-surface font-bold tabular">
+              {nf.format(template.issuedThisMonth)}
+            </span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant text-center">
+              طبعة هذا الشهر
+            </span>
+          </div>
+          {/* التصدير والحذف في الرأس أيضًا: البطاقة بنسبة A4 فتدفع صفّ الأزرار
+              أسفل حافة الشاشة، والحذف لا يجوز أن يحتاج تمريرًا للوصول إليه. */}
+          <div className="flex flex-col gap-1">
+            <button
+              className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+              title="تصدير النموذج (XML للاسترجاع أو Word للمشاركة)"
+              type="button"
+              onClick={onExport}
+            >
+              <span className="material-symbols-outlined text-[16px]">download</span>
+            </button>
+            <button
+              className="w-8 h-8 rounded-lg bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
+              title="حذف النموذج"
+              type="button"
+              onClick={() => void askDelete()}
+            >
+              <span className="material-symbols-outlined text-[16px]">delete</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -623,32 +735,77 @@ function TemplateCard({
         </div>
       )}
 
-      <div className="p-space-md pt-0 mt-auto flex items-center gap-space-xs">
-        <button
-          className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-all"
-          type="button"
-          onClick={onOpen}
-        >
-          <span className="material-symbols-outlined text-[18px]">edit_document</span>
-          <span>فتح في المحرر</span>
-        </button>
-        <button
-          className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
-          title="تعديل صيغ المتغيرات"
-          type="button"
-          onClick={onEdit}
-        >
-          <span className="material-symbols-outlined text-[18px]">tune</span>
-        </button>
-        <button
-          className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
-          title="معاينة بالحجم الكامل A4"
-          type="button"
-          onClick={onZoom}
-        >
-          <span className="material-symbols-outlined text-[18px]">zoom_in</span>
-        </button>
-      </div>
+      {confirming ? (
+        <div className="p-space-md pt-0 mt-auto flex flex-col gap-space-xs">
+          <span className="font-label-sm text-label-sm text-error text-center">
+            {usage && usage > 0
+              ? `صدر عن هذا النموذج ${nf.format(usage)} كتابًا — تحذفه؟`
+              : 'تأكيد حذف النموذج؟'}
+          </span>
+          <div className="flex items-center gap-space-xs">
+            <button
+              className="flex-1 h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                onDelete();
+              }}
+            >
+              نعم، احذف
+            </button>
+            <button
+              className="flex-1 h-9 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md"
+              type="button"
+              onClick={() => setConfirming(false)}
+            >
+              تراجع
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-space-md pt-0 mt-auto flex items-center gap-space-xs">
+          <button
+            className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-all"
+            type="button"
+            onClick={onOpen}
+          >
+            <span className="material-symbols-outlined text-[18px]">edit_document</span>
+            <span>فتح في المحرر</span>
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            title="تعديل صيغ المتغيرات"
+            type="button"
+            onClick={onEdit}
+          >
+            <span className="material-symbols-outlined text-[18px]">tune</span>
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            title="معاينة بالحجم الكامل A4"
+            type="button"
+            onClick={onZoom}
+          >
+            <span className="material-symbols-outlined text-[18px]">zoom_in</span>
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            title="تصدير النموذج (XML للاسترجاع أو Word للمشاركة)"
+            type="button"
+            onClick={onExport}
+          >
+            <span className="material-symbols-outlined text-[18px]">download</span>
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
+            title="حذف النموذج"
+            type="button"
+            onClick={() => void askDelete()}
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+        </div>
+      )}
     </article>
   );
 }

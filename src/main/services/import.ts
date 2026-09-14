@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { extname, basename } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
+import { reconcileVariables, type TemplateVariable } from '@shared/template';
 
 /**
  * استيراد نموذج من ملف — داخل التطبيق، بلا Word ولا أداة خارجية.
@@ -42,6 +43,48 @@ function docxToText(xml: string): string {
 function tag(xml: string, name: string): string | null {
   const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i'));
   return m ? decodeEntities(m[1]!.trim()) : null;
+}
+
+/** يحلّل نموذجًا بصيغة المشروع (كما يكتبها التصدير) بمتغيّراته. */
+export function parseTemplateXml(xml: string): {
+  code: string | null;
+  title: string;
+  subtitle: string | null;
+  category: string | null;
+  subjectLine: string | null;
+  body: string;
+  variables: TemplateVariable[];
+} {
+  const variables: TemplateVariable[] = [];
+  for (const m of xml.matchAll(/<variable\s+([^>]*)\/>/g)) {
+    const attrs = m[1] ?? '';
+    const attr = (name: string) => {
+      const a = attrs.match(new RegExp(`${name}="([^"]*)"`));
+      return a ? decodeEntities(a[1]!) : '';
+    };
+    const token = attr('token');
+    if (!token) continue;
+    const source = attr('source');
+    variables.push({
+      token,
+      label: attr('label') || token,
+      source: (['manual', 'citizen', 'auto'].includes(source)
+        ? source
+        : 'manual') as TemplateVariable['source'],
+      required: attr('required') === 'true'
+    });
+  }
+
+  const body = tag(xml, 'body') ?? tag(xml, 'متن') ?? '';
+  return {
+    code: tag(xml, 'code'),
+    title: tag(xml, 'title') ?? tag(xml, 'عنوان') ?? '',
+    subtitle: tag(xml, 'subtitle'),
+    category: tag(xml, 'category') ?? tag(xml, 'تصنيف'),
+    subjectLine: tag(xml, 'subject') ?? tag(xml, 'موضوع'),
+    body,
+    variables: variables.length ? variables : reconcileVariables(body, [])
+  };
 }
 
 function xmlToTemplate(xml: string, fallbackTitle: string): ImportedTemplate {

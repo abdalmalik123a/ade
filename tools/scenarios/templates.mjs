@@ -110,6 +110,31 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   ok('عاد إلى شبكة A4', (await page.text()).includes('تأييد استمرار بالخدمة'));
 
+  // ── الأزرار الجديدة على البطاقة ────────────────────────────────
+  ok('زرّ الحذف ظاهر على البطاقة',
+    await page.eval(`return !!document.querySelector('button[title="حذف النموذج"]')`));
+  ok('زرّ التصدير ظاهر على البطاقة',
+    await page.eval(`return !!document.querySelector('button[title^="تصدير النموذج"]')`));
+  ok('زرّ الإضافة ظاهر في شريط الأدوات', (await page.text()).includes('إضافة نموذج'));
+  ok('زرّ تصدير المكتبة ظاهر', (await page.text()).includes('تصدير المكتبة كاملة'));
+  ok('زرّ استرجاع المكتبة ظاهر', (await page.text()).includes('استرجاع مكتبة'));
+
+  // الحذف من البطاقة: يطلب تأكيدًا ثم يتراجع
+  await page.eval(`document.querySelector('button[title="حذف النموذج"]')?.click()`);
+  await wait(500);
+  ok('الحذف من البطاقة يطلب تأكيدًا', (await page.text()).includes('تأكيد حذف النموذج؟'));
+  await page.clickText('تراجع');
+  await wait(400);
+  ok('التراجع يُبقي النموذج', (await page.text()).includes('تأييد استمرار بالخدمة'));
+
+  // زرّ الإضافة يفتح المصمّم فارغًا
+  await page.clickText('إضافة نموذج');
+  await wait(500);
+  ok('زرّ الإضافة يفتح مصمّمًا فارغًا',
+    (await page.text()).includes('لا متغيّرات بعد'));
+  await page.clickText('إلغاء');
+  await wait(400);
+
   // ── تعديل المتغيّرات ────────────────────────────────────────────
   await page.eval(`document.querySelector('button[title="تعديل صيغ المتغيرات"]')?.click()`);
   await wait(600);
@@ -117,7 +142,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('انفتح المصمّم على النموذج القائم', text.includes('تعديل النموذج'));
   ok('حمّل متغيّرات النموذج', text.includes('4 متغيّر'));
 
-  // ── الحذف بتأكيد ────────────────────────────────────────────────
+  // ── الحذف بتأكيد من داخل المصمّم ───────────────────────────────
   await page.clickText('حذف النموذج');
   await wait(300);
   ok('يطلب تأكيد الحذف', (await page.text()).includes('تأكيد الحذف؟'));

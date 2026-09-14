@@ -58,6 +58,9 @@ const api: DiwanApi = {
     usage: (id: number) => invoke('templates:usage', id),
     delete: (id: number) => invoke('templates:delete', id),
     importFile: () => invoke('templates:importFile'),
+    export: (id: number) => invoke('templates:export', id),
+    exportLibrary: () => invoke('templates:exportLibrary'),
+    restoreLibrary: () => invoke('templates:restoreLibrary'),
     backup: () => invoke('templates:backup')
   },
   drafts: {

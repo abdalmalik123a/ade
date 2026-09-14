@@ -175,6 +175,9 @@ export type DiwanApi = {
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
     importFile(): Promise<ImportedTemplate | null>;
+    export(id: number): Promise<string | null>;
+    exportLibrary(): Promise<{ path: string; count: number } | null>;
+    restoreLibrary(): Promise<{ added: number; skipped: number } | null>;
     backup(): Promise<string | null>;
   };
   drafts: {
