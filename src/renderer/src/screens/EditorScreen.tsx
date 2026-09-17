@@ -31,9 +31,18 @@ import type {
 } from '@shared/api';
 import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
-import { mmToPx, type Letterhead } from '@shared/letterhead';
+import {
+  emptyLayout,
+  isLayoutEmpty,
+  mmToPx,
+  normalizeLayout,
+  type Letterhead,
+  type LetterheadLayout
+} from '@shared/letterhead';
 import { qrSvg } from '@shared/qr';
 import { errorText } from '../lib/errors';
+import LetterheadView from '../components/LetterheadView';
+import LetterheadDesigner from '../components/LetterheadDesigner';
 
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.6;
@@ -43,6 +52,15 @@ const AUTOSAVE_MS = 4000;
 const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مختومة'];
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
+
+/** كيف يظهر العدد والتاريخ على الورقة. */
+export type RegistryMode = 'manual' | 'printed' | 'none';
+
+const REGISTRY_CHOICES: { value: RegistryMode; label: string; hint: string }[] = [
+  { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
+  { value: 'printed', label: 'مطبوعان', hint: 'من سجل الصادر' },
+  { value: 'none', label: 'لا يظهران', hint: 'الترويسة تتكفّل بهما' }
+];
 
 type Fields = {
   serial: string;
@@ -60,6 +78,8 @@ type Fields = {
   copiesTo: string;
   signerName: string;
   signerRole: string;
+  /** الأصل أن يكتبهما الموظف المستلم بخطّه، فالفراغ هو الافتراض. */
+  registryMode: RegistryMode;
 };
 
 const EMPTY: Fields = {
@@ -77,7 +97,8 @@ const EMPTY: Fields = {
   body: '',
   copiesTo: '',
   signerName: '',
-  signerRole: ''
+  signerRole: '',
+  registryMode: 'manual'
 };
 
 const escape = (s: string) =>
@@ -140,6 +161,12 @@ function EditorScreen(
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
   const [letterheadId, setLetterheadId] = useState<number | null>(null);
+  /** ترويسة هذا الكتاب: نسخة تُحرَّر معه، لا إحالة إلى ترويسة محفوظة.
+   *  فالترويسة تختلف من كتاب إلى كتاب ومن دائرة إلى أخرى. */
+  const [layout, setLayout] = useState<LetterheadLayout>(emptyLayout());
+  const [layoutDirty, setLayoutDirty] = useState(false);
+  const [designerOpen, setDesignerOpen] = useState(false);
+  const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
   const [seals, setSeals] = useState<Seal[]>([]);
   const [activeTemplate, setActiveTemplate] = useState<number | null>(templateId);
@@ -182,7 +209,9 @@ function EditorScreen(
       ]);
       setSettings(s);
       setLetterheads(lhs);
-      setLetterheadId(lhs.find((x) => x.isDefault)?.id ?? lhs[0]?.id ?? null);
+      const initial = lhs.find((x) => x.isDefault) ?? lhs[0] ?? null;
+      setLetterheadId(initial?.id ?? null);
+      if (initial) setLayout(normalizeLayout(initial.layout));
       setTemplates(tpls);
       setSeals(sl);
       setStampId(sl.find((x) => x.kind === 'ختم')?.id ?? null);
@@ -221,8 +250,10 @@ function EditorScreen(
       setActiveTemplate(row.templateId);
       setLinkedCitizen(row.citizenId);
       try {
-        const values = JSON.parse(row.valuesJson) as Partial<Fields>;
-        setF({ ...EMPTY, ...values });
+        const values = JSON.parse(row.valuesJson) as Partial<Fields> & { __letterhead?: unknown };
+        const { __letterhead, ...fields } = values;
+        setF({ ...EMPTY, ...fields });
+        if (__letterhead) setLayout(normalizeLayout(__letterhead));
       } catch {
         setError('تعذّرت قراءة قيم المسودة — فُتحت فارغة');
       }
@@ -239,8 +270,10 @@ function EditorScreen(
       setActiveTemplate(doc.templateId);
       setLinkedCitizen(doc.citizenId);
       try {
-        const values = JSON.parse(doc.valuesJson) as Partial<Fields>;
-        setF({ ...EMPTY, ...values, serial: '' });
+        const values = JSON.parse(doc.valuesJson) as Partial<Fields> & { __letterhead?: unknown };
+        const { __letterhead, ...fields } = values;
+        setF({ ...EMPTY, ...fields, serial: '' });
+        if (__letterhead) setLayout(normalizeLayout(__letterhead));
       } catch {
         setF({ ...EMPTY, name: doc.citizenName, addressedTo: doc.destination ?? '' });
       }
@@ -250,6 +283,36 @@ function EditorScreen(
   }, [documentId]);
 
   const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
+
+  /** اختيار ترويسة من المكتبة ينسخها إلى الكتاب؛ وما يُعدَّل بعدها يخصّ الكتاب وحده. */
+  function useLetterhead(id: number | null) {
+    setLetterheadId(id);
+    setLayoutDirty(false);
+    const found = letterheads.find((x) => x.id === id);
+    setLayout(found ? normalizeLayout(found.layout) : emptyLayout());
+  }
+
+  function editLayout(next: LetterheadLayout) {
+    setLayout(next);
+    setLayoutDirty(true);
+    dirty.current = true;
+  }
+
+  /** حفظ ترويسة الكتاب في المكتبة: تحديثًا لمحفوظة، أو باسم جديد. */
+  async function storeLayout(name: string, asNew: boolean) {
+    const saved = await window.diwan.letterheads.save({
+      id: asNew ? null : letterheadId,
+      name: name.trim() || 'ترويسة بلا اسم',
+      authorityId: letterhead?.authorityId ?? null,
+      layout
+    });
+    const list = await window.diwan.letterheads.list();
+    setLetterheads(list);
+    setLetterheadId(saved.id);
+    setLayoutDirty(false);
+    setSaveLayoutOpen(false);
+    setToast(asNew ? `حُفظت الترويسة «${saved.name}» في المكتبة` : 'حُدّثت الترويسة المحفوظة');
+  }
   const template = templates.find((t) => t.id === activeTemplate) ?? null;
   const stamp = seals.find((s) => s.id === stampId) ?? null;
   const signature = seals.find((s) => s.id === signatureId) ?? null;
@@ -344,7 +407,10 @@ function EditorScreen(
           templateId: activeTemplate,
           citizenId: linkedCitizen,
           title: f.subject || f.name || 'مسودة بلا عنوان',
-          values: f as unknown as Record<string, string>,
+          values: {
+            ...(f as unknown as Record<string, string>),
+            __letterhead: JSON.stringify(layout)
+          },
           bodyHtml: f.body
         });
         setDraft(id);
@@ -357,7 +423,7 @@ function EditorScreen(
         setSaving(false);
       }
     },
-    [activeTemplate, linkedCitizen, draft, f, hasContent]
+    [activeTemplate, linkedCitizen, draft, f, hasContent, layout]
   );
 
   useEffect(() => {
@@ -446,7 +512,10 @@ function EditorScreen(
           docType: f.docType.trim() || template?.title || null,
           destination: f.addressedTo.trim() || null,
           purpose: f.purpose.trim() || null,
-          values: f as unknown as Record<string, string>,
+          values: {
+            ...(f as unknown as Record<string, string>),
+            __letterhead: JSON.stringify(layout)
+          },
           copies: opts.copies,
           copyKind: opts.copyKind,
           fee: opts.fee,
@@ -636,29 +705,55 @@ function EditorScreen(
                     ترويسة الجهة الإدارية
                   </h3>
                 </div>
-                <span className="font-code-sm text-code-sm text-on-surface-variant">القسم الأول</span>
-              </div>
-              {letterheads.length === 0 ? (
-                <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[24px]">note_add</span>
-                  <span className="font-label-md text-label-md">لم تُنشأ ترويسة بعد</span>
-                  <span className="font-label-sm text-label-sm">
-                    أنشئها من «إعدادات الترويسة والأختام»
+                {layoutDirty && (
+                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-semibold">
+                    خاصّة بهذا الكتاب
                   </span>
-                </div>
-              ) : (
+                )}
+              </div>
+
+              <div className="flex items-center gap-space-xs">
                 <select
-                  className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
+                  className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
                   value={letterheadId ?? ''}
-                  onChange={(e) => setLetterheadId(Number(e.target.value))}
+                  onChange={(e) => useLetterhead(e.target.value ? Number(e.target.value) : null)}
                 >
+                  <option value="">
+                    {letterheads.length === 0 ? '— لا ترويسة محفوظة بعد —' : '— بلا ترويسة —'}
+                  </option>
                   {letterheads.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}
                     </option>
                   ))}
                 </select>
-              )}
+                <button
+                  className="h-9 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm flex items-center gap-1"
+                  type="button"
+                  onClick={() => setDesignerOpen(true)}
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                  تحرير الترويسة
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between gap-space-xs">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  {isLayoutEmpty(layout)
+                    ? 'الورقة بلا ترويسة — حرّرها لتظهر أعلى الكتاب'
+                    : `${layout.columns === 1 ? 'قسم واحد' : layout.columns === 2 ? 'قسمان' : 'ثلاثة أقسام'} · ${layout.sections
+                        .slice(0, layout.columns)
+                        .reduce((n, sec) => n + sec.blocks.length, 0)} عنصرًا`}
+                </span>
+                <button
+                  className="font-label-sm text-label-sm text-secondary font-semibold hover:underline disabled:opacity-40 disabled:no-underline"
+                  type="button"
+                  disabled={isLayoutEmpty(layout)}
+                  onClick={() => setSaveLayoutOpen(true)}
+                >
+                  حفظ في المكتبة
+                </button>
+              </div>
             </section>
 
             {/* القسم الثاني: سجل الصادر والتاريخ */}
@@ -716,9 +811,32 @@ function EditorScreen(
               >
                 ختم تاريخ اليوم (ميلادي وهجري)
               </button>
+              <div className="flex flex-col gap-space-xs pt-space-xs">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  العدد والتاريخ على الورقة
+                </span>
+                <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+                  {REGISTRY_CHOICES.map((c) => (
+                    <button
+                      key={c.value}
+                      className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
+                        f.registryMode === c.value
+                          ? 'bg-primary-container text-on-primary font-semibold'
+                          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                      }`}
+                      type="button"
+                      onClick={() => set({ registryMode: c.value })}
+                    >
+                      <span>{c.label}</span>
+                      <span className="text-[10px] opacity-80">{c.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                الرقم المعروض اطّلاع فقط؛ الرقم النهائي يُحجز لحظة الإصدار فلا يُحرق رقم على
-                كتاب لم يصدر.
+                الكتاب يُقيَّد في الأرشيف برقمه في الحالات الثلاث؛ والاختيار هنا في ما يُطبع
+                على الورقة فقط. والرقم المعروض أعلاه اطّلاع، والنهائي يُحجز لحظة الإصدار.
               </p>
             </section>
 
@@ -1106,75 +1224,57 @@ function EditorScreen(
               <div
                 className="relative flex flex-col min-h-[1123px]"
                 style={{
-                  paddingTop: mmToPx(letterhead?.layout.margins.top ?? 20),
-                  paddingRight: mmToPx(letterhead?.layout.margins.right ?? 20),
-                  paddingBottom: mmToPx(letterhead?.layout.margins.bottom ?? 20),
-                  paddingLeft: mmToPx(letterhead?.layout.margins.left ?? 20)
+                  paddingTop: mmToPx(layout.margins.top),
+                  paddingRight: mmToPx(layout.margins.right),
+                  paddingBottom: mmToPx(layout.margins.bottom),
+                  paddingLeft: mmToPx(layout.margins.left)
                 }}
               >
-                {/* الترويسة كما بناها المكتب */}
-                {letterhead && letterhead.layout.blocks.length > 0 ? (
-                  <div>
-                    {letterhead.layout.blocks.map((b) => {
-                      if (b.kind === 'spacer')
-                        return <div key={b.id} style={{ height: b.gap ?? 12 }} />;
-                      if (b.kind === 'divider')
-                        return <hr key={b.id} className="border-t border-on-surface my-space-sm" />;
-                      if (b.kind === 'image') {
-                        const justify =
-                          b.align === 'center'
-                            ? 'center'
-                            : b.align === 'left'
-                              ? 'flex-start'
-                              : 'flex-end';
-                        return (
-                          <div key={b.id} className="flex" style={{ justifyContent: justify }}>
-                            <img alt="" src={storeUrl(b.value)} style={{ width: b.width ?? 90 }} />
-                          </div>
-                        );
-                      }
-                      const text =
-                        b.kind === 'field'
-                          ? injectTokens(b.value, f).replace(/<[^>]+>/g, '') || b.value
-                          : b.value;
-                      return (
-                        <div
-                          key={b.id}
-                          className={b.bold ? 'font-bold' : ''}
-                          style={{ textAlign: b.align, fontSize: `${b.size}px`, lineHeight: 1.9 }}
-                        >
-                          {text || ' '}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-space-lg text-center text-on-surface-variant font-label-sm text-label-sm border border-dashed border-outline-variant rounded">
-                    الترويسة فارغة — أنشئها من «إعدادات الترويسة والأختام»
-                  </div>
-                )}
+                {/* الترويسة كما بناها المكتب لهذا الكتاب */}
+                <LetterheadView
+                  layout={layout}
+                  resolve={(value) => injectTokens(value, f).replace(/<[^>]+>/g, '') || value}
+                />
 
-                {/* سجل الصادر: العدد والتاريخ — يسار الترويسة كما في التصميم */}
-                {(f.serial || f.dateGreg || f.dateHijri) && (
-                  <div className="mt-space-sm flex flex-col items-start gap-0.5 text-on-surface">
-                    <div className="flex items-center gap-1" style={{ fontSize: '12px' }}>
-                      <span className="font-semibold">العدد:</span>
-                      <span className="font-mono font-bold" data-slot="serial">
-                        {f.serial || '—'}
-                      </span>
+                {/* العدد والتاريخ: الأصل أن يكتبهما موظّف الاستلام بخطّه */}
+                {f.registryMode !== 'none' && (
+                  <div
+                    className="mt-space-sm flex"
+                    data-registry={f.registryMode}
+                    style={{ justifyContent: 'flex-end' }}
+                  >
+                    <div className="flex flex-col gap-1 text-on-surface" style={{ minWidth: 190 }}>
+                      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
+                        <span className="font-semibold shrink-0">العدد:</span>
+                        {f.registryMode === 'printed' ? (
+                          <span className="font-mono font-bold" data-slot="serial">
+                            {f.serial || '—'}
+                          </span>
+                        ) : (
+                          <span
+                            className="flex-1"
+                            style={{ borderBottom: '1px dotted currentColor', height: '1em' }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
+                        <span className="font-semibold shrink-0">التاريخ:</span>
+                        {f.registryMode === 'printed' ? (
+                          <span>{f.dateGreg || '—'}</span>
+                        ) : (
+                          <span
+                            className="flex-1"
+                            style={{ borderBottom: '1px dotted currentColor', height: '1em' }}
+                          />
+                        )}
+                      </div>
+                      {f.registryMode === 'printed' && f.dateHijri && (
+                        <div className="flex items-baseline gap-2" style={{ fontSize: '11px' }}>
+                          <span className="shrink-0">الموافق:</span>
+                          <span>{f.dateHijri}</span>
+                        </div>
+                      )}
                     </div>
-                    {f.dateGreg && (
-                      <div className="flex items-center gap-1" style={{ fontSize: '11px' }}>
-                        <span>التاريخ:</span>
-                        <span>{f.dateGreg}</span>
-                      </div>
-                    )}
-                    {f.dateHijri && (
-                      <div className="flex items-center gap-1" style={{ fontSize: '11px' }}>
-                        <span>الموافق:</span>
-                        <span>{f.dateHijri}</span>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -1307,6 +1407,34 @@ function EditorScreen(
             });
             setPickerOpen(false);
           }}
+        />
+      )}
+
+      {designerOpen && (
+        <Modal title="ترويسة هذا الكتاب" onClose={() => setDesignerOpen(false)}>
+          <div className="max-h-[70vh] overflow-y-auto">
+            <LetterheadDesigner layout={layout} onChange={editLayout} showPageOptions />
+          </div>
+          <div className="flex items-center justify-between pt-space-md">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">
+              التعديل يخصّ هذا الكتاب. لإبقائه لكتب أخرى احفظه في المكتبة.
+            </span>
+            <button
+              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
+              type="button"
+              onClick={() => setDesignerOpen(false)}
+            >
+              تم
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {saveLayoutOpen && (
+        <SaveLayoutDialog
+          current={letterhead}
+          onClose={() => setSaveLayoutOpen(false)}
+          onSave={(name, asNew) => void storeLayout(name, asNew)}
         />
       )}
 
@@ -1476,6 +1604,62 @@ function CitizenPicker({
             </button>
           ))
         )}
+      </div>
+    </Modal>
+  );
+}
+
+/** حفظ ترويسة الكتاب في المكتبة: تحديثًا للمحفوظة أو باسم جديد. */
+function SaveLayoutDialog({
+  current,
+  onClose,
+  onSave
+}: {
+  current: Letterhead | null;
+  onClose: () => void;
+  onSave: (name: string, asNew: boolean) => void;
+}) {
+  const [name, setName] = useState(current?.name ?? '');
+
+  return (
+    <Modal title="حفظ الترويسة في المكتبة" onClose={onClose}>
+      <div className="space-y-space-md">
+        <Field label="اسم الترويسة">
+          <input
+            autoFocus
+            className={inputCls}
+            placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
+        <div className="flex items-center justify-end gap-space-sm">
+          <button
+            className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+            type="button"
+            onClick={onClose}
+          >
+            تراجع
+          </button>
+          {current && (
+            <button
+              className="h-10 px-space-md rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md"
+              type="button"
+              onClick={() => onSave(name || current.name, false)}
+            >
+              تحديث «{current.name}»
+            </button>
+          )}
+          <button
+            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+            type="button"
+            disabled={!name.trim()}
+            onClick={() => onSave(name, true)}
+          >
+            حفظ باسم جديد
+          </button>
+        </div>
       </div>
     </Modal>
   );

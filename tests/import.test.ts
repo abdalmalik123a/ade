@@ -1,11 +1,45 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Document, Packer, Paragraph, TextRun } from 'docx';
+import {
+  AlignmentType,
+  Document,
+  Header,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType
+} from 'docx';
 import { describe, expect, it } from 'vitest';
 import { importTemplateFile } from '../src/main/services/import';
 
 const dir = mkdtempSync(join(tmpdir(), 'diwan-import-'));
+
+/** فقرة بمحاذاة معلومة — الترويسات المكتوبة نصًّا تُعرف بمحاذاتها. */
+function para(text: string, alignment?: (typeof AlignmentType)[keyof typeof AlignmentType]) {
+  return new Paragraph({
+    alignment,
+    bidirectional: true,
+    children: [new TextRun({ text, rightToLeft: true })]
+  });
+}
+
+function cell(lines: string[]) {
+  return new TableCell({
+    width: { size: 33, type: WidthType.PERCENTAGE },
+    children: lines.map((t) => para(t, AlignmentType.CENTER))
+  });
+}
+
+async function writeDocx(doc: Document): Promise<string> {
+  const buffer = await Packer.toBuffer(doc);
+  const path = join(dir, `t-${Math.random().toString(36).slice(2)}.docx`);
+  writeFileSync(path, buffer);
+  return path;
+}
 
 async function makeDocx(lines: string[]): Promise<string> {
   const doc = new Document({
@@ -51,7 +85,7 @@ describe('استيراد نموذج من Word', () => {
   it('ينبّه أن التنسيق والصور لا تُستورد', async () => {
     const path = await makeDocx(['عنوان', 'متن']);
     const result = await importTemplateFile(path);
-    expect(result.warnings.join(' ')).toContain('النصّ فقط');
+    expect(result.warnings.join(' ')).toContain('لا تُستورد');
   });
 
   it('يرفض مستندًا فارغًا برسالة مفهومة', async () => {
@@ -112,5 +146,144 @@ describe('استيراد نموذج من XML', () => {
     const result = await importTemplateFile(path);
     expect(result.warnings.join(' ')).toContain('لم يُعثر على وسم');
     expect(result.body).toContain('نصّ حرّ');
+  });
+});
+
+describe('استخراج الترويسة من ملفات Word', () => {
+  it('يقرأ ترويسة الصفحة الحقيقية (headerN.xml)', async () => {
+    const path = await writeDocx(
+      new Document({
+        sections: [
+          {
+            headers: {
+              default: new Header({
+                children: [
+                  para('جمهورية العراق', AlignmentType.RIGHT),
+                  para('وزارة التربية', AlignmentType.RIGHT)
+                ]
+              })
+            },
+            children: [para('م / تأييد'), para('نؤيد لكم أن السيد فلانًا موظف لدينا.')]
+          }
+        ]
+      })
+    );
+
+    const result = await importTemplateFile(path);
+    expect(result.letterhead).not.toBeNull();
+    const blocks = result.letterhead!.sections[0].blocks.map((b) => b.value);
+    expect(blocks).toEqual(['جمهورية العراق', 'وزارة التربية']);
+    expect(result.warnings.join(' ')).toContain('استُخرجت ترويسة');
+  });
+
+  it('يقرأ الترويسة من جدول في رأس المستند — خليّة لكل قسم', async () => {
+    const path = await writeDocx(
+      new Document({
+        sections: [
+          {
+            children: [
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: [
+                  new TableRow({
+                    children: [
+                      cell(['جمهورية العراق', 'وزارة التربية']),
+                      cell(['شعار']),
+                      cell(['العدد:', 'التاريخ:'])
+                    ]
+                  })
+                ]
+              }),
+              para('إلى / مصرف الرافدين'),
+              para('نؤيد لكم أن السيد فلانًا مستمر بالخدمة.')
+            ]
+          }
+        ]
+      })
+    );
+
+    const result = await importTemplateFile(path);
+    expect(result.letterhead?.columns).toBe(3);
+    expect(result.letterhead!.sections[0].blocks[0]?.value).toBe('جمهورية العراق');
+    expect(result.letterhead!.sections[2].blocks[0]?.value).toBe('العدد:');
+    // نصّ الترويسة لا يتسرّب إلى المتن.
+    expect(result.body).not.toContain('جمهورية العراق');
+    expect(result.body).toContain('مستمر بالخدمة');
+  });
+
+  it('يلتقط ترويسة كُتبت نصًّا في أول المستند — وهي الحالة الغالبة', async () => {
+    const path = await writeDocx(
+      new Document({
+        sections: [
+          {
+            children: [
+              para('جمهورية العراق', AlignmentType.CENTER),
+              para('وزارة التربية / المديرية العامة لتربية بغداد', AlignmentType.CENTER),
+              para(''),
+              para('إلى / مصرف الرافدين'),
+              para('نؤيد لكم أن السيد فلانًا مستمر بالخدمة الفعلية.'),
+              para('مع التقدير.')
+            ]
+          }
+        ]
+      })
+    );
+
+    const result = await importTemplateFile(path);
+    expect(result.letterhead).not.toBeNull();
+    expect(result.letterhead!.sections[0].blocks.map((b) => b.value)).toEqual([
+      'جمهورية العراق',
+      'وزارة التربية / المديرية العامة لتربية بغداد'
+    ]);
+    expect(result.body).not.toContain('جمهورية العراق');
+    expect(result.body).toContain('مستمر بالخدمة الفعلية');
+  });
+
+  it('يوزّع أسطر الترويسة على الأقسام بحسب محاذاتها', async () => {
+    const path = await writeDocx(
+      new Document({
+        sections: [
+          {
+            children: [
+              para('جمهورية العراق', AlignmentType.RIGHT),
+              para('وزارة التربية', AlignmentType.CENTER),
+              para('العدد:', AlignmentType.LEFT),
+              para(''),
+              para('إلى / جهة'),
+              para('متن الكتاب الرسمي هنا.')
+            ]
+          }
+        ]
+      })
+    );
+
+    const result = await importTemplateFile(path);
+    expect(result.letterhead?.columns).toBe(3);
+    expect(result.letterhead!.sections[0].blocks[0]?.value).toBe('جمهورية العراق');
+    expect(result.letterhead!.sections[1].blocks[0]?.value).toBe('وزارة التربية');
+    expect(result.letterhead!.sections[2].blocks[0]?.value).toBe('العدد:');
+  });
+
+  it('لا يقتطع من المتن ما ليس ترويسة', async () => {
+    // كتاب يبدأ بالمخاطبة مباشرةً: لا ترويسة فيه.
+    const direct = await importTemplateFile(
+      await makeDocx(['إلى / مصرف الرافدين', 'نؤيد لكم أن السيد فلانًا موظف لدينا.', 'مع التقدير'])
+    );
+    expect(direct.letterhead).toBeNull();
+    expect(direct.body).toContain('نؤيد لكم');
+
+    // مستند قصير: ما بعد السطرين لا يكفي متنًا، فلا يُسرق منه شيء.
+    const short = await importTemplateFile(await makeDocx(['عنوان قصير', 'سطر واحد']));
+    expect(short.letterhead).toBeNull();
+
+    // سطر طويل ليس ترويسة مهما كان موضعه.
+    const long = await importTemplateFile(
+      await makeDocx([
+        'نؤيد لكم بأن السيد المذكور أدناه موظف لدينا ومستمر بالخدمة الفعلية حتى تاريخه وبناءً على طلبه زُوّد بهذا',
+        'سطر ثانٍ',
+        'سطر ثالث'
+      ])
+    );
+    expect(long.letterhead).toBeNull();
   });
 });

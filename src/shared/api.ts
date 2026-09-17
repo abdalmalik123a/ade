@@ -246,6 +246,8 @@ export type ImportedTemplate = {
   subjectLine: string | null;
   body: string;
   warnings: string[];
+  /** ترويسة استُخرجت من الملف — يقرّر المكتب حفظها أو تركها. */
+  letterhead: LetterheadLayout | null;
 };
 
 export type TemplateStats = {

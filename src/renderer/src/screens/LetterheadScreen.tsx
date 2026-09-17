@@ -11,28 +11,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OfficeSettings, PrinterInfo, Seal } from '@shared/api';
 import {
   emptyLayout,
+  isLayoutEmpty,
   mmToPx,
-  HEADER_FIELDS,
-  type Align,
-  type BlockKind,
+  normalizeLayout,
   type Letterhead,
-  type LetterheadBlock,
   type LetterheadLayout
 } from '@shared/letterhead';
-
-const KIND_META: Record<BlockKind, { icon: string; label: string }> = {
-  text: { icon: 'title', label: 'سطر نصّي' },
-  image: { icon: 'image', label: 'شعار أو صورة' },
-  divider: { icon: 'horizontal_rule', label: 'خط فاصل' },
-  field: { icon: 'data_object', label: 'حقل تلقائي' },
-  spacer: { icon: 'height', label: 'فراغ' }
-};
-
-const ALIGN_META: { value: Align; icon: string; title: string }[] = [
-  { value: 'right', icon: 'format_align_right', title: 'يمين' },
-  { value: 'center', icon: 'format_align_center', title: 'وسط' },
-  { value: 'left', icon: 'format_align_left', title: 'يسار' }
-];
+import LetterheadDesigner from '../components/LetterheadDesigner';
+import LetterheadView from '../components/LetterheadView';
 
 const SEAL_KINDS = ['ختم', 'توقيع', 'شعار'];
 
@@ -41,9 +27,6 @@ const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 const settingInput =
   'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
 
-let counter = 0;
-const nextId = () => `b${Date.now().toString(36)}${(counter++).toString(36)}`;
-
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 export default function LetterheadScreen() {
@@ -51,7 +34,6 @@ export default function LetterheadScreen() {
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [layout, setLayout] = useState<LetterheadLayout>(emptyLayout);
-  const [selected, setSelected] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seals, setSeals] = useState<Seal[]>([]);
@@ -98,8 +80,7 @@ export default function LetterheadScreen() {
   function load(item: Letterhead) {
     setCurrentId(item.id);
     setName(item.name);
-    setLayout(item.layout);
-    setSelected(null);
+    setLayout(normalizeLayout(item.layout));
     setDirty(false);
   }
 
@@ -107,56 +88,12 @@ export default function LetterheadScreen() {
     setCurrentId(null);
     setName('');
     setLayout(emptyLayout());
-    setSelected(null);
     setDirty(false);
   }
 
-  const current = layout.blocks.find((b) => b.id === selected) ?? null;
-
-  function mutate(fn: (blocks: LetterheadBlock[]) => LetterheadBlock[]) {
-    setLayout((prev) => ({ ...prev, blocks: fn(prev.blocks) }));
+  function editLayout(next: LetterheadLayout) {
+    setLayout(next);
     setDirty(true);
-  }
-
-  async function addBlock(kind: BlockKind) {
-    let value = '';
-    if (kind === 'image') {
-      const picked = await window.diwan.files.pickImage('letterheads');
-      if (!picked) return;
-      value = picked;
-    }
-    const block: LetterheadBlock = {
-      id: nextId(),
-      kind,
-      value,
-      align: 'center',
-      size: kind === 'text' ? 16 : 14,
-      bold: kind === 'text',
-      ...(kind === 'image' ? { width: 90 } : {}),
-      ...(kind === 'spacer' ? { gap: 12 } : {})
-    };
-    mutate((bs) => [...bs, block]);
-    setSelected(block.id);
-  }
-
-  function patch(id: string, changes: Partial<LetterheadBlock>) {
-    mutate((bs) => bs.map((b) => (b.id === id ? { ...b, ...changes } : b)));
-  }
-
-  function move(id: string, delta: number) {
-    mutate((bs) => {
-      const i = bs.findIndex((b) => b.id === id);
-      const j = i + delta;
-      if (i === -1 || j < 0 || j >= bs.length) return bs;
-      const next = [...bs];
-      [next[i], next[j]] = [next[j]!, next[i]!];
-      return next;
-    });
-  }
-
-  async function replaceImage(id: string) {
-    const picked = await window.diwan.files.pickImage('letterheads');
-    if (picked) patch(id, { value: picked });
   }
 
   async function save() {
@@ -314,298 +251,26 @@ export default function LetterheadScreen() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-space-md space-y-space-md">
-            {/* إضافة كتلة */}
+            {/* بناء الترويسة بالأقسام */}
             <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
               <div className="flex items-center justify-between pb-space-xs">
                 <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">add_box</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">إضافة كتلة</h3>
+                  <span className="material-symbols-outlined text-secondary text-[20px]">
+                    view_column
+                  </span>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
+                    بناء الترويسة
+                  </h3>
                 </div>
                 <span className="font-code-sm text-code-sm text-on-surface-variant">
-                  {layout.blocks.length} كتلة
+                  {layout.sections
+                    .slice(0, layout.columns)
+                    .reduce((n, sec) => n + sec.blocks.length, 0)}{' '}
+                  عنصرًا
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-space-sm">
-                {(Object.keys(KIND_META) as BlockKind[]).map((kind) => (
-                  <button
-                    key={kind}
-                    className="flex items-center gap-space-xs h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors"
-                    type="button"
-                    onClick={() => void addBlock(kind)}
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-secondary">
-                      {KIND_META[kind].icon}
-                    </span>
-                    <span>{KIND_META[kind].label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {/* ترتيب الكتل */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center gap-space-xs pb-space-xs">
-                <span className="material-symbols-outlined text-secondary text-[20px]">reorder</span>
-                <h3 className="font-headline-sm text-headline-sm text-on-surface">ترتيب الكتل</h3>
-              </div>
-
-              {layout.blocks.length === 0 ? (
-                <div className="py-space-xl flex flex-col items-center gap-space-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[32px]">layers_clear</span>
-                  <span className="font-label-md text-label-md">لا توجد كتل بعد</span>
-                  <span className="font-label-sm text-label-sm">
-                    ابدأ بإضافة سطر نصّي أو شعار من الأعلى
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {layout.blocks.map((b, i) => (
-                    <div
-                      key={b.id}
-                      className={
-                        b.id === selected
-                          ? 'flex items-center justify-between px-space-sm py-space-sm rounded-lg bg-secondary-fixed text-on-secondary-fixed transition-all cursor-pointer'
-                          : 'flex items-center justify-between px-space-sm py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all cursor-pointer'
-                      }
-                      onClick={() => setSelected(b.id)}
-                    >
-                      <div className="flex items-center gap-space-sm min-w-0">
-                        <span className="material-symbols-outlined text-[18px]">
-                          {KIND_META[b.kind].icon}
-                        </span>
-                        <span className="font-label-md text-label-md truncate">
-                          {b.kind === 'image'
-                            ? 'صورة'
-                            : b.value || KIND_META[b.kind].label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <button
-                          className="p-space-xs rounded hover:bg-surface-container-high transition-colors disabled:opacity-30"
-                          type="button"
-                          title="أعلى"
-                          disabled={i === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            move(b.id, -1);
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            keyboard_arrow_up
-                          </span>
-                        </button>
-                        <button
-                          className="p-space-xs rounded hover:bg-surface-container-high transition-colors disabled:opacity-30"
-                          type="button"
-                          title="أسفل"
-                          disabled={i === layout.blocks.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            move(b.id, 1);
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            keyboard_arrow_down
-                          </span>
-                        </button>
-                        <button
-                          className="p-space-xs rounded hover:bg-surface-container-high text-error transition-colors"
-                          type="button"
-                          title="حذف"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            mutate((bs) => bs.filter((x) => x.id !== b.id));
-                            if (selected === b.id) setSelected(null);
-                          }}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* خصائص الكتلة */}
-            {current && (
-              <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-                <div className="flex items-center gap-space-xs pb-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">tune</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">خصائص الكتلة</h3>
-                </div>
-
-                {current.kind === 'text' && (
-                  <div className="flex flex-col gap-1">
-                    <label className="font-label-sm text-label-sm text-on-surface-variant">النص</label>
-                    <input
-                      className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                      type="text"
-                      value={current.value}
-                      placeholder="اكتب محتوى السطر"
-                      onChange={(e) => patch(current.id, { value: e.target.value })}
-                    />
-                  </div>
-                )}
-
-                {current.kind === 'field' && (
-                  <div className="flex flex-col gap-1">
-                    <label className="font-label-sm text-label-sm text-on-surface-variant">
-                      الحقل التلقائي — يملؤه المحرّك عند الإصدار
-                    </label>
-                    <div className="flex flex-wrap gap-1">
-                      {HEADER_FIELDS.map((f) => (
-                        <button
-                          key={f.token}
-                          className={
-                            current.value === f.token
-                              ? 'px-2 py-1 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold transition-colors'
-                              : 'px-2 py-1 rounded bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm transition-colors'
-                          }
-                          type="button"
-                          onClick={() => patch(current.id, { value: f.token })}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {current.kind === 'image' && (
-                  <div className="flex items-center gap-space-sm">
-                    <button
-                      className="flex items-center gap-space-xs h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors"
-                      type="button"
-                      onClick={() => void replaceImage(current.id)}
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-secondary">
-                        swap_horiz
-                      </span>
-                      <span>استبدال الصورة</span>
-                    </button>
-                    <div className="flex flex-col gap-1 flex-1">
-                      <label className="font-label-sm text-label-sm text-on-surface-variant">
-                        العرض ({current.width ?? 90}px)
-                      </label>
-                      <input
-                        className="w-full accent-secondary"
-                        type="range"
-                        min={24}
-                        max={260}
-                        value={current.width ?? 90}
-                        onChange={(e) => patch(current.id, { width: Number(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {current.kind === 'spacer' && (
-                  <div className="flex flex-col gap-1">
-                    <label className="font-label-sm text-label-sm text-on-surface-variant">
-                      ارتفاع الفراغ ({current.gap ?? 12}px)
-                    </label>
-                    <input
-                      className="w-full accent-secondary"
-                      type="range"
-                      min={2}
-                      max={80}
-                      value={current.gap ?? 12}
-                      onChange={(e) => patch(current.id, { gap: Number(e.target.value) })}
-                    />
-                  </div>
-                )}
-
-                {current.kind !== 'spacer' && (
-                  <div className="grid grid-cols-2 gap-space-sm">
-                    <div className="flex flex-col gap-1">
-                      <label className="font-label-sm text-label-sm text-on-surface-variant">
-                        المحاذاة
-                      </label>
-                      <div className="flex items-center gap-1">
-                        {ALIGN_META.map((a) => (
-                          <button
-                            key={a.value}
-                            className={
-                              current.align === a.value
-                                ? 'w-9 h-9 rounded flex items-center justify-center bg-primary-container text-on-primary transition-colors'
-                                : 'w-9 h-9 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors'
-                            }
-                            type="button"
-                            title={a.title}
-                            onClick={() => patch(current.id, { align: a.value })}
-                          >
-                            <span className="material-symbols-outlined text-[18px]">{a.icon}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {(current.kind === 'text' || current.kind === 'field') && (
-                      <div className="flex flex-col gap-1">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant">
-                          الحجم ({current.size}px)
-                        </label>
-                        <input
-                          className="w-full h-9 accent-secondary"
-                          type="range"
-                          min={8}
-                          max={32}
-                          value={current.size}
-                          onChange={(e) => patch(current.id, { size: Number(e.target.value) })}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {(current.kind === 'text' || current.kind === 'field') && (
-                  <label className="flex items-center gap-space-sm cursor-pointer pt-space-xs">
-                    <input
-                      className="w-4 h-4 accent-primary-container"
-                      type="checkbox"
-                      checked={current.bold}
-                      onChange={(e) => patch(current.id, { bold: e.target.checked })}
-                    />
-                    <span className="font-label-md text-label-md text-on-surface">خط عريض</span>
-                  </label>
-                )}
-              </div>
-            )}
-
-            {/* الهوامش */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center gap-space-xs pb-space-xs">
-                <span className="material-symbols-outlined text-secondary text-[20px]">
-                  crop_free
-                </span>
-                <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                  هوامش الورقة (ملم)
-                </h3>
-              </div>
-              <div className="grid grid-cols-4 gap-space-sm">
-                {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
-                  <div key={side} className="flex flex-col gap-1">
-                    <label className="font-label-sm text-label-sm text-on-surface-variant">
-                      {{ top: 'أعلى', right: 'يمين', bottom: 'أسفل', left: 'يسار' }[side]}
-                    </label>
-                    <input
-                      className="w-full h-9 px-2 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md text-center focus:outline-none focus:ring-2 focus:ring-secondary"
-                      type="number"
-                      min={0}
-                      max={60}
-                      value={layout.margins[side]}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setLayout((prev) => ({
-                          ...prev,
-                          margins: { ...prev.margins, [side]: v }
-                        }));
-                        setDirty(true);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
+              <LetterheadDesigner layout={layout} onChange={editLayout} showPageOptions />
             </div>
 
             {/* الأختام */}
@@ -825,70 +490,24 @@ export default function LetterheadScreen() {
                 paddingLeft: mmToPx(layout.margins.left)
               }}
             >
-              {layout.blocks.length === 0 ? (
-                <div className="py-space-xl flex flex-col items-center gap-space-sm text-on-surface-variant border border-dashed border-outline-variant rounded-lg">
-                  <span className="material-symbols-outlined text-[40px]">note_add</span>
-                  <span className="font-body-md text-body-md">منطقة الترويسة فارغة</span>
-                  <span className="font-label-sm text-label-sm">
-                    كل ما تضيفه يظهر هنا بمقاسه الحقيقي على الورقة
-                  </span>
-                </div>
-              ) : (
-                <div>
-                  {layout.blocks.map((b) => {
-                    const onClick = () => setSelected(b.id);
-                    const ring =
-                      b.id === selected ? 'outline outline-1 outline-secondary outline-offset-2' : '';
+              <LetterheadView
+                layout={layout}
+                emptyHint="منطقة الترويسة فارغة — كل ما تضيفه يظهر هنا بمقاسه الحقيقي"
+              />
 
-                    if (b.kind === 'spacer') {
-                      return <div key={b.id} style={{ height: b.gap ?? 12 }} onClick={onClick} />;
-                    }
-                    if (b.kind === 'divider') {
-                      return (
-                        <hr
-                          key={b.id}
-                          className={`border-t border-on-surface my-space-sm ${ring}`}
-                          onClick={onClick}
-                        />
-                      );
-                    }
-                    if (b.kind === 'image') {
-                      const justify =
-                        b.align === 'center'
-                          ? 'center'
-                          : b.align === 'left'
-                            ? 'flex-start'
-                            : 'flex-end';
-                      return (
-                        <div
-                          key={b.id}
-                          className={`flex ${ring}`}
-                          style={{ justifyContent: justify }}
-                          onClick={onClick}
-                        >
-                          <img
-                            alt=""
-                            src={storeUrl(b.value) ?? undefined}
-                            style={{ width: b.width ?? 90 }}
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div
-                        key={b.id}
-                        className={`${b.bold ? 'font-bold' : ''} ${ring}`}
-                        style={{ textAlign: b.align, fontSize: `${b.size}px`, lineHeight: 1.9 }}
-                        onClick={onClick}
-                      >
-                        {b.value || ' '}
-                      </div>
-                    );
-                  })}
+              {!isLayoutEmpty(layout) && (
+                <div className="mt-space-xl space-y-space-md opacity-30 select-none">
+                  <div className="h-3 bg-surface-container-high rounded w-1/3" />
+                  <div className="h-2 bg-surface-container-high rounded" />
+                  <div className="h-2 bg-surface-container-high rounded" />
+                  <div className="h-2 bg-surface-container-high rounded w-4/5" />
                 </div>
               )}
             </div>
           </div>
+          <span className="mt-space-sm font-label-sm text-label-sm text-on-surface-variant">
+            ورقة A4 بمقاسها الحقيقي — 210×297 ملم
+          </span>
         </div>
       </div>
 

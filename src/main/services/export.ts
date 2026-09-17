@@ -1,7 +1,7 @@
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
 import type { DocumentRow, PeriodStats, TemplateDetail } from '@shared/api';
-import type { Letterhead } from '@shared/letterhead';
+import { normalizeLayout, visibleSections, type Letterhead } from '@shared/letterhead';
 import { htmlToText } from './documents';
 
 /**
@@ -76,7 +76,11 @@ export async function templateToDocx(
   const children: Paragraph[] = [];
 
   // الترويسة كما بناها المكتب — نصّها فقط، فالصور لا تُنقل إلى Word هنا.
-  for (const block of letterhead?.layout.blocks ?? []) {
+  // الأقسام تُقرأ بالترتيب من اليمين، سطرًا بعد سطر.
+  const headerBlocks = letterhead
+    ? visibleSections(normalizeLayout(letterhead.layout)).flatMap((s) => s.blocks)
+    : [];
+  for (const block of headerBlocks) {
     if (block.kind === 'text' || block.kind === 'field') {
       children.push(
         new Paragraph({

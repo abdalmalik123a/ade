@@ -84,6 +84,24 @@ class Page {
     await sleep(250);
   }
 
+  /**
+   * ينقر عنصرًا نصّه يطابق المعطى تمامًا.
+   *
+   * clickText تبحث عن «يحتوي»، وكلمة قصيرة مثل «تم» تقع داخل كلمات أخرى
+   * («المستمسكات» مثلًا) — فينقر المِقْود شيئًا غير المقصود ويمضي صامتًا.
+   */
+  async clickExact(text, selector = 'button, a') {
+    const clicked = await this.eval(`
+      const els = [...document.querySelectorAll(${JSON.stringify(selector)})];
+      const el = els.find(e => (e.textContent || '').trim() === ${JSON.stringify(text)});
+      if (!el) return false;
+      el.click();
+      return true;
+    `);
+    if (!clicked) throw new Error(`لم يُعثر على عنصر نصّه تمامًا: ${text}`);
+    await sleep(250);
+  }
+
   /** يكتب في حقل — عبر مُعيِّن React ليصل التغيير إلى الحالة. */
   async type(selector, value) {
     const ok = await this.eval(`

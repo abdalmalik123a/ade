@@ -15,7 +15,9 @@ import {
   type TemplateVariable,
   type VariableSource
 } from '@shared/template';
-import { mmToPx, type Letterhead } from '@shared/letterhead';
+import {
+  normalizeLayout, mmToPx, type Letterhead } from '@shared/letterhead';
+import LetterheadView from '../components/LetterheadView';
 import { errorText } from '../lib/errors';
 
 const inputCls =
@@ -411,44 +413,9 @@ export default function TemplateDesigner({
                   paddingLeft: mmToPx(letterhead?.layout.margins.left ?? 20) * 0.78
                 }}
               >
-                {letterhead && letterhead.layout.blocks.length > 0 ? (
-                  <div>
-                    {letterhead.layout.blocks.map((b) => {
-                      if (b.kind === 'spacer')
-                        return <div key={b.id} style={{ height: b.gap ?? 12 }} />;
-                      if (b.kind === 'divider')
-                        return <hr key={b.id} className="border-t border-on-surface my-space-sm" />;
-                      if (b.kind === 'image') {
-                        const justify =
-                          b.align === 'center'
-                            ? 'center'
-                            : b.align === 'left'
-                              ? 'flex-start'
-                              : 'flex-end';
-                        return (
-                          <div key={b.id} className="flex" style={{ justifyContent: justify }}>
-                            <img
-                              alt=""
-                              src={b.value ? `diwan://store/${b.value}` : undefined}
-                              style={{ width: (b.width ?? 90) * 0.78 }}
-                            />
-                          </div>
-                        );
-                      }
-                      return (
-                        <div
-                          key={b.id}
-                          className={b.bold ? 'font-bold' : ''}
-                          style={{
-                            textAlign: b.align,
-                            fontSize: `${b.size * 0.85}px`,
-                            lineHeight: 1.9
-                          }}
-                        >
-                          {b.value || ' '}
-                        </div>
-                      );
-                    })}
+                {letterhead ? (
+                  <div style={{ zoom: 0.85 }}>
+                    <LetterheadView layout={normalizeLayout(letterhead.layout)} />
                   </div>
                 ) : (
                   <div className="py-space-md text-center text-on-surface-variant font-label-sm text-label-sm border border-dashed border-outline-variant rounded">

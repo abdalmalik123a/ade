@@ -37,6 +37,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /** نصّ الورقة وحدها — لا لوح الإدخال، فقيم الحقول ليست على الورقة. */
+  const sheetText = () =>
+    page.eval(`return document.querySelector('.a4-sheet')?.innerText ?? '';`);
+
   const fill = async (label, value) => {
     const done = await page.eval(`
       const labels = [...document.querySelectorAll('label')];
@@ -85,6 +89,44 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   ok('يرفض الإصدار بلا اسم', (await page.text()).includes('لا يصدر كتاب بلا اسم صاحب العلاقة'));
 
+  // ترويسة الكتاب: تأتي من المحفوظة، وتُحرَّر مع الكتاب نفسه
+  ok('حُمّلت الترويسة المحفوظة في الكتاب', (await sheetText()).includes('جمهورية العراق'));
+
+  await page.clickText('تحرير الترويسة');
+  await wait(600);
+  ok('انفتح محرّر الترويسة', (await page.text()).includes('ترويسة هذا الكتاب'));
+
+  await page.clickText('قسمان');
+  await wait(300);
+  await page.clickText('القسم الثاني');
+  await wait(200);
+  await page.clickText('سطر نصّي');
+  await page.eval(`
+    const inputs = [...document.querySelectorAll('input[placeholder="اكتب محتوى السطر"]')];
+    const el = inputs[inputs.length - 1];
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'قسم التعليم العام');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  `);
+  await wait(400);
+
+  // حقل رقم الصادر داخل الترويسة: يُملأ عند الإصدار لا قبله
+  await page.clickText('حقل تلقائي');
+  await wait(200);
+  await page.eval(`
+    const sel = [...document.querySelectorAll('select')].find(s =>
+      [...s.options].some(o => o.textContent.includes('رقم الصادر')));
+    const opt = [...sel.options].find(o => o.textContent.includes('رقم الصادر'));
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, opt.value);
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  `);
+  await wait(300);
+  ok('وُسمت الترويسة بأنها خاصّة بهذا الكتاب', (await page.text()).includes('خاصّة بهذا الكتاب'));
+  await page.clickExact('تم');
+  await wait(400);
+  const withSection = await sheetText();
+  ok('ظهر القسم الثاني على الورقة', withSection.includes('قسم التعليم العام'));
+  ok('وبقي القسم الأول معه', withSection.includes('جمهورية العراق'));
+
   // استيراد المواطن من السجل (F2)
   await page.clickText('استيراد (F2)');
   await wait(700);
@@ -109,6 +151,29 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('توليد متسلسل');
   await wait(400);
   ok('عُرض رقم الاطّلاع', (await page.text()).includes('م/'));
+
+  // الأصل أن يكتب العدد والتاريخ موظّفُ الاستلام بخطّه
+  const serialNow = `م/${new Date().getFullYear()}/1`;
+  /** سطر العدد والتاريخ وحده — لا بقيّة الورقة، ففي الترويسة حقل رقم صادر أيضًا. */
+  const registry = () =>
+    page.eval(`
+      const el = document.querySelector('[data-registry]');
+      return el ? el.getAttribute('data-registry') + '|' + el.innerText : 'غائب';
+    `);
+
+  let line = await registry();
+  ok('الورقة تحمل سطر العدد والتاريخ', line.includes('العدد:') && line.includes('التاريخ:'));
+  ok('وهو فراغ يُملأ باليد افتراضًا', line.startsWith('manual|') && !line.includes(serialNow));
+
+  await page.clickText('مطبوعان');
+  await wait(400);
+  line = await registry();
+  ok('اختيار «مطبوعان» يطبع الرقم في سطر العدد', line.startsWith('printed|') && line.includes(serialNow));
+
+  await page.clickText('فراغ يُملأ باليد');
+  await wait(400);
+  line = await registry();
+  ok('والعودة إلى الفراغ تُخفيه', line.startsWith('manual|') && !line.includes(serialNow));
 
   await page.clickText('ختم تاريخ اليوم');
   await wait(300);
@@ -158,7 +223,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('أُعلن صدور الكتاب', text.includes('صدر الكتاب'));
   ok('عُرضت بصمة التوثيق', text.includes('بصمة التوثيق (SHA-256)'));
   if (shotsDir) await page.shot(join(shotsDir, 'issued.png'));
-  await page.clickText('تم');
+  await page.clickExact('تم');
   await wait(500);
 
   // ── التفتيش في القاعدة، لا في الشاشة ───────────────────────────────
@@ -184,6 +249,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('قُيّدت الطباعة الأولى', prints.length === 1 && prints[0]?.reason === 'إصدار أول');
   ok('دُوّن الإصدار في سجل التدقيق', audit.length === 1);
   ok('حُذفت المسودة بعد الإصدار', drafts?.n === 0);
+  ok('سطر العدد خرج فراغًا منقوطًا لموظّف الاستلام',
+    (doc?.body_html ?? '').includes('العدد:') && (doc?.body_html ?? '').includes('dotted'));
+  ok('والرقم مقيَّد في السجل على كل حال', /^م\/\d{4}\/1$/.test(doc?.serial ?? ''));
+  ok('ترويسة الكتاب حُفظت مع قيمه', (doc?.values_json ?? '').includes('__letterhead'));
+  ok('وقسماها ظهرا في الورقة المحفوظة',
+    (doc?.body_html ?? '').includes('قسم التعليم العام') &&
+      (doc?.body_html ?? '').includes('جمهورية العراق'));
 
   // نسخة PDF المؤرشفة — وهي محرّك الرسم نفسه الذي تستعمله الطباعة
   const pdfPath = doc?.rendered_path ? join(profile, 'data', 'store', doc.rendered_path) : null;

@@ -6,9 +6,18 @@
  * استيراد DOCX/XML، ونسخ احتياطي. ولا نموذج مبرمَج: تبدأ المكتبة فارغة.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DraftRow, TemplateDetail, TemplateStats, TemplateSummary } from '@shared/api';
+import type {
+  DraftRow,
+  ImportedTemplate,
+  TemplateDetail,
+  TemplateStats,
+  TemplateSummary
+} from '@shared/api';
 import { renderBody } from '@shared/template';
-import { mmToPx, type Letterhead } from '@shared/letterhead';
+import {
+  isLayoutEmpty,
+  normalizeLayout, mmToPx, type Letterhead } from '@shared/letterhead';
+import LetterheadView from '../components/LetterheadView';
 import TemplateDesigner from './TemplateDesigner';
 import { errorText } from '../lib/errors';
 
@@ -47,6 +56,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
   const [zoomed, setZoomed] = useState<TemplateSummary | null>(null);
   const [toast, setToast] = useState<Toast>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingImport, setPendingImport] = useState<ImportedTemplate | null>(null);
   const timer = useRef<number | null>(null);
 
   const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
@@ -112,35 +122,62 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     setDesigner({ open: true, initial });
   }
 
+  /** يفتح المستورَد في المصمّم، مربوطًا بترويسة إن حُفظت. */
+  function openImported(imported: ImportedTemplate, letterheadId: number | null) {
+    setDesigner({
+      open: true,
+      initial: {
+        id: 0,
+        code: imported.code,
+        title: imported.title,
+        subtitle: imported.subtitle,
+        category: imported.category,
+        subjectLine: imported.subjectLine,
+        bodyHtml: imported.body,
+        letterheadId,
+        printCount: 0,
+        issuedThisMonth: 0,
+        variables: []
+      } as unknown as TemplateDetail
+    });
+    say(
+      imported.warnings.length ? imported.warnings.join(' · ') : 'استُورد النموذج — راجعه ثم احفظ',
+      imported.warnings.length ? 'warn' : 'ok'
+    );
+  }
+
   async function importTemplate() {
     setBusy(true);
     try {
       const imported = await window.diwan.templates.importFile();
       if (!imported) return;
-      setDesigner({
-        open: true,
-        initial: {
-          id: 0,
-          code: imported.code,
-          title: imported.title,
-          subtitle: imported.subtitle,
-          category: imported.category,
-          subjectLine: imported.subjectLine,
-          bodyHtml: imported.body,
-          letterheadId: null,
-          printCount: 0,
-          issuedThisMonth: 0,
-          variables: []
-        } as unknown as TemplateDetail
-      });
-      say(
-        imported.warnings.length ? imported.warnings.join(' · ') : 'استُورد النموذج — راجعه ثم احفظ',
-        imported.warnings.length ? 'warn' : 'ok'
-      );
+      // ترويسة الملف لا تُحفظ خلسةً ولا تُرمى: المكتب يقرّر.
+      if (imported.letterhead && !isLayoutEmpty(imported.letterhead)) {
+        setPendingImport(imported);
+        return;
+      }
+      openImported(imported, null);
     } catch (e) {
       say(errorText(e, 'تعذّر الاستيراد'), 'warn');
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** حفظ الترويسة المستخرجة في المكتبة ثم ربط النموذج بها. */
+  async function keepImportedLetterhead(imported: ImportedTemplate) {
+    try {
+      const saved = await window.diwan.letterheads.save({
+        id: null,
+        name: (imported.title || 'ترويسة مستوردة').slice(0, 60),
+        authorityId: null,
+        layout: imported.letterhead!
+      });
+      setPendingImport(null);
+      openImported(imported, saved.id);
+      say(`حُفظت الترويسة «${saved.name}» ورُبط بها النموذج`);
+    } catch (e) {
+      say(errorText(e, 'تعذّر حفظ الترويسة'), 'warn');
     }
   }
 
@@ -484,6 +521,62 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
         </section>
       </div>
 
+      {pendingImport?.letterhead && (
+        <div className="fixed inset-0 z-50 bg-primary-container/45 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
+          <div className="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
+            <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
+              <span className="font-headline-sm text-headline-sm text-on-surface">
+                وُجدت ترويسة في الملف
+              </span>
+              <button
+                className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
+                type="button"
+                onClick={() => {
+                  const imported = pendingImport;
+                  setPendingImport(null);
+                  openImported(imported, null);
+                }}
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <div className="p-space-md space-y-space-md">
+              <p className="font-label-md text-label-md text-on-surface-variant">
+                كتب Word غالبًا تحمل ترويسة مكتوبة نصًّا لا كترويسة صفحة، فتضيع عند
+                الاستيراد. هذه ما وجدناه في أعلى الملف — احفظها لتُستعمل مع هذا النموذج
+                وغيره، أو اتركها فتبقى ضمن المتن.
+              </p>
+
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-space-md">
+                <LetterheadView layout={normalizeLayout(pendingImport.letterhead)} />
+              </div>
+
+              <div className="flex items-center justify-end gap-space-sm">
+                <button
+                  className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                  type="button"
+                  onClick={() => {
+                    const imported = pendingImport;
+                    setPendingImport(null);
+                    openImported(imported, null);
+                  }}
+                >
+                  لا تحفظها
+                </button>
+                <button
+                  className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
+                  type="button"
+                  onClick={() => void keepImportedLetterhead(pendingImport)}
+                >
+                  احفظ الترويسة واربطها بالنموذج
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {designer.open && (
         <TemplateDesigner
           initial={designer.initial?.id ? designer.initial : null}
@@ -577,33 +670,11 @@ function MiniSheet({
         paddingLeft: mmToPx(letterhead?.layout.margins.left ?? 20) * scale
       }}
     >
-      {letterhead?.layout.blocks.map((b) => {
-        if (b.kind === 'spacer') return <div key={b.id} style={{ height: (b.gap ?? 12) * scale }} />;
-        if (b.kind === 'divider')
-          return <hr key={b.id} className="border-t border-on-surface my-1" />;
-        if (b.kind === 'image') {
-          const justify =
-            b.align === 'center' ? 'center' : b.align === 'left' ? 'flex-start' : 'flex-end';
-          return (
-            <div key={b.id} className="flex" style={{ justifyContent: justify }}>
-              <img
-                alt=""
-                src={b.value ? `diwan://store/${b.value}` : undefined}
-                style={{ width: (b.width ?? 90) * scale }}
-              />
-            </div>
-          );
-        }
-        return (
-          <div
-            key={b.id}
-            className={b.bold ? 'font-bold' : ''}
-            style={{ textAlign: b.align, fontSize: `${b.size * scale}px`, lineHeight: 1.7 }}
-          >
-            {b.value || ' '}
-          </div>
-        );
-      })}
+      {letterhead && (
+        <div style={{ zoom: scale }}>
+          <LetterheadView layout={normalizeLayout(letterhead.layout)} />
+        </div>
+      )}
 
       {template.subjectLine && (
         <div

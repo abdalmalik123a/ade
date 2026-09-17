@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import { emptyLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { emptyLayout, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type { Seal } from '@shared/api';
 
 /**
@@ -18,9 +18,10 @@ type Row = {
 const SELECT = 'SELECT id, name, authority_id, layout_json, is_default FROM letterheads';
 
 function toLetterhead(row: Row): Letterhead {
+  // الترويسات المحفوظة قبل الأقسام تُرحَّل عند القراءة، فلا يفقد المكتب ما بناه.
   let layout: LetterheadLayout;
   try {
-    layout = JSON.parse(row.layout_json) as LetterheadLayout;
+    layout = normalizeLayout(JSON.parse(row.layout_json));
   } catch {
     layout = emptyLayout();
   }
