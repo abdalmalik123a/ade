@@ -12,6 +12,28 @@ import { storeDir } from '../db';
 
 const IMAGE_FILTERS = [{ name: 'صور', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] }];
 
+/**
+ * أين يُحفظ الناتج: حوار النظام دائمًا في التشغيل الطبيعي.
+ *
+ * الاستثناء الوحيد متغيّر البيئة DIWAN_TEST_SAVE_DIR، ولا يوجد إلا حين يقود
+ * مِقْودُ الفحص (tools/drive.mjs) التطبيقَ الحقيقي: حوار النظام لا يُضغط آليًا،
+ * فبغيره تبقى أدوات التصدير الخمس بلا فحص. ولا سبيل إلى ضبطه في تثبيت عادي.
+ */
+export async function pickSavePath(
+  window: BrowserWindow,
+  options: { title: string; defaultName: string; filterName: string; ext: string }
+): Promise<string | null> {
+  const testDir = process.env['DIWAN_TEST_SAVE_DIR'];
+  if (testDir) return join(testDir, options.defaultName);
+
+  const result = await dialog.showSaveDialog(window, {
+    title: options.title,
+    defaultPath: options.defaultName,
+    filters: [{ name: options.filterName, extensions: [options.ext] }]
+  });
+  return result.canceled || !result.filePath ? null : result.filePath;
+}
+
 /** ينسخ ملفًا إلى المخزن باسم مشتقّ من محتواه — فلا تتكرّر نسخة ولا يتصادم اسم. */
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
   const bytes = await readFile(sourcePath);
@@ -50,14 +72,15 @@ export function registerFileIpc(): void {
     ): Promise<string | null> => {
       const win = BrowserWindow.fromWebContents(e.sender);
       if (!win) return null;
-      const result = await dialog.showSaveDialog(win, {
+      const path = await pickSavePath(win, {
         title: 'حفظ باسم',
-        defaultPath: payload.suggestedName,
-        filters: [{ name: payload.filterName, extensions: [payload.ext] }]
+        defaultName: payload.suggestedName,
+        filterName: payload.filterName,
+        ext: payload.ext
       });
-      if (result.canceled || !result.filePath) return null;
-      await writeFile(result.filePath, Buffer.from(payload.data));
-      return result.filePath;
+      if (!path) return null;
+      await writeFile(path, Buffer.from(payload.data));
+      return path;
     }
   );
 

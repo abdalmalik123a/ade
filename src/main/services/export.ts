@@ -1,6 +1,8 @@
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
-import type { TemplateDetail } from '@shared/api';
+import ExcelJS from 'exceljs';
+import type { DocumentRow, PeriodStats, TemplateDetail } from '@shared/api';
 import type { Letterhead } from '@shared/letterhead';
+import { htmlToText } from './documents';
 
 /**
  * تصدير النموذج إلى ملف يعيش خارج التطبيق.
@@ -135,4 +137,120 @@ export async function templateToDocx(
   });
 
   return Packer.toBuffer(doc);
+}
+
+/**
+ * الكتاب الصادر إلى Word.
+ *
+ * ما يُصدَّر هو نصّ الورقة كما خرجت من المحرر — الترويسة والمتن والتوقيع — لا
+ * النموذج الفارغ. والتوليد برمجيّ وصامت: لا يُفتح Word ولا أداة خارجية.
+ */
+export async function sheetToDocx(sheetHtml: string, title: string): Promise<Buffer> {
+  const lines = htmlToText(sheetHtml).split('\n');
+  const children: Paragraph[] = [];
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      children.push(new Paragraph({ text: '' }));
+      continue;
+    }
+    // سطر الموضوع يتوسّط ويُسطَّر، كما في الورقة.
+    const isSubject = line.startsWith('م /');
+    children.push(
+      new Paragraph({
+        alignment: isSubject ? AlignmentType.CENTER : AlignmentType.JUSTIFIED,
+        bidirectional: true,
+        spacing: { line: 360 },
+        children: [
+          new TextRun({
+            text: line,
+            bold: isSubject,
+            underline: isSubject ? {} : undefined,
+            rightToLeft: true
+          })
+        ]
+      })
+    );
+  }
+
+  const doc = new Document({
+    creator: 'ديوان',
+    title,
+    styles: { default: { document: { run: { font: 'Amiri', size: 26 } } } },
+    sections: [{ properties: {}, children }]
+  });
+  return Packer.toBuffer(doc);
+}
+
+/** تقرير المدة: صفحة مؤشرات، وجدول الكتب، وتوزيع حسب نوع الوثيقة وحسب اليوم. */
+export async function reportToExcel(input: {
+  title: string;
+  rows: DocumentRow[];
+  stats: PeriodStats;
+}): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'ديوان';
+  wb.created = new Date();
+
+  const summary = wb.addWorksheet('المؤشرات', { views: [{ rightToLeft: true }] });
+  summary.columns = [
+    { header: 'المؤشر', key: 'k', width: 32 },
+    { header: 'القيمة', key: 'v', width: 22 }
+  ];
+  summary.addRows([
+    { k: 'المدة', v: input.title },
+    { k: 'الكتب الصادرة', v: input.stats.issued },
+    { k: 'الإيراد المالي المستوفى (د.ع)', v: input.stats.revenue },
+    { k: 'المواطنون المخدومون', v: input.stats.citizens },
+    { k: 'النسخ المطبوعة', v: input.stats.printedCopies }
+  ]);
+  summary.getRow(1).font = { bold: true };
+
+  const ledger = wb.addWorksheet('سجل الصادر', { views: [{ rightToLeft: true }] });
+  ledger.columns = [
+    { header: 'رقم الصادر', key: 'serial', width: 18 },
+    { header: 'التاريخ', key: 'date', width: 14 },
+    { header: 'التوقيت', key: 'time', width: 10 },
+    { header: 'المواطن', key: 'name', width: 32 },
+    { header: 'الرقم الوطني', key: 'nid', width: 20 },
+    { header: 'الوثيقة الرسمية', key: 'type', width: 26 },
+    { header: 'الجهة الموجه إليها', key: 'dest', width: 30 },
+    { header: 'النسخ', key: 'copies', width: 8 },
+    { header: 'الرسوم', key: 'fee', width: 12 }
+  ];
+  for (const r of input.rows) {
+    ledger.addRow({
+      serial: r.serial,
+      date: r.issuedDate,
+      time: r.issuedTime,
+      name: r.citizenName,
+      nid: r.nationalId ?? '',
+      type: r.docType ?? '',
+      dest: r.destination ?? '',
+      copies: r.copies,
+      fee: r.fee
+    });
+  }
+  ledger.getRow(1).font = { bold: true };
+
+  const byType = wb.addWorksheet('حسب نوع الوثيقة', { views: [{ rightToLeft: true }] });
+  byType.columns = [
+    { header: 'نوع الوثيقة', key: 'name', width: 34 },
+    { header: 'العدد', key: 'count', width: 12 },
+    { header: 'الإيراد', key: 'revenue', width: 14 }
+  ];
+  byType.addRows(input.stats.byType);
+  byType.getRow(1).font = { bold: true };
+
+  const byDay = wb.addWorksheet('حسب اليوم', { views: [{ rightToLeft: true }] });
+  byDay.columns = [
+    { header: 'اليوم', key: 'day', width: 16 },
+    { header: 'العدد', key: 'count', width: 12 },
+    { header: 'الإيراد', key: 'revenue', width: 14 }
+  ];
+  byDay.addRows(input.stats.byDay);
+  byDay.getRow(1).font = { bold: true };
+
+  return Buffer.from(await wb.xlsx.writeBuffer());
 }

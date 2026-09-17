@@ -1,14 +1,29 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RouteKey } from '@shared/routes';
 import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
-import EditorScreen from './screens/EditorScreen';
+import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
 import TemplatesScreen from './screens/TemplatesScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
+
+/** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
+type EditorTarget = {
+  templateId: number | null;
+  citizenId: number | null;
+  draftId: number | null;
+  documentId: number | null;
+};
+
+const NO_TARGET: EditorTarget = {
+  templateId: null,
+  citizenId: null,
+  draftId: null,
+  documentId: null
+};
 
 export default function App() {
   const [route, setRoute] = useState<RouteKey>('editor');
@@ -16,8 +31,15 @@ export default function App() {
   const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0 });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [search, setSearch] = useState('');
-  const [pendingTemplate, setPendingTemplate] = useState<number | null>(null);
-  const [pendingCitizen, setPendingCitizen] = useState<number | null>(null);
+  const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
+  const [editorStatus, setEditorStatus] = useState<{
+    transaction: string | null;
+    busy: boolean;
+    exporting: boolean;
+  }>({ transaction: null, busy: false, exporting: false });
+
+  /** أدوات المحرر التي يناديها الشريط العلوي — تُسجَّل ما دام المحرر معروضًا. */
+  const editorRef = useRef<EditorHandle | null>(null);
 
   const refresh = useCallback(async () => {
     const [s, c, p] = await Promise.all([
@@ -43,7 +65,27 @@ export default function App() {
     [refresh]
   );
 
-  const handlePrint = useCallback(() => window.print(), []);
+  const openEditor = useCallback(
+    (patch: Partial<EditorTarget>) => {
+      setTarget({ ...NO_TARGET, ...patch });
+      navigate('editor');
+    },
+    [navigate]
+  );
+
+  /** أزرار الشريط العلوي تعمل على المحرر؛ ومن شاشة أخرى تنقل إليه أولًا. */
+  const editorAction = useCallback(
+    (run: (handle: EditorHandle) => void) => () => {
+      const handle = editorRef.current;
+      if (route === 'editor' && handle) run(handle);
+      else navigate('editor');
+    },
+    [navigate, route]
+  );
+
+  const handlePrint = editorAction((h) => h.print());
+  const handleSaveDraft = editorAction((h) => h.saveDraft());
+  const handleExportPdf = editorAction((h) => h.exportPdf());
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,33 +110,44 @@ export default function App() {
   function renderScreen() {
     switch (route) {
       case 'editor':
-        return <EditorScreen templateId={pendingTemplate} citizenId={pendingCitizen} />;
+        return (
+          <EditorScreen
+            ref={editorRef}
+            templateId={target.templateId}
+            citizenId={target.citizenId}
+            draftId={target.draftId}
+            documentId={target.documentId}
+            printer={selectedPrinter}
+            onStatus={setEditorStatus}
+            onIssued={() => void refresh()}
+          />
+        );
       case 'templates':
         return (
           <TemplatesScreen
-            onOpenInEditor={(id) => {
-              setPendingTemplate(id);
-              navigate('editor');
-            }}
+            onOpenInEditor={(id) => openEditor({ templateId: id })}
+            onOpenDraft={(id) => openEditor({ draftId: id })}
             onChanged={() => void refresh()}
           />
         );
       case 'archive':
-        return <ArchiveScreen />;
+        return (
+          <ArchiveScreen
+            onOpenInEditor={(id) => openEditor({ documentId: id })}
+            onChanged={() => void refresh()}
+          />
+        );
       case 'citizens':
         return (
           <CitizensScreen
-            onInsertIntoEditor={(id) => {
-              setPendingCitizen(id);
-              navigate('editor');
-            }}
+            onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
             onChanged={() => void refresh()}
           />
         );
       case 'letterhead':
         return <LetterheadScreen />;
       case 'search':
-        return <SearchScreen />;
+        return <SearchScreen query={search} />;
     }
   }
 
@@ -113,13 +166,18 @@ export default function App() {
       />
       <div className="pr-72">
         <Header
-          transaction={null}
+          transaction={editorStatus.transaction}
           search={search}
-          onSearch={setSearch}
+          onSearch={(value) => {
+            setSearch(value);
+            if (value.trim() && route !== 'search') navigate('search');
+          }}
           onSwapTemplate={() => navigate('templates')}
-          onSaveDraft={() => undefined}
-          onExportPdf={() => undefined}
+          onSaveDraft={handleSaveDraft}
+          onExportPdf={handleExportPdf}
           onPrint={handlePrint}
+          exporting={editorStatus.exporting}
+          busy={editorStatus.busy}
         />
         {renderScreen()}
       </div>

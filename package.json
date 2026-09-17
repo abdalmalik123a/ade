@@ -11,13 +11,56 @@
     "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder --win",
+    "pack": "npm run icon && npm run build && electron-builder --dir",
+    "dist": "npm run icon && npm run build && electron-builder --win",
     "postinstall": "electron-builder install-app-deps",
     "design": "node tools/extract-tokens.mjs && node tools/html-to-tsx.mjs",
     "tokens": "node tools/extract-tokens.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "icon": "node tools/make-icon.mjs"
+  },
+  "build": {
+    "appId": "iq.diwan.bureau",
+    "productName": "Diwan",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "src/main/db/*.sql"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/tessdata",
+        "to": "tessdata"
+      }
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "diwan-${version}-setup.${ext}",
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "language": "1025",
+      "shortcutName": "ديوان",
+      "createDesktopShortcut": true
+    }
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

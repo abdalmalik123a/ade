@@ -8,7 +8,7 @@
  * بل كتل يركّبها صاحب المكتب ويرتّبها، وتُحفظ JSON.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Seal } from '@shared/api';
+import type { OfficeSettings, PrinterInfo, Seal } from '@shared/api';
 import {
   emptyLayout,
   mmToPx,
@@ -38,6 +38,9 @@ const SEAL_KINDS = ['ختم', 'توقيع', 'شعار'];
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
+const settingInput =
+  'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+
 let counter = 0;
 const nextId = () => `b${Date.now().toString(36)}${(counter++).toString(36)}`;
 
@@ -52,8 +55,20 @@ export default function LetterheadScreen() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seals, setSeals] = useState<Seal[]>([]);
+  const [settings, setSettings] = useState<OfficeSettings | null>(null);
+  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const toastTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    void Promise.all([window.diwan.settings.get(), window.diwan.printers.list()]).then(
+      ([loaded, list]) => {
+        setSettings(loaded);
+        setPrinters(list);
+      }
+    );
+  }, []);
 
   const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
     setToast({ text, tone });
@@ -662,6 +677,138 @@ export default function LetterheadScreen() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* إعدادات المكتب والطباعة — هويّة الكتاب وتسلسله ومخرجه */}
+            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+              <div className="flex items-center justify-between pb-space-xs">
+                <div className="flex items-center gap-space-xs">
+                  <span className="material-symbols-outlined text-secondary text-[20px]">
+                    settings
+                  </span>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
+                    إعدادات المكتب والطباعة
+                  </h3>
+                </div>
+                {settingsDirty && (
+                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold">
+                    غير محفوظة
+                  </span>
+                )}
+              </div>
+
+              {settings && (
+                <>
+                  <div className="grid grid-cols-2 gap-space-sm">
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        اسم المكتب
+                      </span>
+                      <input
+                        className={settingInput}
+                        type="text"
+                        value={settings.officeName}
+                        placeholder="—"
+                        onChange={(e) => {
+                          setSettings({ ...settings, officeName: e.target.value });
+                          setSettingsDirty(true);
+                        }}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        اسم المشغّل (يُطبع أسفل الكتاب)
+                      </span>
+                      <input
+                        className={settingInput}
+                        type="text"
+                        value={settings.operatorName}
+                        placeholder="—"
+                        onChange={(e) => {
+                          setSettings({ ...settings, operatorName: e.target.value });
+                          setSettingsDirty(true);
+                        }}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        بادئة رقم الصادر
+                      </span>
+                      <input
+                        className={settingInput}
+                        type="text"
+                        value={settings.serialPrefix}
+                        onChange={(e) => {
+                          setSettings({ ...settings, serialPrefix: e.target.value });
+                          setSettingsDirty(true);
+                        }}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        سنة السجل
+                      </span>
+                      <input
+                        className={settingInput}
+                        type="number"
+                        value={settings.serialYear}
+                        onChange={(e) => {
+                          setSettings({
+                            ...settings,
+                            serialYear: Number(e.target.value) || settings.serialYear
+                          });
+                          setSettingsDirty(true);
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="flex flex-col gap-1">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                      الطابعة الافتراضية
+                    </span>
+                    <select
+                      className={settingInput}
+                      value={settings.defaultPrinter ?? ''}
+                      onChange={(e) => {
+                        setSettings({ ...settings, defaultPrinter: e.target.value || null });
+                        setSettingsDirty(true);
+                      }}
+                    >
+                      <option value="">— يسأل النظام عند كل طباعة —</option>
+                      {printers.map((p) => (
+                        <option key={p.name} value={p.name}>
+                          {p.displayName}
+                          {p.isDefault ? ' (طابعة النظام)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <p className="font-label-sm text-label-sm text-on-surface-variant">
+                    {printers.length === 0
+                      ? 'لا طابعة مثبَّتة على هذا الجهاز'
+                      : settings.defaultPrinter
+                        ? 'الطباعة تخرج مباشرةً إلى هذه الطابعة بلا حوار'
+                        : 'بلا طابعة محدَّدة يُفتح حوار الطباعة في النظام'}
+                  </p>
+
+                  <button
+                    className="w-full h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+                    type="button"
+                    disabled={!settingsDirty}
+                    onClick={() => {
+                      void window.diwan.settings.set(settings).then((saved) => {
+                        setSettings(saved);
+                        setSettingsDirty(false);
+                        say('حُفظت إعدادات المكتب');
+                      });
+                    }}
+                  >
+                    حفظ إعدادات المكتب
+                  </button>
+                </>
               )}
             </div>
           </div>

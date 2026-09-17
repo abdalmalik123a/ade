@@ -4,9 +4,13 @@
  * مبنيّة على العلامات المنقولة من stitch_/_1/code.html بأصنافها كما هي،
  * لكن كل رقم وكل صفّ يأتي من قاعدة البيانات. المنظومة تبدأ فارغة،
  * فالحالة الطبيعية أول يوم هي: أصفار وجدول خالٍ برسالة تشرح ما يملؤه.
+ *
+ * الكتاب الصادر لا يُعدَّل في مكانه: بصمته تشهد على متنه. «تعديل المتغيرات»
+ * يفتح نسخةً منه في المحرر تصدر برقم جديد، والأصل يبقى في الأرشيف كما صدر.
  */
-import { useEffect, useState } from 'react';
-import type { ArchiveStats, DocumentRow } from '@shared/api';
+import { useCallback, useEffect, useState } from 'react';
+import type { ArchiveStats, DocumentDetail, DocumentRow } from '@shared/api';
+import { errorText } from '../lib/errors';
 
 const COLUMNS = [
   'رقم الصادر',
@@ -26,20 +30,60 @@ function changeVsYesterday(today: number, yesterday: number): string | null {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
 
-export default function ArchiveScreen() {
+function todayIso(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+type Props = {
+  onOpenInEditor?: (documentId: number) => void;
+  onChanged?: () => void;
+};
+
+export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
   const [stats, setStats] = useState<ArchiveStats | null>(null);
   const [rows, setRows] = useState<DocumentRow[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [inspected, setInspected] = useState<number | null>(null);
+  const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [query, setQuery] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const day = todayIso();
+
+  const load = useCallback(async () => {
+    const [s, r] = await Promise.all([
+      window.diwan.archive.stats(),
+      window.diwan.documents.list({ from: day, to: day, query })
+    ]);
+    setStats(s);
+    setRows(r);
+    setSelected((prev) => new Set([...prev].filter((id) => r.some((row) => row.id === id))));
+    setInspected((prev) => (prev && r.some((row) => row.id === prev) ? prev : (r[0]?.id ?? null)));
+  }, [day, query]);
 
   useEffect(() => {
-    void (async () => {
-      const [s, r] = await Promise.all([window.diwan.archive.stats(), window.diwan.archive.today()]);
-      setStats(s);
-      setRows(r);
-      setInspected(r[0]?.id ?? null);
-    })();
-  }, []);
+    const timer = setTimeout(() => void load(), query ? 180 : 0);
+    return () => clearTimeout(timer);
+  }, [load, query]);
+
+  // تفاصيل الكتاب المحدَّد: البصمة وعدد ما طُبع منه فعلًا.
+  useEffect(() => {
+    if (inspected === null) {
+      setDetail(null);
+      return;
+    }
+    void window.diwan.documents.get(inspected).then(setDetail);
+  }, [inspected, rows]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const change = stats ? changeVsYesterday(stats.issuedToday, stats.issuedYesterday) : null;
   const allChecked = rows.length > 0 && selected.size === rows.length;
@@ -52,6 +96,57 @@ export default function ArchiveScreen() {
       return next;
     });
   }
+
+  async function run(label: string, work: () => Promise<void>) {
+    setBusy(label);
+    setError(null);
+    try {
+      await work();
+    } catch (e) {
+      setError(errorText(e, 'تعذّر إتمام العملية'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const reprint = (ids: number[]) =>
+    run('print', async () => {
+      if (ids.length === 0) return;
+      const result = await window.diwan.documents.reprint(ids, 1);
+      await load();
+      onChanged?.();
+      setToast(
+        result.failed === 0
+          ? `أُعيدت طباعة ${nf.format(result.printed)} كتابًا طبق الأصل`
+          : `طُبع ${nf.format(result.printed)}، وتعذّر ${nf.format(result.failed)}`
+      );
+    });
+
+  const exportReport = () =>
+    run('excel', async () => {
+      const result = await window.diwan.documents.exportReport({
+        from: day,
+        to: day,
+        query,
+        title: `سجل الصادر — ${day}`
+      });
+      if (result) setToast(`حُفظ التقرير (${nf.format(result.count)} سجلًا): ${result.path}`);
+    });
+
+  const backup = () =>
+    run('backup', async () => {
+      const result = await window.diwan.documents.backup();
+      if (result) {
+        const mb = (result.bytes / (1024 * 1024)).toFixed(1);
+        setToast(`حُفظت نسخة احتياطية (${mb} ميغابايت): ${result.path}`);
+      }
+    });
+
+  const savePdf = (id: number) =>
+    run('pdf', async () => {
+      const path = await window.diwan.documents.exportPdf(id);
+      if (path) setToast(`حُفظ PDF: ${path}`);
+    });
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
@@ -178,6 +273,28 @@ export default function ArchiveScreen() {
           </div>
         </section>
 
+        {(error || toast) && (
+          <div
+            className={`flex items-start gap-space-xs p-space-sm rounded-lg font-label-md text-label-md ${
+              error
+                ? 'bg-error-container text-on-error-container'
+                : 'bg-secondary-fixed text-on-secondary-fixed'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px] shrink-0">
+              {error ? 'error' : 'check_circle'}
+            </span>
+            <span className="flex-1 break-all">{error ?? toast}</span>
+            <button
+              className="material-symbols-outlined text-[16px]"
+              type="button"
+              onClick={() => (error ? setError(null) : setToast(null))}
+            >
+              close
+            </button>
+          </div>
+        )}
+
         {/* شريط الأوامر */}
         <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-md flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-sm flex-1">
@@ -189,6 +306,8 @@ export default function ArchiveScreen() {
                 className="w-full h-10 pr-10 pl-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary"
                 placeholder="ابحث برقم الصادر، اسم المواطن، البطاقة الوطنية، أو الجهة..."
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
               />
             </div>
           </div>
@@ -196,27 +315,32 @@ export default function ArchiveScreen() {
             <button
               className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md transition-all disabled:opacity-40"
               type="button"
-              disabled={selected.size === 0}
+              disabled={selected.size === 0 || busy !== null}
+              onClick={() => void reprint([...selected])}
             >
               <span className="material-symbols-outlined text-[18px]">print</span>
-              <span>طباعة المحددة دفعة واحدة</span>
+              <span>{busy === 'print' ? 'يطبع...' : 'طباعة المحددة دفعة واحدة'}</span>
               <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
                 {selected.size}
               </span>
             </button>
             <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
               type="button"
+              disabled={busy !== null}
+              onClick={() => void exportReport()}
             >
               <span className="material-symbols-outlined text-[18px]">table_view</span>
-              <span>تقرير إحصائي Excel</span>
+              <span>{busy === 'excel' ? 'يُصدَّر...' : 'تقرير إحصائي Excel'}</span>
             </button>
             <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
               type="button"
+              disabled={busy !== null}
+              onClick={() => void backup()}
             >
               <span className="material-symbols-outlined text-[18px]">backup</span>
-              <span>نسخ احتياطي فوري</span>
+              <span>{busy === 'backup' ? 'ينسخ...' : 'نسخ احتياطي فوري'}</span>
             </button>
           </div>
         </section>
@@ -237,6 +361,31 @@ export default function ArchiveScreen() {
               <span className="font-label-sm text-label-sm">تحديث أرشيف حي (محلي)</span>
             </div>
           </div>
+
+          {/* تدقيق الكتاب المحدَّد: بصمته وما طُبع منه — ما يسأل عنه المدقّق */}
+          {detail && (
+            <div className="mx-space-md mb-space-sm p-space-sm rounded-lg bg-surface-container-low flex flex-wrap items-center gap-space-md font-label-sm text-label-sm text-on-surface-variant">
+              <span className="flex items-center gap-1 text-on-surface font-semibold">
+                <span className="material-symbols-outlined text-[16px] text-secondary">
+                  fingerprint
+                </span>
+                {detail.serial}
+              </span>
+              <span className="font-mono text-[10px] break-all flex-1" title={detail.sha256}>
+                {detail.sha256}
+              </span>
+              <span>{nf.format(detail.printedCopies)} نسخة مطبوعة</span>
+              <button
+                className="font-label-sm text-label-sm text-secondary font-semibold hover:underline flex items-center gap-1 disabled:opacity-50"
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void savePdf(detail.id)}
+              >
+                <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                حفظ نسخة PDF
+              </button>
+            </div>
+          )}
 
           <div className="overflow-x-auto w-full">
             <table className="w-full text-right border-collapse">
@@ -268,7 +417,7 @@ export default function ArchiveScreen() {
                       <div className="py-space-xl flex flex-col items-center gap-space-xs text-on-surface-variant">
                         <span className="material-symbols-outlined text-[40px]">inbox</span>
                         <span className="font-body-md text-body-md">
-                          لم يصدر أي كتاب اليوم
+                          {query ? 'لا كتاب يطابق البحث اليوم' : 'لم يصدر أي كتاب اليوم'}
                         </span>
                         <span className="font-label-sm text-label-sm">
                           كل كتاب تطبعه من المحرر يُسجَّل هنا برقم صادر وبصمة توثيق
@@ -308,6 +457,7 @@ export default function ArchiveScreen() {
                             onClick={(e) => {
                               e.stopPropagation();
                               void navigator.clipboard.writeText(row.serial);
+                              setToast(`نُسخ ${row.serial} إلى الحافظة`);
                             }}
                           >
                             <span className="material-symbols-outlined text-[16px]">
@@ -353,18 +503,25 @@ export default function ArchiveScreen() {
                       <td className="p-space-md text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm"
+                            className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary text-on-surface flex items-center justify-center transition-all shadow-sm disabled:opacity-40"
                             title="إعادة طباعة طبق الأصل"
                             type="button"
-                            onClick={(e) => e.stopPropagation()}
+                            disabled={busy !== null}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void reprint([row.id]);
+                            }}
                           >
                             <span className="material-symbols-outlined text-[18px]">print</span>
                           </button>
                           <button
                             className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all"
-                            title="تعديل المتغيرات السريعة"
+                            title="تعديل المتغيرات السريعة — نسخة جديدة في المحرر"
                             type="button"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenInEditor?.(row.id);
+                            }}
                           >
                             <span className="material-symbols-outlined text-[18px]">
                               edit_square

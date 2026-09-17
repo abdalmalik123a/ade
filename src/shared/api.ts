@@ -3,6 +3,15 @@ import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
 
+/**
+ * مواضع محجوزة داخل علامات الورقة تملؤها العملية الرئيسية وقت الإصدار.
+ * الواجهة لا تعرف رقم الصادر النهائي ولا البصمة قبل حجزهما، فترسل الموضع
+ * بدل القيمة — فلا يُحرق رقم على كتاب لم يصدر.
+ */
+export const SERIAL_SLOT = '{{DIWAN_SERIAL}}';
+export const QR_SLOT = '{{DIWAN_QR}}';
+export const FINGERPRINT_SLOT = '{{DIWAN_FINGERPRINT}}';
+
 export type OfficeSettings = {
   officeName: string;
   operatorName: string;
@@ -34,8 +43,84 @@ export type DocumentRow = {
   docType: string | null;
   destination: string | null;
   issuedTime: string;
+  issuedDate: string;
   copies: number;
   fee: number;
+};
+
+/** الكتاب كاملًا — لإعادة الطباعة والتدقيق وفتحه في المحرر من جديد. */
+export type DocumentDetail = {
+  id: number;
+  serial: string;
+  templateId: number | null;
+  citizenId: number | null;
+  citizenName: string;
+  nationalId: string | null;
+  docType: string | null;
+  destination: string | null;
+  purpose: string | null;
+  valuesJson: string;
+  bodyHtml: string;
+  copies: number;
+  copyKind: string | null;
+  fee: number;
+  gregorianDate: string;
+  hijriDate: string | null;
+  issuedAt: string;
+  operator: string | null;
+  sha256: string;
+  status: string;
+  /** مجموع ما طُبع فعلًا: الإصدار الأول وكل إعادة طباعة. */
+  printedCopies: number;
+};
+
+/**
+ * ما ترسله الواجهة لإصدار كتاب. علامات الورقة تُرسل بمواضع محجوزة
+ * (رقم الصادر، الرمز، البصمة) تملؤها العملية الرئيسية داخل المعاملة نفسها.
+ */
+export type IssueInput = {
+  sheetHtml: string;
+  templateId: number | null;
+  citizenId: number | null;
+  authorityId: number | null;
+  citizenName: string;
+  nationalId: string | null;
+  docType: string | null;
+  destination: string | null;
+  purpose: string | null;
+  values: Record<string, string>;
+  copies: number;
+  copyKind: string | null;
+  fee: number;
+  gregorianDate: string;
+  hijriDate: string | null;
+  operator: string | null;
+  printer: string | null;
+  serialPrefix: string;
+  serialYear: number;
+};
+
+export type IssueOutcome = {
+  id: number;
+  serial: string;
+  sha256: string;
+  /** حال الطباعة: نجحت، أو أُلغيت من حوار النظام، أو لم تُطلب. */
+  printed: 'ok' | 'failed' | 'skipped';
+  printError?: string;
+  /** مسار نسخة PDF المؤرشفة داخل مخزن التطبيق. */
+  archivedPath: string | null;
+  /** سبب تعذّر الأرشفة، إن تعذّرت — الكتاب مقيَّد على كل حال. */
+  archiveError?: string;
+};
+
+/** مؤشرات مدة زمنية — شاشة البحث والتقارير الدورية. */
+export type PeriodStats = {
+  issued: number;
+  revenue: number;
+  citizens: number;
+  printedCopies: number;
+  byType: { name: string; count: number; revenue: number }[];
+  byDay: { day: string; count: number; revenue: number }[];
 };
 
 /** مؤشرات اليوم في أعلى شاشة الأرشيف. */
@@ -240,6 +325,29 @@ export type DiwanApi = {
   };
   documents: {
     peekSerial(prefix: string, year: number): Promise<string>;
+    /** الإصدار: رقم وبصمة ورمز تحقق وقيد في السجل، ثم طباعة وأرشفة PDF. */
+    issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
+    get(id: number): Promise<DocumentDetail | null>;
+    list(opts?: {
+      from?: string | null;
+      to?: string | null;
+      query?: string;
+      limit?: number;
+    }): Promise<DocumentRow[]>;
+    stats(opts?: { from?: string | null; to?: string | null }): Promise<PeriodStats>;
+    /** إعادة طباعة طبق الأصل — تُقيَّد ولا تستهلك رقمًا جديدًا. */
+    reprint(ids: number[], copies: number): Promise<{ printed: number; failed: number }>;
+    /** تصدير الكتاب PDF إلى مكان يختاره المكتب. */
+    exportPdf(id: number): Promise<string | null>;
+    /** تقرير المدة جدولًا في Excel — العنوان يظهر في ورقة المؤشرات. */
+    exportReport(opts: {
+      from?: string | null;
+      to?: string | null;
+      query?: string;
+      title?: string;
+    }): Promise<{ path: string; count: number } | null>;
+    /** نسخة احتياطية كاملة لقاعدة البيانات ومخزن الملفات. */
+    backup(): Promise<{ path: string; bytes: number } | null>;
   };
   templates: {
     list(category?: string | null): Promise<TemplateSummary[]>;
@@ -266,6 +374,22 @@ export type DiwanApi = {
       bodyHtml: string;
     }): Promise<number>;
     delete(id: number): Promise<void>;
+  };
+  /** إخراج الورقة: طباعة ومعاينة PDF وصورة عالية الدقة وWord. */
+  output: {
+    print(payload: {
+      sheetHtml: string;
+      printer: string | null;
+      copies: number;
+      silent: boolean;
+    }): Promise<{ ok: boolean; reason?: string }>;
+    savePdf(payload: { sheetHtml: string; suggestedName: string }): Promise<string | null>;
+    savePng300(payload: { sheetHtml: string; suggestedName: string }): Promise<string | null>;
+    saveDocx(payload: {
+      sheetHtml: string;
+      suggestedName: string;
+      title: string;
+    }): Promise<string | null>;
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;

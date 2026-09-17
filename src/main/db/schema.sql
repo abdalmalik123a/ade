@@ -130,6 +130,8 @@ CREATE TABLE IF NOT EXISTS documents (
   template_id    INTEGER REFERENCES templates(id) ON DELETE SET NULL,
   citizen_id     INTEGER REFERENCES citizens(id) ON DELETE SET NULL,
   authority_id   INTEGER REFERENCES authorities(id) ON DELETE SET NULL,
+  citizen_name   TEXT,                    -- صورة الاسم وقت الإصدار: الكتاب يبقى شاهدًا
+  citizen_nid    TEXT,                    -- ولو حُذف ملف المواطن أو صدر لمن لا ملفّ له
   doc_type       TEXT,                    -- تأييد سكن معنون، براءة ذمة وظيفية، ...
   destination    TEXT,                    -- الجهة الموجه إليها
   purpose        TEXT,                    -- الغرض من التأييد
@@ -145,10 +147,12 @@ CREATE TABLE IF NOT EXISTS documents (
   operator       TEXT,
   sha256         TEXT NOT NULL,           -- بصمة التوثيق
   status         TEXT NOT NULL DEFAULT 'issued',
+  search_fold    TEXT,                    -- صورة مطبَّعة للبحث العربي المتساهل
   UNIQUE(serial_year, serial_seq)
 );
 CREATE INDEX IF NOT EXISTS ix_docs_citizen ON documents(citizen_id);
 CREATE INDEX IF NOT EXISTS ix_docs_issued ON documents(issued_at);
+CREATE INDEX IF NOT EXISTS ix_docs_fold ON documents(search_fold);
 
 CREATE TABLE IF NOT EXISTS document_prints (
   id          INTEGER PRIMARY KEY,

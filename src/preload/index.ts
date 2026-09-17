@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
 import type { TemplateInput } from '@shared/template';
-import type { CitizenInput } from '@shared/api';
+import type { CitizenInput, IssueInput } from '@shared/api';
 
 /** الجسر الوحيد بين الواجهة والنظام. لا Node في الواجهة إطلاقًا. */
 const invoke = ipcRenderer.invoke.bind(ipcRenderer);
@@ -68,7 +68,37 @@ const api: DiwanApi = {
     ocrAvailable: () => invoke('scanner:ocrAvailable')
   },
   documents: {
-    peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year)
+    peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year),
+    issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
+    get: (id: number) => invoke('documents:get', id),
+    list: (opts?: { from?: string | null; to?: string | null; query?: string; limit?: number }) =>
+      invoke('documents:list', opts ?? {}),
+    stats: (opts?: { from?: string | null; to?: string | null }) =>
+      invoke('documents:stats', opts ?? {}),
+    reprint: (ids: number[], copies: number) => invoke('documents:reprint', ids, copies),
+    exportPdf: (id: number) => invoke('documents:exportPdf', id),
+    exportReport: (opts: {
+      from?: string | null;
+      to?: string | null;
+      query?: string;
+      title?: string;
+    }) =>
+      invoke('documents:exportReport', opts),
+    backup: () => invoke('documents:backup')
+  },
+  output: {
+    print: (payload: {
+      sheetHtml: string;
+      printer: string | null;
+      copies: number;
+      silent: boolean;
+    }) => invoke('output:print', payload),
+    savePdf: (payload: { sheetHtml: string; suggestedName: string }) =>
+      invoke('output:savePdf', payload),
+    savePng300: (payload: { sheetHtml: string; suggestedName: string }) =>
+      invoke('output:savePng300', payload),
+    saveDocx: (payload: { sheetHtml: string; suggestedName: string; title: string }) =>
+      invoke('output:saveDocx', payload)
   },
   templates: {
     list: (category?: string | null) => invoke('templates:list', category ?? null),

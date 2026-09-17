@@ -5,6 +5,7 @@ import { registerFileIpc } from './files';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
+import { archiveStats, listDocuments } from '../services/documents';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -81,55 +82,13 @@ export function registerIpc(): void {
     return { templates: templates.n, issuedToday: issuedToday.n };
   });
 
-  ipcMain.handle('archive:stats', (): ArchiveStats => {
-    const db = getDb();
-    const count = (expr: string) =>
-      (db.prepare(`SELECT COUNT(*) AS n FROM documents WHERE ${expr}`).get() as { n: number }).n;
-
-    const issuedToday = count("date(issued_at) = date('now','localtime')");
-    const issuedYesterday = count("date(issued_at) = date('now','localtime','-1 day')");
-    const revenue = db
-      .prepare(
-        `SELECT COALESCE(SUM(fee), 0) AS total FROM documents
-         WHERE date(issued_at) = date('now','localtime')`
-      )
-      .get() as { total: number };
-
-    const top = db
-      .prepare(
-        `SELECT t.title AS title, COUNT(*) AS n
-         FROM documents d JOIN templates t ON t.id = d.template_id
-         WHERE date(d.issued_at) = date('now','localtime')
-         GROUP BY d.template_id ORDER BY n DESC LIMIT 1`
-      )
-      .get() as { title: string; n: number } | undefined;
-
-    return {
-      issuedToday,
-      issuedYesterday,
-      revenueToday: revenue.total,
-      topTemplate: top
-        ? { title: top.title, count: top.n, share: issuedToday ? top.n / issuedToday : 0 }
-        : null
-    };
-  });
+  ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));
 
   ipcMain.handle('archive:today', (): DocumentRow[] => {
-    const db = getDb();
-    return db
-      .prepare(
-        `SELECT d.id, d.serial,
-                COALESCE(c.full_name, '') AS citizenName,
-                c.national_id AS nationalId,
-                d.doc_type AS docType,
-                d.destination,
-                strftime('%H:%M', d.issued_at, 'localtime') AS issuedTime,
-                d.copies, d.fee
-         FROM documents d LEFT JOIN citizens c ON c.id = d.citizen_id
-         WHERE date(d.issued_at) = date('now','localtime')
-         ORDER BY d.issued_at DESC`
-      )
-      .all() as DocumentRow[];
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const day = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    return listDocuments(getDb(), { from: day, to: day });
   });
 
   ipcMain.handle('printers:list', async (e): Promise<PrinterInfo[]> => {
