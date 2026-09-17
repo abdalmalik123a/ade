@@ -93,8 +93,9 @@ export function ensureSearchColumn(db: Database): void {
   const cols = db.prepare('PRAGMA table_info(documents)').all() as { name: string }[];
   if (!cols.some((c) => c.name === 'search_fold')) {
     db.exec('ALTER TABLE documents ADD COLUMN search_fold TEXT');
-    db.exec('CREATE INDEX IF NOT EXISTS ix_docs_fold ON documents(search_fold)');
   }
+  // بعد ضمان العمود لا قبله — والقاعدة الجديدة تصل هنا بعمودها من المخطط.
+  db.exec('CREATE INDEX IF NOT EXISTS ix_docs_fold ON documents(search_fold)');
 }
 
 /** الصورة المطبَّعة التي يجري عليها البحث — تُخزَّن مع السجل لا وقت الاستعلام. */

@@ -152,7 +152,9 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 CREATE INDEX IF NOT EXISTS ix_docs_citizen ON documents(citizen_id);
 CREATE INDEX IF NOT EXISTS ix_docs_issued ON documents(issued_at);
-CREATE INDEX IF NOT EXISTS ix_docs_fold ON documents(search_fold);
+-- فهرس search_fold يُنشأ في الترحيل (services/documents.ts)، لا هنا:
+-- CREATE TABLE IF NOT EXISTS لا يضيف عمودًا إلى جدول قائم، فيسقط الفهرس
+-- على قاعدة أُنشئت قبل هذا العمود ويُسقط إقلاع التطبيق كلّه معه.
 
 CREATE TABLE IF NOT EXISTS document_prints (
   id          INTEGER PRIMARY KEY,

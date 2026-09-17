@@ -81,6 +81,40 @@ describe('أرقام الصادر', () => {
   });
 });
 
+describe('الترحيل على قاعدة قائمة', () => {
+  it('قاعدة أُنشئت قبل عمود البحث تُرحَّل ولا تُسقط الإقلاع', () => {
+    const db = freshDb();
+    // محاكاة قاعدة المكتب القديمة: بلا عمود البحث ولا فهرسه.
+    db.exec('DROP INDEX IF EXISTS ix_docs_fold');
+    db.exec('ALTER TABLE documents DROP COLUMN search_fold');
+    db.exec('ALTER TABLE documents DROP COLUMN citizen_name');
+    db.exec('ALTER TABLE documents DROP COLUMN citizen_nid');
+
+    expect(() => prepareDocuments(db)).not.toThrow();
+
+    const cols = (db.prepare('PRAGMA table_info(documents)').all() as { name: string }[]).map(
+      (c) => c.name
+    );
+    expect(cols).toContain('search_fold');
+    expect(cols).toContain('citizen_name');
+
+    const indexes = (
+      db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all() as { name: string }[]
+    ).map((i) => i.name);
+    expect(indexes).toContain('ix_docs_fold');
+
+    // والإصدار يعمل بعد الترحيل كما يعمل على قاعدة جديدة.
+    expect(() => issueDocument(db, input())).not.toThrow();
+    expect(listDocuments(db, { query: 'احمد' })).toHaveLength(1);
+  });
+
+  it('الترحيل يُعاد مرّتين بلا أثر', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    expect(() => prepareDocuments(db)).not.toThrow();
+  });
+});
+
 describe('إصدار الكتاب', () => {
   it('يملأ المواضع المحجوزة: الرقم والبصمة ورمز التحقق', () => {
     const db = freshDb();

@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, shell, protocol, net } from 'electron';
+import { app, BrowserWindow, shell, protocol, net, dialog } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
@@ -55,8 +55,20 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(join(storeDir(), rel)).toString());
   });
 
-  getDb();
-  registerIpc();
+  // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.
+  try {
+    getDb();
+    registerIpc();
+  } catch (e) {
+    dialog.showErrorBox(
+      'تعذّر تشغيل ديوان',
+      `لم تُفتح قاعدة بيانات المكتب:
+
+${e instanceof Error ? e.message : String(e)}`
+    );
+    app.quit();
+    return;
+  }
   createWindow();
 
   app.on('activate', () => {
