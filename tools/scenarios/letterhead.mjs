@@ -41,7 +41,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
 
   // إلى شاشة الترويسة (الخامسة في التنقّل)
-  await page.goto(4);
+  await page.goto('header-seal-configuration');
   ok('فُتحت شاشة الترويسة', (await page.text()).includes('مصمّم الترويسة والأختام'));
   ok('تبدأ فارغة', (await page.text()).includes('منطقة الترويسة فارغة'));
   ok('الافتراض قسم واحد', (await page.text()).includes('قسم واحد'));

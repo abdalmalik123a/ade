@@ -9,7 +9,9 @@ import type {
   DocumentDetail,
   DocumentRow,
   IssueInput,
-  PeriodStats
+  PeriodStats,
+  TransactionInput,
+  TransactionResult
 } from '@shared/api';
 
 /**
@@ -130,10 +132,30 @@ export function ensureLetterheadLink(db: Database): void {
   }
 }
 
+/** المعاملة الواحدة: خمس أوراق لزبون واحد قيدٌ واحد في الأرشيف. */
+export function ensureTransactionLink(db: Database): void {
+  const cols = db.prepare('PRAGMA table_info(documents)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'transaction_id')) {
+    db.exec('ALTER TABLE documents ADD COLUMN transaction_id INTEGER');
+  }
+  db.exec(`CREATE TABLE IF NOT EXISTS transactions (
+    id           INTEGER PRIMARY KEY,
+    citizen_id   INTEGER,
+    citizen_name TEXT,
+    citizen_nid  TEXT,
+    sheets       INTEGER NOT NULL DEFAULT 0,
+    fee          INTEGER NOT NULL DEFAULT 0,
+    operator     TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS ix_docs_transaction ON documents(transaction_id)');
+}
+
 export function prepareDocuments(db: Database): void {
   ensureSearchColumn(db);
   ensureCitizenSnapshot(db);
   ensureLetterheadLink(db);
+  ensureTransactionLink(db);
 }
 
 export type IssueResult = {
@@ -182,8 +204,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
            serial, serial_year, serial_seq, template_id, citizen_id, authority_id,
            citizen_name, citizen_nid, doc_type, destination, purpose, values_json,
            body_html, copies, copy_kind, fee, gregorian_date, hijri_date, operator,
-           sha256, status, search_fold, letterhead_id
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?)`
+           sha256, status, search_fold, letterhead_id, transaction_id
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?)`
       )
       .run(
         serial,
@@ -207,7 +229,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         input.operator,
         sha256,
         searchFold([serial, name, input.nationalId, input.docType, input.destination, input.purpose, bodyText]),
-        input.letterheadId ?? null
+        input.letterheadId ?? null,
+        input.transactionId ?? null
       );
 
     // آخر استعمال للترويسة — عليه يقوم ترتيب المكتبة، وهو في المعاملة نفسها.
@@ -233,6 +256,67 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
 
     return { id, serial, sha256, sheetHtml };
   })();
+}
+
+/**
+ * معاملة الزبون الواحد: خمس أوراق تُقيَّد قيدًا واحدًا.
+ *
+ * ولكل ورقة رقم صادرها وبصمتها — المعاملة تجمعها ولا تُلغي استقلالها.
+ *
+ * **والكل أو لا شيء.** إن سقطت الورقة الثالثة رُدّت الأولى والثانية معها، فلا
+ * يُحرق رقم صادر على كتاب لم يخرج، ولا تبقى في الأرشيف نصفُ معاملة.
+ */
+export function issueTransaction(db: Database, input: TransactionInput): TransactionResult {
+  const name = input.citizenName.trim();
+  if (!name) throw new Error('لا تصدر معاملة بلا اسم صاحب العلاقة');
+  if (input.sheets.length === 0) throw new Error('لا تصدر معاملة بلا ورقة واحدة');
+
+  prepareDocuments(db);
+
+  return db.transaction((): TransactionResult => {
+    const fee = input.sheets.reduce((sum, s) => sum + Math.max(0, s.fee), 0);
+    const tx = db
+      .prepare(
+        `INSERT INTO transactions (citizen_id, citizen_name, citizen_nid, sheets, fee, operator)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(input.citizenId, name, input.nationalId, input.sheets.length, fee, input.operator);
+    const transactionId = Number(tx.lastInsertRowid);
+
+    const documents = input.sheets.map((sheet) =>
+      issueDocument(db, {
+        ...sheet,
+        citizenId: input.citizenId,
+        citizenName: name,
+        nationalId: input.nationalId,
+        operator: input.operator,
+        printer: input.printer,
+        serialPrefix: input.serialPrefix,
+        serialYear: input.serialYear,
+        gregorianDate: input.gregorianDate,
+        hijriDate: input.hijriDate,
+        transactionId
+      })
+    );
+
+    db.prepare(
+      `INSERT INTO audit_log (entity, entity_id, action, detail, operator)
+       VALUES ('transaction', ?, 'issue', ?, ?)`
+    ).run(transactionId, `${input.sheets.length} ورقة — ${name}`, input.operator);
+
+    return { transactionId, fee, documents };
+  })();
+}
+
+/** أوراق معاملة واحدة — لإعادة طباعتها معًا أو مراجعتها. */
+export function transactionSheets(db: Database, transactionId: number): DocumentRow[] {
+  return db
+    .prepare(
+      `SELECT ${ROW_COLUMNS} FROM documents d
+       LEFT JOIN citizens c ON c.id = d.citizen_id
+       WHERE d.transaction_id = ? ORDER BY d.id`
+    )
+    .all(transactionId) as DocumentRow[];
 }
 
 function escapeHtml(s: string): string {

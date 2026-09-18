@@ -36,20 +36,20 @@ export default async function scenario(page, { shotsDir }) {
   }
 
   // فحوص إضافية: العدّادات صفر والحقول فارغة
-  await page.goto(2);
+  await page.goto('transactions-archive-ledger');
   const archive = await page.text();
   ok('الأرشيف يعلن أنه فارغ', archive.includes('لم يصدر أي كتاب اليوم'));
 
-  await page.goto(1);
+  await page.goto('templates-library-drafts');
   const templates = await page.text();
   ok('مكتبة النماذج تعلن أنها فارغة', templates.includes('مكتبة النماذج فارغة'));
 
-  await page.goto(3);
+  await page.goto('citizens-identity-records');
   const citizens = await page.text();
   ok('دليل المواطنين فارغ', citizens.includes('الدليل فارغ'));
   ok('لا ملف مفتوح', citizens.includes('لم يُفتح أي ملف'));
 
-  await page.goto(0);
+  await page.goto('smart-editor-a4-preview');
   const editor = await page.text();
   ok('المحرر بلا نماذج', editor.includes('لا نماذج في المكتبة بعد'));
   const emptyInputs = await page.eval(`

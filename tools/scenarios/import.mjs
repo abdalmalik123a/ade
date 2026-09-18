@@ -84,7 +84,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (!source) return steps.join('\n');
 
   // ── الاستيراد من مكتبة النماذج ──────────────────────────────────────
-  await page.goto(1);
+  await page.goto('templates-library-drafts');
   await wait(700);
   await page.clickText('استيراد نموذج');
   await wait(2500);

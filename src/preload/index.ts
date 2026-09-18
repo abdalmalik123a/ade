@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
 import type { TemplateInput } from '@shared/template';
-import type { CitizenInput, IssueInput } from '@shared/api';
+import type { CitizenInput, IssueInput, TransactionInput } from '@shared/api';
 
 /** الجسر الوحيد بين الواجهة والنظام. لا Node في الواجهة إطلاقًا. */
 const invoke = ipcRenderer.invoke.bind(ipcRenderer);
@@ -76,6 +76,8 @@ const api: DiwanApi = {
   documents: {
     peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year),
     issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
+    issueTransaction: (input: TransactionInput, print: boolean) =>
+      invoke('documents:issueTransaction', input, print),
     get: (id: number) => invoke('documents:get', id),
     list: (opts?: { from?: string | null; to?: string | null; query?: string; limit?: number }) =>
       invoke('documents:list', opts ?? {}),
@@ -114,6 +116,7 @@ const api: DiwanApi = {
     save: (input: TemplateInput) => invoke('templates:save', input),
     usage: (id: number) => invoke('templates:usage', id),
     delete: (id: number) => invoke('templates:delete', id),
+    doc: (id: number) => invoke('templates:doc', id),
     importFile: () => invoke('templates:importFile'),
     planFolder: () => invoke('templates:planFolder'),
     applyImport: (plan: unknown, choices: unknown) =>

@@ -3,6 +3,7 @@ import type { RouteKey } from '@shared/routes';
 import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
+import ServiceScreen from './screens/ServiceScreen';
 import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
@@ -109,6 +110,8 @@ export default function App() {
 
   function renderScreen() {
     switch (route) {
+      case 'service':
+        return <ServiceScreen printer={selectedPrinter} onIssued={() => void refresh()} />;
       case 'editor':
         return (
           <EditorScreen

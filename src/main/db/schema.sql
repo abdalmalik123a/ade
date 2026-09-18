@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS documents (
   authority_id   INTEGER REFERENCES authorities(id) ON DELETE SET NULL,
   letterhead_id  INTEGER,                 -- من أي ترويسة جاء؛ واللقطة هي الحقيقة عند الرسم
                                           -- ولا قيد أجنبي: حذفها من المكتبة لا يمسّ الكتاب
+  transaction_id INTEGER,                 -- معاملة الزبون الواحد: خمس أوراق قيدٌ واحد
   citizen_name   TEXT,                    -- صورة الاسم وقت الإصدار: الكتاب يبقى شاهدًا
   citizen_nid    TEXT,                    -- ولو حُذف ملف المواطن أو صدر لمن لا ملفّ له
   doc_type       TEXT,                    -- تأييد سكن معنون، براءة ذمة وظيفية، ...
@@ -193,3 +194,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
   operator   TEXT,
   at         TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- معاملة الزبون الواحد: يطلب خمس أوراق فتُقيَّد قيدًا واحدًا، ولكل ورقة
+-- رقم صادرها وبصمتها. وإن سقطت ورقة لم يُحرق رقم ولا بقيت نصف معاملة.
+CREATE TABLE IF NOT EXISTS transactions (
+  id           INTEGER PRIMARY KEY,
+  citizen_id   INTEGER REFERENCES citizens(id) ON DELETE SET NULL,
+  citizen_name TEXT,                      -- صورة الاسم وقت الإصدار: المعاملة شاهد
+  citizen_nid  TEXT,
+  sheets       INTEGER NOT NULL DEFAULT 0,
+  fee          INTEGER NOT NULL DEFAULT 0,
+  operator     TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+

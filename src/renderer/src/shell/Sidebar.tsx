@@ -51,6 +51,11 @@ export default function Sidebar({
 }: SidebarProps) {
   const main: NavItem[] = [
     {
+      key: 'service',
+      icon: 'point_of_sale',
+      label: 'الشبّاك — اختر واملأ واطبع'
+    },
+    {
       key: 'editor',
       icon: 'edit_document',
       label: 'المحرر الذكي ومعاينة A4',

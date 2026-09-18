@@ -117,11 +117,21 @@ class Page {
     await sleep(150);
   }
 
-  async goto(routeIndex) {
-    await this.eval(`
+  /**
+   * ينتقل إلى شاشة بمسارها (data-path) أو برقمها.
+   *
+   * والمسار أولى: إضافة شاشة إلى الشريط تُزحزح الأرقام فتكسر كل سيناريو.
+   */
+  async goto(route) {
+    const found = await this.eval(`
       const links = [...document.querySelectorAll('aside a[data-path]')];
-      links[${routeIndex}]?.click();
+      const el = typeof ${JSON.stringify(route)} === 'number'
+        ? links[${JSON.stringify(route)}]
+        : links.find((a) => a.dataset.path === ${JSON.stringify(route)});
+      el?.click();
+      return Boolean(el);
     `);
+    if (!found) throw new Error(`لا شاشة بهذا المسار: ${route}`);
     await sleep(700);
   }
 

@@ -8,7 +8,12 @@ import * as svc from '../services/documents';
 import { printSheet, renderPdf, renderPng } from '../services/render';
 import { reportToExcel, sheetToDocx } from '../services/export';
 import { pickSavePath } from './files';
-import type { IssueInput, IssueOutcome } from '@shared/api';
+import type {
+  IssueInput,
+  IssueOutcome,
+  TransactionInput,
+  TransactionResult
+} from '@shared/api';
 
 /**
  * الإصدار والإخراج.
@@ -187,6 +192,34 @@ export function registerDocumentIpc(): void {
       const stamp = new Date().toISOString().slice(0, 10);
       const path = await saveAs(w, buffer, `diwan-report-${stamp}.xlsx`, 'Excel', 'xlsx');
       return path ? { path, count: rows.length } : null;
+    }
+  );
+
+  /**
+   * معاملة الزبون الواحد: خمس أوراق تصدر قيدًا واحدًا، ولكلٍّ رقمها وبصمتها.
+   *
+   * الطباعة بعد الإصدار لا قبله — والرسم من الطريق نفسه الذي تسلكه الورقة
+   * المفردة، فلا يختلف ما يخرج من الطابعة عمّا رآه الموظف.
+   */
+  ipcMain.handle(
+    'documents:issueTransaction',
+    async (e, input: TransactionInput, print: boolean): Promise<TransactionResult> => {
+      const out = svc.issueTransaction(getDb(), input);
+      if (print) {
+        const win = BrowserWindow.fromWebContents(e.sender);
+        for (const doc of out.documents) {
+          try {
+            await printSheet({
+              sheetHtml: doc.sheetHtml,
+              deviceName: input.printer ?? undefined,
+              parent: win ?? null
+            });
+          } catch {
+            // ورقةٌ لم تُطبع لا تُلغي المعاملة — الكتب مقيَّدة وتُعاد طباعتها.
+          }
+        }
+      }
+      return out;
     }
   );
 

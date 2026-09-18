@@ -12,7 +12,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ── الحالة الفارغة ───────────────────────────────────────────────
-  await page.goto(1);
+  await page.goto('templates-library-drafts');
   let text = await page.text();
   ok('فُتحت مكتبة النماذج', text.includes('مكتبة النماذج والمسودات') || text.includes('مكتبة النماذج فارغة'));
   ok('تعلن أنها فارغة', text.includes('مكتبة النماذج فارغة'));

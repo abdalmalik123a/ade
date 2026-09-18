@@ -32,7 +32,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  await page.goto(1);
+  await page.goto('templates-library-drafts');
   await wait(700);
   ok('فُتحت مكتبة النماذج', (await page.text()).includes('مكتبة النماذج'));
 

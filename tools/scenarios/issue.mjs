@@ -76,7 +76,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
 
   // ── ترويسة يبنيها المكتب أولًا ──────────────────────────────────────
-  await page.goto(4);
+  await page.goto('header-seal-configuration');
   await page.type('input[placeholder^="مثال: مديرية"]', 'مديرية تربية بغداد / الرصافة الأولى');
   await typeLines('جمهورية العراق — وزارة التربية');
   await page.clickText('حفظ الترويسة');
@@ -84,7 +84,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('بُنيت ترويسة وحُفظت', (await page.text()).includes('حُفظت الترويسة'));
 
   // ── مواطن يُسجَّل ليُستورد لاحقًا بـF2 ──────────────────────────────
-  await page.goto(3);
+  await page.goto('citizens-identity-records');
   await page.clickText('إضافة ملف مواطن');
   await wait(500);
   await fill('الاسم الرباعي واللقب', 'أحمد عادل كريم الموسوي');
@@ -95,7 +95,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('سُجّل ملف مواطن', (await page.text()).includes('أحمد عادل كريم الموسوي'));
 
   // ── المحرر ─────────────────────────────────────────────────────────
-  await page.goto(0);
+  await page.goto('smart-editor-a4-preview');
   await wait(600);
   let text = await page.text();
   ok('فُتح المحرر', text.includes('محرر الكتب الرسمية الذكي'));
@@ -320,7 +320,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   }
 
   // ── الأرشيف ────────────────────────────────────────────────────────
-  await page.goto(2);
+  await page.goto('transactions-archive-ledger');
   await wait(900);
   text = await page.text();
   ok('ظهر الكتاب في سجل اليوم', text.includes(doc?.serial ?? '—'));
@@ -339,7 +339,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'archive.png'));
 
   // ── البحث والتقارير ────────────────────────────────────────────────
-  await page.goto(5);
+  await page.goto('administrative-archive-search');
   await wait(900);
   text = await page.text();
   ok('فُتحت شاشة التقارير', text.includes('نتائج البحث'));
@@ -374,7 +374,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     ok('أعلن التطبيق مسار التقرير', (await page.text()).includes('حُفظ التقرير'));
 
     // حفظ الكتاب PDF من شاشة الأرشيف
-    await page.goto(2);
+    await page.goto('transactions-archive-ledger');
     await wait(900);
     await page.clickText('حفظ نسخة PDF');
     await wait(3500);
@@ -396,7 +396,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     ok('أعلن التطبيق حجم النسخة', backupAnnounced);
 
     // تصدير الورقة الجارية Word ثم صورة 300 نقطة/إنش — من المحرر
-    await page.goto(0);
+    await page.goto('smart-editor-a4-preview');
     await wait(900);
     await page.clickText('استيراد (F2)');
     await wait(700);

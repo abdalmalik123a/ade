@@ -229,6 +229,21 @@ export function suggestFieldName(before: string): Suggestion<string> {
 export type BuiltField = { field: DocField; suggestion: Suggestion<string> };
 
 /**
+ * يربط الحقل المستنتَج بسجل المواطنين حين يعرفه.
+ *
+ * المحرّك عرف أنّ «للتلميذ ( )» اسمُ شخص — فلا يُهدر ما عرفه: يُوسم الحقل
+ * بدوره ومصدره، فيملؤه F2 ويُقيَّد في الأرشيف باسم صاحبه. وبغيره تبقى الورقة
+ * مجهولة الصاحب مهما مُلئت.
+ */
+function citizenLink(guess: Suggestion<string>): Partial<DocField> {
+  if (guess.reason === 'اسمُ شخص') return { source: 'fullName', role: 'name' };
+  if (/^(?:الرقم الوطني|رقم البطاقة|البطاقة الموحدة)/.test(guess.value)) {
+    return { source: 'nationalId', role: 'nationalId' };
+  }
+  return {};
+}
+
+/**
  * يبني فقرةً من سطر: النصّ أجزاءً، والفراغات عقدَ حقول.
  *
  * و`seen` يمنع تكرار المفتاح في الوثيقة الواحدة — ومفتاحان متشابهان يفسدان
@@ -269,7 +284,8 @@ export function paragraphFromLine(
         type: blank.type,
         width: blank.width,
         // الفراغ في الاستمارة يُملأ بالقلم بعد الطباعة ما لم يقل المكتب غير ذلك.
-        fillMode: 'hand'
+        fillMode: 'hand',
+        ...citizenLink(guess)
       }),
       suggestion: guess
     });

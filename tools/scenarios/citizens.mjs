@@ -11,7 +11,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  await page.goto(3);
+  await page.goto('citizens-identity-records');
   let text = await page.text();
   ok('فُتح سجل المواطنين', text.includes('سجل المواطنين والمستمسكات الرسمية'));
   ok('الدليل فارغ', text.includes('الدليل فارغ'));

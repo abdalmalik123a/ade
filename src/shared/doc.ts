@@ -295,6 +295,36 @@ export function reconcileFields(doc: Doc, catalog?: (key: string) => Partial<Doc
   return [...kept, ...added];
 }
 
+/**
+ * اتحاد حقول عدّة وثائق بلا تكرار — وهو قلب شاشة الشبّاك.
+ *
+ * الزبون يطلب خمس أوراق، فتُعرض ورقةُ إدخال واحدة: الاسم يُكتب مرّة ويملأ
+ * الخمس. والترتيب ترتيبُ أوّل ظهور، فلا تقفز الحقول بين اختيار واختيار.
+ *
+ * وإن اختلف وصفُ حقلٍ بين وثيقتين غلب الأوّل، إلا في ثلاث: الإلزام إن ألزمته
+ * واحدة، والعرض أوسعَهما، والمصدر إن عرفه أحدهما — فلا يضيع ما يعرفه البرنامج.
+ */
+export function mergeFields(docs: Doc[]): DocField[] {
+  const out = new Map<string, DocField>();
+  for (const doc of docs) {
+    for (const f of doc.fields) {
+      const prev = out.get(f.key);
+      if (!prev) {
+        out.set(f.key, { ...f });
+        continue;
+      }
+      out.set(f.key, {
+        ...prev,
+        required: prev.required || f.required,
+        width: Math.max(prev.width, f.width),
+        source: prev.source ?? f.source,
+        role: prev.role ?? f.role
+      });
+    }
+  }
+  return [...out.values()];
+}
+
 /** يعيد تسمية حقل بلا أن يمسّ مفتاحه — فالمفتاح مرجع المتن، والعنوان للعين. */
 export function renameField(doc: Doc, key: string, label: string): Doc {
   return {

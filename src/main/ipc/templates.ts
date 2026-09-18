@@ -42,6 +42,12 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('templates:usage', (_e, id: number) => svc.templateUsage(getDb(), id));
   ipcMain.handle('templates:delete', (_e, id: number) => svc.deleteTemplate(getDb(), id));
 
+  /** وثيقة النموذج كتلًا — مقروءةً، ومُرحَّلةً إن حُفظت قبل النواة. */
+  ipcMain.handle('templates:doc', (_e, id: number) => {
+    const row = svc.getTemplate(getDb(), id);
+    return row ? svc.templateDoc(row) : null;
+  });
+
   /** الاستيراد يفتح الحوار من داخل التطبيق ويقرأ الملف بنفسه — لا Word يُفتح. */
   ipcMain.handle('templates:importFile', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);

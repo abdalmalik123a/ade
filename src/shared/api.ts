@@ -101,6 +101,43 @@ export type IssueInput = {
   serialYear: number;
   /** الترويسة التي جاء منها — واللقطة محفوظة مع الكتاب، وهذا للسؤال والترتيب. */
   letterheadId: number | null;
+  /** معاملة الزبون: خمس أوراق قيدٌ واحد. تُملأ داخل `issueTransaction`. */
+  transactionId?: number | null;
+};
+
+/** ورقةٌ في معاملة — ما يخصّها وحدها، وما يشترك فيه الجميع في المعاملة. */
+export type TransactionSheet = Pick<
+  IssueInput,
+  | 'sheetHtml'
+  | 'templateId'
+  | 'letterheadId'
+  | 'authorityId'
+  | 'docType'
+  | 'destination'
+  | 'purpose'
+  | 'values'
+  | 'copies'
+  | 'copyKind'
+  | 'fee'
+>;
+
+export type TransactionInput = {
+  citizenId: number | null;
+  citizenName: string;
+  nationalId: string | null;
+  operator: string | null;
+  printer: string | null;
+  serialPrefix: string;
+  serialYear: number;
+  gregorianDate: string;
+  hijriDate: string | null;
+  sheets: TransactionSheet[];
+};
+
+export type TransactionResult = {
+  transactionId: number;
+  fee: number;
+  documents: { id: number; serial: string; sha256: string; sheetHtml: string }[];
 };
 
 export type IssueOutcome = {
@@ -387,6 +424,8 @@ export type DiwanApi = {
     peekSerial(prefix: string, year: number): Promise<string>;
     /** الإصدار: رقم وبصمة ورمز تحقق وقيد في السجل، ثم طباعة وأرشفة PDF. */
     issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
+    /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. */
+    issueTransaction(input: TransactionInput, print: boolean): Promise<TransactionResult>;
     get(id: number): Promise<DocumentDetail | null>;
     list(opts?: {
       from?: string | null;
@@ -417,6 +456,7 @@ export type DiwanApi = {
     save(input: TemplateInput): Promise<TemplateDetail>;
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
+    doc(id: number): Promise<Doc>;
     importFile(): Promise<ImportedTemplate | null>;
     /** يقرأ مجلدًا ويبني خطّة — ولا يمسّ القاعدة. */
     planFolder(): Promise<ImportPlan | null>;
