@@ -203,6 +203,43 @@ describe('الترويسة بالأقسام', () => {
   });
 });
 
+describe('العدد والتاريخ في الترويسة', () => {
+  it('لا يظهران إلا باختيار المكتب، والأصل فراغ يُملأ باليد', () => {
+    const fresh = emptyLayout();
+    expect(fresh.registry).toEqual({ show: false, mode: 'manual' });
+  });
+
+  it('يُحفظان مع الترويسة ويعودان معها', () => {
+    const db = freshDb();
+    const layout = threeColumn();
+    layout.registry = { show: true, mode: 'printed' };
+    const saved = saveLetterhead(db, {
+      id: null,
+      name: 'بعدد وتاريخ',
+      authorityId: null,
+      layout
+    });
+    expect(getLetterhead(db, saved.id)?.layout.registry).toEqual({ show: true, mode: 'printed' });
+  });
+
+  it('ترويسة بلا كتل لكن بعدد وتاريخ ليست فارغة', () => {
+    const layout = emptyLayout();
+    expect(isLayoutEmpty(layout)).toBe(true);
+    layout.registry = { show: true, mode: 'manual' };
+    expect(isLayoutEmpty(layout)).toBe(false);
+  });
+
+  it('قيمة غريبة في الترحيل تعود إلى الأصل الآمن', () => {
+    expect(normalizeLayout({ columns: 2, sections: [], registry: 'نعم' }).registry).toEqual({
+      show: false,
+      mode: 'manual'
+    });
+    expect(
+      normalizeLayout({ sections: [{ blocks: [] }], registry: { show: true, mode: 'خطأ' } }).registry
+    ).toEqual({ show: true, mode: 'manual' });
+  });
+});
+
 describe('ترحيل الترويسات القديمة', () => {
   it('ترويسة بُنيت قبل الأقسام تصير قسمًا واحدًا بعرض الورقة', () => {
     const db = freshDb();

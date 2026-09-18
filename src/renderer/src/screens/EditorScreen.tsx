@@ -22,6 +22,7 @@ import {
   useState
 } from 'react';
 import type {
+  CitizenDetail,
   DocumentDetail,
   IssueOutcome,
   OfficeSettings,
@@ -40,6 +41,16 @@ import {
   type LetterheadLayout
 } from '@shared/letterhead';
 import { qrSvg } from '@shared/qr';
+import {
+  defaultFields,
+  fieldByRole,
+  toField,
+  tokenFromLabel,
+  uniqueToken,
+  FIELD_GROUPS,
+  type CatalogField,
+  type LetterField
+} from '@shared/letterFields';
 import { errorText } from '../lib/errors';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
@@ -53,73 +64,47 @@ const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مخ
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
 
-/** كيف يظهر العدد والتاريخ على الورقة. */
-export type RegistryMode = 'manual' | 'printed' | 'none';
-
-const REGISTRY_CHOICES: { value: RegistryMode; label: string; hint: string }[] = [
-  { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
-  { value: 'printed', label: 'مطبوعان', hint: 'من سجل الصادر' },
-  { value: 'none', label: 'لا يظهران', hint: 'الترويسة تتكفّل بهما' }
-];
-
 type Fields = {
   serial: string;
   dateGreg: string;
   dateHijri: string;
-  name: string;
-  nationalId: string;
-  jobTitle: string;
-  jobStatus: string;
-  addressedTo: string;
-  purpose: string;
   subject: string;
   docType: string;
   body: string;
   copiesTo: string;
   signerName: string;
   signerRole: string;
-  /** الأصل أن يكتبهما الموظف المستلم بخطّه، فالفراغ هو الافتراض. */
-  registryMode: RegistryMode;
 };
 
 const EMPTY: Fields = {
   serial: '',
   dateGreg: '',
   dateHijri: '',
-  name: '',
-  nationalId: '',
-  jobTitle: '',
-  jobStatus: '',
-  addressedTo: '',
-  purpose: '',
   subject: '',
   docType: '',
   body: '',
   copiesTo: '',
   signerName: '',
-  signerRole: '',
-  registryMode: 'manual'
+  signerRole: ''
 };
 
 const escape = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** حقن المتغيّرات: نفس الصيغة التي يستعملها التصميم — {الاسم} لا [الاسم]. */
-function injectTokens(body: string, f: Fields): string {
-  const map: Record<string, string> = {
-    '{الاسم}': f.name,
-    '{الرقم_الوطني}': f.nationalId,
-    '{العنوان_الوظيفي}': f.jobTitle,
-    '{الحالة_الوظيفية}': f.jobStatus,
-    '{الجهة_الموجه_إليها}': f.addressedTo,
-    '{الغرض}': f.purpose,
-    '{رقم_الصادر}': f.serial,
-    '{التاريخ_الميلادي}': f.dateGreg,
-    '{التاريخ_الهجري}': f.dateHijri
-  };
+/**
+ * حقن المتغيّرات: نفس الصيغة التي يستعملها التصميم — {الاسم} لا [الاسم].
+ * والأسماء تأتي من حقول الكتاب نفسها، فما يضيفه المكتب يصير متغيّرًا في متنه.
+ */
+function injectTokens(body: string, f: Fields, fields: LetterField[]): string {
+  const map = new Map<string, string>([
+    ['{رقم_الصادر}', f.serial],
+    ['{التاريخ_الميلادي}', f.dateGreg],
+    ['{التاريخ_الهجري}', f.dateHijri]
+  ]);
+  for (const field of fields) map.set(`{${field.token}}`, field.value);
 
   let out = escape(body);
-  for (const [token, value] of Object.entries(map)) {
+  for (const [token, value] of map) {
     if (!value) continue;
     out = out
       .split(escape(token))
@@ -174,6 +159,9 @@ function EditorScreen(
    *  الكتاب قد يصدر لمن لا ملفّ له، فيبقى فارغًا والاسم يُحفظ نصًّا. */
   const [linkedCitizen, setLinkedCitizen] = useState<number | null>(citizenId);
   const [f, setF] = useState<Fields>(EMPTY);
+  /** حقول صاحب العلاقة: يضيف المكتب ويحذف، ولكل حقل وسمٌ يُحقن في المتن. */
+  const [fields, setFields] = useState<LetterField[]>(defaultFields);
+  const [fieldPickerOpen, setFieldPickerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
 
   const [showStamp, setShowStamp] = useState(false);
@@ -219,6 +207,21 @@ function EditorScreen(
     })();
   }, []);
 
+  const setFieldValue = useCallback((id: string, value: string) => {
+    dirty.current = true;
+    setFields((prev) => prev.map((x) => (x.id === id ? { ...x, value } : x)));
+  }, []);
+
+  const addField = useCallback((catalog: CatalogField) => {
+    dirty.current = true;
+    setFields((prev) => [...prev, toField({ ...catalog, token: uniqueToken(catalog.token, prev) })]);
+  }, []);
+
+  const removeField = useCallback((id: string) => {
+    dirty.current = true;
+    setFields((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const set = useCallback((patch: Partial<Fields>) => {
     dirty.current = true;
     setError(null);
@@ -230,15 +233,22 @@ function EditorScreen(
     if (citizenId === null) return;
     setLinkedCitizen(citizenId);
     void window.diwan.citizens.get(citizenId).then((c) => {
-      if (!c) return;
-      set({
-        name: c.fullName,
-        nationalId: c.nationalId ?? '',
-        jobTitle: c.jobTitle ?? '',
-        jobStatus: c.serviceStatus ?? ''
-      });
+      if (c) fillFromCitizen(c as unknown as Record<string, unknown>);
     });
-  }, [citizenId, set]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [citizenId]);
+
+  /** يملأ ما له مصدرٌ في ملف المواطن، ويترك ما كتبه الموظف بيده إن كان مملوءًا. */
+  function fillFromCitizen(citizen: Record<string, unknown>) {
+    dirty.current = true;
+    setFields((prev) =>
+      prev.map((field) => {
+        if (!field.source) return field;
+        const value = citizen[field.source];
+        return typeof value === 'string' && value ? { ...field, value } : field;
+      })
+    );
+  }
 
   // فتح مسودة محفوظة: تعود بحقولها كما تُركت.
   useEffect(() => {
@@ -250,9 +260,13 @@ function EditorScreen(
       setActiveTemplate(row.templateId);
       setLinkedCitizen(row.citizenId);
       try {
-        const values = JSON.parse(row.valuesJson) as Partial<Fields> & { __letterhead?: unknown };
-        const { __letterhead, ...fields } = values;
-        setF({ ...EMPTY, ...fields });
+        const values = JSON.parse(row.valuesJson) as Partial<Fields> & {
+          __letterhead?: unknown;
+          __fields?: LetterField[];
+        };
+        const { __letterhead, __fields, ...rest } = values;
+        setF({ ...EMPTY, ...rest });
+        if (Array.isArray(__fields) && __fields.length) setFields(__fields);
         if (__letterhead) setLayout(normalizeLayout(__letterhead));
       } catch {
         setError('تعذّرت قراءة قيم المسودة — فُتحت فارغة');
@@ -270,12 +284,16 @@ function EditorScreen(
       setActiveTemplate(doc.templateId);
       setLinkedCitizen(doc.citizenId);
       try {
-        const values = JSON.parse(doc.valuesJson) as Partial<Fields> & { __letterhead?: unknown };
-        const { __letterhead, ...fields } = values;
-        setF({ ...EMPTY, ...fields, serial: '' });
+        const values = JSON.parse(doc.valuesJson) as Partial<Fields> & {
+          __letterhead?: unknown;
+          __fields?: LetterField[];
+        };
+        const { __letterhead, __fields, ...rest } = values;
+        setF({ ...EMPTY, ...rest, serial: '' });
+        if (Array.isArray(__fields) && __fields.length) setFields(__fields);
         if (__letterhead) setLayout(normalizeLayout(__letterhead));
       } catch {
-        setF({ ...EMPTY, name: doc.citizenName, addressedTo: doc.destination ?? '' });
+        setF(EMPTY);
       }
       setToast(`نسخة عن ${doc.serial} — تصدر برقم صادر جديد`);
       dirty.current = true;
@@ -390,8 +408,13 @@ function EditorScreen(
     return node.outerHTML;
   }, []);
 
-  const hasContent = f.name.trim().length > 0 || f.body.trim().length > 0;
-  const sheetName = f.serial || f.subject || f.name || 'كتاب';
+  const citizenName = fieldByRole(fields, 'name');
+  const destination = fieldByRole(fields, 'destination');
+  const purpose = fieldByRole(fields, 'purpose');
+  const nationalId = fieldByRole(fields, 'nationalId');
+
+  const hasContent = citizenName.length > 0 || f.body.trim().length > 0;
+  const sheetName = f.serial || f.subject || citizenName || 'كتاب';
 
   // ── المسودات: حفظ يدوي وحفظ تلقائي ──────────────────────────────────
   const saveDraft = useCallback(
@@ -406,10 +429,11 @@ function EditorScreen(
           id: draft,
           templateId: activeTemplate,
           citizenId: linkedCitizen,
-          title: f.subject || f.name || 'مسودة بلا عنوان',
+          title: f.subject || citizenName || 'مسودة بلا عنوان',
           values: {
             ...(f as unknown as Record<string, string>),
-            __letterhead: JSON.stringify(layout)
+            __letterhead: JSON.stringify(layout),
+            __fields: JSON.stringify(fields)
           },
           bodyHtml: f.body
         });
@@ -423,7 +447,7 @@ function EditorScreen(
         setSaving(false);
       }
     },
-    [activeTemplate, linkedCitizen, draft, f, hasContent, layout]
+    [activeTemplate, linkedCitizen, draft, f, fields, hasContent, layout]
   );
 
   useEffect(() => {
@@ -484,7 +508,7 @@ function EditorScreen(
 
   /** الإصدار: يفتح حوار النسخ والرسوم، فالطباعة تستهلك رقم صادر ولا تُستأنف. */
   function requestIssue() {
-    if (!f.name.trim()) {
+    if (!citizenName) {
       setError('لا يصدر كتاب بلا اسم صاحب العلاقة');
       return;
     }
@@ -507,14 +531,15 @@ function EditorScreen(
           templateId: activeTemplate,
           citizenId: linkedCitizen,
           authorityId: letterhead?.authorityId ?? null,
-          citizenName: f.name.trim(),
-          nationalId: f.nationalId.trim() || null,
+          citizenName,
+          nationalId: nationalId || null,
           docType: f.docType.trim() || template?.title || null,
-          destination: f.addressedTo.trim() || null,
-          purpose: f.purpose.trim() || null,
+          destination: destination || null,
+          purpose: purpose || null,
           values: {
             ...(f as unknown as Record<string, string>),
-            __letterhead: JSON.stringify(layout)
+            __letterhead: JSON.stringify(layout),
+            __fields: JSON.stringify(fields)
           },
           copies: opts.copies,
           copyKind: opts.copyKind,
@@ -604,7 +629,7 @@ function EditorScreen(
     return () => window.removeEventListener('keydown', onKey);
   }, [saveDraft]);
 
-  const rendered = useMemo(() => injectTokens(f.body, f), [f]);
+  const rendered = useMemo(() => injectTokens(f.body, f, fields), [f, fields]);
   const copiesTo = f.copiesTo.split('\n').map((l) => l.trim()).filter(Boolean);
 
   /** المتغيّرات المتاحة: ما يعرّفه النموذج المحمَّل، أو لا شيء قبل تحميله. */
@@ -811,36 +836,14 @@ function EditorScreen(
               >
                 ختم تاريخ اليوم (ميلادي وهجري)
               </button>
-              <div className="flex flex-col gap-space-xs pt-space-xs">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  العدد والتاريخ على الورقة
-                </span>
-                <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
-                  {REGISTRY_CHOICES.map((c) => (
-                    <button
-                      key={c.value}
-                      className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
-                        f.registryMode === c.value
-                          ? 'bg-primary-container text-on-primary font-semibold'
-                          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                      }`}
-                      type="button"
-                      onClick={() => set({ registryMode: c.value })}
-                    >
-                      <span>{c.label}</span>
-                      <span className="text-[10px] opacity-80">{c.hint}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                الكتاب يُقيَّد في الأرشيف برقمه في الحالات الثلاث؛ والاختيار هنا في ما يُطبع
-                على الورقة فقط. والرقم المعروض أعلاه اطّلاع، والنهائي يُحجز لحظة الإصدار.
+                العدد والتاريخ يظهران في الترويسة لا في متن الكتاب، وإظهارهما اختياري —
+                من «تحرير الترويسة». والكتاب يُقيَّد في الأرشيف برقمه على كل حال، والرقم
+                المعروض هنا اطّلاعٌ يُحجز النهائيُّ منه لحظة الإصدار.
               </p>
             </section>
 
-            {/* القسم الثالث: صاحب العلاقة */}
+            {/* القسم الثالث: صاحب العلاقة — حقول يبنيها المكتب */}
             <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
               <div className="flex items-center justify-between pb-space-xs">
                 <div className="flex items-center gap-space-xs">
@@ -849,63 +852,74 @@ function EditorScreen(
                     بيانات صاحب العلاقة
                   </h3>
                 </div>
+                <button
+                  className="font-label-sm text-label-sm text-secondary font-semibold flex items-center gap-1 hover:underline"
+                  type="button"
+                  onClick={() => setFieldPickerOpen(true)}
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  <span>إضافة حقل</span>
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-space-sm">
-                <Field label="الاسم الرباعي واللقب" required>
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.name}
-                    placeholder="—"
-                    onChange={(e) => set({ name: e.target.value })}
-                  />
-                </Field>
-                <Field label="الرقم الوطني / البطاقة الموحدة">
-                  <input
-                    className={`${inputCls} font-mono`}
-                    type="text"
-                    value={f.nationalId}
-                    placeholder="—"
-                    onChange={(e) => set({ nationalId: e.target.value })}
-                  />
-                </Field>
-                <Field label="العنوان الوظيفي">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.jobTitle}
-                    placeholder="—"
-                    onChange={(e) => set({ jobTitle: e.target.value })}
-                  />
-                </Field>
-                <Field label="الحالة الوظيفية والخدمة">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.jobStatus}
-                    placeholder="—"
-                    onChange={(e) => set({ jobStatus: e.target.value })}
-                  />
-                </Field>
-                <Field label="الجهة الموجه إليها الكتاب">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.addressedTo}
-                    placeholder="—"
-                    onChange={(e) => set({ addressedTo: e.target.value })}
-                  />
-                </Field>
-                <Field label="الغرض من التأييد">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.purpose}
-                    placeholder="—"
-                    onChange={(e) => set({ purpose: e.target.value })}
-                  />
-                </Field>
-              </div>
+
+              {fields.length === 0 ? (
+                <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[24px]">person_add</span>
+                  <span className="font-label-md text-label-md">لا حقول في هذا الكتاب</span>
+                  <span className="font-label-sm text-label-sm">أضف ما تطلبه المعاملة</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-space-sm">
+                  {fields.map((field) => (
+                    <div key={field.id} className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <label className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                          {field.label} {field.role === 'name' && <span className="text-error">*</span>}
+                        </label>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            className="px-1 rounded font-mono text-[10px] text-secondary hover:bg-surface-container-high"
+                            title={`إدراج {${field.token}} في المتن`}
+                            type="button"
+                            onClick={() => insertToken(`{${field.token}}`)}
+                          >
+                            {'{'}
+                            {field.token}
+                            {'}'}
+                          </button>
+                          <button
+                            className="w-5 h-5 rounded flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error-container"
+                            title="حذف الحقل من هذا الكتاب"
+                            type="button"
+                            onClick={() => removeField(field.id)}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <input
+                          className={`${inputCls} ${field.role === 'nationalId' ? 'font-mono' : ''}`}
+                          type="text"
+                          value={field.value}
+                          placeholder="—"
+                          onChange={(e) => setFieldValue(field.id, e.target.value)}
+                        />
+                        {field.date && (
+                          <button
+                            className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant"
+                            title="ختم تاريخ اليوم"
+                            type="button"
+                            onClick={() => setFieldValue(field.id, formatGregorian(new Date()))}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">event</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* القسم الرابع: المتن والمتغيرات */}
@@ -1233,56 +1247,17 @@ function EditorScreen(
                 {/* الترويسة كما بناها المكتب لهذا الكتاب */}
                 <LetterheadView
                   layout={layout}
-                  resolve={(value) => injectTokens(value, f).replace(/<[^>]+>/g, '') || value}
+                  registryValues={{ serial: f.serial, date: f.dateGreg }}
+                  resolve={(value) =>
+                    injectTokens(value, f, fields).replace(/<[^>]+>/g, '') || value
+                  }
                 />
-
-                {/* العدد والتاريخ: الأصل أن يكتبهما موظّف الاستلام بخطّه */}
-                {f.registryMode !== 'none' && (
-                  <div
-                    className="mt-space-sm flex"
-                    data-registry={f.registryMode}
-                    style={{ justifyContent: 'flex-end' }}
-                  >
-                    <div className="flex flex-col gap-1 text-on-surface" style={{ minWidth: 190 }}>
-                      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
-                        <span className="font-semibold shrink-0">العدد:</span>
-                        {f.registryMode === 'printed' ? (
-                          <span className="font-mono font-bold" data-slot="serial">
-                            {f.serial || '—'}
-                          </span>
-                        ) : (
-                          <span
-                            className="flex-1"
-                            style={{ borderBottom: '1px dotted currentColor', height: '1em' }}
-                          />
-                        )}
-                      </div>
-                      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
-                        <span className="font-semibold shrink-0">التاريخ:</span>
-                        {f.registryMode === 'printed' ? (
-                          <span>{f.dateGreg || '—'}</span>
-                        ) : (
-                          <span
-                            className="flex-1"
-                            style={{ borderBottom: '1px dotted currentColor', height: '1em' }}
-                          />
-                        )}
-                      </div>
-                      {f.registryMode === 'printed' && f.dateHijri && (
-                        <div className="flex items-baseline gap-2" style={{ fontSize: '11px' }}>
-                          <span className="shrink-0">الموافق:</span>
-                          <span>{f.dateHijri}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* المرسل إليه والموضوع */}
                 <div className="mt-space-lg space-y-space-md">
-                  {f.addressedTo && (
+                  {destination && (
                     <div className="font-bold text-on-surface" style={{ fontSize: '15px' }}>
-                      إلى / {f.addressedTo}
+                      إلى / {destination}
                     </div>
                   )}
                   {f.subject && (
@@ -1351,14 +1326,7 @@ function EditorScreen(
                           {f.signerRole}
                         </span>
                       )}
-                      {f.dateGreg && (
-                        <span
-                          className="font-mono text-on-surface-variant"
-                          style={{ fontSize: '11px' }}
-                        >
-                          {f.dateGreg}
-                        </span>
-                      )}
+
                     </div>
                   </div>
                 )}
@@ -1399,13 +1367,19 @@ function EditorScreen(
           onClose={() => setPickerOpen(false)}
           onPick={(c) => {
             setLinkedCitizen(c.id);
-            set({
-              name: c.fullName,
-              nationalId: c.nationalId ?? '',
-              jobTitle: c.jobTitle ?? '',
-              jobStatus: c.serviceStatus ?? ''
-            });
+            fillFromCitizen(c as unknown as Record<string, unknown>);
             setPickerOpen(false);
+          }}
+        />
+      )}
+
+      {fieldPickerOpen && (
+        <FieldPicker
+          existing={fields}
+          onClose={() => setFieldPickerOpen(false)}
+          onPick={(catalog) => {
+            addField(catalog);
+            setFieldPickerOpen(false);
           }}
         />
       )}
@@ -1441,7 +1415,7 @@ function EditorScreen(
       {issueOpen && (
         <IssueDialog
           serial={f.serial}
-          name={f.name}
+          name={citizenName}
           printerName={printer?.displayName ?? null}
           busy={busy}
           onClose={() => setIssueOpen(false)}
@@ -1525,13 +1499,7 @@ function CitizenPicker({
   onPick
 }: {
   onClose: () => void;
-  onPick: (c: {
-    id: number;
-    fullName: string;
-    nationalId: string | null;
-    jobTitle: string | null;
-    serviceStatus: string | null;
-  }) => void;
+  onPick: (c: CitizenDetail) => void;
 }) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<
@@ -1604,6 +1572,114 @@ function CitizenPicker({
             </button>
           ))
         )}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * إضافة حقل: من كتالوج المعاملات الرسمية، أو حقل يسمّيه المكتب بنفسه.
+ * الكتالوج اقتراح لا إلزام — والحذف متاح من البطاقة نفسها.
+ */
+function FieldPicker({
+  existing,
+  onClose,
+  onPick
+}: {
+  existing: LetterField[];
+  onClose: () => void;
+  onPick: (field: CatalogField) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [customLabel, setCustomLabel] = useState('');
+
+  const term = query.trim();
+  const groups = FIELD_GROUPS.map((group) => ({
+    ...group,
+    fields: group.fields.filter(
+      (field) => !term || field.label.includes(term) || field.token.includes(term)
+    )
+  })).filter((group) => group.fields.length > 0);
+
+  const used = new Set(existing.map((f) => f.label));
+
+  return (
+    <Modal title="إضافة حقل إلى الكتاب" onClose={onClose}>
+      <div className="space-y-space-md">
+        <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+          <span className="font-label-sm text-label-sm text-on-surface-variant">
+            حقل تسمّيه بنفسك — يظهر فارغًا، ويصير وسمًا في المتن
+          </span>
+          <div className="flex items-center gap-space-xs">
+            <input
+              autoFocus
+              className={inputCls}
+              placeholder="مثال: رقم الإضبارة"
+              type="text"
+              value={customLabel}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && customLabel.trim()) {
+                  onPick({ label: customLabel.trim(), token: tokenFromLabel(customLabel) });
+                }
+              }}
+            />
+            <button
+              className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+              type="button"
+              disabled={!customLabel.trim()}
+              onClick={() => onPick({ label: customLabel.trim(), token: tokenFromLabel(customLabel) })}
+            >
+              إضافة
+            </button>
+          </div>
+        </div>
+
+        <input
+          className={inputCls}
+          placeholder="ابحث في حقول المعاملات الرسمية..."
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        <div className="max-h-[45vh] overflow-y-auto space-y-space-md">
+          {groups.length === 0 ? (
+            <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">
+              لا حقل بهذا الاسم — أضفه حقلًا مخصّصًا من الأعلى
+            </div>
+          ) : (
+            groups.map((group) => (
+              <div key={group.name} className="space-y-space-xs">
+                <div className="flex items-baseline gap-space-xs">
+                  <span className="font-label-lg text-label-lg text-on-surface font-bold">
+                    {group.name}
+                  </span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    {group.hint}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-space-xs">
+                  {group.fields.map((field) => (
+                    <button
+                      key={field.token}
+                      className={`h-8 px-space-sm rounded-lg font-label-sm text-label-sm transition-colors ${
+                        used.has(field.label)
+                          ? 'bg-surface-container text-on-surface-variant'
+                          : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'
+                      }`}
+                      type="button"
+                      onClick={() => onPick(field)}
+                    >
+                      {field.label}
+                      {used.has(field.label) && ' ✓'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </Modal>
   );

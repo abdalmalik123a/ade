@@ -351,6 +351,50 @@ export default function LetterheadDesigner({
         </div>
       )}
 
+      {/* العدد والتاريخ: موضعهما القسم الأخير، وهما اختياريان */}
+      <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+        <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+          <input
+            className="w-4 h-4 accent-secondary"
+            checked={layout.registry.show}
+            type="checkbox"
+            onChange={(e) =>
+              onChange({ ...layout, registry: { ...layout.registry, show: e.target.checked } })
+            }
+          />
+          إظهار التاريخ والعدد في {layout.columns === 1 ? 'الترويسة' : 'القسم الأخير'}
+        </label>
+
+        {layout.registry.show && (
+          <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg">
+            {(
+              [
+                { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
+                { value: 'printed', label: 'مطبوعان', hint: 'من سجل الصادر' }
+              ] as const
+            ).map((c) => (
+              <button
+                key={c.value}
+                className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
+                  layout.registry.mode === c.value
+                    ? 'bg-primary-container text-on-primary font-semibold'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                }`}
+                type="button"
+                onClick={() => onChange({ ...layout, registry: { ...layout.registry, mode: c.value } })}
+              >
+                <span>{c.label}</span>
+                <span className="text-[10px] opacity-80">{c.hint}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <span className="font-label-sm text-label-sm text-on-surface-variant">
+          التاريخ فوق العدد. والكتاب يُقيَّد في الأرشيف برقمه في الحالين — الاختيار في ما
+          يُطبع على الورقة فقط.
+        </span>
+      </div>
+
       {/* خيارات الورقة */}
       <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
         <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface cursor-pointer">

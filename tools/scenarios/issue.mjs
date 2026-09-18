@@ -41,11 +41,17 @@ export default async function scenario(page, { profile, shotsDir }) {
   const sheetText = () =>
     page.eval(`return document.querySelector('.a4-sheet')?.innerText ?? '';`);
 
+  /** يجد المدخل التابع لعنوان، ولو كان في صفّ تحته لا بجانبه. */
+  const INPUT_OF_LABEL = `
+    const labels = [...document.querySelectorAll('label')];
+    const l = labels.find(x => x.textContent.trim().startsWith(LABEL));
+    const box = l?.closest('div.flex-col') ?? l?.parentElement;
+    const input = box?.querySelector('input, textarea');
+  `;
+
   const fill = async (label, value) => {
     const done = await page.eval(`
-      const labels = [...document.querySelectorAll('label')];
-      const l = labels.find(x => x.textContent.trim().startsWith(${JSON.stringify(label)}));
-      const input = l?.parentElement?.querySelector('input, textarea');
+      ${INPUT_OF_LABEL.replace('LABEL', JSON.stringify(label))}
       if (!input) return false;
       const proto = input instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -98,6 +104,9 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   await page.clickText('قسمان');
   await wait(300);
+  // العدد والتاريخ موضعهما القسم الأخير من الترويسة، لا متن الكتاب
+  await page.clickText('إظهار التاريخ والعدد', 'label');
+  await wait(300);
   await page.clickText('القسم الثاني');
   await wait(200);
   await page.clickText('سطر نصّي');
@@ -136,15 +145,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   // قيم الحقول ليست في نصّ الصفحة، فتُقرأ من الحقول نفسها.
   const fieldValue = (label) =>
     page.eval(`
-      const labels = [...document.querySelectorAll('label')];
-      const l = labels.find(x => x.textContent.trim().startsWith(${JSON.stringify(label)}));
-      return l?.parentElement?.querySelector('input, textarea')?.value ?? '';
+      ${INPUT_OF_LABEL.replace('LABEL', JSON.stringify(label))}
+      return input?.value ?? '';
     `);
   ok(
     'حُقنت بيانات المواطن في الحقول',
     (await fieldValue('الاسم الرباعي واللقب')) === 'أحمد عادل كريم الموسوي' &&
-      (await fieldValue('الرقم الوطني / البطاقة الموحدة')) === '198421098312' &&
-      (await fieldValue('العنوان الوظيفي')) === 'مدرس أول لغة عربية'
+      (await fieldValue('الرقم الوطني / البطاقة الموحدة')) === '198421098312'
   );
 
   // رقم الصادر: اطّلاع لا يستهلك
@@ -154,23 +161,32 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // الأصل أن يكتب العدد والتاريخ موظّفُ الاستلام بخطّه
   const serialNow = `م/${new Date().getFullYear()}/1`;
-  /** سطر العدد والتاريخ وحده — لا بقيّة الورقة، ففي الترويسة حقل رقم صادر أيضًا. */
+  /** سطر العدد والتاريخ داخل الترويسة — لا بقيّة الورقة. */
   const registry = () =>
     page.eval(`
-      const el = document.querySelector('[data-registry]');
+      const el = document.querySelector('.a4-sheet [data-registry]');
       return el ? el.getAttribute('data-registry') + '|' + el.innerText : 'غائب';
     `);
 
   let line = await registry();
-  ok('الورقة تحمل سطر العدد والتاريخ', line.includes('العدد:') && line.includes('التاريخ:'));
+  ok('العدد والتاريخ في الترويسة', line.includes('العدد:') && line.includes('التاريخ:'));
+  ok('والتاريخ فوق العدد', line.indexOf('التاريخ:') < line.indexOf('العدد:'));
   ok('وهو فراغ يُملأ باليد افتراضًا', line.startsWith('manual|') && !line.includes(serialNow));
 
+  await page.clickText('تحرير الترويسة');
+  await wait(500);
   await page.clickText('مطبوعان');
+  await wait(300);
+  await page.clickExact('تم');
   await wait(400);
   line = await registry();
   ok('اختيار «مطبوعان» يطبع الرقم في سطر العدد', line.startsWith('printed|') && line.includes(serialNow));
 
+  await page.clickText('تحرير الترويسة');
+  await wait(500);
   await page.clickText('فراغ يُملأ باليد');
+  await wait(300);
+  await page.clickExact('تم');
   await wait(400);
   line = await registry();
   ok('والعودة إلى الفراغ تُخفيه', line.startsWith('manual|') && !line.includes(serialNow));
@@ -178,20 +194,42 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('ختم تاريخ اليوم');
   await wait(300);
 
+  // حقول المعاملة: من الكتالوج الرسمي، وحقل يسمّيه المكتب بنفسه
+  await page.clickText('إضافة حقل');
+  await wait(500);
+  ok('انفتح كتالوج الحقول', (await page.text()).includes('إضافة حقل إلى الكتاب'));
+  ok('فيه مجموعات المعاملات', (await page.text()).includes('الأحوال المدنية والجنسية'));
+  await page.clickText('العنوان الوظيفي', 'button');
+  await wait(400);
+
+  await page.clickText('إضافة حقل');
+  await wait(500);
+  await page.type('input[placeholder="مثال: رقم الإضبارة"]', 'رقم الإضبارة');
+  await page.clickExact('إضافة');
+  await wait(400);
+  ok('أُضيف حقل مخصّص يسمّيه المكتب', (await page.text()).includes('رقم الإضبارة'));
+
+  await fill('العنوان الوظيفي', 'مدرس أول لغة عربية');
+  await fill('رقم الإضبارة', '1187/ت');
   await fill('الجهة الموجه إليها الكتاب', 'مصرف الرافدين — فرع الفردوس');
-  await fill('الغرض من التأييد', 'ترويج معاملة سلفة شخصية');
+  await fill('الغرض من الكتاب', 'ترويج معاملة سلفة شخصية');
   await fill('سطر الموضوع (م /)', 'تأييد استمرار بالخدمة');
   await fill('نوع الوثيقة (للسجل)', 'تأييد استمرار بالخدمة');
   await fill('الموقّع والمخوّل بالتوقيع', 'المدير العام');
   await fill(
     'المتن الرسمي',
-    'نؤيد لكم أن السيد {الاسم} الحامل للرقم الوطني {الرقم_الوطني} مستمر بالخدمة الفعلية.'
+    'نؤيد لكم أن السيد {الاسم} الحامل للرقم الوطني {الرقم_الوطني} بصفة {العنوان_الوظيفي} ' +
+      'وإضبارته {رقم_الإضبارة} مستمر بالخدمة الفعلية.'
   );
   await fill('نسخة منه إلى (سطر لكل جهة)', 'قسم الملاك والملفات الشخصية');
   await wait(400);
 
+  // على الورقة وحدها: لوح الإدخال يعرض الوسوم أزرارًا، فلا يصلح للفحص
+  const injected = await sheetText();
+  ok('حُقن الاسم في متن الورقة', injected.includes('أحمد عادل كريم الموسوي'));
+  ok('وحُقن الحقل المخصّص بوسمه', injected.includes('1187/ت'));
+  ok('ولم يبقَ وسم غير محقون على الورقة', !injected.includes('{العنوان_الوظيفي}'));
   text = await page.text();
-  ok('حُقن الاسم في متن الورقة', text.includes('نؤيد لكن') === false && text.includes('نؤيد لكم'));
   ok('ظهر الموضوع على الورقة', text.includes('م / تأييد استمرار بالخدمة'));
   ok('ظهرت جهة النسخ', text.includes('نسخة منه إلى:'));
 
@@ -201,6 +239,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok(
     'رُسم رمز التحقق في المعاينة',
     await page.eval(`return !!document.querySelector('[data-slot="qr"] svg');`)
+  );
+
+  // الموقّع يكتب التاريخ بخطّه، فلا يُطبع تحت اسمه
+  const withDate = await sheetText();
+  ok(
+    'لا يُطبع تاريخ تحت الموقّع',
+    withDate.includes('المدير العام') && (withDate.match(/أيلول/g) ?? []).length === 0
   );
 
   // الحفظ التلقائي للمسودة
@@ -249,10 +294,14 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('قُيّدت الطباعة الأولى', prints.length === 1 && prints[0]?.reason === 'إصدار أول');
   ok('دُوّن الإصدار في سجل التدقيق', audit.length === 1);
   ok('حُذفت المسودة بعد الإصدار', drafts?.n === 0);
-  ok('سطر العدد خرج فراغًا منقوطًا لموظّف الاستلام',
-    (doc?.body_html ?? '').includes('العدد:') && (doc?.body_html ?? '').includes('dotted'));
+  ok('العدد والتاريخ خرجا فراغًا منقوطًا في الترويسة',
+    (doc?.body_html ?? '').includes('العدد:') &&
+      (doc?.body_html ?? '').includes('التاريخ:') &&
+      (doc?.body_html ?? '').includes('dotted'));
   ok('والرقم مقيَّد في السجل على كل حال', /^م\/\d{4}\/1$/.test(doc?.serial ?? ''));
   ok('ترويسة الكتاب حُفظت مع قيمه', (doc?.values_json ?? '').includes('__letterhead'));
+  ok('وحقول المعاملة حُفظت معها', (doc?.values_json ?? '').includes('__fields'));
+  ok('منها الحقل المخصّص بقيمته', (doc?.values_json ?? '').includes('رقم_الإضبارة'));
   ok('وقسماها ظهرا في الورقة المحفوظة',
     (doc?.body_html ?? '').includes('قسم التعليم العام') &&
       (doc?.body_html ?? '').includes('جمهورية العراق'));

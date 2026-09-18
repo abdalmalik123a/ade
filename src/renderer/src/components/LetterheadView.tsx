@@ -16,6 +16,8 @@ const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefin
 
 export type LetterheadViewProps = {
   layout: LetterheadLayout;
+  /** قيمتا العدد والتاريخ حين تكون الترويسة «مطبوعة» لا فراغًا. */
+  registryValues?: { serial: string; date: string };
   /** يملأ الحقول التلقائية مثل {رقم_الصادر}؛ بلا دالّة يبقى الوسم كما هو. */
   resolve?: (value: string) => string;
   /** يُنادى عند النقر على كتلة — للتحديد في المصمّم. */
@@ -86,14 +88,51 @@ function Block({
   );
 }
 
+/**
+ * العدد والتاريخ في رأس القسم الأخير — التاريخ فوق العدد كما تكتبه الدوائر.
+ * والأصل فراغ منقوط: الكتاب يخرج من المكتب ليكتبهما موظّف الاستلام بخطّه.
+ */
+function Registry({
+  mode,
+  values
+}: {
+  mode: 'manual' | 'printed';
+  values?: { serial: string; date: string };
+}) {
+  const blank = (
+    <span className="flex-1" style={{ borderBottom: '1px dotted currentColor', height: '1em' }} />
+  );
+
+  return (
+    <div className="flex flex-col gap-1 text-on-surface" data-registry={mode}>
+      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
+        <span className="font-semibold shrink-0">التاريخ:</span>
+        {mode === 'printed' ? <span>{values?.date || '—'}</span> : blank}
+      </div>
+      <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
+        <span className="font-semibold shrink-0">العدد:</span>
+        {mode === 'printed' ? (
+          <span className="font-mono font-bold" data-slot="serial">
+            {values?.serial || '—'}
+          </span>
+        ) : (
+          blank
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function LetterheadView({
   layout,
+  registryValues,
   resolve,
   onPickBlock,
   selectedBlock,
   emptyHint
 }: LetterheadViewProps) {
   const sections = visibleSections(layout);
+  const registryAt = sections.length - 1;
 
   if (isLayoutEmpty(layout)) {
     return emptyHint ? (
@@ -113,6 +152,9 @@ export default function LetterheadView({
             className="flex flex-col"
             style={{ flex: `${section.weight || 1} 1 0`, minWidth: 0 }}
           >
+            {layout.registry.show && i === registryAt && (
+              <Registry mode={layout.registry.mode} values={registryValues} />
+            )}
             {section.blocks.map((block) => (
               <Block
                 key={block.id}

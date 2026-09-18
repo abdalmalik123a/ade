@@ -36,6 +36,19 @@ export type LetterheadSection = {
 
 export type ColumnCount = 1 | 2 | 3;
 
+/**
+ * العدد والتاريخ: موضعهما الطبيعي في القسم الأخير من الترويسة، لا سطرًا
+ * مستقلًّا في متن الكتاب. والتاريخ فوق العدد كما تكتبه الدوائر.
+ *
+ * `manual` هو الأصل: الكتاب يخرج بفراغ يملؤه موظّف الاستلام بخطّه.
+ */
+export type RegistryMode = 'manual' | 'printed';
+
+export type LetterheadRegistry = {
+  show: boolean;
+  mode: RegistryMode;
+};
+
 export type LetterheadLayout = {
   /** الهوامش بالمليمتر — التصميم يحدّد 20mm قياسيًا. */
   margins: { top: number; right: number; bottom: number; left: number };
@@ -45,6 +58,8 @@ export type LetterheadLayout = {
   sections: [LetterheadSection, LetterheadSection, LetterheadSection];
   /** خط فاصل أسفل الترويسة، كما في أكثر الكتب الرسمية. */
   divider: boolean;
+  /** العدد والتاريخ في القسم الأخير — اختياريان. */
+  registry: LetterheadRegistry;
 };
 
 /** الصيغة القديمة: كتل في عمود واحد. تبقى مقروءة، وتُرحَّل عند القراءة. */
@@ -70,8 +85,15 @@ export function emptyLayout(): LetterheadLayout {
     margins: { ...DEFAULT_MARGINS },
     columns: 1,
     sections: [emptySection(), emptySection(), emptySection()],
-    divider: true
+    divider: true,
+    registry: { show: false, mode: 'manual' }
   };
+}
+
+function normalizeRegistry(raw: unknown): LetterheadRegistry {
+  if (!raw || typeof raw !== 'object') return { show: false, mode: 'manual' };
+  const value = raw as Partial<LetterheadRegistry>;
+  return { show: value.show === true, mode: value.mode === 'printed' ? 'printed' : 'manual' };
 }
 
 /** المحاذاة الافتراضية لقسم بحسب موضعه: الأول يمين، والأخير يسار، وما بينهما وسط. */
@@ -104,7 +126,13 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
     }) as LetterheadLayout['sections'];
     const columns: ColumnCount =
       input.columns === 2 || input.columns === 3 ? input.columns : 1;
-    return { margins, columns, sections, divider: input.divider !== false };
+    return {
+      margins,
+      columns,
+      sections,
+      divider: input.divider !== false,
+      registry: normalizeRegistry(input.registry)
+    };
   }
 
   if (Array.isArray(input.blocks)) {
@@ -113,7 +141,7 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
       emptySection(),
       emptySection()
     ] as LetterheadLayout['sections'];
-    return { margins, columns: 1, sections, divider: true };
+    return { margins, columns: 1, sections, divider: true, registry: { show: false, mode: 'manual' } };
   }
 
   return { ...base, margins };
@@ -126,7 +154,7 @@ export function visibleSections(layout: LetterheadLayout): LetterheadSection[] {
 
 /** هل في الترويسة ما يُطبع أصلًا؟ */
 export function isLayoutEmpty(layout: LetterheadLayout): boolean {
-  return visibleSections(layout).every((s) => s.blocks.length === 0);
+  return !layout.registry.show && visibleSections(layout).every((s) => s.blocks.length === 0);
 }
 
 export type Letterhead = {
