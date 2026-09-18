@@ -49,6 +49,40 @@ export type LetterheadRegistry = {
   mode: RegistryMode;
 };
 
+/**
+ * البسملة سطرٌ فوق الأقسام كلّها، لا كتلةٌ داخل عمود.
+ *
+ * ومطفأة في الأصل: كتب الوزارات والمديريات أكثرها بلا بسملة، وكتب المدارس
+ * والمخاتير أكثرها بها — فالافتراض خطأ في نصف الحالات، وإشعالها ضغطة.
+ */
+export type LetterheadBasmala = {
+  show: boolean;
+  text: string;
+  size: number;
+  align: Align;
+};
+
+export const BASMALA_TEXT = 'بسم الله الرحمن الرحيم';
+
+/**
+ * خطّ الترويسة: واحد لها كلّها لا لكل سطر.
+ *
+ * خطٌّ لكل سطر يُخرج ترويسات مهلهلة، وهو باب «Word المصغّر». والأربعة محزومة
+ * في التطبيق — لا من النظام — فالإخراج واحد على كل جهاز.
+ */
+export type FontKey = 'plex' | 'amiri' | 'naskh' | 'cairo';
+
+export const FONTS: { key: FontKey; label: string; stack: string }[] = [
+  { key: 'naskh', label: 'نسخ (Noto Naskh)', stack: "'Noto Naskh Arabic', serif" },
+  { key: 'amiri', label: 'أميري — نسخ كلاسيكي', stack: "'Amiri', serif" },
+  { key: 'cairo', label: 'القاهرة — حديث', stack: "'Cairo', sans-serif" },
+  { key: 'plex', label: 'بلكس — خط التطبيق', stack: "'IBM Plex Sans Arabic', sans-serif" }
+];
+
+export function fontStack(key: FontKey): string {
+  return (FONTS.find((f) => f.key === key) ?? FONTS[FONTS.length - 1]!).stack;
+}
+
 export type LetterheadLayout = {
   /** الهوامش بالمليمتر — التصميم يحدّد 20mm قياسيًا. */
   margins: { top: number; right: number; bottom: number; left: number };
@@ -60,6 +94,10 @@ export type LetterheadLayout = {
   divider: boolean;
   /** العدد والتاريخ في القسم الأخير — اختياريان. */
   registry: LetterheadRegistry;
+  /** سطر البسملة فوق الأقسام. */
+  basmala: LetterheadBasmala;
+  /** خط الترويسة كلّها. */
+  font: FontKey;
 };
 
 /** الصيغة القديمة: كتل في عمود واحد. تبقى مقروءة، وتُرحَّل عند القراءة. */
@@ -86,7 +124,9 @@ export function emptyLayout(): LetterheadLayout {
     columns: 1,
     sections: [emptySection(), emptySection(), emptySection()],
     divider: true,
-    registry: { show: false, mode: 'manual' }
+    registry: { show: false, mode: 'manual' },
+    basmala: { show: false, text: BASMALA_TEXT, size: 14, align: 'center' },
+    font: 'naskh'
   };
 }
 
@@ -94,6 +134,28 @@ function normalizeRegistry(raw: unknown): LetterheadRegistry {
   if (!raw || typeof raw !== 'object') return { show: false, mode: 'manual' };
   const value = raw as Partial<LetterheadRegistry>;
   return { show: value.show === true, mode: value.mode === 'printed' ? 'printed' : 'manual' };
+}
+
+function normalizeBasmala(raw: unknown): LetterheadBasmala {
+  const base: LetterheadBasmala = { show: false, text: BASMALA_TEXT, size: 14, align: 'center' };
+  if (!raw || typeof raw !== 'object') return base;
+  const v = raw as Partial<LetterheadBasmala>;
+  return {
+    show: v.show === true,
+    text: typeof v.text === 'string' && v.text.trim() ? v.text : base.text,
+    size: typeof v.size === 'number' && v.size > 0 ? v.size : base.size,
+    align: v.align === 'right' || v.align === 'left' ? v.align : 'center'
+  };
+}
+
+/**
+ * الترويسة المحفوظة قبل اختيار الخط تبقى على خطّ التطبيق.
+ *
+ * وإلا تبدّل شكلُ ما بناه المكتب — وشكلُ لقطات الكتب الصادرة — بلا أن يطلب.
+ * أما الجديدة فتبدأ بالنسخ، وهو خطّ الكتاب الرسمي.
+ */
+function normalizeFont(raw: unknown, fallback: FontKey): FontKey {
+  return FONTS.some((f) => f.key === raw) ? (raw as FontKey) : fallback;
 }
 
 /** المحاذاة الافتراضية لقسم بحسب موضعه: الأول يمين، والأخير يسار، وما بينهما وسط. */
@@ -131,7 +193,9 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
       columns,
       sections,
       divider: input.divider !== false,
-      registry: normalizeRegistry(input.registry)
+      registry: normalizeRegistry(input.registry),
+      basmala: normalizeBasmala(input.basmala),
+      font: normalizeFont(input.font, 'plex')
     };
   }
 
@@ -141,7 +205,15 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
       emptySection(),
       emptySection()
     ] as LetterheadLayout['sections'];
-    return { margins, columns: 1, sections, divider: true, registry: { show: false, mode: 'manual' } };
+    return {
+      margins,
+      columns: 1,
+      sections,
+      divider: true,
+      registry: { show: false, mode: 'manual' },
+      basmala: normalizeBasmala(input.basmala),
+      font: normalizeFont(input.font, 'plex')
+    };
   }
 
   return { ...base, margins };
@@ -154,7 +226,20 @@ export function visibleSections(layout: LetterheadLayout): LetterheadSection[] {
 
 /** هل في الترويسة ما يُطبع أصلًا؟ */
 export function isLayoutEmpty(layout: LetterheadLayout): boolean {
-  return !layout.registry.show && visibleSections(layout).every((s) => s.blocks.length === 0);
+  return (
+    !layout.registry.show &&
+    !layout.basmala.show &&
+    visibleSections(layout).every((s) => s.blocks.length === 0)
+  );
+}
+
+/** كل نصّ في الترويسة — للبحث عنها بما كُتب فيها لا باسمها وحده. */
+export function layoutText(layout: LetterheadLayout): string {
+  const lines = layout.sections.flatMap((s) =>
+    s.blocks.filter((b) => b.kind === 'text').map((b) => b.value)
+  );
+  if (layout.basmala.show) lines.push(layout.basmala.text);
+  return lines.join(' ');
 }
 
 export type Letterhead = {
@@ -163,6 +248,11 @@ export type Letterhead = {
   authorityId: number | null;
   layout: LetterheadLayout;
   isDefault: boolean;
+  /** تصنيفٌ يسمّيه المكتب: مدرسة، تربية، بلدية… ولا قائمة مفروضة. */
+  category: string | null;
+  isFavorite: boolean;
+  /** آخر مرّة استُعملت فيها — عليها يقوم ترتيب القائمة. */
+  usedAt: string | null;
 };
 
 /**

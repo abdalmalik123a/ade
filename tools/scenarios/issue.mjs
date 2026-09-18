@@ -63,11 +63,22 @@ export default async function scenario(page, { profile, shotsDir }) {
     return done;
   };
 
+  /** أسطر القسم الجاري في صندوق النصّ — سطرٌ لكل سطر. */
+  const typeLines = async (value) => {
+    await page.eval(`
+      const el = document.querySelector('textarea[placeholder^="جمهورية العراق"]');
+      if (!el) return false;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, ${JSON.stringify(value)});
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    `);
+    await wait(250);
+  };
+
   // ── ترويسة يبنيها المكتب أولًا ──────────────────────────────────────
   await page.goto(4);
-  await page.clickText('سطر نصّي');
   await page.type('input[placeholder^="مثال: مديرية"]', 'مديرية تربية بغداد / الرصافة الأولى');
-  await page.type('input[placeholder="اكتب محتوى السطر"]', 'جمهورية العراق — وزارة التربية');
+  await typeLines('جمهورية العراق — وزارة التربية');
   await page.clickText('حفظ الترويسة');
   await wait(800);
   ok('بُنيت ترويسة وحُفظت', (await page.text()).includes('حُفظت الترويسة'));
@@ -109,14 +120,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   await page.clickText('القسم الثاني');
   await wait(200);
-  await page.clickText('سطر نصّي');
-  await page.eval(`
-    const inputs = [...document.querySelectorAll('input[placeholder="اكتب محتوى السطر"]')];
-    const el = inputs[inputs.length - 1];
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'قسم التعليم العام');
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  `);
-  await wait(400);
+  await typeLines('قسم التعليم العام');
+  await wait(200);
 
   // حقل رقم الصادر داخل الترويسة: يُملأ عند الإصدار لا قبله
   await page.clickText('حقل تلقائي');

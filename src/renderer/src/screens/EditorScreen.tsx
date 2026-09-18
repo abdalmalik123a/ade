@@ -549,7 +549,9 @@ function EditorScreen(
           operator: settings.operatorName || null,
           printer: printer?.name ?? null,
           serialPrefix: settings.serialPrefix,
-          serialYear: settings.serialYear
+          serialYear: settings.serialYear,
+          // اللقطة في `values.__letterhead` هي ما يُرسم؛ وهذا يقول من أين جاءت.
+          letterheadId
         },
         opts.print
       );

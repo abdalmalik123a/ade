@@ -33,6 +33,11 @@ export default function LetterheadScreen() {
   const [list, setList] = useState<Letterhead[]>([]);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  /** ترشيح المكتبة: بحث، وتصنيف، أو المفضّلة وحدها. */
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
   const [layout, setLayout] = useState<LetterheadLayout>(emptyLayout);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,14 +64,25 @@ export default function LetterheadScreen() {
   }, []);
 
   const reload = useCallback(async () => {
-    const [items, sealList] = await Promise.all([
-      window.diwan.letterheads.list(),
-      window.diwan.seals.list()
+    const [items, sealList, cats] = await Promise.all([
+      window.diwan.letterheads.list({
+        query,
+        category: filter === '★' ? null : filter,
+        favoritesOnly: filter === '★'
+      }),
+      window.diwan.seals.list(),
+      window.diwan.letterheads.categories()
     ]);
     setList(items);
     setSeals(sealList);
+    setCategories(cats);
     return items;
-  }, []);
+  }, [query, filter]);
+
+  // الترشيح يعيد القراءة فورًا — والترويسات عشرات فلا حاجة إلى تأخير.
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   useEffect(() => {
     void (async () => {
@@ -80,6 +96,7 @@ export default function LetterheadScreen() {
   function load(item: Letterhead) {
     setCurrentId(item.id);
     setName(item.name);
+    setCategory(item.category ?? '');
     setLayout(normalizeLayout(item.layout));
     setDirty(false);
   }
@@ -87,8 +104,23 @@ export default function LetterheadScreen() {
   function startNew() {
     setCurrentId(null);
     setName('');
+    setCategory('');
     setLayout(emptyLayout());
     setDirty(false);
+  }
+
+  /** نسخةٌ من ترويسة قائمة: «الأنبار» تصير «ديالى» بتبديل كلمة. */
+  async function duplicate(id: number) {
+    const copy = await window.diwan.letterheads.duplicate(id);
+    if (!copy) return;
+    await reload();
+    load(copy);
+    say('أُنشئت نسخة — بدّل ما يلزم واحفظ');
+  }
+
+  async function toggleFavorite(item: Letterhead) {
+    await window.diwan.letterheads.favorite(item.id, !item.isFavorite);
+    await reload();
   }
 
   function editLayout(next: LetterheadLayout) {
@@ -107,7 +139,8 @@ export default function LetterheadScreen() {
         id: currentId,
         name: name.trim(),
         authorityId: null,
-        layout
+        layout,
+        category: category.trim() || null
       });
       setCurrentId(saved.id);
       setDirty(false);
@@ -185,48 +218,145 @@ export default function LetterheadScreen() {
                   + ترويسة جديدة
                 </button>
               </div>
-              <div className="flex items-center gap-space-xs">
-                <select
-                  className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
-                  value={currentId ?? ''}
-                  onChange={(e) => {
-                    const item = list.find((x) => x.id === Number(e.target.value));
-                    if (item) load(item);
-                  }}
-                >
-                  {currentId === null && <option value="">— ترويسة جديدة —</option>}
-                  {list.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                      {item.isDefault ? ' (الافتراضية)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="h-9 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors disabled:opacity-40"
-                  type="button"
-                  title="اجعلها الافتراضية لكل كتاب جديد"
-                  disabled={currentId === null || isDefault}
-                  onClick={() => void makeDefault()}
-                >
-                  <span className="material-symbols-outlined text-[16px] text-secondary">star</span>
-                  <span>{isDefault ? 'افتراضية' : 'اجعلها افتراضية'}</span>
-                </button>
+              {/* البحث: في الاسم والتصنيف ونصّ الترويسة، متساهلًا مع الهمزة */}
+              <div className="relative">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  search
+                </span>
+                <input
+                  className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                  placeholder="ابحث: هيت، تربية، بلدية…"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
               </div>
 
-              <label className="font-label-sm text-label-sm text-on-surface-variant font-medium pt-space-xs">
-                اسم الترويسة <span className="text-error">*</span>
-              </label>
-              <input
-                className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى"
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setDirty(true);
-                }}
-              />
+              {/* الترشيح: المفضّلة والتصنيفات التي نبتت من استعمال المكتب */}
+              <div className="flex flex-wrap items-center gap-1">
+                {[
+                  { key: null, label: 'الكل' },
+                  { key: '★', label: '★ المفضّلة' },
+                  ...categories.map((c) => ({ key: c, label: c }))
+                ].map((c) => (
+                  <button
+                    key={c.key ?? 'all'}
+                    className={`h-7 px-2.5 rounded-full font-label-sm text-label-sm transition-colors ${
+                      filter === c.key
+                        ? 'bg-primary-container text-on-primary font-semibold'
+                        : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
+                    }`}
+                    type="button"
+                    onClick={() => setFilter(c.key)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* المكتبة: المفضّلة أولًا ثم الأحدث استعمالًا */}
+              <div className="max-h-52 overflow-y-auto -mx-1 px-1 flex flex-col gap-1">
+                {list.length === 0 ? (
+                  <div className="py-space-md text-center font-label-sm text-label-sm text-on-surface-variant">
+                    {query || filter ? 'لا ترويسة بهذا الوصف' : 'المكتبة فارغة — ابنِ أولى ترويساتك'}
+                  </div>
+                ) : (
+                  list.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`group flex items-center gap-1 h-9 pr-2 pl-1 rounded-lg transition-colors ${
+                        item.id === currentId
+                          ? 'bg-primary-container text-on-primary'
+                          : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'
+                      }`}
+                    >
+                      <button
+                        className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+                        title={item.isFavorite ? 'أزلها من المفضّلة' : 'أضفها إلى المفضّلة'}
+                        type="button"
+                        onClick={() => void toggleFavorite(item)}
+                      >
+                        <span
+                          className={`material-symbols-outlined text-[16px] ${
+                            item.isFavorite ? 'text-secondary' : 'opacity-30'
+                          }`}
+                          style={{ fontVariationSettings: item.isFavorite ? "'FILL' 1" : undefined }}
+                        >
+                          star
+                        </span>
+                      </button>
+                      <button
+                        className="flex-1 min-w-0 text-right font-label-md text-label-md truncate"
+                        type="button"
+                        onClick={() => load(item)}
+                      >
+                        {item.name}
+                        {item.isDefault && (
+                          <span className="font-label-sm text-label-sm opacity-70"> · الافتراضية</span>
+                        )}
+                      </button>
+                      <button
+                        className="w-6 h-6 rounded flex items-center justify-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="نسخة منها"
+                        type="button"
+                        onClick={() => void duplicate(item.id)}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex items-center gap-space-xs pt-space-xs">
+                <div className="flex-1 flex flex-col gap-1">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                    اسم الترويسة <span className="text-error">*</span>
+                  </label>
+                  <input
+                    className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                    placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى"
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setDirty(true);
+                    }}
+                  />
+                </div>
+                <div className="w-32 flex flex-col gap-1">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                    التصنيف
+                  </label>
+                  <input
+                    className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                    list="letterhead-categories"
+                    placeholder="مدارس"
+                    type="text"
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setDirty(true);
+                    }}
+                  />
+                  <datalist id="letterhead-categories">
+                    {categories.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              <button
+                className="h-9 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
+                type="button"
+                title="اجعلها الافتراضية لكل كتاب جديد"
+                disabled={currentId === null || isDefault}
+                onClick={() => void makeDefault()}
+              >
+                <span className="material-symbols-outlined text-[16px] text-secondary">star</span>
+                <span>{isDefault ? 'هي الافتراضية لكل كتاب جديد' : 'اجعلها افتراضية'}</span>
+              </button>
 
               <div className="flex items-center gap-space-xs pt-space-xs">
                 <button

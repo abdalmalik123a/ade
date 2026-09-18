@@ -29,8 +29,13 @@ CREATE TABLE IF NOT EXISTS letterheads (
   name          TEXT NOT NULL,
   layout_json   TEXT NOT NULL,            -- بنية الترويسة: كتل، مواضع، شعار، أسطر
   is_default    INTEGER NOT NULL DEFAULT 0,
+  category      TEXT,                     -- يسمّيه المكتب: مدرسة، تربية، بلدية… لا قائمة مفروضة
+  is_favorite   INTEGER NOT NULL DEFAULT 0,
+  used_at       TEXT,                     -- آخر استعمال — عليه يقوم ترتيب المكتبة
+  search_fold   TEXT,                     -- الاسم والتصنيف ونصّ الترويسة، مطبَّعًا
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- فهرس search_fold يُنشأ في الترحيل (services/letterheads.ts)، لا هنا — كما في documents.
 
 CREATE TABLE IF NOT EXISTS seals (
   id            INTEGER PRIMARY KEY,
@@ -130,6 +135,8 @@ CREATE TABLE IF NOT EXISTS documents (
   template_id    INTEGER REFERENCES templates(id) ON DELETE SET NULL,
   citizen_id     INTEGER REFERENCES citizens(id) ON DELETE SET NULL,
   authority_id   INTEGER REFERENCES authorities(id) ON DELETE SET NULL,
+  letterhead_id  INTEGER,                 -- من أي ترويسة جاء؛ واللقطة هي الحقيقة عند الرسم
+                                          -- ولا قيد أجنبي: حذفها من المكتبة لا يمسّ الكتاب
   citizen_name   TEXT,                    -- صورة الاسم وقت الإصدار: الكتاب يبقى شاهدًا
   citizen_nid    TEXT,                    -- ولو حُذف ملف المواطن أو صدر لمن لا ملفّ له
   doc_type       TEXT,                    -- تأييد سكن معنون، براءة ذمة وظيفية، ...

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { normalizeFold } from '@shared/arabic';
 import { qrSvg } from '@shared/qr';
 import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '@shared/api';
+import { touchLetterhead } from './letterheads';
 import type {
   ArchiveStats,
   DocumentDetail,
@@ -121,9 +122,18 @@ export function ensureCitizenSnapshot(db: Database): void {
   }
 }
 
+/** من أي ترويسة جاء الكتاب — للسؤال ولترتيب المكتبة. والرسم من اللقطة لا منها. */
+export function ensureLetterheadLink(db: Database): void {
+  const cols = db.prepare('PRAGMA table_info(documents)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'letterhead_id')) {
+    db.exec('ALTER TABLE documents ADD COLUMN letterhead_id INTEGER');
+  }
+}
+
 export function prepareDocuments(db: Database): void {
   ensureSearchColumn(db);
   ensureCitizenSnapshot(db);
+  ensureLetterheadLink(db);
 }
 
 export type IssueResult = {
@@ -172,8 +182,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
            serial, serial_year, serial_seq, template_id, citizen_id, authority_id,
            citizen_name, citizen_nid, doc_type, destination, purpose, values_json,
            body_html, copies, copy_kind, fee, gregorian_date, hijri_date, operator,
-           sha256, status, search_fold
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?)`
+           sha256, status, search_fold, letterhead_id
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?)`
       )
       .run(
         serial,
@@ -196,8 +206,12 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         input.hijriDate,
         input.operator,
         sha256,
-        searchFold([serial, name, input.nationalId, input.docType, input.destination, input.purpose, bodyText])
+        searchFold([serial, name, input.nationalId, input.docType, input.destination, input.purpose, bodyText]),
+        input.letterheadId ?? null
       );
+
+    // آخر استعمال للترويسة — عليه يقوم ترتيب المكتبة، وهو في المعاملة نفسها.
+    if (input.letterheadId) touchLetterhead(db, input.letterheadId);
 
     const id = Number(info.lastInsertRowid);
 

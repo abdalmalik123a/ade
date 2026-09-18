@@ -1,3 +1,4 @@
+import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
@@ -13,12 +14,17 @@ import {
   addSeal,
   deleteLetterhead,
   deleteSeal,
+  duplicateLetterhead,
   getDefaultLetterhead,
   getLetterhead,
+  listCategories,
   listLetterheads,
   listSeals,
+  prepareLetterheads,
   saveLetterhead,
-  setDefaultLetterhead
+  setDefaultLetterhead,
+  setFavorite,
+  touchLetterhead
 } from '../src/main/services/letterheads';
 
 const line = (id: string, value: string): LetterheadBlock => ({
@@ -282,5 +288,209 @@ describe('الأختام', () => {
 
     deleteSeal(db, seal.id);
     expect(listSeals(db)).toEqual([]);
+  });
+});
+
+// ── المكتبة: البحث والتصنيف والمفضّلة والتكرار ───────────────────────
+
+/** ترويسة بأسطرها — أقصر طريق لبناء حالة اختبار. */
+function makeLetterhead(
+  db: ReturnType<typeof freshDb>,
+  name: string,
+  lines: string[],
+  category: string | null = null
+) {
+  const layout = emptyLayout();
+  layout.sections[0]!.blocks = lines.map((t, i) => line(`b${i}`, t));
+  return saveLetterhead(db, { id: null, name, authorityId: null, layout, category });
+}
+
+describe('البحث في المكتبة', () => {
+  it('يجد الترويسة بنصّها لا باسمها وحده — والمكتب يذكر الجهة لا التسمية', () => {
+    const db = freshDb();
+    makeLetterhead(db, 'رأس التخطيط', ['جمهورية العراق', 'مديرية تربية هيت']);
+    makeLetterhead(db, 'رأس البلدية', ['جمهورية العراق', 'بلدية هيت']);
+
+    expect(listLetterheads(db, { query: 'تربية' }).map((x) => x.name)).toEqual(['رأس التخطيط']);
+    expect(listLetterheads(db, { query: 'هيت' })).toHaveLength(2);
+  });
+
+  it('متساهل مع الهمزة — «الانبار» تجد «الأنبار»', () => {
+    const db = freshDb();
+    makeLetterhead(db, 'تربية الأنبار', ['المديرية العامة للتربية في محافظة الأنبار']);
+
+    expect(listLetterheads(db, { query: 'الانبار' })).toHaveLength(1);
+    expect(listLetterheads(db, { query: 'محافظه' })).toHaveLength(1);
+  });
+
+  it('البحث يتبع التعديل — تُعاد فهرسة النصّ عند الحفظ', () => {
+    const db = freshDb();
+    const lh = makeLetterhead(db, 'رأس', ['مديرية تربية الأنبار']);
+    expect(listLetterheads(db, { query: 'ديالى' })).toHaveLength(0);
+
+    const layout = emptyLayout();
+    layout.sections[0]!.blocks = [line('b0', 'مديرية تربية ديالى')];
+    saveLetterhead(db, { id: lh.id, name: 'رأس', authorityId: null, layout });
+
+    expect(listLetterheads(db, { query: 'ديالى' })).toHaveLength(1);
+    expect(listLetterheads(db, { query: 'الأنبار' })).toHaveLength(0);
+  });
+});
+
+describe('التصنيف', () => {
+  it('ينبت من استعمال المكتب — لا قائمة مفروضة', () => {
+    const db = freshDb();
+    expect(listCategories(db)).toEqual([]);
+
+    makeLetterhead(db, 'أ', ['مدرسة'], 'مدارس');
+    makeLetterhead(db, 'ب', ['بلدية'], 'بلديات');
+    makeLetterhead(db, 'ج', ['مدرسة أخرى'], 'مدارس');
+
+    expect(listCategories(db)).toEqual(['بلديات', 'مدارس']);
+    expect(listLetterheads(db, { category: 'مدارس' })).toHaveLength(2);
+  });
+
+  it('التصنيف الفارغ يُحفظ عدمًا لا نصًّا فارغًا', () => {
+    const db = freshDb();
+    makeLetterhead(db, 'أ', ['جهة'], '   ');
+    expect(listLetterheads(db)[0]!.category).toBeNull();
+    expect(listCategories(db)).toEqual([]);
+  });
+});
+
+describe('ترتيب المكتبة', () => {
+  it('المفضّلة أولًا، ثم الأحدث استعمالًا — لا الأبجدية', () => {
+    const db = freshDb();
+    const a = makeLetterhead(db, 'أبجد', ['جهة أ']);
+    const b = makeLetterhead(db, 'يمني', ['جهة ب']);
+    const c = makeLetterhead(db, 'زاي', ['جهة ج']);
+
+    touchLetterhead(db, b.id);
+    setFavorite(db, c.id, true);
+
+    // «زاي» مفضّلة فتتصدّر، ثم «يمني» لأنها استُعملت، ثم «أبجد» الافتراضية.
+    expect(listLetterheads(db).map((x) => x.name)).toEqual(['زاي', 'يمني', 'أبجد']);
+    void a;
+  });
+
+  it('المفضّلة تُرفع وتُنزَّل، وترشيحها يعزلها', () => {
+    const db = freshDb();
+    const a = makeLetterhead(db, 'أ', ['جهة أ']);
+    makeLetterhead(db, 'ب', ['جهة ب']);
+
+    setFavorite(db, a.id, true);
+    expect(listLetterheads(db, { favoritesOnly: true }).map((x) => x.name)).toEqual(['أ']);
+
+    setFavorite(db, a.id, false);
+    expect(listLetterheads(db, { favoritesOnly: true })).toEqual([]);
+  });
+});
+
+describe('تكرار الترويسة — أسرع طرق البناء', () => {
+  it('ينسخ البنية والتصنيف، ويسمّي النسخة', () => {
+    const db = freshDb();
+    const src = makeLetterhead(
+      db,
+      'مديرية تربية الأنبار',
+      ['جمهورية العراق', 'مديرية تربية الأنبار'],
+      'تربية'
+    );
+
+    const copy = duplicateLetterhead(db, src.id, 'مديرية تربية ديالى')!;
+    expect(copy.id).not.toBe(src.id);
+    expect(copy.name).toBe('مديرية تربية ديالى');
+    expect(copy.category).toBe('تربية');
+    expect(copy.layout.sections[0]!.blocks.map((b) => b.value)).toEqual([
+      'جمهورية العراق',
+      'مديرية تربية الأنبار'
+    ]);
+    // والنسخة تُوجد بالبحث باسمها الجديد.
+    expect(listLetterheads(db, { query: 'ديالى' }).map((x) => x.id)).toEqual([copy.id]);
+  });
+
+  it('النسخة لا ترث الافتراضية ولا التفضيل — الأصل يبقى المستعمَل', () => {
+    const db = freshDb();
+    const src = makeLetterhead(db, 'الأصل', ['جهة']);
+    setFavorite(db, src.id, true);
+
+    const copy = duplicateLetterhead(db, src.id)!;
+    expect(copy.isDefault).toBe(false);
+    expect(copy.isFavorite).toBe(false);
+    expect(copy.name).toBe('الأصل — نسخة');
+    expect(getDefaultLetterhead(db)!.id).toBe(src.id);
+  });
+
+  it('تكرار ما لا وجود له يعيد عدمًا بلا انهيار', () => {
+    expect(duplicateLetterhead(freshDb(), 404)).toBeNull();
+  });
+});
+
+describe('البسملة وخطّ الترويسة', () => {
+  it('مطفأة في الأصل — فنصف الكتب الرسمية بلا بسملة', () => {
+    expect(emptyLayout().basmala.show).toBe(false);
+    expect(emptyLayout().basmala.text).toBe('بسم الله الرحمن الرحيم');
+  });
+
+  it('تُحفظ مع الترويسة وتعود معها', () => {
+    const db = freshDb();
+    const layout = emptyLayout();
+    layout.basmala = { show: true, text: 'بسم الله الرحمن الرحيم', size: 16, align: 'center' };
+    layout.font = 'amiri';
+    const saved = saveLetterhead(db, { id: null, name: 'رأس', authorityId: null, layout });
+
+    const back = getLetterhead(db, saved.id)!;
+    expect(back.layout.basmala).toEqual(layout.basmala);
+    expect(back.layout.font).toBe('amiri');
+  });
+
+  it('ترويسة بلا كتل لكن ببسملة ليست فارغة', () => {
+    const layout = emptyLayout();
+    expect(isLayoutEmpty(layout)).toBe(true);
+    layout.basmala.show = true;
+    expect(isLayoutEmpty(layout)).toBe(false);
+  });
+
+  it('الترويسة المحفوظة قبل اختيار الخط تبقى على خطّ التطبيق', () => {
+    // وإلا تبدّل شكلُ ما بناه المكتب — وشكلُ لقطات الكتب الصادرة — بلا أن يطلب.
+    const old = normalizeLayout({ sections: [{ id: 's', blocks: [], weight: 1 }], columns: 1 });
+    expect(old.font).toBe('plex');
+    expect(old.basmala.show).toBe(false);
+  });
+
+  it('قيمة خطّ غريبة تعود إلى الأصل الآمن', () => {
+    const layout = normalizeLayout({
+      sections: [{ id: 's', blocks: [], weight: 1 }],
+      font: 'comic-sans'
+    });
+    expect(layout.font).toBe('plex');
+  });
+});
+
+describe('ترحيل قاعدة المكتب القائمة', () => {
+  it('قاعدة بُنيت قبل أعمدة المكتبة تُرقّى بلا سقوط ولا فقد', () => {
+    const db = new Database(':memory:');
+    db.exec(`CREATE TABLE letterheads (
+      id INTEGER PRIMARY KEY,
+      authority_id INTEGER,
+      name TEXT NOT NULL,
+      layout_json TEXT NOT NULL,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    db.prepare('INSERT INTO letterheads (name, layout_json, is_default) VALUES (?, ?, 1)').run(
+      'رأس قديم',
+      JSON.stringify({ blocks: [{ id: 'b', kind: 'text', value: 'جمهورية العراق' }] })
+    );
+
+    prepareLetterheads(db);
+    prepareLetterheads(db); // والتكرار لا يضرّ — الإقلاع يمرّ بها كل مرّة.
+
+    const list = listLetterheads(db);
+    expect(list).toHaveLength(1);
+    expect(list[0]!.name).toBe('رأس قديم');
+    expect(list[0]!.isFavorite).toBe(false);
+    expect(list[0]!.category).toBeNull();
+    // والبنية القديمة تُرحَّل عند القراءة كما كانت.
+    expect(list[0]!.layout.sections[0]!.blocks[0]!.value).toBe('جمهورية العراق');
   });
 });

@@ -23,14 +23,20 @@ const api: DiwanApi = {
     today: () => invoke('archive:today')
   },
   letterheads: {
-    list: () => invoke('letterheads:list'),
+    list: (opts?: { query?: string; category?: string | null; favoritesOnly?: boolean }) =>
+      invoke('letterheads:list', opts ?? {}),
     get: (id: number) => invoke('letterheads:get', id),
+    categories: (): Promise<string[]> => invoke('letterheads:categories'),
     save: (input: {
       id: number | null;
       name: string;
       authorityId: number | null;
       layout: LetterheadLayout;
+      category?: string | null;
     }): Promise<Letterhead> => invoke('letterheads:save', input),
+    duplicate: (id: number, name?: string): Promise<Letterhead | null> =>
+      invoke('letterheads:duplicate', id, name),
+    favorite: (id: number, on: boolean) => invoke('letterheads:favorite', id, on),
     setDefault: (id: number) => invoke('letterheads:setDefault', id),
     delete: (id: number) => invoke('letterheads:delete', id)
   },

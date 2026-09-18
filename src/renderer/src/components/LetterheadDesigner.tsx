@@ -10,6 +10,7 @@ import { useState } from 'react';
 import {
   defaultAlign,
   newId,
+  FONTS,
   HEADER_FIELDS,
   type Align,
   type BlockKind,
@@ -60,8 +61,59 @@ export default function LetterheadDesigner({
   showPageOptions = false
 }: LetterheadDesignerProps) {
   const [active, setActive] = useState(0);
+  /** «أسطر» هو الأصل: الترويسة تُكتب أسرع مما تُركَّب كتلةً كتلة. */
+  const [mode, setMode] = useState<'lines' | 'detail'>('lines');
   const index = Math.min(active, layout.columns - 1);
   const section = layout.sections[index]!;
+  const shown = mode === 'lines' ? section.blocks.filter((b) => b.kind !== 'text') : section.blocks;
+
+  /** أسطر القسم النصّية سطرًا في كل سطر — ولا شيء غيرها. */
+  const lines = section.blocks
+    .filter((b) => b.kind === 'text')
+    .map((b) => b.value)
+    .join('\n');
+
+  /**
+   * صندوق النصّ يحكم الأسطر النصّية وحدها.
+   *
+   * `Enter` يضيف سطرًا، ومسح السطر يحذفه، واللصق من Word يبني الترويسة في
+   * ثانية. وما كُتب من حجم وعريض ومحاذاة يبقى لكل سطر بموضعه، والشعار والخط
+   * الفاصل لا ينتقلان من مكانهما.
+   */
+  function setLines(text: string) {
+    const wanted = text === '' ? [] : text.split('\n');
+    const olds = section.blocks.filter((b) => b.kind === 'text');
+    const made: LetterheadBlock[] = wanted.map((value, i) => {
+      const prev = olds[i];
+      if (prev) return { ...prev, value };
+      return {
+        id: newId('b'),
+        kind: 'text',
+        value,
+        align: defaultAlign(index, layout.columns),
+        size: 14,
+        bold: i === 0 && olds.length === 0
+      };
+    });
+
+    const blocks: LetterheadBlock[] = [];
+    let at = 0;
+    let lastText = -1;
+    for (const b of section.blocks) {
+      if (b.kind !== 'text') {
+        blocks.push(b);
+        continue;
+      }
+      if (at < made.length) {
+        blocks.push(made[at]!);
+        lastText = blocks.length - 1;
+        at += 1;
+      }
+    }
+    const extra = made.slice(at);
+    if (extra.length) blocks.splice(lastText + 1, 0, ...extra);
+    patchSection({ blocks });
+  }
 
   function patchSection(next: Partial<(typeof layout.sections)[number]>) {
     const sections = [...layout.sections] as LetterheadLayout['sections'];
@@ -173,9 +225,48 @@ export default function LetterheadDesigner({
         )}
       </div>
 
+      {/* وضع التحرير */}
+      <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+        {(
+          [
+            { value: 'lines', label: 'أسطر', hint: 'اكتب أو الصق من Word' },
+            { value: 'detail', label: 'تفصيل', hint: 'حجم وعريض ومحاذاة' }
+          ] as const
+        ).map((m) => (
+          <button
+            key={m.value}
+            className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
+              mode === m.value
+                ? 'bg-primary-container text-on-primary font-semibold'
+                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+            }`}
+            type="button"
+            onClick={() => setMode(m.value)}
+          >
+            <span>{m.label}</span>
+            <span className="text-[10px] opacity-80">{m.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {mode === 'lines' && (
+        <div className="flex flex-col gap-1">
+          <textarea
+            className="w-full min-h-[104px] p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md leading-7 focus:outline-none focus:ring-1 focus:ring-secondary resize-y"
+            placeholder={'جمهورية العراق\nوزارة التربية\nالمديرية العامة للتربية في محافظة …\nمديرية تربية …'}
+            spellCheck={false}
+            value={lines}
+            onChange={(e) => setLines(e.target.value)}
+          />
+          <span className="font-label-sm text-label-sm text-on-surface-variant">
+            سطرٌ لكل سطر. والصق ترويستك من Word كما هي.
+          </span>
+        </div>
+      )}
+
       {/* أدوات الإضافة */}
       <div className="flex flex-wrap items-center gap-space-xs">
-        {KIND_META.map((k) => (
+        {(mode === 'lines' ? KIND_META.filter((k) => k.kind !== 'text') : KIND_META).map((k) => (
           <button
             key={k.kind}
             className="h-8 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors"
@@ -189,14 +280,16 @@ export default function LetterheadDesigner({
       </div>
 
       {/* كتل القسم */}
-      {section.blocks.length === 0 ? (
-        <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-1 text-on-surface-variant">
-          <span className="font-label-md text-label-md">هذا القسم فارغ</span>
-          <span className="font-label-sm text-label-sm">أضف سطرًا أو شعارًا من الأعلى</span>
-        </div>
+      {shown.length === 0 ? (
+        mode === 'detail' ? (
+          <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-1 text-on-surface-variant">
+            <span className="font-label-md text-label-md">هذا القسم فارغ</span>
+            <span className="font-label-sm text-label-sm">أضف سطرًا أو شعارًا من الأعلى</span>
+          </div>
+        ) : null
       ) : (
         <div className="space-y-space-xs">
-          {section.blocks.map((block, i) => (
+          {shown.map((block) => (
             <div
               key={block.id}
               className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs"
@@ -258,7 +351,7 @@ export default function LetterheadDesigner({
 
                 <button
                   className="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={i === 0}
+                  disabled={section.blocks.indexOf(block) === 0}
                   title="أعلى"
                   type="button"
                   onClick={() => moveBlock(block.id, -1)}
@@ -267,7 +360,7 @@ export default function LetterheadDesigner({
                 </button>
                 <button
                   className="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={i === section.blocks.length - 1}
+                  disabled={section.blocks.indexOf(block) === section.blocks.length - 1}
                   title="أسفل"
                   type="button"
                   onClick={() => moveBlock(block.id, 1)}
@@ -351,6 +444,66 @@ export default function LetterheadDesigner({
         </div>
       )}
 
+      {/* البسملة: سطر فوق الأقسام كلّها، ومطفأة في الأصل */}
+      <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+        <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+          <input
+            className="w-4 h-4 accent-secondary"
+            checked={layout.basmala.show}
+            type="checkbox"
+            onChange={(e) =>
+              onChange({ ...layout, basmala: { ...layout.basmala, show: e.target.checked } })
+            }
+          />
+          البسملة فوق الترويسة
+        </label>
+
+        {layout.basmala.show && (
+          <div className="flex items-center gap-space-xs">
+            <input
+              className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+              type="text"
+              value={layout.basmala.text}
+              onChange={(e) =>
+                onChange({ ...layout, basmala: { ...layout.basmala, text: e.target.value } })
+              }
+            />
+            <input
+              className="w-14 h-8 px-1 rounded bg-surface-container-lowest text-on-surface text-center font-label-md text-label-md"
+              min={8}
+              max={40}
+              type="number"
+              value={layout.basmala.size}
+              onChange={(e) =>
+                onChange({
+                  ...layout,
+                  basmala: { ...layout.basmala, size: Number(e.target.value) || 14 }
+                })
+              }
+            />
+            <div className="flex items-center gap-0.5">
+              {ALIGN_META.map((a) => (
+                <button
+                  key={a.value}
+                  className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
+                    layout.basmala.align === a.value
+                      ? 'bg-surface-container-high text-on-surface'
+                      : 'text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                  title={a.title}
+                  type="button"
+                  onClick={() =>
+                    onChange({ ...layout, basmala: { ...layout.basmala, align: a.value } })
+                  }
+                >
+                  <span className="material-symbols-outlined text-[16px]">{a.icon}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* العدد والتاريخ: موضعهما القسم الأخير، وهما اختياريان */}
       <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
         <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
@@ -397,6 +550,21 @@ export default function LetterheadDesigner({
 
       {/* خيارات الورقة */}
       <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
+        <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+          الخط
+          <select
+            className="h-8 px-2 rounded bg-surface-container-low text-on-surface font-label-md text-label-md"
+            value={layout.font}
+            onChange={(e) => onChange({ ...layout, font: e.target.value as typeof layout.font })}
+          >
+            {FONTS.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface cursor-pointer">
           <input
             className="w-4 h-4 accent-secondary"

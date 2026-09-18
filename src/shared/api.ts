@@ -98,6 +98,8 @@ export type IssueInput = {
   printer: string | null;
   serialPrefix: string;
   serialYear: number;
+  /** الترويسة التي جاء منها — واللقطة محفوظة مع الكتاب، وهذا للسؤال والترتيب. */
+  letterheadId: number | null;
 };
 
 export type IssueOutcome = {
@@ -280,14 +282,22 @@ export type DiwanApi = {
     today(): Promise<DocumentRow[]>;
   };
   letterheads: {
-    list(): Promise<Letterhead[]>;
+    list(opts?: {
+      query?: string;
+      category?: string | null;
+      favoritesOnly?: boolean;
+    }): Promise<Letterhead[]>;
     get(id: number): Promise<Letterhead | null>;
+    categories(): Promise<string[]>;
     save(input: {
       id: number | null;
       name: string;
       authorityId: number | null;
       layout: LetterheadLayout;
+      category?: string | null;
     }): Promise<Letterhead>;
+    duplicate(id: number, name?: string): Promise<Letterhead | null>;
+    favorite(id: number, on: boolean): Promise<void>;
     setDefault(id: number): Promise<void>;
     delete(id: number): Promise<void>;
   };

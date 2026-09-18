@@ -6,6 +6,7 @@
  */
 import {
   defaultAlign,
+  fontStack,
   isLayoutEmpty,
   visibleSections,
   type LetterheadBlock,
@@ -144,7 +145,21 @@ export default function LetterheadView({
   }
 
   return (
-    <div>
+    // خطّ الترويسة يُضبط هنا مرّة — فالمعاينة والطباعة يرثانه معًا.
+    <div style={{ fontFamily: fontStack(layout.font) }}>
+      {layout.basmala.show && (
+        // فوق الأقسام كلّها لا داخل عمود — وهو موضعها في الكتاب الرسمي.
+        <div
+          className="mb-space-xs"
+          style={{
+            textAlign: layout.basmala.align,
+            fontSize: `${layout.basmala.size}px`,
+            lineHeight: 1.7
+          }}
+        >
+          {layout.basmala.text}
+        </div>
+      )}
       <div className="flex items-start gap-space-md">
         {sections.map((section, i) => (
           <div

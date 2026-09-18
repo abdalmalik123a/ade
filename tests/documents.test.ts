@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Database } from 'better-sqlite3';
 import { freshDb } from './helpers';
+import { emptyLayout } from '../src/shared/letterhead';
+import { deleteLetterhead, listLetterheads, saveLetterhead } from '../src/main/services/letterheads';
 import {
   archiveStats,
   documentCount,
@@ -44,6 +46,7 @@ function input(patch: Partial<IssueInput> = {}): IssueInput {
     printer: null,
     serialPrefix: 'م',
     serialYear: 2026,
+    letterheadId: null,
     ...patch
   };
 }
@@ -316,5 +319,62 @@ describe('المؤشرات والتقارير', () => {
     expect(stats.issued).toBe(1);
     expect(stats.revenue).toBe(1000);
     expect(stats.printedCopies).toBe(1);
+  });
+});
+
+describe('الكتاب وترويسته', () => {
+  /** ترويسة في المكتبة تصلح للربط. */
+  function aLetterhead(db: ReturnType<typeof freshDb>, name = 'رأس المدرسة') {
+    return saveLetterhead(db, {
+      id: null,
+      name,
+      authorityId: null,
+      layout: emptyLayout()
+    });
+  }
+
+  it('يقيّد من أي ترويسة جاء — فيُسأل عنها بعد سنة', () => {
+    const db = freshDb();
+    const lh = aLetterhead(db);
+
+    const res = issueDocument(db, input({ letterheadId: lh.id }));
+    const row = db
+      .prepare('SELECT letterhead_id AS id FROM documents WHERE id = ?')
+      .get(res.id) as { id: number | null };
+
+    expect(row.id).toBe(lh.id);
+  });
+
+  it('يرفع آخر استعمال للترويسة — عليه يقوم ترتيب المكتبة', () => {
+    const db = freshDb();
+    const lh = aLetterhead(db);
+    expect(listLetterheads(db)[0]!.usedAt).toBeNull();
+
+    issueDocument(db, input({ letterheadId: lh.id }));
+    expect(listLetterheads(db)[0]!.usedAt).not.toBeNull();
+  });
+
+  it('حذف الترويسة من المكتبة لا يمسّ الكتاب الصادر — فهو شاهد', () => {
+    const db = freshDb();
+    const lh = aLetterhead(db);
+    const res = issueDocument(db, input({ letterheadId: lh.id }));
+
+    deleteLetterhead(db, lh.id);
+
+    const row = db
+      .prepare('SELECT letterhead_id AS id, body_html AS body FROM documents WHERE id = ?')
+      .get(res.id) as { id: number | null; body: string };
+    // المعرّف يبقى معلّقًا، والورقة المحفوظة كما طُبعت — ولا قيد أجنبي يمحوها.
+    expect(row.id).toBe(lh.id);
+    expect(row.body).toContain('مصرف الرشيد');
+  });
+
+  it('كتاب بلا ترويسة يصدر كما هو', () => {
+    const db = freshDb();
+    const res = issueDocument(db, input({ letterheadId: null }));
+    const row = db
+      .prepare('SELECT letterhead_id AS id FROM documents WHERE id = ?')
+      .get(res.id) as { id: number | null };
+    expect(row.id).toBeNull();
   });
 });
