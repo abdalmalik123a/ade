@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS templates (
   category      TEXT,                     -- ملاك تربوي، قرارات ملزمة، إخطار عدلي، ...
   letterhead_id INTEGER REFERENCES letterheads(id) ON DELETE SET NULL,
   body_html     TEXT NOT NULL DEFAULT '',
+  doc_json      TEXT,                     -- الوثيقة كتلًا؛ وbody_html ظلّها نصًّا للبحث والمحرّر القديم
   subject_line  TEXT,                     -- م / ...
   is_active     INTEGER NOT NULL DEFAULT 1,
   print_count   INTEGER NOT NULL DEFAULT 0,

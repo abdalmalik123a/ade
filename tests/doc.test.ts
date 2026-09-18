@@ -12,6 +12,8 @@ import {
   paragraph,
   reconcileFields,
   run,
+  renameField,
+  unfield,
   usedKeys,
   type Doc,
   type TableBlock
@@ -325,5 +327,29 @@ describe('نصّ الوثيقة', () => {
 
   it('وما لم يُملأ يبقى وسمًا ظاهرًا — لا يُخترع له محتوى', () => {
     expect(docText(docFromLegacy('{الاسم}'))).toBe('{الاسم}');
+  });
+});
+
+describe('تحرير الحقول في المراجعة', () => {
+  it('إعادة التسمية لا تمسّ المفتاح — فهو مرجع المتن', () => {
+    const doc = renameField(docFromLegacy('نؤيد أن {س} موظف'), 'س', 'اسم الموظف');
+    expect(doc.fields[0]!.key).toBe('س');
+    expect(doc.fields[0]!.label).toBe('اسم الموظف');
+    expect(usedKeys(doc)).toEqual(['س']);
+  });
+
+  it('وردّ الحقل نصًّا يعيده فراغًا منقوطًا كما كان', () => {
+    const before = docFromLegacy('مع التقدير {التقدير}');
+    const after = unfield(before, 'التقدير');
+
+    expect(after.fields).toEqual([]);
+    expect(usedKeys(after)).toEqual([]);
+    expect(docText(after)).toMatch(/مع التقدير .{3,}/);
+  });
+
+  it('وردُّه لا يمسّ غيره', () => {
+    const doc = unfield(docFromLegacy('{أ} و{ب}'), 'أ');
+    expect(doc.fields.map((f) => f.key)).toEqual(['ب']);
+    expect(usedKeys(doc)).toEqual(['ب']);
   });
 });

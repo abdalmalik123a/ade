@@ -56,6 +56,27 @@ export async function pickOpenPath(
   return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
 }
 
+/**
+ * أي مجلد يُفتح: حوار النظام دائمًا، والاستثناء نفسه تحت المِقْود.
+ *
+ * DIWAN_TEST_OPEN_DIR لا يوجد إلا حين يقود tools/drive.mjs التطبيقَ الحقيقي —
+ * وبغيره يبقى «استورد مجلدي» بلا فحص على التطبيق المبنيّ.
+ */
+export async function pickFolderPath(
+  window: BrowserWindow,
+  options: { title: string; buttonLabel: string }
+): Promise<string | null> {
+  const testDir = process.env['DIWAN_TEST_OPEN_DIR'];
+  if (testDir) return testDir;
+
+  const result = await dialog.showOpenDialog(window, {
+    title: options.title,
+    buttonLabel: options.buttonLabel,
+    properties: ['openDirectory']
+  });
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+}
+
 /** ينسخ ملفًا إلى المخزن باسم مشتقّ من محتواه — فلا تتكرّر نسخة ولا يتصادم اسم. */
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
   const bytes = await readFile(sourcePath);

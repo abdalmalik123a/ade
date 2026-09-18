@@ -6,8 +6,11 @@
  * استيراد DOCX/XML، ونسخ احتياطي. ولا نموذج مبرمَج: تبدأ المكتبة فارغة.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ImportPlanDialog from '../components/ImportPlanDialog';
 import type {
   DraftRow,
+  ImportChoices,
+  ImportPlan,
   ImportedTemplate,
   TemplateDetail,
   TemplateStats,
@@ -57,6 +60,8 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
   const [toast, setToast] = useState<Toast>(null);
   const [busy, setBusy] = useState(false);
   const [pendingImport, setPendingImport] = useState<ImportedTemplate | null>(null);
+  /** خطّة «استورد مجلدي» — تُعرض للمراجعة، ولا يُحفظ منها إلا ما يُقبل. */
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
   const timer = useRef<number | null>(null);
 
   const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
@@ -159,6 +164,52 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       openImported(imported, null);
     } catch (e) {
       say(errorText(e, 'تعذّر الاستيراد'), 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * «استورد مجلدي»: يقرأ المجلد ويعرض ما وجده — ولا يحفظ شيئًا بعد.
+   *
+   * مرّةٌ واحدة في العمر يخرج بها المكتب من مئات ملفات Word إلى مكتبة حيّة.
+   */
+  async function importFolder() {
+    setBusy(true);
+    try {
+      const found = await window.diwan.templates.planFolder();
+      if (!found) return;
+      if (found.candidates.length === 0) {
+        say(
+          found.failed.length
+            ? `لم يُقرأ أيّ ملف من ${found.failed.length}`
+            : 'لا ملفات Word في هذا المجلد',
+          'warn'
+        );
+        return;
+      }
+      setPlan(found);
+    } catch (e) {
+      say(errorText(e, 'تعذّرت قراءة المجلد'), 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyPlan(edited: ImportPlan, choices: ImportChoices) {
+    setBusy(true);
+    try {
+      const out = await window.diwan.templates.applyImport(edited, choices);
+      setPlan(null);
+      await reload(active);
+      onChanged?.();
+      say(
+        `حُفظت ${out.templates} بطاقة` +
+          (out.letterheadId ? ' وترويسة واحدة للجميع' : '') +
+          (out.skipped ? ` — وتُركت ${out.skipped}` : '')
+      );
+    } catch (e) {
+      say(errorText(e, 'تعذّر الحفظ'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -493,6 +544,15 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
               <span>استيراد نموذج DOCX / XML</span>
             </button>
             <button
+              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary hover:brightness-105 transition-all font-label-md text-label-md font-semibold disabled:opacity-40"
+              type="button"
+              disabled={busy}
+              onClick={() => void importFolder()}
+            >
+              <span className="material-symbols-outlined text-[18px]">folder_open</span>
+              <span>استورد مجلدي</span>
+            </button>
+            <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
               type="button"
               disabled={busy || items.length === 0}
@@ -522,6 +582,15 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
           </div>
         </section>
       </div>
+
+      {plan && (
+        <ImportPlanDialog
+          busy={busy}
+          plan={plan}
+          onApply={(edited, choices) => void applyPlan(edited, choices)}
+          onCancel={() => setPlan(null)}
+        />
+      )}
 
       {pendingImport?.letterhead && (
         <div className="fixed inset-0 z-50 bg-primary-container/45 backdrop-blur-[2px] flex items-center justify-center p-space-lg">

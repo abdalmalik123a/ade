@@ -13,23 +13,22 @@
  * يحكم، والقرار عتبةٌ على الدرجة يسهل استبدالها بنموذج لاحقًا (§١٥ من الأساس).
  */
 import {
+  APPLY_THRESHOLD,
   fieldRef,
   makeField,
   newUuid,
   paragraph,
   run,
+  type Confidence,
   type DocField,
   type FieldType,
   type Inline,
-  type ParagraphBlock
+  type ParagraphBlock,
+  type Suggestion
 } from '@shared/doc';
 
-/** ٠ لا شيء، ١ يقين. والعتبة أدناه هي حدّ التطبيق بلا سؤال. */
-export type Confidence = number;
-export const APPLY_THRESHOLD = 0.8;
-
-/** اقتراحٌ بدرجته وسببه — السبب يُعرض للموظف، فيقبل على بيّنة. */
-export type Suggestion<T> = { value: T; confidence: Confidence; reason: string };
+export { APPLY_THRESHOLD };
+export type { Confidence, Suggestion };
 
 // ── التنظيف ──────────────────────────────────────────────────────────
 

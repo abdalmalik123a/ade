@@ -1,11 +1,37 @@
 import type { Database } from 'better-sqlite3';
-import type { TemplateInput, TemplateVariable } from '@shared/template';
+import { legacyFieldMeta, type TemplateInput, type TemplateVariable } from '@shared/template';
+import { docFromLegacy, normalizeDoc, type Doc } from '@shared/doc';
 import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow } from '@shared/api';
 
 /** منطق مكتبة النماذج والمسودات. دوالّ نقيّة تأخذ الاتصال وسيطًا. */
 
+/** عمود الوثيقة يُضاف عند الحاجة — الترحيل هنا ليعمل على قواعد قائمة. */
+export function prepareTemplates(db: Database): void {
+  const cols = db.prepare('PRAGMA table_info(templates)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'doc_json')) {
+    db.exec('ALTER TABLE templates ADD COLUMN doc_json TEXT');
+  }
+}
+
+/**
+ * وثيقة النموذج: المحفوظة كتلًا إن وُجدت، وإلا فالمتن القديم مُرحَّلًا.
+ *
+ * فما بناه المكتب قبل النواة يُقرأ كتلًا بلا أن يُعاد بناؤه، وما يكتبه
+ * الاستيراد الجديد يُقرأ بحقوله وعروضه ومسافاته كما بُني.
+ */
+export function templateDoc(row: { docJson?: string | null; bodyHtml: string }): Doc {
+  if (row.docJson) {
+    try {
+      return normalizeDoc(JSON.parse(row.docJson));
+    } catch {
+      // بنية تالفة لا تمنع فتح النموذج — يُقرأ من ظلّه النصّي.
+    }
+  }
+  return docFromLegacy(row.bodyHtml, legacyFieldMeta);
+}
+
 const SUMMARY = `t.id, t.code, t.title, t.subtitle, t.category,
-  t.subject_line AS subjectLine, t.body_html AS bodyHtml,
+  t.subject_line AS subjectLine, t.body_html AS bodyHtml, t.doc_json AS docJson,
   t.letterhead_id AS letterheadId, t.print_count AS printCount`;
 
 const MONTH_COUNT = `(SELECT COUNT(*) FROM documents d
@@ -82,7 +108,11 @@ export function isCodeTaken(db: Database, code: string, exceptId: number | null)
   return Boolean(row);
 }
 
-export function saveTemplate(db: Database, input: TemplateInput): TemplateDetail {
+export function saveTemplate(
+  db: Database,
+  input: TemplateInput & { doc?: Doc | null }
+): TemplateDetail {
+  prepareTemplates(db);
   const title = input.title.trim();
   if (!title) throw new Error('عنوان النموذج مطلوب');
   const code = input.code?.trim() || null;
@@ -90,14 +120,17 @@ export function saveTemplate(db: Database, input: TemplateInput): TemplateDetail
     throw new Error(`الكود «${code}» مستعمل في نموذج آخر`);
   }
 
+  // الوثيقة كتلًا: ما بناه الاستيراد بحقوله وعروضه، أو مُرحَّلةً من المتن.
+  const docJson = JSON.stringify(input.doc ?? docFromLegacy(input.bodyHtml, legacyFieldMeta));
+
   const id = db.transaction(() => {
     let templateId = input.id;
     if (templateId === null) {
       const info = db
         .prepare(
           `INSERT INTO templates (code, title, subtitle, category, letterhead_id,
-                                  body_html, subject_line, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1)`
+                                  body_html, doc_json, subject_line, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
         )
         .run(
           code,
@@ -106,13 +139,14 @@ export function saveTemplate(db: Database, input: TemplateInput): TemplateDetail
           input.category?.trim() || null,
           input.letterheadId,
           input.bodyHtml,
+          docJson,
           input.subjectLine?.trim() || null
         );
       templateId = Number(info.lastInsertRowid);
     } else {
       db.prepare(
         `UPDATE templates SET code = ?, title = ?, subtitle = ?, category = ?,
-                              letterhead_id = ?, body_html = ?, subject_line = ?,
+                              letterhead_id = ?, body_html = ?, doc_json = ?, subject_line = ?,
                               updated_at = datetime('now')
          WHERE id = ?`
       ).run(
@@ -122,6 +156,7 @@ export function saveTemplate(db: Database, input: TemplateInput): TemplateDetail
         input.category?.trim() || null,
         input.letterheadId,
         input.bodyHtml,
+        docJson,
         input.subjectLine?.trim() || null,
         templateId
       );

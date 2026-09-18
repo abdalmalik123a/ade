@@ -28,6 +28,18 @@ export function newUuid(): Uuid {
   return 'x-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 }
 
+/**
+ * الاقتراح بدرجته وسببه — لا قرارًا ثنائيًا.
+ *
+ * كل قاعدة كشف تعيد درجة، والقرار عتبةٌ عليها يسهل استبدالها بنموذج محلّي
+ * لاحقًا. والسبب يُعرض للموظف فيقبل على بيّنة (§١٥ من الأساس).
+ */
+export type Confidence = number;
+export type Suggestion<T> = { value: T; confidence: Confidence; reason: string };
+
+/** ما فوقها يُطبَّق بلا سؤال، وما دونها يُعرض في المراجعة. */
+export const APPLY_THRESHOLD = 0.8;
+
 export type Dir = 'rtl' | 'ltr';
 export type Align = 'right' | 'center' | 'left' | 'justify';
 
@@ -281,6 +293,53 @@ export function reconcileFields(doc: Doc, catalog?: (key: string) => Partial<Doc
     .filter((k) => !have.has(k))
     .map((key) => makeField({ key, ...(catalog ? catalog(key) : {}) }));
   return [...kept, ...added];
+}
+
+/** يعيد تسمية حقل بلا أن يمسّ مفتاحه — فالمفتاح مرجع المتن، والعنوان للعين. */
+export function renameField(doc: Doc, key: string, label: string): Doc {
+  return {
+    ...doc,
+    fields: doc.fields.map((f) => (f.key === key ? { ...f, label } : f))
+  };
+}
+
+/**
+ * يردّ حقلًا إلى ما كان: فراغًا منقوطًا في النصّ.
+ *
+ * فما ظنّه المحرّك حقلًا قد لا يكون — «مع التقدير .....» نقاطٌ للزينة لا خانةٌ
+ * تُملأ. وردُّه نصًّا أصدق من حذفه، فالورقة تبقى كما كتبها المكتب.
+ */
+export function unfield(doc: Doc, key: string): Doc {
+  const field = doc.fields.find((f) => f.key === key);
+  const dots = '.'.repeat(Math.max(3, field?.width ?? 6));
+
+  const fix = (list: Inline[]): Inline[] =>
+    list.map((i) => (i.kind === 'field' && i.ref === key ? run(dots) : i));
+
+  const walk = (blocks: Block[]): Block[] =>
+    blocks.map((b) => {
+      if (b.kind === 'paragraph') return { ...b, inlines: fix(b.inlines) };
+      if (b.kind === 'list') return { ...b, items: b.items.map((i) => ({ ...i, inlines: fix(i.inlines) })) };
+      if (b.kind === 'table')
+        return {
+          ...b,
+          rows: b.rows.map((r) => ({
+            ...r,
+            cells: r.cells.map((c) => ({
+              ...c,
+              blocks: c.blocks.map((p) => ({ ...p, inlines: fix(p.inlines) }))
+            }))
+          }))
+        };
+      if (b.kind === 'group') return { ...b, blocks: walk(b.blocks) };
+      return b;
+    });
+
+  return {
+    ...doc,
+    blocks: walk(doc.blocks),
+    fields: doc.fields.filter((f) => f.key !== key)
+  };
 }
 
 /** نصّ الوثيقة مجرّدًا — للبصمة والبحث والتدقيق. */

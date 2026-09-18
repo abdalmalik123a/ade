@@ -1,4 +1,5 @@
 import type { Letterhead, LetterheadLayout } from './letterhead';
+import type { Doc, Suggestion } from './doc';
 import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
@@ -226,6 +227,53 @@ export type TemplateSummary = {
 
 export type TemplateDetail = Omit<TemplateSummary, 'variables'> & {
   variables: TemplateVariable[];
+  /**
+   * الوثيقة كتلًا كما حُفظت، خامًا.
+   *
+   * تُقرأ بـ`templateDoc` لا مباشرةً — فما حُفظ قبل النواة لا يحمله، ويُرحَّل
+   * من `bodyHtml` عند القراءة.
+   */
+  docJson?: string | null;
+};
+
+// ── «استورد مجلدي»: الخطّة تُعرض قبل أن تصير ─────────────────────────
+
+/** استمارةٌ مرشَّحة من ملف — أو من استمارة داخل ملفٍ هو مكتبة. */
+export type ImportCandidate = {
+  id: string;
+  file: string;
+  formIndex: number;
+  formCount: number;
+  title: string;
+  subjectLine: string | null;
+  doc: Doc;
+  /** بصمة نصّ الترويسة — بها تُعرف الترويسة المتكرّرة بين الملفات. */
+  letterheadKey: string | null;
+  letterhead: LetterheadLayout | null;
+  notes: string[];
+  warnings: string[];
+  suggestions: Suggestion<string>[];
+};
+
+export type ImportPlan = {
+  candidates: ImportCandidate[];
+  sharedLetterhead: { key: string; layout: LetterheadLayout; count: number } | null;
+  duplicates: { ids: string[]; confidence: number }[];
+  failed: { file: string; error: string }[];
+};
+
+export type ImportChoices = {
+  /** ما قبِله الموظف — وما لم يُذكر لا يُحفظ. */
+  accept: string[];
+  useSharedLetterhead: boolean;
+  sharedName?: string;
+  category?: string | null;
+};
+
+export type ImportOutcome = {
+  templates: number;
+  letterheadId: number | null;
+  skipped: number;
 };
 
 export type DraftRow = {
@@ -370,6 +418,10 @@ export type DiwanApi = {
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
     importFile(): Promise<ImportedTemplate | null>;
+    /** يقرأ مجلدًا ويبني خطّة — ولا يمسّ القاعدة. */
+    planFolder(): Promise<ImportPlan | null>;
+    /** ينفّذ ما قبِله الموظف من الخطّة. */
+    applyImport(plan: ImportPlan, choices: ImportChoices): Promise<ImportOutcome>;
     export(id: number): Promise<string | null>;
     exportLibrary(): Promise<{ path: string; count: number } | null>;
     restoreLibrary(): Promise<{ added: number; skipped: number } | null>;

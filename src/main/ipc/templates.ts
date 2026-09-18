@@ -8,10 +8,29 @@ import * as svc from '../services/templates';
 import { importTemplateFile, parseTemplateXml } from '../services/import';
 import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
-import { pickOpenPath } from './files';
+import { pickFolderPath, pickOpenPath } from './files';
+import {
+  applyImportPlan,
+  planFolderImport,
+  type ImportChoices,
+  type ImportOutcome,
+  type ImportPlan
+} from '../services/importFolder';
 import type { TemplateInput } from '@shared/template';
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
+/** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
+function storeLetterheadImage(bytes: Uint8Array, extension: string): string | null {
+  try {
+    const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
+    const name = `${hash}${extension.toLowerCase()}`;
+    writeFileSync(join(storeDir('letterheads'), name), bytes);
+    return `letterheads/${name}`;
+  } catch {
+    return null; // شعار لا يُحفظ لا يمنع استيراد النموذج
+  }
+}
+
 export function registerTemplateIpc(): void {
   ipcMain.handle('templates:list', (_e, category: string | null) =>
     svc.listTemplates(getDb(), category)
@@ -35,20 +54,32 @@ export function registerTemplateIpc(): void {
     });
     if (!source) return null;
 
-    /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
-    const saveImage = (bytes: Uint8Array, extension: string): string | null => {
-      try {
-        const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
-        const name = `${hash}${extension.toLowerCase()}`;
-        writeFileSync(join(storeDir('letterheads'), name), bytes);
-        return `letterheads/${name}`;
-      } catch {
-        return null; // شعار لا يُحفظ لا يمنع استيراد النموذج
-      }
-    };
-
-    return importTemplateFile(source, saveImage);
+    return importTemplateFile(source, storeLetterheadImage);
   });
+
+  /**
+   * «استورد مجلدي»: يقرأ المجلد ويبني خطّةً تُعرض — ولا يمسّ القاعدة.
+   *
+   * فالموظف يرى ما سيصير قبل أن يصير: كم بطاقة، وأيّها متشابه، وأي ترويسة
+   * تتكرّر، وما الحقول التي استُنتجت وبأي درجة.
+   */
+  ipcMain.handle('templates:planFolder', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const dir = await pickFolderPath(win, {
+      title: 'استورد مجلد ملفاتي',
+      buttonLabel: 'اقرأ المجلد'
+    });
+    if (!dir) return null;
+    return planFolderImport(dir, { saveImage: storeLetterheadImage });
+  });
+
+  /** ينفّذ ما قبِله الموظف من الخطّة — وما لم يُقبل لا يُحفظ. */
+  ipcMain.handle(
+    'templates:applyImport',
+    (_e, plan: ImportPlan, choices: ImportChoices): ImportOutcome =>
+      applyImportPlan(getDb(), plan, choices)
+  );
 
   /** تصدير نموذج واحد — الصيغة تُستنتج من الامتداد الذي يختاره المكتب في الحوار. */
   ipcMain.handle('templates:export', async (e, id: number) => {
