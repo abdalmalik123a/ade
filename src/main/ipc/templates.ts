@@ -1,10 +1,14 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
-import { getDb } from '../db';
+import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
 import { importTemplateFile, parseTemplateXml } from '../services/import';
 import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
+import { pickOpenPath } from './files';
 import type { TemplateInput } from '@shared/template';
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
@@ -23,14 +27,27 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('templates:importFile', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
-    const result = await dialog.showOpenDialog(win, {
+    const source = await pickOpenPath(win, {
       title: 'استيراد نموذج',
       buttonLabel: 'استيراد',
-      properties: ['openFile'],
-      filters: [{ name: 'نماذج', extensions: ['docx', 'xml'] }]
+      filterName: 'نماذج',
+      extensions: ['docx', 'xml']
     });
-    if (result.canceled || !result.filePaths[0]) return null;
-    return importTemplateFile(result.filePaths[0]);
+    if (!source) return null;
+
+    /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
+    const saveImage = (bytes: Uint8Array, extension: string): string | null => {
+      try {
+        const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
+        const name = `${hash}${extension.toLowerCase()}`;
+        writeFileSync(join(storeDir('letterheads'), name), bytes);
+        return `letterheads/${name}`;
+      } catch {
+        return null; // شعار لا يُحفظ لا يمنع استيراد النموذج
+      }
+    };
+
+    return importTemplateFile(source, saveImage);
   });
 
   /** تصدير نموذج واحد — الصيغة تُستنتج من الامتداد الذي يختاره المكتب في الحوار. */

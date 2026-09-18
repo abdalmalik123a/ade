@@ -62,6 +62,13 @@ export default function TemplateDesigner({
     initial?.letterheadId ?? letterheads.find((l) => l.isDefault)?.id ?? null
   );
   const [variables, setVariables] = useState<TemplateVariable[]>(initial?.variables ?? []);
+
+  /**
+   * نموذج مستورد يأتي مملوءًا بلا سجلّ في القاعدة (id = 0): يُحرَّر كالجديد
+   * ويُحفظ سجلًّا جديدًا. التمييز بوجود `initial` وحده كان يجعله «تعديلًا»
+   * لسجلّ لا وجود له، فيضيع ما استُورد.
+   */
+  const editing = Boolean(initial && initial.id > 0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -80,8 +87,8 @@ export default function TemplateDesigner({
   }, [title, body, code]);
 
   useEffect(() => {
-    if (initial) void window.diwan.templates.usage(initial.id).then(setUsage);
-  }, [initial]);
+    if (editing && initial) void window.diwan.templates.usage(initial.id).then(setUsage);
+  }, [editing, initial]);
 
   const letterhead = letterheads.find((l) => l.id === letterheadId) ?? null;
 
@@ -123,7 +130,7 @@ export default function TemplateDesigner({
     setSaving(true);
     try {
       const input: TemplateInput = {
-        id: initial?.id ?? null,
+        id: editing && initial ? initial.id : null,
         code: code.trim() || null,
         title,
         subtitle: subtitle.trim() || null,
@@ -143,7 +150,7 @@ export default function TemplateDesigner({
   }
 
   async function remove() {
-    if (!initial) return;
+    if (!editing || !initial) return;
     await window.diwan.templates.delete(initial.id);
     onDeleted();
   }
@@ -170,9 +177,9 @@ export default function TemplateDesigner({
               <span className="material-symbols-outlined text-[18px]">data_object</span>
             </span>
             <span className="font-headline-sm text-headline-sm text-on-surface">
-              {initial ? 'تعديل النموذج' : 'مصمّم النماذج والمُعاملات'}
+              {editing ? 'تعديل النموذج' : initial ? 'نموذج مستورد' : 'مصمّم النماذج والمُعاملات'}
             </span>
-            {initial && usage > 0 && (
+            {editing && usage > 0 && (
               <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
                 صدر عنه {usage} كتابًا
               </span>
@@ -454,7 +461,7 @@ export default function TemplateDesigner({
             )}
           </div>
           <div className="flex items-center gap-space-sm shrink-0">
-            {initial &&
+            {editing &&
               (confirmDelete ? (
                 <div className="flex items-center gap-space-xs">
                   <span className="font-label-sm text-label-sm text-error">

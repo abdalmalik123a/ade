@@ -173,6 +173,8 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
         authorityId: null,
         layout: imported.letterhead!
       });
+      // القائمة تُحدَّث قبل فتح المصمّم، وإلا لم يجد الترويسةَ التي لتوّها حُفظت.
+      setLetterheads(await window.diwan.letterheads.list());
       setPendingImport(null);
       openImported(imported, saved.id);
       say(`حُفظت الترويسة «${saved.name}» ورُبط بها النموذج`);
@@ -579,7 +581,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
 
       {designer.open && (
         <TemplateDesigner
-          initial={designer.initial?.id ? designer.initial : null}
+          initial={designer.initial}
           letterheads={letterheads}
           categories={categories.map((c) => c.name)}
           onClose={() => setDesigner({ open: false, initial: null })}

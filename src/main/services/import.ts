@@ -44,8 +44,22 @@ const decodeEntities = (s: string) =>
     .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
     .replace(/&amp;/g, '&');
 
-/** فقرة Word بما يلزم للترويسة: نصّها ومحاذاتها وثِقلها. */
-type Para = { text: string; align: Align; bold: boolean };
+/**
+ * فقرة Word بما يلزم للترويسة: نصّها ومحاذاتها وثِقلها، وصورتها إن كانت
+ * فقرة شعار، والنصّ الخام قبل ضغط المسافات — فالمسافات الطويلة في كتب Word
+ * ليست زخرفًا: بها يفصل الموظف يمين الترويسة عن يسارها.
+ */
+type Para = {
+  text: string;
+  raw: string;
+  align: Align;
+  bold: boolean;
+  /** معرّف العلاقة للصورة داخل الفقرة (r:embed). */
+  imageRel: string | null;
+};
+
+/** ملف يُنقل من حزمة Word إلى مخزن التطبيق فيعيد مساره النسبي. */
+export type ImageSaver = (bytes: Uint8Array, extension: string) => string | null;
 
 const ALIGN_MAP: Record<string, Align> = {
   right: 'right',
@@ -67,10 +81,14 @@ function parseParagraphs(xml: string): Para[] {
         (m) => m[1] ?? ''
       );
       const jc = body.match(/<w:jc[^>]*w:val="([^"]+)"/);
+      const embed = body.match(/r:(?:embed|id)="([^"]+)"/);
+      const raw = decodeEntities(runs.join(''));
       return {
-        text: decodeEntities(runs.join('')).trim(),
+        text: raw.replace(/\s+/g, ' ').trim(),
+        raw,
         align: ALIGN_MAP[jc?.[1] ?? ''] ?? 'right',
-        bold: /<w:b\s*\/?>/.test(body)
+        bold: /<w:b\s*\/?>/.test(body),
+        imageRel: /<w:drawing|<v:imagedata|<w:pict/.test(body) ? (embed?.[1] ?? null) : null
       };
     });
 }
@@ -84,6 +102,28 @@ function toBlock(para: Para, size: number): LetterheadBlock {
     size,
     bold: para.bold
   };
+}
+
+function imageBlock(path: string, align: Align): LetterheadBlock {
+  return { id: newId('b'), kind: 'image', value: path, align, size: 12, bold: false, width: 90 };
+}
+
+/**
+ * يفصل سطرًا كُتب عمودين بمسافات أو جدولة.
+ *
+ * أكثر ترويسات Word في الدوائر مكتوبة هكذا: اسم الجهة يمينًا، ثم فراغ طويل،
+ * ثم «العدد:» و«التاريخ:» يسارًا — كلّه في فقرة واحدة. فلو أُخذ السطر كما هو
+ * لخرجت الترويسة سطرًا واحدًا مشوّهًا.
+ */
+function splitColumns(raw: string): { right: string; left: string } | null {
+  // المسافات في أول السطر وآخره إزاحةٌ لا فاصل — والفاصل ما وقع بين كلمتين.
+  const line = raw.replace(/^[^\S\n]+|[^\S\n]+$/g, '');
+  const gap = line.match(/[^\S\n]{6,}|\t+/);
+  if (!gap || gap.index === undefined) return null;
+  const right = line.slice(0, gap.index).replace(/\s+/g, ' ').trim();
+  const left = line.slice(gap.index + gap[0].length).replace(/\s+/g, ' ').trim();
+  if (!right || !left) return null;
+  return { right, left };
 }
 
 /** يبني ترويسة من فقرات موزَّعة على أقسام حسب المحاذاة. */
@@ -127,18 +167,42 @@ const BODY_START = /^\s*(إلى|الى|م\s*\/|السيد|السيدة|بعد ا
 /**
  * يفصل ترويسةً مكتوبةً نصًّا في أول المستند عن متنه.
  *
- * الشروط متشدّدة عمدًا: أسطر قصيرة، قليلة، قبل أول فراغ أو أول سطر من المتن،
- * ويبقى بعدها متن حقيقي. فخطأُ اقتطاع سطر من المتن أسوأ من ترك ترويسة.
+ * الشروط متشدّدة عمدًا: أسطر قصيرة، قليلة، قبل أول سطر من المتن، ويبقى بعدها
+ * متن حقيقي. فخطأُ اقتطاع سطر من المتن أسوأ من ترك ترويسة.
+ *
+ * والفقرات الفارغة في أول المستند تُتخطّى ولا تُنهي الجمع: أكثر ملفات Word
+ * تبدأ بسطر فارغ أو سطرين قبل الترويسة، وفارغةٌ واحدة بين سطر الجهة وشعارها
+ * أمرٌ معتاد — فإنهاء الجمع عندها كان يُضيّع الترويسة كلّها.
  */
-function splitLeadingLetterhead(paras: Para[]): { letterhead: LetterheadLayout | null; rest: Para[] } {
+function splitLeadingLetterhead(
+  paras: Para[],
+  saveImage?: ImageSaver,
+  resolveImage?: (rel: string) => { bytes: Uint8Array; ext: string } | null
+): { letterhead: LetterheadLayout | null; rest: Para[] } {
   const head: Para[] = [];
   let i = 0;
-  for (; i < paras.length && head.length < 8; i++) {
+
+  // تخطّي الفراغ الذي يسبق الترويسة
+  while (i < paras.length && !paras[i]!.text && !paras[i]!.imageRel) i++;
+
+  for (; i < paras.length && head.length < 10; i++) {
     const para = paras[i]!;
-    if (!para.text) {
-      i++; // الفقرة الفارغة فاصل الترويسة عن المتن
-      break;
+
+    /**
+     * الفقرة الفارغة تنهي الترويسة — إلا أن يليها شعار.
+     *
+     * الشعار يُوضع عادةً تحت اسم الجهة بفراغ بينهما، فلو أنهينا عنده لضاع.
+     * ولو تجاوزنا كل فراغ لابتلعت الترويسةُ أسطرَ المتن القصيرة بعده.
+     */
+    if (!para.text && !para.imageRel) {
+      const next = paras.slice(i + 1, i + 3).find((x) => x.text || x.imageRel);
+      if (!next || !next.imageRel) {
+        i++;
+        break;
+      }
+      continue;
     }
+
     if (BODY_START.test(para.text)) break;
     if (para.text.length > 70) break;
     head.push(para);
@@ -146,18 +210,54 @@ function splitLeadingLetterhead(paras: Para[]): { letterhead: LetterheadLayout |
 
   const rest = paras.slice(i);
   const remaining = rest.filter((x) => x.text).length;
-  if (head.length < 2 || remaining < 2) return { letterhead: null, rest: paras };
+  const content = head.filter((x) => x.text || x.imageRel);
+  if (content.length < 2 || remaining < 2) return { letterhead: null, rest: paras };
 
-  const groups: Para[][] = [[], [], []];
+  const right: Para[] = [];
+  const left: Para[] = [];
+  const middle: Para[] = [];
+  let images: { para: Para; column: 'right' | 'middle' }[] = [];
+
   for (const para of head) {
-    const at = para.align === 'right' ? 0 : para.align === 'center' ? 1 : 2;
-    groups[at]!.push(para);
+    if (para.imageRel) {
+      images.push({ para, column: 'middle' });
+      continue;
+    }
+    const columns = splitColumns(para.raw);
+    if (columns) {
+      right.push({ ...para, text: columns.right, align: 'right' });
+      left.push({ ...para, text: columns.left, align: 'left' });
+      continue;
+    }
+    const at = para.align === 'center' ? middle : para.align === 'left' ? left : right;
+    at.push(para);
   }
 
-  // كل الأسطر بمحاذاة واحدة → قسم واحد بعرض الورقة.
-  const layout = groups.filter((g) => g.length).length === 1
-    ? layoutFromGroups([head])
-    : layoutFromGroups(groups);
+  // الشعار يلحق بالقسم الذي فيه اسم الجهة ما لم يكن هناك قسم وسط.
+  const imageBlocks: LetterheadBlock[] = [];
+  if (saveImage && resolveImage) {
+    for (const { para } of images) {
+      const file = para.imageRel ? resolveImage(para.imageRel) : null;
+      if (!file) continue;
+      const stored = saveImage(file.bytes, file.ext);
+      if (stored) imageBlocks.push(imageBlock(stored, 'center'));
+    }
+  }
+  images = [];
+
+  const toBlocks = (list: Para[]) => list.map((para, j) => toBlock(para, j === 0 ? 15 : 13));
+  const rightBlocks = [...toBlocks(right), ...(middle.length === 0 ? imageBlocks : [])];
+  const middleBlocks = [...toBlocks(middle), ...(middle.length > 0 ? imageBlocks : [])];
+  const leftBlocks = toBlocks(left);
+
+  const columns = [rightBlocks, middleBlocks, leftBlocks].filter((b) => b.length > 0);
+  if (columns.length === 0) return { letterhead: null, rest: paras };
+
+  const layout = emptyLayout();
+  layout.columns = Math.min(columns.length, 3) as ColumnCount;
+  columns.slice(0, 3).forEach((blocks, at) => {
+    layout.sections[at]!.blocks = blocks;
+  });
 
   return { letterhead: layout, rest };
 }
@@ -258,7 +358,10 @@ function xmlToTemplate(xml: string, fallbackTitle: string): ImportedTemplate {
   };
 }
 
-export async function importTemplateFile(path: string): Promise<ImportedTemplate> {
+export async function importTemplateFile(
+  path: string,
+  saveImage?: ImageSaver
+): Promise<ImportedTemplate> {
   const ext = extname(path).toLowerCase();
   const name = basename(path, ext);
 
@@ -278,7 +381,7 @@ export async function importTemplateFile(path: string): Promise<ImportedTemplate
     if (!doc) throw new Error('الملف ليس مستند Word صالحًا (لا يحتوي word/document.xml)');
 
     const xml = strFromU8(doc);
-    const warnings: string[] = ['الصور والتنسيق لا تُستورد — النصّ والترويسة فقط'];
+    const warnings: string[] = ['تنسيق المتن لا يُستورد — النصّ والترويسة وشعارها'];
 
     // 1) ترويسة صفحة حقيقية إن وُجدت. 2) جدول في رأس المستند. 3) أسطر مكتوبة نصًّا.
     let letterhead = layoutFromHeaderParts(files);
@@ -297,7 +400,23 @@ export async function importTemplateFile(path: string): Promise<ImportedTemplate
     }
 
     if (!letterhead) {
-      const split = splitLeadingLetterhead(paras);
+      // خريطة العلاقات: rId → word/media/image1.gif
+      const rels = files['word/_rels/document.xml.rels'];
+      const targets = new Map<string, string>();
+      if (rels) {
+        for (const m of strFromU8(rels).matchAll(/Id="([^"]+)"[^>]*Target="([^"]+)"/g)) {
+          targets.set(m[1]!, m[2]!.replace(/^\/?word\//, '').replace(/^\.\.\//, ''));
+        }
+      }
+      const resolveImage = (rel: string) => {
+        const target = targets.get(rel);
+        const bytes = target ? files[`word/${target}`] : undefined;
+        if (!bytes) return null;
+        const dot = target!.lastIndexOf('.');
+        return { bytes, ext: dot > 0 ? target!.slice(dot) : '.png' };
+      };
+
+      const split = splitLeadingLetterhead(paras, saveImage, resolveImage);
       letterhead = split.letterhead;
       paras = split.rest;
     }
@@ -308,20 +427,38 @@ export async function importTemplateFile(path: string): Promise<ImportedTemplate
     const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     if (!text && !letterhead) throw new Error('مستند Word فارغ من النصّ');
 
-    // أول سطر غير فارغ عنوانٌ مرشَّح، والباقي متن — يصحّحه المكتب قبل الحفظ.
-    const firstIdx = lines.findIndex((l) => l.trim());
-    const title = (lines[firstIdx] ?? name).trim().slice(0, 120);
-    const body = lines.slice(firstIdx + 1).join('\n').trim() || text;
-
     const subject = lines.find((l) => /^\s*م\s*\//.test(l));
+    const subjectLine = subject ? subject.replace(/^\s*م\s*\/\s*/, '').trim() : null;
     if (subject) warnings.push('استُنتج سطر الموضوع من نصّ المستند');
+
+    // سطر الموضوع يُرفع من المتن: الورقة تطبعه بنفسها، وإبقاؤه يكرّره.
+    const bodyLines = lines.filter((l) => l !== subject);
+
+    /**
+     * العنوان: عنوانُ المستند إن كان له عنوان، وإلا فسطر الموضوع، وإلا اسم الملف.
+     *
+     * وعنوان المستند سطرٌ قصير بلا نقطة في آخره ولا مخاطبة في أوّله — أما
+     * «نؤيد لكم بأن السيد فلانًا...» فجملةٌ من المتن، واتّخاذها عنوانًا كان
+     * يقتطعها منه.
+     */
+    const firstIdx = bodyLines.findIndex((l) => l.trim());
+    const firstLine = (bodyLines[firstIdx] ?? '').trim();
+    const looksLikeHeading =
+      firstLine.length > 0 &&
+      firstLine.length <= 60 &&
+      !/[.!؟]$/.test(firstLine) &&
+      !BODY_START.test(firstLine);
+    const titleFromBody = looksLikeHeading ? firstLine : null;
+    const title = (titleFromBody ?? subjectLine ?? name).slice(0, 120);
+    const kept = titleFromBody ? bodyLines.slice(firstIdx + 1) : bodyLines;
+    const body = kept.join('\n').trim() || bodyLines.join('\n').trim();
 
     return {
       title,
       subtitle: null,
       category: null,
       code: null,
-      subjectLine: subject ? subject.replace(/^\s*م\s*\/\s*/, '').trim() : null,
+      subjectLine,
       body,
       warnings,
       letterhead

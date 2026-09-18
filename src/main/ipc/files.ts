@@ -34,6 +34,28 @@ export async function pickSavePath(
   return result.canceled || !result.filePath ? null : result.filePath;
 }
 
+/**
+ * أي ملف يُفتح: حوار النظام دائمًا في التشغيل الطبيعي.
+ *
+ * والاستثناء نفسه المذكور في pickSavePath: حوار النظام لا يُضغط آليًا، فبغير
+ * هذا الباب يبقى الاستيراد كلّه بلا فحص على التطبيق الحقيقي.
+ */
+export async function pickOpenPath(
+  window: BrowserWindow,
+  options: { title: string; buttonLabel: string; filterName: string; extensions: string[] }
+): Promise<string | null> {
+  const testFile = process.env['DIWAN_TEST_OPEN_FILE'];
+  if (testFile) return testFile;
+
+  const result = await dialog.showOpenDialog(window, {
+    title: options.title,
+    buttonLabel: options.buttonLabel,
+    properties: ['openFile'],
+    filters: [{ name: options.filterName, extensions: options.extensions }]
+  });
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+}
+
 /** ينسخ ملفًا إلى المخزن باسم مشتقّ من محتواه — فلا تتكرّر نسخة ولا يتصادم اسم. */
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
   const bytes = await readFile(sourcePath);

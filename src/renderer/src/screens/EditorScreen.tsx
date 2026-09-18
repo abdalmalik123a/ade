@@ -853,7 +853,7 @@ function EditorScreen(
                   </h3>
                 </div>
                 <button
-                  className="font-label-sm text-label-sm text-secondary font-semibold flex items-center gap-1 hover:underline"
+                  className="h-8 px-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1 shadow-sm"
                   type="button"
                   onClick={() => setFieldPickerOpen(true)}
                 >
@@ -918,6 +918,20 @@ function EditorScreen(
                       </div>
                     </div>
                   ))}
+
+                  <button
+                    className="min-h-[4.5rem] rounded-lg border border-dashed border-outline-variant hover:border-secondary hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex flex-col items-center justify-center gap-0.5 px-space-xs"
+                    type="button"
+                    onClick={() => setFieldPickerOpen(true)}
+                  >
+                    <span className="material-symbols-outlined text-[20px] text-secondary">
+                      add_circle
+                    </span>
+                    <span className="font-label-md text-label-md font-semibold">إضافة حقل</span>
+                    <span className="font-label-sm text-label-sm text-center leading-tight">
+                      من معاملات التربية والجنسية والجوازات، أو حقل تسمّيه بنفسك
+                    </span>
+                  </button>
                 </div>
               )}
             </section>

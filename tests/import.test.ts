@@ -5,6 +5,7 @@ import {
   AlignmentType,
   Document,
   Header,
+  ImageRun,
   Packer,
   Paragraph,
   Table,
@@ -85,7 +86,7 @@ describe('استيراد نموذج من Word', () => {
   it('ينبّه أن التنسيق والصور لا تُستورد', async () => {
     const path = await makeDocx(['عنوان', 'متن']);
     const result = await importTemplateFile(path);
-    expect(result.warnings.join(' ')).toContain('لا تُستورد');
+    expect(result.warnings.join(' ')).toContain('لا يُستورد');
   });
 
   it('يرفض مستندًا فارغًا برسالة مفهومة', async () => {
@@ -285,5 +286,107 @@ describe('استخراج الترويسة من ملفات Word', () => {
       ])
     );
     expect(long.letterhead).toBeNull();
+  });
+});
+
+/** أصغر GIF صالح — يقوم مقام شعار الدائرة في الاختبار. */
+const TINY_GIF = Buffer.from(
+  'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  'base64'
+);
+
+describe('ترويسة كُتبت بمسافات — وهي الشكل الغالب في كتب الدوائر', () => {
+  /**
+   * محاكاة ملف حقيقي من مدرسة: فقرة فارغة في أوّله، ثم سطران يفصل فيهما
+   * فراغٌ طويلٌ يمينَ الترويسة عن يسارها، ثم سطر ثالث، ثم شعار، ثم المتن.
+   */
+  async function schoolLetter(): Promise<string> {
+    return writeDocx(
+      new Document({
+        sections: [
+          {
+            children: [
+              para(''),
+              para('        ادارة                                        العدد: '),
+              para('  مدرسة الصحوة الابتدائية                        التاريخ: / / 20'),
+              para('للبنيـــــــن'),
+              para(''),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new ImageRun({
+                    type: 'gif',
+                    data: TINY_GIF,
+                    transformation: { width: 60, height: 60 }
+                  })
+                ]
+              }),
+              para(''),
+              para('الى / ولي امر التلميذ ............................'),
+              para('م/ انـــــــــذار', AlignmentType.CENTER),
+              para('بالنظر لوصول غيابات التلميذ ............ في الصف ........'),
+              para('لذا تقرر نقص ....... من درجة المواظبة وانذاره.')
+            ]
+          }
+        ]
+      })
+    );
+  }
+
+  it('لا تمنعها الفقرة الفارغة في أول المستند', async () => {
+    const result = await importTemplateFile(await schoolLetter());
+    expect(result.letterhead).not.toBeNull();
+  });
+
+  it('يفصل يمين الترويسة عن يسارها بالفراغ الذي كتبه الموظف', async () => {
+    const result = await importTemplateFile(await schoolLetter());
+    const layout = result.letterhead!;
+
+    expect(layout.columns).toBe(2);
+    expect(layout.sections[0].blocks.map((b) => b.value)).toEqual([
+      'ادارة',
+      'مدرسة الصحوة الابتدائية',
+      'للبنيـــــــن'
+    ]);
+    expect(layout.sections[1].blocks.map((b) => b.value)).toEqual(['العدد:', 'التاريخ: / / 20']);
+  });
+
+  it('ينقل شعار الدائرة إلى مخزن التطبيق', async () => {
+    const saved: { bytes: number; ext: string }[] = [];
+    const result = await importTemplateFile(await schoolLetter(), (bytes, ext) => {
+      saved.push({ bytes: bytes.length, ext });
+      return `letterheads/seal${ext}`;
+    });
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0]!.ext).toBe('.gif');
+    expect(saved[0]!.bytes).toBeGreaterThan(20);
+
+    const images = result
+      .letterhead!.sections.flatMap((s) => s.blocks)
+      .filter((b) => b.kind === 'image');
+    expect(images.map((b) => b.value)).toEqual(['letterheads/seal.gif']);
+  });
+
+  it('الشعار يُترك إن لم يكن هناك مكان يُحفظ فيه', async () => {
+    const result = await importTemplateFile(await schoolLetter());
+    const images = result
+      .letterhead!.sections.flatMap((s) => s.blocks)
+      .filter((b) => b.kind === 'image');
+    expect(images).toHaveLength(0);
+    // وبقيّة الترويسة تُستخرج على كل حال.
+    expect(result.letterhead!.sections[0].blocks).not.toHaveLength(0);
+  });
+
+  it('العنوان من سطر الموضوع، ولا يتكرّر الموضوع في المتن', async () => {
+    const result = await importTemplateFile(await schoolLetter());
+    expect(result.title).toBe('انـــــــــذار');
+    expect(result.subjectLine).toBe('انـــــــــذار');
+    expect(result.body).not.toContain('م/ انـــــــــذار');
+    expect(result.body.startsWith('الى / ولي امر التلميذ')).toBe(true);
+    expect(result.body).toContain('المواظبة');
+    // ولا يتسرّب شيء من الترويسة إلى المتن.
+    expect(result.body).not.toContain('مدرسة الصحوة');
+    expect(result.body).not.toContain('العدد:');
   });
 });

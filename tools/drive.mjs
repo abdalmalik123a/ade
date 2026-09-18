@@ -135,7 +135,7 @@ class Page {
   }
 }
 
-export async function drive(scenario, { userDataDir, shotsDir } = {}) {
+export async function drive(scenario, { userDataDir, shotsDir, env } = {}) {
   const profile = userDataDir ?? join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
   rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
@@ -144,7 +144,7 @@ export async function drive(scenario, { userDataDir, shotsDir } = {}) {
   const child = spawn(
     ELECTRON,
     ['.', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`],
-    { stdio: ['ignore', 'pipe', 'pipe'] }
+    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...(env ?? {}) } }
   );
   const logs = [];
   child.stdout.on('data', (d) => logs.push(String(d)));
@@ -178,7 +178,9 @@ export async function drive(scenario, { userDataDir, shotsDir } = {}) {
 // تشغيل مباشر: node tools/drive.mjs scenario.mjs
 if (process.argv[2]) {
   const mod = await import(pathToFileURL(resolve(process.argv[2])).href);
-  const out = await drive(mod.default, { shotsDir: process.env.SHOT_DIR });
+  // سيناريو يحتاج تهيئةً قبل إقلاع التطبيق (ملفًا يُبنى، أو متغيّر بيئة يُضبط).
+  const env = mod.prepare ? await mod.prepare() : undefined;
+  const out = await drive(mod.default, { shotsDir: process.env.SHOT_DIR, env });
   if (out !== undefined) console.log(out);
   process.exit(0);
 }
