@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, basename } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import { reconcileVariables, type TemplateVariable } from '@shared/template';
+import { stripTatweel, cleanLine } from './blanks';
 import {
   emptyLayout,
   newId,
@@ -97,7 +98,9 @@ function toBlock(para: Para, size: number): LetterheadBlock {
   return {
     id: newId('b'),
     kind: 'text',
-    value: para.text,
+    // الترويسة تُنظَّف كما يُنظَّف المتن: `للبنيـــــــن` مدَّها الموظف في Word
+    // ليملأ السطر، وورقتنا تعيد الصفّ بنفسها فتخرج مهلهلة إن بقي المدّ.
+    value: cleanLine(para.text).text,
     align: para.align,
     size,
     bold: para.bold
@@ -259,7 +262,41 @@ function splitLeadingLetterhead(
     layout.sections[at]!.blocks = blocks;
   });
 
+  // العدد والتاريخ يُنتزعان من القسم الأخير إلى حقلَي السجل — وإلا بقيا نصًّا
+  // ميّتًا لا يعرف البرنامج أين يطبع فيه رقم الصادر.
+  const lastAt = layout.columns - 1;
+  const last = layout.sections[lastAt]!;
+  const found = takeRegistryLines(last.blocks);
+  if (found.taken) {
+    last.blocks = found.blocks;
+    // والأصل فراغ: هكذا كُتبا في الملف ليملأهما موظّف الاستلام بخطّه.
+    layout.registry = { show: true, mode: 'manual' };
+    // ويبقى القسم الأخير ولو خلا من الكتل — فهو موضعهما على الورقة، وتقليل
+    // الأقسام يدفعهما إلى عمود اسم الجهة فتنقلب الترويسة.
+  }
+
   return { letterhead: layout, rest };
+}
+
+const REGISTRY_SERIAL = /^\s*(?:العدد|الرقم)\s*[:：]?\s*$/;
+const REGISTRY_DATE = /^\s*(?:التاريخ|تاريخ)\s*[:：]?\s*(?:[\/\s\d٠-٩.]*)$/;
+
+/**
+ * ينتزع سطرَي «العدد:» و«التاريخ:» من كتل القسم.
+ *
+ * الموظف يكتبهما نصًّا في يسار الترويسة ويتركهما فراغًا، وللبرنامج نموذجٌ
+ * لهما يطبع الفراغ نفسه ويعرف أين يحلّ رقم الصادر إن أراده مطبوعًا.
+ */
+function takeRegistryLines(blocks: LetterheadBlock[]): {
+  blocks: LetterheadBlock[];
+  taken: boolean;
+} {
+  const kept = blocks.filter((b) => {
+    if (b.kind !== 'text') return true;
+    const text = stripTatweel(b.value);
+    return !(REGISTRY_SERIAL.test(text) || REGISTRY_DATE.test(text));
+  });
+  return { blocks: kept, taken: kept.length !== blocks.length };
 }
 
 /** ترويسة الصفحة الحقيقية (word/headerN.xml) إن وُجدت وكان فيها نصّ. */
@@ -428,7 +465,9 @@ export async function importTemplateFile(
     if (!text && !letterhead) throw new Error('مستند Word فارغ من النصّ');
 
     const subject = lines.find((l) => /^\s*م\s*\//.test(l));
-    const subjectLine = subject ? subject.replace(/^\s*م\s*\/\s*/, '').trim() : null;
+    const subjectLine = subject
+      ? cleanLine(subject.replace(/^\s*م\s*\/\s*/, '')).text || null
+      : null;
     if (subject) warnings.push('استُنتج سطر الموضوع من نصّ المستند');
 
     // سطر الموضوع يُرفع من المتن: الورقة تطبعه بنفسها، وإبقاؤه يكرّره.
@@ -449,9 +488,27 @@ export async function importTemplateFile(
       !/[.!؟]$/.test(firstLine) &&
       !BODY_START.test(firstLine);
     const titleFromBody = looksLikeHeading ? firstLine : null;
-    const title = (titleFromBody ?? subjectLine ?? name).slice(0, 120);
+    const title = cleanLine(titleFromBody ?? subjectLine ?? name).text.slice(0, 120);
     const kept = titleFromBody ? bodyLines.slice(firstIdx + 1) : bodyLines;
-    const body = kept.join('\n').trim() || bodyLines.join('\n').trim();
+    const rawBody = kept.join('\n').trim() || bodyLines.join('\n').trim();
+
+    /**
+     * تنظيف آثار الكتابة اليدوية في Word: التمديد، و«0» بدل النقطة.
+     *
+     * والفراغات تبقى كما كتبها الموظف — هي متغيّرات الورقة، وتحويلها حقولًا
+     * يجري في شاشة المراجعة حيث يحكم هو لا المحرّك.
+     */
+    const cleanNotes = new Set<string>();
+    const body = rawBody
+      .split('\n')
+      .map((line) => {
+        if (!line.trim()) return line;
+        const done = cleanLine(line);
+        for (const n of done.notes) cleanNotes.add(n);
+        return done.text;
+      })
+      .join('\n');
+    for (const note of cleanNotes) warnings.push(note);
 
     return {
       title,

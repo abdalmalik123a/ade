@@ -248,7 +248,7 @@ describe('استخراج الترويسة من ملفات Word', () => {
             children: [
               para('جمهورية العراق', AlignmentType.RIGHT),
               para('وزارة التربية', AlignmentType.CENTER),
-              para('العدد:', AlignmentType.LEFT),
+              para('الرصافة الأولى', AlignmentType.LEFT),
               para(''),
               para('إلى / جهة'),
               para('متن الكتاب الرسمي هنا.')
@@ -262,7 +262,7 @@ describe('استخراج الترويسة من ملفات Word', () => {
     expect(result.letterhead?.columns).toBe(3);
     expect(result.letterhead!.sections[0].blocks[0]?.value).toBe('جمهورية العراق');
     expect(result.letterhead!.sections[1].blocks[0]?.value).toBe('وزارة التربية');
-    expect(result.letterhead!.sections[2].blocks[0]?.value).toBe('العدد:');
+    expect(result.letterhead!.sections[2].blocks[0]?.value).toBe('الرصافة الأولى');
   });
 
   it('لا يقتطع من المتن ما ليس ترويسة', async () => {
@@ -346,9 +346,20 @@ describe('ترويسة كُتبت بمسافات — وهي الشكل الغا�
     expect(layout.sections[0].blocks.map((b) => b.value)).toEqual([
       'ادارة',
       'مدرسة الصحوة الابتدائية',
-      'للبنيـــــــن'
+      // والمدّ يُحذف: ورقتنا تعيد الصفّ بنفسها فيخرج مهلهلًا إن بقي.
+      'للبنين'
     ]);
-    expect(layout.sections[1].blocks.map((b) => b.value)).toEqual(['العدد:', 'التاريخ: / / 20']);
+  });
+
+  it('ينتزع العدد والتاريخ إلى حقلَي السجل — لا يتركهما نصًّا ميّتًا', async () => {
+    const result = await importTemplateFile(await schoolLetter());
+    const layout = result.letterhead!;
+
+    // بغيرها لا يعرف البرنامج أين يطبع رقم الصادر.
+    expect(layout.registry).toEqual({ show: true, mode: 'manual' });
+    expect(layout.sections[1].blocks).toEqual([]);
+    // ويبقى القسم الأخير موضعًا لهما ولو خلا من الكتل.
+    expect(layout.columns).toBe(2);
   });
 
   it('ينقل شعار الدائرة إلى مخزن التطبيق', async () => {
@@ -380,9 +391,9 @@ describe('ترويسة كُتبت بمسافات — وهي الشكل الغا�
 
   it('العنوان من سطر الموضوع، ولا يتكرّر الموضوع في المتن', async () => {
     const result = await importTemplateFile(await schoolLetter());
-    expect(result.title).toBe('انـــــــــذار');
-    expect(result.subjectLine).toBe('انـــــــــذار');
-    expect(result.body).not.toContain('م/ انـــــــــذار');
+    expect(result.title).toBe('انذار');
+    expect(result.subjectLine).toBe('انذار');
+    expect(result.body).not.toContain('م/ ان');
     expect(result.body.startsWith('الى / ولي امر التلميذ')).toBe(true);
     expect(result.body).toContain('المواظبة');
     // ولا يتسرّب شيء من الترويسة إلى المتن.

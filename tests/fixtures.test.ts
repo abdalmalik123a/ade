@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { importTemplateFile } from '../src/main/services/import';
+import { buildBody, EMPTY_LINE_PX } from '../src/main/services/blanks';
 import type { LetterheadBlock, LetterheadLayout } from '../src/shared/letterhead';
 
 /**
@@ -66,13 +67,19 @@ describe('school-warning.docx — ترويسة كُتبت في المتن بعم
     expect(text(section(layout, 0))).toEqual([
       'ادارة',
       'مدرسة الصحوة الابتدائية',
-      'للبنيـــــــن'
+      // المدّ محذوف — ومن بحث عن «للبنين» وجدها.
+      'للبنين'
     ]);
   });
 
-  it('يضع العدد والتاريخ في العمود الأيسر — حيث كتبهما الموظف', async () => {
+  it('ينتزع العدد والتاريخ من العمود الأيسر إلى حقلَي السجل', async () => {
     const { res } = await load();
-    expect(text(section(res.letterhead!, 1))).toEqual(['العدد:', 'التاريخ: / / 20']);
+    const layout = res.letterhead!;
+
+    // كانا سطرين نصّيين ميّتين، فصارا حقلين يعرف البرنامج أين يطبع فيهما.
+    expect(layout.registry).toEqual({ show: true, mode: 'manual' });
+    expect(text(section(layout, 1))).toEqual([]);
+    expect(layout.columns).toBe(2);
   });
 
   it('ينقل الشعار إلى المخزن ويتركه في الترويسة لا في المتن', async () => {
@@ -95,34 +102,84 @@ describe('school-warning.docx — ترويسة كُتبت في المتن بعم
     expect(res.body).not.toContain('العدد:');
   });
 
-  it('يستنتج الموضوع من سطر «م/» ولا يتركه في المتن', async () => {
+  it('يستنتج الموضوع من سطر «م/»، وينظّف مدّه، ولا يتركه في المتن', async () => {
     const { res } = await load();
-    expect(res.subjectLine).toBe('انـــــــــذار');
+    // كان «انـــــــــذار» — ومن بحث عن «إنذار» لم يكن يجدها.
+    expect(res.subjectLine).toBe('انذار');
     expect(res.body).not.toContain('م/');
   });
 
-  it('يحفظ فراغات الورقة كما كتبها المكتب — فهي متغيّراتها', async () => {
+  it('يحفظ فراغات المتن كما كتبها المكتب — فهي متغيّراتها', async () => {
     const { res } = await load();
 
-    // فراغات المتن: خمسة منقّطات وقوس واحد.
+    // خمسة منقّطات وقوس واحد، وتبقى كما هي: تحويلها حقولًا يحكمه الموظف.
     expect(res.body.match(/\.{3,}/g)).toHaveLength(5);
     expect(res.body).toMatch(/\(\s*\)/);
-    // وفراغ التاريخ في الترويسة لا في المتن — موضعه الطبيعي مع العدد.
-    expect(text(section(res.letterhead!, 1)).join(' ')).toContain('/ / 20');
     // ولا وسم واحد بصيغتنا — ولهذا لا يكفي الاستيراد الحرفي.
     expect(res.body).not.toMatch(/\{[^}]+\}/);
+  });
+
+  it('ينظّف «0» التي وضعتها لوحة المفاتيح مكان النقطة', async () => {
+    const { res } = await load();
+    // كان «وانذاره0» و«الدوام 0».
+    expect(res.body).toContain('وانذاره.');
+    expect(res.body).not.toMatch(/[\u0621-\u064A]0/);
   });
 });
 
 /**
- * ما لم يُبنَ بعد — كل سطر منها عيبٌ رآه هذا الملف.
- * يُحوَّل إلى اختبار حقيقي يوم تُبنى قاعدته (م٢ في الأساس).
+ * محرّك الفراغات على الورقة الحقيقية نفسها.
+ *
+ * الأسطر تخرج من الاستيراد كما كتبها المكتب، فيُبنى منها متن الوثيقة: فراغاتٍ
+ * حقولًا، وفقراتٍ فارغة مسافةً، وأسماءً مستنتجة من الكلام قبلها.
  */
-describe('محرّك الفراغات والتنظيف — م٢', () => {
-  it.todo('«العدد:» و«التاريخ:» يصيران حقلَي السجل لا سطرين نصّيين ميّتين');
-  it.todo('التمديد يُحذف: «انـــــــــذار» ← «انذار»، وإلا لم يجدها من يبحث');
-  it.todo('«0» بعد حرف عربي تصير نقطة: «وانذاره0» ← «وانذاره.»');
-  it.todo('الفقرات الفارغة المتتالية تصير مسافة رأسية واحدة لا خمس فقرات');
-  it.todo('«( )» و«.....» و«/ / 20» تصير حقولًا بأنواعها وبعرض ما كُتب');
-  it.todo('اسم الحقل يُستنتج مما قبله: «للتلميذ ( )» ← اسم التلميذ');
+describe('محرّك الفراغات على الورقة الحقيقية', () => {
+  const build = async () => {
+    const store = imageCollector();
+    const res = await importTemplateFile(join(DIR, 'school-warning.docx'), store.save);
+    return buildBody(res.body.split('\n'));
+  };
+
+  it('الفقرات الفارغة المتتالية تصير مسافة رأسية — فراغ التوقيع لا خمس فقرات', async () => {
+    const built = await build();
+    const spacers = built.blocks.filter((b) => b.kind === 'spacer');
+
+    // خمس فقرات فارغة قبل «مدير المدرسة» صارت مسافةً واحدة بارتفاعها.
+    expect(spacers.map((s) => s.height)).toEqual([5 * EMPTY_LINE_PX]);
+    // والفقرة الفارغة المنفردة تبقى سطرًا كما كانت — بها يُصنع تباعد المتن.
+    expect(built.blocks.filter((b) => b.kind === 'paragraph')).toHaveLength(10);
+    expect(built.notes.some((n) => n.includes('فقرات فارغة'))).toBe(true);
+  });
+
+  it('«( )» و«.....» تصيران حقولًا بعرض ما كُتب — فلا ينكمش الفراغ', async () => {
+    const built = await build();
+
+    expect(built.fields.length).toBeGreaterThanOrEqual(5);
+    // الفراغ الطويل يبقى طويلًا، والقصير قصيرًا.
+    const widths = built.fields.map((f) => f.width);
+    expect(Math.max(...widths)).toBeGreaterThan(20);
+    // وكلّها تُطبع فراغًا يملؤه صاحب العلاقة بقلمه.
+    expect(built.fields.every((f) => f.fillMode === 'hand')).toBe(true);
+  });
+
+  it('اسم الحقل يُستنتج مما قبله: «التلميذ ....» ← اسم التلميذ', async () => {
+    const built = await build();
+    const labels = built.fields.map((f) => f.label);
+
+    expect(labels).toContain('اسم التلميذ');
+    expect(labels).toContain('الصف');
+    // والمكرَّر يُميَّز فلا يملأ أحدهما مكان الآخر.
+    expect(new Set(built.fields.map((f) => f.key)).size).toBe(built.fields.length);
+  });
+
+  it('كل حقل مستنتَج يحمل درجته وسببه — فيراجعه الموظف على بيّنة', async () => {
+    const built = await build();
+
+    expect(built.suggestions).toHaveLength(built.fields.length);
+    for (const s of built.suggestions) {
+      expect(s.confidence).toBeGreaterThan(0);
+      expect(s.confidence).toBeLessThanOrEqual(1);
+      expect(s.reason).toMatch(/\S/);
+    }
+  });
 });

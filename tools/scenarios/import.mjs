@@ -92,7 +92,14 @@ export default async function scenario(page, { profile, shotsDir }) {
   let text = await page.text();
   ok('عُرضت الترويسة المستخرجة قبل حفظها', text.includes('وُجدت ترويسة في الملف'));
   ok('فيها يمين الترويسة', text.includes('مدرسة الصحوة الابتدائية'));
-  ok('وفيها يسارها مفصولًا', text.includes('العدد:') && text.includes('التاريخ: / / 20'));
+  ok('وفيها يسارها مفصولًا', text.includes('العدد:') && text.includes('التاريخ:'));
+  ok(
+    'والعدد والتاريخ حقلا سجلّ لا نصّ ميّت',
+    await page.eval(`
+      const el = document.querySelector('[data-registry]');
+      return Boolean(el) && !document.body.innerText.includes('التاريخ: / / 20');
+    `)
+  );
   ok(
     'وشعار المدرسة صورةً لا نصًّا',
     await page.eval(`
@@ -107,7 +114,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   text = await page.text();
   ok('انفتح المصمّم بالنموذج المستورد', text.includes('نموذج مستورد'));
-  ok('والعنوان من سطر الموضوع', text.includes('انـــــــــذار'));
+  ok('والعنوان من سطر الموضوع بعد تنظيف مدّه', text.includes('انذار'));
 
   const designerValues = await page.eval(`
     const title = [...document.querySelectorAll('input')].map(i => i.value).join(' || ');
@@ -115,17 +122,18 @@ export default async function scenario(page, { profile, shotsDir }) {
     return JSON.stringify({ title, body });
   `);
   const values = JSON.parse(designerValues);
-  ok('وصل عنوان النموذج إلى المصمّم', values.title.includes('انـــــــــذار'));
+  ok('وصل عنوان النموذج إلى المصمّم', values.title.includes('انذار'));
   ok('ووصل متنه كاملًا', values.body.includes('بالنظر لوصول غيابات التلميذ'));
   ok('والمتن بلا أسطر الترويسة', !values.body.includes('مدرسة الصحوة'));
-  ok('ولا يحمل سطر الموضوع مكرّرًا', !values.body.includes('م/ انـــــــــذار'));
+  ok('ولا يحمل سطر الموضوع مكرّرًا', !values.body.includes('م/ ان'));
+  ok('ولا يحمل مدًّا ولا صفرًا مكان نقطة', !values.body.includes('ـــ') && !/[\u0621-\u064A]0/.test(values.body));
 
   ok(
     'والنموذج مربوط بالترويسة المستوردة',
     await page.eval(`
       const sel = [...document.querySelectorAll('select')].find(s =>
-        [...s.options].some(o => o.textContent.includes('انـــــــــذار')));
-      return Boolean(sel && sel.selectedOptions[0]?.textContent.includes('انـــــــــذار'));
+        [...s.options].some(o => o.textContent.includes('انذار')));
+      return Boolean(sel && sel.selectedOptions[0]?.textContent.includes('انذار'));
     `)
   );
 
@@ -138,13 +146,15 @@ export default async function scenario(page, { profile, shotsDir }) {
   const layout = row ? JSON.parse(row.layout_json) : {};
   ok('بقسمين: يمين ويسار', layout.columns === 2);
   ok(
-    'القسم الأول باسم الجهة',
+    'القسم الأول باسم الجهة بلا مدّ',
     layout.sections?.[0]?.blocks?.map((b) => b.value).join('|') ===
-      'ادارة|مدرسة الصحوة الابتدائية|للبنيـــــــن|' + (layout.sections[0].blocks[3]?.value ?? '')
+      'ادارة|مدرسة الصحوة الابتدائية|للبنين|' + (layout.sections[0].blocks[3]?.value ?? '')
   );
   ok(
-    'القسم الثاني بالعدد والتاريخ',
-    layout.sections?.[1]?.blocks?.map((b) => b.value).join('|') === 'العدد:|التاريخ: / / 20'
+    'والقسم الثاني موضعٌ لحقلَي السجل لا سطرين نصّيين',
+    layout.sections?.[1]?.blocks?.length === 0 &&
+      layout.registry?.show === true &&
+      layout.registry?.mode === 'manual'
   );
 
   const image = layout.sections?.[0]?.blocks?.find((b) => b.kind === 'image');
