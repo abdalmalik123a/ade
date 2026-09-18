@@ -5,6 +5,9 @@
  * أما `[الاسم]` فهي صورة العرض في بطاقات المكتبة، لا صيغة المحرّك.
  */
 
+import { docFromLegacy, type DocField } from './doc';
+import { renderDocHtml } from './docHtml';
+
 export type VariableSource = 'manual' | 'citizen' | 'auto';
 
 export type TemplateVariable = {
@@ -76,24 +79,27 @@ export function reconcileVariables(
   });
 }
 
-/** يعوّض المتغيّرات بقيمها لعرض المعاينة. الفارغ يبقى وسمًا ظاهرًا ليُنبّه الموظف. */
+/** ما يعرفه المحرّك عن وسم بعينه — يُورَّث إلى حقل الوثيقة عند الترحيل. */
+export function legacyFieldMeta(key: string): Partial<DocField> {
+  const auto = AUTO_TOKENS.find((a) => a.token === key);
+  if (auto) return { label: auto.label, source: null, required: false };
+  const citizen = CITIZEN_TOKENS.find((c) => c.token === key);
+  if (citizen) return { label: citizen.label, source: citizen.field, required: true };
+  return {};
+}
+
+/**
+ * يعوّض المتغيّرات بقيمها لعرض المعاينة. الفارغ يبقى وسمًا ظاهرًا ليُنبّه الموظف.
+ *
+ * والمتن القديم يُقرأ عبر نواة الوثيقة ويُرسم بمحرّكها — فالمكتب لا يرى فرقًا،
+ * وصار لكل ما يُطبع محرّك رسم واحد.
+ */
 export function renderBody(
   body: string,
   values: Record<string, string>,
   opts: { markMissing?: boolean } = {}
 ): string {
-  const escape = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  return escape(body)
-    .replace(/\{([^{}]+)\}/g, (whole, rawName: string) => {
-      const name = rawName.trim();
-      const value = values[name];
-      if (value) {
-        return `<span class="font-bold text-black underline underline-offset-4 decoration-1">${escape(value)}</span>`;
-      }
-      if (opts.markMissing === false) return '';
-      return `<span class="px-1 rounded bg-surface-container-high text-secondary font-mono">${whole}</span>`;
-    })
-    .replace(/\n/g, '<br/>');
+  return renderDocHtml(docFromLegacy(body, legacyFieldMeta), values, {
+    missing: opts.markMissing === false ? 'hide' : 'token'
+  });
 }
