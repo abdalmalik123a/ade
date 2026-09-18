@@ -41,6 +41,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   ok('يرفض الحفظ بمتن فارغ', (await page.text()).includes('متن النموذج فارغ'));
 
+  // الوضع الأصل «كتل»؛ وهذا الطريق يختبر المتن النصّي بوسومه.
+  await page.clickExact('نصّ');
+  await wait(600);
+
   // كتابة المتن بحقن المتغيّرات من الأزرار
   await page.type(
     'textarea[placeholder^="نؤيد لكم"]',
@@ -76,6 +80,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   await page.type('input[placeholder^="مثال: تأييد"]', 'نموذج ثانٍ');
   await page.type('input[placeholder="اختياري"]', 'DIW-EDU-1');
+  await page.clickExact('نصّ');
+  await wait(400);
   await page.type('textarea[placeholder^="نؤيد لكم"]', 'متن قصير');
   await page.clickText('حفظ النموذج');
   await wait(600);

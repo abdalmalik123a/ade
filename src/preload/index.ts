@@ -40,6 +40,13 @@ const api: DiwanApi = {
     setDefault: (id: number) => invoke('letterheads:setDefault', id),
     delete: (id: number) => invoke('letterheads:delete', id)
   },
+  clips: {
+    list: (query?: string) => invoke('clips:list', query ?? ''),
+    save: (input: { id: number | null; title: string; body: string; category?: string | null }) =>
+      invoke('clips:save', input),
+    delete: (id: number) => invoke('clips:delete', id),
+    touch: (id: number) => invoke('clips:touch', id)
+  },
   seals: {
     list: (): Promise<Seal[]> => invoke('seals:list'),
     add: (input: { name: string; kind: string; imagePath: string | null }) =>
@@ -115,7 +122,7 @@ const api: DiwanApi = {
     get: (id: number) => invoke('templates:get', id),
     categories: () => invoke('templates:categories'),
     stats: () => invoke('templates:stats'),
-    save: (input: TemplateInput) => invoke('templates:save', input),
+    save: (input: TemplateInput & { doc?: unknown }) => invoke('templates:save', input),
     usage: (id: number) => invoke('templates:usage', id),
     delete: (id: number) => invoke('templates:delete', id),
     doc: (id: number) => invoke('templates:doc', id),

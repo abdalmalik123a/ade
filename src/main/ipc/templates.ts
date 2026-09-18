@@ -8,6 +8,7 @@ import * as svc from '../services/templates';
 import { importTemplateFile, parseTemplateXml } from '../services/import';
 import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
+import { deleteClip, listClips, saveClip, touchClip } from '../services/clips';
 import { pickFolderPath, pickOpenPath } from './files';
 import {
   applyImportPlan,
@@ -17,6 +18,7 @@ import {
   type ImportPlan
 } from '../services/importFolder';
 import type { TemplateInput } from '@shared/template';
+import type { Doc } from '@shared/doc';
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -38,9 +40,21 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('templates:get', (_e, id: number) => svc.getTemplate(getDb(), id));
   ipcMain.handle('templates:categories', () => svc.listCategories(getDb()));
   ipcMain.handle('templates:stats', () => svc.templateStats(getDb()));
-  ipcMain.handle('templates:save', (_e, input: TemplateInput) => svc.saveTemplate(getDb(), input));
+  ipcMain.handle('templates:save', (_e, input: TemplateInput & { doc?: Doc | null }) =>
+    svc.saveTemplate(getDb(), input)
+  );
   ipcMain.handle('templates:usage', (_e, id: number) => svc.templateUsage(getDb(), id));
   ipcMain.handle('templates:delete', (_e, id: number) => svc.deleteTemplate(getDb(), id));
+
+  /** مكتبة الكليشات — عبارات المكتب، تبدأ فارغة وتُبنى بالاستعمال. */
+  ipcMain.handle('clips:list', (_e, query?: string) => listClips(getDb(), query ?? ''));
+  ipcMain.handle(
+    'clips:save',
+    (_e, input: { id: number | null; title: string; body: string; category?: string | null }) =>
+      saveClip(getDb(), input)
+  );
+  ipcMain.handle('clips:delete', (_e, id: number) => deleteClip(getDb(), id));
+  ipcMain.handle('clips:touch', (_e, id: number) => touchClip(getDb(), id));
 
   /** وثيقة النموذج كتلًا — مقروءةً، ومُرحَّلةً إن حُفظت قبل النواة. */
   ipcMain.handle('templates:doc', (_e, id: number) => {

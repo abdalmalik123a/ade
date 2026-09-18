@@ -118,8 +118,11 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   const designerValues = await page.eval(`
     const title = [...document.querySelectorAll('input')].map(i => i.value).join(' || ');
-    const body = [...document.querySelectorAll('textarea')].map(t => t.value).join(' || ');
-    return JSON.stringify({ title, body });
+    // المتن في كتل المحرّر، ويبقى صندوق النصّ لمن بدّل الوضع.
+    const blocks = [...document.querySelectorAll('[contenteditable="true"]')]
+      .map((b) => b.innerText).join(' || ');
+    const boxes = [...document.querySelectorAll('textarea')].map(t => t.value).join(' || ');
+    return JSON.stringify({ title, body: blocks + ' || ' + boxes });
   `);
   const values = JSON.parse(designerValues);
   ok('وصل عنوان النموذج إلى المصمّم', values.title.includes('انذار'));

@@ -5,6 +5,10 @@
  * القائمة مع ما هو مكتوب فعلًا. يكتب الموظف {الاسم} فيظهر المتغيّر تلقائيًا.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import DocEditor from '../components/DocEditor';
+import { docFromLegacy, docText, type Doc } from '@shared/doc';
+import { renderDocHtml } from '@shared/docHtml';
+import type { Clip } from '@shared/api';
 import type { TemplateDetail } from '@shared/api';
 import {
   AUTO_TOKENS,
@@ -13,7 +17,8 @@ import {
   renderBody,
   type TemplateInput,
   type TemplateVariable,
-  type VariableSource
+  type VariableSource,
+  legacyFieldMeta
 } from '@shared/template';
 import {
   normalizeLayout, mmToPx, type Letterhead } from '@shared/letterhead';
@@ -76,10 +81,68 @@ export default function TemplateDesigner({
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
-  // المتغيّرات تتبع المتن دائمًا.
+  /**
+   * وضع التحرير: **كتلًا** هو الأصل — به الجداول والحقول بأنواعها والمسافات.
+   * و«نصًّا» يبقى للمتون البسيطة ولمن اعتاد الوسوم، وهو يسطّح ما لا يُعبَّر عنه
+   * نصًّا، فيُنبَّه عليه قبل التبديل.
+   */
+  const [mode, setMode] = useState<'blocks' | 'text'>('blocks');
+  const [doc, setDoc] = useState<Doc>(() => docFromLegacy(initial?.bodyHtml ?? '', legacyFieldMeta));
+  const [clips, setClips] = useState<Clip[]>([]);
+
+  // وثيقة النموذج المحفوظة كتلًا — وإلا رُحّلت من متنه النصّي.
   useEffect(() => {
-    setVariables((prev) => reconcileVariables(body, prev));
-  }, [body]);
+    if (!initial || initial.id <= 0) return;
+    void window.diwan.templates.doc(initial.id).then((d) => d && setDoc(d));
+  }, [initial]);
+
+  useEffect(() => {
+    void window.diwan.clips.list().then(setClips);
+  }, []);
+
+  /** التبديل بين الوضعين: الوثيقة هي الحقيقة، والنصّ ظلُّها. */
+  function switchMode(next: 'blocks' | 'text') {
+    if (next === 'text') setBody(docText(doc));
+    else setDoc(docFromLegacy(body, legacyFieldMeta));
+    setMode(next);
+  }
+
+  /** «اجعلها كليشة»: ما يتكرّر كتابته يُحفظ عبارةً تُدرج بضغطة. */
+  async function saveAsClip() {
+    const text = mode === 'blocks' ? docText(doc) : body;
+    if (!text.trim()) {
+      setError('لا تُحفظ كليشة فارغة');
+      return;
+    }
+    try {
+      await window.diwan.clips.save({
+        id: null,
+        title: (subjectLine || title || 'كليشة').slice(0, 60),
+        body: text,
+        category: category.trim() || null
+      });
+      setClips(await window.diwan.clips.list());
+      setError(null);
+    } catch (e) {
+      setError(errorText(e, 'تعذّر حفظ الكليشة'));
+    }
+  }
+
+  // المتغيّرات تتبع المتن دائمًا — ومن الوثيقة حين تُحرَّر كتلًا.
+  useEffect(() => {
+    if (mode === 'blocks') {
+      setVariables(
+        doc.fields.map((f) => ({
+          token: f.key,
+          label: f.label,
+          source: f.source ? 'citizen' : 'manual',
+          required: f.required
+        }))
+      );
+    } else {
+      setVariables((prev) => reconcileVariables(body, prev));
+    }
+  }, [body, doc, mode]);
 
   // الخطأ يُمسح حال التصحيح — إبقاؤه بعد إصلاح السبب تضليل.
   useEffect(() => {
@@ -93,8 +156,8 @@ export default function TemplateDesigner({
   const letterhead = letterheads.find((l) => l.id === letterheadId) ?? null;
 
   const preview = useMemo(
-    () => renderBody(body, {}, { markMissing: true }),
-    [body]
+    () => (mode === 'blocks' ? renderDocHtml(doc, {}, { missing: 'token' }) : renderBody(body, {})),
+    [mode, doc, body]
   );
 
   function insert(token: string) {
@@ -123,7 +186,8 @@ export default function TemplateDesigner({
       setError('عنوان النموذج مطلوب');
       return;
     }
-    if (!body.trim()) {
+    const text = mode === 'blocks' ? docText(doc) : body;
+    if (!text.trim()) {
       setError('متن النموذج فارغ');
       return;
     }
@@ -136,11 +200,12 @@ export default function TemplateDesigner({
         subtitle: subtitle.trim() || null,
         category: category.trim() || null,
         subjectLine: subjectLine.trim() || null,
-        bodyHtml: body,
+        // الظلّ النصّي للبحث والمحرّر النصّي؛ والحقيقة في `doc`.
+        bodyHtml: text,
         letterheadId,
         variables
       };
-      await window.diwan.templates.save(input);
+      await window.diwan.templates.save(mode === 'blocks' ? { ...input, doc } : input);
       onSaved();
     } catch (e) {
       setError(errorText(e, 'تعذّر الحفظ'));
@@ -302,9 +367,36 @@ export default function TemplateDesigner({
                 <h3 className="font-headline-sm text-headline-sm text-on-surface">
                   متن الكتاب
                 </h3>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  اكتب المتغيّر هكذا: {'{'}الاسم{'}'}
-                </span>
+                <div className="flex items-center gap-space-xs">
+                  <button
+                    className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm"
+                    type="button"
+                    onClick={() => void saveAsClip()}
+                  >
+                    اجعلها كليشة
+                  </button>
+                  <div className="flex items-center gap-0.5 bg-surface-container-lowest p-0.5 rounded-lg">
+                    {(
+                      [
+                        { key: 'blocks', label: 'كتل' },
+                        { key: 'text', label: 'نصّ' }
+                      ] as const
+                    ).map((m) => (
+                      <button
+                        key={m.key}
+                        className={`h-7 px-3 rounded font-label-sm text-label-sm transition-colors ${
+                          mode === m.key
+                            ? 'bg-primary-container text-on-primary font-semibold'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                        type="button"
+                        onClick={() => switchMode(m.key)}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-1">
@@ -336,14 +428,20 @@ export default function TemplateDesigner({
                 ))}
               </div>
 
-              <textarea
-                ref={bodyRef}
-                className="w-full p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md leading-relaxed focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
-                rows={10}
-                value={body}
-                placeholder="نؤيد لكم بأن السيد {الاسم}، الحامل للرقم الوطني ({الرقم_الوطني})، ..."
-                onChange={(e) => setBody(e.target.value)}
-              />
+              {mode === 'text' ? (
+                <textarea
+                  ref={bodyRef}
+                  className="w-full p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md leading-relaxed focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
+                  rows={10}
+                  value={body}
+                  placeholder="نؤيد لكم بأن السيد {الاسم}، الحامل للرقم الوطني ({الرقم_الوطني})، ..."
+                  onChange={(e) => setBody(e.target.value)}
+                />
+              ) : (
+                <div className="h-[420px] rounded-lg bg-surface-container-lowest overflow-hidden">
+                  <DocEditor clips={clips} doc={doc} onChange={setDoc} />
+                </div>
+              )}
             </section>
 
             <section className="bg-surface-container-low rounded-xl p-space-md space-y-space-sm">

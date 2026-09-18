@@ -184,6 +184,17 @@ CREATE TABLE IF NOT EXISTS counters (
   PRIMARY KEY (scope, year)
 );
 
+-- الكليشات: عبارات المكتب. تبدأ فارغة وتُبنى بالاستعمال.
+CREATE TABLE IF NOT EXISTS clips (
+  id          INTEGER PRIMARY KEY,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  category    TEXT,
+  used_at     TEXT,                      -- آخر إدراج — عليه يقوم الترتيب
+  search_fold TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- سجل التدقيق
 CREATE TABLE IF NOT EXISTS audit_log (
   id         INTEGER PRIMARY KEY,

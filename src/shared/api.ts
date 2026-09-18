@@ -313,6 +313,15 @@ export type ImportOutcome = {
   skipped: number;
 };
 
+/** كليشة: عبارةٌ يعيد المكتب استعمالها. */
+export type Clip = {
+  id: number;
+  title: string;
+  body: string;
+  category: string | null;
+  usedAt: string | null;
+};
+
 export type DraftRow = {
   id: number;
   title: string;
@@ -386,6 +395,18 @@ export type DiwanApi = {
     setDefault(id: number): Promise<void>;
     delete(id: number): Promise<void>;
   };
+  /** الكليشات — عبارات المكتب تُدرج من قائمة `/`. */
+  clips: {
+    list(query?: string): Promise<Clip[]>;
+    save(input: {
+      id: number | null;
+      title: string;
+      body: string;
+      category?: string | null;
+    }): Promise<Clip>;
+    delete(id: number): Promise<void>;
+    touch(id: number): Promise<void>;
+  };
   seals: {
     list(): Promise<Seal[]>;
     add(input: { name: string; kind: string; imagePath: string | null }): Promise<Seal>;
@@ -455,7 +476,7 @@ export type DiwanApi = {
     get(id: number): Promise<TemplateDetail | null>;
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<TemplateStats>;
-    save(input: TemplateInput): Promise<TemplateDetail>;
+    save(input: TemplateInput & { doc?: Doc | null }): Promise<TemplateDetail>;
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
     doc(id: number): Promise<Doc>;

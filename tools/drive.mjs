@@ -102,6 +102,29 @@ class Page {
     await sleep(250);
   }
 
+  /**
+   * يضغط مفتاحًا ضغطةً حقيقية عبر CDP.
+   *
+   * لا يكفي `dispatchEvent` من داخل الصفحة لما يُنصت له على `window` بالرمز —
+   * فمفاتيح مثل F4 تُقاد من خارج الصفحة لا من داخلها.
+   */
+  async key(code, { ctrl = false, shift = false } = {}) {
+    const KEYS = { F4: 115, KeyZ: 90, KeyY: 89, KeyB: 66, KeyU: 85 };
+    const vk = KEYS[code];
+    if (!vk) throw new Error(`مفتاح غير معروف: ${code}`);
+    const modifiers = (ctrl ? 2 : 0) | (shift ? 8 : 0);
+    const base = {
+      code,
+      key: code.startsWith('Key') ? code.slice(3).toLowerCase() : code,
+      windowsVirtualKeyCode: vk,
+      nativeVirtualKeyCode: vk,
+      modifiers
+    };
+    await this.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...base });
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
+    await sleep(200);
+  }
+
   /** يكتب في حقل — عبر مُعيِّن React ليصل التغيير إلى الحالة. */
   async type(selector, value) {
     const ok = await this.eval(`
