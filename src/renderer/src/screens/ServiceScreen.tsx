@@ -60,6 +60,9 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
+  /** الدمج: سطرٌ لكل اسم، ولكلٍّ معاملتُه وأوراقُه. */
+  const [merge, setMerge] = useState(false);
+  const [names, setNames] = useState('');
 
   const sheets = useRef(new Map<number, HTMLDivElement | null>());
   const toastTimer = useRef<number | null>(null);
@@ -160,10 +163,33 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
   const missing = fields.filter((f) => f.required && !values[f.key]?.trim());
 
-  const collect = useCallback((): TransactionSheet[] => {
+  /** حقل الاسم: عليه يدور الدمج، وبغيره لا معنى لقائمة أسماء. */
+  const nameField = fields.find((f) => f.role === 'name') ?? null;
+
+  /** أسماء القائمة: سطرٌ لكل اسم، وتُهمل الفارغة والمكرَّرة. */
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    return names
+      .split('\n')
+      .map((n) => n.trim())
+      .filter((n) => n && !seen.has(n) && seen.add(n));
+  }, [names]);
+
+  /**
+   * ورقةٌ بقيم صفٍّ بعينه.
+   *
+   * الترويسة واحدة لا تتبدّل فتُؤخذ من المعاينة كما رآها الموظف، والمتن وحده
+   * يُعاد رسمه بالمحرّك نفسه — فورقة الاسم الثلاثين مثلُ ورقة الأول تمامًا.
+   */
+  const collect = useCallback((rowValues?: Record<string, string>): TransactionSheet[] => {
+    const use = rowValues ?? values;
     return loaded.map((l) => {
       const node = sheets.current.get(l.summary.id)?.cloneNode(true) as HTMLElement | undefined;
       if (node) {
+        if (rowValues) {
+          const body = node.querySelector('[data-body]');
+          if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank' });
+        }
         node.querySelectorAll('[data-slot="serial"]').forEach((el) => {
           el.textContent = SERIAL_SLOT;
         });
@@ -181,7 +207,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
         docType: l.summary.title,
         destination: byRole('destination') || null,
         purpose: byRole('purpose') || null,
-        values,
+        values: use,
         copies: 1,
         copyKind: 'نسخة أصلية',
         fee
@@ -190,8 +216,18 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, values, fee, fields]);
 
+  const common = () => ({
+    operator: settings?.operatorName || null,
+    printer: printer?.name ?? null,
+    serialPrefix: settings?.serialPrefix ?? 'م',
+    serialYear: settings?.serialYear ?? new Date().getFullYear(),
+    gregorianDate: formatGregorian(new Date()),
+    hijriDate: null
+  });
+
   async function issue(print: boolean) {
     if (!settings) return;
+    if (merge) return issueMerged(print);
     if (!citizenName) {
       say('اكتب اسم صاحب العلاقة أولًا', 'warn');
       return;
@@ -200,15 +236,10 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
     try {
       const out = await window.diwan.documents.issueTransaction(
         {
+          ...common(),
           citizenId,
           citizenName,
           nationalId: byRole('nationalId') || null,
-          operator: settings.operatorName || null,
-          printer: printer?.name ?? null,
-          serialPrefix: settings.serialPrefix,
-          serialYear: settings.serialYear,
-          gregorianDate: formatGregorian(new Date()),
-          hijriDate: null,
           sheets: collect()
         },
         print
@@ -227,7 +258,47 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
     }
   }
 
+  /** الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء. */
+  async function issueMerged(print: boolean) {
+    if (!settings || !nameField) return;
+    if (rows.length === 0) {
+      say('اكتب أسماء القائمة أولًا — سطرٌ لكل اسم', 'warn');
+      return;
+    }
+    setBusy(true);
+    try {
+      const all = await window.diwan.documents.issueBatch(
+        rows.map((name) => {
+          const rowValues = { ...values, [nameField.key]: name };
+          return {
+            ...common(),
+            citizenId: null,
+            citizenName: name,
+            nationalId: byRole('nationalId') || null,
+            sheets: collect(rowValues)
+          };
+        }),
+        print
+      );
+      const papers = all.reduce((n, t) => n + t.documents.length, 0);
+      say(`صدرت ${papers} ورقة لـ${all.length} اسمًا — كلٌّ بمعاملته`);
+      onIssued?.();
+      setStep('pick');
+      setPicked([]);
+      setLoaded([]);
+      setValues({});
+      setNames('');
+      setMerge(false);
+    } catch (e) {
+      say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const current = loaded[Math.min(at, loaded.length - 1)];
+  /** ما يمنع الإصدار: حقلٌ إلزامي فارغ، أو دمجٌ بلا أسماء. */
+  const blocked = merge ? rows.length === 0 : missing.length > 0;
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
@@ -335,13 +406,44 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                 </button>
               </div>
 
+              {nameField && (
+                <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+                  <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+                    <input
+                      className="w-4 h-4 accent-secondary"
+                      checked={merge}
+                      type="checkbox"
+                      onChange={(e) => setMerge(e.target.checked)}
+                    />
+                    قائمة أسماء — ورقةٌ لكل اسم
+                  </label>
+                  {merge && (
+                    <>
+                      <textarea
+                        className="w-full min-h-[112px] p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md leading-7 focus:outline-none focus:ring-1 focus:ring-secondary"
+                        placeholder={'سطرٌ لكل اسم\nأحمد عادل كريم\nسالم محمود جاسم'}
+                        value={names}
+                        onChange={(e) => setNames(e.target.value)}
+                      />
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        {rows.length} اسمًا × {loaded.length} ورقة ={' '}
+                        <b>{rows.length * loaded.length}</b> ورقة، لكل اسم معاملتُه.
+                        وبقيّة الحقول تُملأ مرّة للجميع.
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+
               {fields.length === 0 ? (
                 <span className="font-body-md text-body-md text-on-surface-variant">
                   لا حقول في هذه الاستمارات — امضِ إلى المراجعة.
                 </span>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
-                  {fields.map((f) => (
+                  {fields
+                    .filter((f) => !(merge && f.key === nameField?.key))
+                    .map((f) => (
                     <label key={f.key} className="flex flex-col gap-1">
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
                         {f.label}
@@ -364,6 +466,11 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
           {/* ٣ — راجع */}
           <div className={step === 'review' ? 'flex flex-col items-center gap-space-md' : 'hidden'}>
+            {merge && rows.length > 0 && (
+              <span className="font-label-md text-label-md text-on-surface-variant">
+                معاينة الاسم الأول ({rows[0]}) — وبقيّة الأسماء {rows.length - 1} مثلها
+              </span>
+            )}
             {loaded.length > 1 && (
               <div className="flex items-center gap-space-sm">
                 <button
@@ -400,6 +507,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   {l.layout && <LetterheadView layout={l.layout} />}
                   <div
                     className="mt-space-md font-body-md text-body-md leading-8"
+                    data-body=""
                     dangerouslySetInnerHTML={{
                       __html: renderDocHtml(l.doc, values, { missing: 'blank' })
                     }}
@@ -435,10 +543,16 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   onChange={(e) => setFee(Math.max(0, Number(e.target.value) || 0))}
                 />
               </label>
-              {missing.length > 0 && (
-                <span className="font-label-md text-label-md text-error">
-                  {missing.length} حقلًا إلزاميًّا فارغًا
+              {merge ? (
+                <span className="font-label-md text-label-md text-on-surface">
+                  {rows.length * loaded.length} ورقة لـ{rows.length} اسمًا
                 </span>
+              ) : (
+                missing.length > 0 && (
+                  <span className="font-label-md text-label-md text-error">
+                    {missing.length} حقلًا إلزاميًّا فارغًا
+                  </span>
+                )
               )}
             </>
           )}
@@ -471,7 +585,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
               <button
                 className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
                 type="button"
-                disabled={busy || missing.length > 0}
+                disabled={busy || blocked}
                 onClick={() => void issue(false)}
               >
                 أصدر بلا طباعة
@@ -479,10 +593,12 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
               <button
                 className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
                 type="button"
-                disabled={busy || missing.length > 0}
+                disabled={busy || blocked}
                 onClick={() => void issue(true)}
               >
-                {busy ? 'جارٍ الإصدار...' : `اطبع ${loaded.length} ورقة`}
+                {busy
+                  ? 'جارٍ الإصدار...'
+                  : `اطبع ${merge ? rows.length * loaded.length : loaded.length} ورقة`}
               </button>
             </>
           )}

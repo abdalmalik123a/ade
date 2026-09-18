@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { QR_SLOT, type TransactionInput, type TransactionSheet } from '../src/shared/api';
 import {
+  issueBatch,
   issueTransaction,
   prepareDocuments,
   transactionSheets
@@ -182,5 +183,45 @@ describe('ترحيل قاعدة المكتب القائمة', () => {
 
     const out = issueTransaction(db, input());
     expect(out.documents).toHaveLength(1);
+  });
+});
+
+describe('الدمج: كتاب لكل اسم', () => {
+  it('لكل اسم معاملتُه وأوراقه — لا معاملة واحدة للجميع', () => {
+    const db = freshDb();
+    const all = issueBatch(db, [
+      input({ citizenName: 'سالم محمود', sheets: [sheet(), sheet()] }),
+      input({ citizenName: 'ليلى عبد الله', sheets: [sheet(), sheet()] }),
+      input({ citizenName: 'أحمد كريم', sheets: [sheet(), sheet()] })
+    ]);
+
+    expect(all).toHaveLength(3);
+    expect(new Set(all.map((t) => t.transactionId)).size).toBe(3);
+    // ستّ أوراق بستّة أرقام لا تتكرّر.
+    const serials = all.flatMap((t) => t.documents.map((d) => d.serial));
+    expect(serials).toHaveLength(6);
+    expect(new Set(serials).size).toBe(6);
+  });
+
+  it('والدفعة كلّها أو لا شيء — اسمٌ يسقط في آخرها يردّ ما قبله', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+
+    expect(() =>
+      issueBatch(db, [
+        input(),
+        input(),
+        input({ citizenName: '   ' })
+      ])
+    ).toThrow(/اسم صاحب العلاقة/);
+
+    const count = (sql) => (db.prepare(sql).get()).n;
+    expect(count('SELECT COUNT(*) AS n FROM documents')).toBe(0);
+    expect(count('SELECT COUNT(*) AS n FROM transactions')).toBe(0);
+    expect(count('SELECT COALESCE(MAX(last_value),0) AS n FROM counters')).toBe(0);
+  });
+
+  it('ولا دفعة بلا اسم واحد', () => {
+    expect(() => issueBatch(freshDb(), [])).toThrow(/اسم واحد/);
   });
 });

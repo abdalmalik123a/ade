@@ -426,6 +426,8 @@ export type DiwanApi = {
     issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
     /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. */
     issueTransaction(input: TransactionInput, print: boolean): Promise<TransactionResult>;
+    /** الدمج: معاملةٌ لكل اسم في القائمة، والدفعة كلّها أو لا شيء. */
+    issueBatch(inputs: TransactionInput[], print: boolean): Promise<TransactionResult[]>;
     get(id: number): Promise<DocumentDetail | null>;
     list(opts?: {
       from?: string | null;

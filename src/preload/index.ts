@@ -78,6 +78,8 @@ const api: DiwanApi = {
     issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
     issueTransaction: (input: TransactionInput, print: boolean) =>
       invoke('documents:issueTransaction', input, print),
+    issueBatch: (inputs: TransactionInput[], print: boolean) =>
+      invoke('documents:issueBatch', inputs, print),
     get: (id: number) => invoke('documents:get', id),
     list: (opts?: { from?: string | null; to?: string | null; query?: string; limit?: number }) =>
       invoke('documents:list', opts ?? {}),

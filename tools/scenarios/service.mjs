@@ -151,6 +151,59 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وكلاهما تحت المعاملة نفسها', docs.length === 2 && docs.every((d) => d.tx === tx[0]?.id));
   ok('وأجرة كل ورقة محفوظة', docs.length === 2 && docs.every((d) => d.fee === 750));
 
+  // ── الدمج: كتاب لكل اسم ───────────────────────────────────────────
+  await page.goto('service-counter');
+  await wait(900);
+  await page.eval(`
+    const cards = [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('انذار'));
+    cards[0]?.click();
+  `);
+  await wait(400);
+  await page.clickText('املأ (1)');
+  await wait(1200);
+
+  ok('عُرض خيار قائمة الأسماء', (await page.text()).includes('قائمة أسماء — ورقةٌ لكل اسم'));
+  const merged = await page.eval(`
+    const label = [...document.querySelectorAll('label')].find((l) => l.textContent.includes('قائمة أسماء'));
+    const box = label && label.querySelector('input[type="checkbox"]');
+    if (!box) return false;
+    box.click();
+    return true;
+  `);
+  ok('أُشعل الدمج', merged);
+  await wait(400);
+
+  // ثلاثة أسطر وفيها مكرَّر — القائمة تُهمل التكرار.
+  const NAMES = ['سالم محمود جاسم', 'ليلى عبد الله حسن', 'سالم محمود جاسم'].join('\n');
+  await page.eval(`
+    const el = document.querySelector('textarea');
+    if (!el) return false;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, ${JSON.stringify(NAMES)});
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await wait(400);
+  ok('حُسب الناتج وأُهمل المكرَّر', (await page.text()).includes('2 اسمًا × 1 ورقة'));
+
+  await page.clickText('راجع الأوراق');
+  await wait(1200);
+  ok('قالت المراجعة إن الباقي مثلها', (await page.text()).includes('وبقيّة الأسماء 1 مثلها'));
+
+  await page.clickText('أصدر بلا طباعة');
+  await wait(2500);
+  ok('صدرت الدفعة', (await page.text()).includes('صدرت 2 ورقة لـ2 اسمًا'));
+
+  const db2 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const txs = db2.prepare('SELECT id, citizen_name AS name FROM transactions ORDER BY id').all();
+  const all = db2.prepare('SELECT citizen_name AS name, transaction_id AS tx, body_html AS body FROM documents ORDER BY id').all();
+  db2.close();
+
+  ok('لكل اسم معاملتُه لا معاملة واحدة للجميع', txs.length === 3);
+  ok('وبأسمائهم', txs[1]?.name === 'سالم محمود جاسم' && txs[2]?.name === 'ليلى عبد الله حسن');
+  ok('وورقة لكل اسم', all.length === 4);
+  ok('واسم كلٍّ مرسوم في ورقته', all[2]?.body?.includes('سالم محمود جاسم') && all[3]?.body?.includes('ليلى عبد الله حسن'));
+  ok('ولا يختلط اسمٌ بورقة غيره', !all[3]?.body?.includes('سالم محمود جاسم'));
+
   rmSync(FOLDER, { recursive: true, force: true });
   return steps.join('\n');
 }

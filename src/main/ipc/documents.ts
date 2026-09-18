@@ -224,6 +224,36 @@ export function registerDocumentIpc(): void {
   );
 
   /**
+   * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء.
+   *
+   * والطباعة بعد أن تُقيَّد الدفعة كلّها — فورقةٌ لم تُطبع تُعاد طباعتها من
+   * الأرشيف، أما رقمٌ حُرق على كتاب لم يُقيَّد فلا يُستردّ.
+   */
+  ipcMain.handle(
+    'documents:issueBatch',
+    async (e, inputs: TransactionInput[], print: boolean): Promise<TransactionResult[]> => {
+      const all = svc.issueBatch(getDb(), inputs);
+      if (print) {
+        const win = BrowserWindow.fromWebContents(e.sender);
+        for (const out of all) {
+          for (const doc of out.documents) {
+            try {
+              await printSheet({
+                sheetHtml: doc.sheetHtml,
+                deviceName: inputs[0]?.printer ?? undefined,
+                parent: win ?? null
+              });
+            } catch {
+              // ورقةٌ لم تُطبع لا تُلغي الدفعة — الكتب مقيَّدة وتُعاد طباعتها.
+            }
+          }
+        }
+      }
+      return all;
+    }
+  );
+
+  /**
    * نسخة احتياطية فورية: قاعدة البيانات ومخزن الملفات في أرشيف واحد.
    * القاعدة تُنسخ بـVACUUM INTO فتخرج نسخة متّسقة ولو كان هناك كتاب يُصدَّر الآن.
    */

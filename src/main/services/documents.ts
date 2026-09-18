@@ -308,6 +308,21 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
   })();
 }
 
+/**
+ * الدمج: معاملةٌ لكل اسم في القائمة.
+ *
+ * ثلاثون تأييدًا لصفٍّ كامل بضغطة، لكلّ صاحبٍ معاملتُه وأوراقُه وأرقامُه — لا
+ * معاملةً واحدة لثلاثين، فكلٌّ يمضي بورقته وحده.
+ *
+ * **والدفعة كلّها أو لا شيء**: اسمٌ يسقط في آخر القائمة يردّ ما قبله، فلا يخرج
+ * المكتب بنصف صفّ مطبوع ونصفه محروق الأرقام.
+ */
+export function issueBatch(db: Database, inputs: TransactionInput[]): TransactionResult[] {
+  if (inputs.length === 0) throw new Error('لا تصدر دفعة بلا اسم واحد');
+  prepareDocuments(db);
+  return db.transaction(() => inputs.map((one) => issueTransaction(db, one)))();
+}
+
 /** أوراق معاملة واحدة — لإعادة طباعتها معًا أو مراجعتها. */
 export function transactionSheets(db: Database, transactionId: number): DocumentRow[] {
   return db
