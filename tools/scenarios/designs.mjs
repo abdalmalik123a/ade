@@ -138,6 +138,71 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وحقله عقدةٌ في نصّه', el?.inlines?.some((n) => n.kind === 'field' && n.ref === 'اسم الطالب'));
   ok('والحقل في شاشة الإدخال', doc?.fields?.[0]?.key === 'اسم الطالب');
 
+  // ── المحرّر: مقابضُ ومحاذاةٌ وطبقاتٌ وتراجع ────────────────────────
+  /** أسماءُ الطبقات من أعلاها إلى أسفلها — وهي ترتيب `z` معكوسًا. */
+  const layers = () =>
+    page.eval(`
+      return [...document.querySelectorAll('[data-layer]')].map((e) => e.textContent.trim());
+    `);
+
+  /** منتصفُ عنصرٍ محدَّد أفقيًّا، ومنتصفُ الورقة — بالبكسل على الشاشة. */
+  const centres = () =>
+    page.eval(`
+      const sheet = document.querySelector('[data-design]');
+      const el = document.querySelector('[data-grip]')?.parentElement;
+      if (!el) return null;
+      return {
+        element: parseFloat(el.style.right) + parseFloat(el.style.width) / 2,
+        page: sheet.offsetWidth / 2
+      };
+    `);
+
+  await click('button[data-add="barcode"]');
+  await wait(500);
+  ok('أُضيف باركود', (await page.text()).includes('باركود'));
+  ok('وظهر حقلُه في شاشة الإدخال', (await page.text()).includes('املأ الحقول (2)'));
+
+  await page.type('input[data-value="الرقم"]', '2026003112');
+  await wait(600);
+  const drawn = await page.eval(`
+    const node = document.querySelector('[data-barcode]');
+    return node ? node.innerHTML.includes('<svg') : false;
+  `);
+  ok('ورُسم الباركود قضبانًا', drawn);
+
+  // المقابض تظهر على المحدَّد وحده
+  const grips = await page.eval(`return document.querySelectorAll('[data-grip]').length;`);
+  ok('وللمحدَّد ثمانيةُ مقابض', grips === 8);
+
+  // المحاذاة: وسّط أفقيًّا — والعنصر وحده يُوسَّط في الورقة لا في نفسه
+  const before = await centres();
+  ok('والباركود ليس في الوسط قبلها', Math.abs(before.element - before.page) > 2);
+  await click('button[data-align="hCenter"]');
+  await wait(400);
+  const after = await centres();
+  ok('وصار منتصفُه منتصفَ الورقة', Math.abs(after.element - after.page) < 2);
+
+  // الطبقات: «إلى الخلف» يجعل المحدَّد أسفل القائمة (والقائمة من الأعلى)
+  const stacked = await layers();
+  ok('والباركود أعلى الطبقات إذ أُضيف أخيرًا', stacked[0].includes('باركود'));
+  await click('button[data-layer-move="back"]');
+  await wait(400);
+  const sunk = await layers();
+  ok('و«إلى الخلف» يُنزله أسفلها', sunk[sunk.length - 1].includes('باركود'));
+
+  // التراجع يعيد ما كان — الترتيب نفسه لا ترتيبًا مختلفًا
+  await click('button[data-undo]');
+  await wait(500);
+  ok('والتراجع يعيد الترتيب كما كان', JSON.stringify(await layers()) === JSON.stringify(stacked));
+
+  // المعاينة تُخفي المقابض ولا تُخفي الرسم
+  await click('button[data-preview]');
+  await wait(400);
+  ok('والمعاينة تُخفي المقابض', (await page.eval(`return document.querySelectorAll('[data-handle]').length;`)) === 0);
+  ok('ولا تُخفي ما يُطبع', (await design()).includes('مريم عادل حسن'));
+  await click('button[data-preview]');
+  await wait(300);
+
   // ── ومكتبة الكتب لا تراه ───────────────────────────────────────────
   await page.goto('templates-library-drafts');
   await wait(900);
