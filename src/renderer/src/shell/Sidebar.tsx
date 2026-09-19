@@ -73,7 +73,9 @@ export default function Sidebar({
       label: 'سجل المعاملات والأرشيف',
       badge: { text: `اليوم ${counts.issuedToday}` }
     },
-    { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' }
+    { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' },
+    // ورقة الامتحان لا تُقيَّد ولا تُصدَّر، فلا تجاور الكتب في المكتبة ولا في الشبّاك.
+    { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' }
   ];
 
   const tools: NavItem[] = [

@@ -118,7 +118,8 @@ const api: DiwanApi = {
       invoke('output:saveDocx', payload)
   },
   templates: {
-    list: (category?: string | null) => invoke('templates:list', category ?? null),
+    list: (category?: string | null, issuing?: string) =>
+      invoke('templates:list', category ?? null, issuing ?? 'registered'),
     get: (id: number) => invoke('templates:get', id),
     categories: () => invoke('templates:categories'),
     stats: () => invoke('templates:stats'),

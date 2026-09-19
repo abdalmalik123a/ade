@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS templates (
   letterhead_id INTEGER REFERENCES letterheads(id) ON DELETE SET NULL,
   body_html     TEXT NOT NULL DEFAULT '',
   doc_json      TEXT,                     -- الوثيقة كتلًا؛ وbody_html ظلّها نصًّا للبحث والمحرّر القديم
+  issuing       TEXT NOT NULL DEFAULT 'registered',  -- registered: كتابٌ يُقيَّد · print-only: ورقةٌ تُطبع
   subject_line  TEXT,                     -- م / ...
   is_active     INTEGER NOT NULL DEFAULT 1,
   print_count   INTEGER NOT NULL DEFAULT 0,

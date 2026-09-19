@@ -1,6 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { legacyFieldMeta, type TemplateInput, type TemplateVariable } from '@shared/template';
-import { docFromLegacy, normalizeDoc, type Doc } from '@shared/doc';
+import { docFromLegacy, normalizeDoc, type Doc, type Issuing } from '@shared/doc';
 import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow } from '@shared/api';
 
 /** منطق مكتبة النماذج والمسودات. دوالّ نقيّة تأخذ الاتصال وسيطًا. */
@@ -8,8 +8,10 @@ import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow } from '@
 /** عمود الوثيقة يُضاف عند الحاجة — الترحيل هنا ليعمل على قواعد قائمة. */
 export function prepareTemplates(db: Database): void {
   const cols = db.prepare('PRAGMA table_info(templates)').all() as { name: string }[];
-  if (!cols.some((c) => c.name === 'doc_json')) {
-    db.exec('ALTER TABLE templates ADD COLUMN doc_json TEXT');
+  const has = (name: string) => cols.some((c) => c.name === name);
+  if (!has('doc_json')) db.exec('ALTER TABLE templates ADD COLUMN doc_json TEXT');
+  if (!has('issuing')) {
+    db.exec("ALTER TABLE templates ADD COLUMN issuing TEXT NOT NULL DEFAULT 'registered'");
   }
 }
 
@@ -32,7 +34,7 @@ export function templateDoc(row: { docJson?: string | null; bodyHtml: string }):
 
 const SUMMARY = `t.id, t.code, t.title, t.subtitle, t.category,
   t.subject_line AS subjectLine, t.body_html AS bodyHtml, t.doc_json AS docJson,
-  t.letterhead_id AS letterheadId, t.print_count AS printCount`;
+  t.issuing, t.letterhead_id AS letterheadId, t.print_count AS printCount`;
 
 const MONTH_COUNT = `(SELECT COUNT(*) FROM documents d
    WHERE d.template_id = t.id
@@ -57,14 +59,25 @@ function loadVariables(db: Database, templateId: number): TemplateVariable[] {
     });
 }
 
-export function listTemplates(db: Database, category?: string | null): TemplateSummary[] {
+/**
+ * مكتبة الكتب لا تُري أوراق الأسئلة، والعكس.
+ *
+ * فالمدرّس لا يبحث عن امتحانه بين التأييدات، وصاحب المكتب لا يقع على ورقة أسئلة
+ * وهو يخدم زبونًا. والفصل بالحكم لا بالتصنيف: أتُقيَّد في الصادر أم تُطبع فقط؟
+ */
+export function listTemplates(
+  db: Database,
+  category?: string | null,
+  issuing: Issuing = 'registered'
+): TemplateSummary[] {
+  prepareTemplates(db);
   const rows = db
     .prepare(
       `SELECT ${SUMMARY}, ${MONTH_COUNT} FROM templates t
-       WHERE t.is_active = 1 AND (? IS NULL OR t.category = ?)
+       WHERE t.is_active = 1 AND t.issuing = ? AND (? IS NULL OR t.category = ?)
        ORDER BY t.print_count DESC, t.title`
     )
-    .all(category ?? null, category ?? null) as Omit<TemplateSummary, 'variables'>[];
+    .all(issuing, category ?? null, category ?? null) as Omit<TemplateSummary, 'variables'>[];
 
   return rows.map((r) => ({ ...r, variables: loadVariables(db, r.id).map((v) => v.token) }));
 }
@@ -121,16 +134,19 @@ export function saveTemplate(
   }
 
   // الوثيقة كتلًا: ما بناه الاستيراد بحقوله وعروضه، أو مُرحَّلةً من المتن.
-  const docJson = JSON.stringify(input.doc ?? docFromLegacy(input.bodyHtml, legacyFieldMeta));
+  const doc = input.doc ?? docFromLegacy(input.bodyHtml, legacyFieldMeta);
+  const docJson = JSON.stringify(doc);
+  // الحكم من الوثيقة نفسها — فلا يُسأل عنه مرّتين ولا يختلفان.
+  const issuing: Issuing = doc.issuing;
 
   const id = db.transaction(() => {
     let templateId = input.id;
     if (templateId === null) {
       const info = db
         .prepare(
-          `INSERT INTO templates (code, title, subtitle, category, letterhead_id,
-                                  body_html, doc_json, subject_line, is_active)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`
+           `INSERT INTO templates (code, title, subtitle, category, letterhead_id,
+                                  body_html, doc_json, issuing, subject_line, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
         )
         .run(
           code,
@@ -140,14 +156,15 @@ export function saveTemplate(
           input.letterheadId,
           input.bodyHtml,
           docJson,
+          issuing,
           input.subjectLine?.trim() || null
         );
       templateId = Number(info.lastInsertRowid);
     } else {
       db.prepare(
         `UPDATE templates SET code = ?, title = ?, subtitle = ?, category = ?,
-                              letterhead_id = ?, body_html = ?, doc_json = ?, subject_line = ?,
-                              updated_at = datetime('now')
+                              letterhead_id = ?, body_html = ?, doc_json = ?, issuing = ?,
+                              subject_line = ?, updated_at = datetime('now')
          WHERE id = ?`
       ).run(
         code,
@@ -157,6 +174,7 @@ export function saveTemplate(
         input.letterheadId,
         input.bodyHtml,
         docJson,
+        issuing,
         input.subjectLine?.trim() || null,
         templateId
       );

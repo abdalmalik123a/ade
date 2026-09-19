@@ -8,6 +8,7 @@ import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
 import TemplatesScreen from './screens/TemplatesScreen';
+import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
 
@@ -41,6 +42,8 @@ export default function App() {
 
   /** أدوات المحرر التي يناديها الشريط العلوي — تُسجَّل ما دام المحرر معروضًا. */
   const editorRef = useRef<EditorHandle | null>(null);
+  /** ومثلها لشاشة الأسئلة: أزرار الشريط تعمل على المعروض لا تقفز به. */
+  const papersRef = useRef<PapersHandle | null>(null);
 
   const refresh = useCallback(async () => {
     const [s, c, p] = await Promise.all([
@@ -74,19 +77,33 @@ export default function App() {
     [navigate]
   );
 
-  /** أزرار الشريط العلوي تعمل على المحرر؛ ومن شاشة أخرى تنقل إليه أولًا. */
-  const editorAction = useCallback(
-    (run: (handle: EditorHandle) => void) => () => {
-      const handle = editorRef.current;
-      if (route === 'editor' && handle) run(handle);
-      else navigate('editor');
+  /**
+   * أزرار الشريط العلوي تعمل على المعروض.
+   *
+   * وفي المحرر تعمل على الكتاب، وفي الأسئلة على الورقة — ومن شاشةٍ ثالثة تنقل
+   * إلى المحرر أولًا. فلا يضغط المدرّس «طباعة» فيجد نفسه في كتابٍ رسمي.
+   */
+  const barAction = useCallback(
+    (onEditor: (h: EditorHandle) => void, onPapers: (h: PapersHandle) => void) => () => {
+      if (route === 'papers' && papersRef.current) return onPapers(papersRef.current);
+      if (route === 'editor' && editorRef.current) return onEditor(editorRef.current);
+      navigate('editor');
     },
     [navigate, route]
   );
 
-  const handlePrint = editorAction((h) => h.print());
-  const handleSaveDraft = editorAction((h) => h.saveDraft());
-  const handleExportPdf = editorAction((h) => h.exportPdf());
+  const handlePrint = barAction(
+    (h) => h.print(),
+    (h) => h.print()
+  );
+  const handleSaveDraft = barAction(
+    (h) => h.saveDraft(),
+    (h) => h.save()
+  );
+  const handleExportPdf = barAction(
+    (h) => h.exportPdf(),
+    (h) => h.exportPdf()
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -144,6 +161,14 @@ export default function App() {
         return (
           <CitizensScreen
             onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
+            onChanged={() => void refresh()}
+          />
+        );
+      case 'papers':
+        return (
+          <PapersScreen
+            ref={papersRef}
+            printer={selectedPrinter}
             onChanged={() => void refresh()}
           />
         );

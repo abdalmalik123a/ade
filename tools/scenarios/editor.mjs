@@ -148,7 +148,8 @@ export default async function scenario(page, { profile, shotsDir }) {
     el.dispatchEvent(new InputEvent('input', { bubbles: true }));
   `);
   await wait(600);
-  await page.clickText('أسئلة');
+  // «أسئلة» صارت لها شاشةٌ في الشريط أيضًا، وبنودُ القائمة أزرارٌ لا روابط.
+  await page.clickText('أسئلة', 'button');
   await wait(700);
   ok('أُدرجت قائمة أسئلة من «/»', (await page.text()).includes('+ سؤال'));
   ok('وعلامتها محسوبة لا مكتوبة', (await page.text()).includes('س1:'));

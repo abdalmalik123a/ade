@@ -18,7 +18,7 @@ import {
   type ImportPlan
 } from '../services/importFolder';
 import type { TemplateInput } from '@shared/template';
-import type { Doc } from '@shared/doc';
+import type { Doc, Issuing } from '@shared/doc';
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -34,8 +34,12 @@ function storeLetterheadImage(bytes: Uint8Array, extension: string): string | nu
 }
 
 export function registerTemplateIpc(): void {
-  ipcMain.handle('templates:list', (_e, category: string | null) =>
-    svc.listTemplates(getDb(), category)
+  // عمود الوثيقة يُضاف هنا مرّة — قبل أول استعلام يقرأه. وبغيره تسقط مكتبة
+  // النماذج على قاعدة مكتبٍ أُنشئت قبله، لأن القراءة تطلب عمودًا لا وجود له.
+  svc.prepareTemplates(getDb());
+
+  ipcMain.handle('templates:list', (_e, category: string | null, issuing?: Issuing) =>
+    svc.listTemplates(getDb(), category, issuing ?? 'registered')
   );
   ipcMain.handle('templates:get', (_e, id: number) => svc.getTemplate(getDb(), id));
   ipcMain.handle('templates:categories', () => svc.listCategories(getDb()));

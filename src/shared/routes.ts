@@ -6,6 +6,8 @@ export const ROUTES = {
   templates: 'templates-library-drafts',
   archive: 'transactions-archive-ledger',
   citizens: 'citizens-identity-records',
+  /** الأسئلة — قسمٌ قائمٌ بذاته لا فرعٌ من مكتبة الكتب. لا مقابل له في التصميم. */
+  papers: 'exam-papers',
   letterhead: 'header-seal-configuration',
   search: 'administrative-archive-search'
 } as const;

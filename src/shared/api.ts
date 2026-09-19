@@ -472,7 +472,11 @@ export type DiwanApi = {
     backup(): Promise<{ path: string; bytes: number } | null>;
   };
   templates: {
-    list(category?: string | null): Promise<TemplateSummary[]>;
+    /** `issuing` يفصل مكتبة الكتب عن أوراق الأسئلة — والأصل الكتب. */
+    list(
+      category?: string | null,
+      issuing?: 'registered' | 'print-only'
+    ): Promise<TemplateSummary[]>;
     get(id: number): Promise<TemplateDetail | null>;
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<TemplateStats>;

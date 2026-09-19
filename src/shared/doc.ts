@@ -286,7 +286,18 @@ export type Doc = {
   blocks: Block[];
   /** ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
   fields: DocField[];
-  meta: { title?: string; subject?: string; category?: string };
+  meta: {
+    title?: string;
+    subject?: string;
+    category?: string;
+    /**
+     * قيم رأسٍ ثابتٍ لا يُؤلَّف — رأس ورقة الأسئلة وحده اليوم.
+     *
+     * كتلُ الرأس مشتقّةٌ من هذه القيم لا محرَّرةٌ يدويًا، فالمصدر هو السجلّ
+     * والكتل صورته. وبه يُفتح ما حُفظ فتعود الحقول إلى خاناتها.
+     */
+    head?: Record<string, string>;
+  };
 };
 
 export function emptyDoc(): Doc {
