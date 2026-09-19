@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PrinterInfo, TemplateSummary } from '@shared/api';
-import { fieldRef, newUuid, reconcileFields, run, type Doc, type Inline } from '@shared/doc';
+import { newUuid, reconcileFields, tokenInlines, type Doc, type Inline } from '@shared/doc';
 import {
   BLEED_MM,
   PRINT_DPI,
@@ -79,18 +79,8 @@ type Drag =
 const textOf = (inlines: Inline[]): string =>
   inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? `{${n.ref}}` : ' ')).join('');
 
-/** `{اسم}` عقدةَ حقل، وما بينها نصًّا — وهي الصيغة التي يعرفها المكتب. */
-const inlinesOf = (text: string): Inline[] => {
-  const out: Inline[] = [];
-  let at = 0;
-  for (const m of text.matchAll(/\{([^{}]+)\}/g)) {
-    if (m.index > at) out.push(run(text.slice(at, m.index)));
-    out.push(fieldRef(m[1]!.trim()));
-    at = m.index + m[0].length;
-  }
-  if (at < text.length) out.push(run(text.slice(at)));
-  return out;
-};
+/** `{اسم}` عقدةَ حقل — والمُرمِّز واحدٌ مع الترحيل والاستيراد (`shared/doc.ts`). */
+const inlinesOf = tokenInlines;
 
 const kindName = (el: CanvasElement): string =>
   el.kind === 'text'
@@ -237,6 +227,45 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
       say(errorText(e, 'تعذّر فتح الخلفية'), 'warn');
     }
   }, [canvas, apply, say]);
+
+  /**
+   * استيرادٌ من Word أو Photoshop أو PDF — لا من الصور وحدها.
+   *
+   * وWord يعطي مواضعَ مربّعاته فتخرج الشهادة كما صُمّمت، لا كومةَ أسطر.
+   */
+  const importDesign = useCallback(async () => {
+    try {
+      const out = await window.diwan.designs.import(askSize ? canvas.size : null);
+      if (!out) return;
+
+      if (out.canvas) {
+        apply(normalizeCanvas(out.canvas));
+        setSelection([]);
+        setAskSize(false);
+      } else {
+        setAskSize(true);
+      }
+      if (!title.trim()) setTitle(out.name.replace(/\.[^.]+$/, ''));
+
+      const where =
+        out.source === 'word'
+          ? 'Word'
+          : out.source === 'psd'
+            ? 'Photoshop'
+            : out.source === 'pdf'
+              ? 'PDF'
+              : 'صورة';
+      say(
+        out.size
+          ? `${where}: ${out.size.w.toFixed(1)} × ${out.size.h.toFixed(1)} ملم` +
+              (out.warnings.length ? ` — ${out.warnings[0]}` : '')
+          : out.warnings[0] || 'الملف لا يذكر مقاسه — اختره',
+        out.size ? 'ok' : 'warn'
+      );
+    } catch (e) {
+      say(errorText(e, 'تعذّر استيراد التصميم'), 'warn');
+    }
+  }, [canvas.size, askSize, title, apply, say]);
 
   // ── العناصر ────────────────────────────────────────────────────────
   const add = useCallback(
@@ -565,6 +594,16 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
             >
               <span className="material-symbols-outlined text-[18px]">image</span>
               افتح تصميمًا (صورة)
+            </button>
+            <button
+              className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+              data-act="import"
+              title="Word · Photoshop · PDF — المقاس والمواضع من الملف"
+              type="button"
+              onClick={() => void importDesign()}
+            >
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              استورد من Word أو Photoshop أو PDF
             </button>
             <p className="font-label-sm text-label-sm text-on-surface-variant" data-size>
               المقاس {canvas.size.w.toFixed(1)} × {canvas.size.h.toFixed(1)} ملم

@@ -550,22 +550,29 @@ export function docFromLegacy(
   catalog?: (key: string) => Partial<DocField>
 ): Doc {
   const doc = emptyDoc();
-
-  doc.blocks = body.split('\n').map((lineText) => {
-    const inlines: Inline[] = [];
-    let at = 0;
-    for (const m of lineText.matchAll(TOKEN_RE)) {
-      const start = m.index ?? 0;
-      if (start > at) inlines.push(run(lineText.slice(at, start)));
-      inlines.push(fieldRef(m[1]!.trim()));
-      at = start + m[0].length;
-    }
-    if (at < lineText.length) inlines.push(run(lineText.slice(at)));
-    return paragraph(inlines);
-  });
-
+  doc.blocks = body.split('\n').map((lineText) => paragraph(tokenInlines(lineText)));
   doc.fields = reconcileFields(doc, catalog);
   return doc;
+}
+
+/**
+ * سطرٌ فيه `{الوسم}` يصير عقدًا: نصًّا وحقولًا.
+ *
+ * وهذه صيغةُ المتغيّر في كل مكان — في المتن القديم، وفي مربّع نصٍّ مستورَدٍ من
+ * Word، وفيما يكتبه المكتب في صندوق اللوحة. ومُرمِّزٌ واحدٌ لها: نسختان تختلفان
+ * في حرفٍ تعنيان حقلًا يُقرأ هنا ولا يُقرأ هناك.
+ */
+export function tokenInlines(text: string): Inline[] {
+  const inlines: Inline[] = [];
+  let at = 0;
+  for (const m of text.matchAll(TOKEN_RE)) {
+    const start = m.index ?? 0;
+    if (start > at) inlines.push(run(text.slice(at, start)));
+    inlines.push(fieldRef(m[1]!.trim()));
+    at = start + m[0].length;
+  }
+  if (at < text.length) inlines.push(run(text.slice(at)));
+  return inlines;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> =>

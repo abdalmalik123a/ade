@@ -522,6 +522,23 @@ export type DiwanApi = {
       title: string;
     }): Promise<string | null>;
   };
+  designs: {
+    /**
+     * يستورد تصميمًا: صورة أو Word أو Photoshop أو PDF.
+     *
+     * و`fallback` مقاسٌ يختاره المكتب مسبقًا لما يسكت ملفُّه — وبغيره يعود
+     * `canvas: null` ويُسأل.
+     */
+    import(fallback: { w: number; h: number } | null): Promise<{
+      name: string;
+      source: 'image' | 'word' | 'psd' | 'pdf';
+      size: { w: number; h: number } | null;
+      dpi: number | null;
+      warnings: string[];
+      canvas: unknown | null;
+      stored: string[];
+    } | null>;
+  };
   files: {
     pickImage(bucket: string): Promise<string | null>;
     /** خلفيةُ لوحة ومقاسُها من الملف — و`dpi: null` يعني: اسأل، لا تخمّن. */

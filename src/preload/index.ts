@@ -148,6 +148,9 @@ const api: DiwanApi = {
     }) => invoke('drafts:save', input),
     delete: (id: number) => invoke('drafts:delete', id)
   },
+  designs: {
+    import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback)
+  },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
     pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),

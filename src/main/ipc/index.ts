@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { registerFileIpc } from './files';
+import { registerDesignIpc } from './designs';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
@@ -60,6 +61,7 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
 export function registerIpc(): void {
   registerLetterheadIpc();
   registerFileIpc();
+  registerDesignIpc();
   registerTemplateIpc();
   registerCitizenIpc();
   registerDocumentIpc();
