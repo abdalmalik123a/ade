@@ -8,7 +8,7 @@
  * والمكرَّر مُنزوع الاختيار سلفًا مع إبقاء أوّله: ثلاثة ملفات متشابهة ٩٨٪
  * ليست ثلاث استمارات.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { renameField, unfield, type Doc, type Suggestion } from '@shared/doc';
 import { isLayoutEmpty } from '@shared/letterhead';
 import type { ImportChoices, ImportPlan } from '@shared/api';
@@ -94,6 +94,15 @@ export default function ImportPlanDialog({
   const [useShared, setUseShared] = useState(Boolean(plan.sharedLetterhead));
   const [sharedName, setSharedName] = useState('ترويسة المكتب');
   const [category, setCategory] = useState('');
+  /** ما تعلّمه البرنامج من هذا المكتب — يُعرض هنا حيث تُراجَع الاقتراحات. */
+  const [taught, setTaught] = useState<{ total: number; habits: number } | null>(null);
+
+  useEffect(() => {
+    window.diwan.learning
+      .stats()
+      .then((s) => setTaught(s.total ? { total: s.total, habits: s.habits } : null))
+      .catch(() => setTaught(null));
+  }, []);
 
   /** من أي مجموعة جاءت البطاقة — لتُشرح للموظف لماذا نُزع اختيارها. */
   const copyOf = useMemo(() => {
@@ -118,6 +127,30 @@ export default function ImportPlanDialog({
   const patchDoc = (id: string, fn: (doc: Doc) => Doc) =>
     setDocs((prev) => ({ ...prev, [id]: fn(prev[id]!) }));
 
+  /**
+   * ما صحّحه الموظف من أسماء الحقول.
+   *
+   * وتُحسب هنا لأن هذه الشاشة وحدها تملك الاثنين: ما اقترحه البرنامج (في
+   * `plan`) وما صار إليه بيد الموظف (في `docs`). ولا تُجمع بأثر رجعي، فما لم
+   * يُقيَّد الآن فُقد.
+   */
+  function corrections() {
+    const out: { input: string; suggested: string | null; chosen: string }[] = [];
+    for (const c of plan.candidates) {
+      if (!accept.has(c.id)) continue;
+      const edited = docs[c.id];
+      if (!edited) continue;
+      const before = new Map(c.doc.fields.map((f) => [f.key, f.label]));
+      for (const field of edited.fields) {
+        const was = before.get(field.key);
+        if (was && was !== field.label) {
+          out.push({ input: was, suggested: was, chosen: field.label });
+        }
+      }
+    }
+    return out;
+  }
+
   function apply() {
     onApply(
       { ...plan, candidates: plan.candidates.map((c) => ({ ...c, doc: docs[c.id] ?? c.doc })) },
@@ -125,7 +158,8 @@ export default function ImportPlanDialog({
         accept: [...accept],
         useSharedLetterhead: useShared,
         sharedName,
-        category: category.trim() || null
+        category: category.trim() || null,
+        corrections: corrections()
       }
     );
   }
@@ -299,9 +333,20 @@ export default function ImportPlanDialog({
                 onChange={(e) => setCategory(e.target.value)}
               />
             </label>
-            <span className="flex-1 font-label-md text-label-md text-on-surface">
+            <span className="font-label-md text-label-md text-on-surface">
               سيُحفظ {accept.size} من {plan.candidates.length}
             </span>
+            {taught && (
+              <span
+                className="font-label-sm text-label-sm text-on-surface-variant"
+                data-taught
+                title="يتعلّم من تصحيحاتك — عدٌّ لا نموذج، ولا يغادر جهازك شيء"
+              >
+                تعلّم من مكتبك: {taught.total} تصحيحًا
+                {taught.habits ? ` · ${taught.habits} عادة` : ''}
+              </span>
+            )}
+            <span className="flex-1" />
             <button
               className="h-9 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
               type="button"

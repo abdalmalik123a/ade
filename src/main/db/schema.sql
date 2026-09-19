@@ -220,3 +220,19 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+
+-- تصحيحات الموظف: ما اقترحه البرنامج وما اختاره هو.
+--
+-- وهذه لا تُجمع بأثر رجعي: من لم يقيّدها من اليوم الأول فقدها. فيُبنى الجدول
+-- الآن ولو لم يُستعمل ما فيه إلا بعد شهور — وبه يتعلّم الكاشف من هذا المكتب
+-- وحده، بلا شبكة ولا حساب (§الذكاء المحلي).
+CREATE TABLE IF NOT EXISTS corrections (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind       TEXT NOT NULL,              -- fieldName · letterheadEdge · category · clip · duplicate
+  input      TEXT NOT NULL,              -- ما رآه البرنامج: السطر أو المفتاح
+  suggested  TEXT,                       -- ما اقترحه، أو لا شيء
+  chosen     TEXT NOT NULL,              -- ما اختاره الموظف
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_corrections_lookup ON corrections(kind, input);

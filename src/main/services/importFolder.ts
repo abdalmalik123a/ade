@@ -10,7 +10,15 @@
 import { readdir } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import type { Database } from 'better-sqlite3';
-import { docText, emptyDoc, newUuid, type Doc } from '@shared/doc';
+import {
+  APPLY_THRESHOLD,
+  docText,
+  emptyDoc,
+  newUuid,
+  renameField,
+  type Doc,
+  type Suggestion
+} from '@shared/doc';
 import { isLayoutEmpty, type LetterheadLayout } from '@shared/letterhead';
 import type {
   ImportCandidate,
@@ -22,6 +30,7 @@ import { buildBody, groupDuplicates, splitForms, stripTatweel } from './blanks';
 import { importTemplateFile, type ImageSaver } from './import';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
+import { learned, recordCorrections, type Correction } from './learning';
 
 export type { ImportCandidate, ImportChoices, ImportOutcome, ImportPlan };
 
@@ -135,6 +144,43 @@ function findShared(candidates: ImportCandidate[]): ImportPlan['sharedLetterhead
  * والترويسة المشتركة تُحفظ **مرّة واحدة** ويُربط بها الجميع — فمكتبٌ بجانب
  * مديرية التربية رأسُه واحد، ولا معنى لمئتين وثمانين نسخةً منه.
  */
+/**
+ * يطبّق ما **اعتاده** المكتب على خطّةٍ بُنيت بالقواعد.
+ *
+ * فالتخطيط يبقى خالصًا (لا قاعدةَ بياناتٍ فيه)، والعادةُ تُطبَّق على حافّته.
+ *
+ * **ولا تُطبَّق إلا إن رسخت**: تصحيحٌ واحد قد يكون زلّة، فلا يُعاد به تسمية
+ * حقلٍ في كل ملفٍ يأتي بعده — وإلا لم يتعلّم البرنامج شيئًا بعدها، إذ لن يرى
+ * الموظفُ الاسمَ الأول ليصحّحه ثانيةً. فالعتبة هي `APPLY_THRESHOLD` نفسها التي
+ * في النواة، وما دونها يُقال ولا يُطبَّق.
+ *
+ * وكل تسميةٍ تُغيَّر يُقال سببُها في `suggestions` — فالتعلّم لا يكون صامتًا:
+ * «اعتاده مكتبك: اختاره ٤ مرّات».
+ */
+export function applyHabits(db: Database, plan: ImportPlan): ImportPlan {
+  return {
+    ...plan,
+    candidates: plan.candidates.map((c) => {
+      let doc = c.doc;
+      const reasons: Suggestion<string>[] = [];
+      for (const field of c.doc.fields) {
+        const habit = learned(db, 'fieldName', field.label);
+        if (!habit || habit.value === field.label) continue;
+        if (habit.confidence < APPLY_THRESHOLD) continue;
+        // `value` مفتاحُ الحقل لا الاسمَ الجديد: الشاشة تربط السببَ بالمفتاح،
+        // فلو وُضع الاسمُ هنا لم يُعرض السببُ قطّ ولصار التعلّم صامتًا.
+        reasons.push({
+          value: field.key,
+          confidence: habit.confidence,
+          reason: `«${field.label}» ← «${habit.value}» — ${habit.reason}`
+        });
+        doc = renameField(doc, field.key, habit.value);
+      }
+      return reasons.length ? { ...c, doc, suggestions: [...c.suggestions, ...reasons] } : c;
+    })
+  };
+}
+
 export function applyImportPlan(
   db: Database,
   plan: ImportPlan,
@@ -142,6 +188,20 @@ export function applyImportPlan(
 ): ImportOutcome {
   const accepted = new Set(choices.accept);
   const taken = plan.candidates.filter((c) => accepted.has(c.id));
+
+  /**
+   * ما غيّره الموظف يُقيَّد — ولا يُقيَّد ما قبِله.
+   *
+   * فالذي قبِل الاقتراح لم يعلّمنا جديدًا؛ والذي أعاد تسمية حقلٍ علّمنا اسم
+   * مكتبه له. والفرقُ يُحسب في الشاشة لأنها وحدها تملك الاثنين: ما اقترحه
+   * البرنامج وما صار إليه بيد الموظف.
+   */
+  const corrections: Correction[] = (choices.corrections ?? []).map((c) => ({
+    kind: 'fieldName' as const,
+    input: c.input,
+    suggested: c.suggested,
+    chosen: c.chosen
+  }));
 
   return db.transaction((): ImportOutcome => {
     let letterheadId: number | null = null;
@@ -171,6 +231,8 @@ export function applyImportPlan(
         doc: c.doc
       });
     }
+
+    if (corrections.length) recordCorrections(db, corrections);
 
     return {
       templates: taken.length,

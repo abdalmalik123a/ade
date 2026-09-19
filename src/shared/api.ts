@@ -305,6 +305,13 @@ export type ImportChoices = {
   useSharedLetterhead: boolean;
   sharedName?: string;
   category?: string | null;
+  /**
+   * ما صحّحه الموظف من أسماء الحقول: ما اقترحه البرنامج وما اختاره هو.
+   *
+   * وتُحسب في الشاشة لأنها وحدها تملك الاثنين — ثم تُقيَّد، فيتعلّم الكاشف من
+   * هذا المكتب. **ولا تُجمع بأثر رجعي.**
+   */
+  corrections?: { input: string; suggested: string | null; chosen: string }[];
 };
 
 export type ImportOutcome = {
@@ -493,6 +500,14 @@ export type DiwanApi = {
     exportLibrary(): Promise<{ path: string; count: number } | null>;
     restoreLibrary(): Promise<{ added: number; skipped: number } | null>;
     backup(): Promise<string | null>;
+  };
+  /** ما تعلّمه البرنامج من هذا المكتب — عدٌّ لا نموذج، ويُعرض لا يُخفى. */
+  learning: {
+    stats(): Promise<{
+      total: number;
+      byKind: { kind: string; count: number }[];
+      habits: number;
+    }>;
   };
   drafts: {
     list(): Promise<DraftRow[]>;

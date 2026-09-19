@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 
+/** حدُّ العادة — هو نفسه في `services/learning.ts`، فلا عتبتان تختلفان. */
+const HABIT = 3;
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(HERE, '..', '..', 'tests', 'fixtures', 'school-warning.docx');
 const FOLDER = join(process.env.TEMP ?? '.', `diwan-folder-${Date.now()}`);
@@ -109,6 +112,69 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('والحقول تُملأ باليد بعد الطباعة', Boolean(doc?.fields?.every((f) => f.fillMode === 'hand')));
 
   if (shotsDir) await page.shot(join(shotsDir, 'import-plan-done.png'));
+
+  // ── الذكاء المحلي: يتعلّم من تصحيح الموظف ─────────────────────────
+  const corrections = () => {
+    const db = new Database(dbPath, { readonly: true });
+    const rows = db.prepare('SELECT kind, input, suggested, chosen FROM corrections').all();
+    db.close();
+    return rows;
+  };
+  const taughtRows = corrections();
+  ok('قُيّد ما غيّره الموظف لا ما قبِله', taughtRows.length === 1);
+  ok(
+    'بما اقترحه البرنامج وما اختاره هو',
+    taughtRows[0]?.kind === 'fieldName' &&
+      taughtRows[0]?.suggested === 'التقدير' &&
+      taughtRows[0]?.chosen === 'ملاحظة الختام'
+  );
+
+  // مرّةٌ واحدة لا تبلغ حدّ العادة، فيُعلَّم حتى يبلغها.
+  for (let i = 1; i < HABIT; i++) {
+    await page.goto('templates-library-drafts');
+    await wait(600);
+    await page.clickText('استورد مجلدي');
+    await wait(3000);
+    await page.eval(`
+      const inputs = [...document.querySelectorAll('input[type="text"]')];
+      const el = inputs.find((i) => i.value === 'التقدير');
+      if (!el) return false;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'ملاحظة الختام');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    `);
+    await wait(400);
+    await page.clickText('احفظ 1 بطاقة');
+    await wait(2500);
+  }
+  ok('وتراكمت التصحيحات حتى بلغت العادة', corrections().length === HABIT);
+
+  // واستيرادٌ رابع: أيقترح البرنامج اسمَ المكتب من نفسه؟
+  await page.goto('templates-library-drafts');
+  await wait(600);
+  await page.clickText('استورد مجلدي');
+  await wait(3000);
+
+  const taught = await page.eval(`
+    const el = document.querySelector('[data-taught]');
+    return el ? el.textContent.trim() : '';
+  `);
+  ok('ويُعرض ما تعلّمه — فالتعلّم لا يكون صامتًا', taught.includes('تعلّم من مكتبك'));
+  ok('ويقول كم عادةً رسخت', taught.includes('عادة'));
+
+  const suggestedNow = await page.eval(`
+    const inputs = [...document.querySelectorAll('input[type="text"]')];
+    return inputs.some((i) => i.value === 'ملاحظة الختام');
+  `);
+  ok('والبرنامج يقترح اسمَ مكتبك من نفسه', suggestedNow);
+
+  const reasons = await page.eval(`
+    return [...document.querySelectorAll('span[title]')]
+      .map((e) => e.getAttribute('title'))
+      .filter(Boolean)
+      .join(' || ');
+  `);
+  ok('ويقول لماذا — عدٌّ يُعلَّل لا وزنٌ في شبكة', reasons.includes('اعتاده مكتبك'));
 
   rmSync(FOLDER, { recursive: true, force: true });
   return steps.join('\n');

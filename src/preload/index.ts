@@ -136,6 +136,9 @@ const api: DiwanApi = {
     restoreLibrary: () => invoke('templates:restoreLibrary'),
     backup: () => invoke('templates:backup')
   },
+  learning: {
+    stats: () => invoke('learning:stats')
+  },
   drafts: {
     list: () => invoke('drafts:list'),
     save: (input: {

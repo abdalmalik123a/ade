@@ -11,6 +11,7 @@ import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, saveClip, touchClip } from '../services/clips';
 import { pickFolderPath, pickOpenPath } from './files';
 import {
+  applyHabits,
   applyImportPlan,
   planFolderImport,
   type ImportChoices,
@@ -19,6 +20,7 @@ import {
 } from '../services/importFolder';
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
+import { learningStats } from '../services/learning';
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -95,8 +97,13 @@ export function registerTemplateIpc(): void {
       buttonLabel: 'اقرأ المجلد'
     });
     if (!dir) return null;
-    return planFolderImport(dir, { saveImage: storeLetterheadImage });
+    const plan = await planFolderImport(dir, { saveImage: storeLetterheadImage });
+    // والعادةُ تُطبَّق بعد القواعد: ما سمّاه مكتبك مرارًا يُقترح باسمه.
+    return applyHabits(getDb(), plan);
   });
+
+  /** ما تعلّمه البرنامج من هذا المكتب — يُعرض، فالتعلّم لا يكون صامتًا. */
+  ipcMain.handle('learning:stats', () => learningStats(getDb()));
 
   /** ينفّذ ما قبِله الموظف من الخطّة — وما لم يُقبل لا يُحفظ. */
   ipcMain.handle(
