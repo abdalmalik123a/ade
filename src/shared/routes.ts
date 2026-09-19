@@ -8,6 +8,8 @@ export const ROUTES = {
   citizens: 'citizens-identity-records',
   /** الأسئلة — قسمٌ قائمٌ بذاته لا فرعٌ من مكتبة الكتب. لا مقابل له في التصميم. */
   papers: 'exam-papers',
+  /** التصاميم — اللوحة: شهادةٌ وهويةٌ وملصق. لا مقابل له في التصميم. */
+  designs: 'designed-documents',
   letterhead: 'header-seal-configuration',
   search: 'administrative-archive-search'
 } as const;

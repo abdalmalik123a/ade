@@ -3,6 +3,7 @@ import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { storeDir } from '../db';
+import { imageMetaOf, type ImageMeta } from '../services/imageSize';
 
 /**
  * كل تعامل مع الملفات يمرّ من هنا.
@@ -105,6 +106,30 @@ export function registerFileIpc(): void {
     if (result.canceled || !result.filePaths[0]) return null;
     return importFile(result.filePaths[0], bucket);
   });
+
+  /**
+   * خلفيةُ لوحة: الصورة تُنسخ إلى المخزن، **ومقاسها يُقرأ من الملف**.
+   *
+   * وهذا أول موضعٍ تنكسر فيه برامج التصميم: تُفتح خلفيةٌ فتُفترض ٩٦ نقطة/إنش
+   * فتخرج شهادةٌ ممطوطة. وإن سكت الملف عن دقّته عاد `dpi: null` — فيُسأل المكتب
+   * عن المقاس ولا يُخمَّن له.
+   */
+  ipcMain.handle(
+    'files:pickBackground',
+    async (e, bucket: string): Promise<{ src: string; meta: ImageMeta | null } | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender);
+      if (!win) return null;
+      const source = await pickOpenPath(win, {
+        title: 'اختر خلفية التصميم',
+        buttonLabel: 'افتح',
+        filterName: 'صور',
+        extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']
+      });
+      if (!source) return null;
+      const meta = await imageMetaOf(source);
+      return { src: await importFile(source, bucket), meta };
+    }
+  );
 
   /** حفظ ناتج (PDF / DOCX / XLSX) — حوار الحفظ داخل التطبيق، ثم كشف الملف للمستخدم. */
   ipcMain.handle(

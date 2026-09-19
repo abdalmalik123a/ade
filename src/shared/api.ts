@@ -524,6 +524,17 @@ export type DiwanApi = {
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;
+    /** خلفيةُ لوحة ومقاسُها من الملف — و`dpi: null` يعني: اسأل، لا تخمّن. */
+    pickBackground(bucket: string): Promise<{
+      src: string;
+      meta: {
+        width: number;
+        height: number;
+        dpi: number | null;
+        format: 'png' | 'jpeg';
+        mm: { w: number; h: number } | null;
+      } | null;
+    } | null>;
     saveAs(payload: {
       data: Uint8Array;
       suggestedName: string;

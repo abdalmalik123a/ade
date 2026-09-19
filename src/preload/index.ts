@@ -150,6 +150,7 @@ const api: DiwanApi = {
   },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
+    pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),
     saveAs: (payload: {
       data: Uint8Array;
       suggestedName: string;

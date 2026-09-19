@@ -9,6 +9,7 @@ import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
 import TemplatesScreen from './screens/TemplatesScreen';
 import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
+import DesignsScreen from './screens/DesignsScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
 
@@ -172,6 +173,8 @@ export default function App() {
             onChanged={() => void refresh()}
           />
         );
+      case 'designs':
+        return <DesignsScreen printer={selectedPrinter} onChanged={() => void refresh()} />;
       case 'letterhead':
         return <LetterheadScreen />;
       case 'search':

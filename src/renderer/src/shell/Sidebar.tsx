@@ -75,7 +75,9 @@ export default function Sidebar({
     },
     { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' },
     // ورقة الامتحان لا تُقيَّد ولا تُصدَّر، فلا تجاور الكتب في المكتبة ولا في الشبّاك.
-    { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' }
+    { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' },
+    // اللوحة لا تتدفّق: مقاسٌ ثابت وخلفيةٌ وعناصرُ بمواضعها — فشاشةٌ ثالثة.
+    { key: 'designs', icon: 'badge', label: 'التصاميم — شهادات وهويات' }
   ];
 
   const tools: NavItem[] = [

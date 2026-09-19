@@ -10,6 +10,8 @@
  * المتن بمفتاحه — فالاسم يُكتب مرّة ويملأ كل مواضعه.
  */
 
+import { normalizeCanvas, type Canvas } from './canvas';
+
 /** رقم صيغة الوثيقة: تُقرأ بصيغتها ثم تُرحَّل عند القراءة. */
 export const DOC_SCHEMA = 1;
 
@@ -284,6 +286,14 @@ export type Doc = {
   issuing: Issuing;
   pageSetup: PageSetup;
   blocks: Block[];
+  /**
+   * اللوحة — حين يكون `kind === 'canvas'`.
+   *
+   * وهي في الوثيقة نفسها لا في صنفٍ ثانٍ، لأن `fields` مشتركة: الحقل في شهادةٍ
+   * هو الحقل في كتاب، فالشبّاك والدمج يعملان عليها بلا أن يعرفا أنها لوحة.
+   * وبنيتها في `shared/canvas.ts`.
+   */
+  canvas?: Canvas;
   /** ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
   fields: DocField[];
   meta: {
@@ -352,12 +362,19 @@ function blockInlines(block: Block): Inline[] {
   return [];
 }
 
-/** مفاتيح الحقول المستعملة فعلًا في المتن — فلا تتعارض القائمة مع النصّ. */
+/** مفاتيح الحقول المستعملة فعلًا في المتن وفي اللوحة — فلا تتعارض القائمة معهما. */
 export function usedKeys(doc: Doc): string[] {
   const seen = new Set<string>();
   for (const b of walkBlocks(doc.blocks)) {
     for (const i of blockInlines(b)) if (i.kind === 'field') seen.add(i.ref);
     if (b.kind === 'group' && b.on) seen.add(b.on);
+  }
+  for (const el of doc.canvas?.elements ?? []) {
+    if (el.kind === 'text') {
+      for (const node of el.inlines) if (node.kind === 'field') seen.add(node.ref);
+    } else if ((el.kind === 'image' || el.kind === 'barcode') && el.ref) {
+      seen.add(el.ref);
+    }
   }
   return [...seen];
 }
@@ -470,6 +487,11 @@ export function docText(doc: Doc, values: Record<string, string> = {}): string {
     else if (b.kind === 'table')
       for (const r of b.rows)
         lines.push(r.cells.map((c) => c.blocks.map((p) => inlineText(p.inlines)).join(' ')).join(' | '));
+  }
+
+  // ونصّ اللوحة معه: الشهادة تُبحث باسم صاحبها كما يُبحث الكتاب.
+  for (const el of doc.canvas?.elements ?? []) {
+    if (el.kind === 'text') lines.push(inlineText(el.inlines));
   }
   return lines.join('\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -585,6 +607,9 @@ export function normalizeDoc(raw: unknown): Doc {
     fields: Array.isArray(v.fields) ? v.fields.filter(isObj).map(normalizeField) : [],
     meta: isObj(v.meta) ? (v.meta as Doc['meta']) : {}
   };
+
+  // اللوحة تُقوَّم بقواعدها: ما فسد منها يُردّ إلى حدّه ولا يُسقط الورقة.
+  if (doc.kind === 'canvas') doc.canvas = normalizeCanvas(v.canvas);
 
   // الحقول تتبع المتن دائمًا: ما اختفى من النصّ لا يبقى في شاشة الإدخال.
   doc.fields = reconcileFields(doc);
