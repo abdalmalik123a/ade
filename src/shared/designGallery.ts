@@ -51,9 +51,7 @@ function corners(w: number, h: number, color: string, size = 16): string {
   const at = (x: number, y: number, sx: number, sy: number) =>
     `<g transform="translate(${x},${y}) scale(${sx},${sy})">${one}</g>`;
   const m = 10;
-  return (
-    at(m, m, 1, 1) + at(w - m, m, -1, 1) + at(m, h - m, 1, -1) + at(w - m, h - m, -1, -1)
-  );
+  return at(m, m, 1, 1) + at(w - m, m, -1, 1) + at(m, h - m, 1, -1) + at(w - m, h - m, -1, -1);
 }
 /**
  * وردةٌ هندسية (guilloche) — ختمٌ زخرفيّ يُرسم بالرياضيات.
@@ -153,7 +151,13 @@ function certificate(headline: string, body: string, accent: string): Canvas {
     CREAM
   );
   return build(A4_LAND, 0, bg, [
-    { text: headline, box: { x: 0.22, y: 0.26, w: 0.56, h: 0.11 }, size: 34, bold: true, color: accent },
+    {
+      text: headline,
+      box: { x: 0.22, y: 0.26, w: 0.56, h: 0.11 },
+      size: 34,
+      bold: true,
+      color: accent
+    },
     { text: body, box: { x: 0.14, y: 0.4, w: 0.72, h: 0.08 }, size: 16 },
     { text: '{الاسم}', box: { x: 0.25, y: 0.49, w: 0.5, h: 0.1 }, size: 30, bold: true },
     { text: '{السبب}', box: { x: 0.16, y: 0.61, w: 0.68, h: 0.09 }, size: 14 },
@@ -188,7 +192,13 @@ function idCard(title: string, role: string, accent: string): Canvas {
     BLEED_MM,
     bg,
     [
-      { text: title, box: { x: 0.06, y: 0.03, w: 0.88, h: 0.12 }, size: 11, bold: true, color: PAPER },
+      {
+        text: title,
+        box: { x: 0.06, y: 0.03, w: 0.88, h: 0.12 },
+        size: 11,
+        bold: true,
+        color: PAPER
+      },
       { text: '{الاسم}', box: { x: 0.33, y: 0.24, w: 0.6, h: 0.13 }, size: 11, bold: true },
       { text: `${role}: {الصف}`, box: { x: 0.33, y: 0.39, w: 0.6, h: 0.1 }, size: 8 },
       { text: 'الرقم: {الرقم}', box: { x: 0.33, y: 0.5, w: 0.6, h: 0.1 }, size: 8 },
@@ -273,7 +283,13 @@ export const GALLERY: GalleryDesign[] = [
           CREAM
         ),
         [
-          { text: 'دعوة', box: { x: 0.28, y: 0.3, w: 0.44, h: 0.08 }, size: 28, bold: true, color: GOLD },
+          {
+            text: 'دعوة',
+            box: { x: 0.28, y: 0.3, w: 0.44, h: 0.08 },
+            size: 28,
+            bold: true,
+            color: GOLD
+          },
           { text: 'يسرّ {الجهة} دعوتكم لحضور', box: { x: 0.1, y: 0.4, w: 0.8, h: 0.07 }, size: 13 },
           { text: '{المناسبة}', box: { x: 0.14, y: 0.48, w: 0.72, h: 0.09 }, size: 20, bold: true },
           { text: '{التاريخ} — {الزمن}', box: { x: 0.14, y: 0.6, w: 0.72, h: 0.07 }, size: 13 },
@@ -299,7 +315,13 @@ export const GALLERY: GalleryDesign[] = [
             `<rect x="60" y="1060" width="720" height="1.2" fill="${INK}"/>`
         ),
         [
-          { text: '{الجهة}', box: { x: 0.08, y: 0.04, w: 0.84, h: 0.08 }, size: 20, bold: true, color: PAPER },
+          {
+            text: '{الجهة}',
+            box: { x: 0.08, y: 0.04, w: 0.84, h: 0.08 },
+            size: 20,
+            bold: true,
+            color: PAPER
+          },
           { text: 'إعلان', box: { x: 0.34, y: 0.12, w: 0.32, h: 0.05 }, size: 14, color: PAPER },
           { text: '{العنوان}', box: { x: 0.08, y: 0.26, w: 0.84, h: 0.12 }, size: 34, bold: true },
           { text: '{التفاصيل}', box: { x: 0.08, y: 0.42, w: 0.84, h: 0.3 }, size: 15 },
@@ -326,11 +348,21 @@ export const GALLERY: GalleryDesign[] = [
           CREAM
         ),
         [
-          { text: '{المادة}', box: { x: 0.2, y: 0.42, w: 0.62, h: 0.1 }, size: 32, bold: true, color: BLUE },
+          {
+            text: '{المادة}',
+            box: { x: 0.2, y: 0.42, w: 0.62, h: 0.1 },
+            size: 32,
+            bold: true,
+            color: BLUE
+          },
           { text: 'الاسم: {الاسم}', box: { x: 0.2, y: 0.56, w: 0.62, h: 0.06 }, size: 15 },
           { text: 'الصف: {الصف}', box: { x: 0.2, y: 0.63, w: 0.62, h: 0.06 }, size: 15 },
           { text: 'المدرسة: {المدرسة}', box: { x: 0.2, y: 0.7, w: 0.62, h: 0.06 }, size: 15 },
-          { text: 'العام الدراسي {العام الدراسي}', box: { x: 0.2, y: 0.82, w: 0.62, h: 0.06 }, size: 13 }
+          {
+            text: 'العام الدراسي {العام الدراسي}',
+            box: { x: 0.2, y: 0.82, w: 0.62, h: 0.06 },
+            size: 13
+          }
         ]
       )
   },
@@ -351,17 +383,30 @@ export const GALLERY: GalleryDesign[] = [
             rosette(594, 230, 104, 14, GOLD) +
             ribbon(594, 380, 640, 32, GOLD) +
             [0, 1, 2, 3, 4]
-              .map((i) => `<line x1="160" y1="${620 + i * 190}" x2="1028" y2="${620 + i * 190}" stroke="${GOLD}" stroke-width="0.6"/>`)
+              .map(
+                (i) =>
+                  `<line x1="160" y1="${620 + i * 190}" x2="1028" y2="${620 + i * 190}" stroke="${GOLD}" stroke-width="0.6"/>`
+              )
               .join(''),
           CREAM
         ),
         [
-          { text: 'لوحة الشرف', box: { x: 0.2, y: 0.2, w: 0.6, h: 0.05 }, size: 30, bold: true, color: GOLD },
+          {
+            text: 'لوحة الشرف',
+            box: { x: 0.2, y: 0.2, w: 0.6, h: 0.05 },
+            size: 30,
+            bold: true,
+            color: GOLD
+          },
           { text: '{الجهة}', box: { x: 0.15, y: 0.26, w: 0.7, h: 0.04 }, size: 18 },
           { text: '{الأول}', box: { x: 0.15, y: 0.34, w: 0.7, h: 0.05 }, size: 20, bold: true },
           { text: '{الثاني}', box: { x: 0.15, y: 0.45, w: 0.7, h: 0.05 }, size: 20, bold: true },
           { text: '{الثالث}', box: { x: 0.15, y: 0.56, w: 0.7, h: 0.05 }, size: 20, bold: true },
-          { text: 'العام الدراسي {العام الدراسي}', box: { x: 0.25, y: 0.88, w: 0.5, h: 0.04 }, size: 14 }
+          {
+            text: 'العام الدراسي {العام الدراسي}',
+            box: { x: 0.25, y: 0.88, w: 0.5, h: 0.04 },
+            size: 14
+          }
         ]
       )
   }

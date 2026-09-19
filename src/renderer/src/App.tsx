@@ -29,7 +29,13 @@ const NO_TARGET: EditorTarget = {
 };
 
 export default function App() {
-  const [route, setRoute] = useState<RouteKey>('editor');
+  /**
+   * الشبّاك هو ما يُفتح عليه التطبيق.
+   *
+   * كان المحرّر، وهو أداةُ مصمّم: يفتح المكتب برنامجه صباحًا فيجد ورقةً بيضاء
+   * وأدوات تأليف، والزبون واقف. والشاشة اليومية هي «اختر واملأ واطبع».
+   */
+  const [route, setRoute] = useState<RouteKey>('service');
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0 });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
@@ -197,6 +203,8 @@ export default function App() {
       />
       <div className="pr-72">
         <Header
+          /** أدواتُ التأليف تخصّ من يؤلّف — وفي الشبّاك أزرارُه هو. */
+          tools={route === 'editor' || route === 'papers' || route === 'designs'}
           transaction={editorStatus.transaction}
           search={search}
           onSearch={(value) => {

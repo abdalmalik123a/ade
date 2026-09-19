@@ -49,23 +49,18 @@ export default function Sidebar({
   officeName,
   onSignOut
 }: SidebarProps) {
-  const main: NavItem[] = [
+  /**
+   * الشاشة اليومية وحدها في الأعلى.
+   *
+   * فالمكتب يقضي نهاره في الشبّاك: يختار ويملأ ويطبع والزبون واقف. وما عداه
+   * يُفتح مرّةً في الأسبوع — والمحرّر **أداةُ مصمّمٍ في مكان أداة كاشير**،
+   * فنُقل إلى الورشة ولم يُرمَ (§الإخلاء).
+   */
+  const daily: NavItem[] = [
     {
       key: 'service',
       icon: 'point_of_sale',
       label: 'الشبّاك — اختر واملأ واطبع'
-    },
-    {
-      key: 'editor',
-      icon: 'edit_document',
-      label: 'المحرر الذكي ومعاينة A4',
-      badge: { text: 'نشط', bold: true }
-    },
-    {
-      key: 'templates',
-      icon: 'description',
-      label: 'مكتبة النماذج والمسودات',
-      badge: { text: String(counts.templates) }
     },
     {
       key: 'archive',
@@ -73,7 +68,19 @@ export default function Sidebar({
       label: 'سجل المعاملات والأرشيف',
       badge: { text: `اليوم ${counts.issuedToday}` }
     },
-    { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' },
+    { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' }
+  ];
+
+  /** ما يُبنى مرّةً ويُستعمل كل يوم — وهذه هي الورشة. */
+  const workshop: NavItem[] = [
+    {
+      key: 'templates',
+      icon: 'description',
+      label: 'مكتبة النماذج والمسودات',
+      badge: { text: String(counts.templates) }
+    },
+    { key: 'editor', icon: 'edit_document', label: 'المحرّر ومعاينة A4' },
+    { key: 'letterhead', icon: 'verified', label: 'الترويسات والأختام' },
     // ورقة الامتحان لا تُقيَّد ولا تُصدَّر، فلا تجاور الكتب في المكتبة ولا في الشبّاك.
     { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' },
     // اللوحة لا تتدفّق: مقاسٌ ثابت وخلفيةٌ وعناصرُ بمواضعها — فشاشةٌ ثالثة.
@@ -81,7 +88,6 @@ export default function Sidebar({
   ];
 
   const tools: NavItem[] = [
-    { key: 'letterhead', icon: 'verified', label: 'إعدادات الترويسة والأختام' },
     { key: 'search', icon: 'manage_search', label: 'البحث والتقارير الدورية' }
   ];
 
@@ -110,10 +116,44 @@ export default function Sidebar({
 
         <div className="px-space-md py-space-sm">
           <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
-            الوحدات الإدارية الرئيسية
+            العمل اليومي
           </div>
           <nav className="space-y-1">
-            {main.map((item) => {
+            {daily.map((item) => {
+              const isActive = item.key === active;
+              return (
+                <a
+                  key={item.key}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={isActive ? NAV_ACTIVE : NAV_BASE}
+                  data-path={ROUTES[item.key]}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate(item.key);
+                  }}
+                >
+                  <div className="flex items-center gap-space-md">
+                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                    <span className="font-label-lg text-label-lg">{item.label}</span>
+                  </div>
+                  {item.badge && (
+                    <span className={`${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
+                      {item.badge.text}
+                    </span>
+                  )}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="px-space-md pt-space-xs">
+          <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
+            الورشة — تُبنى مرّةً وتُستعمل كل يوم
+          </div>
+          <nav className="space-y-1">
+            {workshop.map((item) => {
               const isActive = item.key === active;
               return (
                 <a

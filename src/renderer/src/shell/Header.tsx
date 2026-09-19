@@ -3,6 +3,14 @@ import { useEffect, useRef } from 'react';
 /* منقول حرفيًا من <header> في ملفات التصميم — كان متطابقًا بايتًا ببايت في الأربعة. */
 
 export type HeaderProps = {
+  /**
+   * أتُعرض أدواتُ التأليف؟
+   *
+   * «حفظ مسودة» و«تصدير PDF» و«طباعة فورية» تخصّ من يؤلّف ورقة. وفي الشبّاك
+   * والأرشيف لا معنى لها: للشبّاك أزرارُه في مكانها من الخطوات الثلاث، وكانت
+   * هذه تقفز بالموظف إلى المحرّر إن ضغطها.
+   */
+  tools?: boolean;
   /** اسم المعاملة الجارية، أو null قبل اختيار نموذج. */
   transaction: string | null;
   search: string;
@@ -16,6 +24,7 @@ export type HeaderProps = {
 };
 
 export default function Header({
+  tools = true,
   transaction,
   search,
   onSearch,
@@ -77,43 +86,49 @@ export default function Header({
           <span className="material-symbols-outlined text-[18px]">sync_alt</span>
           <span>تبديل النموذج</span>
         </button>
-        <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
-          type="button"
-          disabled={busy}
-          onClick={onSaveDraft}
-        >
-          <span className="material-symbols-outlined text-[18px]">save</span>
-          <span>حفظ مسودة</span>
-        </button>
-        <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
-          type="button"
-          disabled={exporting || busy}
-          onClick={onExportPdf}
-        >
-          {exporting ? (
-            <>
-              <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
-              <span>جاري التصدير 300DPI...</span>
-            </>
-          ) : (
-            <>
-              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-              <span>تصدير PDF</span>
-            </>
-          )}
-        </button>
-        <button
-          className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
-          type="button"
-          disabled={busy}
-          onClick={onPrint}
-        >
-          <span className="material-symbols-outlined text-[18px]">print</span>
-          <span className="font-bold">طباعة فورية</span>
-          <span className="font-code-sm text-code-sm opacity-70">Ctrl+P</span>
-        </button>
+        {tools && (
+          <>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
+              type="button"
+              disabled={busy}
+              onClick={onSaveDraft}
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              <span>حفظ مسودة</span>
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
+              type="button"
+              disabled={exporting || busy}
+              onClick={onExportPdf}
+            >
+              {exporting ? (
+                <>
+                  <span className="material-symbols-outlined text-[18px] animate-spin">
+                    refresh
+                  </span>
+                  <span>جاري التصدير 300DPI...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                  <span>تصدير PDF</span>
+                </>
+              )}
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary hover:bg-surface-container-highest hover:text-on-surface transition-all font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
+              type="button"
+              disabled={busy}
+              onClick={onPrint}
+            >
+              <span className="material-symbols-outlined text-[18px]">print</span>
+              <span className="font-bold">طباعة فورية</span>
+              <span className="font-code-sm text-code-sm opacity-70">Ctrl+P</span>
+            </button>
+          </>
+        )}
       </div>
     </header>
   );
