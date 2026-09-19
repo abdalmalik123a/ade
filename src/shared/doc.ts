@@ -123,11 +123,40 @@ export type ParagraphBlock = BlockBase & {
   inlines: Inline[];
 };
 
-export type ListStyle = 'bullet' | 'number' | 'arabicLetter' | 'ordinal';
+export type ListStyle =
+  | 'bullet'
+  | 'number'
+  | 'question'
+  | 'arabicLetter'
+  | 'ordinal'
+  | 'latinNumber'
+  | 'latinLetter';
+
+/**
+ * عنصرُ ترقيم — وبه تُبنى ورقة الأسئلة كلّها.
+ *
+ * «بفروع» و«بلا فروع» و«الفرع فيه أسئلة» ليست ثلاثة أنواع — هي **عمق**.
+ */
+export type ListItem = {
+  id: Uuid;
+  inlines: Inline[];
+  /** درجة العنصر. وإن لم تُذكر فمجموع فروعه. */
+  score?: number;
+  /** الإجابة النموذجية: تُخفى في ورقة الطالب وتظهر في ورقة المصحّح. */
+  answer?: Inline[];
+  /** فروعه. */
+  items?: ListItem[];
+  /** «أجب عن ن من فروعه فقط» — فيُحسب المجموع على المطلوب لا على الكل. */
+  pick?: number;
+};
+
 export type ListBlock = BlockBase & {
   kind: 'list';
-  style: ListStyle;
-  items: { id: Uuid; inlines: Inline[] }[];
+  /** نمط كل مستوى؛ والأعمق يأخذ آخر نمط. */
+  styles: ListStyle[];
+  /** «أجب عن ن أسئلة فقط» على المستوى الأول. */
+  pick?: number;
+  items: ListItem[];
 };
 
 export type TableCell = { id: Uuid; blocks: ParagraphBlock[]; colSpan?: number };
@@ -149,7 +178,25 @@ export type ImageBlock = BlockBase & {
   align: Align;
 };
 
-export type SpacerBlock = BlockBase & { kind: 'spacer'; height: number };
+export type SpacerBlock = BlockBase & {
+  kind: 'spacer';
+  height: number;
+  /** سطورٌ منقّطة يكتب عليها الطالب — مساحة الإجابة. */
+  lines?: boolean;
+};
+
+/**
+ * عمودان لا يتدفّقان.
+ *
+ * التدفّق عبر الصفحات ممنوع في الأساس؛ وهذا **كتلة** يوزَّع محتواها على أعمدة
+ * جنبًا إلى جنب — وبه الاختيار من متعدد وأسئلة الرياضيات.
+ */
+export type ColumnsBlock = BlockBase & {
+  kind: 'columns';
+  columns: Block[][];
+  /** الفجوة بينها بالبكسل. */
+  gap?: number;
+};
 export type PageBreakBlock = BlockBase & { kind: 'pageBreak' };
 
 /**
@@ -173,6 +220,7 @@ export type Block =
   | ImageBlock
   | SpacerBlock
   | PageBreakBlock
+  | ColumnsBlock
   | GroupBlock;
 
 // ── الصفحة ───────────────────────────────────────────────────────────
@@ -218,9 +266,22 @@ export function pageMm(setup: PageSetup): { w: number; h: number } {
 
 // ── الوثيقة ──────────────────────────────────────────────────────────
 
+/** متدفّقة (كتاب، استمارة، أسئلة) أو لوحة (شهادة، هوية، ملصق). */
+export type DocKind = 'flow' | 'canvas';
+
+/**
+ * أتُقيَّد في الصادر أم تُطبع فقط؟
+ *
+ * وهذا المحور الذي يفرّق الأوراق — لا المادة ولا الغرض. فورقة الأسئلة والشهادة
+ * والملصق تُطبع بعدد النسخ ولا تحرق رقم صادر.
+ */
+export type Issuing = 'registered' | 'print-only';
+
 export type Doc = {
   id: Uuid;
   schemaVersion: number;
+  kind: DocKind;
+  issuing: Issuing;
   pageSetup: PageSetup;
   blocks: Block[];
   /** ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
@@ -232,6 +293,8 @@ export function emptyDoc(): Doc {
   return {
     id: newUuid(),
     schemaVersion: DOC_SCHEMA,
+    kind: 'flow',
+    issuing: 'registered',
     pageSetup: { ...DEFAULT_PAGE, margins: { ...DEFAULT_PAGE.margins } },
     blocks: [],
     fields: [],
@@ -259,13 +322,20 @@ export function walkBlocks(blocks: Block[]): Block[] {
   for (const b of blocks) {
     out.push(b);
     if (b.kind === 'group') out.push(...walkBlocks(b.blocks));
+    else if (b.kind === 'columns') for (const col of b.columns) out.push(...walkBlocks(col));
   }
   return out;
 }
 
+/** كل عنصر ترقيم بفروعه — والعمق لا يحدّه شيء. */
+export function walkItems(items: ListItem[]): ListItem[] {
+  return items.flatMap((i) => [i, ...walkItems(i.items ?? [])]);
+}
+
 function blockInlines(block: Block): Inline[] {
   if (block.kind === 'paragraph') return block.inlines;
-  if (block.kind === 'list') return block.items.flatMap((i) => i.inlines);
+  if (block.kind === 'list')
+    return walkItems(block.items).flatMap((i) => [...i.inlines, ...(i.answer ?? [])]);
   if (block.kind === 'table')
     return block.rows.flatMap((r) => r.cells.flatMap((c) => c.blocks.flatMap((p) => p.inlines)));
   return [];
@@ -384,12 +454,52 @@ export function docText(doc: Doc, values: Record<string, string> = {}): string {
 
   for (const b of walkBlocks(doc.blocks)) {
     if (b.kind === 'paragraph') lines.push(inlineText(b.inlines));
-    else if (b.kind === 'list') for (const it of b.items) lines.push(inlineText(it.inlines));
+    else if (b.kind === 'list')
+      for (const it of walkItems(b.items)) lines.push(inlineText(it.inlines));
     else if (b.kind === 'table')
       for (const r of b.rows)
         lines.push(r.cells.map((c) => c.blocks.map((p) => inlineText(p.inlines)).join(' ')).join(' | '));
   }
   return lines.join('\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// ── الدرجات ──────────────────────────────────────────────────────────
+
+/** مجموعٌ يحترم «أجب عن ن»: أكبرُ ن درجةً، وهو أقصى ما يناله الطالب. */
+function sumTop(values: number[], pick?: number): number {
+  if (!pick || pick >= values.length) return values.reduce((a, b) => a + b, 0);
+  return [...values]
+    .sort((a, b) => b - a)
+    .slice(0, pick)
+    .reduce((a, b) => a + b, 0);
+}
+
+/** درجة العنصر: ما كُتب له، وإلا فمجموع فروعه. */
+export function itemScore(item: ListItem): number {
+  if (typeof item.score === 'number') return item.score;
+  if (!item.items?.length) return 0;
+  return sumTop(item.items.map(itemScore), item.pick);
+}
+
+export function listScore(block: ListBlock): number {
+  return sumTop(block.items.map(itemScore), block.pick);
+}
+
+/**
+ * مجموع درجات الورقة وعدد أسئلتها.
+ *
+ * ويُنبَّه المدرّس إن لم يبلغ المئة — وهو أكثر ما يُخطئ فيه في ورقة اختيارية،
+ * لأن الحساب على الكل لا على المطلوب.
+ */
+export function tallyScores(doc: Doc): { total: number; questions: number } {
+  let total = 0;
+  let questions = 0;
+  for (const b of walkBlocks(doc.blocks)) {
+    if (b.kind !== 'list') continue;
+    total += listScore(b);
+    questions += b.items.length;
+  }
+  return { total, questions };
 }
 
 // ── الترحيل ──────────────────────────────────────────────────────────
@@ -457,8 +567,10 @@ export function normalizeDoc(raw: unknown): Doc {
   const doc: Doc = {
     id: typeof v.id === 'string' && v.id ? v.id : newUuid(),
     schemaVersion: DOC_SCHEMA,
+    kind: v.kind === 'canvas' ? 'canvas' : 'flow',
+    issuing: v.issuing === 'print-only' ? 'print-only' : 'registered',
     pageSetup: normalizePage(v.pageSetup),
-    blocks: Array.isArray(v.blocks) ? v.blocks.filter(isBlock) : [],
+    blocks: Array.isArray(v.blocks) ? v.blocks.filter(isBlock).map(normalizeBlock) : [],
     fields: Array.isArray(v.fields) ? v.fields.filter(isObj).map(normalizeField) : [],
     meta: isObj(v.meta) ? (v.meta as Doc['meta']) : {}
   };
@@ -475,8 +587,20 @@ const BLOCK_KINDS = new Set([
   'image',
   'spacer',
   'pageBreak',
+  'columns',
   'group'
 ]);
+
+/** القائمة التي حُفظت بنمطٍ واحد تُقرأ بمستوًى واحد — فلا يفقد المكتب ترقيمه. */
+function normalizeBlock(block: Block): Block {
+  if (block.kind === 'list') {
+    const legacy = block as ListBlock & { style?: ListStyle };
+    if (!Array.isArray(legacy.styles)) {
+      return { ...legacy, styles: [legacy.style ?? 'bullet'] } as ListBlock;
+    }
+  }
+  return block;
+}
 
 function isBlock(v: unknown): v is Block {
   return isObj(v) && typeof v.kind === 'string' && BLOCK_KINDS.has(v.kind) && typeof v.id === 'string';

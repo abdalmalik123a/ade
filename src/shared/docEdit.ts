@@ -17,6 +17,8 @@ import {
   type Doc,
   type DocField,
   type Inline,
+  type ListBlock,
+  type ListItem,
   type ParagraphBlock,
   type TableBlock,
   type TableCell,
@@ -290,6 +292,78 @@ export function removeColumn(doc: Doc, tableId: string, at: number): Doc {
 /** الحقول تتبع المتن بعد كل تحرير: ما اختفى من الورقة يختفي من شاشة الإدخال. */
 function reconciled(doc: Doc): Doc {
   return { ...doc, fields: reconcileFields(doc) };
+}
+
+// ── القوائم: الأسئلة وفروعها ────────────────────────────────────────
+
+/** قائمة أسئلة جاهزة: س١ ثم أ ثم ١ — وهي صورة ورقة المدرسة. */
+export function makeQuestionList(): ListBlock {
+  return {
+    id: newUuid(),
+    kind: 'list',
+    styles: ['question', 'arabicLetter', 'number'],
+    items: [{ id: newUuid(), inlines: [] }]
+  };
+}
+
+/** يمشي على شجرة العناصر ويطبّق تحويلًا على واحدٍ بمعرّفه. */
+function mapItems(items: ListItem[], id: string, fn: (i: ListItem) => ListItem | null): ListItem[] {
+  return items.flatMap((it) => {
+    if (it.id === id) {
+      const next = fn(it);
+      return next ? [next] : [];
+    }
+    if (!it.items?.length) return [it];
+    return [{ ...it, items: mapItems(it.items, id, fn) }];
+  });
+}
+
+function withList(doc: Doc, blockId: string, fn: (b: ListBlock) => ListBlock): Doc {
+  return reconciled({
+    ...doc,
+    blocks: doc.blocks.map((b) => (b.id === blockId && b.kind === 'list' ? fn(b) : b))
+  });
+}
+
+export function setItemInlines(doc: Doc, blockId: string, id: string, inlines: Inline[]): Doc {
+  return withList(doc, blockId, (b) => ({
+    ...b,
+    items: mapItems(b.items, id, (it) => ({ ...it, inlines }))
+  }));
+}
+
+export function patchItem(doc: Doc, blockId: string, id: string, patch: Partial<ListItem>): Doc {
+  return withList(doc, blockId, (b) => ({
+    ...b,
+    items: mapItems(b.items, id, (it) => ({ ...it, ...patch }))
+  }));
+}
+
+/** سؤالٌ جديد في آخر القائمة. */
+export function addItem(doc: Doc, blockId: string): Doc {
+  return withList(doc, blockId, (b) => ({
+    ...b,
+    items: [...b.items, { id: newUuid(), inlines: [] }]
+  }));
+}
+
+/** فرعٌ جديد تحت سؤال — وهذا كل ما يعنيه «بفروع». */
+export function addBranch(doc: Doc, blockId: string, parentId: string): Doc {
+  return withList(doc, blockId, (b) => ({
+    ...b,
+    items: mapItems(b.items, parentId, (it) => ({
+      ...it,
+      items: [...(it.items ?? []), { id: newUuid(), inlines: [] }]
+    }))
+  }));
+}
+
+export function removeItem(doc: Doc, blockId: string, id: string): Doc {
+  return withList(doc, blockId, (b) => {
+    const items = mapItems(b.items, id, () => null);
+    // لا تبقى قائمةٌ بلا عنصر — وإلا اختفت من الشاشة ولا سبيل إلى إعادتها.
+    return items.length ? { ...b, items } : b;
+  });
 }
 
 // ── التراجع بلقطات ───────────────────────────────────────────────────

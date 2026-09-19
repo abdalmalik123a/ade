@@ -132,6 +132,93 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وعرضه من طول ما كان مكتوبًا', (doc?.fields?.[0]?.width ?? 0) >= 9);
   ok('وظلُّها النصّي للبحث', (row?.body ?? '').includes('نؤيد لكم أن السيد'));
 
+  // ── الأسئلة: ترقيمٌ يُحسب ودرجاتٌ تُجمع ───────────────────────────
+  await page.goto('templates-library-drafts');
+  await wait(600);
+  await page.clickText('نموذج جديد');
+  await wait(900);
+  await page.type('input[placeholder^="مثال: تأييد"]', 'أسئلة نصف السنة');
+  await wait(200);
+
+  // «/» ثم «أسئلة»
+  await page.eval(`
+    const el = document.querySelector('[contenteditable="true"]');
+    el.focus();
+    el.textContent = '/';
+    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  `);
+  await wait(600);
+  await page.clickText('أسئلة');
+  await wait(700);
+  ok('أُدرجت قائمة أسئلة من «/»', (await page.text()).includes('+ سؤال'));
+  ok('وعلامتها محسوبة لا مكتوبة', (await page.text()).includes('س1:'));
+
+  await page.clickText('+ سؤال');
+  await wait(400);
+  ok('وأُضيف سؤال ثانٍ برقمه', (await page.text()).includes('س2:'));
+
+  // نصّ السؤالين — وبلا نصّ لا يُحفظ النموذج، وهو تصرّفٌ صحيح.
+  const wrote = await page.eval(`
+    const boxes = [...document.querySelectorAll('[data-placeholder="نصّ السؤال"]')];
+    if (boxes.length < 2) return false;
+    const write = (el, text) => {
+      el.focus();
+      el.textContent = text;
+      el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    };
+    write(boxes[0], 'عرّف ما يأتي:');
+    write(boxes[1], 'حلّ ما يأتي:');
+    return true;
+  `);
+  ok('وكُتب نصّ السؤالين', wrote);
+  await wait(500);
+
+  // درجتان: ٦٠ و٤٠
+  const scored = await page.eval(`
+    const boxes = [...document.querySelectorAll('input[title="درجة السؤال"]')];
+    if (boxes.length < 2) return false;
+    const set = (el, v) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    set(boxes[0], '60');
+    set(boxes[1], '40');
+    return true;
+  `);
+  ok('كُتبت الدرجات', scored);
+  await wait(600);
+  ok('والمجموع يُعرض ويُنبَّه', (await page.text()).includes('المجموع 100'));
+
+  // فرعٌ تحت السؤال الأول
+  const branched = await page.eval(`
+    const el = [...document.querySelectorAll('button[title="أضف فرعًا"]')][0];
+    if (!el) return false;
+    el.click();
+    return true;
+  `);
+  ok('وأُضيف فرعٌ تحت السؤال', branched);
+  await wait(500);
+  ok('بترقيم مستواه', (await page.text()).includes('أ)'));
+
+  ok('ولوحة الرموز حاضرة', (await page.text()).includes('√'));
+
+  if (shotsDir) await page.shot(join(shotsDir, 'editor-questions.png'));
+
+  await page.clickText('حفظ النموذج');
+  await wait(1800);
+
+  const db3 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const papers = db3.prepare('SELECT title, doc_json AS docJson FROM templates').all();
+  db3.close();
+  const paper = papers.find((r) => r.title.includes('أسئلة'));
+  const pdoc = paper ? JSON.parse(paper.docJson) : null;
+  const list = pdoc?.blocks?.find((b) => b.kind === 'list');
+
+  ok('حُفظت ورقة الأسئلة كتلًا', Boolean(list));
+  ok('بأنماط ترقيمها الثلاثة', list?.styles?.join(',') === 'question,arabicLetter,number');
+  ok('وبدرجاتها', list?.items?.[0]?.score === 60 && list?.items?.[1]?.score === 40);
+  ok('وبفرعها', Array.isArray(list?.items?.[0]?.items) && list.items[0].items.length === 1);
+
   if (shotsDir) await page.shot(join(shotsDir, 'editor-table.png'));
   return steps.join('\n');
 }

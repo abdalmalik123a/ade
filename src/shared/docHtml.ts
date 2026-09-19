@@ -10,6 +10,9 @@ import {
   type Doc,
   type DocField,
   type Inline,
+  type ListItem,
+  type ListStyle,
+  type Numerals,
   type ParagraphBlock
 } from './doc';
 
@@ -19,11 +22,15 @@ export const escapeHtml = (s: string): string =>
 export type MissingMode = 'token' | 'blank' | 'hide';
 
 export type RenderOptions = {
+  /** الإجابة النموذجية: تُخفى في ورقة الطالب وتظهر في ورقة المصحّح. */
+  answers?: 'hide' | 'show';
   /**
    * ما يُرسم مكان حقل لم يُملأ:
    * `token` وسمٌ ظاهر يُنبّه الموظف، و`blank` فراغٌ للطباعة، و`hide` لا شيء.
    */
   missing?: MissingMode;
+  /** أرقام الترقيم: عربية (1) أو هندية (١). وأصلُها ما في ضبط الورقة. */
+  numerals?: Numerals;
   /**
    * الفقرات أسطرًا مفصولة بـ`<br/>` أم كتلًا مستقلّة.
    *
@@ -78,12 +85,48 @@ function renderInlines(
     .join('');
 }
 
-const MARKERS: Record<string, (i: number) => string> = {
-  bullet: () => '•',
-  number: (i) => `${i + 1}.`,
-  arabicLetter: (i) => `${'أبجدهوزحطي'[i] ?? String(i + 1)})`,
-  ordinal: (i) => `${['أولًا', 'ثانيًا', 'ثالثًا', 'رابعًا', 'خامسًا'][i] ?? i + 1}:`
-};
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+const AR_LETTERS = [...'أبجدهوزحطيكلمنسعفصقرشتثخذضظغ'];
+const ORDINALS = [
+  'أولًا',
+  'ثانيًا',
+  'ثالثًا',
+  'رابعًا',
+  'خامسًا',
+  'سادسًا',
+  'سابعًا',
+  'ثامنًا',
+  'تاسعًا',
+  'عاشرًا'
+];
+
+const toIndic = (n: number) => String(n).replace(/\d/g, (d) => AR_DIGITS[Number(d)]!);
+
+/**
+ * علامة الترقيم تُحسب عند الرسم لا تُكتب.
+ *
+ * فحذف سؤال يعيد ترقيم ما بعده وحده — وهذا ما يكسر ورقة Word في كل تعديل.
+ */
+export function marker(style: ListStyle, index: number, numerals: Numerals): string {
+  const n = index + 1;
+  const num = numerals === 'indic' ? toIndic(n) : String(n);
+  switch (style) {
+    case 'bullet':
+      return '•';
+    case 'number':
+      return `${num}-`;
+    case 'question':
+      return `س${num}:`;
+    case 'arabicLetter':
+      return `${AR_LETTERS[index] ?? num})`;
+    case 'ordinal':
+      return `${ORDINALS[index] ?? num}:`;
+    case 'latinNumber':
+      return `${n}-`;
+    case 'latinLetter':
+      return `${String.fromCharCode(97 + (index % 26))})`;
+  }
+}
 
 function paragraphHtml(
   block: ParagraphBlock,
@@ -115,13 +158,8 @@ function renderBlock(
     case 'paragraph':
       return paragraphHtml(block, ins(block.inlines), opts);
 
-    case 'list': {
-      const marker = MARKERS[block.style] ?? MARKERS.bullet!;
-      const items = block.items
-        .map((it, i) => `<li><span class="ms-1">${marker(i)}</span> ${ins(it.inlines)}</li>`)
-        .join('');
-      return `<ul${dir} style="list-style:none;padding:0;margin:0">${items}</ul>`;
-    }
+    case 'list':
+      return renderItems(block.items, block.styles, 0, values, fields, opts, dir);
 
     case 'table': {
       const cols = block.columns
@@ -154,7 +192,23 @@ function renderBlock(
     }
 
     case 'spacer':
-      return `<div style="height:${block.height}px"></div>`;
+      // مساحة الإجابة: سطورٌ منقّطة يكتب عليها الطالب.
+      return block.lines
+        ? `<div style="height:${block.height}px;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,currentColor 27px,currentColor 28px);opacity:.45"></div>`
+        : `<div style="height:${block.height}px"></div>`;
+
+    case 'columns': {
+      // عمودان لا يتدفّقان: كل عمود كتلُه، ولا ينسكب شيء إلى صفحة تالية.
+      const cols = block.columns
+        .map(
+          (col) =>
+            `<div style="flex:1 1 0;min-width:0">${col
+              .map((b) => renderBlock(b, values, fields, opts))
+              .join('')}</div>`
+        )
+        .join('');
+      return `<div${dir} style="display:flex;gap:${block.gap ?? 16}px;align-items:flex-start;break-inside:avoid;page-break-inside:avoid">${cols}</div>`;
+    }
 
     case 'pageBreak':
       return `<div style="break-after:page;page-break-after:always"></div>`;
@@ -172,6 +226,60 @@ function renderBlock(
  * والحقل الفارغ يبقى ظاهرًا افتراضًا ليُنبّه الموظف قبل الطباعة — لا يُخفى ولا
  * يُخترع له محتوى.
  */
+/**
+ * عناصر الترقيم بفروعها.
+ *
+ * والدرجة تُكتب يمين السؤال كما تُكتب في ورقة المدرسة، و«أجب عن ن» تُعلن فوق
+ * فروعه — فيقرأها الطالب حيث يتوقّعها.
+ */
+function renderItems(
+  items: ListItem[],
+  styles: ListStyle[],
+  depth: number,
+  values: Record<string, string>,
+  fields: Map<string, DocField>,
+  opts: Required<RenderOptions>,
+  dir: string
+): string {
+  const style = styles[Math.min(depth, styles.length - 1)] ?? 'bullet';
+  const numerals: Numerals = opts.numerals;
+
+  const body = items
+    .map((it, i) => {
+      const head = marker(style, i, numerals);
+      const score =
+        typeof it.score === 'number'
+          ? `<span style="float:left;font-weight:700">(${
+              numerals === 'indic' ? toIndic(it.score) : it.score
+            } درجة)</span>`
+          : '';
+      const pick =
+        it.pick && it.items?.length
+          ? `<div style="font-weight:700">أجب عن ${
+              numerals === 'indic' ? toIndic(it.pick) : it.pick
+            } فقط:</div>`
+          : '';
+      const answer =
+        opts.answers === 'show' && it.answer?.length
+          ? `<div style="color:#b00;font-weight:700">الإجابة: ${renderInlines(it.answer, values, fields, opts)}</div>`
+          : '';
+      const kids = it.items?.length
+        ? renderItems(it.items, styles, depth + 1, values, fields, opts, dir)
+        : '';
+
+      return (
+        `<div style="margin:2px 0">` +
+        `${score}<span style="font-weight:700">${escapeHtml(head)}</span> ` +
+        `${renderInlines(it.inlines, values, fields, opts)}` +
+        `${pick}${answer}${kids}</div>`
+      );
+    })
+    .join('');
+
+  const pad = depth === 0 ? 0 : 18;
+  return `<div${dir} style="padding-inline-start:${pad}px">${body}</div>`;
+}
+
 export function renderDocHtml(
   doc: Doc,
   values: Record<string, string> = {},
@@ -179,7 +287,9 @@ export function renderDocHtml(
 ): string {
   const opts: Required<RenderOptions> = {
     missing: options.missing ?? 'token',
-    paragraphs: options.paragraphs ?? 'lines'
+    paragraphs: options.paragraphs ?? 'lines',
+    answers: options.answers ?? 'hide',
+    numerals: options.numerals ?? doc.pageSetup.numerals
   };
   const fields = new Map(doc.fields.map((f) => [f.key, f]));
   const parts = doc.blocks.map((b) => renderBlock(b, values, fields, opts));

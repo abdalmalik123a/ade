@@ -10,15 +10,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fieldRef,
+  itemScore,
+  newUuid,
   paragraph,
   run,
+  tallyScores,
   type Block,
   type Doc,
   type DocField,
   type Inline,
+  type ListBlock,
+  type ListItem,
   type ParagraphBlock,
   type TableBlock
 } from '@shared/doc';
+import { marker } from '@shared/docHtml';
 import {
   addColumn,
   addRow,
@@ -39,9 +45,21 @@ import {
   startHistory,
   redo,
   undo,
-  type History
+  type History,
+  addBranch,
+  addItem,
+  makeQuestionList,
+  patchItem,
+  removeItem,
+  setItemInlines
 } from '@shared/docEdit';
 import { unfield } from '@shared/doc';
+
+/** رموز المواد — تُدرج بضغطة، ولا محرّك معادلات (§ما لن نبنيه). */
+const SYMBOLS = [
+  '√', '∑', '∫', '≤', '≥', '≠', '±', '×', '÷', '°', '∞', 'π',
+  '⁰', '¹', '²', '³', '₁', '₂', '₃', '→', '⇌', 'Δ', 'λ', 'μ', 'Ω', '½', '¼', '¾'
+];
 
 export type DocEditorProps = {
   doc: Doc;
@@ -275,6 +293,26 @@ export default function DocEditor({ doc, onChange, clips = [] }: DocEditorProps)
 
   const nextLabel = (d: Doc, key: string) => d.fields.find((f) => f.key === key)?.label || key;
 
+  /** مجموع الدرجات — يُنبَّه المدرّس إن لم يبلغ المئة. */
+  const tally = useMemo(() => tallyScores(doc), [doc]);
+
+  /** رمزٌ يُدرج حيث وقف المؤشّر، وإلا فآخر الكتلة الجارية. */
+  function insertSymbol(sym: string) {
+    const host = active ? hosts.current.get(active) : null;
+    if (!host) return;
+    host.focus();
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && host.contains(sel.getRangeAt(0).startContainer)) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(sym));
+      range.collapse(false);
+    } else {
+      host.append(document.createTextNode(sym));
+    }
+    host.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   function insertAfterActive(block: Block) {
     apply(insertBlock(doc, block, active));
     setMenu(null);
@@ -297,6 +335,32 @@ export default function DocEditor({ doc, onChange, clips = [] }: DocEditorProps)
     <div className="flex gap-space-md h-full min-h-0">
       {/* الورقة */}
       <div className="flex-1 min-w-0 overflow-y-auto p-space-sm flex flex-col gap-1">
+        <div className="sticky top-0 z-10 bg-surface-container-lowest pb-1 flex items-center gap-space-xs flex-wrap">
+          {SYMBOLS.map((sym) => (
+            <button
+              key={sym}
+              className="w-7 h-7 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-body-md text-body-md"
+              title={`أدرج ${sym}`}
+              type="button"
+              onClick={() => insertSymbol(sym)}
+            >
+              {sym}
+            </button>
+          ))}
+          <span className="flex-1" />
+          {tally.total > 0 && (
+            <span
+              className={`px-2 h-7 flex items-center rounded-full font-label-md text-label-md ${
+                tally.total === 100
+                  ? 'bg-primary-container text-on-primary'
+                  : 'bg-error-container text-on-error-container'
+              }`}
+            >
+              {tally.questions} أسئلة · المجموع {tally.total}
+              {tally.total !== 100 ? ` — ${tally.total < 100 ? 'ينقص' : 'يزيد'} ${Math.abs(100 - tally.total)}` : ''}
+            </span>
+          )}
+        </div>
         {doc.blocks.map((block) => (
           <div
             key={block.id}
@@ -361,12 +425,56 @@ export default function DocEditor({ doc, onChange, clips = [] }: DocEditorProps)
               />
             )}
 
+            {block.kind === 'list' && (
+              <ListEditor
+                block={block}
+                doc={doc}
+                labelOf={labelOf}
+                onChange={apply}
+                onHost={(id, host) => hosts.current.set(id, host)}
+              />
+            )}
+
+            {block.kind === 'columns' && (
+              <div className="flex gap-space-sm">
+                {block.columns.map((col, ci) => (
+                  <div key={ci} className="flex-1 min-w-0 p-1 rounded border border-dashed border-outline-variant">
+                    {col.map((b) =>
+                      b.kind === 'paragraph' ? (
+                        <EditableInlines
+                          key={b.id}
+                          className={BLOCK_CLASS}
+                          inlines={b.inlines}
+                          labelOf={labelOf}
+                          onCommit={(inlines) => {
+                            const columns = block.columns.map((c, i) =>
+                              i === ci ? c.map((x) => (x.id === b.id ? { ...x, inlines } : x)) : c
+                            );
+                            apply(patchBlock<typeof block>(doc, block.id, { columns }));
+                          }}
+                        />
+                      ) : null
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {block.kind === 'spacer' && (
               <div
-                className="rounded border border-dashed border-outline-variant flex items-center justify-center font-label-sm text-label-sm text-on-surface-variant"
-                style={{ height: block.height }}
+                className="rounded border border-dashed border-outline-variant flex items-center justify-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant"
+                style={{ height: Math.max(28, block.height) }}
               >
-                مسافة {block.height}px
+                <span>{block.lines ? 'مساحة إجابة' : 'مسافة'} {block.height}px</span>
+                <button
+                  className="h-6 px-2 rounded bg-surface-container-low hover:bg-surface-container-high"
+                  type="button"
+                  onClick={() =>
+                    apply(patchBlock<typeof block>(doc, block.id, { lines: !block.lines }))
+                  }
+                >
+                  {block.lines ? 'بلا سطور' : 'بسطور'}
+                </button>
               </div>
             )}
 
@@ -401,10 +509,18 @@ export default function DocEditor({ doc, onChange, clips = [] }: DocEditorProps)
           onClose={() => setMenu(null)}
           onPick={(what) => {
             if (what === 'table') insertAfterActive(makeTable(3, 3));
+            else if (what === 'questions') insertAfterActive(makeQuestionList());
+            else if (what === 'columns')
+              insertAfterActive({
+                id: newUuid(),
+                kind: 'columns',
+                columns: [[paragraph([])], [paragraph([])]]
+              });
+            else if (what === 'answer')
+              insertAfterActive({ id: newUuid(), kind: 'spacer', height: 112, lines: true });
             else if (what === 'spacer')
-              insertAfterActive({ id: crypto.randomUUID(), kind: 'spacer', height: 24 });
-            else if (what === 'pageBreak')
-              insertAfterActive({ id: crypto.randomUUID(), kind: 'pageBreak' });
+              insertAfterActive({ id: newUuid(), kind: 'spacer', height: 24 });
+            else if (what === 'pageBreak') insertAfterActive({ id: newUuid(), kind: 'pageBreak' });
             else setMenu(null);
           }}
           onClip={insertClip}
@@ -422,7 +538,7 @@ function InsertMenu({
   onClose
 }: {
   clips: { id: number; title: string; body: string }[];
-  onPick: (what: 'table' | 'spacer' | 'pageBreak') => void;
+  onPick: (what: 'table' | 'spacer' | 'pageBreak' | 'questions' | 'columns' | 'answer') => void;
   onClip: (body: string) => void;
   onClose: () => void;
 }) {
@@ -446,6 +562,9 @@ function InsertMenu({
         <div className="flex flex-wrap gap-1">
           {(
             [
+              { key: 'questions', icon: 'format_list_numbered', label: 'أسئلة' },
+              { key: 'columns', icon: 'view_column', label: 'عمودان' },
+              { key: 'answer', icon: 'edit_note', label: 'مساحة إجابة' },
               { key: 'table', icon: 'table', label: 'جدول' },
               { key: 'spacer', icon: 'height', label: 'مسافة' },
               { key: 'pageBreak', icon: 'insert_page_break', label: 'فاصل صفحة' }
@@ -612,6 +731,145 @@ function FieldRow({
           <span className="material-symbols-outlined text-[14px]">backspace</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * محرّر الأسئلة: عناصرُ ترقيم بفروعها ودرجاتها.
+ *
+ * والعلامة تُحسب ولا تُكتب — فحذف سؤال يعيد ترقيم ما بعده وحده.
+ */
+function ListEditor({
+  block,
+  doc,
+  labelOf,
+  onChange,
+  onHost,
+  depth = 0,
+  items
+}: {
+  block: ListBlock;
+  doc: Doc;
+  labelOf: (key: string) => string;
+  onChange: (doc: Doc) => void;
+  onHost: (id: string, host: HTMLElement) => void;
+  depth?: number;
+  items?: ListItem[];
+}) {
+  const list = items ?? block.items;
+  const style = block.styles[Math.min(depth, block.styles.length - 1)] ?? 'bullet';
+
+  return (
+    <div style={{ paddingInlineStart: depth === 0 ? 0 : 18 }}>
+      {list.map((it, i) => (
+        <div key={it.id} className="group/item flex flex-col gap-0.5">
+          <div className="flex items-start gap-1">
+            <span className="shrink-0 mt-1 font-label-md text-label-md font-bold text-secondary">
+              {marker(style, i, doc.pageSetup.numerals)}
+            </span>
+            <EditableInlines
+              className={`${BLOCK_CLASS} flex-1 min-w-0`}
+              inlines={it.inlines}
+              labelOf={labelOf}
+              placeholder="نصّ السؤال"
+              onCommit={(inlines, host) => {
+                onHost(it.id, host);
+                onChange(setItemInlines(doc, block.id, it.id, inlines));
+              }}
+              onFocus={(host) => onHost(it.id, host)}
+            />
+            <input
+              className="w-14 h-8 px-1 shrink-0 rounded bg-surface-container-lowest text-on-surface text-center font-label-sm text-label-sm"
+              placeholder="درجة"
+              title="درجة السؤال"
+              type="number"
+              value={it.score ?? ''}
+              onChange={(e) =>
+                onChange(
+                  patchItem(doc, block.id, it.id, {
+                    score: e.target.value === '' ? undefined : Number(e.target.value)
+                  })
+                )
+              }
+            />
+            <input
+              className="w-12 h-8 px-1 shrink-0 rounded bg-surface-container-lowest text-on-surface text-center font-label-sm text-label-sm"
+              placeholder="أجب"
+              title="أجب عن ن من فروعه فقط"
+              type="number"
+              value={it.pick ?? ''}
+              onChange={(e) =>
+                onChange(
+                  patchItem(doc, block.id, it.id, {
+                    pick: e.target.value === '' ? undefined : Number(e.target.value)
+                  })
+                )
+              }
+            />
+            <button
+              className="w-7 h-7 shrink-0 rounded text-on-surface-variant hover:bg-surface-container-high opacity-0 group-hover/item:opacity-100"
+              title="أضف فرعًا"
+              type="button"
+              onClick={() => onChange(addBranch(doc, block.id, it.id))}
+            >
+              <span className="material-symbols-outlined text-[14px]">subdirectory_arrow_left</span>
+            </button>
+            <button
+              className="w-7 h-7 shrink-0 rounded text-error hover:bg-error-container opacity-0 group-hover/item:opacity-100"
+              title="حذف"
+              type="button"
+              onClick={() => onChange(removeItem(doc, block.id, it.id))}
+            >
+              <span className="material-symbols-outlined text-[14px]">delete</span>
+            </button>
+          </div>
+
+          {it.items?.length ? (
+            <ListEditor
+              block={block}
+              depth={depth + 1}
+              doc={doc}
+              items={it.items}
+              labelOf={labelOf}
+              onChange={onChange}
+              onHost={onHost}
+            />
+          ) : null}
+        </div>
+      ))}
+
+      {depth === 0 && (
+        <div className="flex items-center gap-space-xs mt-1">
+          <button
+            className="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
+            type="button"
+            onClick={() => onChange(addItem(doc, block.id))}
+          >
+            + سؤال
+          </button>
+          <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+            أجب عن
+            <input
+              className="w-12 h-7 px-1 rounded bg-surface-container-lowest text-on-surface text-center"
+              placeholder="الكل"
+              type="number"
+              value={block.pick ?? ''}
+              onChange={(e) =>
+                onChange(
+                  patchBlock<ListBlock>(doc, block.id, {
+                    pick: e.target.value === '' ? undefined : Number(e.target.value)
+                  })
+                )
+              }
+            />
+            من {block.items.length}
+          </label>
+          <span className="font-label-sm text-label-sm text-on-surface-variant">
+            مجموعها {block.items.reduce((n, it) => n + itemScore(it), 0)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
