@@ -54,6 +54,7 @@ import {
   type LayerMove
 } from '@shared/canvasEdit';
 import { renderCanvasHtml } from '@shared/canvasHtml';
+import { GALLERY, galleryPreview } from '@shared/designGallery';
 import { barcodeSvg } from '@shared/barcode';
 import { qrSvg } from '@shared/qr';
 import { errorText } from '../lib/errors';
@@ -266,6 +267,27 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
       say(errorText(e, 'تعذّر استيراد التصميم'), 'warn');
     }
   }, [canvas.size, askSize, title, apply, say]);
+
+  /**
+   * تصميمٌ من المعرض: يُعرض ويُختار، ولا يُزرع في القاعدة.
+   *
+   * فالبرنامج يبدأ فارغًا من كل ما يخصّ الجهة — وهذه العشرة **اقتراحٌ**: لا
+   * تدخل المكتبة حتى يضغط المكتب «حفظ»، فتصير حينها نسخةً ملكَه يعدّلها كيف شاء.
+   */
+  const pickFromGallery = useCallback(
+    (key: string) => {
+      const design = GALLERY.find((d) => d.key === key);
+      if (!design) return;
+      apply(design.build());
+      setValues({});
+      setSelection([]);
+      setDesignId(null);
+      setAskSize(false);
+      if (!title.trim()) setTitle(design.title);
+      say(`${design.title} — عدّله ثم احفظه، فيصير نسخةً ملكَك`);
+    },
+    [title, apply, say]
+  );
 
   // ── العناصر ────────────────────────────────────────────────────────
   const add = useCallback(
@@ -689,6 +711,40 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
             </label>
           </div>
 
+          {/* المعرض: يُعرض ويُختار، ولا يُزرع */}
+          <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+            <div>
+              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
+                ابدأ من تصميمٍ جاهز
+              </h2>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                عشرةٌ مولَّدةٌ متجهةً — تُعدَّل ولا تُحزَم في قاعدتك حتى تحفظها
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-space-sm">
+              {GALLERY.map((d) => (
+                <button
+                  key={d.key}
+                  className="rounded-lg border border-outline-variant overflow-hidden hover:border-primary transition-colors text-right"
+                  data-gallery={d.key}
+                  title={`${d.title} — ${d.size.w} × ${d.size.h} ملم`}
+                  type="button"
+                  onClick={() => pickFromGallery(d.key)}
+                >
+                  <img
+                    alt=""
+                    className="w-full bg-surface-container-low"
+                    src={galleryPreview(d)}
+                    style={{ aspectRatio: `${d.size.w} / ${d.size.h}`, objectFit: 'cover' }}
+                  />
+                  <span className="block px-1.5 py-1 font-label-sm text-label-sm text-on-surface truncate">
+                    {d.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* الإضافة */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
             <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
@@ -949,6 +1005,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
                 <button
                   key={d.id}
                   className="w-full text-right rounded-lg px-space-sm py-1.5 hover:bg-surface-container-high font-body-sm text-body-sm text-on-surface"
+                  data-saved={d.id}
                   type="button"
                   onClick={() => void openDesign(d.id)}
                 >

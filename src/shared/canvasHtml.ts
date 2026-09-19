@@ -31,7 +31,13 @@ export type CanvasRenderOptions = {
   imageUrl?: (src: string) => string;
 };
 
-const storeUrl = (src: string) => `diwan://store/${src}`;
+/**
+ * مرجعُ الصورة إلى عنوان.
+ *
+ * وما بدأ بـ`data:` يمرّ كما هو: خلفياتُ المعرض مولَّدةٌ SVG في الوثيقة نفسها،
+ * لا ملفاتٍ في المخزن — فلا مسارَ لها يُكسر ولا حجمَ يُنقل.
+ */
+const storeUrl = (src: string) => (src.startsWith('data:') ? src : `diwan://store/${src}`);
 
 /** فراغٌ بطول ما كُتب — لا ينكمش فتتشوّه اللوحة. */
 function blank(field: DocField | undefined): string {

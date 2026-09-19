@@ -81,11 +81,41 @@ export default async function scenario(page, { profile, shotsDir }) {
   const design = () => page.eval(`return document.querySelector('[data-design]')?.innerHTML ?? '';`);
 
   await page.goto('designed-documents');
-  await wait(700);
+  await wait(900);
 
   let text = await page.text();
   ok('للتصاميم شاشةٌ في الشريط', text.includes('التصاميم — شهادات وهويات'));
   ok('تُفتح وتُملأ وتُطبع', text.includes('تُفتح وتُملأ وتُطبع'));
+
+  // ── المعرض: يُعرض ويُختار، ولا يُزرع ──────────────────────────────
+  const gallery = await page.eval(`return document.querySelectorAll('[data-gallery]').length;`);
+  ok('والمعرض عشرةُ تصاميم', gallery === 10);
+  ok('ولمحاتُها مولَّدةٌ متجهةً في الوثيقة', await page.eval(`
+    const img = document.querySelector('[data-gallery] img');
+    return Boolean(img && img.src.startsWith('data:image/svg+xml'));
+  `));
+
+  const countRows = () => {
+    const conn = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+    const n = conn.prepare('SELECT COUNT(*) AS n FROM templates').get().n;
+    conn.close();
+    return n;
+  };
+  ok('والقاعدة فارغةٌ رغم عرضها — تُقترح ولا تُزرع', countRows() === 0);
+
+  await click('button[data-gallery="student-id"]');
+  await wait(900);
+  const picked = await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`);
+  ok('واختيارُ الهوية يفتحها بمقاسها', picked.includes('85.6') && picked.includes('54.0'));
+  ok('وبحقولها', (await page.text()).includes('املأ الحقول'));
+
+  ok('ولا تدخل القاعدة حتى تُحفظ', countRows() === 0);
+
+  // ولوحةٌ نظيفة لما بعده: مغادرةُ الشاشة والعودةُ إليها تبدأ من فارغ.
+  await page.goto('templates-library-drafts');
+  await wait(600);
+  await page.goto('designed-documents');
+  await wait(800);
 
   // ── المقاس من الملف لا من تخميننا ──────────────────────────────────
   await click('button[data-act="background"]');
@@ -211,17 +241,23 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── ويُفتح فتعود لوحته ─────────────────────────────────────────────
   await page.goto('designed-documents');
   await wait(900);
+  // «هوية طالب» اسمُ تصميمٍ في المعرض أيضًا، فالنقر بالسمة لا بالنصّ —
+  // وإلا فُتح المقترَح وظُنّ أنه المحفوظ.
   const opened = await page.eval(`
-    const els = [...document.querySelectorAll('button')];
-    const el = els.find((e) => (e.textContent || '').includes('هوية طالب'));
-    if (!el) return false;
+    const el = document.querySelector('button[data-saved]');
+    if (!el) return null;
     el.click();
-    return true;
+    return el.textContent.trim();
   `);
-  ok('والمحفوظ معروضٌ في قسمه', opened);
+  ok('والمحفوظ معروضٌ في قسمه', Boolean(opened) && opened.includes('هوية طالب'));
   await wait(900);
   ok('ويُفتح فيعود مقاسه', (await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`)).includes('85.6'));
-  ok('وحقوله', (await page.text()).includes('املأ الحقول (1)'));
+  // والعدّ بالأسماء لا برقمٍ يتغيّر بكل إضافة. والباركود أُضيف بعد الحفظ،
+  // فلا يعود معه — وهذا هو الصواب: يُفتح ما حُفظ لا ما كان على الشاشة.
+  const reopened = await page.eval(`
+    return [...document.querySelectorAll('input[data-value]')].map((el) => el.dataset.value);
+  `);
+  ok('وحقوله كما حُفظت لا كما كانت الشاشة', JSON.stringify(reopened) === '["اسم الطالب"]');
 
   if (shotsDir) await page.shot(join(shotsDir, 'designs.png'));
   return steps.join('\n');
