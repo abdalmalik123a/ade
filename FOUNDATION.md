@@ -397,9 +397,9 @@ Word (استيراد) · **من كتاب صادر سابق («كرّره»)**. �
 | المصدر | أين المقاس | الحال |
 |---|---|---|
 | صورة | `IHDR` + `pHYs` في PNG، و`SOFn` + `JFIF`/`EXIF` في JPEG | ✅ `services/imageSize.ts` |
-| Word | `w:sectPr > w:pgSz` بالـ**twips** (١٤٤٠/إنش) | ⬜ م٧ج |
-| Photoshop | ترويسة PSD: بكسلات + `ResolutionInfo` (DPI) | ⬜ م٧ج |
-| PDF | مقاس الصفحة بالنقاط (٧٢/إنش) | ⬜ م٧ج |
+| Word | `w:sectPr > w:pgSz` بالـ**twips** (١٤٤٠/إنش) | ✅ `services/designImport.ts` |
+| Photoshop | ترويسة PSD: بكسلات + `ResolutionInfo` (DPI) | ✅ `services/psd.ts` |
+| PDF | `MediaBox` بالنقاط (٧٢/إنش) | ✅ `services/designImport.ts` |
 
 وإن غاب المقاس **سُئل المكتب ولم يُخمَّن**: القارئ يُرجع `dpi: null`، والشاشة
 تفتح خانة المقاس وتقول «الملف لا يذكر دقّته». **فصمتُ الملف ليس إذنًا بالافتراض.**
