@@ -99,6 +99,37 @@ const H_ALIGN: Record<string, string> = {
   justify: 'stretch'
 };
 
+/**
+ * عرض النصّ تقديرًا بوحدة em — قبل أن يقيسه المتصفّح.
+ *
+ * الحرف العربي في خطوطنا بين ٠٫٤ و٠٫٦ em، والمسافة ربعها. والتقدير متحفّظٌ عمدًا:
+ * يبدأ بالخطّ أصغر قليلًا فلا يُقصّ شيء حتى قبل القياس، ثم يكبّره القياس
+ * (`canvasFit.ts`) إلى أقصى ما يسع — في المعاينة وفي نافذة الطباعة معًا.
+ */
+export function estimateEm(text: string, bold = false): number {
+  let em = 0;
+  for (const ch of text) {
+    if (ch === ' ') em += 0.28;
+    else if (/[ً-ٰٟ]/.test(ch)) continue; // التشكيل لا يأخذ عرضًا
+    else if (/[0-9٠-٩]/.test(ch)) em += 0.56;
+    else em += 0.52;
+  }
+  return em * (bold ? 1.08 : 1);
+}
+
+/** نصّ العنصر كما سيُرسم: القيم محلّ حقولها — ليُقدَّر عرضه. */
+function plainText(inlines: Inline[], values: Record<string, string>, fields: Map<string, DocField>): string {
+  return inlines
+    .map((n) =>
+      n.kind === 'run'
+        ? n.text
+        : n.kind === 'break'
+          ? ' '
+          : values[n.ref] || '—'.repeat(Math.ceil((fields.get(n.ref)?.width ?? 10) / 3))
+    )
+    .join('');
+}
+
 function textHtml(
   el: TextElement,
   canvas: Canvas,
@@ -107,14 +138,21 @@ function textHtml(
   opts: Required<Omit<CanvasRenderOptions, 'imageUrl'>>
 ): string {
   const inner = inlinesHtml(el.inlines, values, fields, opts.missing);
+  // الحجم بالنقاط يصير بكسلات عند الدقّة المطلوبة — فالطباعة لا تتصاغر.
+  const max = ptToPx(el.size, opts.dpi);
+  let size = max;
+  if (el.fit === 'shrink') {
+    const width = el.box.w * mmToPx(canvas.size.w, opts.dpi);
+    const em = estimateEm(plainText(el.inlines, values, fields), el.bold);
+    if (em > 0) size = Math.min(max, (width * 0.96) / em);
+  }
   const style = [
     boxStyle(el, canvas, opts.dpi),
     'display:flex',
     `align-items:${V_ALIGN[el.vAlign]}`,
     `justify-content:${H_ALIGN[el.align] ?? 'center'}`,
     `text-align:${el.align}`,
-    // الحجم بالنقاط يصير بكسلات عند الدقّة المطلوبة — فالطباعة لا تتصاغر.
-    `font-size:${ptToPx(el.size, opts.dpi)}px`,
+    `font-size:${size.toFixed(2)}px`,
     `line-height:${el.lineHeight ?? 1.4}`,
     `color:${el.color}`,
     el.font ? `font-family:${el.font}` : '',
@@ -124,6 +162,10 @@ function textHtml(
   ]
     .filter(Boolean)
     .join(';');
+  if (el.fit === 'shrink') {
+    // سطرٌ واحد يُقاس: `data-fit` أقصى حجمٍ مسموح، والقياس يختار ما يسع تحته.
+    return `<div dir="${el.dir ?? 'rtl'}" data-fit="${max.toFixed(2)}" style="${style}"><span style="white-space:nowrap">${inner}</span></div>`;
+  }
   return `<div dir="${el.dir ?? 'rtl'}" style="${style}"><span style="width:100%">${inner}</span></div>`;
 }
 

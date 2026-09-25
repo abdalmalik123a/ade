@@ -11,10 +11,10 @@
  * ولا أداة تصميم هنا: من أراد أن يبني استمارة فمكانه الورشة.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mergeFields, type Doc, type DocField } from '@shared/doc';
-import { renderDocHtml } from '@shared/docHtml';
+import { mergeFields, pageMm, type Doc, type DocField } from '@shared/doc';
+import { renderDocHtml, watermarkHtml } from '@shared/docHtml';
 import { normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
-import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '@shared/api';
+import { SERIAL_SLOT } from '@shared/api';
 import type {
   OfficeSettings,
   PrinterInfo,
@@ -26,6 +26,36 @@ import { formatGregorian } from '@shared/dates';
 import LetterheadView from '../components/LetterheadView';
 
 type Step = 'pick' | 'fill' | 'review';
+
+/**
+ * الفراغ فاصلٌ عن الترويسة المبنيّة. وبلا ترويسة يُنزل الورقة كلّها عن موضعها
+ * في Word — وكذا رأسٌ فُصل من ورقة: فراغه معه في كتله.
+ */
+function gapAfter(layout: LetterheadLayout | null): boolean {
+  return Boolean(layout && !layout.sheet?.length);
+}
+
+/**
+ * ورقة الإصدار بمقاس الوثيقة وهوامشها — كما رُسمت في المصمّم.
+ *
+ * كانت ٢٠ ملم ثابتة، وملف Word بهوامش ١٢٫٧ يلتفّ سطره حينها في غير موضعه.
+ * والنمط مضمَّنٌ لا صنفًا: الورقة تُنسخ علاماتٍ إلى نافذة الطباعة، والعلامة
+ * المائية تحتاج ورقةً «relative/isolate» لتقع خلف المتن.
+ */
+function sheetStyle(doc: Doc): React.CSSProperties {
+  const page = pageMm(doc.pageSetup);
+  const m = doc.pageSetup.margins;
+  return {
+    width: `${page.w}mm`,
+    minHeight: `${page.h}mm`,
+    paddingTop: `${m.top}mm`,
+    paddingRight: `${m.right}mm`,
+    paddingBottom: `${m.bottom}mm`,
+    paddingLeft: `${m.left}mm`,
+    position: 'relative',
+    isolation: 'isolate'
+  };
+}
 
 type Loaded = {
   summary: TemplateSummary;
@@ -48,6 +78,8 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
 export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
+  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [query, setQuery] = useState('');
@@ -81,22 +113,34 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
   useEffect(() => {
     void (async () => {
-      const [list, lhs, s] = await Promise.all([
+      const [list, cats, lhs, s] = await Promise.all([
         window.diwan.templates.list(null),
+        window.diwan.templates.categories(),
         window.diwan.letterheads.list(),
         window.diwan.settings.get()
       ]);
       setItems(list);
+      setCategories(cats);
       setLetterheads(lhs);
       setSettings(s);
     })();
   }, []);
 
+  const topFavorites = useMemo(() => {
+    return [...items].sort((a, b) => b.printCount - a.printCount).slice(0, 4);
+  }, [items]);
+
   const shown = useMemo(() => {
+    let res = items;
+    if (activeCategory) {
+      res = res.filter((t) => t.category === activeCategory);
+    }
     const q = query.trim();
-    if (!q) return items;
-    return items.filter((t) => `${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`.includes(q));
-  }, [items, query]);
+    if (q) {
+      res = res.filter((t) => `${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`.includes(q));
+    }
+    return res;
+  }, [items, activeCategory, query]);
 
   /** الحقول التي تُعرض: اتحاد ما تطلبه المختارات، بلا تكرار. */
   const fields: DocField[] = useMemo(() => mergeFields(loaded.map((l) => l.doc)), [loaded]);
@@ -188,16 +232,11 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       if (node) {
         if (rowValues) {
           const body = node.querySelector('[data-body]');
-          if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank' });
+          if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank', paragraphs: 'blocks' });
         }
         node.querySelectorAll('[data-slot="serial"]').forEach((el) => {
           el.textContent = SERIAL_SLOT;
         });
-        node.querySelectorAll('[data-slot="fingerprint"]').forEach((el) => {
-          el.textContent = FINGERPRINT_SLOT;
-        });
-        const qr = node.querySelector('[data-slot="qr"]');
-        if (qr) qr.innerHTML = QR_SLOT;
       }
       return {
         sheetHtml: node?.outerHTML ?? '',
@@ -339,44 +378,127 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
           {/* ١ — اختر */}
           {step === 'pick' && (
             <div className="flex flex-col gap-space-md">
-              <input
-                className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                placeholder="ابحث عن استمارة"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <div className="text-center max-w-2xl mx-auto mt-space-xs mb-space-xs">
+                <h1 className="font-headline-lg text-headline-lg text-on-surface">
+                  ماذا يطلب الزبون؟
+                </h1>
+                <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                  انقر ما يريده — واحدةً أو عدّة أوراقٍ معًا — ثم املأها مرّةً واحدة.
+                </p>
+              </div>
+              {/* الأكثر استخداماً — الوصول السريع */}
+              {topFavorites.length > 0 && !query.trim() && !activeCategory && (
+                <div className="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-space-xs">
+                  <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-secondary font-bold px-1">
+                    <span className="material-symbols-outlined text-[18px]">star</span>
+                    الأكثر استخداماً في المكتب (وصول سريع)
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-space-xs">
+                    {topFavorites.map((f) => {
+                      const on = picked.includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          className={`p-space-sm rounded-lg text-right flex items-center gap-2 transition-all ${
+                            on
+                              ? 'bg-primary-container text-on-primary font-bold shadow-sm'
+                              : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
+                          }`}
+                          type="button"
+                          onClick={() => toggle(f.id)}
+                        >
+                          <span className="material-symbols-outlined text-[18px] text-secondary shrink-0">
+                            {on ? 'check_circle' : 'bolt'}
+                          </span>
+                          <span className="font-label-md text-label-md truncate">{f.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
+                <input
+                  className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                  placeholder="ابحث عن استمارة..."
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                
+                {/* شرائح التصنيف */}
+                {categories.length > 0 && (
+                  <div className="flex items-center gap-space-xs overflow-x-auto pb-1 scrollbar-none">
+                    <button
+                      className={`px-3 py-1.5 rounded-lg font-label-sm text-label-sm shrink-0 transition-colors ${
+                        activeCategory === null
+                          ? 'bg-primary-container text-on-primary font-semibold'
+                          : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                      }`}
+                      type="button"
+                      onClick={() => setActiveCategory(null)}
+                    >
+                      الكل ({items.length})
+                    </button>
+                    {categories.map((c) => (
+                      <button
+                        key={c.name}
+                        className={`px-3 py-1.5 rounded-lg font-label-sm text-label-sm shrink-0 transition-colors ${
+                          activeCategory === c.name
+                            ? 'bg-primary-container text-on-primary font-semibold'
+                            : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                        }`}
+                        type="button"
+                        onClick={() => setActiveCategory(c.name)}
+                      >
+                        {c.name} ({c.count})
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {shown.length === 0 ? (
                 <div className="py-space-lg text-center font-body-md text-body-md text-on-surface-variant">
                   {items.length === 0
-                    ? 'المكتبة فارغة — استورد مجلد ملفاتك من شاشة النماذج'
+                    ? 'المكتبة فارغة — استورد مجلد ملفاتك من الورشة'
                     : 'لا استمارة بهذا الاسم'}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-sm">
-                  {shown.map((t) => {
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
+                  {[...shown].sort((a, b) => b.printCount - a.printCount).map((t) => {
                     const on = picked.includes(t.id);
                     return (
                       <button
                         key={t.id}
-                        className={`p-space-md rounded-xl text-right flex flex-col gap-1 transition-all ${
+                        className={`relative p-space-md rounded-xl text-right flex flex-col gap-space-sm bg-surface-container-lowest border transition-all ${
                           on
-                            ? 'bg-primary-container text-on-primary shadow-md'
-                            : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'
+                            ? 'border-secondary ring-2 ring-secondary shadow-md'
+                            : 'border-outline-variant hover:border-outline hover:shadow-md'
                         }`}
                         type="button"
                         onClick={() => toggle(t.id)}
                       >
-                        <div className="flex items-start gap-space-xs">
-                          <span className="material-symbols-outlined text-[20px] shrink-0">
-                            {on ? 'check_circle' : 'description'}
-                          </span>
-                          <span className="flex-1 font-title-md text-title-md leading-snug">
-                            {t.title}
-                          </span>
-                        </div>
-                        <span className="font-label-sm text-label-sm opacity-70">
-                          {t.category ?? 'بلا تصنيف'} · طُبعت {t.printCount} مرّة
+                        <span
+                          className={`absolute top-3 left-3 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                            on ? 'bg-secondary text-on-secondary' : 'border border-outline-variant'
+                          }`}
+                        >
+                          {on && (
+                            <span className="material-symbols-outlined text-[15px]">check</span>
+                          )}
+                        </span>
+                        <span className="w-11 h-11 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[22px]">description</span>
+                        </span>
+                        <span className="font-headline-sm text-headline-sm text-on-surface leading-snug">
+                          {t.title}
+                        </span>
+                        <span className="mt-auto font-label-sm text-label-sm text-secondary font-semibold">
+                          {t.category ?? 'بلا تصنيف'}
+                        </span>
+                        <span className="font-label-sm text-label-sm text-on-surface-variant">
+                          طُلب {t.printCount} مرّة
                         </span>
                       </button>
                     );
@@ -388,7 +510,8 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
           {/* ٢ — املأ */}
           {step === 'fill' && (
-            <div className="max-w-3xl mx-auto flex flex-col gap-space-md">
+            <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-space-lg items-start">
+              <div className="flex flex-col gap-space-md">
               <div className="flex items-center gap-space-sm">
                 <span className="font-headline-sm text-headline-sm text-on-surface">
                   بيانات صاحب العلاقة
@@ -461,6 +584,27 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   ))}
                 </div>
               )}
+              </div>
+              {/* معاينة حيّة بجانب التعبئة — عرضٌ فقط، لا تُصدَر عنها ورقة */}
+              <div className="hidden lg:flex justify-center sticky top-0">
+                {loaded[0] && (
+                  <div style={{ zoom: 0.42 }} className="w-fit">
+                    <div
+                      className="a4-sheet bg-white text-black shadow-lg"
+                      style={sheetStyle(loaded[0].doc)}
+                    >
+                      <div dangerouslySetInnerHTML={{ __html: watermarkHtml(loaded[0].doc) }} />
+                      {loaded[0].layout && <LetterheadView layout={loaded[0].layout} />}
+                      <div
+                        className={`${gapAfter(loaded[0].layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
+                        dangerouslySetInnerHTML={{
+                          __html: renderDocHtml(loaded[0].doc, values, { missing: 'blank', paragraphs: 'blocks' })
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -502,14 +646,15 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                     sheets.current.set(l.summary.id, el);
                   }}
                   className="a4-sheet bg-white text-black shadow-lg"
-                  style={{ width: '210mm', minHeight: '297mm', padding: '20mm' }}
+                  style={sheetStyle(l.doc)}
                 >
+                  <div dangerouslySetInnerHTML={{ __html: watermarkHtml(l.doc) }} />
                   {l.layout && <LetterheadView layout={l.layout} />}
                   <div
-                    className="mt-space-md font-body-md text-body-md leading-8"
+                    className={`${gapAfter(l.layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
                     data-body=""
                     dangerouslySetInnerHTML={{
-                      __html: renderDocHtml(l.doc, values, { missing: 'blank' })
+                      __html: renderDocHtml(l.doc, values, { missing: 'blank', paragraphs: 'blocks' })
                     }}
                   />
                 </div>

@@ -3,6 +3,7 @@ import { freshDb } from './helpers';
 import {
   deleteDraft,
   deleteTemplate,
+  duplicateTemplate,
   getTemplate,
   isCodeTaken,
   listCategories,
@@ -140,6 +141,27 @@ describe('حفظ النماذج', () => {
       variables: [{ token: 'الاسم', label: 'الاسم', source: 'citizen', required: false }]
     });
     expect(getTemplate(db, saved.id)?.variables).toHaveLength(1);
+  });
+
+  it('نسخ قالب يُنشئ بطاقةً مستقلّة بمتغيّراتها والأصل لا يُمسّ', () => {
+    const db = freshDb();
+    const src = saveTemplate(db, tpl({ code: 'DIW-1', category: 'كتب التأييد' }));
+    const copy = duplicateTemplate(db, src.id);
+    expect(copy).not.toBeNull();
+    expect(copy!.id).not.toBe(src.id);
+    expect(copy!.title).toBe('تأييد استمرار بالخدمة — نسخة');
+    // الكود فريدٌ فلا نسختين تحملانه — يُترك فارغًا.
+    expect(copy!.code).toBeNull();
+    // المتغيّرات تُنسخ بترتيبها.
+    expect(copy!.variables.map((v) => v.token)).toEqual(['الاسم', 'الرقم_الوطني']);
+    // الأصل باقٍ كما هو — لا يُطمس بالنسخ.
+    expect(getTemplate(db, src.id)?.code).toBe('DIW-1');
+    expect(listTemplates(db)).toHaveLength(2);
+  });
+
+  it('نسخ قالب غير موجود يُرجع null', () => {
+    const db = freshDb();
+    expect(duplicateTemplate(db, 9999)).toBeNull();
   });
 
   it('الكود الفارغ لا يعدّ تكرارًا', () => {

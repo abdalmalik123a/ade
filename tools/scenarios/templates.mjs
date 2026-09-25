@@ -11,6 +11,34 @@ export default async function scenario(page, { profile, shotsDir }) {
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  /** يكتب في أوّل سطرٍ على الورقة — الورقة مساحة التأليف الوحيدة. */
+  const writeBlock = async (text) => {
+    await page.eval(`
+      const el = document.querySelector('[data-block]');
+      el.focus();
+      el.textContent = ${JSON.stringify(text)};
+      el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    `);
+    await wait(300);
+  };
+
+  /** يظلّل مدًى من أوّل سطر ويضغط F4 فيصير متغيّرًا. */
+  const fieldify = async (from, to) => {
+    await page.eval(`
+      const el = document.querySelector('[data-block]');
+      el.focus();
+      const range = document.createRange();
+      range.setStart(el.firstChild, ${from});
+      range.setEnd(el.firstChild, ${to});
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    `);
+    await wait(250);
+    await page.key('F4');
+    await wait(400);
+  };
+
   // ── الحالة الفارغة ───────────────────────────────────────────────
   await page.goto('templates-library-drafts');
   let text = await page.text();
@@ -23,7 +51,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   text = await page.text();
   ok('انفتح مصمّم النماذج', text.includes('مصمّم النماذج والمُعاملات'));
-  ok('لا متغيّرات بعد', text.includes('لا متغيّرات بعد'));
+  ok('لا متغيّرات بعد', text.includes('المتغيّرات على الورقة (0)'));
 
   // الحفظ بلا عنوان يُرفض
   await page.clickText('حفظ النموذج');
@@ -41,37 +69,24 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   ok('يرفض الحفظ بمتن فارغ', (await page.text()).includes('متن النموذج فارغ'));
 
-  // الوضع الأصل «كتل»؛ وهذا الطريق يختبر المتن النصّي بوسومه.
-  await page.clickExact('نصّ');
-  await wait(600);
-
-  // كتابة المتن بحقن المتغيّرات من الأزرار
-  await page.type(
-    'textarea[placeholder^="نؤيد لكم"]',
-    'نؤيد لكم بأن السيد {الاسم} الحامل للرقم الوطني {الرقم_الوطني} مستمر بالخدمة حتى {التاريخ_الميلادي}.'
-  );
-  await wait(400);
+  // الكتابة على الورقة، والمتغيّر بتظليله وF4 — «أحمد عادل» من ١٨ إلى ٢٧.
+  await writeBlock('نؤيد لكم أن السيد أحمد عادل موظف لدينا');
+  await fieldify(18, 27);
   text = await page.text();
-  ok('اكتُشفت ثلاثة متغيّرات من المتن', text.includes('3 متغيّر'));
-  ok('صُنّف {الاسم} كحقل مواطن', text.includes('من ملف المواطن'));
-  ok('صُنّف {التاريخ_الميلادي} كحقل محرّك', text.includes('يملؤه المحرّك'));
-
-  // حقن متغيّر إضافي بالضغط على زرّ
-  await page.clickText('مكان العمل', 'button');
-  await wait(400);
-  ok('حقن زرّ «مكان العمل» وسمه في المتن', (await page.text()).includes('4 متغيّر'));
+  ok('صار المظلَّل متغيّرًا في لوحة الورقة', text.includes('المتغيّرات على الورقة (1)'));
+  ok('ورُسم صندوقًا في السطر', await page.eval(`return document.querySelectorAll('[data-block] [data-field]').length === 1`));
 
   if (shotsDir) await page.shot(join(shotsDir, 'tpl-designer.png'));
 
   await page.clickText('حفظ النموذج');
   await wait(900);
   text = await page.text();
-  ok('أُغلق المصمّم بعد الحفظ', !text.includes('المتغيّرات المكتشَفة'));
+  ok('أُغلق المصمّم بعد الحفظ', !text.includes('المتغيّرات على الورقة'));
   ok('أكّد الحفظ', text.includes('حُفظ النموذج'));
   ok('ظهر النموذج في الشبكة', text.includes('تأييد استمرار بالخدمة'));
   ok('ظهر كوده', text.includes('DIW-EDU-1'));
   ok('ظهر تصنيفه كمرشّح', text.includes('كتب التأييد (1)'));
-  ok('ظهرت متغيّراته على البطاقة', text.includes('[الاسم]'));
+  ok('ظهرت متغيّراته على البطاقة', text.includes('[أحمد_عادل]'));
 
   if (shotsDir) await page.shot(join(shotsDir, 'tpl-grid.png'));
 
@@ -80,9 +95,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   await page.type('input[placeholder^="مثال: تأييد"]', 'نموذج ثانٍ');
   await page.type('input[placeholder="اختياري"]', 'DIW-EDU-1');
-  await page.clickExact('نصّ');
-  await wait(400);
-  await page.type('textarea[placeholder^="نؤيد لكم"]', 'متن قصير');
+  await writeBlock('متن قصير');
   await page.clickText('حفظ النموذج');
   await wait(600);
   ok('يمنع تكرار الكود', (await page.text()).includes('مستعمل في نموذج آخر'));
@@ -137,7 +150,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('إضافة نموذج');
   await wait(500);
   ok('زرّ الإضافة يفتح مصمّمًا فارغًا',
-    (await page.text()).includes('لا متغيّرات بعد'));
+    (await page.text()).includes('المتغيّرات على الورقة (0)'));
   await page.clickText('إلغاء');
   await wait(400);
 
@@ -146,7 +159,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(600);
   text = await page.text();
   ok('انفتح المصمّم على النموذج القائم', text.includes('تعديل النموذج'));
-  ok('حمّل متغيّرات النموذج', text.includes('4 متغيّر'));
+  ok('حمّل متغيّرات النموذج على الورقة', text.includes('المتغيّرات على الورقة (1)'));
 
   // ── الحذف بتأكيد من داخل المصمّم ───────────────────────────────
   await page.clickText('حذف النموذج');

@@ -6,10 +6,13 @@
  * وورقة عرضها 794px = 210mm عند 96 نقطة/إنش.
  *
  * لا شيء مبرمَج: الترويسة من إعدادات المكتب، والنموذج من المكتبة، والمواطن من السجل،
- * والختم والتوقيع صورتان يرفعهما المكتب. قبل ذلك الورقة بيضاء — وهذا هو الصواب.
+ * قبل ذلك الورقة بيضاء — وهذا هو الصواب.
  *
- * الإصدار يجري في نداء واحد إلى العملية الرئيسية: هي تحجز رقم الصادر وتحسب البصمة
- * وترسم رمز التحقق وتحقنها في مواضعها المحجوزة داخل الورقة. ولذلك تُرسَل الورقة
+ * ولا توقيع ولا ختم ولا رمز تحقّق على الورقة: المكتب يستنسخ ويطبع، والجهة توقّع
+ * وتختم بيدها بعد الطباعة. فالورقة تحمل اسم الموقّع وصفته وفراغًا فوقهما.
+ *
+ * الإصدار يجري في نداء واحد إلى العملية الرئيسية: هي تحجز رقم الصادر وتحقنه في
+ * موضعه المحجوز داخل الورقة. ولذلك تُرسَل الورقة
  * بعلامات {{DIWAN_…}} بدل القيم — فلا يُحرق رقمُ صادرٍ على كتاب لم يصدر.
  */
 import {
@@ -30,7 +33,7 @@ import type {
   Seal,
   TemplateSummary
 } from '@shared/api';
-import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '@shared/api';
+import { SERIAL_SLOT } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
 import {
   emptyLayout,
@@ -40,7 +43,6 @@ import {
   type Letterhead,
   type LetterheadLayout
 } from '@shared/letterhead';
-import { qrSvg } from '@shared/qr';
 import {
   defaultFields,
   fieldByRole,
@@ -164,11 +166,7 @@ function EditorScreen(
   const [fieldPickerOpen, setFieldPickerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
 
-  const [showStamp, setShowStamp] = useState(false);
-  const [showBarcode, setShowBarcode] = useState(false);
   const [showWatermark, setShowWatermark] = useState(false);
-  const [stampId, setStampId] = useState<number | null>(null);
-  const [signatureId, setSignatureId] = useState<number | null>(null);
 
   const [draft, setDraft] = useState<number | null>(draftId);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -202,8 +200,6 @@ function EditorScreen(
       if (initial) setLayout(normalizeLayout(initial.layout));
       setTemplates(tpls);
       setSeals(sl);
-      setStampId(sl.find((x) => x.kind === 'ختم')?.id ?? null);
-      setSignatureId(sl.find((x) => x.kind === 'توقيع')?.id ?? null);
     })();
   }, []);
 
@@ -332,8 +328,6 @@ function EditorScreen(
     setToast(asNew ? `حُفظت الترويسة «${saved.name}» في المكتبة` : 'حُدّثت الترويسة المحفوظة');
   }
   const template = templates.find((t) => t.id === activeTemplate) ?? null;
-  const stamp = seals.find((s) => s.id === stampId) ?? null;
-  const signature = seals.find((s) => s.id === signatureId) ?? null;
   const crest = seals.find((s) => s.kind === 'شعار') ?? null;
 
   const transaction = f.subject || template?.title || null;
@@ -399,11 +393,6 @@ function EditorScreen(
       node.querySelectorAll('[data-slot="serial"]').forEach((el) => {
         el.textContent = SERIAL_SLOT;
       });
-      node.querySelectorAll('[data-slot="fingerprint"]').forEach((el) => {
-        el.textContent = FINGERPRINT_SLOT;
-      });
-      const qr = node.querySelector('[data-slot="qr"]');
-      if (qr) qr.innerHTML = QR_SLOT;
     }
     return node.outerHTML;
   }, []);
@@ -1016,19 +1005,17 @@ function EditorScreen(
               </Field>
             </section>
 
-            {/* القسم الخامس: التوقيع والأختام */}
+            {/* القسم الخامس: الموقّع — اسمه وصفته مطبوعان، والتوقيع والختم حيّان بعد الطباعة. */}
             <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
               <div className="flex items-center justify-between pb-space-xs">
                 <div className="flex items-center gap-space-xs">
                   <span className="material-symbols-outlined text-secondary text-[20px]">
-                    verified
+                    person
                   </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    التخويل والأختام الرقمية
-                  </h3>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">الموقّع</h3>
                 </div>
                 <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  المصادقة الرسمية
+                  يوقّع ويختم بيده بعد الطباعة
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-space-sm">
@@ -1052,60 +1039,8 @@ function EditorScreen(
                 </Field>
               </div>
 
-              <div className="pt-space-xs flex flex-col gap-space-sm bg-surface-container-low p-space-sm rounded-lg">
-                <div className="flex items-center justify-between gap-space-sm">
-                  <Toggle
-                    checked={showStamp}
-                    onChange={setShowStamp}
-                    disabled={seals.length === 0}
-                    label="إظهار الختم الرسمي"
-                  />
-                  <Toggle checked={showBarcode} onChange={setShowBarcode} label="رمز التحقق (QR)" />
-                  <Toggle
-                    checked={showWatermark}
-                    onChange={setShowWatermark}
-                    label="علامة مائية"
-                  />
-                </div>
-
-                {seals.length === 0 ? (
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    لا ختم ولا توقيع مرفوع — ارفعهما من «إعدادات الترويسة والأختام»
-                  </span>
-                ) : (
-                  <div className="grid grid-cols-2 gap-space-sm">
-                    <Field label="الختم المستعمل">
-                      <select
-                        className={inputCls}
-                        value={stampId ?? ''}
-                        onChange={(e) => setStampId(e.target.value ? Number(e.target.value) : null)}
-                      >
-                        <option value="">— بلا ختم —</option>
-                        {seals.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="صورة التوقيع">
-                      <select
-                        className={inputCls}
-                        value={signatureId ?? ''}
-                        onChange={(e) =>
-                          setSignatureId(e.target.value ? Number(e.target.value) : null)
-                        }
-                      >
-                        <option value="">— بلا توقيع —</option>
-                        {seals.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-                )}
+              <div className="pt-space-xs flex items-center bg-surface-container-low p-space-sm rounded-lg">
+                <Toggle checked={showWatermark} onChange={setShowWatermark} label="علامة مائية" />
               </div>
             </section>
           </div>
@@ -1293,42 +1228,10 @@ function EditorScreen(
                   dangerouslySetInnerHTML={{ __html: rendered }}
                 />
 
-                {/* التوقيع والأختام */}
-                {(f.signerName || f.signerRole || (showStamp && stamp) || showBarcode) && (
-                  <div className="mt-space-xl flex items-end justify-between">
-                    <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                      {showBarcode && (
-                        <>
-                          <div
-                            className="bg-surface-container-lowest p-1"
-                            data-slot="qr"
-                            dangerouslySetInnerHTML={{
-                              __html: qrSvg(f.serial || 'معاينة — لم يصدر بعد', 64)
-                            }}
-                          />
-                          <span
-                            className="font-mono text-on-surface-variant"
-                            style={{ fontSize: '8px' }}
-                            data-slot="fingerprint"
-                          >
-                            بصمة التوثيق تُختم عند الإصدار
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    {showStamp && stamp?.imagePath && (
-                      <img
-                        alt=""
-                        src={storeUrl(stamp.imagePath)}
-                        style={{ width: 130, transform: 'rotate(-8deg)', opacity: 0.9 }}
-                      />
-                    )}
-
+                {/* الموقّع: اسمه وصفته، وفوقهما فراغٌ يوقّع فيه ويختم بيده بعد الطباعة. */}
+                {(f.signerName || f.signerRole) && (
+                  <div className="mt-space-xl flex items-end justify-end">
                     <div className="flex flex-col items-center gap-1 min-w-[150px]">
-                      {signature?.imagePath && (
-                        <img alt="" src={storeUrl(signature.imagePath)} style={{ width: 140 }} />
-                      )}
                       {f.signerName && (
                         <span className="font-bold text-on-surface" style={{ fontSize: '14px' }}>
                           {f.signerName}

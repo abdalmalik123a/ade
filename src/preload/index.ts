@@ -109,10 +109,11 @@ const api: DiwanApi = {
       printer: string | null;
       copies: number;
       silent: boolean;
+      page?: { w: number; h: number };
     }) => invoke('output:print', payload),
-    savePdf: (payload: { sheetHtml: string; suggestedName: string }) =>
+    savePdf: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
       invoke('output:savePdf', payload),
-    savePng300: (payload: { sheetHtml: string; suggestedName: string }) =>
+    savePng300: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
       invoke('output:savePng300', payload),
     saveDocx: (payload: { sheetHtml: string; suggestedName: string; title: string }) =>
       invoke('output:saveDocx', payload)
@@ -124,6 +125,7 @@ const api: DiwanApi = {
     categories: () => invoke('templates:categories'),
     stats: () => invoke('templates:stats'),
     save: (input: TemplateInput & { doc?: unknown }) => invoke('templates:save', input),
+    duplicate: (id: number) => invoke('templates:duplicate', id),
     usage: (id: number) => invoke('templates:usage', id),
     delete: (id: number) => invoke('templates:delete', id),
     doc: (id: number) => invoke('templates:doc', id),
@@ -157,6 +159,7 @@ const api: DiwanApi = {
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
     pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),
+    pickImageFolder: (bucket: string) => invoke('files:pickImageFolder', bucket),
     saveAs: (payload: {
       data: Uint8Array;
       suggestedName: string;

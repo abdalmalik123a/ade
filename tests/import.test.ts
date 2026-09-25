@@ -83,10 +83,16 @@ describe('استيراد نموذج من Word', () => {
     expect(result.body).toContain('مُحَمَّد وأحمد وإبراهيم');
   });
 
-  it('ينبّه أن التنسيق والصور لا تُستورد', async () => {
+  it('يستورد الملف ورقةً واحدة بتنسيقه، ويقول ذلك', async () => {
     const path = await makeDocx(['عنوان', 'متن']);
     const result = await importTemplateFile(path);
-    expect(result.warnings.join(' ')).toContain('لا يُستورد');
+    expect(result.warnings.join(' ')).toContain('ورقةً واحدة بتنسيقه');
+    const text = (result.doc?.blocks ?? [])
+      .flatMap((b) => (b.kind === 'paragraph' ? b.inlines : []))
+      .map((i) => (i.kind === 'run' ? i.text : ''))
+      .join('|');
+    expect(text).toContain('عنوان');
+    expect(text).toContain('متن');
   });
 
   it('يرفض مستندًا فارغًا برسالة مفهومة', async () => {

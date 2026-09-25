@@ -3,6 +3,8 @@ import { extname, basename } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import { reconcileVariables, type TemplateVariable } from '@shared/template';
 import { stripTatweel, cleanLine } from './blanks';
+import { docxToDoc } from './docxDoc';
+import type { Doc } from '@shared/doc';
 import {
   emptyLayout,
   newId,
@@ -34,6 +36,8 @@ export type ImportedTemplate = {
   warnings: string[];
   /** ترويسة استُخرجت من الملف — يقرّر المكتب حفظها أو تركها. */
   letterhead: LetterheadLayout | null;
+  /** الملف ورقةً واحدة بتنسيقه كما رسمه Word (`docxDoc.ts`). */
+  doc?: Doc | null;
 };
 
 const decodeEntities = (s: string) =>
@@ -418,7 +422,26 @@ export async function importTemplateFile(
     if (!doc) throw new Error('الملف ليس مستند Word صالحًا (لا يحتوي word/document.xml)');
 
     const xml = strFromU8(doc);
-    const warnings: string[] = ['تنسيق المتن لا يُستورد — النصّ والترويسة وشعارها'];
+    /**
+     * الورقة كما صنعها Word — قطعةً واحدة بتنسيقها.
+     *
+     * والترويسة تُستخرج بعدها كما كانت: «استورد مجلدي» يحتاجها ليكتشف رأسًا
+     * يتكرّر في مئات الملفات. أما الملف الواحد فيُفتح على ورقته كاملة.
+     */
+    // الصورة الواحدة تُطلب مرّتين — للورقة وللترويسة — فتُنقل إلى المخزن مرّة.
+    const saved = new Map<Uint8Array, string | null>();
+    if (saveImage) {
+      const store = saveImage;
+      saveImage = (bytes, ext) => {
+        if (!saved.has(bytes)) saved.set(bytes, store(bytes, ext));
+        return saved.get(bytes)!;
+      };
+    }
+    const formatted = docxToDoc(files, saveImage);
+    const warnings: string[] = [
+      'استُورد الملف ورقةً واحدة بتنسيقه — ظلّل ما يتغيّر واضغط F4',
+      ...formatted.notes
+    ];
 
     // 1) ترويسة صفحة حقيقية إن وُجدت. 2) جدول في رأس المستند. 3) أسطر مكتوبة نصًّا.
     let letterhead = layoutFromHeaderParts(files);
@@ -518,7 +541,8 @@ export async function importTemplateFile(
       subjectLine,
       body,
       warnings,
-      letterhead
+      letterhead,
+      doc: formatted.doc
     };
   }
 

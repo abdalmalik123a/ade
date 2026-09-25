@@ -167,25 +167,37 @@ function certificate(headline: string, body: string, accent: string): Canvas {
       size: 12
     },
     {
-      text: '{التوقيع}',
+      // اسم الموقّع مطبوعًا — والتوقيع نفسه بيده فوقه بعد الطباعة.
+      text: '{الموقّع}',
       box: { x: 0.68, y: 0.86, w: 0.26, h: 0.06 },
       size: 12
     }
   ]);
 }
-/** هويةٌ CR80: شريطُ زاويةٍ وصورةٌ وباركود — والوجه الواحد يكفي المكتب. */
+/** هويةٌ CR80: شريطُ زاويةٍ وصورةٌ وشريحة وباركود — هوية حقيقية قابلة للاستخدام الفعلي. */
 function idCard(title: string, role: string, accent: string): Canvas {
   const bg = svg(
     1011,
     638,
-    `<rect width="1011" height="118" fill="${accent}"/>` +
-      `<rect y="118" width="1011" height="5" fill="${GOLD}"/>` +
-      cornerBand(1011, 638, accent, 150) +
-      rosette(878, 300, 66, 10, accent) +
-      `<rect x="330" y="156" width="600" height="1" fill="${accent}" opacity="0.35"/>` +
-      // مكانُ الصورة مرسومٌ في الخلفية، فيُرى فارغًا قبل أن تُملأ.
-      `<rect x="34" y="150" width="252" height="330" rx="10" fill="none" ` +
-      `stroke="${accent}" stroke-width="1.5" opacity="0.5"/>`
+    // شريط علوي أنيق مع شريط ذهبي متوهج
+    `<rect width="1011" height="135" fill="${accent}"/>` +
+      `<rect y="135" width="1011" height="6" fill="${GOLD}"/>` +
+      // زخرفة علامة مائية أمنية في خلفية الكارت
+      rosette(880, 360, 110, 14, accent) +
+      rosette(140, 520, 80, 8, accent) +
+      cornerBand(1011, 638, accent, 180) +
+      // شريحة أمان إلكترونية ذهبية على اليسار
+      `<rect x="860" y="240" width="100" height="74" rx="10" fill="${GOLD}" opacity="0.85"/>` +
+      `<rect x="880" y="254" width="60" height="46" rx="4" fill="none" stroke="#ffffff" stroke-width="1.5"/>` +
+      // خطوط تقسيم الحقول
+      `<line x1="320" y1="210" x2="960" y2="210" stroke="${accent}" stroke-width="1" opacity="0.2"/>` +
+      `<line x1="320" y1="330" x2="960" y2="330" stroke="${accent}" stroke-width="1" opacity="0.2"/>` +
+      `<line x1="320" y1="440" x2="960" y2="440" stroke="${accent}" stroke-width="1" opacity="0.2"/>` +
+      // إطار فاخر لصورة الموظف/الطالب
+      `<rect x="36" y="158" width="240" height="320" rx="12" fill="${CREAM}" stroke="${accent}" stroke-width="2.5"/>` +
+      `<rect x="42" y="164" width="228" height="308" rx="8" fill="none" stroke="${GOLD}" stroke-width="1"/>` +
+      // شريط سفلي للأمان
+      `<rect y="608" width="1011" height="30" fill="${INK}"/>`
   );
   return build(
     CARD,
@@ -194,24 +206,25 @@ function idCard(title: string, role: string, accent: string): Canvas {
     [
       {
         text: title,
-        box: { x: 0.06, y: 0.03, w: 0.88, h: 0.12 },
-        size: 11,
+        box: { x: 0.04, y: 0.03, w: 0.92, h: 0.14 },
+        size: 13,
         bold: true,
         color: PAPER
       },
-      { text: '{الاسم}', box: { x: 0.33, y: 0.24, w: 0.6, h: 0.13 }, size: 11, bold: true },
-      { text: `${role}: {الصف}`, box: { x: 0.33, y: 0.39, w: 0.6, h: 0.1 }, size: 8 },
-      { text: 'الرقم: {الرقم}', box: { x: 0.33, y: 0.5, w: 0.6, h: 0.1 }, size: 8 },
-      { text: 'صالحة حتى {الصلاحية}', box: { x: 0.06, y: 0.89, w: 0.5, h: 0.08 }, size: 7 }
+      { text: '{الاسم}', box: { x: 0.31, y: 0.23, w: 0.65, h: 0.14 }, size: 12, bold: true },
+      { text: `${role}: {الصف}`, box: { x: 0.31, y: 0.39, w: 0.52, h: 0.11 }, size: 9 },
+      { text: 'الرقم: {الرقم}', box: { x: 0.31, y: 0.52, w: 0.52, h: 0.11 }, size: 9, bold: true },
+      { text: 'صالحة حتى: {الصلاحية}', box: { x: 0.04, y: 0.8, w: 0.5, h: 0.08 }, size: 7.5 },
+      { text: 'جمهورية العراق — هويّة رسمية', box: { x: 0.04, y: 0.95, w: 0.92, h: 0.04 }, size: 6.5, color: PAPER }
     ],
     [
       imageElement({
-        box: { x: 0.04, y: 0.22, w: 0.25, h: 0.52 },
+        box: { x: 0.045, y: 0.26, w: 0.23, h: 0.49 },
         ref: 'الصورة',
         fit: 'cover',
         z: 0
       }),
-      barcodeElement({ box: { x: 0.35, y: 0.63, w: 0.58, h: 0.2 }, ref: 'الرقم', z: 0 })
+      barcodeElement({ box: { x: 0.31, y: 0.68, w: 0.64, h: 0.22 }, ref: 'الرقم', z: 0 })
     ]
   );
 }

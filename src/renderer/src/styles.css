@@ -16,6 +16,20 @@
 @import '@fontsource/cairo/arabic-400.css';
 @import '@fontsource/cairo/arabic-700.css';
 
+/* خطوط التصاميم: رقعةٌ للعنوان الاحتفالي، وكوفيٌّ للرسمي والحديث، ولالي زار للأطفال،
+   والمسيري للدعوات. كلّها OFL محزومة — فالشهادة تخرج بخطّها على كل جهاز. */
+@import '@fontsource/aref-ruqaa/arabic-400.css';
+@import '@fontsource/aref-ruqaa/arabic-700.css';
+@import '@fontsource/reem-kufi/arabic-500.css';
+@import '@fontsource/reem-kufi/arabic-700.css';
+@import '@fontsource/noto-kufi-arabic/400.css';
+@import '@fontsource/noto-kufi-arabic/700.css';
+@import '@fontsource/lalezar/arabic-400.css';
+@import '@fontsource/el-messiri/arabic-400.css';
+@import '@fontsource/el-messiri/arabic-700.css';
+@import '@fontsource/cairo/400.css';
+@import '@fontsource/cairo/700.css';
+
 @import 'material-symbols/outlined.css';
 
 @tailwind base;
@@ -40,13 +54,27 @@
   }
 }
 
+/* ── الترقية البصرية الشاملة لمنظومة ديوان 2.4 ─────────────────────── */
+
+/* شريط تمرير ناعم ومخفي افتراضيًا يظهر عند التمرير بشكل غير مزعج */
 ::-webkit-scrollbar {
-  display: none;
+  width: 6px;
+  height: 6px;
 }
 
-/* ملفات التصميم تطلب "IBM Plex Sans"، وهو خط بلا محارف عربية.
-   النصّ النثري في DESIGN.md يحدّد IBM Plex Sans Arabic للعربية —
-   فتُقدَّم العربية عليه، وتبقى الأرقام والرموز اللاتينية على IBM Plex Sans. */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(24, 33, 29, 0.16);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(24, 33, 29, 0.32);
+}
+
 :root {
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
@@ -54,6 +82,8 @@
 
 body {
   font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
+  background-color: #eef0ec;
+  color: #18211d;
 }
 
 /* الأرقام في المبالغ وأرقام الصادر والتواريخ: أعمدة مستقيمة إلزاميًا. */
@@ -70,6 +100,35 @@ table th {
     'GRAD' 0,
     'opsz' 24;
   user-select: none;
+}
+
+/* ── المؤثرات البصرية الفاخرة (Glassmorphism & Elevating Utility) ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(224, 227, 221, 0.8);
+}
+
+.card-elevated {
+  background: #ffffff;
+  border: 1px solid rgba(207, 212, 204, 0.5);
+  box-shadow: 0 4px 20px -2px rgba(24, 33, 29, 0.05), 0 2px 6px -1px rgba(24, 33, 29, 0.03);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-elevated:hover {
+  border-color: rgba(14, 122, 99, 0.3);
+  box-shadow: 0 10px 30px -4px rgba(24, 33, 29, 0.08), 0 4px 12px -2px rgba(14, 122, 99, 0.08);
+}
+
+.active-nav-glow {
+  box-shadow: 0 4px 14px rgba(14, 122, 99, 0.28);
+}
+
+.badge-vibrant {
+  background: linear-gradient(135deg, #0e7a63 0%, #0b6252 100%);
+  color: #ffffff;
 }
 
 /* ── ورقة A4 الافتراضية ──────────────────────────────────────────────
@@ -104,9 +163,16 @@ table th {
   }
 }
 
-/* مواضع الصور التي يملؤها المكتب (صورة المواطن، المستمسك الممسوح).
-   التصميم كان يحمل صورًا تجريبية خارجية — حُذفت لأن المنظومة تبدأ فارغة وتعمل محليًا. */
+/* تلميح السطر الفارغ على الورقة: للسطر الذي يكتب فيه وحده — ولا يُطبع. */
+[contenteditable='true'][data-placeholder]:empty:focus::before {
+  content: attr(data-placeholder);
+  color: #93a099;
+  pointer-events: none;
+}
+
+/* مواضع الصور التي يملؤها المكتب (صورة المواطن، المستمسك الممسوح). */
 img[data-placeholder='image'] {
   background: theme('colors.surface-container-high');
   object-fit: cover;
 }
+

@@ -49,6 +49,7 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('templates:save', (_e, input: TemplateInput & { doc?: Doc | null }) =>
     svc.saveTemplate(getDb(), input)
   );
+  ipcMain.handle('templates:duplicate', (_e, id: number) => svc.duplicateTemplate(getDb(), id));
   ipcMain.handle('templates:usage', (_e, id: number) => svc.templateUsage(getDb(), id));
   ipcMain.handle('templates:delete', (_e, id: number) => svc.deleteTemplate(getDb(), id));
 

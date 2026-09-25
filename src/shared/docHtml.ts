@@ -136,6 +136,10 @@ function paragraphHtml(
   if (opts.paragraphs === 'lines') return inner;
   const style = [
     `text-align:${block.align}`,
+    // المسافات تُحفظ: «(          )» فراغُ كتابةٍ باليد، ولو ضُغط لاختفى.
+    'white-space:pre-wrap',
+    block.size ? `font-size:${block.size}px` : '',
+    block.lineHeight ? `line-height:${block.lineHeight}` : '',
     block.indent ? `text-indent:${block.indent}mm` : '',
     block.spaceAfter ? `margin-bottom:${block.spaceAfter}px` : ''
   ]
@@ -174,7 +178,8 @@ function renderBlock(
               const body = cell.blocks
                 .map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' }))
                 .join('');
-              return `<${tag}${span} style="border:1px solid currentColor;padding:2px 4px;vertical-align:top">${body}</${tag}>`;
+              const border = block.borders === false ? 'border:none' : 'border:1px solid currentColor';
+              return `<${tag}${span} style="${border};padding:2px 4px;vertical-align:top">${body}</${tag}>`;
             })
             .join('');
           return `<tr>${cells}</tr>`;
@@ -185,10 +190,12 @@ function renderBlock(
     }
 
     case 'image': {
-      const justify =
-        block.align === 'center' ? 'center' : block.align === 'left' ? 'flex-start' : 'flex-end';
+      // محاذاةٌ فيزيائية لا منطقية: `flex-start` ينقلب في الورقة العربية فيقع
+      // الختمُ المقصود يسارًا في اليمين. و`text-align:left` يسارٌ في كل اتجاه.
+      const align = block.align === 'justify' ? 'center' : block.align;
       const src = block.src ? `diwan://store/${escapeHtml(block.src)}` : '';
-      return `<div style="display:flex;justify-content:${justify}"><img alt="" src="${src}" style="width:${block.width}px"/></div>`;
+      const height = block.height ? `height:${block.height}px;` : '';
+      return `<div style="text-align:${align}"><img alt="" src="${src}" style="display:inline-block;width:${block.width}px;${height}max-width:100%"/></div>`;
     }
 
     case 'spacer':
@@ -201,8 +208,8 @@ function renderBlock(
       // عمودان لا يتدفّقان: كل عمود كتلُه، ولا ينسكب شيء إلى صفحة تالية.
       const cols = block.columns
         .map(
-          (col) =>
-            `<div style="flex:1 1 0;min-width:0">${col
+          (col, i) =>
+            `<div style="flex:${block.widths?.[i] ?? 1} 1 0;min-width:0">${col
               .map((b) => renderBlock(b, values, fields, opts))
               .join('')}</div>`
         )
@@ -294,6 +301,33 @@ export function renderDocHtml(
   const fields = new Map(doc.fields.map((f) => [f.key, f]));
   const parts = doc.blocks.map((b) => renderBlock(b, values, fields, opts));
   return opts.paragraphs === 'lines' ? parts.join('<br/>') : parts.join('');
+}
+
+/**
+ * العلامة المائية طبقةً خلف المتن.
+ *
+ * تُوضع داخل ورقةٍ `position:relative; isolation:isolate` فيكون `z-index:-1`
+ * خلف النصّ وفوق بياض الورقة — لا فوق المتن فتحجبه. والنمط كلّه مضمَّن في
+ * العلامة لأن نافذة الطباعة ترث العلامات لا الأصناف وحدها.
+ */
+export function watermarkHtml(doc: Doc): string {
+  const wm = doc.pageSetup.watermark;
+  if (!wm) return '';
+  const box =
+    'position:absolute;inset:0;z-index:-1;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none';
+  if (wm.kind === 'text') {
+    const opacity = wm.opacity ?? 0.1;
+    return (
+      `<div data-watermark="" style="${box}">` +
+      `<span style="font-size:110px;font-weight:700;transform:rotate(-30deg);opacity:${opacity};white-space:nowrap;color:#000">` +
+      `${escapeHtml(wm.text)}</span></div>`
+    );
+  }
+  const opacity = wm.opacity ?? 0.07;
+  return (
+    `<div data-watermark="" style="${box}">` +
+    `<img alt="" src="diwan://store/${escapeHtml(wm.src)}" style="width:60%;opacity:${opacity}"/></div>`
+  );
 }
 
 /** الحقول الإلزامية التي لم تُملأ — لا يصدر كتاب وفيها فارغ. */

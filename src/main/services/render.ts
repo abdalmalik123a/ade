@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
+import { fitCanvasText } from '@shared/canvasFit';
 
 /**
  * محرّك الإخراج: الطباعة وPDF والصورة عالية الدقّة.
@@ -15,22 +16,44 @@ import { BrowserWindow } from 'electron';
  * لا يُفتح متصفح ولا قارئ PDF: كل شيء داخل التطبيق.
  */
 
-/** أنماط الورقة وقت الإخراج: مقاسها الفيزيائي بلا تكبير ولا ظلّ ولا حدود. */
-const PRINT_CSS = `
-  @page { size: A4 portrait; margin: 0; }
+/** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر غيره. */
+export type PageMm = { w: number; h: number };
+const A4: PageMm = { w: 210, h: 297 };
+
+/**
+ * أنماط الورقة وقت الإخراج: مقاسها الفيزيائي بلا تكبير ولا ظلّ ولا حدود.
+ *
+ * والمقاس وسيط: الشهادة A4 أفقي، ولوحة الشرف A3. وكان مثبّتًا A4 عموديًّا،
+ * فتخرج الشهادة الأفقية مقصوصةً نصفها خارج الورقة.
+ */
+function printCss(page: PageMm): string {
+  return `
+  @page { size: ${page.w}mm ${page.h}mm; margin: 0; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body > :not(.print-root) { display: none !important; }
   .print-root {
-    width: 210mm;
-    min-height: 297mm;
+    width: ${page.w}mm;
+    min-height: ${page.h}mm;
     margin: 0;
     background: #fff;
     transform: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
   }
-  .print-root * { transform: none !important; box-shadow: none !important; }
+  .print-root * { box-shadow: none !important; }
+  /* تكبير المعاينة يُنزع — إلا دوران عناصر اللوحة، فهو من التصميم لا من الشاشة. */
+  .print-root *:not([data-canvas] *) { transform: none !important; }
 `;
+}
+
+/** مقاس الطابعة: ما كان A4 باسمه، وغيره بالميكرون كما تطلبه Chromium. */
+function pageSizeOf(page: PageMm): { landscape: boolean; pageSize: 'A4' | { width: number; height: number } } {
+  const landscape = page.w > page.h;
+  const long = Math.max(page.w, page.h);
+  const short = Math.min(page.w, page.h);
+  if (Math.abs(long - 297) < 1 && Math.abs(short - 210) < 1) return { landscape, pageSize: 'A4' };
+  return { landscape, pageSize: { width: Math.round(short * 1000), height: Math.round(long * 1000) } };
+}
 
 async function withRenderWindow<T>(
   sheetHtml: string,
@@ -41,8 +64,10 @@ async function withRenderWindow<T>(
     /** الرسم خارج الشاشة أسرع، لكن حوار الطباعة يحتاج نافذة نظام حقيقية. */
     offscreen?: boolean;
     parent?: BrowserWindow | null;
+    page?: PageMm;
   } = {}
 ): Promise<T> {
+  const page = opts.page ?? A4;
   const win = new BrowserWindow({
     show: false,
     width: opts.width,
@@ -68,18 +93,19 @@ async function withRenderWindow<T>(
     await win.webContents.executeJavaScript(`
       (() => {
         const style = document.createElement('style');
-        style.textContent = ${JSON.stringify(PRINT_CSS)};
+        style.textContent = ${JSON.stringify(printCss(page))};
         document.head.appendChild(style);
         const root = document.createElement('div');
         root.className = 'print-root';
         root.innerHTML = ${JSON.stringify(sheetHtml)};
         document.body.appendChild(root);
         // انتظار الخطوط قبل الرسم — وإلا خرجت الورقة بخطّ بديل. وبمهلة قصوى
-        // كي لا يتعلّق الإصدار كلّه على خطّ لم يُحمَّل.
+        // كي لا يتعلّق الإصدار كلّه على خطّ لم يُحمَّل. ثم تُقاس الأسماء بخطّها
+        // الحقيقي فتصغر ما يلزم لتسع — كما قيست في المعاينة.
         return Promise.race([
           document.fonts.ready,
           new Promise((r) => setTimeout(r, 3000))
-        ]).then(() => true);
+        ]).then(() => (${fitCanvasText.toString()})(root) >= 0);
       })()
     `);
 
@@ -96,10 +122,14 @@ export type PrintRequest = {
   silent?: boolean;
   /** النافذة التي يُعلَّق عليها حوار الطباعة. */
   parent?: BrowserWindow | null;
+  /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر. */
+  page?: PageMm;
 };
 
 export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reason?: string }> {
   const silent = req.silent ?? false;
+  const page = req.page ?? A4;
+  const { landscape, pageSize } = pageSizeOf(page);
   return withRenderWindow(
     req.sheetHtml,
     (win) =>
@@ -110,9 +140,9 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
             printBackground: true,
             copies: req.copies ?? 1,
             deviceName: req.deviceName,
-            pageSize: 'A4',
+            pageSize,
             margins: { marginType: 'none' },
-            landscape: false,
+            landscape,
             scaleFactor: 100
           },
           (ok, reason) => resolve({ ok, reason })
@@ -120,20 +150,24 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
       }),
     // حوار النظام لا يظهر فوق نافذة مرسومة خارج الشاشة، فالطباعة غير الصامتة
     // تحتاج نافذة حقيقية مخفية معلَّقة على نافذة التطبيق.
-    { offscreen: silent, parent: silent ? null : req.parent }
+    { offscreen: silent, parent: silent ? null : req.parent, page }
   );
 }
 
-/** PDF بمقاس A4 الحقيقي وبالخلفيات (الأختام والعلامة المائية). */
-export async function renderPdf(sheetHtml: string): Promise<Buffer> {
-  return withRenderWindow(sheetHtml, (win) =>
-    win.webContents.printToPDF({
-      pageSize: 'A4',
-      printBackground: true,
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
-      landscape: false,
-      preferCSSPageSize: true
-    })
+/** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية). */
+export async function renderPdf(sheetHtml: string, page: PageMm = A4): Promise<Buffer> {
+  const { landscape, pageSize } = pageSizeOf(page);
+  return withRenderWindow(
+    sheetHtml,
+    (win) =>
+      win.webContents.printToPDF({
+        pageSize,
+        printBackground: true,
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        landscape,
+        preferCSSPageSize: true
+      }),
+    { page }
   );
 }
 
@@ -187,11 +221,11 @@ function withDensity(png: Buffer, dpi: number): Buffer {
  * الدقّتين، وcaptureBeyondViewport ليخرج ما تحت حافة النافذة أيضًا — فتُرسم
  * الصفحة من جديد بالمقاس الكبير، وتبقى الحروف حادّة لا ممطوطة.
  */
-export async function renderPng(sheetHtml: string, dpi = 300): Promise<Buffer> {
-  const width = Math.round((210 / 25.4) * 96); // 794 — الورقة بمقاسها على الشاشة
-  const height = Math.round((297 / 25.4) * 96); // 1123
+export async function renderPng(sheetHtml: string, dpi = 300, page: PageMm = A4): Promise<Buffer> {
+  const width = Math.round((page.w / 25.4) * 96); // 794 لـA4 — الورقة بمقاسها على الشاشة
+  const height = Math.round((page.h / 25.4) * 96); // 1123
   // النسبة تُشتقّ من البكسلات المطلوبة لا من الدقّة وحدها، فيخرج المقاس مضبوطًا.
-  const scale = Math.round((210 / 25.4) * dpi) / width;
+  const scale = Math.round((page.w / 25.4) * dpi) / width;
 
   return withRenderWindow(
     sheetHtml,
@@ -209,6 +243,6 @@ export async function renderPng(sheetHtml: string, dpi = 300): Promise<Buffer> {
         dbg.detach();
       }
     },
-    { width, height }
+    { width, height, page }
   );
 }

@@ -5,14 +5,14 @@ import { ROUTES, type RouteKey } from '@shared/routes';
    لذلك بُني التنقّل من بيانات بدل تكرار العلامات. */
 
 const NAV_BASE =
-  'flex items-center justify-between px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all';
+  'flex items-center justify-between px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150';
 const NAV_ACTIVE =
-  'flex items-center justify-between px-space-md py-space-sm transition-all bg-primary-container text-on-primary rounded-lg font-semibold';
+  'flex items-center justify-between px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20';
 const TOOL_BASE =
-  'flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all';
+  'flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150';
 const TOOL_ACTIVE =
-  'flex items-center gap-space-md px-space-md py-space-sm transition-all bg-primary-container text-on-primary rounded-lg font-semibold';
-const BADGE = 'px-1.5 py-0.5 rounded text-[10px] bg-surface-container-high text-on-surface-variant';
+  'flex items-center gap-space-md px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20';
+const BADGE = 'px-2 py-0.5 rounded-full text-[10px] bg-surface-container-high text-on-surface-variant font-medium';
 
 type NavItem = {
   key: RouteKey;
@@ -80,7 +80,7 @@ export default function Sidebar({
       badge: { text: String(counts.templates) }
     },
     { key: 'editor', icon: 'edit_document', label: 'المحرّر ومعاينة A4' },
-    { key: 'letterhead', icon: 'verified', label: 'الترويسات والأختام' },
+    { key: 'letterhead', icon: 'verified', label: 'الترويسات والشعارات' },
     // ورقة الامتحان لا تُقيَّد ولا تُصدَّر، فلا تجاور الكتب في المكتبة ولا في الشبّاك.
     { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' },
     // اللوحة لا تتدفّق: مقاسٌ ثابت وخلفيةٌ وعناصرُ بمواضعها — فشاشةٌ ثالثة.

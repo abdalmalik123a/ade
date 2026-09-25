@@ -199,6 +199,30 @@ export function deleteTemplate(db: Database, id: number): void {
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
 }
 
+/**
+ * نسخة مستقلّة من نموذج — «نسخ قالب».
+ *
+ * الأصل لا يُمسّ: تُنشأ بطاقةٌ جديدة بحقولها ووثيقتها، ليعدّلها المكتب دون أن
+ * يفسد ما بُني عليه. والكود يُترك فارغًا — فهو فريدٌ يميّز النموذج في الأرشيف،
+ * ولا نسختين تحملانه. كما تُنسخ الترويسة حرفيًّا (`duplicateLetterhead`).
+ */
+export function duplicateTemplate(db: Database, id: number): TemplateDetail | null {
+  const src = getTemplate(db, id);
+  if (!src) return null;
+  return saveTemplate(db, {
+    id: null,
+    code: null,
+    title: `${src.title} — نسخة`,
+    subtitle: src.subtitle,
+    category: src.category,
+    subjectLine: src.subjectLine,
+    bodyHtml: src.bodyHtml,
+    letterheadId: src.letterheadId,
+    variables: src.variables,
+    doc: templateDoc(src)
+  });
+}
+
 /** كم كتابًا صدر عن هذا النموذج — يُسأل قبل الحذف فلا يُمحى ما له أثر في الأرشيف. */
 export function templateUsage(db: Database, id: number): number {
   return (

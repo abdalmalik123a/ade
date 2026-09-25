@@ -37,11 +37,51 @@ export function paragraphText(inlines: Inline[]): string {
 
 // ── الكتل ────────────────────────────────────────────────────────────
 
+/**
+ * يمرّ على كل كتلة — وما في الأعمدة وخلايا الجداول معها.
+ *
+ * فقرة الخليّة فقرةٌ كغيرها: تُحاذى وتُنسَّق ويُصنع فيها حقلٌ بـF4 بالدوالّ
+ * نفسها. والخليّة لا تُفرَّغ من فقراتها: خليّةٌ بلا فقرة لا يُكتب فيها.
+ */
 const mapBlocks = (blocks: Block[], fn: (b: Block) => Block | null): Block[] =>
   blocks.flatMap((b) => {
-    const next = fn(b.kind === 'group' ? { ...b, blocks: mapBlocks(b.blocks, fn) } : b);
+    let inner: Block = b;
+    if (b.kind === 'group') inner = { ...b, blocks: mapBlocks(b.blocks, fn) };
+    else if (b.kind === 'columns') inner = { ...b, columns: b.columns.map((col) => mapBlocks(col, fn)) };
+    else if (b.kind === 'table')
+      inner = {
+        ...b,
+        rows: b.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map((c) => {
+            const kept = mapBlocks(c.blocks, fn).filter((p): p is ParagraphBlock => p.kind === 'paragraph');
+            return { ...c, blocks: kept.length ? kept : [paragraph([])] };
+          })
+        }))
+      };
+    const next = fn(inner);
     return next ? [next] : [];
   });
+
+/** الفقرة بمعرّفها أينما كانت: في المتن، أو عمود، أو خليّة جدول. */
+export function findParagraph(doc: Doc, id: string): ParagraphBlock | null {
+  const search = (blocks: Block[]): ParagraphBlock | null => {
+    for (const b of blocks) {
+      if (b.id === id) return b.kind === 'paragraph' ? b : null;
+      const inner =
+        b.kind === 'group'
+          ? search(b.blocks)
+          : b.kind === 'columns'
+            ? search(b.columns.flat())
+            : b.kind === 'table'
+              ? search(b.rows.flatMap((r) => r.cells.flatMap((c) => c.blocks)))
+              : null;
+      if (inner) return inner;
+    }
+    return null;
+  };
+  return search(doc.blocks);
+}
 
 export function insertBlock(doc: Doc, block: Block, afterId?: string | null): Doc {
   const at = afterId ? doc.blocks.findIndex((b) => b.id === afterId) : -1;
@@ -74,6 +114,53 @@ export function patchBlock<T extends Block>(doc: Doc, id: string, patch: Partial
 /** يستبدل مضمون فقرة — ما يكتبه المحرّر في الكتلة الواحدة. */
 export function setInlines(doc: Doc, blockId: string, inlines: Inline[]): Doc {
   return patchBlock<ParagraphBlock>(doc, blockId, { inlines });
+}
+
+/**
+ * Enter: تنشطر الفقرة عند المؤشّر، وما بعده سطرٌ جديد يرث محاذاتها واتجاهها.
+ *
+ * وما ظُلِّل يُحذف كما في Word. والحقل وحدةٌ لا تُشقّ: المؤشّر يقع قبله أو بعده.
+ */
+export function splitParagraph(
+  doc: Doc,
+  blockId: string,
+  start: number,
+  end: number
+): { doc: Doc; id: string } | null {
+  const at = doc.blocks.findIndex((b) => b.id === blockId);
+  const block = doc.blocks[at];
+  if (!block || block.kind !== 'paragraph') return null;
+
+  const cut = splitAt(block.inlines, start, Math.max(start, end));
+  const next = paragraph(cut.after, {
+    align: block.align,
+    ...(block.dir ? { dir: block.dir } : {}),
+    ...(block.indent ? { indent: block.indent } : {})
+  });
+  const blocks = [...doc.blocks];
+  blocks.splice(at, 1, { ...block, inlines: cut.before }, next);
+  return { doc: reconciled({ ...doc, blocks }), id: next.id };
+}
+
+/**
+ * Backspace في أوّل السطر: يلتحق بالسطر الذي قبله.
+ *
+ * ويعيد موضع الالتحام ليقف المؤشّر حيث كان يتوقّعه الكاتب. وما قبله ليس فقرة
+ * (جدول، صورة) فلا دمج — لا يُسكب نصٌّ في جدول.
+ */
+export function mergeWithPrevious(
+  doc: Doc,
+  blockId: string
+): { doc: Doc; id: string; at: number } | null {
+  const at = doc.blocks.findIndex((b) => b.id === blockId);
+  const block = doc.blocks[at];
+  const prev = doc.blocks[at - 1];
+  if (!block || block.kind !== 'paragraph' || !prev || prev.kind !== 'paragraph') return null;
+
+  const joint = paragraphText(prev.inlines).length;
+  const blocks = [...doc.blocks];
+  blocks.splice(at - 1, 2, { ...prev, inlines: [...prev.inlines, ...block.inlines] });
+  return { doc: reconciled({ ...doc, blocks }), id: prev.id, at: joint };
 }
 
 // ── النصّ ← حقل (F4) ────────────────────────────────────────────────
@@ -131,8 +218,8 @@ export function fieldify(
   patch: Partial<DocField> = {}
 ): Doc {
   if (end <= start) return doc;
-  const block = doc.blocks.find((b) => b.id === blockId);
-  if (!block || block.kind !== 'paragraph') return doc;
+  const block = findParagraph(doc, blockId);
+  if (!block) return doc;
 
   const cut = splitAt(block.inlines, start, end);
   const label = (patch.label ?? cut.taken).trim();
@@ -164,8 +251,8 @@ function uniqueKey(doc: Doc, base: string): string {
 
 /** يُدرج حقلًا قائمًا في موضع — الحقل الواحد يظهر في مواضع ويُملأ مرّة. */
 export function insertField(doc: Doc, blockId: string, at: number, key: string): Doc {
-  const block = doc.blocks.find((b) => b.id === blockId);
-  if (!block || block.kind !== 'paragraph') return doc;
+  const block = findParagraph(doc, blockId);
+  if (!block) return doc;
   if (!doc.fields.some((f) => f.key === key)) return doc;
 
   const cut = splitAt(block.inlines, at, at);
@@ -260,33 +347,118 @@ export function removeRow(doc: Doc, tableId: string, at: number): Doc {
   );
 }
 
+const span = (c: TableCell) => c.colSpan ?? 1;
+
+/**
+ * موضع الخليّة في شبكة الأعمدة — لا ترتيبها في صفّها.
+ *
+ * رأس جدول Word كثيرًا ما يُدمج: الخليّة الثانية في صفٍّ مدموج قد تكون العمود
+ * الثالث. والأعمدة تُضاف وتُحذف وتُوسَّع بموضعها في الشبكة.
+ */
+export function gridColumn(row: TableRow, cellIndex: number): number {
+  return row.cells.slice(0, cellIndex).reduce((n, c) => n + span(c), 0);
+}
+
+/** الخليّة التي تغطّي عمود الشبكة: بدايتها وترتيبها في صفّها. */
+function cellAt(row: TableRow, col: number): { index: number; start: number } | null {
+  let start = 0;
+  for (let i = 0; i < row.cells.length; i++) {
+    if (col < start + span(row.cells[i]!)) return { index: i, start };
+    start += span(row.cells[i]!);
+  }
+  return null;
+}
+
+/** عمودٌ عند موضعٍ في الشبكة. والخليّة المدموجة فوقه تتّسع له ولا تنشقّ. */
 export function addColumn(doc: Doc, tableId: string, at?: number): Doc {
   return withTable(doc, tableId, (t) => {
     const columns = [...t.columns];
-    const where = at ?? columns.length;
+    const where = Math.max(0, Math.min(at ?? columns.length, columns.length));
     columns.splice(where, 0, 1);
     return {
       ...t,
       columns,
       rows: t.rows.map((row) => {
         const cells = [...row.cells];
-        cells.splice(where, 0, cell());
+        const hit = cellAt(row, where);
+        if (hit && hit.start < where) {
+          const c = cells[hit.index]!;
+          cells[hit.index] = { ...c, colSpan: span(c) + 1 };
+        } else cells.splice(hit ? hit.index : cells.length, 0, cell());
         return { ...row, cells };
       })
     };
   });
 }
 
+/** حذف عمودٍ من الشبكة: المدموجة فوقه تضيق، والمفردة تُحذف. */
 export function removeColumn(doc: Doc, tableId: string, at: number): Doc {
-  return withTable(doc, tableId, (t) =>
-    t.columns.length <= 1
-      ? t
-      : {
-          ...t,
-          columns: t.columns.filter((_, i) => i !== at),
-          rows: t.rows.map((row) => ({ ...row, cells: row.cells.filter((_, i) => i !== at) }))
-        }
-  );
+  return withTable(doc, tableId, (t) => {
+    if (t.columns.length <= 1 || at < 0 || at >= t.columns.length) return t;
+    return {
+      ...t,
+      columns: t.columns.filter((_, i) => i !== at),
+      rows: t.rows.map((row) => {
+        const hit = cellAt(row, at);
+        if (!hit) return row;
+        const c = row.cells[hit.index]!;
+        const cells =
+          span(c) > 1
+            ? row.cells.map((x, i) => (i === hit.index ? { ...x, colSpan: span(c) - 1 > 1 ? span(c) - 1 : undefined } : x))
+            : row.cells.filter((_, i) => i !== hit.index);
+        return { ...row, cells };
+      })
+    };
+  });
+}
+
+/**
+ * دمج الخليّة بالتي تليها في صفّها (يسارها في الورقة العربية).
+ *
+ * ما كُتب في الاثنتين يبقى — فقرات الثانية تحت فقرات الأولى — إلا السطر
+ * الفارغ فلا يُنقل سطرًا زائدًا.
+ */
+export function mergeCells(doc: Doc, tableId: string, r: number, ci: number): Doc {
+  return withTable(doc, tableId, (t) => {
+    const row = t.rows[r];
+    const a = row?.cells[ci];
+    const b = row?.cells[ci + 1];
+    if (!row || !a || !b) return t;
+    const isBlank = (p: ParagraphBlock) => paragraphText(p.inlines).trim() === '';
+    const moved = b.blocks.filter((p) => !isBlank(p));
+    const kept = a.blocks.length === 1 && isBlank(a.blocks[0]!) && moved.length ? [] : a.blocks;
+    const merged: TableCell = { ...a, colSpan: span(a) + span(b), blocks: [...kept, ...moved] };
+    const cells = [...row.cells];
+    cells.splice(ci, 2, merged);
+    return { ...t, rows: t.rows.map((x, i) => (i === r ? { ...row, cells } : x)) };
+  });
+}
+
+/** فكّ الدمج: الخليّة تعود خلايا بعدد ما غطّت، وما كُتب يبقى في الأولى. */
+export function splitCell(doc: Doc, tableId: string, r: number, ci: number): Doc {
+  return withTable(doc, tableId, (t) => {
+    const row = t.rows[r];
+    const c = row?.cells[ci];
+    if (!row || !c || span(c) <= 1) return t;
+    const cells = [...row.cells];
+    cells.splice(ci, 1, { ...c, colSpan: undefined }, ...Array.from({ length: span(c) - 1 }, () => cell()));
+    return { ...t, rows: t.rows.map((x, i) => (i === r ? { ...row, cells } : x)) };
+  });
+}
+
+/**
+ * توسيع العمود أو تضييقه بخطوة.
+ *
+ * الأعمدة أوزانٌ نسبية لا بكسلات — فالورقة تختلف — ولا ينكمش عمودٌ حتى يختفي.
+ */
+export function resizeColumn(doc: Doc, tableId: string, at: number, delta: number): Doc {
+  return withTable(doc, tableId, (t) => {
+    if (at < 0 || at >= t.columns.length) return t;
+    const columns = t.columns.map((w, i) =>
+      i === at ? Math.min(6, Math.max(0.4, Math.round((w + delta) * 10) / 10)) : w
+    );
+    return { ...t, columns };
+  });
 }
 
 /** الحقول تتبع المتن بعد كل تحرير: ما اختفى من الورقة يختفي من شاشة الإدخال. */

@@ -302,33 +302,46 @@ export function registerDocumentIpc(): void {
     'output:print',
     async (
       e,
-      payload: { sheetHtml: string; printer: string | null; copies: number; silent: boolean }
+      payload: {
+        sheetHtml: string;
+        printer: string | null;
+        copies: number;
+        silent: boolean;
+        page?: { w: number; h: number };
+      }
     ) =>
       printSheet({
         sheetHtml: payload.sheetHtml,
         deviceName: payload.printer ?? undefined,
         copies: Math.max(1, payload.copies),
         silent: payload.silent && Boolean(payload.printer),
-        parent: win(e)
+        parent: win(e),
+        page: payload.page
       })
   );
 
   ipcMain.handle(
     'output:savePdf',
-    async (e, payload: { sheetHtml: string; suggestedName: string }): Promise<string | null> => {
+    async (
+      e,
+      payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }
+    ): Promise<string | null> => {
       const w = win(e);
       if (!w) return null;
-      const pdf = await renderPdf(payload.sheetHtml);
+      const pdf = await renderPdf(payload.sheetHtml, payload.page);
       return saveAs(w, pdf, `${safeName(payload.suggestedName)}.pdf`, 'PDF', 'pdf');
     }
   );
 
   ipcMain.handle(
     'output:savePng300',
-    async (e, payload: { sheetHtml: string; suggestedName: string }): Promise<string | null> => {
+    async (
+      e,
+      payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }
+    ): Promise<string | null> => {
       const w = win(e);
       if (!w) return null;
-      const png = await renderPng(payload.sheetHtml, 300);
+      const png = await renderPng(payload.sheetHtml, 300, payload.page);
       return saveAs(w, png, `${safeName(payload.suggestedName)}-300dpi.png`, 'صورة PNG', 'png');
     }
   );

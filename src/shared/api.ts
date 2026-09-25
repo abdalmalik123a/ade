@@ -351,6 +351,13 @@ export type ImportedTemplate = {
   warnings: string[];
   /** ترويسة استُخرجت من الملف — يقرّر المكتب حفظها أو تركها. */
   letterhead: LetterheadLayout | null;
+  /**
+   * الملف ورقةً واحدة بتنسيقه كما رسمه Word — رأسه ومتنه وجداوله وهوامشه.
+   *
+   * وحين يوجد يُفتح المصمّم عليه قطعةً واحدة، ولا تُعرض الترويسة المستخرجة:
+   * المكاتب لا تفصل رأس الكتاب عن متنه. (`.xml` لا يحمله.)
+   */
+  doc?: Doc | null;
 };
 
 export type TemplateStats = {
@@ -488,6 +495,8 @@ export type DiwanApi = {
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<TemplateStats>;
     save(input: TemplateInput & { doc?: Doc | null }): Promise<TemplateDetail>;
+    /** نسخة مستقلّة من نموذج — الأصل لا يُمسّ، والكود يُترك فارغًا. */
+    duplicate(id: number): Promise<TemplateDetail | null>;
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
     doc(id: number): Promise<Doc>;
@@ -528,9 +537,19 @@ export type DiwanApi = {
       printer: string | null;
       copies: number;
       silent: boolean;
+      /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر (الشهادة أفقية). */
+      page?: { w: number; h: number };
     }): Promise<{ ok: boolean; reason?: string }>;
-    savePdf(payload: { sheetHtml: string; suggestedName: string }): Promise<string | null>;
-    savePng300(payload: { sheetHtml: string; suggestedName: string }): Promise<string | null>;
+    savePdf(payload: {
+      sheetHtml: string;
+      suggestedName: string;
+      page?: { w: number; h: number };
+    }): Promise<string | null>;
+    savePng300(payload: {
+      sheetHtml: string;
+      suggestedName: string;
+      page?: { w: number; h: number };
+    }): Promise<string | null>;
     saveDocx(payload: {
       sheetHtml: string;
       suggestedName: string;
@@ -556,6 +575,8 @@ export type DiwanApi = {
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;
+    /** مجلد صورٍ لدفعة — لكلٍّ اسمُ ملفّه بلا امتداد، وعليه يُطابَق بصفّه. */
+    pickImageFolder(bucket: string): Promise<{ name: string; src: string }[] | null>;
     /** خلفيةُ لوحة ومقاسُها من الملف — و`dpi: null` يعني: اسأل، لا تخمّن. */
     pickBackground(bucket: string): Promise<{
       src: string;

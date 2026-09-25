@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { copyFile, readFile, writeFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, extname, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
@@ -106,6 +106,29 @@ export function registerFileIpc(): void {
     if (result.canceled || !result.filePaths[0]) return null;
     return importFile(result.filePaths[0], bucket);
   });
+
+  /**
+   * مجلد صورٍ لدفعة: صور الطلاب في مجلد الصفّ، كلٌّ باسم صاحبه أو رقمه.
+   *
+   * تُنسخ كلّها إلى المخزن ويعود لكلٍّ اسمُ ملفّه بلا امتداد — وعليه تُطابَق
+   * بصفوف القائمة. لا تُفتح الصور واحدةً واحدة لأربعمئة هوية.
+   */
+  ipcMain.handle(
+    'files:pickImageFolder',
+    async (e, bucket: string): Promise<{ name: string; src: string }[] | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender);
+      if (!win) return null;
+      const dir = await pickFolderPath(win, { title: 'اختر مجلد الصور', buttonLabel: 'اختر' });
+      if (!dir) return null;
+      const exts = new Set(['.png', '.jpg', '.jpeg', '.webp', '.bmp']);
+      const names = (await readdir(dir)).filter((f) => exts.has(extname(f).toLowerCase())).slice(0, 3000);
+      const out: { name: string; src: string }[] = [];
+      for (const file of names) {
+        out.push({ name: basename(file, extname(file)), src: await importFile(join(dir, file), bucket) });
+      }
+      return out;
+    }
+  );
 
   /**
    * خلفيةُ لوحة: الصورة تُنسخ إلى المخزن، **ومقاسها يُقرأ من الملف**.

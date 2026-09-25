@@ -569,14 +569,39 @@ function PapersScreenInner(
 
           {/* ── الرأس الثابت ──────────────────────────────────────── */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <div className="flex items-center gap-space-sm">
-              <span className="material-symbols-outlined text-primary text-[20px]">lock</span>
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                الرأس ثابت
-              </h2>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                لا يُحرَّر — تُملأ متغيّراته وحدها
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-space-sm">
+                <span className="material-symbols-outlined text-primary text-[20px]">lock</span>
+                <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
+                  الرأس ثابت (تعبئة تلقائية)
+                </h2>
+              </div>
+            </div>
+            {/* نماذج سريعة لتعبئة ترويسة الامتحان */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {[
+                {
+                  label: 'نصف السنة',
+                  data: { 'نوع الامتحان': 'نصف السنة', 'الدور': '', 'الملاحظة': 'أجب عن 5 أسئلة فقط (لكل سؤال 20 درجة)' }
+                },
+                {
+                  label: 'نهائي — الدور الأول',
+                  data: { 'نوع الامتحان': 'النهائي (الدور الأول)', 'الدور': 'الأول', 'الملاحظة': 'أجب عن جميع الأسئلة' }
+                },
+                {
+                  label: 'امتحان شهري',
+                  data: { 'نوع الامتحان': 'الشهر الأول', 'الدور': '', 'الملاحظة': 'الزمن ساعة واحدة' }
+                }
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  className="h-7 px-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors"
+                  type="button"
+                  onClick={() => setHead((h) => ({ ...h, ...preset.data }))}
+                >
+                  ⚡ {preset.label}
+                </button>
+              ))}
             </div>
             <div className="grid grid-cols-2 gap-space-sm">
               {HEAD_INPUTS.map((input) => (

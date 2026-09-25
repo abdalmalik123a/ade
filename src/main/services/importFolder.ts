@@ -101,7 +101,8 @@ export async function planFolderImport(
           letterheadKey: key,
           letterhead: res.letterhead,
           notes: built.notes,
-          warnings: res.warnings,
+          // هذا المسار يبني وثيقته من النصّ بعدُ — فلا يُقال له «استُورد بتنسيقه».
+          warnings: res.warnings.filter((w) => !w.includes('ورقةً واحدة بتنسيقه')),
           suggestions: built.suggestions
         });
       });

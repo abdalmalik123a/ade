@@ -8,19 +8,47 @@
  * بل كتل يركّبها صاحب المكتب ويرتّبها، وتُحفظ JSON.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { OfficeSettings, PrinterInfo, Seal } from '@shared/api';
+import type { Clip, OfficeSettings, PrinterInfo, Seal } from '@shared/api';
 import {
   emptyLayout,
   isLayoutEmpty,
   mmToPx,
   normalizeLayout,
+  IRAQI_LETTERHEAD_PRESETS,
   type Letterhead,
-  type LetterheadLayout
+  type LetterheadLayout,
+  type LetterheadPreset
 } from '@shared/letterhead';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterheadView from '../components/LetterheadView';
 
-const SEAL_KINDS = ['ختم', 'توقيع', 'شعار'];
+const DEFAULT_IRAQI_CLIPS = [
+  {
+    title: 'افتتاحية محكمة البداءة',
+    category: 'محاكم وقضاء',
+    body: 'إلى / محكمة بداءة الكرخ المحترمة\nالموضوع / لائحة جوابية\n\nتحية طيبة وبعد…'
+  },
+  {
+    title: 'طلب موافقة رسمية',
+    category: 'كتب إدارية',
+    body: 'يرجى التفضل بالاطلاع والموافقة على طيّه، للتفضل بالإيعاز إلى الجهة المختصة لإكمال الإجراءات…'
+  },
+  {
+    title: 'إرفاق المستمسكات الثبوتية',
+    category: 'معاملات مواطنين',
+    body: 'نرفق لكم طياً المستمسكات الثبوتية (البطاقة الموحدة، بطاقة السكن، صور شخصية) الخاصة بالمواطن المذكور أعلاه.'
+  },
+  {
+    title: 'ختام رسمي محترم',
+    category: 'صيغ ختامية',
+    body: 'وتفضلوا بقبول فائق الاحترام والتقدير…'
+  },
+  {
+    title: 'إخلاء مسؤولية وتصديق',
+    category: 'تصاديق وقانونية',
+    body: 'أصادق على صحة البيانات والمستندات المرفقة أعلاه تحت طائلة المسؤولية القانونية.'
+  }
+];
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
@@ -30,6 +58,7 @@ const settingInput =
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 export default function LetterheadScreen() {
+  const [activeTab, setActiveTab] = useState<'letterhead' | 'clips'>('letterhead');
   const [list, setList] = useState<Letterhead[]>([]);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [name, setName] = useState('');
@@ -42,6 +71,15 @@ export default function LetterheadScreen() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seals, setSeals] = useState<Seal[]>([]);
+
+  // الكليشات
+  const [clipsList, setClipsList] = useState<Clip[]>([]);
+  const [clipQuery, setClipQuery] = useState('');
+  const [clipTitle, setClipTitle] = useState('');
+  const [clipBody, setClipBody] = useState('');
+  const [clipCategory, setClipCategory] = useState('');
+  const [editingClipId, setEditingClipId] = useState<number | null>(null);
+
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [settingsDirty, setSettingsDirty] = useState(false);
@@ -49,13 +87,25 @@ export default function LetterheadScreen() {
   const toastTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    void Promise.all([window.diwan.settings.get(), window.diwan.printers.list()]).then(
-      ([loaded, list]) => {
-        setSettings(loaded);
-        setPrinters(list);
-      }
-    );
+    void Promise.all([
+      window.diwan.settings.get(),
+      window.diwan.printers.list(),
+      window.diwan.clips.list()
+    ]).then(([loaded, list, clips]) => {
+      setSettings(loaded);
+      setPrinters(list);
+      setClipsList(clips);
+    });
   }, []);
+
+  const reloadClips = useCallback(async () => {
+    const clips = await window.diwan.clips.list(clipQuery);
+    setClipsList(clips);
+  }, [clipQuery]);
+
+  useEffect(() => {
+    void reloadClips();
+  }, [reloadClips]);
 
   const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
     setToast({ text, tone });
@@ -109,25 +159,22 @@ export default function LetterheadScreen() {
     setDirty(false);
   }
 
-  /** نسخةٌ من ترويسة قائمة: «الأنبار» تصير «ديالى» بتبديل كلمة. */
-  async function duplicate(id: number) {
-    const copy = await window.diwan.letterheads.duplicate(id);
-    if (!copy) return;
-    await reload();
-    load(copy);
-    say('أُنشئت نسخة — بدّل ما يلزم واحفظ');
+  function applyPreset(preset: LetterheadPreset) {
+    setLayout(preset.createLayout());
+    setName(preset.name);
+    setCategory(preset.category);
+    setCurrentId(null);
+    setDirty(true);
+    say(`تم تطبيق نموذج: ${preset.name}`);
   }
 
-  async function toggleFavorite(item: Letterhead) {
-    await window.diwan.letterheads.favorite(item.id, !item.isFavorite);
-    await reload();
-  }
-
+  /** تعديل التخطيط من المصمّم — يخصّ الترويسة الجارية ويعلّمها غير محفوظة. */
   function editLayout(next: LetterheadLayout) {
     setLayout(next);
     setDirty(true);
   }
 
+  /** حفظ الترويسة: تحديثًا للجارية، أو باسمٍ جديد إن كانت بلا معرّف. */
   async function save() {
     if (!name.trim()) {
       say('سمِّ الترويسة أولًا', 'warn');
@@ -138,99 +185,205 @@ export default function LetterheadScreen() {
       const saved = await window.diwan.letterheads.save({
         id: currentId,
         name: name.trim(),
-        authorityId: null,
+        authorityId: current?.authorityId ?? null,
         layout,
         category: category.trim() || null
       });
+      await reload();
       setCurrentId(saved.id);
       setDirty(false);
-      await reload();
       say('حُفظت الترويسة');
+    } catch (e) {
+      say(e instanceof Error ? e.message : 'تعذّر الحفظ', 'warn');
     } finally {
       setSaving(false);
     }
   }
 
-  async function makeDefault() {
-    if (currentId === null) return;
-    await window.diwan.letterheads.setDefault(currentId);
-    await reload();
-    say('صارت الترويسة الافتراضية');
-  }
-
+  /** حذف الترويسة الجارية، ثم العودة إلى الافتراضية أو أول ما في المكتبة. */
   async function remove() {
     if (currentId === null) return;
     await window.diwan.letterheads.delete(currentId);
     const items = await reload();
-    const next = items.find((x) => x.isDefault) ?? items[0];
-    if (next) load(next);
+    const first = items.find((x) => x.isDefault) ?? items[0];
+    if (first) load(first);
     else startNew();
     say('حُذفت الترويسة');
   }
 
+  /** اجعل الجارية افتراضيةً لكل كتاب جديد. */
+  async function makeDefault() {
+    if (currentId === null) return;
+    await window.diwan.letterheads.setDefault(currentId);
+    await reload();
+    say('صارت الافتراضية لكل كتاب جديد');
+  }
+
+  /** المفضّلة: عليها يقوم ترتيب المكتبة — تُقدَّم على غيرها. */
+  async function toggleFavorite(item: Letterhead) {
+    await window.diwan.letterheads.favorite(item.id, !item.isFavorite);
+    await reload();
+  }
+
+  /** «نسخة منها»: مستقلّة تُعدَّل دون المساس بالأصل — كما في مكتبة النماذج. */
+  async function duplicate(id: number) {
+    const copy = await window.diwan.letterheads.duplicate(id);
+    if (!copy) {
+      say('تعذّر النسخ', 'warn');
+      return;
+    }
+    await reload();
+    load(copy);
+    say('أُنشئت نسخة — عدّلها دون المساس بالأصل');
+  }
+
+  /**
+   * الشعار: صورةٌ تُطبع مع الورقة — في رأسها أو علامةً مائية.
+   * ولا ختم ولا توقيع: الجهة تختم وتوقّع بيدها على الورقة المطبوعة.
+   */
   async function addSeal() {
-    const picked = await window.diwan.files.pickImage('seals');
-    if (!picked) return;
-    const created = await window.diwan.seals.add({ name: 'ختم جديد', kind: 'ختم', imagePath: picked });
-    setSeals((prev) => [...prev, created]);
-    say('أُضيف الختم');
+    const imagePath = await window.diwan.files.pickImage('seals');
+    if (!imagePath) return;
+    await window.diwan.seals.add({ name: 'شعار جديد', kind: 'شعار', imagePath });
+    await reload();
+    say('أُضيف شعار — سمِّه');
   }
 
   async function deleteSeal(id: number) {
     await window.diwan.seals.delete(id);
-    setSeals((prev) => prev.filter((s) => s.id !== id));
+    await reload();
+    say('حُذف');
   }
 
-  const isDefault = list.find((x) => x.id === currentId)?.isDefault ?? false;
+  async function saveClip() {
+    if (!clipTitle.trim() || !clipBody.trim()) {
+      say('أدخل عنوان الكليشة ومحتواها أولاً', 'warn');
+      return;
+    }
+    await window.diwan.clips.save({
+      id: editingClipId,
+      title: clipTitle.trim(),
+      body: clipBody.trim(),
+      category: clipCategory.trim() || null
+    });
+    setEditingClipId(null);
+    setClipTitle('');
+    setClipBody('');
+    setClipCategory('');
+    await reloadClips();
+    say('حُفظت الكليشة بنجاح');
+  }
+
+  async function deleteClip(id: number) {
+    await window.diwan.clips.delete(id);
+    await reloadClips();
+    say('حُذفت الكليشة');
+  }
+
+  async function populateDefaultClips() {
+    for (const c of DEFAULT_IRAQI_CLIPS) {
+      await window.diwan.clips.save({
+        id: null,
+        title: c.title,
+        body: c.body,
+        category: c.category
+      });
+    }
+    await reloadClips();
+    say('تُم إضافة الكليشات الإدارية القياسية');
+  }
+
+  /** الترويسة الجارية من المكتبة — منها الافتراضيةُ والجهة عند الحفظ. */
+  const current = list.find((x) => x.id === currentId) ?? null;
+  const isDefault = current?.isDefault ?? false;
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden bg-surface">
-        {/* لوح البناء */}
-        <div className="w-full lg:w-[480px] xl:w-[520px] shrink-0 h-full flex flex-col bg-surface-container-lowest shadow-[0_10px_30px_rgba(11,28,48,0.06)] z-20 overflow-hidden">
-          <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-space-xs">
-                <span className="p-1 rounded-lg bg-primary-container text-on-primary">
-                  <span className="material-symbols-outlined text-[18px]">verified</span>
-                </span>
-                <span className="font-headline-sm text-headline-sm text-on-surface">
-                  مصمّم الترويسة والأختام
-                </span>
-              </div>
-              {dirty && (
-                <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold">
-                  غير محفوظة
-                </span>
-              )}
+        {/* لوح البناء والتحكم */}
+        <div className="w-full lg:w-[500px] xl:w-[540px] shrink-0 h-full flex flex-col bg-surface-container-lowest shadow-[0_10px_30px_rgba(11,28,48,0.06)] z-20 overflow-hidden">
+          {/* التبويبات الرئيسية */}
+          <div className="px-space-md pt-space-sm bg-surface-container-low flex items-center justify-between border-b border-outline-variant/30">
+            <div className="flex items-center gap-space-xs">
+              <button
+                className={`h-10 px-4 rounded-t-xl font-headline-sm text-headline-sm flex items-center gap-2 transition-all ${
+                  activeTab === 'letterhead'
+                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+                type="button"
+                onClick={() => setActiveTab('letterhead')}
+              >
+                <span className="material-symbols-outlined text-[20px] text-secondary">verified</span>
+                مصمّم الترويسات
+              </button>
+              <button
+                className={`h-10 px-4 rounded-t-xl font-headline-sm text-headline-sm flex items-center gap-2 transition-all ${
+                  activeTab === 'clips'
+                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+                type="button"
+                onClick={() => setActiveTab('clips')}
+              >
+                <span className="material-symbols-outlined text-[20px] text-secondary">article</span>
+                مكتبة الكليشات والعبارات
+              </button>
             </div>
+          </div>
 
-            <div className="bg-surface-container-lowest p-space-sm rounded-xl shadow-sm flex flex-col gap-space-xs">
-              <div className="flex items-center justify-between">
-                <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                  الترويسة الحالية
-                </label>
-                <button
-                  className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
-                  type="button"
-                  onClick={startNew}
-                >
-                  + ترويسة جديدة
-                </button>
-              </div>
-              {/* البحث: في الاسم والتصنيف ونصّ الترويسة، متساهلًا مع الهمزة */}
-              <div className="relative">
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  search
-                </span>
-                <input
-                  className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                  placeholder="ابحث: هيت، تربية، بلدية…"
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
+          {activeTab === 'letterhead' ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm shrink-0 border-b border-outline-variant/30">
+                {/* نماذج ترويسات رسمية جاهزة */}
+                <div className="space-y-space-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px] text-secondary">auto_awesome</span>
+                      نماذج رسمية جاهزة (تطبيق بضغطة زر)
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {IRAQI_LETTERHEAD_PRESETS.map((p) => (
+                      <button
+                        key={p.id}
+                        className="h-8 px-3 rounded-lg bg-surface-container-lowest border border-outline-variant/40 hover:border-secondary hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm shrink-0 transition-all flex items-center gap-1 shadow-xs"
+                        type="button"
+                        title={p.description}
+                        onClick={() => applyPreset(p)}
+                      >
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-surface-container-lowest p-space-sm rounded-xl shadow-xs flex flex-col gap-space-xs">
+                  <div className="flex items-center justify-between">
+                    <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                      الترويسة الحالية
+                    </label>
+                    <button
+                      className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
+                      type="button"
+                      onClick={startNew}
+                    >
+                      + ترويسة جديدة
+                    </button>
+                  </div>
+                  {/* البحث: في الاسم والتصنيف ونصّ الترويسة */}
+                  <div className="relative">
+                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                      search
+                    </span>
+                    <input
+                      className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                      placeholder="ابحث: هيت، تربية، بلدية…"
+                      type="search"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </div>
 
               {/* الترشيح: المفضّلة والتصنيفات التي نبتت من استعمال المكتب */}
               <div className="flex flex-wrap items-center gap-1">
@@ -359,6 +512,11 @@ export default function LetterheadScreen() {
               </button>
 
               <div className="flex items-center gap-space-xs pt-space-xs">
+                {dirty && (
+                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold shrink-0">
+                    غير محفوظة
+                  </span>
+                )}
                 <button
                   className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all disabled:opacity-40"
                   type="button"
@@ -400,33 +558,42 @@ export default function LetterheadScreen() {
                 </span>
               </div>
 
-              <LetterheadDesigner layout={layout} onChange={editLayout} showPageOptions />
+              {layout.sheet?.length ? (
+                // رأسٌ من ورقة Word: يُحفظ كما رُسم، وتقسيمه أقسامًا يزحزحه.
+                <p className="font-body-md text-body-md text-on-surface-variant" data-sheet-note="">
+                  هذه الترويسة رأسُ ورقةٍ مستوردة، محفوظةٌ كما رسمها Word. يُغيَّر هنا اسمها
+                  وتصنيفها؛ ولتغيير أسطرها عدّلها في Word واستورد الورقة ثانيةً.
+                </p>
+              ) : (
+                <LetterheadDesigner layout={layout} onChange={editLayout} showPageOptions />
+              )}
             </div>
 
-            {/* الأختام */}
+            {/* الشعارات — والختم والتوقيع حيّان بيد الجهة بعد الطباعة */}
             <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
               <div className="flex items-center justify-between pb-space-xs">
                 <div className="flex items-center gap-space-xs">
                   <span className="material-symbols-outlined text-secondary text-[20px]">
-                    approval
+                    image
                   </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    الأختام والتواقيع
-                  </h3>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">الشعارات</h3>
                 </div>
                 <button
                   className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
                   type="button"
                   onClick={() => void addSeal()}
                 >
-                  + إضافة ختم
+                  + إضافة شعار
                 </button>
               </div>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                تُطبع في رأس الورقة أو علامةً مائية. أما الختم والتوقيع فتضعهما الجهة بيدها بعد الطباعة.
+              </p>
 
               {seals.length === 0 ? (
                 <div className="py-space-lg flex flex-col items-center gap-space-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[28px]">approval</span>
-                  <span className="font-label-md text-label-md">لا أختام محفوظة</span>
+                  <span className="material-symbols-outlined text-[28px]">image</span>
+                  <span className="font-label-md text-label-md">لا شعارات محفوظة</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-space-sm">
@@ -449,19 +616,12 @@ export default function LetterheadScreen() {
                           )
                         }
                       />
-                      <select
-                        className="w-full h-7 rounded bg-surface-container-lowest text-on-surface-variant font-label-sm text-label-sm text-center cursor-pointer focus:outline-none"
-                        value={s.kind ?? 'ختم'}
-                        onChange={(e) =>
-                          setSeals((prev) =>
-                            prev.map((x) => (x.id === s.id ? { ...x, kind: e.target.value } : x))
-                          )
-                        }
-                      >
-                        {SEAL_KINDS.map((k) => (
-                          <option key={k}>{k}</option>
-                        ))}
-                      </select>
+                      {s.kind !== 'شعار' && (
+                        // رُفع ختمًا أو توقيعًا قبل أن يُرفع ذلك من التطبيق — يبقى ليُحذف.
+                        <span className="font-label-sm text-label-sm px-2 rounded-full bg-surface-container-high text-on-surface-variant">
+                          {s.kind} — لا يُطبع
+                        </span>
+                      )}
                       <button
                         className="text-error font-label-sm text-label-sm hover:underline"
                         type="button"
@@ -607,6 +767,180 @@ export default function LetterheadScreen() {
               )}
             </div>
           </div>
+        </div>
+      ) : (
+            <div className="flex-1 flex flex-col p-space-md space-y-space-md overflow-y-auto">
+              <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-xs space-y-space-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1 rounded-lg bg-primary-container text-on-primary">
+                      <span className="material-symbols-outlined text-[18px]">post_add</span>
+                    </span>
+                    <h3 className="font-headline-sm text-headline-sm text-on-surface">
+                      {editingClipId ? 'تعديل كليشة' : 'إضافة كليشة جديدة'}
+                    </h3>
+                  </div>
+                  {clipsList.length === 0 && (
+                    <button
+                      className="font-label-sm text-label-sm text-secondary font-bold hover:underline flex items-center gap-1"
+                      type="button"
+                      onClick={() => void populateDefaultClips()}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">download_for_offline</span>
+                      تحميل الكليشات القياسية الجاهزة
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-space-xs">
+                  <div className="grid grid-cols-2 gap-space-sm">
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                        عنوان الكليشة <span className="text-error">*</span>
+                      </span>
+                      <input
+                        className={settingInput}
+                        placeholder="مثال: افتتاحية محكمة البداءة"
+                        type="text"
+                        value={clipTitle}
+                        onChange={(e) => setClipTitle(e.target.value)}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                        التصنيف
+                      </span>
+                      <input
+                        className={settingInput}
+                        placeholder="مثال: محاكم، كتب إدارية…"
+                        type="text"
+                        value={clipCategory}
+                        onChange={(e) => setClipCategory(e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="flex flex-col gap-1">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant font-medium">
+                      محتوى النص / الكليشة <span className="text-error">*</span>
+                    </span>
+                    <textarea
+                      className="w-full min-h-[100px] p-space-sm rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md leading-6 focus:outline-none focus:ring-2 focus:ring-secondary resize-y"
+                      placeholder="اكتب العبارة أو النص الذي تعيد استخدامه دائمًا…"
+                      value={clipBody}
+                      onChange={(e) => setClipBody(e.target.value)}
+                    />
+                  </label>
+
+                  <div className="flex items-center gap-space-xs pt-space-xs">
+                    <button
+                      className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all"
+                      type="button"
+                      onClick={() => void saveClip()}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">save</span>
+                      <span>{editingClipId ? 'حفظ التعديل' : 'حفظ الكليشة'}</span>
+                    </button>
+                    {editingClipId && (
+                      <button
+                        className="h-9 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+                        type="button"
+                        onClick={() => {
+                          setEditingClipId(null);
+                          setClipTitle('');
+                          setClipBody('');
+                          setClipCategory('');
+                        }}
+                      >
+                        إلغاء
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* قائمة الكليشات */}
+              <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-xs space-y-space-sm flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-headline-sm text-headline-sm text-on-surface">
+                    الكليشات المحفوظة ({clipsList.length})
+                  </span>
+                  <div className="w-48 relative">
+                    <input
+                      className="w-full h-8 pr-7 pl-2 rounded-lg bg-surface-container-low text-on-surface font-label-sm text-label-sm focus:outline-none focus:ring-1 focus:ring-secondary"
+                      placeholder="بحث في الكليشات…"
+                      type="search"
+                      value={clipQuery}
+                      onChange={(e) => setClipQuery(e.target.value)}
+                    />
+                    <span className="material-symbols-outlined text-[16px] text-on-surface-variant absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      search
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-space-xs pr-1">
+                  {clipsList.length === 0 ? (
+                    <div className="py-space-xl text-center flex flex-col items-center gap-2 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[32px]">article</span>
+                      <span className="font-label-md text-label-md">لا توجد كليشات محفوظة</span>
+                      <button
+                        className="mt-2 h-8 px-3 rounded-lg bg-secondary text-on-secondary font-label-sm text-label-sm font-bold"
+                        type="button"
+                        onClick={() => void populateDefaultClips()}
+                      >
+                        إضافة 5 كليشات إدارية عراقية جاهزة فورًا
+                      </button>
+                    </div>
+                  ) : (
+                    clipsList.map((c) => (
+                      <div
+                        key={c.id}
+                        className="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 border border-outline-variant/20"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-label-md text-label-md text-on-surface font-bold">
+                            {c.title}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {c.category && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-secondary-container text-on-secondary-container font-semibold">
+                                {c.category}
+                              </span>
+                            )}
+                            <button
+                              className="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:text-secondary"
+                              title="تعديل الكليشة"
+                              type="button"
+                              onClick={() => {
+                                setEditingClipId(c.id);
+                                setClipTitle(c.title);
+                                setClipBody(c.body);
+                                setClipCategory(c.category ?? '');
+                              }}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                            <button
+                              className="w-7 h-7 rounded flex items-center justify-center text-error hover:bg-error-container"
+                              title="حذف الكليشة"
+                              type="button"
+                              onClick={() => void deleteClip(c.id)}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                        <p className="font-label-sm text-label-sm text-on-surface-variant line-clamp-2 whitespace-pre-wrap leading-5">
+                          {c.body}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* معاينة الترويسة على ورقة A4 حقيقية */}

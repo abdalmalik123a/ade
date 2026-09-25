@@ -518,10 +518,12 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
     }
   }, [title, designId, canvas, doc, loadDesigns, onChanged, say]);
 
+  const [impositionA4, setImpositionA4] = useState(false);
+
   /** ورقةٌ بدقّة الطباعة، وباركودُها مرسومٌ فيها — لا مُؤجَّلٌ إلى المتصفّح. */
   const printSheet = useCallback((): string => {
     const px = canvasPx(canvas, PRINT_DPI);
-    const body = renderCanvasHtml(doc, values, {
+    const cardBody = renderCanvasHtml(doc, values, {
       dpi: PRINT_DPI,
       missing: 'blank',
       marks: canvas.cropMarks
@@ -537,8 +539,23 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
         }
       }
     );
-    return `<div class="print-sheet" style="width:${px.w}px;height:${px.h}px">${body}</div>`;
-  }, [canvas, doc, values]);
+
+    const isCardSize = canvas.size.w <= 105 && canvas.size.h <= 75;
+
+    if (impositionA4 && isCardSize) {
+      // تجميع 8 هويات على ورقة A4 (210mm x 297mm) عند 300DPI
+      const a4W = Math.round((210 / 25.4) * PRINT_DPI);
+      const a4H = Math.round((297 / 25.4) * PRINT_DPI);
+      
+      const gridItems = Array.from({ length: 8 })
+        .map(() => `<div style="position:relative;width:${px.w}px;height:${px.h}px;border:1px dashed #cbd5e1;overflow:hidden">${cardBody}</div>`)
+        .join('');
+
+      return `<div class="print-sheet" style="width:${a4W}px;height:${a4H}px;padding:40px;background:#fff;display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;justify-items:center;align-items:center">${gridItems}</div>`;
+    }
+
+    return `<div class="print-sheet" style="width:${px.w}px;height:${px.h}px">${cardBody}</div>`;
+  }, [canvas, doc, values, impositionA4]);
 
   const print = useCallback(async () => {
     setBusy(true);
@@ -695,20 +712,33 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
               </div>
             )}
 
-            <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
-              <input
-                checked={canvas.bleed > 0}
-                type="checkbox"
-                onChange={(e) =>
-                  apply({
-                    ...canvas,
-                    bleed: e.target.checked ? BLEED_MM : 0,
-                    cropMarks: e.target.checked
-                  })
-                }
-              />
-              نزفٌ ٣ ملم وعلامات قصّ
-            </label>
+            <div className="flex flex-col gap-space-xs pt-1">
+              <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+                <input
+                  checked={canvas.bleed > 0}
+                  type="checkbox"
+                  onChange={(e) =>
+                    apply({
+                      ...canvas,
+                      bleed: e.target.checked ? BLEED_MM : 0,
+                      cropMarks: e.target.checked
+                    })
+                  }
+                />
+                نزفٌ ٣ ملم وعلامات قصّ
+              </label>
+
+              {canvas.size.w <= 105 && canvas.size.h <= 75 && (
+                <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-secondary font-bold">
+                  <input
+                    checked={impositionA4}
+                    type="checkbox"
+                    onChange={(e) => setImpositionA4(e.target.checked)}
+                  />
+                  تجميع 8 هويات على ورقة A4 (وجه وظهر للقص)
+                </label>
+              )}
+            </div>
           </div>
 
           {/* المعرض: يُعرض ويُختار، ولا يُزرع */}

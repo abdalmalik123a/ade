@@ -17,6 +17,7 @@ import type {
   TemplateSummary
 } from '@shared/api';
 import { renderBody } from '@shared/template';
+import type { Doc } from '@shared/doc';
 import {
   isLayoutEmpty,
   normalizeLayout, mmToPx, type Letterhead } from '@shared/letterhead';
@@ -52,7 +53,12 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<(typeof SORTS)[number]['value']>('used');
   const [view, setView] = useState<View>('grid');
-  const [designer, setDesigner] = useState<{ open: boolean; initial: TemplateDetail | null }>({
+  const [designer, setDesigner] = useState<{
+    open: boolean;
+    initial: TemplateDetail | null;
+    /** ورقة Word المستوردة بتنسيقها — تُفتح كما هي. */
+    doc?: Doc | null;
+  }>({
     open: false,
     initial: null
   });
@@ -137,18 +143,21 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
         title: imported.title,
         subtitle: imported.subtitle,
         category: imported.category,
-        subjectLine: imported.subjectLine,
+        // في الورقة المنسّقة «م/» سطرٌ منها — وسطرُ موضوعٍ فوقها يكرّره.
+        subjectLine: imported.doc ? null : imported.subjectLine,
         bodyHtml: imported.body,
         letterheadId,
         printCount: 0,
         issuedThisMonth: 0,
         variables: []
-      } as unknown as TemplateDetail
+      } as unknown as TemplateDetail,
+      doc: imported.doc ?? null
     });
-    say(
-      imported.warnings.length ? imported.warnings.join(' · ') : 'استُورد النموذج — راجعه ثم احفظ',
-      imported.warnings.length ? 'warn' : 'ok'
-    );
+    // الترويسة لم تُفصل عن ورقةٍ مستوردةٍ بتنسيقها، فلا يُذكر استخراجها.
+    const notes = imported.doc
+      ? imported.warnings.filter((w) => !w.includes('ترويسة'))
+      : imported.warnings;
+    say(notes.length ? notes.join(' · ') : 'استُورد النموذج — راجعه ثم احفظ', 'ok');
   }
 
   async function importTemplate() {
@@ -156,8 +165,9 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     try {
       const imported = await window.diwan.templates.importFile();
       if (!imported) return;
-      // ترويسة الملف لا تُحفظ خلسةً ولا تُرمى: المكتب يقرّر.
-      if (imported.letterhead && !isLayoutEmpty(imported.letterhead)) {
+      // ملف Word يُفتح ورقةً واحدة كما صنعه صاحبه — رأسه جزءٌ منها لا ترويسةٌ
+      // تُفصل. وما ليس ورقةً منسّقة يبقى طريقه القديم: الترويسة يقرّرها المكتب.
+      if (!imported.doc && imported.letterhead && !isLayoutEmpty(imported.letterhead)) {
         setPendingImport(imported);
         return;
       }
@@ -239,6 +249,25 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     await reload(active);
     onChanged?.();
     say('حُذف النموذج: ' + title);
+  }
+
+  /** «نسخ قالب»: نسخة مستقلّة تُعدَّل دون المساس بالأصل — الأصل لا يُفتح أبدًا. */
+  async function duplicateTemplate(id: number, title: string) {
+    setBusy(true);
+    try {
+      const copy = await window.diwan.templates.duplicate(id);
+      if (!copy) {
+        say('تعذّر النسخ', 'warn');
+        return;
+      }
+      await reload(active);
+      onChanged?.();
+      say(`نُسخ «${title}» — عدّل النسخة دون المساس بالأصل`);
+    } catch (e) {
+      say(errorText(e, 'تعذّر النسخ'), 'warn');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function exportOne(id: number) {
@@ -517,6 +546,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
                 letterheads={letterheads}
                 onOpen={() => onOpenInEditor?.(t.id)}
                 onEdit={() => void openDesigner(t.id)}
+                onDuplicate={() => void duplicateTemplate(t.id, t.title)}
                 onZoom={() => setZoomed(t)}
                 onExport={() => void exportOne(t.id)}
                 onDelete={() => void removeTemplate(t.id, t.title)}
@@ -651,6 +681,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       {designer.open && (
         <TemplateDesigner
           initial={designer.initial}
+          initialDoc={designer.doc ?? null}
           letterheads={letterheads}
           categories={categories.map((c) => c.name)}
           onClose={() => setDesigner({ open: false, initial: null })}
@@ -770,6 +801,7 @@ function TemplateCard({
   letterheads,
   onOpen,
   onEdit,
+  onDuplicate,
   onZoom,
   onExport,
   onDelete
@@ -778,6 +810,7 @@ function TemplateCard({
   letterheads: Letterhead[];
   onOpen: () => void;
   onEdit: () => void;
+  onDuplicate: () => void;
   onZoom: () => void;
   onExport: () => void;
   onDelete: () => void;
@@ -918,6 +951,14 @@ function TemplateCard({
             onClick={onEdit}
           >
             <span className="material-symbols-outlined text-[18px]">tune</span>
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            title="نسخ قالب — نسخة مستقلّة تُعدَّل دون المساس بالأصل"
+            type="button"
+            onClick={onDuplicate}
+          >
+            <span className="material-symbols-outlined text-[18px]">content_copy</span>
           </button>
           <button
             className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"

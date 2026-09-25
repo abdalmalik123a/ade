@@ -12,6 +12,8 @@ import {
   type LetterheadBlock,
   type LetterheadLayout
 } from '@shared/letterhead';
+import { emptyDoc } from '@shared/doc';
+import { renderDocHtml } from '@shared/docHtml';
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
 
@@ -134,6 +136,19 @@ export default function LetterheadView({
 }: LetterheadViewProps) {
   const sections = visibleSections(layout);
   const registryAt = sections.length - 1;
+
+  if (layout.sheet?.length) {
+    // رأسٌ من ورقة: يُرسم بأصناف المتن ورسّامه، فيقع حيث وقع في Word.
+    return (
+      <div
+        className="font-body-md text-body-md leading-8"
+        data-sheet-head=""
+        dangerouslySetInnerHTML={{
+          __html: renderDocHtml({ ...emptyDoc(), blocks: layout.sheet }, {}, { paragraphs: 'blocks' })
+        }}
+      />
+    );
+  }
 
   if (isLayoutEmpty(layout)) {
     return emptyHint ? (

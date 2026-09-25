@@ -109,7 +109,7 @@ class Page {
    * فمفاتيح مثل F4 تُقاد من خارج الصفحة لا من داخلها.
    */
   async key(code, { ctrl = false, shift = false } = {}) {
-    const KEYS = { F4: 115, KeyZ: 90, KeyY: 89, KeyB: 66, KeyU: 85 };
+    const KEYS = { F4: 115, Enter: 13, Backspace: 8, KeyZ: 90, KeyY: 89, KeyB: 66, KeyU: 85 };
     const vk = KEYS[code];
     if (!vk) throw new Error(`مفتاح غير معروف: ${code}`);
     const modifiers = (ctrl ? 2 : 0) | (shift ? 8 : 0);

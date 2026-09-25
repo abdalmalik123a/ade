@@ -122,6 +122,15 @@ export type ParagraphBlock = BlockBase & {
   /** مسافة بادئة لأول سطر — والكتاب الرسمي يترك ٢ سم. */
   indent?: number;
   spaceAfter?: number;
+  /**
+   * حجم الفقرة الأساسي بالبكسل، وما في مقاطعها من `marks.size` يغلبه.
+   *
+   * وبه يأخذ السطر الفارغ ارتفاعه: فراغ التوقيع في Word خمسُ فقرات بحجم ٢٠،
+   * ولو رُسمت بحجمٍ أصغر ارتفع التوقيع عن موضعه.
+   */
+  size?: number;
+  /** تباعد الأسطر مضاعفًا لحجم الخطّ — كما يضبطه Word للفقرة. */
+  lineHeight?: number;
   inlines: Inline[];
 };
 
@@ -169,6 +178,11 @@ export type TableBlock = BlockBase & {
   columns: number[];
   /** صفّ عناوين يتكرّر في الصفحة التالية عند انقسام الجدول. */
   header: boolean;
+  /**
+   * جدولٌ بلا حدود: كثيرٌ من كتب Word ترتّب رأسها في جدولٍ مخفيّ الخطوط.
+   * وغيابه يعني حدودًا — فالجداول القائمة كلّها ذات حدود.
+   */
+  borders?: boolean;
   rows: TableRow[];
 };
 
@@ -177,6 +191,11 @@ export type ImageBlock = BlockBase & {
   /** مسار داخل مخزن التطبيق. */
   src: string;
   width: number;
+  /**
+   * ارتفاعٌ صريح إن كان للصورة مقاسٌ لا تحدّده نسبتها — كالخطّ الأفقي في
+   * كتب Word: صورةٌ صغيرة تُمطّ إلى عرض الصفحة بارتفاع نقطتين.
+   */
+  height?: number;
   align: Align;
 };
 
@@ -198,6 +217,13 @@ export type ColumnsBlock = BlockBase & {
   columns: Block[][];
   /** الفجوة بينها بالبكسل. */
   gap?: number;
+  /**
+   * أوزان الأعمدة النسبية — وبغيرها تتساوى.
+   *
+   * «ادارة ……… العدد:» في Word يقع العدد حيث أوصلته المسافات لا عند الهامش،
+   * فيُحفظ موضعه وزنًا لعمودٍ لا عددَ مسافاتٍ يتغيّر بتغيّر الخطّ.
+   */
+  widths?: number[];
 };
 export type PageBreakBlock = BlockBase & { kind: 'pageBreak' };
 
@@ -233,6 +259,16 @@ export type Orientation = 'portrait' | 'landscape';
 export type LetterheadMode = 'print' | 'reserve' | 'none';
 export type Numerals = 'arabic' | 'indic';
 
+/**
+ * العلامة المائية: نصٌّ مائل («مسودة»، «نسخة») أو شعارٌ باهت خلف المتن.
+ *
+ * هي من الورقة لا من المتن — فلا تُكتب في الكتل ولا تزاحم الحقول، وتُرسم خلف
+ * النصّ في المعاينة والطباعة معًا.
+ */
+export type Watermark =
+  | { kind: 'text'; text: string; opacity?: number }
+  | { kind: 'image'; src: string; opacity?: number };
+
 export type PageSetup = {
   size: PageSize;
   orientation: Orientation;
@@ -242,6 +278,7 @@ export type PageSetup = {
   repeatLetterhead: boolean;
   pageNumbers: boolean;
   numerals: Numerals;
+  watermark?: Watermark | null;
 };
 
 /** مقاسات الورق بالمليمتر. */
@@ -590,8 +627,23 @@ function normalizePage(raw: unknown): PageSetup {
       v.letterheadMode === 'reserve' || v.letterheadMode === 'none' ? v.letterheadMode : 'print',
     repeatLetterhead: v.repeatLetterhead === true,
     pageNumbers: v.pageNumbers === true,
-    numerals: v.numerals === 'indic' ? 'indic' : 'arabic'
+    numerals: v.numerals === 'indic' ? 'indic' : 'arabic',
+    watermark: normalizeWatermark(v.watermark)
   };
+}
+
+/** علامةٌ لا تُفهم تسقط بلا أن تُسقط الورقة، والشفافية تُحصر فلا تحجب المتن. */
+function normalizeWatermark(raw: unknown): Watermark | null {
+  if (!isObj(raw)) return null;
+  const opacity =
+    typeof raw.opacity === 'number' ? Math.min(0.3, Math.max(0.03, raw.opacity)) : undefined;
+  if (raw.kind === 'text' && typeof raw.text === 'string' && raw.text.trim()) {
+    return { kind: 'text', text: raw.text.trim().slice(0, 40), ...(opacity ? { opacity } : {}) };
+  }
+  if (raw.kind === 'image' && typeof raw.src === 'string' && raw.src) {
+    return { kind: 'image', src: raw.src, ...(opacity ? { opacity } : {}) };
+  }
+  return null;
 }
 
 /**
