@@ -137,6 +137,9 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   /** قائمةٌ جاءت مع طلب، ومفتاحٌ يعيد بناء لوح الدفعة بها. */
   const [batchSeed, setBatchSeed] = useState('');
   const [batchKey, setBatchKey] = useState(0);
+  /** ظهر البطاقة: تصميمٌ محفوظٌ بالمقاس نفسه، يُطبع خلف كل وجه. */
+  const [backId, setBackId] = useState<number | null>(null);
+  const [backDoc, setBackDoc] = useState<Doc | null>(null);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
@@ -572,15 +575,29 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
    * كانت تُرسم بـ٣٠٠ نقطة/إنش بكسلاتٍ فتخرج البطاقة بثلاثة أضعاف مقاسها،
    * والدقّة ليست في البكسلات: الخطوط والزخرفة متّجهة، والطابعة ترسمها بدقّتها.
    */
-  const pages = useMemo(
-    () =>
-      sheetsOpen
-        ? sheetsHtml(imp, cards.length, (i) =>
-            renderCanvasHtml(doc, cards[i]!, { dpi: SCREEN_DPI, missing: 'blank', marks: false })
-          )
-        : [],
-    [sheetsOpen, imp, cards, doc]
-  );
+  const pages = useMemo(() => {
+    if (!sheetsOpen) return [];
+    const draw = (d: Doc) => (i: number) =>
+      renderCanvasHtml(d, cards[i]!, { dpi: SCREEN_DPI, missing: 'blank', marks: false });
+    const front = sheetsHtml(imp, cards.length, draw(doc));
+    if (!backDoc) return front;
+    // الوجه ثم ظهره، وظهره معكوس الأعمدة — فالورقة المقلوبة يقع كلّ ظهرٍ خلف وجهه.
+    // والظهر يُملأ بقيم صاحبه أيضًا (رقمه، صفّه) لا بقيمٍ ثابتة.
+    const back = sheetsHtml(imp, cards.length, draw(backDoc), { mirror: true });
+    return front.flatMap((p, i) => [p, back[i]!]);
+  }, [sheetsOpen, imp, cards, doc, backDoc]);
+
+  /** تصاميمُ محفوظة بمقاس هذه البطاقة — تصلح ظهرًا لها. */
+  const sizeTag = `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)}`;
+  const backChoices = designs.filter((d) => d.id !== designId && (d.subtitle ?? '').startsWith(sizeTag));
+
+  useEffect(() => {
+    if (!backId) {
+      setBackDoc(null);
+      return;
+    }
+    void window.diwan.templates.doc(backId).then((d) => setBackDoc(d?.canvas ? d : null));
+  }, [backId]);
 
   const print = useCallback(async () => {
     setBusy(true);
@@ -590,15 +607,23 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         printer: printer?.name ?? null,
         copies: 1,
         silent: false,
-        page: imp.sheet
+        page: imp.sheet,
+        duplex: Boolean(backDoc)
       });
-      say(out.ok ? `أُرسلت ${pages.length} ورقة إلى الطابعة` : out.reason || 'لم تتم الطباعة', out.ok ? 'ok' : 'warn');
+      say(
+        out.ok
+          ? backDoc
+            ? `أُرسلت ${pages.length / 2} ورقة بوجهيها إلى الطابعة`
+            : `أُرسلت ${pages.length} ورقة إلى الطابعة`
+          : out.reason || 'لم تتم الطباعة',
+        out.ok ? 'ok' : 'warn'
+      );
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), 'warn');
     } finally {
       setBusy(false);
     }
-  }, [pages, printer, imp, say]);
+  }, [pages, printer, imp, backDoc, say]);
 
   const savePdf = useCallback(async () => {
     setBusy(true);
@@ -870,6 +895,36 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                   ? `يُطبع على ورقةٍ بمقاسه ${imp.sheet.w} × ${imp.sheet.h} ملم`
                   : `${imp.per} في ورقة A4 ${imp.sheet.w > imp.sheet.h ? 'أفقيّة' : 'عموديّة'}، بعلامات القصّ`}
               </p>
+              {!imp.single && (
+                <label className="flex flex-col gap-1" data-back="">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    الظهر — يُطبع خلف كل بطاقة على الوجه الآخر من الورقة
+                  </span>
+                  <select
+                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+                    data-back-select=""
+                    value={backId ?? ''}
+                    onChange={(e) => setBackId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="">— وجهٌ واحد —</option>
+                    {backChoices.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.title}
+                      </option>
+                    ))}
+                  </select>
+                  {backChoices.length === 0 && (
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                      احفظ «ظهر الهويّة» من المعرض بالمقاس نفسه فيظهر هنا
+                    </span>
+                  )}
+                  {backDoc && (
+                    <span className="font-label-sm text-label-sm text-secondary">
+                      تُطبع الورقة بوجهيها. اطبع ورقةً واحدة أولًا وتأكّد أن كل ظهرٍ وقع خلف وجهه.
+                    </span>
+                  )}
+                </label>
+              )}
             </div>
           </div>
 
@@ -1401,6 +1456,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         <SheetsPreview
           busy={busy}
           cards={cards.length}
+          duplex={Boolean(backDoc)}
           pages={pages}
           sheet={imp.sheet}
           onClose={() => setSheetsOpen(false)}

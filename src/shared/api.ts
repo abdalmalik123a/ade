@@ -27,6 +27,11 @@ export type OfficeSettings = {
   uiScale: number;
   /** أُنهي معالج البداية أو تُخطّي — فلا يظهر ثانيةً. */
   onboarded: boolean;
+  /**
+   * إزاحة كل طابعة بالملّم — تُقاس من ورقة المعايرة مرّة. `x` موجبٌ يمينًا و`y`
+   * موجبٌ نزولًا. وتُطبَّق على الطباعة الورقية وحدها، لا على PDF.
+   */
+  printOffsets: Record<string, { x: number; y: number }>;
 };
 
 export type SidebarCounts = {
@@ -567,7 +572,11 @@ export type DiwanApi = {
       silent: boolean;
       /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر (الشهادة أفقية). */
       page?: { w: number; h: number };
+      /** وجهان: وجهٌ ثم ظهره معكوسًا — الطابعة تقلب الورقة. */
+      duplex?: boolean;
     }): Promise<{ ok: boolean; reason?: string }>;
+    /** ورقة معايرة الطابعة — تُطبع بلا إزاحة لتُقاس بها الإزاحة. */
+    printCalibration(printer: string | null): Promise<{ ok: boolean; reason?: string }>;
     savePdf(payload: {
       sheetHtml: string;
       suggestedName: string;
@@ -605,6 +614,8 @@ export type DiwanApi = {
     pickImage(bucket: string): Promise<string | null>;
     /** مجلد صورٍ لدفعة — لكلٍّ اسمُ ملفّه بلا امتداد، وعليه يُطابَق بصفّه. */
     pickImageFolder(bucket: string): Promise<{ name: string; src: string }[] | null>;
+    /** قائمةٌ من ملف Excel أو CSV — نصًّا بأعمدةٍ مفصولة بالجدولة، كما لو أُلصقت. */
+    readSheet(): Promise<{ name: string; text: string; rows: number } | null>;
     /** خلفيةُ لوحة ومقاسُها من الملف — و`dpi: null` يعني: اسأل، لا تخمّن. */
     pickBackground(bucket: string): Promise<{
       src: string;

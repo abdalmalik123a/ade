@@ -501,8 +501,21 @@ function OrderDialog({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="font-label-md text-label-md text-on-surface font-semibold">
-              قائمة الأسماء {rows > 0 && <span className="text-on-surface-variant font-normal">— {toIndic(rows)} سطرًا</span>}
+            <span className="flex items-center justify-between">
+              <span className="font-label-md text-label-md text-on-surface font-semibold">
+                قائمة الأسماء {rows > 0 && <span className="text-on-surface-variant font-normal">— {toIndic(rows)} سطرًا</span>}
+              </span>
+              <button
+                className="h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void window.diwan.files.readSheet().then((out) => out && setBatchText(out.text));
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">table_view</span>
+                من ملف Excel
+              </button>
             </span>
             <textarea
               className="h-24 p-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"

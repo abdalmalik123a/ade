@@ -5,7 +5,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { zip } from 'fflate';
 import { getDb, dataDir, storeDir } from '../db';
 import * as svc from '../services/documents';
-import { printSheet, renderPdf, renderPng } from '../services/render';
+import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
 import { reportToExcel, sheetToDocx } from '../services/export';
 import { pickSavePath } from './files';
 import type {
@@ -308,6 +308,7 @@ export function registerDocumentIpc(): void {
         copies: number;
         silent: boolean;
         page?: { w: number; h: number };
+        duplex?: boolean;
       }
     ) =>
       printSheet({
@@ -316,8 +317,14 @@ export function registerDocumentIpc(): void {
         copies: Math.max(1, payload.copies),
         silent: payload.silent && Boolean(payload.printer),
         parent: win(e),
-        page: payload.page
+        page: payload.page,
+        duplex: payload.duplex
       })
+  );
+
+  // ورقة المعايرة بلا إزاحة — فهي ما تُقاس به الإزاحة.
+  ipcMain.handle('output:printCalibration', async (e, printer: string | null) =>
+    printSheet({ sheetHtml: calibrationSheet(), deviceName: printer ?? undefined, silent: false, parent: win(e), raw: true })
   );
 
   ipcMain.handle(

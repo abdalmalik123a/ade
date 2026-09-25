@@ -14,6 +14,8 @@ export default function SheetsPreview({
   pages,
   sheet,
   cards,
+  duplex = false,
+  unit = 'بطاقة',
   busy,
   onClose,
   onPrint,
@@ -22,6 +24,10 @@ export default function SheetsPreview({
   pages: string[];
   sheet: { w: number; h: number };
   cards: number;
+  /** الصفحات وجهٌ ثم ظهرٌ بالتناوب — فالورقة صفحتان. */
+  duplex?: boolean;
+  /** ما في الخانة: بطاقة، أو صورة. */
+  unit?: string;
   busy: boolean;
   onClose: () => void;
   onPrint: () => void;
@@ -72,7 +78,8 @@ export default function SheetsPreview({
           <div>
             <div className="font-headline-sm text-headline-sm text-on-surface">مراجعة الأوراق</div>
             <div className="font-label-sm text-label-sm text-on-surface-variant" data-sheets-summary="">
-              {toIndic(cards)} {cards === 1 ? 'تصميم' : 'بطاقة'} على {toIndic(pages.length)} ورقة — {toIndic(sheet.w)} × {toIndic(sheet.h)} ملم، بعلامات القصّ
+              {toIndic(cards)} {cards === 1 && unit === 'بطاقة' ? 'تصميم' : unit} على {toIndic(duplex ? pages.length / 2 : pages.length)} ورقة
+              {duplex ? ' بوجهين' : ''} — {toIndic(sheet.w)} × {toIndic(sheet.h)} ملم، بعلامات القصّ
             </div>
           </div>
         </div>
@@ -96,7 +103,7 @@ export default function SheetsPreview({
             onClick={onPrint}
           >
             <span className="material-symbols-outlined text-[18px]">print</span>
-            اطبع {toIndic(pages.length)} ورقة
+            اطبع {toIndic(duplex ? pages.length / 2 : pages.length)} ورقة
           </button>
         </div>
       </div>
@@ -120,7 +127,9 @@ export default function SheetsPreview({
         </button>
       </div>
       <div className="h-12 shrink-0 flex items-center justify-center font-label-md text-label-md text-inverse-on-surface tabular">
-        ورقة {toIndic(at + 1)} من {toIndic(pages.length)}
+        {duplex
+          ? `ورقة ${toIndic(Math.floor(at / 2) + 1)} من ${toIndic(pages.length / 2)} — ${at % 2 ? 'الظهر (معكوس)' : 'الوجه'}`
+          : `ورقة ${toIndic(at + 1)} من ${toIndic(pages.length)}`}
       </div>
     </div>
   );

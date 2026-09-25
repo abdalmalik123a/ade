@@ -129,6 +129,8 @@ export function examHeadBlocks(): Block[] {
       { align: 'center' }
     ),
     whenFilled('الدور', [paragraph([run('الدور ', BOLD), fieldRef('الدور')], { align: 'center' })]),
+    // «النموذج: أ» يظهر حين يُطبع نموذجان — ولا يُطبع سطرًا فارغًا في الورقة الواحدة.
+    whenFilled(VERSION_KEY, [paragraph([run('النموذج: ', BOLD), fieldRef(VERSION_KEY)], { align: 'center' })]),
     spacer(8),
     whenFilled('الملاحظة', [paragraph([fieldRef('الملاحظة')], { align: 'center' })]),
     spacer(8)
@@ -198,4 +200,42 @@ export function depthOf(items: ListItem[], depth = 1): number {
     (max, it) => Math.max(max, it.items?.length ? depthOf(it.items, depth + 1) : depth),
     depth
   );
+}
+
+// ── نموذجا «أ» و«ب» ─────────────────────────────────────────────────
+
+/** مفتاح سطر النموذج في الرأس — لا خانة له في لوح الرأس، يُملأ عند الطباعة وحدها. */
+export const VERSION_KEY = 'النموذج';
+
+/**
+ * نموذجٌ ثانٍ من الورقة نفسها: الأسئلة بترتيبها (فالسؤال الأول إلزاميٌّ غالبًا،
+ * و«أجب عن خمسة» يُحسب عليها)، وفروع كل سؤالٍ بترتيبٍ آخر — فلا ينقل الطالب عن
+ * جاره «الفرع ب».
+ *
+ * والترتيب من بذرةٍ ثابتة لا عشوائيّ: يُطبع النموذج «ب» اليوم وغدًا بترتيبٍ واحد،
+ * فتُصحَّح أوراقه بمفتاحٍ واحد. وما تساوى ترتيبُه بعد الخلط يُدار خطوةً فيختلف.
+ */
+export function versionItems(items: ListItem[], seed = 7): ListItem[] {
+  let s = seed >>> 0 || 1;
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  const shuffle = (list: ListItem[]): ListItem[] => {
+    if (list.length < 2) return list;
+    const out = [...list];
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [out[i], out[j]] = [out[j]!, out[i]!];
+    }
+    if (out.every((it, i) => it.id === list[i]!.id)) out.push(out.shift()!);
+    return out;
+  };
+  const walk = (list: ListItem[], depth: number): ListItem[] =>
+    list.map((it) => {
+      if (!it.items?.length) return it;
+      const kids = walk(it.items, depth + 1);
+      return { ...it, items: shuffle(kids) };
+    });
+  return walk(items, 1);
 }

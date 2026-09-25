@@ -13,6 +13,7 @@ import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
 import DesignsScreen, { type DesignRequest } from './screens/DesignsScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import ClientsScreen from './screens/ClientsScreen';
+import PhotosScreen from './screens/PhotosScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
 
@@ -181,6 +182,8 @@ export default function App() {
             }}
           />
         );
+      case 'photos':
+        return <PhotosScreen printer={selectedPrinter} />;
       case 'clients':
         return (
           <ClientsScreen

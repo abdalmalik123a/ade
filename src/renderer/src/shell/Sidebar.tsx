@@ -77,6 +77,7 @@ export default function Sidebar({
             ? { text: String(counts.orders.open) }
             : undefined
     },
+    { key: 'photos', icon: 'portrait', label: 'الصور الشخصية' },
     {
       key: 'archive',
       icon: 'inventory_2',

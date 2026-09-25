@@ -39,6 +39,17 @@ describe('الترتيب على الورق', () => {
     expect((pages[0]!.match(/background:#000/g) ?? []).length).toBe(3 * 2 * 2 + 3 * 2 * 2);
   });
 
+  it('وظهر الورقة معكوس الأعمدة — فيقع كل ظهرٍ خلف وجهه بعد القلب', () => {
+    const imp = impose({ w: 85.6, h: 54 }, 3);
+    for (let i = 0; i < imp.per; i++) {
+      const front = cellAt(imp, i);
+      const back = cellAt(imp, i, true);
+      // القلب يمينًا ويسارًا: الموضع من اليسار في الظهر = الموضع من اليمين في الوجه.
+      expect(back.x).toBeCloseTo(imp.sheet.w - front.x - imp.cell.w, 6);
+      expect(back.y).toBe(front.y);
+    }
+  });
+
   it('والباركود يُرسم قبل الإرسال', () => {
     expect(inlineBarcodes('<div data-barcode="code128" data-value="123" style="left:0"></div>')).toContain('<svg');
   });

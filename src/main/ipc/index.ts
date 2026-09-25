@@ -26,7 +26,8 @@ const DEFAULTS: OfficeSettings = {
   serialPrefix: 'م',
   serialYear: new Date().getFullYear(),
   uiScale: 1,
-  onboarded: false
+  onboarded: false,
+  printOffsets: {}
 };
 
 function readSettings(): OfficeSettings {
@@ -43,9 +44,28 @@ function readSettings(): OfficeSettings {
     serialPrefix: map.get('serialPrefix') ?? DEFAULTS.serialPrefix,
     serialYear: Number(map.get('serialYear') ?? DEFAULTS.serialYear),
     uiScale: Math.min(1.5, Math.max(0.8, Number(map.get('uiScale') ?? DEFAULTS.uiScale) || 1)),
-    onboarded: map.get('onboarded') === 'true'
+    onboarded: map.get('onboarded') === 'true',
+    printOffsets: parseOffsets(map.get('printOffsets'))
   };
 }
+
+/** الإزاحات محفوظةً JSON — وما فسد منها يُترك لا يُسقط الإعدادات. */
+function parseOffsets(raw: string | undefined): OfficeSettings['printOffsets'] {
+  try {
+    const v = JSON.parse(raw ?? '{}') as Record<string, { x?: unknown; y?: unknown }>;
+    const out: OfficeSettings['printOffsets'] = {};
+    for (const [k, o] of Object.entries(v)) {
+      const x = Number(o?.x);
+      const y = Number(o?.y);
+      if (Number.isFinite(x) && Number.isFinite(y)) out[k] = { x: clampMm(x), y: clampMm(y) };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+const clampMm = (v: number) => Math.max(-15, Math.min(15, Math.round(v * 10) / 10));
 
 function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
   const db = getDb();
@@ -59,7 +79,7 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
   tx(
     Object.entries(patch)
       .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => [k, String(v)] as [string, string])
+      .map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)] as [string, string])
   );
   return readSettings();
 }

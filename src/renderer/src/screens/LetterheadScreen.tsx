@@ -22,6 +22,7 @@ import {
 import type { Client } from '@shared/orders';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import { UI_SCALES } from '../shell/Onboarding';
+import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import LetterheadView from '../components/LetterheadView';
 
 const DEFAULT_IRAQI_CLIPS = [
@@ -807,6 +808,13 @@ export default function LetterheadScreen() {
                         : 'بلا طابعة محدَّدة يُفتح حوار الطباعة في النظام'}
                   </p>
 
+                  <PrinterCalibration
+                    printer={settings.defaultPrinter}
+                    offsets={settings.printOffsets ?? {}}
+                    onSaved={(printOffsets) => setSettings((cur) => (cur ? { ...cur, printOffsets } : cur))}
+                    say={say}
+                  />
+
                   <button
                     className="w-full h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
                     type="button"
@@ -1049,5 +1057,101 @@ export default function LetterheadScreen() {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * معايرة الطابعة: ورقةٌ تُطبع، وقياسان بالمسطرة يُكتبان كما هما.
+ *
+ * الطابعات تزيح الطباعة ملّمًا أو اثنين — فتقع الكتابة خارج خانات الاستمارة
+ * المطبوعة سلفًا، ويُقصّ طرف الهويّة. والإزاحة لكل طابعة، وللطباعة الورقية وحدها.
+ */
+function PrinterCalibration({
+  printer,
+  offsets,
+  onSaved,
+  say
+}: {
+  printer: string | null;
+  offsets: Record<string, { x: number; y: number }>;
+  onSaved: (next: Record<string, { x: number; y: number }>) => void;
+  say: (text: string, tone?: 'ok' | 'warn') => void;
+}) {
+  const current = offsets[printer ?? ''] ?? { x: 0, y: 0 };
+  const seed = measureFromOffset(current);
+  const [fromRight, setFromRight] = useState(String(seed.fromRight));
+  const [fromTop, setFromTop] = useState(String(seed.fromTop));
+  useEffect(() => {
+    const m = measureFromOffset(offsets[printer ?? ''] ?? { x: 0, y: 0 });
+    setFromRight(String(m.fromRight));
+    setFromTop(String(m.fromTop));
+  }, [printer, offsets]);
+
+  const num = (v: string) => Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace('٫', '.'));
+  const box =
+    'w-20 h-9 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
+
+  if (!printer)
+    return (
+      <p className="font-label-sm text-label-sm text-on-surface-variant" data-calibration="">
+        معايرة الطابعة: اختر الطابعة الافتراضية واحفظ، ثم عايرها من هنا.
+      </p>
+    );
+
+  return (
+    <div className="rounded-lg bg-surface-container-low p-space-sm space-y-space-xs" data-calibration="">
+      <div className="flex items-center justify-between">
+        <span className="font-label-md text-label-md text-on-surface font-semibold">معايرة الطابعة</span>
+        <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-calibration-offset="">
+          {current.x || current.y ? `الإزاحة: ${current.x} يمينًا، ${current.y} نزولًا (ملم)` : 'بلا إزاحة'}
+        </span>
+      </div>
+      <p className="font-label-sm text-label-sm text-on-surface-variant">
+        اطبع الورقة، وقِس بُعد العلامة العليا عن حافّتي الورقة (الصحيح ٢٠ ملم)، واكتب القياسين كما هما.
+      </p>
+      <div className="flex flex-wrap items-center gap-space-sm">
+        <button
+          className="h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+          data-act="print-calibration"
+          type="button"
+          onClick={() =>
+            void window.diwan.output
+              .printCalibration(printer)
+              .then((r) => say(r.ok ? 'أُرسلت ورقة المعايرة' : r.reason || 'لم تُطبع', r.ok ? 'ok' : 'warn'))
+          }
+        >
+          <span className="material-symbols-outlined text-[16px]">straighten</span>
+          اطبع ورقة المعايرة
+        </button>
+        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+          من اليمين
+          <input className={box} data-measure-right="" inputMode="decimal" value={fromRight} onChange={(e) => setFromRight(e.target.value)} />
+        </label>
+        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+          من الأعلى
+          <input className={box} data-measure-top="" inputMode="decimal" value={fromTop} onChange={(e) => setFromTop(e.target.value)} />
+        </label>
+        <button
+          className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold"
+          data-act="save-calibration"
+          type="button"
+          onClick={() => {
+            const r = num(fromRight);
+            const t = num(fromTop);
+            if (!Number.isFinite(r) || !Number.isFinite(t) || r < 5 || r > 35 || t < 5 || t > 35) {
+              say('القياس بين ٥ و٣٥ ملم — قِس ثانيةً', 'warn');
+              return;
+            }
+            const next = { ...offsets, [printer]: offsetFromMeasure(r, t) };
+            void window.diwan.settings.set({ printOffsets: next }).then((saved) => {
+              onSaved(saved.printOffsets);
+              say('حُفظت معايرة الطابعة');
+            });
+          }}
+        >
+          احفظ القياس
+        </button>
+      </div>
+    </div>
   );
 }

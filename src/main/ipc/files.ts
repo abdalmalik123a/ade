@@ -4,6 +4,7 @@ import { basename, extname, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
+import { sheetToText } from '../services/sheetRead';
 
 /**
  * كل تعامل مع الملفات يمرّ من هنا.
@@ -105,6 +106,23 @@ export function registerFileIpc(): void {
       extensions: IMAGE_FILTERS[0]!.extensions
     });
     return source ? importFile(source, bucket) : null;
+  });
+
+  /**
+   * قائمةٌ من ملف Excel أو CSV — تعود بصيغة اللصق نفسها (أعمدةٌ بالجدولة).
+   * فالمدرسة ترسل ملفًّا، ولا يُفتح Excel ليُنسخ منه ويُلصق.
+   */
+  ipcMain.handle('files:readSheet', async (e): Promise<{ name: string; text: string; rows: number } | null> => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const source = await pickOpenPath(win, {
+      title: 'اختر قائمة الأسماء',
+      buttonLabel: 'افتح',
+      filterName: 'Excel أو CSV',
+      extensions: ['xlsx', 'csv']
+    });
+    if (!source) return null;
+    return { name: basename(source), ...(await sheetToText(source)) };
   });
 
   /**

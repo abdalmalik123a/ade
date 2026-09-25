@@ -61,12 +61,17 @@ export function impose(trim: CanvasSize, bleed: number, margin = PRINT_MARGIN): 
   );
 }
 
-/** موضع الخانة `i` في الورقة — من اليمين إلى اليسار ثم نزولًا، كما يُقرأ العربي. */
-export function cellAt(imp: Imposition, i: number): { x: number; y: number } {
+/**
+ * موضع الخانة `i` في الورقة — من اليمين إلى اليسار ثم نزولًا، كما يُقرأ العربي.
+ *
+ * و`mirror` لظهر الورقة: الورقة تُقلب يمينًا ويسارًا، فالبطاقة التي في أقصى يمين
+ * الوجه يقع ظهرها في أقصى يسار الظهر — فتُعكس الأعمدة وتبقى الصفوف.
+ */
+export function cellAt(imp: Imposition, i: number, mirror = false): { x: number; y: number } {
   const col = i % imp.cols;
   const row = Math.floor(i / imp.cols) % imp.rows;
   return {
-    x: imp.origin.x + (imp.cols - 1 - col) * imp.cell.w,
+    x: imp.origin.x + (mirror ? col : imp.cols - 1 - col) * imp.cell.w,
     y: imp.origin.y + row * imp.cell.h
   };
 }
@@ -135,12 +140,17 @@ export function inlineBarcodes(html: string): string {
  * `card(i)` يرسم البطاقة `i` (بنزفها، عند ٩٦ نقطة/إنش — أي بالملّم الحقيقي في
  * الطباعة). والورقة الأخيرة تُترك خاناتها الزائدة فارغة لا مكرّرة.
  */
-export function sheetsHtml(imp: Imposition, count: number, card: (i: number) => string): string[] {
+export function sheetsHtml(
+  imp: Imposition,
+  count: number,
+  card: (i: number) => string,
+  opts: { mirror?: boolean } = {}
+): string[] {
   const pages: string[] = [];
   for (let start = 0; start < count; start += imp.per) {
     const cells: string[] = [];
     for (let i = start; i < Math.min(count, start + imp.per); i++) {
-      const at = cellAt(imp, i - start);
+      const at = cellAt(imp, i - start, opts.mirror);
       cells.push(
         `<div style="position:absolute;left:${mm(at.x)};top:${mm(at.y)};width:${mm(imp.cell.w)};height:${mm(imp.cell.h)};overflow:hidden">${inlineBarcodes(card(i))}</div>`
       );

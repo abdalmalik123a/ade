@@ -127,7 +127,9 @@ const api: DiwanApi = {
       copies: number;
       silent: boolean;
       page?: { w: number; h: number };
+      duplex?: boolean;
     }) => invoke('output:print', payload),
+    printCalibration: (printer: string | null) => invoke('output:printCalibration', printer),
     savePdf: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
       invoke('output:savePdf', payload),
     savePng300: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
@@ -177,6 +179,7 @@ const api: DiwanApi = {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
     pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),
     pickImageFolder: (bucket: string) => invoke('files:pickImageFolder', bucket),
+    readSheet: () => invoke('files:readSheet'),
     saveAs: (payload: {
       data: Uint8Array;
       suggestedName: string;

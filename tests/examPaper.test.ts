@@ -14,8 +14,7 @@ import {
   headOf,
   newQuestion,
   paperTitle,
-  questionsOf
-} from '../src/shared/examPaper';
+  questionsOf, VERSION_KEY } from '../src/shared/examPaper';
 
 const filledHead = () => ({
   ...emptyHead(),
@@ -37,10 +36,11 @@ const q = (text: string, patch: Partial<ListItem> = {}): ListItem => ({
 });
 
 describe('ورقة الأسئلة: رأسٌ ثابتٌ ومتنٌ يُركَّب', () => {
-  it('الرأس كلّه متغيّراتٌ معدودة — ولا حقل خارجها', () => {
+  it('الرأس كلّه متغيّراتٌ معدودة — ولا حقل خارجها إلا سطر النموذج', () => {
     const doc = examDoc(filledHead(), examList([q('عرّف ما يأتي:')]));
     const keys = doc.fields.map((f) => f.key).sort();
-    expect(keys).toEqual(HEAD_INPUTS.map((i) => i.key).sort());
+    // «النموذج» لا خانة له في لوح الرأس: يُملأ «أ» و«ب» عند طباعة نموذجين وحدها.
+    expect(keys).toEqual([...HEAD_INPUTS.map((i) => i.key), VERSION_KEY].sort());
   });
 
   it('والثابت يبقى ثابتًا وإن خلت المتغيّرات', () => {

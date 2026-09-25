@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
 import { fitCanvasText } from '@shared/canvasFit';
+import { getDb } from '../db';
 
 /**
  * محرّك الإخراج: الطباعة وPDF والصورة عالية الدقّة.
@@ -26,9 +27,10 @@ const A4: PageMm = { w: 210, h: 297 };
  * والمقاس وسيط: الشهادة A4 أفقي، ولوحة الشرف A3. وكان مثبّتًا A4 عموديًّا،
  * فتخرج الشهادة الأفقية مقصوصةً نصفها خارج الورقة.
  */
-function printCss(page: PageMm): string {
+function printCss(page: PageMm, offset: { x: number; y: number } = { x: 0, y: 0 }): string {
   return `
   @page { size: ${page.w}mm ${page.h}mm; margin: 0; }
+  .print-root { position: relative; left: ${offset.x}mm; top: ${offset.y}mm; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body > :not(.print-root) { display: none !important; }
   .print-root {
@@ -65,6 +67,8 @@ async function withRenderWindow<T>(
     offscreen?: boolean;
     parent?: BrowserWindow | null;
     page?: PageMm;
+    /** إزاحة الطابعة المُعايَرة — للطباعة الورقية وحدها. */
+    offset?: { x: number; y: number };
   } = {}
 ): Promise<T> {
   const page = opts.page ?? A4;
@@ -93,7 +97,7 @@ async function withRenderWindow<T>(
     await win.webContents.executeJavaScript(`
       (() => {
         const style = document.createElement('style');
-        style.textContent = ${JSON.stringify(printCss(page))};
+        style.textContent = ${JSON.stringify(printCss(page, opts.offset))};
         document.head.appendChild(style);
         const root = document.createElement('div');
         root.className = 'print-root';
@@ -124,7 +128,61 @@ export type PrintRequest = {
   parent?: BrowserWindow | null;
   /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر. */
   page?: PageMm;
+  /**
+   * وجهان: الوجه ثم ظهره معكوس الأعمدة. والقلب يمينًا ويسارًا في الحالين —
+   * على الحافّة الطويلة للعموديّة، والقصيرة للأفقيّة.
+   */
+  duplex?: boolean;
+  /** ورقة المعايرة تُطبع بلا إزاحة — فهي ما تُقاس به الإزاحة. */
+  raw?: boolean;
 };
+
+/**
+ * إزاحة الطابعة التي ستطبع، من إعدادات المكتب — باسمها، أو الافتراضية إن لم تُسمَّ.
+ * تُقرأ هنا لا في كل مُنادٍ: كل طباعةٍ ورقيّة (الإصدار والشبّاك والتصاميم) تمرّ بها.
+ */
+export function printerOffset(deviceName: string | undefined): { x: number; y: number } {
+  try {
+    const rows = getDb()
+      .prepare("SELECT key, value FROM settings WHERE key IN ('printOffsets', 'defaultPrinter')")
+      .all() as { key: string; value: string }[];
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const offsets = JSON.parse(map.get('printOffsets') ?? '{}') as Record<string, { x: number; y: number }>;
+    const o = offsets[deviceName ?? map.get('defaultPrinter') ?? ''];
+    return o && Number.isFinite(o.x) && Number.isFinite(o.y) ? { x: o.x, y: o.y } : { x: 0, y: 0 };
+  } catch {
+    return { x: 0, y: 0 };
+  }
+}
+
+/**
+ * ورقة المعايرة: علامتان على ٢٠ ملم من الحافّة اليمنى والعليا، ومسطرتان بالملّم.
+ * يُقاس بعد الطباعة بُعدُ العلامة عن حافّتي الورقة، ويُكتب القياس كما هو —
+ * والحساب في `offsetFromMeasure` (shared/calibration.ts) لا في رأس الموظف.
+ */
+export function calibrationSheet(): string {
+  const tick = (i: number, horizontal: boolean) =>
+    horizontal
+      ? `<div style="position:absolute;right:${i}mm;top:0;width:0.15mm;height:${i % 10 === 0 ? 6 : i % 5 === 0 ? 4 : 2.5}mm;background:#000"></div>`
+      : `<div style="position:absolute;top:${i}mm;right:0;height:0.15mm;width:${i % 10 === 0 ? 6 : i % 5 === 0 ? 4 : 2.5}mm;background:#000"></div>`;
+  const ticks = Array.from({ length: 61 }, (_, i) => tick(i, true) + tick(i, false)).join('');
+  const cross = (right: string, top: string) =>
+    `<div style="position:absolute;right:calc(${right} - 6mm);top:${top};width:12mm;height:0.2mm;background:#000"></div>` +
+    `<div style="position:absolute;right:${right};top:calc(${top} - 6mm);width:0.2mm;height:12mm;background:#000"></div>`;
+  return (
+    `<div dir="rtl" style="position:relative;width:210mm;height:297mm;font-family:'IBM Plex Sans Arabic',sans-serif;color:#000">` +
+    ticks +
+    cross('20mm', '20mm') +
+    cross('105mm', '148.5mm') +
+    `<div style="position:absolute;right:40mm;left:30mm;top:70mm;font-size:15px;line-height:1.9">` +
+    `<div style="font-size:22px;font-weight:700;margin-bottom:6mm">ورقة معايرة الطابعة</div>` +
+    `<div>١. قِس بالمسطرة بُعدَ الخطّ العمودي في العلامة العليا عن <b>حافّة الورقة اليمنى</b>. الصحيح ٢٠ ملم.</div>` +
+    `<div>٢. وقِس بُعدَ الخطّ الأفقي فيها عن <b>حافّة الورقة العليا</b>. الصحيح ٢٠ ملم أيضًا.</div>` +
+    `<div>٣. اكتب القياسين في «معايرة الطابعة» كما هما — والبرنامج يحسب الإزاحة.</div>` +
+    `<div style="margin-top:4mm;color:#555">والعلامة الوسطى في منتصف الورقة تمامًا — للتحقّق بعد الضبط.</div>` +
+    `</div></div>`
+  );
+}
 
 export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reason?: string }> {
   const silent = req.silent ?? false;
@@ -143,6 +201,7 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
             pageSize,
             margins: { marginType: 'none' },
             landscape,
+            duplexMode: req.duplex ? (landscape ? 'shortEdge' : 'longEdge') : 'simplex',
             scaleFactor: 100
           },
           (ok, reason) => resolve({ ok, reason })
@@ -150,7 +209,7 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
       }),
     // حوار النظام لا يظهر فوق نافذة مرسومة خارج الشاشة، فالطباعة غير الصامتة
     // تحتاج نافذة حقيقية مخفية معلَّقة على نافذة التطبيق.
-    { offscreen: silent, parent: silent ? null : req.parent, page }
+    { offscreen: silent, parent: silent ? null : req.parent, page, offset: req.raw ? undefined : printerOffset(req.deviceName) }
   );
 }
 

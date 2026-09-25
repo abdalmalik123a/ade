@@ -42,7 +42,9 @@ import {
   headOf,
   newQuestion,
   paperTitle,
-  questionsOf
+  questionsOf,
+  VERSION_KEY,
+  versionItems
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
 
@@ -309,6 +311,9 @@ function PapersScreenInner(
   const [numerals, setNumerals] = useState<Numerals>('arabic');
   const [answers, setAnswers] = useState(false);
   const [copies, setCopies] = useState(30);
+  /** نموذجان «أ» و«ب»: الفروع بترتيبين، والنسخ تتناوب — فلا ينقل الطالب عن جاره. */
+  const [versions, setVersions] = useState(false);
+  const [showB, setShowB] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
   const [papers, setPapers] = useState<TemplateSummary[]>([]);
   const [busy, setBusy] = useState(false);
@@ -349,24 +354,64 @@ function PapersScreenInner(
   }, []);
 
   // ── الورقة: مشتقّةٌ من القيم والأسئلة، لا محرَّرةٌ كتلةً كتلة ────────
-  const doc = useMemo(() => {
-    const list = examList(items, dir);
-    if (pick) list.pick = pick;
-    const built = examDoc(head, list);
-    built.pageSetup = { ...built.pageSetup, numerals };
-    return built;
-  }, [head, items, pick, dir, numerals]);
+  const build = useCallback(
+    (list: ListItem[]) => {
+      const body = examList(list, dir);
+      if (pick) body.pick = pick;
+      const built = examDoc(head, body);
+      built.pageSetup = { ...built.pageSetup, numerals };
+      return built;
+    },
+    [head, pick, dir, numerals]
+  );
+  const doc = useMemo(() => build(items), [build, items]);
+
+  /** الورقة بنموذجها: «أ» الأسئلة كما كُتبت، و«ب» بفروعٍ مخلوطة. */
+  const renderVersion = useCallback(
+    (version: string | null) =>
+      renderDocHtml(
+        version === 'ب' ? build(versionItems(items)) : doc,
+        version ? { ...head, [VERSION_KEY]: version } : head,
+        {
+          missing: 'blank',
+          paragraphs: 'blocks',
+          answers: answers ? 'show' : 'hide',
+          numerals
+        }
+      ),
+    [build, items, doc, head, answers, numerals]
+  );
 
   const html = useMemo(
-    () =>
-      renderDocHtml(doc, head, {
-        missing: 'blank',
-        paragraphs: 'blocks',
-        answers: answers ? 'show' : 'hide',
-        numerals
-      }),
-    [doc, head, answers, numerals]
+    () => renderVersion(versions ? (showB ? 'ب' : 'أ') : null),
+    [renderVersion, versions, showB]
   );
+
+  /** ورقةٌ بنموذجها — نسخةٌ من ورقة المعاينة، ومتنها النموذج المطلوب. */
+  const versionPage = useCallback(
+    (node: HTMLElement, version: string) => {
+      const clone = node.cloneNode(true) as HTMLElement;
+      clone.style.breakAfter = 'page';
+      const body = clone.querySelector('[data-paper]');
+      if (body) body.innerHTML = renderVersion(version);
+      return clone.outerHTML;
+    },
+    [renderVersion]
+  );
+
+  /**
+   * أوراق الطباعة: ورقةٌ واحدة بعدد النسخ، أو «أ» و«ب» بالتناوب — أ، ب، أ، ب —
+   * فيجلس كل طالبٍ بين جارين بنموذجٍ غير نموذجه.
+   */
+  const sheetsFor = useCallback((): { html: string; copies: number } | null => {
+    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
+    if (!node) return null;
+    node.style.transform = '';
+    if (!versions) return { html: node.outerHTML, copies: Math.max(1, copies) };
+    const a = versionPage(node, 'أ');
+    const b = versionPage(node, 'ب');
+    return { html: Array.from({ length: Math.max(1, copies) }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
+  }, [versions, copies, versionPage]);
 
   const total = useMemo(() => {
     const list = questionsOf(doc);
@@ -466,20 +511,23 @@ function PapersScreenInner(
   }, [written, paperId, title, head, doc, loadPapers, onChanged, say]);
 
   const print = useCallback(async () => {
-    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
-    if (!node) return;
-    node.style.transform = '';
+    const sheets = sheetsFor();
+    if (!sheets) return;
     setBusy(true);
     try {
       // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
       const out = await window.diwan.output.print({
-        sheetHtml: node.outerHTML,
+        sheetHtml: sheets.html,
         printer: printer?.name ?? null,
-        copies: Math.max(1, copies),
+        copies: sheets.copies,
         silent: false
       });
       say(
-        out.ok ? `أُرسلت ${copies} نسخة إلى الطابعة` : out.reason || 'لم تتم الطباعة',
+        out.ok
+          ? versions
+            ? `أُرسلت ${copies} نسخة: «أ» و«ب» بالتناوب`
+            : `أُرسلت ${copies} نسخة إلى الطابعة`
+          : out.reason || 'لم تتم الطباعة',
         out.ok ? 'ok' : 'warn'
       );
     } catch (e) {
@@ -487,22 +535,24 @@ function PapersScreenInner(
     } finally {
       setBusy(false);
     }
-  }, [printer, copies, say]);
+  }, [printer, copies, versions, sheetsFor, say]);
 
   const exportPdf = useCallback(async () => {
+    // PDF النموذجين ورقتان: «أ» ثم «ب» — للمدرّس يطبع منه ما شاء.
     const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
     if (!node) return;
     node.style.transform = '';
+    const html = versions ? versionPage(node, 'أ') + versionPage(node, 'ب') : node.outerHTML;
     try {
       const path = await window.diwan.output.savePdf({
-        sheetHtml: node.outerHTML,
-        suggestedName: title
+        sheetHtml: html,
+        suggestedName: versions ? `${title} — نموذجان` : title
       });
       if (path) say('حُفظت نسخة PDF');
     } catch (e) {
       say(errorText(e, 'تعذّر حفظ PDF'), 'warn');
     }
-  }, [title, say]);
+  }, [title, versions, versionPage, say]);
 
   const openPaper = useCallback(
     async (id: number) => {
@@ -780,6 +830,39 @@ function PapersScreenInner(
                 />
                 ورقة المصحّح
               </label>
+
+              <label
+                className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"
+                title="الفروع بترتيبين، والنسخ تتناوب أ، ب، أ، ب — فلا ينقل الطالب عن جاره"
+              >
+                <input
+                  checked={versions}
+                  data-act="versions"
+                  type="checkbox"
+                  onChange={(e) => {
+                    setVersions(e.target.checked);
+                    setShowB(false);
+                  }}
+                />
+                نموذجان أ و ب
+              </label>
+              {versions && (
+                <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-version-view="">
+                  {['أ', 'ب'].map((v) => (
+                    <button
+                      key={v}
+                      className={`h-7 px-3 rounded-md font-label-md text-label-md ${
+                        (v === 'ب') === showB ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+                      }`}
+                      data-version={v}
+                      type="button"
+                      onClick={() => setShowB(v === 'ب')}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
                 نسخ

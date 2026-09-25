@@ -71,10 +71,21 @@ export default function BatchPanel({
           </button>
         )}
       </div>
-      <p className="font-label-sm text-label-sm text-on-surface-variant">
-        انسخ الأعمدة من Excel والصقها هنا. السطر الأول عناوين: {textKeys.slice(0, 4).join('، ')}
-        {textKeys.length > 4 ? '…' : ''}
-      </p>
+      <div className="flex items-start justify-between gap-space-sm">
+        <p className="font-label-sm text-label-sm text-on-surface-variant">
+          افتح ملف Excel، أو انسخ أعمدته والصقها هنا. السطر الأول عناوين: {textKeys.slice(0, 4).join('، ')}
+          {textKeys.length > 4 ? '…' : ''}
+        </p>
+        <button
+          className="shrink-0 h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+          data-act="open-sheet"
+          type="button"
+          onClick={() => void window.diwan.files.readSheet().then((out) => out && setText(out.text))}
+        >
+          <span className="material-symbols-outlined text-[16px]">table_view</span>
+          ملف Excel
+        </button>
+      </div>
       <textarea
         className="w-full h-28 p-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
         data-batch-text=""
