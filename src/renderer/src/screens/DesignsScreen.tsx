@@ -16,7 +16,6 @@ import type { PrinterInfo, TemplateSummary } from '@shared/api';
 import { newUuid, reconcileFields, tokenInlines, type Doc, type Inline } from '@shared/doc';
 import {
   BLEED_MM,
-  PRINT_DPI,
   SCREEN_DPI,
   SIZE_PRESETS,
   barcodeElement,
@@ -54,10 +53,15 @@ import {
   type LayerMove
 } from '@shared/canvasEdit';
 import { renderCanvasHtml } from '@shared/canvasHtml';
-import { GALLERY, galleryPreview } from '@shared/designGallery';
+import { fitCanvasText } from '@shared/canvasFit';
+import { buildDesign } from '@shared/designKit';
+import { impose, sheetsHtml } from '@shared/imposition';
 import { barcodeSvg } from '@shared/barcode';
 import { qrSvg } from '@shared/qr';
 import { errorText } from '../lib/errors';
+import Gallery, { type GalleryPick } from '../designs/Gallery';
+import BatchPanel from '../designs/BatchPanel';
+import SheetsPreview from '../designs/SheetsPreview';
 
 const DESIGN_CATEGORY = 'تصاميم';
 const NUM =
@@ -118,6 +122,11 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
   const [grid, setGrid] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const [zoom, setZoom] = useState(0.5);
+  /** المعرض أولًا: يبدأ المكتب من «لمن التصميم؟» لا من لوحةٍ فارغة. */
+  const [view, setView] = useState<'gallery' | 'editor'>('gallery');
+  /** صفوف الدفعة — وبغيرها تُطبع البطاقة بقيمها المكتوبة، نسخًا. */
+  const [batchRows, setBatchRows] = useState<Record<string, string>[]>([]);
+  const [sheetsOpen, setSheetsOpen] = useState(false);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
@@ -157,8 +166,13 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
   }, [canvas, title]);
 
   const html = useMemo(
-    () => renderCanvasHtml(doc, values, { dpi: SCREEN_DPI, missing: preview ? 'blank' : 'token' }),
-    [doc, values, preview]
+    // مع دفعةٍ تُعرض بطاقة أوّل اسمٍ فيها — فيُرى الاسم الحقيقي في موضعه لا وسمُه.
+    () =>
+      renderCanvasHtml(doc, batchRows[0] ? { ...values, ...batchRows[0] } : values, {
+        dpi: SCREEN_DPI,
+        missing: preview ? 'blank' : 'token'
+      }),
+    [doc, values, preview, batchRows]
   );
 
   /**
@@ -184,6 +198,9 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
         node.innerHTML = '';
       }
     }
+    // الأسماء الطويلة تصغر لتسع — بعد الرسم وبعد تحميل الخطوط.
+    fitCanvasText(root);
+    void document.fonts.ready.then(() => paintRef.current && fitCanvasText(paintRef.current));
   }, [html]);
 
   const page = canvasPx(canvas, SCREEN_DPI);
@@ -194,18 +211,22 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
   useEffect(() => {
     const fit = () => {
       const desk = deskRef.current;
-      if (desk) setZoom(Math.min(1, Math.max(0.15, (desk.clientWidth - 64) / page.w)));
+      // البطاقة تُكبَّر حتى تملأ المكتب (إلى ثلاثة أضعاف)، والشهادة تُصغَّر لتسعه.
+      if (desk && desk.clientWidth)
+        setZoom(Math.min(3, Math.max(0.15, Math.min((desk.clientWidth - 64) / page.w, (desk.clientHeight - 64) / page.h))));
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-  }, [page.w]);
+    // والعودة من المعرض تعيد القياس: المحرّر المخفيّ عرضه صفر.
+  }, [page.w, page.h, view]);
 
   // ── الخلفية: المقاس من الملف ───────────────────────────────────────
   const openBackground = useCallback(async () => {
     try {
       const out = await window.diwan.files.pickBackground('designs');
       if (!out) return;
+      setView('editor');
       apply({
         ...canvas,
         background: out.meta?.dpi
@@ -238,6 +259,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
     try {
       const out = await window.diwan.designs.import(askSize ? canvas.size : null);
       if (!out) return;
+      setView('editor');
 
       if (out.canvas) {
         apply(normalizeCanvas(out.canvas));
@@ -269,24 +291,23 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
   }, [canvas.size, askSize, title, apply, say]);
 
   /**
-   * تصميمٌ من المعرض: يُعرض ويُختار، ولا يُزرع في القاعدة.
+   * تصميمٌ من المعرض: يُبنى بهويّة الجهة ويُفتح، ولا يُزرع في القاعدة.
    *
-   * فالبرنامج يبدأ فارغًا من كل ما يخصّ الجهة — وهذه العشرة **اقتراحٌ**: لا
-   * تدخل المكتبة حتى يضغط المكتب «حفظ»، فتصير حينها نسخةً ملكَه يعدّلها كيف شاء.
+   * فالبرنامج يبدأ فارغًا من كل ما يخصّ الجهة — والمعرض **اقتراحٌ**: لا يدخل
+   * المكتبة حتى يضغط المكتب «حفظ»، فيصير حينها نسخةً ملكَه يعدّلها كيف شاء.
    */
   const pickFromGallery = useCallback(
-    (key: string) => {
-      const design = GALLERY.find((d) => d.key === key);
-      if (!design) return;
-      apply(design.build());
+    ({ kind, style, palette, brand }: GalleryPick) => {
+      setHistory(startCanvasHistory(buildDesign({ kind: kind.key, style, palette, brand })));
       setValues({});
       setSelection([]);
       setDesignId(null);
       setAskSize(false);
-      if (!title.trim()) setTitle(design.title);
-      say(`${design.title} — عدّله ثم احفظه، فيصير نسخةً ملكَك`);
+      setTitle(brand.name ? `${kind.title} — ${brand.name}` : kind.title);
+      setView('editor');
+      say(`${kind.title} — املأه، أو الصق قائمةً كاملة في «دفعة»`);
     },
-    [title, apply, say]
+    [say]
   );
 
   // ── العناصر ────────────────────────────────────────────────────────
@@ -518,61 +539,78 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
     }
   }, [title, designId, canvas, doc, loadDesigns, onChanged, say]);
 
-  const [impositionA4, setImpositionA4] = useState(false);
+  /** الترتيب على الورق: كم بطاقةً في A4 وأين تُقصّ — من مقاس التصميم ونزفه. */
+  const imp = useMemo(() => impose(canvas.size, canvas.bleed), [canvas.size, canvas.bleed]);
 
-  /** ورقةٌ بدقّة الطباعة، وباركودُها مرسومٌ فيها — لا مُؤجَّلٌ إلى المتصفّح. */
-  const printSheet = useCallback((): string => {
-    const px = canvasPx(canvas, PRINT_DPI);
-    const cardBody = renderCanvasHtml(doc, values, {
-      dpi: PRINT_DPI,
-      missing: 'blank',
-      marks: canvas.cropMarks
-    }).replace(
-      /<div data-barcode="([^"]*)" data-value="([^"]*)" style="([^"]*)"><\/div>/g,
-      (_all, kind: string, value: string, style: string) => {
-        if (!value) return '';
-        try {
-          const svg = kind === 'qr' ? qrSvg(value) : barcodeSvg(value, { height: 40 });
-          return `<div style="${style}">${svg}</div>`;
-        } catch {
-          return '';
-        }
-      }
-    );
+  /**
+   * ما يُطبع: صفوف الدفعة كلٌّ ببطاقته، وبغيرها القيم المكتوبة مكرّرةً بعدد النسخ.
+   *
+   * والصفّ يرث القيم المكتوبة: «العام الدراسي» واحدٌ للصفّ كلّه، يُكتب مرّةً في
+   * «املأ» ولا يُطلب عمودًا في Excel — وما في الصفّ يغلبه.
+   */
+  const cards = useMemo(
+    () =>
+      batchRows.length
+        ? batchRows.map((row) => ({ ...values, ...row }))
+        : Array.from({ length: Math.max(1, copies) }, () => values),
+    [batchRows, copies, values]
+  );
 
-    const isCardSize = canvas.size.w <= 105 && canvas.size.h <= 75;
-
-    if (impositionA4 && isCardSize) {
-      // تجميع 8 هويات على ورقة A4 (210mm x 297mm) عند 300DPI
-      const a4W = Math.round((210 / 25.4) * PRINT_DPI);
-      const a4H = Math.round((297 / 25.4) * PRINT_DPI);
-      
-      const gridItems = Array.from({ length: 8 })
-        .map(() => `<div style="position:relative;width:${px.w}px;height:${px.h}px;border:1px dashed #cbd5e1;overflow:hidden">${cardBody}</div>`)
-        .join('');
-
-      return `<div class="print-sheet" style="width:${a4W}px;height:${a4H}px;padding:40px;background:#fff;display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;justify-items:center;align-items:center">${gridItems}</div>`;
-    }
-
-    return `<div class="print-sheet" style="width:${px.w}px;height:${px.h}px">${cardBody}</div>`;
-  }, [canvas, doc, values, impositionA4]);
+  /**
+   * أوراق الطباعة بالملّم الحقيقي (٩٦ نقطة/إنش في CSS = الملّم على الورق).
+   *
+   * كانت تُرسم بـ٣٠٠ نقطة/إنش بكسلاتٍ فتخرج البطاقة بثلاثة أضعاف مقاسها،
+   * والدقّة ليست في البكسلات: الخطوط والزخرفة متّجهة، والطابعة ترسمها بدقّتها.
+   */
+  const pages = useMemo(
+    () =>
+      sheetsOpen
+        ? sheetsHtml(imp, cards.length, (i) =>
+            renderCanvasHtml(doc, cards[i]!, { dpi: SCREEN_DPI, missing: 'blank', marks: false })
+          )
+        : [],
+    [sheetsOpen, imp, cards, doc]
+  );
 
   const print = useCallback(async () => {
     setBusy(true);
     try {
       const out = await window.diwan.output.print({
-        sheetHtml: printSheet(),
+        sheetHtml: pages.join(''),
         printer: printer?.name ?? null,
-        copies: Math.max(1, copies),
-        silent: false
+        copies: 1,
+        silent: false,
+        page: imp.sheet
       });
-      say(out.ok ? `أُرسلت ${copies} نسخة` : out.reason || 'لم تتم الطباعة', out.ok ? 'ok' : 'warn');
+      say(out.ok ? `أُرسلت ${pages.length} ورقة إلى الطابعة` : out.reason || 'لم تتم الطباعة', out.ok ? 'ok' : 'warn');
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), 'warn');
     } finally {
       setBusy(false);
     }
-  }, [printSheet, printer, copies, say]);
+  }, [pages, printer, imp, say]);
+
+  const savePdf = useCallback(async () => {
+    setBusy(true);
+    try {
+      const path = await window.diwan.output.savePdf({
+        sheetHtml: pages.join(''),
+        suggestedName: title.trim() || 'تصميم',
+        page: imp.sheet
+      });
+      if (path) say('حُفظ PDF بمقاس الورقة وعلامات القصّ');
+    } catch (e) {
+      say(errorText(e, 'تعذّر حفظ PDF'), 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }, [pages, title, imp, say]);
+
+  /** حقول الصور في التصميم — تُختار صورةً لا تُكتب نصًّا. */
+  const imageKeys = useMemo(
+    () => [...new Set(canvas.elements.flatMap((el) => (el.kind === 'image' && el.ref ? [el.ref] : [])))],
+    [canvas.elements]
+  );
 
   const openDesign = useCallback(
     async (id: number) => {
@@ -583,6 +621,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
         setValues({});
         setDesignId(id);
         setSelection([]);
+        setView('editor');
         say('فُتح التصميم');
       } catch (e) {
         say(errorText(e, 'تعذّر فتح التصميم'), 'warn');
@@ -604,27 +643,97 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
-      <div className="flex h-[calc(100vh-4rem)]">
+      {/* المعرض يبقى مركّبًا مخفيًّا: الرجوع إليه يجد الجهة واللون والنمط كما تُركت. */}
+      <div className={view === 'gallery' ? 'h-[calc(100vh-4rem)]' : 'hidden'}>
+        <Gallery
+          saved={designs}
+          onImport={() => void importDesign()}
+          onOpenImage={() => void openBackground()}
+          onOpenSaved={(id) => void openDesign(id)}
+          onPick={pickFromGallery}
+        />
+      </div>
+      <div className={view === 'editor' ? 'flex h-[calc(100vh-4rem)]' : 'hidden'}>
         {/* ── الأدوات ──────────────────────────────────────────────── */}
         <section className="w-[420px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md">
-          <header>
-            <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">التصاميم</h1>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">
-              شهادة · هوية · ملصق · دعوة — تُفتح وتُملأ وتُطبع
-            </p>
+          <header className="flex items-center justify-between gap-space-sm">
+            <button
+              className="h-9 px-space-sm -mx-space-sm rounded-lg hover:bg-surface-container-high font-label-md text-label-md text-on-surface-variant flex items-center gap-1"
+              data-act="gallery"
+              type="button"
+              onClick={() => setView('gallery')}
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              كل التصاميم
+            </button>
+            <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-size-chip="">
+              {canvas.size.w} × {canvas.size.h} ملم
+            </span>
           </header>
 
           <input
-            className="w-full h-9 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-body-sm text-body-sm text-on-surface"
+            className="w-full h-9 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
             data-title
             placeholder="اسم التصميم — مثال: هوية طالب"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
 
+          {/* املأ — واحدًا بيد، أو قائمةً كاملة في «دفعة» تحته */}
+          {doc.fields.length > 0 && (
+            <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+              <h2 className="font-body-md text-body-md text-on-surface font-semibold">
+                {batchRows.length ? 'ما يشترك فيه الجميع — والقائمة تغلبه' : `املأ الحقول (${doc.fields.length})`}
+              </h2>
+              {doc.fields.map((f) =>
+                imageKeys.includes(f.key) ? (
+                  <div key={f.key} className="flex items-center gap-space-sm">
+                    {values[f.key] ? (
+                      <img alt="" className="w-12 h-14 object-cover rounded border border-outline-variant" src={`diwan://store/${values[f.key]}`} />
+                    ) : (
+                      <span className="w-12 h-14 rounded border border-dashed border-outline-variant flex items-center justify-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[20px]">person</span>
+                      </span>
+                    )}
+                    <button
+                      className="h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md text-on-surface"
+                      data-photo={f.key}
+                      type="button"
+                      onClick={() =>
+                        void window.diwan.files.pickImage('photos').then((src) => src && setValues((v) => ({ ...v, [f.key]: src })))
+                      }
+                    >
+                      {values[f.key] ? `غيّر ${f.label}` : `اختر ${f.label}`}
+                    </button>
+                  </div>
+                ) : (
+                  <label key={f.key} className="flex flex-col gap-1">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{f.label}</span>
+                    <input
+                      className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+                      data-value={f.key}
+                      value={values[f.key] ?? ''}
+                      onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                    />
+                  </label>
+                )
+              )}
+            </div>
+          )}
+
+          {doc.fields.length > 0 && (
+            <BatchPanel
+              fields={doc.fields}
+              imageKeys={imageKeys}
+              imp={imp}
+              onPreview={() => setSheetsOpen(true)}
+              onRows={setBatchRows}
+            />
+          )}
+
           {/* الخلفية */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">الخلفية</h2>
+            <h2 className="font-body-md text-body-md text-on-surface font-semibold">الخلفية والمقاس</h2>
             <button
               className="w-full h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
               data-act="background"
@@ -728,56 +837,17 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
                 نزفٌ ٣ ملم وعلامات قصّ
               </label>
 
-              {canvas.size.w <= 105 && canvas.size.h <= 75 && (
-                <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-secondary font-bold">
-                  <input
-                    checked={impositionA4}
-                    type="checkbox"
-                    onChange={(e) => setImpositionA4(e.target.checked)}
-                  />
-                  تجميع 8 هويات على ورقة A4 (وجه وظهر للقص)
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* المعرض: يُعرض ويُختار، ولا يُزرع */}
-          <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <div>
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                ابدأ من تصميمٍ جاهز
-              </h2>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                عشرةٌ مولَّدةٌ متجهةً — تُعدَّل ولا تُحزَم في قاعدتك حتى تحفظها
+              <p className="font-label-sm text-label-sm text-on-surface-variant" data-imposition="">
+                {imp.single
+                  ? `يُطبع على ورقةٍ بمقاسه ${imp.sheet.w} × ${imp.sheet.h} ملم`
+                  : `${imp.per} في ورقة A4 ${imp.sheet.w > imp.sheet.h ? 'أفقيّة' : 'عموديّة'}، بعلامات القصّ`}
               </p>
-            </div>
-            <div className="grid grid-cols-3 gap-space-sm">
-              {GALLERY.map((d) => (
-                <button
-                  key={d.key}
-                  className="rounded-lg border border-outline-variant overflow-hidden hover:border-primary transition-colors text-right"
-                  data-gallery={d.key}
-                  title={`${d.title} — ${d.size.w} × ${d.size.h} ملم`}
-                  type="button"
-                  onClick={() => pickFromGallery(d.key)}
-                >
-                  <img
-                    alt=""
-                    className="w-full bg-surface-container-low"
-                    src={galleryPreview(d)}
-                    style={{ aspectRatio: `${d.size.w} / ${d.size.h}`, objectFit: 'cover' }}
-                  />
-                  <span className="block px-1.5 py-1 font-label-sm text-label-sm text-on-surface truncate">
-                    {d.title}
-                  </span>
-                </button>
-              ))}
             </div>
           </div>
 
           {/* الإضافة */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
+            <h2 className="font-body-md text-body-md text-on-surface font-semibold">
               ضع عنصرًا فوق التصميم
             </h2>
             <p className="font-label-sm text-label-sm text-on-surface-variant">
@@ -849,7 +919,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
           {single && (
             <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
               <div className="flex items-center justify-between">
-                <h2 className="font-title-sm text-title-sm text-on-surface font-semibold truncate">
+                <h2 className="font-body-md text-body-md text-on-surface font-semibold truncate">
                   {kindName(single)}
                 </h2>
                 <div className="flex items-center gap-1 shrink-0">
@@ -875,7 +945,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
               {single.kind === 'text' && (
                 <>
                   <input
-                    className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
+                    className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
                     data-element-text
                     value={textOf(single.inlines)}
                     onChange={(e) => patchElement(single.id, { inlines: inlinesOf(e.target.value) })}
@@ -942,7 +1012,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
                     اسم الحقل الذي يملؤه
                   </span>
                   <input
-                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
+                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
                     data-element-ref
                     value={single.ref ?? ''}
                     onChange={(e) => patchElement(single.id, { ref: e.target.value.trim() })}
@@ -969,7 +1039,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
           {/* الطبقات */}
           {canvas.elements.length > 0 && (
             <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-xs">
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
+              <h2 className="font-body-md text-body-md text-on-surface font-semibold">
                 الطبقات ({canvas.elements.length})
               </h2>
               {[...canvas.elements]
@@ -1003,48 +1073,6 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
             </div>
           )}
 
-          {/* القيم */}
-          {doc.fields.length > 0 && (
-            <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                املأ الحقول ({doc.fields.length})
-              </h2>
-              {doc.fields.map((f) => (
-                <label key={f.key} className="flex flex-col gap-1">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    {f.label}
-                  </span>
-                  <input
-                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
-                    data-value={f.key}
-                    value={values[f.key] ?? ''}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  />
-                </label>
-              ))}
-            </div>
-          )}
-
-          {/* المحفوظة */}
-          {designs.length > 0 && (
-            <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-xs">
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                تصاميمُ محفوظة ({designs.length})
-              </h2>
-              {designs.map((d) => (
-                <button
-                  key={d.id}
-                  className="w-full text-right rounded-lg px-space-sm py-1.5 hover:bg-surface-container-high font-body-sm text-body-sm text-on-surface"
-                  data-saved={d.id}
-                  type="button"
-                  onClick={() => void openDesign(d.id)}
-                >
-                  {d.title}
-                  {d.subtitle && <span className="text-on-surface-variant"> — {d.subtitle}</span>}
-                </button>
-              ))}
-            </div>
-          )}
         </section>
 
         {/* ── اللوحة ───────────────────────────────────────────────── */}
@@ -1169,7 +1197,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
             </span>
             <input
               className="w-24 shrink-0"
-              max={1}
+              max={3}
               min={0.15}
               step={0.05}
               type="range"
@@ -1204,10 +1232,10 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
               <button
                 className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
                 data-act="print"
-                title="اطبع بـ٣٠٠ نقطة/إنش — بلا إصدار"
+                title="راجع الأوراق ثم اطبع — بلا إصدار"
                 type="button"
                 disabled={busy}
-                onClick={() => void print()}
+                onClick={() => setSheetsOpen(true)}
               >
                 <span className="material-symbols-outlined text-[18px]">print</span>
                 اطبع
@@ -1341,6 +1369,18 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
         </section>
       </div>
 
+      {sheetsOpen && (
+        <SheetsPreview
+          busy={busy}
+          cards={cards.length}
+          pages={pages}
+          sheet={imp.sheet}
+          onClose={() => setSheetsOpen(false)}
+          onPdf={() => void savePdf()}
+          onPrint={() => void print()}
+        />
+      )}
+
       {toast && (
         <div
           className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
@@ -1366,7 +1406,7 @@ function AddBox({ onAdd }: { onAdd: (label: string) => void }) {
   return (
     <div className="flex items-center gap-space-sm">
       <input
-        className="flex-1 h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
+        className="flex-1 h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
         data-add-text
         placeholder="{اسم الطالب}"
         value={text}

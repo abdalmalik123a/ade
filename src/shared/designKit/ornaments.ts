@@ -258,7 +258,7 @@ export function confetti(
   count: number,
   colors: string[],
   seed: number,
-  keepOut: { x: number; y: number; w: number; h: number }
+  keepOut: { x: number; y: number; w: number; h: number }[]
 ): string {
   const rnd = seeded(seed);
   const out: string[] = [];
@@ -266,7 +266,8 @@ export function confetti(
   while (out.length < count && tries++ < count * 20) {
     const x = rnd() * c.W;
     const y = rnd() * c.H;
-    if (x > keepOut.x && x < keepOut.x + keepOut.w && y > keepOut.y && y < keepOut.y + keepOut.h) continue;
+    const pad = c.M * 0.02;
+    if (keepOut.some((k) => x > k.x - pad && x < k.x + k.w + pad && y > k.y - pad && y < k.y + k.h + pad)) continue;
     const color = colors[Math.floor(rnd() * colors.length)]!;
     const s = c.M * (0.008 + rnd() * 0.012);
     const kind = rnd();

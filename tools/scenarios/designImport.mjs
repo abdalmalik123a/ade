@@ -79,7 +79,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.goto('designed-documents');
   await wait(700);
 
-  ok('لباب الاستيراد زرُّه', (await page.text()).includes('استورد من Word أو Photoshop أو PDF'));
+  ok('لباب الاستيراد زرُّه', (await page.text()).includes('من Word أو Photoshop أو PDF'));
 
   await click('button[data-act="import"]');
   await wait(2500);

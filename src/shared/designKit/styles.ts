@@ -39,9 +39,17 @@ export const FONT = {
   plex: "'IBM Plex Sans Arabic', 'IBM Plex Sans', sans-serif"
 } as const;
 
-export type Type = { font: string; bold: boolean; color: string; scale?: number };
+export type Type = { font: string; bold: boolean; color: string; scale?: number; wordSpacing?: number };
 
-export type StyleCtx = Ctx & { p: Palette; family: Family; seed: number };
+/** `B` النزف بالوحدات: ما يلامس حافّة الورقة يمتدّ فيه، فلا يظهر خيطٌ أبيض بعد القصّ. */
+export type StyleCtx = Ctx & {
+  p: Palette;
+  family: Family;
+  seed: number;
+  B: number;
+  /** للجهة شعار؟ — بغيره يصير الختم الزخرفي تامًّا بنفسه لا دائرةً تنتظر صورة. */
+  logo: boolean;
+};
 
 export type Style = {
   key: string;
@@ -52,7 +60,8 @@ export type Style = {
   paper: (p: Palette) => string;
   type: (role: Role, p: Palette, family: Family) => Type;
   /** إطار الورقة وزخرفتها العامّة — تحت كل شيء. */
-  frame: (c: StyleCtx, calm: Rect) => { defs: string; body: string };
+  /** `keep`: صناديق النصّ — الزخرفة المتناثرة لا تقع عليها. */
+  frame: (c: StyleCtx, keep: Rect[]) => { defs: string; body: string };
   /** كيف تُرسم كل قطعة من التخطيط بلغة هذا النمط. */
   decor: (d: Decor, c: StyleCtx) => { defs?: string; body: string };
 };
@@ -96,7 +105,7 @@ const official: Style = {
   type: (role, p, family) => {
     switch (role) {
       case 'headline':
-        return { font: FONT.kufi, bold: true, color: p.primary };
+        return { font: FONT.kufi, bold: true, color: p.primary, wordSpacing: 0.18 };
       case 'org':
         return { font: FONT.kufiText, bold: true, color: p.deep };
       case 'name':
@@ -111,7 +120,7 @@ const official: Style = {
       case 'accent':
         return { font: FONT.kufiText, bold: true, color: mix(p.accent, p.ink, 0.25) };
       case 'big':
-        return { font: FONT.kufi, bold: true, color: p.primary };
+        return { font: FONT.kufi, bold: true, color: p.primary, wordSpacing: 0.18 };
       case 'onBand':
         return { font: FONT.kufiText, bold: true, color: '#ffffff' };
       case 'onBandSmall':
@@ -213,7 +222,7 @@ const islamic: Style = {
       case 'accent':
         return { font: FONT.ruqaa, bold: false, color: mix(p.accent, p.ink, 0.3), scale: 1.1 };
       case 'big':
-        return { font: FONT.kufi, bold: true, color: p.deep };
+        return { font: FONT.kufi, bold: true, color: p.deep, wordSpacing: 0.18 };
       case 'onBand':
         return { font: FONT.naskh, bold: true, color: mix('#ffffff', p.accent, 0.25), scale: 1.08 };
       case 'onBandSmall':
@@ -309,7 +318,10 @@ const islamic: Style = {
           body:
             `<polygon points="${starPoints(cx, cy, R, Math.PI / 8)}" fill="${p.paper}" stroke="${p.accent}" stroke-width="${n(c.M * 0.004)}"/>` +
             `<polygon points="${starPoints(cx, cy, R * 0.9, Math.PI / 8)}" fill="none" stroke="${p.accent}" stroke-width="${n(c.M * 0.002)}"/>` +
-            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.72)}" fill="none" stroke="${p.primary}" stroke-width="${n(c.M * 0.002)}"/>`
+            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.72)}" fill="none" stroke="${p.primary}" stroke-width="${n(c.M * 0.002)}"/>` +
+            // بلا شعار لا يبقى الختم دائرةً فارغة: نجمةٌ داخل نجمة، وهو ختمٌ بنفسه.
+            `<g opacity="0.9"><polygon points="${starPoints(cx, cy, R * 0.55, 0)}" fill="none" stroke="${p.accent}" stroke-width="${n(c.M * 0.0025)}"/>` +
+            `<polygon points="${starPoints(cx, cy, R * 0.3, Math.PI / 8)}" fill="${p.primary}" opacity="0.85"/></g>`
         };
       }
       case 'medal': {
@@ -364,8 +376,8 @@ const modern: Style = {
       return {
         defs,
         body:
-          `<path d="M${n(c.W * 0.62)},${n(c.H)} L${n(c.W)},${n(c.H * 0.42)} L${n(c.W)},${n(c.H)} Z" fill="${mix('#ffffff', c.p.primary, 0.08)}"/>` +
-          `<rect x="${n(c.W * 0.7)}" y="${n(c.H * 0.3)}" width="${n(c.W * 0.28)}" height="${n(c.H * 0.3)}" fill="url(#dt)" opacity="0.25"/>`
+          // بلا نقاط على البطاقة: مساحتها ضيّقة، وكلّ نقشٍ فيها يقع تحت نصّ.
+          `<path d="M${n(c.W * 0.62)},${n(c.H + c.B)} L${n(c.W + c.B)},${n(c.H * 0.42)} L${n(c.W + c.B)},${n(c.H + c.B)} Z" fill="${mix('#ffffff', c.p.primary, 0.08)}"/>`
       };
     }
     if (c.W > c.H) {
@@ -375,18 +387,18 @@ const modern: Style = {
       return {
         defs,
         body:
-          `<path d="M0,0 L${n(top)},0 L${n(bottom)},${n(c.H)} L0,${n(c.H)} Z" fill="${c.p.deep}"/>` +
-          `<path d="M0,0 L${n(top * 0.82)},0 L${n(bottom * 0.72)},${n(c.H)} L0,${n(c.H)} Z" fill="${c.p.primary}"/>` +
-          `<line x1="${n(top + c.M * 0.02)}" y1="0" x2="${n(bottom + c.M * 0.02)}" y2="${n(c.H)}" stroke="${c.p.accent}" stroke-width="${n(c.M * 0.006)}"/>` +
-          `<rect x="${n(c.W * 0.78)}" y="${n(c.H * 0.04)}" width="${n(c.W * 0.19)}" height="${n(c.H * 0.2)}" fill="url(#dt)" opacity="0.35"/>` +
+          `<path d="M${n(-c.B)},${n(-c.B)} L${n(top)},${n(-c.B)} L${n(bottom)},${n(c.H + c.B)} L${n(-c.B)},${n(c.H + c.B)} Z" fill="${c.p.deep}"/>` +
+          `<path d="M${n(-c.B)},${n(-c.B)} L${n(top * 0.82)},${n(-c.B)} L${n(bottom * 0.72)},${n(c.H + c.B)} L${n(-c.B)},${n(c.H + c.B)} Z" fill="${c.p.primary}"/>` +
+          `<line x1="${n(top + c.M * 0.02)}" y1="${n(-c.B)}" x2="${n(bottom + c.M * 0.02)}" y2="${n(c.H + c.B)}" stroke="${c.p.accent}" stroke-width="${n(c.M * 0.006)}"/>` +
+          `<rect x="${n(c.W * 0.8)}" y="${n(c.H * 0.9)}" width="${n(c.W * 0.17)}" height="${n(c.H * 0.08)}" fill="url(#dt)" opacity="0.35"/>` +
           `<rect x="${n(c.W - c.M * 0.035)}" y="${n(c.H * 0.3)}" width="${n(c.M * 0.012)}" height="${n(c.H * 0.4)}" fill="${c.p.accent}"/>`
       };
     }
     return {
       defs,
       body:
-        `<path d="M0,0 L${n(c.W)},0 L${n(c.W)},${n(c.H * 0.035)} L0,${n(c.H * 0.075)} Z" fill="${c.p.primary}"/>` +
-        `<path d="M0,${n(c.H)} L${n(c.W)},${n(c.H)} L${n(c.W)},${n(c.H * 0.94)} L0,${n(c.H * 0.97)} Z" fill="${c.p.deep}"/>` +
+        `<path d="M${n(-c.B)},${n(-c.B)} L${n(c.W + c.B)},${n(-c.B)} L${n(c.W + c.B)},${n(c.H * 0.035)} L${n(-c.B)},${n(c.H * 0.075)} Z" fill="${c.p.primary}"/>` +
+        `<path d="M${n(-c.B)},${n(c.H + c.B)} L${n(c.W + c.B)},${n(c.H + c.B)} L${n(c.W + c.B)},${n(c.H * 0.94)} L${n(-c.B)},${n(c.H * 0.97)} Z" fill="${c.p.deep}"/>` +
         `<rect x="${n(c.W * 0.04)}" y="${n(c.H * 0.1)}" width="${n(c.W * 0.22)}" height="${n(c.H * 0.14)}" fill="url(#dt)" opacity="0.3"/>`
     };
   },
@@ -414,7 +426,7 @@ const modern: Style = {
         return { body: `<rect x="${n(x)}" y="${n(d.y * c.H - c.M * 0.006)}" width="${n(w)}" height="${n(c.M * 0.012)}" fill="${p.accent}"/>` };
       }
       case 'photo':
-        return { body: photoFrame(c, d.at, mix('#ffffff', p.primary, 0.1), mix('#ffffff', p.primary, 0.1), c.M * 0.002, c.M * 0.025) };
+        return { body: photoFrame(c, d.at, mix('#ffffff', p.primary, 0.08), mix('#ffffff', p.primary, 0.45), c.M * 0.002, c.M * 0.025) };
       case 'panel': {
         const b = box(c, d.at);
         return {
@@ -428,6 +440,14 @@ const modern: Style = {
         const cx = d.cx * c.W;
         const cy = d.cy * c.H;
         if (d.faint) return { body: `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R)}" fill="url(#dt)" opacity="0.18"/>` };
+        if (!c.logo)
+          // بلا شعار: حلقاتٌ متراكزة — بيضاء على الكتلة اللونية، وبلون الجهة على الورق.
+          return {
+            body:
+              [1, 0.78, 0.56, 0.34]
+                .map((k, i) => `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * k)}" fill="none" stroke="${c.family === 'sheet' && c.W > c.H ? '#ffffff' : p.primary}" stroke-width="${n(c.M * (i === 0 ? 0.004 : 0.0025))}" opacity="${0.5 - i * 0.08}"/>`)
+                .join('') + `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.12)}" fill="${p.accent}"/>`
+          };
         return {
           body:
             `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.8)}" fill="#ffffff"/>` +
@@ -485,19 +505,25 @@ const luxury: Style = {
   },
   frame: (c) => {
     const defs = foil('au') + foil('au2', 125);
-    const inset = c.M * (c.family === 'card' ? 0.05 : 0.04);
-    const sw = c.M * (c.family === 'card' ? 0.006 : 0.004);
+    const glow = `<radialGradient id="gl"><stop offset="0" stop-color="${mix(c.p.primary, '#ffffff', 0.08)}" stop-opacity="0.9"/><stop offset="1" stop-color="${c.p.deep}" stop-opacity="0"/></radialGradient>`;
+    // البطاقة: أشرطتها الذهبية الحافّة تكفيها — وإطارٌ فوقها يشقّ اسم الجهة.
+    if (c.family === 'card')
+      return {
+        defs: defs + glow,
+        body: `<ellipse cx="${n(c.W / 2)}" cy="${n(c.H * 0.55)}" rx="${n(c.W * 0.7)}" ry="${n(c.H * 0.7)}" fill="url(#gl)"/>`
+      };
+    const inset = c.M * 0.04;
+    const sw = c.M * 0.004;
     const gap = c.M * 0.012;
     const frame =
       `<rect x="${n(inset)}" y="${n(inset)}" width="${n(c.W - 2 * inset)}" height="${n(c.H - 2 * inset)}" fill="none" stroke="url(#au)" stroke-width="${n(sw * 1.8)}"/>` +
       `<rect x="${n(inset + gap)}" y="${n(inset + gap)}" width="${n(c.W - 2 * (inset + gap))}" height="${n(c.H - 2 * (inset + gap))}" fill="none" stroke="url(#au2)" stroke-width="${n(sw * 0.7)}"/>`;
-    const glow = `<radialGradient id="gl"><stop offset="0" stop-color="${mix(c.p.primary, '#ffffff', 0.08)}" stop-opacity="0.9"/><stop offset="1" stop-color="${c.p.deep}" stop-opacity="0"/></radialGradient>`;
     return {
       defs: defs + glow,
       body:
         `<ellipse cx="${n(c.W / 2)}" cy="${n(c.H * 0.42)}" rx="${n(c.W * 0.6)}" ry="${n(c.H * 0.6)}" fill="url(#gl)"/>` +
         frame +
-        decoCorners(c, inset + gap * 2.2, c.M * (c.family === 'card' ? 0.1 : 0.075), 'url(#au)', sw * 0.9)
+        decoCorners(c, inset + gap * 2.2, c.M * 0.075, 'url(#au)', sw * 0.9)
     };
   },
   decor: (d, c) => {
@@ -521,7 +547,8 @@ const luxury: Style = {
         const r = c.M * 0.014;
         return {
           body:
-            `<line x1="${n(cx - half)}" y1="${n(y)}" x2="${n(cx + half)}" y2="${n(y)}" stroke="url(#au)" stroke-width="${n(c.M * 0.003)}"/>` +
+            // لونٌ مصمت لا تدرّج: التدرّج على خطٍّ أفقي بلا ارتفاع لا يُرسم أصلًا.
+            `<line x1="${n(cx - half)}" y1="${n(y)}" x2="${n(cx + half)}" y2="${n(y)}" stroke="${GOLD}" stroke-width="${n(c.M * 0.003)}"/>` +
             `<path d="M${n(cx)},${n(y - r)} L${n(cx + r)},${n(y)} L${n(cx)},${n(y + r)} L${n(cx - r)},${n(y)} Z" fill="url(#au)"/>`
         };
       }
@@ -541,7 +568,11 @@ const luxury: Style = {
         return {
           body:
             sunburst(cx, cy + R * 0.2, R * 2.2, 36, GOLD, 0.16) +
-            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.82)}" fill="${mix(p.deep, '#000000', 0.2)}" stroke="url(#au)" stroke-width="${n(c.M * 0.004)}"/>`
+            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.82)}" fill="${mix(p.deep, '#000000', 0.2)}" stroke="url(#au)" stroke-width="${n(c.M * 0.004)}"/>` +
+            (c.logo
+              ? ''
+              : `<polygon points="${starPoints(cx, cy, R * 0.5, Math.PI / 8)}" fill="url(#au)"/>` +
+                `<polygon points="${starPoints(cx, cy, R * 0.26, 0)}" fill="${mix(p.deep, '#000000', 0.2)}"/>`)
         };
       }
       case 'medal': {
@@ -591,9 +622,9 @@ const kids: Style = {
         return { font: FONT.cairo, bold: true, color: '#ffffff' };
     }
   },
-  frame: (c, calm) => {
+  frame: (c, keepRects) => {
     const b = c.p.bright;
-    const keep = { x: calm[0] * c.W, y: calm[1] * c.H, w: calm[2] * c.W, h: calm[3] * c.H };
+    const keep = keepRects.map((r) => ({ x: r[0] * c.W, y: r[1] * c.H, w: r[2] * c.W, h: r[3] * c.H }));
     if (c.family === 'card') {
       return { defs: '', body: confetti(c, 10, b, c.seed, keep) };
     }
@@ -642,9 +673,17 @@ const kids: Style = {
         const cx = d.cx * c.W;
         const cy = d.cy * c.H;
         if (d.faint) return { body: star5(cx, cy, R, mix('#ffffff', b[1]!, 0.25)) };
+        // بلا شعار: الدائرة شمسٌ بأشعّتها.
+        const rays = c.logo
+          ? ''
+          : Array.from({ length: 12 }, (_, i) => {
+              const a = (i * Math.PI) / 6;
+              return `<line x1="${n(cx + Math.cos(a) * R * 1.12)}" y1="${n(cy + Math.sin(a) * R * 1.12)}" x2="${n(cx + Math.cos(a) * R * 1.38)}" y2="${n(cy + Math.sin(a) * R * 1.38)}" stroke="${b[1]}" stroke-width="${n(c.M * 0.012)}" stroke-linecap="round"/>`;
+            }).join('') + `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.7)}" fill="${b[1]}"/>`;
         return {
           body:
-            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.95)}" fill="${mix('#ffffff', b[1]!, 0.3)}"/>` +
+            rays +
+            `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.95)}" fill="${mix('#ffffff', b[1]!, 0.3)}" ${c.logo ? '' : 'opacity="0"'}/>` +
             `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(R * 0.95)}" fill="none" stroke="${b[1]}" stroke-width="${n(c.M * 0.008)}" stroke-dasharray="${n(c.M * 0.018)} ${n(c.M * 0.012)}" stroke-linecap="round"/>`
         };
       }

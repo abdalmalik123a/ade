@@ -52,7 +52,13 @@ app.whenReady().then(() => {
     if (url.hostname !== 'store') return new Response('not found', { status: 404 });
     const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
     if (rel.includes('..')) return new Response('forbidden', { status: 403 });
-    return net.fetch(pathToFileURL(join(storeDir(), rel)).toString());
+    // رأس CORS: الواجهة تقرأ بكسلات الشعار لتستخرج لون الجهة، ولوحةٌ رُسمت عليها
+    // صورةٌ من أصلٍ آخر بلا هذا الرأس تُقفَل فلا تُقرأ. والمخزن محلّيٌّ للقراءة وحدها.
+    return net.fetch(pathToFileURL(join(storeDir(), rel)).toString()).then((res) => {
+      const headers = new Headers(res.headers);
+      headers.set('Access-Control-Allow-Origin', '*');
+      return new Response(res.body, { status: res.status, headers });
+    });
   });
 
   // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.

@@ -38,7 +38,9 @@ export function fitCanvasText(root: { querySelectorAll(selector: string): ArrayL
       if (fits(mid)) lo = mid;
       else hi = mid;
     }
-    box.style.fontSize = lo.toFixed(2) + 'px';
+    // يُقرَّب نزولًا وبهامشٍ صغير: `toFixed` كان يقرّب ١٤٫٤٩٧ إلى ١٤٫٥٠ فيتجاوز
+    // الاسم صندوقه بكسلًا واحدًا — وهو ما يُقصّ في الطباعة.
+    box.style.fontSize = Math.max(1, Math.floor(lo * 100) / 100 - 0.05) + 'px';
     fitted += 1;
   }
   return fitted;

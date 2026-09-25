@@ -61,7 +61,9 @@ function inlinesHtml(
         return out;
       }
       const value = values[node.ref];
-      if (value) return escapeHtml(value);
+      // قيمةٌ لاتينية (رقمٌ بشَرطة، بريد) تُعزل باتجاهها: «2026-0457» داخل سطرٍ
+      // عربي كانت تُعرض «0457-2026». والعربية تبقى في مجرى السطر كما هي.
+      if (value) return /[؀-ۿ]/.test(value) || !/[A-Za-z0-9]/.test(value) ? escapeHtml(value) : `<bdi dir="ltr">${escapeHtml(value)}</bdi>`;
       if (missing === 'hide') return '';
       if (missing === 'blank') return blank(fields.get(node.ref));
       return `{${escapeHtml(node.ref)}}`;
@@ -158,6 +160,7 @@ function textHtml(
     el.font ? `font-family:${el.font}` : '',
     el.bold ? 'font-weight:700' : '',
     el.italic ? 'font-style:italic' : '',
+    el.wordSpacing ? `word-spacing:${el.wordSpacing}em` : '',
     'overflow:hidden'
   ]
     .filter(Boolean)

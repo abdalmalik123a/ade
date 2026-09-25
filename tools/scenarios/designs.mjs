@@ -5,7 +5,7 @@
  * يقول ذلك)، ثم يفتحها خلفيةً ويتفقّد: أقُرئ المقاس من الملف أم خُمِّن؟ ثم يضع
  * حقلًا فوقها ويملؤه ويحفظ — ويفتّش في القاعدة: لوحةٌ بنِسَبها وحقولها.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import Database from 'better-sqlite3';
@@ -70,6 +70,7 @@ export function prepare() {
   const file = join(dir, 'student-id.png');
   // ١١٨١١ بكسل/متر = ٣٠٠ نقطة/إنش، و١٠١١ × ٦٣٨ بكسل = ٨٥٫٦ × ٥٤ ملم.
   writeFileSync(file, designPng(1011, 638, 11811));
+  process.env.DIWAN_TEST_SAVE_DIR = dir; // ليقرأه السيناريو نفسه أيضًا
   return { DIWAN_TEST_OPEN_FILE: file, DIWAN_TEST_SAVE_DIR: dir };
 }
 
@@ -79,21 +80,35 @@ export default async function scenario(page, { profile, shotsDir }) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const click = (sel) => page.eval(`document.querySelector('${sel}')?.click(); return true;`);
   const design = () => page.eval(`return document.querySelector('[data-design]')?.innerHTML ?? '';`);
+  const saveDir = process.env.DIWAN_TEST_SAVE_DIR;
 
   await page.goto('designed-documents');
   await wait(900);
 
   let text = await page.text();
   ok('للتصاميم شاشةٌ في الشريط', text.includes('التصاميم — شهادات وهويات'));
-  ok('تُفتح وتُملأ وتُطبع', text.includes('تُفتح وتُملأ وتُطبع'));
+  ok('تبدأ بالمعرض: «لمن؟» ثم اللون والنمط', text.includes('لمن؟') && text.includes('النمط'));
 
-  // ── المعرض: يُعرض ويُختار، ولا يُزرع ──────────────────────────────
-  const gallery = await page.eval(`return document.querySelectorAll('[data-gallery]').length;`);
-  ok('والمعرض عشرةُ تصاميم', gallery === 10);
-  ok('ولمحاتُها مولَّدةٌ متجهةً في الوثيقة', await page.eval(`
-    const img = document.querySelector('[data-gallery] img');
-    return Boolean(img && img.src.startsWith('data:image/svg+xml'));
+  // ── المعرض: اثنا عشر نوعًا حيّةً بعيّنة، لا صناديق فارغة ─────────────
+  await wait(1200);
+  const gallery = await page.eval(`return document.querySelectorAll('[data-kind]').length;`);
+  ok('والمعرض اثنا عشر نوعًا', gallery === 12);
+  ok('ولمحاتُها تصاميم مرسومة بعيّنةٍ لا وسوم', await page.eval(`
+    const thumbs = document.querySelectorAll('[data-kind] [data-canvas]');
+    const text = [...thumbs].map((t) => t.innerText).join(' ');
+    return thumbs.length === 12 && text.includes('زينب علي حسين') && !text.includes('{الاسم}');
   `));
+  const thumbBefore = await page.eval(`return document.querySelector('[data-kind="thanks"] [data-canvas] img').src.length;`);
+  await page.eval(`document.querySelector('[data-style="islamic"]').click()`);
+  await wait(600);
+  const thumbAfter = await page.eval(`return document.querySelector('[data-kind="thanks"] [data-canvas] img').src;`);
+  ok('والنمط يبدّل اللمحات كلّها معًا', thumbAfter.length !== thumbBefore && decodeURIComponent(thumbAfter).includes('pattern'));
+  await page.type('input[data-brand-name]', 'ثانوية المتميّزين');
+  await wait(600);
+  ok(
+    'واسم الجهة يُكتب في التصاميم نفسها',
+    (await page.eval(`return document.querySelector('[data-kind="student-id"]').innerText;`)).includes('ثانوية المتميّزين')
+  );
 
   const countRows = () => {
     const conn = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
@@ -103,15 +118,69 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
   ok('والقاعدة فارغةٌ رغم عرضها — تُقترح ولا تُزرع', countRows() === 0);
 
-  await click('button[data-gallery="student-id"]');
+  await click('button[data-kind="student-id"]');
   await wait(900);
   const picked = await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`);
   ok('واختيارُ الهوية يفتحها بمقاسها', picked.includes('85.6') && picked.includes('54.0'));
   ok('وبحقولها', (await page.text()).includes('املأ الحقول'));
+  const inputs = await page.eval(`return [...document.querySelectorAll('input[data-value]')].map((e) => e.dataset.value).join(',');`);
+  ok('واسم الجهة فيها نصًّا لا حقلًا يُملأ', !inputs.includes('المدرسة'));
+  ok('وصورة الطالب تُختار صورةً لا تُكتب', await page.eval(`return Boolean(document.querySelector('button[data-photo="الصورة"]'));`));
+  ok(
+    'وتُصفّ تسعًا في A4',
+    (await page.eval(`return document.querySelector('[data-imposition]')?.innerText ?? '';`)).includes('9 في ورقة A4')
+  );
+
+  // ── الدفعة: قائمة الصفّ من Excel، وأوراقٌ تُراجع ثم تُحفظ PDF ──────
+  const list = [
+    'الاسم\tالصف\tالرقم\tالهاتف',
+    ...Array.from({ length: 11 }, (_, i) => `طالب ${i + 1}\tالخامس\t2026-${String(i + 1).padStart(4, '0')}\t0770`),
+    'عبد الرحمن محمد عبد الكريم حسين الجبوري\tالسادس\t2026-0099\t0780'
+  ].join('\n');
+  await page.type('textarea[data-batch-text]', list);
+  await wait(600);
+  const summary = await page.eval(`return document.querySelector('[data-batch-summary]')?.innerText ?? '';`);
+  ok('الدفعة: ١٢ اسمًا في ورقتين', summary.includes('١٢') && summary.includes('٢'));
+  ok('والعمود بلا حقلٍ يُقال عنه', (await page.text()).includes('فتُرك: الهاتف'));
+  ok('والمحرّر يُري أوّل اسمٍ لا وسمه', (await design()).includes('طالب 1'));
+  await click('button[data-act="sheets"]');
+  await wait(1500);
+  const sheets = await page.eval(`
+    const o = document.querySelector('[data-sheets]');
+    if (!o) return null;
+    return {
+      summary: o.querySelector('[data-sheets-summary]').innerText,
+      cards: o.querySelectorAll('.print-page [data-canvas]').length,
+      marks: o.querySelectorAll('.print-page div[style*="background:#000"]').length
+    };
+  `);
+  ok('وتُراجع الأوراق قبل الطباعة: ١٢ بطاقة على ورقتين', Boolean(sheets?.summary.includes('١٢') && sheets.summary.includes('٢ ورقة')));
+  ok('والورقة الأولى تسعُ بطاقات بعلامات قصّها', sheets?.cards === 9 && sheets.marks === 24);
+  if (shotsDir) await page.shot(join(shotsDir, 'designs-sheets.png'));
+  await page.eval(`document.querySelector('[data-sheets] button[title="التالية"]').click()`);
+  await wait(800);
+  const last = await page.eval(`
+    const o = document.querySelector('[data-sheets]');
+    const el = [...o.querySelectorAll('[data-fit]')].find((e) => e.textContent.includes('عبد الرحمن'));
+    return el ? { fits: el.firstElementChild.offsetWidth <= el.clientWidth + 0.5, w: el.firstElementChild.offsetWidth, room: el.clientWidth, size: parseFloat(el.style.fontSize), max: parseFloat(el.dataset.fit) } : null;
+  `);
+  ok(`والاسم الطويل صغُر حتى وسع ولم يُقصّ (${JSON.stringify(last)})`, Boolean(last?.fits && last.size < last.max));
+  if (shotsDir) await page.shot(join(shotsDir, 'designs-sheets-2.png'));
+  await click('button[data-act="pdf"]');
+  await wait(4000);
+  const pdfFile = readdirSync(saveDir).find((f) => f.endsWith('.pdf'));
+  const pdf = pdfFile ? readFileSync(join(saveDir, pdfFile), 'latin1') : '';
+  const boxes = [...pdf.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/g)].map((m) => [Math.round(+m[1]), Math.round(+m[2])]);
+  ok('وحُفظ PDF', Boolean(pdfFile));
+  ok('بورقتين A4 أفقيّتين (٢٩٧ × ٢١٠ ملم)', boxes.length === 2 && boxes.every(([w, h]) => w === 842 && h === 595));
+  await page.eval(`document.querySelector('[data-sheets] button[title="رجوع (Esc)"]').click()`);
+  await wait(400);
+  await page.type('textarea[data-batch-text]', '');
+  await wait(300);
 
   ok('ولا تدخل القاعدة حتى تُحفظ', countRows() === 0);
 
-  // ولوحةٌ نظيفة لما بعده: مغادرةُ الشاشة والعودةُ إليها تبدأ من فارغ.
+  // ولوحةٌ نظيفة لما بعده: مغادرةُ الشاشة والعودةُ إليها تبدأ من المعرض.
   await page.goto('templates-library-drafts');
   await wait(600);
   await page.goto('designed-documents');

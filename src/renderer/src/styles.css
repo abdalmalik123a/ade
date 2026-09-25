@@ -18,15 +18,17 @@
 
 /* خطوط التصاميم: رقعةٌ للعنوان الاحتفالي، وكوفيٌّ للرسمي والحديث، ولالي زار للأطفال،
    والمسيري للدعوات. كلّها OFL محزومة — فالشهادة تخرج بخطّها على كل جهاز. */
-@import '@fontsource/aref-ruqaa/arabic-400.css';
-@import '@fontsource/aref-ruqaa/arabic-700.css';
-@import '@fontsource/reem-kufi/arabic-500.css';
-@import '@fontsource/reem-kufi/arabic-700.css';
+/* الملفّ الكامل لا المقطع العربي وحده: المقطع العربي بلا مسافة، فتلتصق
+   «شكر وتقدير» كلمةً واحدة بمسافةٍ من خطٍّ آخر لا عرض لها. */
+@import '@fontsource/aref-ruqaa/400.css';
+@import '@fontsource/aref-ruqaa/700.css';
+@import '@fontsource/reem-kufi/500.css';
+@import '@fontsource/reem-kufi/700.css';
 @import '@fontsource/noto-kufi-arabic/400.css';
 @import '@fontsource/noto-kufi-arabic/700.css';
-@import '@fontsource/lalezar/arabic-400.css';
-@import '@fontsource/el-messiri/arabic-400.css';
-@import '@fontsource/el-messiri/arabic-700.css';
+@import '@fontsource/lalezar/400.css';
+@import '@fontsource/el-messiri/400.css';
+@import '@fontsource/el-messiri/700.css';
 @import '@fontsource/cairo/400.css';
 @import '@fontsource/cairo/700.css';
 
