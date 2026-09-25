@@ -6,6 +6,8 @@ import { registerDesignIpc } from './designs';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
+import { registerOrderIpc } from './orders';
+import { orderCounts } from '../services/orders';
 import { archiveStats, listDocuments } from '../services/documents';
 import type {
   OfficeSettings,
@@ -69,6 +71,7 @@ export function registerIpc(): void {
   registerTemplateIpc();
   registerCitizenIpc();
   registerDocumentIpc();
+  registerOrderIpc();
 
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 
@@ -85,7 +88,7 @@ export function registerIpc(): void {
     const issuedToday = db
       .prepare("SELECT COUNT(*) AS n FROM documents WHERE date(issued_at) = date('now','localtime')")
       .get() as { n: number };
-    return { templates: templates.n, issuedToday: issuedToday.n };
+    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db) };
   });
 
   ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));

@@ -16,9 +16,12 @@ export default function BatchPanel({
   fields,
   imageKeys,
   imp,
+  initialText = '',
   onRows,
   onPreview
 }: {
+  /** قائمةٌ جاءت مع طلب — تُفتح بها الدفعة جاهزة. */
+  initialText?: string;
   fields: DocField[];
   /** حقول الصور — تُملأ من المجلّد لا من القائمة. */
   imageKeys: string[];
@@ -26,7 +29,7 @@ export default function BatchPanel({
   onRows: (rows: Record<string, string>[]) => void;
   onPreview: () => void;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
 

@@ -13,17 +13,20 @@ const TOOL_BASE =
 const TOOL_ACTIVE =
   'flex items-center gap-space-md px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20';
 const BADGE = 'px-2 py-0.5 rounded-full text-[10px] bg-surface-container-high text-on-surface-variant font-medium';
+/** شارةٌ تنبّه: طلبٌ متأخّر أو موعده اليوم — تُرى من أي شاشة. */
+const BADGE_ALERT = 'px-2 py-0.5 rounded-full text-[10px] bg-error text-on-error font-bold';
 
 type NavItem = {
   key: RouteKey;
   icon: string;
   label: string;
-  badge?: { text: string; bold?: boolean };
+  badge?: { text: string; bold?: boolean; alert?: boolean };
 };
 
 export type SidebarCounts = {
   templates: number;
   issuedToday: number;
+  orders: { open: number; dueToday: number; overdue: number };
 };
 
 export type SidebarProps = {
@@ -63,6 +66,18 @@ export default function Sidebar({
       label: 'الشبّاك — اختر واملأ واطبع'
     },
     {
+      key: 'orders',
+      icon: 'assignment',
+      label: 'الطلبات',
+      badge: counts.orders.overdue
+        ? { text: `متأخّر ${counts.orders.overdue}`, alert: true }
+        : counts.orders.dueToday
+          ? { text: `اليوم ${counts.orders.dueToday}`, alert: true }
+          : counts.orders.open
+            ? { text: String(counts.orders.open) }
+            : undefined
+    },
+    {
       key: 'archive',
       icon: 'inventory_2',
       label: 'سجل المعاملات والأرشيف',
@@ -80,6 +95,7 @@ export default function Sidebar({
       badge: { text: String(counts.templates) }
     },
     { key: 'editor', icon: 'edit_document', label: 'المحرّر ومعاينة A4' },
+    { key: 'clients', icon: 'domain', label: 'الجهات — مدارس ودوائر' },
     { key: 'letterhead', icon: 'verified', label: 'الترويسات والشعارات' },
     // ورقة الامتحان لا تُقيَّد ولا تُصدَّر، فلا تجاور الكتب في المكتبة ولا في الشبّاك.
     { key: 'papers', icon: 'quiz', label: 'الأسئلة — أوراق الامتحانات' },
@@ -138,7 +154,7 @@ export default function Sidebar({
                     <span className="font-label-lg text-label-lg">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
+                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
                       {item.badge.text}
                     </span>
                   )}
@@ -172,7 +188,7 @@ export default function Sidebar({
                     <span className="font-label-lg text-label-lg">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={`${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
+                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
                       {item.badge.text}
                     </span>
                   )}

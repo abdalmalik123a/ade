@@ -1,3 +1,4 @@
+import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus } from './orders';
 import type { Letterhead, LetterheadLayout } from './letterhead';
 import type { Doc, Suggestion } from './doc';
 import type { TemplateInput, TemplateVariable } from './template';
@@ -31,6 +32,8 @@ export type OfficeSettings = {
 export type SidebarCounts = {
   templates: number;
   issuedToday: number;
+  /** الطلبات المفتوحة، وما موعده اليوم، والمتأخّر — لشارة الشريط. */
+  orders: OrderCounts;
 };
 
 /** Electron 44 لم يعد يعطي isDefault/status مباشرة — يُستخرجان من options الخاصة بالنظام. */
@@ -392,6 +395,20 @@ export type DiwanApi = {
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;
+  };
+  clients: {
+    list(query?: string): Promise<Client[]>;
+    get(id: number): Promise<Client | null>;
+    save(input: ClientInput): Promise<Client>;
+    setLogo(id: number, imagePath: string): Promise<Client>;
+    delete(id: number): Promise<void>;
+  };
+  orders: {
+    list(filter?: { status?: 'open' | OrderStatus; clientId?: number; query?: string }): Promise<Order[]>;
+    get(id: number): Promise<Order | null>;
+    save(input: OrderInput): Promise<Order>;
+    setStatus(id: number, status: OrderStatus): Promise<Order>;
+    delete(id: number): Promise<void>;
   };
   printers: {
     list(): Promise<PrinterInfo[]>;

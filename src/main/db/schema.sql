@@ -236,3 +236,26 @@ CREATE TABLE IF NOT EXISTS corrections (
 );
 
 CREATE INDEX IF NOT EXISTS idx_corrections_lookup ON corrections(kind, input);
+
+-- ── الطلبات ─────────────────────────────────────────────────────────
+-- ما تطلبه جهةٌ أو زبونٌ ويُسلَّم لاحقًا: «٤٠٠ هويّة للصفّ الخامس، الخميس».
+-- بلا مبالغ عمدًا: ديوان أداةُ إنتاجٍ لا دفترُ حسابات — المال مرحلةٌ بعيدة.
+-- والحالة سلسلة: جديد ← بانتظار الزبون ← قيد العمل ← جاهز ← سُلِّم (أو أُلغي).
+CREATE TABLE IF NOT EXISTS orders (
+  id            INTEGER PRIMARY KEY,
+  authority_id  INTEGER REFERENCES authorities(id) ON DELETE SET NULL,
+  customer      TEXT,                     -- زبونٌ فرد بلا جهة: اسمه كما قاله
+  phone         TEXT,
+  title         TEXT NOT NULL,
+  quantity      INTEGER,
+  due_date      TEXT,                     -- YYYY-MM-DD
+  status        TEXT NOT NULL DEFAULT 'new',
+  notes         TEXT,
+  template_id   INTEGER REFERENCES templates(id) ON DELETE SET NULL,
+  batch_text    TEXT,                     -- قائمة الأسماء كما أُلصقت — تُطبع منها الدفعة
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  delivered_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_orders_status ON orders(status, due_date);
+CREATE INDEX IF NOT EXISTS ix_orders_authority ON orders(authority_id);

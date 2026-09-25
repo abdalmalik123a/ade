@@ -18,6 +18,20 @@ const api: DiwanApi = {
   counts: {
     sidebar: () => invoke('counts:sidebar')
   },
+  clients: {
+    list: (query?: string) => invoke('clients:list', query ?? ''),
+    get: (id: number) => invoke('clients:get', id),
+    save: (input: unknown) => invoke('clients:save', input),
+    setLogo: (id: number, imagePath: string) => invoke('clients:setLogo', id, imagePath),
+    delete: (id: number) => invoke('clients:delete', id)
+  },
+  orders: {
+    list: (filter?: unknown) => invoke('orders:list', filter ?? {}),
+    get: (id: number) => invoke('orders:get', id),
+    save: (input: unknown) => invoke('orders:save', input),
+    setStatus: (id: number, status: string) => invoke('orders:setStatus', id, status),
+    delete: (id: number) => invoke('orders:delete', id)
+  },
   printers: {
     list: () => invoke('printers:list')
   },

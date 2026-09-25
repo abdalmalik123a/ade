@@ -10,6 +10,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Seal, TemplateSummary } from '@shared/api';
+import type { Client } from '@shared/orders';
 import { canvasPx, SCREEN_DPI } from '@shared/canvas';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { fitCanvasText } from '@shared/canvasFit';
@@ -95,19 +96,24 @@ function Thumb({
 
 export default function Gallery({
   saved,
+  presetClient,
   onPick,
   onOpenSaved,
   onOpenImage,
   onImport
 }: {
   saved: TemplateSummary[];
+  /** «صمّم لها» من ملف الجهة: يُفتح المعرض عليها. */
+  presetClient?: { id: number; key: number } | null;
   onPick: (pick: GalleryPick) => void;
   onOpenSaved: (id: number) => void;
   onOpenImage: () => void;
   onImport: () => void;
 }) {
   const [logos, setLogos] = useState<Seal[]>([]);
-  const [logoId, setLogoId] = useState<number | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  /** «لمن؟»: جهةٌ من ملفّاتها، أو شعارٌ مرفوعٌ بلا جهة. */
+  const [who, setWho] = useState<{ client?: number; logo?: number } | null>(null);
   const [name, setName] = useState('');
   const [brandColor, setBrandColor] = useState<string | null>(null);
   const [paletteKey, setPaletteKey] = useState('royal');
@@ -115,14 +121,28 @@ export default function Gallery({
   const [group, setGroup] = useState('الكل');
 
   useEffect(() => {
-    void window.diwan.seals.list().then((all) => setLogos(all.filter((s) => s.kind === 'شعار' && s.imagePath)));
-  }, []);
+    // الشعارات المربوطة بجهةٍ تُعرض مع جهتها — فلا تتكرّر الجهة مرّتين في الصفّ.
+    void window.diwan.seals.list().then((all) => setLogos(all.filter((s) => s.kind === 'شعار' && s.imagePath && !s.authorityId)));
+    void window.diwan.clients.list().then(setClients);
+  }, [presetClient?.key]);
 
-  const logo = logos.find((l) => l.id === logoId) ?? null;
+  useEffect(() => {
+    if (presetClient) setWho({ client: presetClient.id });
+  }, [presetClient?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // شعارٌ اختير: اسمه اسم الجهة ما لم يُكتب غيره، ولونه لوحتها.
+  const client = who?.client ? (clients.find((c) => c.id === who.client) ?? null) : null;
+  const rawLogo = who?.logo ? (logos.find((l) => l.id === who.logo) ?? null) : null;
+  const logo = client ? (client.logo ? { name: client.name, imagePath: client.logo } : null) : rawLogo;
+
+  // جهةٌ أو شعارٌ اختير: اسمه اسم الجهة ما لم يُكتب غيره، ولونه لوحتها —
+  // لون الجهة المحفوظ في ملفّها أولًا، وإلا ما يُستخرج من شعارها.
   useEffect(() => {
     setBrandColor(null);
+    if (client?.color) {
+      setBrandColor(client.color);
+      setPaletteKey('brand');
+      return;
+    }
     if (!logo?.imagePath) {
       if (paletteKey === 'brand') setPaletteKey('royal');
       return;
@@ -139,7 +159,7 @@ export default function Gallery({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logo?.imagePath]);
+  }, [logo?.imagePath, client?.id, client?.color]);
 
   const palette = useMemo(
     () =>
@@ -149,8 +169,8 @@ export default function Gallery({
     [paletteKey, brandColor]
   );
   const brand: Brand = useMemo(
-    () => ({ name: name.trim() || logo?.name || undefined, logo: logo?.imagePath ?? null }),
-    [name, logo]
+    () => ({ name: name.trim() || client?.name || logo?.name || undefined, logo: logo?.imagePath ?? null }),
+    [name, logo, client]
   );
   const kinds = KINDS.filter((k) => group === 'الكل' || k.group === group);
   const current = STYLES.find((s) => s.key === style)!;
@@ -197,19 +217,29 @@ export default function Gallery({
         <section className="rounded-xl bg-surface-container-low p-space-md space-y-space-md" data-brand="">
           <div className="flex flex-wrap items-center gap-space-sm">
             <span className="font-label-md text-label-md text-on-surface-variant font-semibold w-20 shrink-0">لمن؟</span>
-            <button className={chip(logoId === null)} data-logo="none" type="button" onClick={() => setLogoId(null)}>
+            <button className={chip(who === null)} data-logo="none" type="button" onClick={() => setWho(null)}>
               <span className="material-symbols-outlined text-[18px]">hide_image</span>
-              بلا شعار
+              بلا جهة
             </button>
+            {clients.map((c) => (
+              <button key={`c${c.id}`} className={chip(who?.client === c.id)} data-client-chip={c.id} type="button" onClick={() => setWho({ client: c.id })}>
+                {c.logo ? (
+                  <img alt="" className="w-6 h-6 object-contain rounded bg-white" src={`diwan://store/${c.logo}`} />
+                ) : (
+                  <span className="material-symbols-outlined text-[18px]">domain</span>
+                )}
+                <span className="max-w-[12rem] truncate">{c.name}</span>
+              </button>
+            ))}
             {logos.map((l) => (
-              <button key={l.id} className={chip(logoId === l.id)} data-logo={l.id} type="button" onClick={() => setLogoId(l.id)}>
+              <button key={`l${l.id}`} className={chip(who?.logo === l.id)} data-logo={l.id} type="button" onClick={() => setWho({ logo: l.id })}>
                 <img alt="" className="w-6 h-6 object-contain rounded bg-white" src={`diwan://store/${l.imagePath}`} />
                 <span className="max-w-[12rem] truncate">{l.name}</span>
               </button>
             ))}
-            {logos.length === 0 && (
+            {clients.length === 0 && logos.length === 0 && (
               <span className="font-label-sm text-label-sm text-on-surface-variant">
-                ارفع شعار المدرسة من «الترويسات والشعارات» فتخرج التصاميم بلونها وشعارها
+                أضف المدارس والدوائر في «الجهات» بشعاراتها، فتخرج التصاميم بلون كلٍّ منها وشعاره
               </span>
             )}
             <input
@@ -231,7 +261,7 @@ export default function Gallery({
                 onClick={() => setPaletteKey('brand')}
               >
                 <span className="w-5 h-5 rounded-full ring-2 ring-white" style={{ background: paletteFrom(brandColor).primary }} />
-                لون الشعار
+                {client?.color ? 'لون الجهة' : 'لون الشعار'}
               </button>
             )}
             {PALETTES.map((p) => (

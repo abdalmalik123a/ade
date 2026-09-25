@@ -6,7 +6,7 @@ import { registerIpc } from './ipc';
 
 // مخطط مخصّص لعرض ملفات المخزن (الصور والمستمسكات) دون فتح file:// على كامل القرص.
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'diwan', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+  { scheme: 'diwan', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
 ]);
 
 let mainWindow: BrowserWindow | null = null;

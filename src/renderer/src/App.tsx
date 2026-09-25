@@ -10,7 +10,9 @@ import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
 import TemplatesScreen from './screens/TemplatesScreen';
 import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
-import DesignsScreen from './screens/DesignsScreen';
+import DesignsScreen, { type DesignRequest } from './screens/DesignsScreen';
+import OrdersScreen from './screens/OrdersScreen';
+import ClientsScreen from './screens/ClientsScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
 
@@ -38,10 +40,12 @@ export default function App() {
    */
   const [route, setRoute] = useState<RouteKey>('service');
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0 });
+  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 } });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [search, setSearch] = useState('');
   const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
+  /** ما تُفتح به التصاميم من غيرها: تصميم طلبٍ بقائمته، أو المعرض على جهة. */
+  const [designRequest, setDesignRequest] = useState<DesignRequest | null>(null);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
     busy: boolean;
@@ -166,7 +170,27 @@ export default function App() {
           />
         );
       case 'designs':
-        return <DesignsScreen printer={selectedPrinter} onChanged={() => void refresh()} />;
+        return <DesignsScreen printer={selectedPrinter} request={designRequest} onChanged={() => void refresh()} />;
+      case 'orders':
+        return (
+          <OrdersScreen
+            onChanged={() => void refresh()}
+            onOpenDesign={(order) => {
+              setDesignRequest({ key: Date.now(), templateId: order.templateId ?? undefined, batchText: order.batchText, clientId: order.clientId ?? undefined });
+              navigate('designs');
+            }}
+          />
+        );
+      case 'clients':
+        return (
+          <ClientsScreen
+            onChanged={() => void refresh()}
+            onDesignFor={(client) => {
+              setDesignRequest({ key: Date.now(), clientId: client.id });
+              navigate('designs');
+            }}
+          />
+        );
       case 'letterhead':
         return <LetterheadScreen />;
       case 'search':
@@ -191,7 +215,11 @@ export default function App() {
       )}
       <Sidebar
         active={route}
-        onNavigate={navigate}
+        // الشريط يفتح الشاشة نظيفة — لا يُعاد فتح تصميم طلبٍ سابق.
+        onNavigate={(key) => {
+          setDesignRequest(null);
+          navigate(key);
+        }}
         counts={counts}
         printerName={selectedPrinter?.displayName ?? null}
         printerReady={selectedPrinter?.ready ?? false}

@@ -98,12 +98,19 @@ const kindName = (el: CanvasElement): string =>
         ? `${el.symbology === 'qr' ? 'QR' : 'باركود'} ${el.ref ? `{${el.ref}}` : el.value}`
         : 'شكل';
 
+/**
+ * ما تُفتح به الشاشة من غيرها: تصميمُ طلبٍ بقائمته، أو المعرضُ على جهة.
+ * و`key` يتغيّر مع كل طلب — فيُفتح ثانيةً ولو كان الطلب نفسه.
+ */
+export type DesignRequest = { key: number; templateId?: number; batchText?: string | null; clientId?: number };
+
 export type DesignsScreenProps = {
   printer: PrinterInfo | null;
+  request?: DesignRequest | null;
   onChanged?: () => void;
 };
 
-export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps) {
+export default function DesignsScreen({ printer, request, onChanged }: DesignsScreenProps) {
   const [history, setHistory] = useState(() =>
     startCanvasHistory(emptyCanvas(SIZE_PRESETS[1]!.size))
   );
@@ -127,6 +134,9 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
   /** صفوف الدفعة — وبغيرها تُطبع البطاقة بقيمها المكتوبة، نسخًا. */
   const [batchRows, setBatchRows] = useState<Record<string, string>[]>([]);
   const [sheetsOpen, setSheetsOpen] = useState(false);
+  /** قائمةٌ جاءت مع طلب، ومفتاحٌ يعيد بناء لوح الدفعة بها. */
+  const [batchSeed, setBatchSeed] = useState('');
+  const [batchKey, setBatchKey] = useState(0);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<HTMLDivElement>(null);
@@ -630,6 +640,21 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
     [say]
   );
 
+  /**
+   * فُتحت الشاشة من طلب: تصميمه بقائمته في الدفعة — فيراجع المكتب الأوراق ويطبع.
+   * ومن ملف جهة: المعرض عليها (يتولّاه المعرض نفسه).
+   */
+  useEffect(() => {
+    if (!request) return;
+    if (request.templateId) {
+      void openDesign(request.templateId).then(() => {
+        setBatchSeed(request.batchText ?? '');
+        setBatchKey((k) => k + 1);
+      });
+    } else setView('gallery');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.key]);
+
   const EDGES: { edge: Edge; style: React.CSSProperties; cursor: string }[] = [
     { edge: 'nw', style: { top: -4, left: -4 }, cursor: 'nwse-resize' },
     { edge: 'ne', style: { top: -4, right: -4 }, cursor: 'nesw-resize' },
@@ -646,6 +671,7 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
       {/* المعرض يبقى مركّبًا مخفيًّا: الرجوع إليه يجد الجهة واللون والنمط كما تُركت. */}
       <div className={view === 'gallery' ? 'h-[calc(100vh-4rem)]' : 'hidden'}>
         <Gallery
+          presetClient={request?.clientId ? { id: request.clientId, key: request.key } : null}
           saved={designs}
           onImport={() => void importDesign()}
           onOpenImage={() => void openBackground()}
@@ -723,9 +749,11 @@ export default function DesignsScreen({ printer, onChanged }: DesignsScreenProps
 
           {doc.fields.length > 0 && (
             <BatchPanel
+              key={batchKey}
               fields={doc.fields}
               imageKeys={imageKeys}
               imp={imp}
+              initialText={batchSeed}
               onPreview={() => setSheetsOpen(true)}
               onRows={setBatchRows}
             />

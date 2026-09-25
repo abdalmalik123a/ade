@@ -97,14 +97,14 @@ export function registerFileIpc(): void {
   ipcMain.handle('files:pickImage', async (e, bucket: string): Promise<string | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
-    const result = await dialog.showOpenDialog(win, {
+    // عبر pickOpenPath: بابُ المِقْود نفسه — فشعار الجهة يُختبر على التطبيق الحقيقي.
+    const source = await pickOpenPath(win, {
       title: 'اختر صورة',
       buttonLabel: 'إدراج',
-      properties: ['openFile'],
-      filters: IMAGE_FILTERS
+      filterName: IMAGE_FILTERS[0]!.name,
+      extensions: IMAGE_FILTERS[0]!.extensions
     });
-    if (result.canceled || !result.filePaths[0]) return null;
-    return importFile(result.filePaths[0], bucket);
+    return source ? importFile(source, bucket) : null;
   });
 
   /**

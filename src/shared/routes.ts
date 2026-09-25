@@ -2,6 +2,10 @@
 export const ROUTES = {
   /** الشبّاك — الشاشة اليومية. لا مقابل لها في التصميم: بُنيت بتوكناته. */
   service: 'service-counter',
+  /** الطلبات — ما يُطلب اليوم ويُسلَّم لاحقًا. بلا مبالغ (قرار المالك). */
+  orders: 'orders-board',
+  /** الجهات — المدارس والدوائر: شعارها ولونها وترويساتها وطلباتها. */
+  clients: 'clients-directory',
   editor: 'smart-editor-a4-preview',
   templates: 'templates-library-drafts',
   archive: 'transactions-archive-ledger',

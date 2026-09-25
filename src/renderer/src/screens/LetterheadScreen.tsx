@@ -19,6 +19,7 @@ import {
   type LetterheadLayout,
   type LetterheadPreset
 } from '@shared/letterhead';
+import type { Client } from '@shared/orders';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import { UI_SCALES } from '../shell/Onboarding';
 import LetterheadView from '../components/LetterheadView';
@@ -64,6 +65,12 @@ export default function LetterheadScreen() {
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  /** لأيّ جهةٍ هذه الترويسة — فتظهر في ملفّها. */
+  const [authorityId, setAuthorityId] = useState<number | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  useEffect(() => {
+    void window.diwan.clients.list().then(setClients);
+  }, []);
   /** ترشيح المكتبة: بحث، وتصنيف، أو المفضّلة وحدها. */
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<string | null>(null);
@@ -148,11 +155,13 @@ export default function LetterheadScreen() {
     setCurrentId(item.id);
     setName(item.name);
     setCategory(item.category ?? '');
+    setAuthorityId(item.authorityId ?? null);
     setLayout(normalizeLayout(item.layout));
     setDirty(false);
   }
 
   function startNew() {
+    setAuthorityId(null);
     setCurrentId(null);
     setName('');
     setCategory('');
@@ -186,7 +195,7 @@ export default function LetterheadScreen() {
       const saved = await window.diwan.letterheads.save({
         id: currentId,
         name: name.trim(),
-        authorityId: current?.authorityId ?? null,
+        authorityId,
         layout,
         category: category.trim() || null
       });
@@ -500,6 +509,28 @@ export default function LetterheadScreen() {
                   </datalist>
                 </div>
               </div>
+
+              {clients.length > 0 && (
+                <label className="flex items-center gap-space-sm">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant font-medium shrink-0">لجهة</span>
+                  <select
+                    className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none"
+                    data-letterhead-client=""
+                    value={authorityId ?? ''}
+                    onChange={(e) => {
+                      setAuthorityId(e.target.value ? Number(e.target.value) : null);
+                      setDirty(true);
+                    }}
+                  >
+                    <option value="">— لا جهة بعينها —</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               <button
                 className="h-9 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
