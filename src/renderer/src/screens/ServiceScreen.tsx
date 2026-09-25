@@ -168,7 +168,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       setLoaded(next);
       setStep('fill');
     } catch {
-      say('تعذّر تحميل الاستمارات', 'warn');
+      say('تعذّر تحميل النماذج', 'warn');
     } finally {
       setBusy(false);
     }
@@ -421,7 +421,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
                 <input
                   className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                  placeholder="ابحث عن استمارة..."
+                  placeholder="ابحث عن نموذج…"
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -462,7 +462,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                 <div className="py-space-lg text-center font-body-md text-body-md text-on-surface-variant">
                   {items.length === 0
                     ? 'المكتبة فارغة — استورد مجلد ملفاتك من الورشة'
-                    : 'لا استمارة بهذا الاسم'}
+                    : 'لا نموذج بهذا الاسم'}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
@@ -560,7 +560,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
               {fields.length === 0 ? (
                 <span className="font-body-md text-body-md text-on-surface-variant">
-                  لا حقول في هذه الاستمارات — امضِ إلى المراجعة.
+                  لا حقول في هذه النماذج — امضِ إلى المراجعة.
                 </span>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm">

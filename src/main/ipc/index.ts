@@ -22,7 +22,9 @@ const DEFAULTS: OfficeSettings = {
   operatorName: '',
   defaultPrinter: null,
   serialPrefix: 'م',
-  serialYear: new Date().getFullYear()
+  serialYear: new Date().getFullYear(),
+  uiScale: 1,
+  onboarded: false
 };
 
 function readSettings(): OfficeSettings {
@@ -37,7 +39,9 @@ function readSettings(): OfficeSettings {
     operatorName: map.get('operatorName') ?? DEFAULTS.operatorName,
     defaultPrinter: map.get('defaultPrinter') ?? DEFAULTS.defaultPrinter,
     serialPrefix: map.get('serialPrefix') ?? DEFAULTS.serialPrefix,
-    serialYear: Number(map.get('serialYear') ?? DEFAULTS.serialYear)
+    serialYear: Number(map.get('serialYear') ?? DEFAULTS.serialYear),
+    uiScale: Math.min(1.5, Math.max(0.8, Number(map.get('uiScale') ?? DEFAULTS.uiScale) || 1)),
+    onboarded: map.get('onboarded') === 'true'
   };
 }
 

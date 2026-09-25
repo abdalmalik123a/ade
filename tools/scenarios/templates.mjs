@@ -47,7 +47,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('العدّادات صفر', text.includes('لم يُعتمد أي نموذج بعد'));
 
   // ── فتح المصمّم ──────────────────────────────────────────────────
-  await page.clickText('فتح مصمّم النماذج والمُعاملات');
+  await page.clickText('ورقة فارغة');
   await wait(400);
   text = await page.text();
   ok('انفتح مصمّم النماذج', text.includes('مصمّم النماذج والمُعاملات'));
@@ -91,7 +91,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'tpl-grid.png'));
 
   // ── منع تكرار الكود ─────────────────────────────────────────────
-  await page.clickText('فتح مصمّم النماذج والمُعاملات');
+  await page.clickText('ورقة فارغة');
   await wait(400);
   await page.type('input[placeholder^="مثال: تأييد"]', 'نموذج ثانٍ');
   await page.type('input[placeholder="اختياري"]', 'DIW-EDU-1');
@@ -134,7 +134,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     await page.eval(`return !!document.querySelector('button[title="حذف النموذج"]')`));
   ok('زرّ التصدير ظاهر على البطاقة',
     await page.eval(`return !!document.querySelector('button[title^="تصدير النموذج"]')`));
-  ok('زرّ الإضافة ظاهر في شريط الأدوات', (await page.text()).includes('إضافة نموذج'));
+  ok('و«نموذجٌ جديد» ظاهرٌ بطرقه الثلاث', await page.eval(`return document.querySelectorAll('[data-new-template] [data-act]').length === 3;`));
   ok('زرّ تصدير المكتبة ظاهر', (await page.text()).includes('تصدير المكتبة كاملة'));
   ok('زرّ استرجاع المكتبة ظاهر', (await page.text()).includes('استرجاع مكتبة'));
 
@@ -147,7 +147,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('التراجع يُبقي النموذج', (await page.text()).includes('تأييد استمرار بالخدمة'));
 
   // زرّ الإضافة يفتح المصمّم فارغًا
-  await page.clickText('إضافة نموذج');
+  await page.clickText('ورقة فارغة');
   await wait(500);
   ok('زرّ الإضافة يفتح مصمّمًا فارغًا',
     (await page.text()).includes('المتغيّرات على الورقة (0)'));

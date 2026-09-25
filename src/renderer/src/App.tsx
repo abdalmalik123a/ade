@@ -3,6 +3,7 @@ import type { RouteKey } from '@shared/routes';
 import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
+import Onboarding from './shell/Onboarding';
 import ServiceScreen from './screens/ServiceScreen';
 import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
@@ -61,6 +62,8 @@ export default function App() {
     setSettings(s);
     setCounts(c);
     setPrinters(p);
+    // حجم الواجهة الذي اختاره المكتب — يُطبَّق عند كل إقلاع.
+    window.diwan.ui.setZoom(s.uiScale);
   }, []);
 
   useEffect(() => {
@@ -85,32 +88,15 @@ export default function App() {
   );
 
   /**
-   * أزرار الشريط العلوي تعمل على المعروض.
+   * `Ctrl+P` يطبع المعروض: الكتاب في المحرّر، والورقة في الأسئلة.
    *
-   * وفي المحرر تعمل على الكتاب، وفي الأسئلة على الورقة — ومن شاشةٍ ثالثة تنقل
-   * إلى المحرر أولًا. فلا يضغط المدرّس «طباعة» فيجد نفسه في كتابٍ رسمي.
+   * وفي غيرهما لا يفعل شيئًا — كان ينقل إلى المحرّر، فيضغطه الموظف في التصاميم
+   * أو الشبّاك فيجد نفسه في كتابٍ رسمي لم يطلبه.
    */
-  const barAction = useCallback(
-    (onEditor: (h: EditorHandle) => void, onPapers: (h: PapersHandle) => void) => () => {
-      if (route === 'papers' && papersRef.current) return onPapers(papersRef.current);
-      if (route === 'editor' && editorRef.current) return onEditor(editorRef.current);
-      navigate('editor');
-    },
-    [navigate, route]
-  );
-
-  const handlePrint = barAction(
-    (h) => h.print(),
-    (h) => h.print()
-  );
-  const handleSaveDraft = barAction(
-    (h) => h.saveDraft(),
-    (h) => h.save()
-  );
-  const handleExportPdf = barAction(
-    (h) => h.exportPdf(),
-    (h) => h.exportPdf()
-  );
+  const handlePrint = useCallback(() => {
+    if (route === 'papers' && papersRef.current) papersRef.current.print();
+    else if (route === 'editor' && editorRef.current) editorRef.current.print();
+  }, [route]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -190,6 +176,19 @@ export default function App() {
 
   return (
     <>
+      {settings && !settings.onboarded && (
+        <Onboarding
+          printers={printers}
+          settings={settings}
+          onDone={(patch, go) => {
+            void window.diwan.settings.set(patch).then((s) => {
+              setSettings(s);
+              window.diwan.ui.setZoom(s.uiScale);
+            });
+            if (go) navigate(go);
+          }}
+        />
+      )}
       <Sidebar
         active={route}
         onNavigate={navigate}
@@ -203,20 +202,32 @@ export default function App() {
       />
       <div className="pr-72">
         <Header
-          /** أدواتُ التأليف تخصّ من يؤلّف — وفي الشبّاك أزرارُه هو. */
-          tools={route === 'editor' || route === 'papers' || route === 'designs'}
-          transaction={editorStatus.transaction}
           search={search}
           onSearch={(value) => {
             setSearch(value);
             if (value.trim() && route !== 'search') navigate('search');
           }}
-          onSwapTemplate={() => navigate('templates')}
-          onSaveDraft={handleSaveDraft}
-          onExportPdf={handleExportPdf}
-          onPrint={handlePrint}
-          exporting={editorStatus.exporting}
-          busy={editorStatus.busy}
+          context={
+            // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
+            route === 'editor' ? (
+              <>
+                <span className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+                  <span className="material-symbols-outlined text-secondary text-[18px]">article</span>
+                  <span className="font-label-md text-label-md font-semibold truncate max-w-[220px]">
+                    {editorStatus.transaction ?? 'لم يُختر نموذج'}
+                  </span>
+                </span>
+                <button
+                  className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+                  type="button"
+                  onClick={() => navigate('templates')}
+                >
+                  <span className="material-symbols-outlined text-[18px]">sync_alt</span>
+                  نموذجٌ آخر
+                </button>
+              </>
+            ) : undefined
+          }
         />
         {renderScreen()}
       </div>

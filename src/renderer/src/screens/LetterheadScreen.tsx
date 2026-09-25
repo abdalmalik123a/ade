@@ -20,6 +20,7 @@ import {
   type LetterheadPreset
 } from '@shared/letterhead';
 import LetterheadDesigner from '../components/LetterheadDesigner';
+import { UI_SCALES } from '../shell/Onboarding';
 import LetterheadView from '../components/LetterheadView';
 
 const DEFAULT_IRAQI_CLIPS = [
@@ -655,6 +656,32 @@ export default function LetterheadScreen() {
 
               {settings && (
                 <>
+                  {/* حجم الواجهة: يُطبَّق ويُحفظ فورًا — تغييرٌ يُرى لا يحتاج «حفظ». */}
+                  <div className="flex items-center justify-between gap-space-sm" data-ui-scale="">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">حجم الخطّ في البرنامج</span>
+                    <div className="flex p-0.5 rounded-lg bg-surface-container-low">
+                      {UI_SCALES.map((o) => (
+                        <button
+                          key={o.value}
+                          className={`h-8 px-3 rounded-md font-label-md text-label-md ${
+                            (settings.uiScale || 1) === o.value
+                              ? 'bg-primary-container text-on-primary font-semibold'
+                              : 'text-on-surface-variant hover:bg-surface-container-high'
+                          }`}
+                          data-scale={o.value}
+                          type="button"
+                          onClick={() => {
+                            window.diwan.ui.setZoom(o.value);
+                            void window.diwan.settings.set({ uiScale: o.value }).then((next) =>
+                              setSettings((cur) => (cur ? { ...cur, uiScale: next.uiScale } : next))
+                            );
+                          }}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-space-sm">
                     <label className="flex flex-col gap-1">
                       <span className="font-label-sm text-label-sm text-on-surface-variant">

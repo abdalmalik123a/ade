@@ -390,24 +390,32 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </div>
           ))}
 
-          <button
-            className="bg-primary-container text-on-primary p-space-md rounded-xl shadow-md flex flex-col justify-between gap-space-sm text-right transition-transform hover:scale-[1.01]"
-            type="button"
-            onClick={() => void openDesigner(null)}
-          >
-            <div className="flex items-center gap-space-xs">
-              <span className="material-symbols-outlined text-[20px]">post_add</span>
-              <span className="font-label-md text-label-md font-semibold">محرر التكويد الذكي</span>
-            </div>
-            <span className="font-headline-sm text-headline-sm">+ إنشاء نموذج جديد</span>
-            <span className="font-label-sm text-label-sm opacity-80">
-              مع الحقول الديناميكية والمتغيرات التلقائية
-            </span>
-            <span className="h-9 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs">
-              <span className="font-mono">{'{ }'}</span>
-              <span>فتح مصمّم النماذج والمُعاملات</span>
-            </span>
-          </button>
+          {/* نموذجٌ جديد: طرقُه الثلاث في مكانٍ واحد — كانت ثلاثة أزرارٍ لفعلٍ واحد، والاستيراد في التذييل. */}
+          <div className="bg-primary-container text-on-primary p-space-md rounded-xl shadow-md flex flex-col gap-space-xs" data-new-template="">
+            <span className="font-headline-sm text-headline-sm">نموذجٌ جديد</span>
+            {(
+              [
+                { act: 'new-blank', icon: 'note_add', label: 'ورقة فارغة', hint: 'اكتب على الورقة، وظلّل ما يتغيّر واضغط F4', run: () => void openDesigner(null) },
+                { act: 'new-word', icon: 'upload_file', label: 'استيراد نموذج من Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
+                { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() }
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.act}
+                className="w-full px-space-sm py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors text-right flex items-center gap-space-sm disabled:opacity-50"
+                data-act={o.act}
+                disabled={busy && o.act !== 'new-blank'}
+                type="button"
+                onClick={o.run}
+              >
+                <span className="material-symbols-outlined text-[20px] text-secondary">{o.icon}</span>
+                <span className="flex flex-col min-w-0">
+                  <span className="font-label-md text-label-md font-semibold">{o.label}</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{o.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* المرشّحات */}
@@ -441,14 +449,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </div>
 
             <div className="flex items-center gap-space-sm shrink-0 self-end lg:self-auto">
-              <button
-                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all"
-                type="button"
-                onClick={() => void openDesigner(null)}
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                <span>إضافة نموذج</span>
-              </button>
+
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
                   search
@@ -524,18 +525,9 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </span>
             <span className="font-label-md text-label-md text-on-surface-variant">
               {items.length === 0
-                ? 'أنشئ نموذجك الأول ليظهر هنا بمعاينته على الورق'
+                ? 'ابدأ من «نموذجٌ جديد» أعلاه: ورقةٌ فارغة، أو ملف Word، أو مجلد ملفاتك كلّه'
                 : 'جرّب كلمة بحث أخرى أو تصنيفًا مختلفًا'}
             </span>
-            {items.length === 0 && (
-              <button
-                className="mt-space-sm px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
-                type="button"
-                onClick={() => void openDesigner(null)}
-              >
-                + إنشاء نموذج جديد
-              </button>
-            )}
           </section>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-lg">
@@ -564,24 +556,6 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </span>
           </div>
           <div className="flex items-center gap-space-sm">
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
-              type="button"
-              disabled={busy}
-              onClick={() => void importTemplate()}
-            >
-              <span className="material-symbols-outlined text-[18px]">file_upload</span>
-              <span>استيراد نموذج DOCX / XML</span>
-            </button>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary hover:brightness-105 transition-all font-label-md text-label-md font-semibold disabled:opacity-40"
-              type="button"
-              disabled={busy}
-              onClick={() => void importFolder()}
-            >
-              <span className="material-symbols-outlined text-[18px]">folder_open</span>
-              <span>استورد مجلدي</span>
-            </button>
             <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
               type="button"

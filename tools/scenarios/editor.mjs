@@ -74,7 +74,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الورقة مساحة التأليف ───────────────────────────────────────────
   await page.goto('templates-library-drafts');
   await wait(700);
-  await page.clickText('نموذج جديد');
+  await page.eval(`document.querySelector('[data-act="new-blank"]').click(); return true;`);
   await wait(900);
 
   let text = await page.text();

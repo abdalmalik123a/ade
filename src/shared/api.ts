@@ -19,6 +19,13 @@ export type OfficeSettings = {
   defaultPrinter: string | null;
   serialPrefix: string;
   serialYear: number;
+  /**
+   * تكبير الواجهة كلّها (١ عادي، ١٫١٥ كبير، ١٫٣ أكبر) — صاحب المكتب يعمل ساعاتٍ
+   * أمام الشاشة، وكثيرٌ من النصوص ١١–١٢ بكسل. ولا يمسّ ما يُطبع.
+   */
+  uiScale: number;
+  /** أُنهي معالج البداية أو تُخطّي — فلا يظهر ثانيةً. */
+  onboarded: boolean;
 };
 
 export type SidebarCounts = {
@@ -378,6 +385,10 @@ export type DiwanApi = {
   settings: {
     get(): Promise<OfficeSettings>;
     set(patch: Partial<OfficeSettings>): Promise<OfficeSettings>;
+  };
+  ui: {
+    /** يكبّر الواجهة كلّها في مكانها — والطباعة في نافذتها لا تتأثّر. */
+    setZoom(factor: number): void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;

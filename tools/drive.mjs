@@ -168,7 +168,7 @@ class Page {
   }
 }
 
-export async function drive(scenario, { userDataDir, shotsDir, env } = {}) {
+export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false } = {}) {
   const profile = userDataDir ?? join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
   rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
@@ -199,6 +199,12 @@ export async function drive(scenario, { userDataDir, shotsDir, env } = {}) {
     await page.send('Page.enable');
     await sleep(1500);
 
+    // معالج البداية يظهر على كل ملفٍّ جديد — ويُتخطّى هنا إلا لسيناريو يفحصه هو.
+    if (!keepOnboarding) {
+      await page.eval(`document.querySelector('[data-act="onboarding-skip"]')?.click(); return true;`);
+      await sleep(500);
+    }
+
     const result = await scenario(page, { profile, shotsDir });
     ws.close();
     return result;
@@ -213,7 +219,11 @@ if (process.argv[2]) {
   const mod = await import(pathToFileURL(resolve(process.argv[2])).href);
   // سيناريو يحتاج تهيئةً قبل إقلاع التطبيق (ملفًا يُبنى، أو متغيّر بيئة يُضبط).
   const env = mod.prepare ? await mod.prepare() : undefined;
-  const out = await drive(mod.default, { shotsDir: process.env.SHOT_DIR, env });
+  const out = await drive(mod.default, {
+    shotsDir: process.env.SHOT_DIR,
+    env,
+    keepOnboarding: mod.keepOnboarding === true
+  });
   if (out !== undefined) console.log(out);
   process.exit(0);
 }

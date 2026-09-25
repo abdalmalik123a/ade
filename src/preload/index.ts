@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webFrame } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
 import type { TemplateInput } from '@shared/template';
@@ -11,6 +11,9 @@ const api: DiwanApi = {
   settings: {
     get: () => invoke('settings:get'),
     set: (patch: Partial<OfficeSettings>) => invoke('settings:set', patch)
+  },
+  ui: {
+    setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(1.5, Math.max(0.8, factor || 1)))
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')
