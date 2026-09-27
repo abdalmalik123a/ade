@@ -53,6 +53,40 @@ export default async function scenario(page, { profile }) {
   db.close();
   ok('في القاعدة', rows.officeName === 'مكتب الاختبار');
   ok('وسنة القيد لا تُحفظ فتثبت عند رأس السنة', !('serialYear' in rows));
+  // «لم يُحدَّد» يُمحى مفتاحه لا يُحفظ نصًّا — وإلا قُرئ "null" اسمَ طابعةٍ أو اختيارًا.
+  ok('ولا «null» نصًّا في الإعدادات', !Object.values(rows).includes('null'));
+  ok('والبسملة لم يخترها المكتب بعد', !('basmala' in rows));
+
+  // ── البسملة تفضيلٌ للمكتب (FOUNDATION §٥) ───────────────────────────
+  const setting = (key) => {
+    const d = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+    const r = d.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+    d.close();
+    return r?.value ?? null;
+  };
+  ok('وخيارها في الإعدادات', (await page.text()).includes('لم يختر المكتب بعد'));
+  // أوّل إشعالٍ في ترويسةٍ يصير تفضيل المكتب
+  await page.goto('header-seal-configuration');
+  await wait(700);
+  await page.eval(`document.querySelector('[data-act="basmala"]').click(); return true;`);
+  await wait(600);
+  ok('أوّل بسملةٍ في ترويسة تصير تفضيل المكتب', setting('basmala') === 'true');
+  ok('ويُقال ذلك بجانبها', await page.eval(`return Boolean(document.querySelector('[data-basmala-note]'));`));
+  await page.goto('office-settings');
+  await wait(700);
+  ok('وتظهر في الإعدادات مشعولة', await page.eval(`return document.querySelector('[data-setting="basmala"]').checked;`));
+  await page.eval(`document.querySelector('[data-setting="basmala"]').click(); return true;`);
+  await wait(600);
+  ok('وتُطفأ منها', setting('basmala') === 'false');
+  await page.goto('header-seal-configuration');
+  await wait(700);
+  await page.eval(`
+    const box = document.querySelector('[data-act="basmala"]');
+    if (box.checked) box.click();
+    box.click();
+    return true;`);
+  await wait(600);
+  ok('وما دام المكتب قد اختار، فإشعالها في ترويسةٍ لا يغيّر اختياره', setting('basmala') === 'false');
 
   // ── الاختصارات ولوحة المفاتيح عربية ────────────────────────────────
   /** ضغطةٌ حقيقية: موضع المفتاح بالإنجليزية، والحرف الواصل عربي. */

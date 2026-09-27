@@ -11,8 +11,8 @@
  * ولا أداة تصميم هنا: من أراد أن يبني استمارة فمكانه الورشة.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mergeFields, pageMm, type Doc, type DocField } from '@shared/doc';
-import { renderDocHtml, watermarkHtml } from '@shared/docHtml';
+import { isDateField, mergeFields, type Doc, type DocField } from '@shared/doc';
+import { renderDocHtml } from '@shared/docHtml';
 import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
   CitizenInput,
@@ -23,7 +23,8 @@ import type {
   TransactionSheet
 } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
-import LetterheadView from '../components/LetterheadView';
+import DateTools from '../components/DateTools';
+import LetterSheet from '../components/LetterSheet';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
 import { derivedWords } from '@shared/tafqeet';
@@ -33,36 +34,6 @@ import SpellingPanel from '../components/SpellingPanel';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
 type Step = 'pick' | 'fill' | 'review';
-
-/**
- * الفراغ فاصلٌ عن الترويسة المبنيّة. وبلا ترويسة يُنزل الورقة كلّها عن موضعها
- * في Word — وكذا رأسٌ فُصل من ورقة: فراغه معه في كتله.
- */
-function gapAfter(layout: LetterheadLayout | null): boolean {
-  return Boolean(layout && !layout.sheet?.length);
-}
-
-/**
- * ورقة الإصدار بمقاس الوثيقة وهوامشها — كما رُسمت في المصمّم.
- *
- * كانت ٢٠ ملم ثابتة، وملف Word بهوامش ١٢٫٧ يلتفّ سطره حينها في غير موضعه.
- * والنمط مضمَّنٌ لا صنفًا: الورقة تُنسخ علاماتٍ إلى نافذة الطباعة، والعلامة
- * المائية تحتاج ورقةً «relative/isolate» لتقع خلف المتن.
- */
-function sheetStyle(doc: Doc): React.CSSProperties {
-  const page = pageMm(doc.pageSetup);
-  const m = doc.pageSetup.margins;
-  return {
-    width: `${page.w}mm`,
-    minHeight: `${page.h}mm`,
-    paddingTop: `${m.top}mm`,
-    paddingRight: `${m.right}mm`,
-    paddingBottom: `${m.bottom}mm`,
-    paddingLeft: `${m.left}mm`,
-    position: 'relative',
-    isolation: 'isolate'
-  };
-}
 
 type Loaded = {
   summary: TemplateSummary;
@@ -903,15 +874,24 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                         {f.label}
                         {f.required && <span className="text-error"> *</span>}
                       </span>
-                      <input
-                        className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                        type="text"
-                        placeholder={effective[f.key] && !values[f.key] ? effective[f.key] : undefined}
-                        value={values[f.key] ?? ''}
-                        onChange={(e) =>
-                          setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                        }
-                      />
+                      <span className="flex items-center gap-1">
+                        <input
+                          className="flex-1 min-w-0 h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                          type="text"
+                          placeholder={effective[f.key] && !values[f.key] ? effective[f.key] : undefined}
+                          value={values[f.key] ?? ''}
+                          onChange={(e) =>
+                            setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
+                          }
+                        />
+                        {isDateField(f) && (
+                          <DateTools
+                            calendar={f.calendar}
+                            size="h-10"
+                            onPick={(text) => setValues((prev) => ({ ...prev, [f.key]: text }))}
+                          />
+                        )}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -921,19 +901,13 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
               <div className="hidden lg:flex justify-center sticky top-0">
                 {loaded[0] && (
                   <div style={{ zoom: 0.42 }} className="w-fit">
-                    <div
-                      className="a4-sheet bg-white text-black shadow-lg"
-                      style={sheetStyle(loaded[0].doc)}
-                    >
-                      <div dangerouslySetInnerHTML={{ __html: watermarkHtml(loaded[0].doc) }} />
-                      {loaded[0].layout && <LetterheadView layout={loaded[0].layout} registryValues={registry} resolve={resolveHead} />}
-                      <div
-                        className={`${gapAfter(loaded[0].layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
-                        dangerouslySetInnerHTML={{
-                          __html: renderDocHtml(loaded[0].doc, effective, { missing: 'blank', paragraphs: 'blocks' })
-                        }}
-                      />
-                    </div>
+                    <LetterSheet
+                      doc={loaded[0].doc}
+                      layout={loaded[0].layout}
+                      values={effective}
+                      registry={registry}
+                      resolve={resolveHead}
+                    />
                   </div>
                 )}
               </div>
@@ -991,23 +965,17 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
 
             {loaded.map((l, i) => (
               <div key={l.summary.id} className={i === at ? '' : 'hidden'}>
-                <div
-                  ref={(el) => {
+                <LetterSheet
+                  sheetRef={(el) => {
                     sheets.current.set(l.summary.id, el);
                   }}
-                  className={`a4-sheet bg-white text-black shadow-lg ${valuesOnly ? 'values-preview' : ''}`}
-                  style={sheetStyle(l.doc)}
-                >
-                  <div dangerouslySetInnerHTML={{ __html: watermarkHtml(l.doc) }} />
-                  {l.layout && <LetterheadView layout={l.layout} registryValues={registry} resolve={resolveHead} />}
-                  <div
-                    className={`${gapAfter(l.layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
-                    data-body=""
-                    dangerouslySetInnerHTML={{
-                      __html: renderDocHtml(l.doc, effective, { missing: 'blank', paragraphs: 'blocks' })
-                    }}
-                  />
-                </div>
+                  className={valuesOnly ? 'values-preview' : ''}
+                  doc={l.doc}
+                  layout={l.layout}
+                  values={effective}
+                  registry={registry}
+                  resolve={resolveHead}
+                />
               </div>
             ))}
           </div>

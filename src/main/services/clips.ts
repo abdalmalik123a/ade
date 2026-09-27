@@ -9,16 +9,13 @@
  */
 import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
+import { ADDRESSING, guessAddressing } from '@shared/addressing';
+import type { Addressing, Clip, RevisionPayloads } from '@shared/api';
+import { forgetRevisions, prepareIdentity, recordRevision, stampNew } from './revisions';
 
-export type Clip = {
-  id: number;
-  title: string;
-  body: string;
-  category: string | null;
-  usedAt: string | null;
-};
+export type { Clip };
 
-const SELECT = 'SELECT id, title, body, category, used_at AS usedAt FROM clips';
+const SELECT = 'SELECT id, title, body, category, used_at AS usedAt, direction, revision FROM clips';
 const ORDER = "ORDER BY COALESCE(used_at, '') DESC, id DESC";
 
 /** جدول الكليشات يُنشأ عند الحاجة — الترحيل هنا ليعمل على قواعد قائمة. */
@@ -33,7 +30,14 @@ export function prepareClips(db: Database): void {
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   )`);
   db.exec('CREATE INDEX IF NOT EXISTS ix_clips_fold ON clips(search_fold)');
+  const cols = (db.prepare('PRAGMA table_info(clips)').all() as { name: string }[]).map((c) => c.name);
+  // اتجاه المخاطبة: لمن تُكتب العبارة (FOUNDATION §٦). عدمٌ = لأيٍّ منها.
+  if (!cols.includes('direction')) db.exec('ALTER TABLE clips ADD COLUMN direction TEXT');
+  prepareIdentity(db, 'clip');
 }
+
+const asDirection = (v: unknown): Addressing | null =>
+  ADDRESSING.includes(v as Addressing) ? (v as Addressing) : null;
 
 export function listClips(db: Database, query = ''): Clip[] {
   prepareClips(db);
@@ -43,9 +47,21 @@ export function listClips(db: Database, query = ''): Clip[] {
   return db.prepare(`${SELECT} WHERE search_fold LIKE ? ${ORDER}`).all(`%${q}%`) as Clip[];
 }
 
+/** ما يُحفظ في نسخ الكليشة — ما يُحرَّر منها. */
+function clipPayload(c: Pick<Clip, 'title' | 'body' | 'category' | 'direction'>): RevisionPayloads['clip'] {
+  return { title: c.title, body: c.body, category: c.category, direction: c.direction };
+}
+
 export function saveClip(
   db: Database,
-  input: { id: number | null; title: string; body: string; category?: string | null }
+  input: {
+    id: number | null;
+    title: string;
+    body: string;
+    category?: string | null;
+    /** غائبٌ = يُخمَّن من أفعال العبارة؛ وعدمٌ صريح = لأيّ اتجاه. */
+    direction?: Addressing | null;
+  }
 ): Clip {
   prepareClips(db);
   const title = input.title.trim();
@@ -53,28 +69,36 @@ export function saveClip(
   if (!input.body.trim()) throw new Error('لا تُحفظ كليشة فارغة');
 
   const category = input.category?.trim() || null;
+  const direction = input.direction === undefined ? guessAddressing(input.body) : asDirection(input.direction);
   const fold = normalizeFold([title, category ?? '', input.body].join(' '));
 
-  let id = input.id;
-  if (id === null) {
-    const info = db
-      .prepare('INSERT INTO clips (title, body, category, search_fold) VALUES (?, ?, ?, ?)')
-      .run(title, input.body, category, fold);
-    id = Number(info.lastInsertRowid);
-  } else {
-    db.prepare('UPDATE clips SET title = ?, body = ?, category = ?, search_fold = ? WHERE id = ?').run(
+  const id = db.transaction(() => {
+    if (input.id === null) {
+      const info = db
+        .prepare('INSERT INTO clips (title, body, category, direction, search_fold) VALUES (?, ?, ?, ?, ?)')
+        .run(title, input.body, category, direction, fold);
+      const id = Number(info.lastInsertRowid);
+      stampNew(db, 'clip', id);
+      return id;
+    }
+    const before = db.prepare(`${SELECT} WHERE id = ?`).get(input.id) as Clip | undefined;
+    if (before) recordRevision(db, 'clip', input.id, clipPayload(before), clipPayload({ title, body: input.body, category, direction }));
+    db.prepare('UPDATE clips SET title = ?, body = ?, category = ?, direction = ?, search_fold = ? WHERE id = ?').run(
       title,
       input.body,
       category,
+      direction,
       fold,
-      id
+      input.id
     );
-  }
+    return input.id;
+  })();
   return db.prepare(`${SELECT} WHERE id = ?`).get(id) as Clip;
 }
 
 export function deleteClip(db: Database, id: number): void {
   prepareClips(db);
+  forgetRevisions(db, 'clip', id);
   db.prepare('DELETE FROM clips WHERE id = ?').run(id);
 }
 

@@ -7,7 +7,8 @@ import {
   type LetterheadLayout
 } from '@shared/letterhead';
 import { normalizeFold } from '@shared/arabic';
-import type { Seal } from '@shared/api';
+import type { RevisionPayloads, Seal } from '@shared/api';
+import { forgetRevisions, prepareIdentity, recordRevision, stampNew } from './revisions';
 
 /**
  * منطق الترويسات والأختام — دوالّ نقيّة تأخذ الاتصال وسيطًا،
@@ -23,10 +24,11 @@ type Row = {
   category: string | null;
   is_favorite: number;
   used_at: string | null;
+  revision: number;
 };
 
 const SELECT = `SELECT id, name, authority_id, layout_json, is_default,
-  category, is_favorite, used_at FROM letterheads`;
+  category, is_favorite, used_at, revision FROM letterheads`;
 
 /**
  * ترتيب القائمة: المفضّلة أولًا، ثم الأحدث استعمالًا.
@@ -52,6 +54,18 @@ export function prepareLetterheads(db: Database): void {
   add('used_at', 'TEXT');
   add('search_fold', 'TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS ix_letterheads_fold ON letterheads(search_fold)');
+  prepareIdentity(db, 'letterhead');
+}
+
+/** ما يُحفظ في نسخ الترويسة — ما يُحرَّر منها، لا التفضيل ولا الافتراضية. */
+function letterheadPayload(row: Row): RevisionPayloads['letterhead'] {
+  let layout: LetterheadLayout;
+  try {
+    layout = JSON.parse(row.layout_json) as LetterheadLayout;
+  } catch {
+    layout = emptyLayout();
+  }
+  return { name: row.name, category: row.category ?? null, authorityId: row.authority_id, layout };
 }
 
 /** ما يجري عليه البحث: الاسم والتصنيف ونصّ الترويسة — مطبَّعًا ومخزَّنًا. */
@@ -75,7 +89,8 @@ function toLetterhead(row: Row): Letterhead {
     isDefault: row.is_default === 1,
     category: row.category ?? null,
     isFavorite: row.is_favorite === 1,
-    usedAt: row.used_at ?? null
+    usedAt: row.used_at ?? null,
+    revision: row.revision
   };
 }
 
@@ -140,25 +155,38 @@ export function saveLetterhead(
   const json = JSON.stringify(input.layout);
   const category = input.category?.trim() || null;
   const fold = searchFold(input.name, category, input.layout);
-  let id = input.id;
 
-  if (id === null) {
-    // أول ترويسة تُنشأ تصير الافتراضية تلقائيًا — وإلا بقي المكتب بلا رأس كتاب.
-    const isFirst =
-      (db.prepare('SELECT COUNT(*) AS n FROM letterheads').get() as { n: number }).n === 0;
-    const info = db
-      .prepare(
-        `INSERT INTO letterheads (authority_id, name, layout_json, is_default, category, search_fold)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .run(input.authorityId, input.name, json, isFirst ? 1 : 0, category, fold);
-    id = Number(info.lastInsertRowid);
-  } else {
+  const id = db.transaction(() => {
+    if (input.id === null) {
+      // أول ترويسة تُنشأ تصير الافتراضية تلقائيًا — وإلا بقي المكتب بلا رأس كتاب.
+      const isFirst =
+        (db.prepare('SELECT COUNT(*) AS n FROM letterheads').get() as { n: number }).n === 0;
+      const info = db
+        .prepare(
+          `INSERT INTO letterheads (authority_id, name, layout_json, is_default, category, search_fold)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .run(input.authorityId, input.name, json, isFirst ? 1 : 0, category, fold);
+      const id = Number(info.lastInsertRowid);
+      stampNew(db, 'letterhead', id);
+      return id;
+    }
+    // الحالة المحفوظة تصير نسخةً قبل أن يُكتب فوقها — إن تغيّر شيء.
+    const before = db.prepare(`${SELECT} WHERE id = ?`).get(input.id) as Row | undefined;
+    if (before) {
+      recordRevision(db, 'letterhead', input.id, letterheadPayload(before), {
+        name: input.name,
+        category,
+        authorityId: input.authorityId,
+        layout: input.layout
+      });
+    }
     db.prepare(
       `UPDATE letterheads SET name = ?, authority_id = ?, layout_json = ?, category = ?, search_fold = ?
        WHERE id = ?`
-    ).run(input.name, input.authorityId, json, category, fold, id);
-  }
+    ).run(input.name, input.authorityId, json, category, fold, input.id);
+    return input.id;
+  })();
 
   return toLetterhead(db.prepare(`${SELECT} WHERE id = ?`).get(id) as Row);
 }
@@ -181,6 +209,8 @@ export function duplicateLetterhead(db: Database, id: number, name?: string): Le
        VALUES (?, ?, ?, 0, ?, ?)`
     )
     .run(src.authority_id, copyName, src.layout_json, src.category, searchFold(copyName, src.category, layout));
+  // النسخة قطعةٌ أخرى: معرّفٌ جديد ونسختها الأولى.
+  stampNew(db, 'letterhead', Number(info.lastInsertRowid));
 
   return toLetterhead(db.prepare(`${SELECT} WHERE id = ?`).get(Number(info.lastInsertRowid)) as Row);
 }
@@ -206,6 +236,7 @@ export function deleteLetterhead(db: Database, id: number): void {
     const was = db.prepare('SELECT is_default FROM letterheads WHERE id = ?').get(id) as
       | { is_default: number }
       | undefined;
+    forgetRevisions(db, 'letterhead', id);
     db.prepare('DELETE FROM letterheads WHERE id = ?').run(id);
     // لا يبقى المكتب بلا افتراضية: ترقّى الأقدم مكانها.
     if (was?.is_default === 1) {

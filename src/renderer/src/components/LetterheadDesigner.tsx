@@ -61,6 +61,24 @@ export default function LetterheadDesigner({
   showPageOptions = false
 }: LetterheadDesignerProps) {
   const [active, setActive] = useState(0);
+  /** أُعلن أن البسملة صارت تفضيل المكتب — مرّةً عند أوّل إشعال. */
+  const [basmalaNote, setBasmalaNote] = useState(false);
+
+  /**
+   * أوّل مرّة يشعل المكتب البسملة في ترويسةٍ تصير تفضيله (FOUNDATION §٥): كل
+   * ترويسةٍ جديدة تبدأ بها. وما دام قد اختار — إشعالًا أو إطفاءً من الإعدادات —
+   * لا يُمسّ اختياره من هنا.
+   */
+  async function adoptBasmala() {
+    try {
+      const s = await window.diwan.settings.get();
+      if (s.basmala !== null) return;
+      await window.diwan.settings.set({ basmala: true });
+      setBasmalaNote(true);
+    } catch {
+      // التفضيل راحةٌ لا شرط: الترويسة نفسها أُشعلت بسملتها على كل حال.
+    }
+  }
   /** «أسطر» هو الأصل: الترويسة تُكتب أسرع مما تُركَّب كتلةً كتلة. */
   const [mode, setMode] = useState<'lines' | 'detail'>('lines');
   const index = Math.min(active, layout.columns - 1);
@@ -450,13 +468,20 @@ export default function LetterheadDesigner({
           <input
             className="w-4 h-4 accent-secondary"
             checked={layout.basmala.show}
+            data-act="basmala"
             type="checkbox"
-            onChange={(e) =>
-              onChange({ ...layout, basmala: { ...layout.basmala, show: e.target.checked } })
-            }
+            onChange={(e) => {
+              onChange({ ...layout, basmala: { ...layout.basmala, show: e.target.checked } });
+              if (e.target.checked) void adoptBasmala();
+            }}
           />
           البسملة فوق الترويسة
         </label>
+        {basmalaNote && (
+          <span className="font-label-sm text-label-sm text-on-surface-variant" data-basmala-note="">
+            صارت البسملة تفضيل المكتب: كل ترويسةٍ جديدة تبدأ بها — وتُطفأ من الإعدادات.
+          </span>
+        )}
 
         {layout.basmala.show && (
           <div className="flex items-center gap-space-xs">

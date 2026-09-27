@@ -1,7 +1,8 @@
 import type { Database } from 'better-sqlite3';
 import { legacyFieldMeta, type TemplateInput, type TemplateVariable } from '@shared/template';
 import { docFromLegacy, normalizeDoc, type Doc, type Issuing } from '@shared/doc';
-import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow } from '@shared/api';
+import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow, RevisionPayloads } from '@shared/api';
+import { forgetRevisions, prepareIdentity, recordRevision, stampNew, withoutIds } from './revisions';
 
 /** منطق مكتبة النماذج والمسودات. دوالّ نقيّة تأخذ الاتصال وسيطًا. */
 
@@ -13,6 +14,22 @@ export function prepareTemplates(db: Database): void {
   if (!has('issuing')) {
     db.exec("ALTER TABLE templates ADD COLUMN issuing TEXT NOT NULL DEFAULT 'registered'");
   }
+  prepareIdentity(db, 'template');
+}
+
+/** ما يُحفظ في نسخ النموذج — ما يُحرَّر منه، بصيغةٍ واحدة للقديم والجديد فيُقارنان. */
+function templatePayload(t: Omit<RevisionPayloads['template'], 'docJson'> & { docJson?: string | null }): RevisionPayloads['template'] {
+  return {
+    code: t.code,
+    title: t.title,
+    subtitle: t.subtitle,
+    category: t.category,
+    subjectLine: t.subjectLine,
+    bodyHtml: t.bodyHtml,
+    docJson: t.docJson ?? null,
+    letterheadId: t.letterheadId,
+    variables: t.variables.map((v) => ({ token: v.token, label: v.label, source: v.source, required: v.required }))
+  };
 }
 
 /**
@@ -34,7 +51,7 @@ export function templateDoc(row: { docJson?: string | null; bodyHtml: string }):
 
 const SUMMARY = `t.id, t.code, t.title, t.subtitle, t.category,
   t.subject_line AS subjectLine, t.body_html AS bodyHtml, t.doc_json AS docJson,
-  t.issuing, t.letterhead_id AS letterheadId, t.print_count AS printCount`;
+  t.issuing, t.letterhead_id AS letterheadId, t.print_count AS printCount, t.revision`;
 
 const MONTH_COUNT = `(SELECT COUNT(*) FROM documents d
    WHERE d.template_id = t.id
@@ -146,8 +163,30 @@ export function saveTemplate(
   // الحكم من الوثيقة نفسها — فلا يُسأل عنه مرّتين ولا يختلفان.
   const issuing: Issuing = doc.issuing;
 
+  const fields = {
+    code,
+    title,
+    subtitle: input.subtitle?.trim() || null,
+    category: input.category?.trim() || null,
+    subjectLine: input.subjectLine?.trim() || null,
+    bodyHtml: input.bodyHtml,
+    docJson,
+    letterheadId: input.letterheadId,
+    variables: input.variables
+  };
+
   const id = db.transaction(() => {
     let templateId = input.id;
+    if (templateId !== null) {
+      // الحالة المحفوظة تصير نسخةً قبل أن يُكتب فوقها — إن تغيّر شيء.
+      const before = getTemplate(db, templateId);
+      if (before) {
+        recordRevision(db, 'template', templateId, templatePayload(before), templatePayload(fields), (p) => ({
+          ...p,
+          docJson: withoutIds(p.docJson)
+        }));
+      }
+    }
     if (templateId === null) {
       const info = db
         .prepare(
@@ -167,6 +206,7 @@ export function saveTemplate(
           input.subjectLine?.trim() || null
         );
       templateId = Number(info.lastInsertRowid);
+      stampNew(db, 'template', templateId);
     } else {
       db.prepare(
         `UPDATE templates SET code = ?, title = ?, subtitle = ?, category = ?,
@@ -203,6 +243,8 @@ export function saveTemplate(
 }
 
 export function deleteTemplate(db: Database, id: number): void {
+  prepareTemplates(db);
+  forgetRevisions(db, 'template', id);
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
 }
 

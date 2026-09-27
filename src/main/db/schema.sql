@@ -33,9 +33,12 @@ CREATE TABLE IF NOT EXISTS letterheads (
   is_favorite   INTEGER NOT NULL DEFAULT 0,
   used_at       TEXT,                     -- آخر استعمال — عليه يقوم ترتيب المكتبة
   search_fold   TEXT,                     -- الاسم والتصنيف ونصّ الترويسة، مطبَّعًا
+  uuid          TEXT,                     -- هويّة ثابتة لا تتغيّر بالاسم ولا بالجهاز (FOUNDATION §٣)
+  revision      INTEGER NOT NULL DEFAULT 1, -- يزيد مع كل حفظٍ غيّر شيئًا؛ وما قبله في revisions
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 -- فهرس search_fold يُنشأ في الترحيل (services/letterheads.ts)، لا هنا — كما في documents.
+-- وكذا فهرس uuid الفريد (services/revisions.ts): قاعدة مكتبٍ قائمة لم يُضف عمودها بعد.
 
 CREATE TABLE IF NOT EXISTS seals (
   id            INTEGER PRIMARY KEY,
@@ -102,6 +105,8 @@ CREATE TABLE IF NOT EXISTS templates (
   subject_line  TEXT,                     -- م / ...
   is_active     INTEGER NOT NULL DEFAULT 1,
   print_count   INTEGER NOT NULL DEFAULT 0,
+  uuid          TEXT,                     -- هويّة ثابتة (FOUNDATION §٣)
+  revision      INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -193,7 +198,22 @@ CREATE TABLE IF NOT EXISTS clips (
   category    TEXT,
   used_at     TEXT,                      -- آخر إدراج — عليه يقوم الترتيب
   search_fold TEXT,
+  direction   TEXT,                      -- up | down | peer | NULL: لمن تُكتب (FOUNDATION §٦)
+  uuid        TEXT,                      -- هويّة ثابتة (FOUNDATION §٣)
+  revision    INTEGER NOT NULL DEFAULT 1,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- النسخ السابقة للنماذج والترويسات والكليشات: الحالة قبل كل حفظٍ غيّر شيئًا،
+-- فيعود المكتب إلى «نسخة أمس». والجارية في جدول القطعة نفسها.
+CREATE TABLE IF NOT EXISTS revisions (
+  id         INTEGER PRIMARY KEY,
+  kind       TEXT NOT NULL,              -- template | letterhead | clip
+  item_uuid  TEXT NOT NULL,
+  revision   INTEGER NOT NULL,
+  payload    TEXT NOT NULL,              -- JSON: ما يُحرَّر من القطعة
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (kind, item_uuid, revision)
 );
 
 -- سجل التدقيق

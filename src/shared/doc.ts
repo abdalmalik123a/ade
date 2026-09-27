@@ -11,6 +11,8 @@
  */
 
 import { normalizeCanvas, type Canvas } from './canvas';
+import type { Calendar } from './dates';
+import type { Addressing } from './api';
 
 /** رقم صيغة الوثيقة: تُقرأ بصيغتها ثم تُرحَّل عند القراءة. */
 export const DOC_SCHEMA = 1;
@@ -84,6 +86,8 @@ export type DocField = {
   source: string | null;
   choices?: string[];
   hint?: string;
+  /** لحقل التاريخ: بأيّ تقويمٍ يُكتب — والغائب ميلادي. */
+  calendar?: Calendar;
 };
 
 export const DEFAULT_FIELD_WIDTH = 14;
@@ -100,6 +104,11 @@ export function makeField(patch: Partial<DocField> & { key: string }): DocField 
     source: null,
     ...patch
   };
+}
+
+/** حقل تاريخ: بنوعه — أو باسمه في نماذج سبقت النوع («تاريخ الولادة»). */
+export function isDateField(f: DocField): boolean {
+  return f.type === 'date' || /تاريخ/.test(f.label);
 }
 
 // ── ما داخل الفقرة ───────────────────────────────────────────────────
@@ -346,6 +355,8 @@ export type Doc = {
     head?: Record<string, string>;
     /** ورقة الإجابة بالدوائر ومفتاحها — لورقة الأسئلة (`shared/omr.ts`). */
     omr?: { questions: number; choices: number; idDigits: number; key: number[] };
+    /** لمن يُكتب الكتاب: جهةٌ أعلى أو أدنى أو مساوية — فتتصدّر كليشاتُ اتجاهه (FOUNDATION §٦). */
+    addressing?: Addressing;
   };
 };
 
@@ -712,7 +723,8 @@ function normalizeField(raw: Record<string, unknown>): DocField {
     key,
     width: typeof raw.width === 'number' && raw.width > 0 ? raw.width : DEFAULT_FIELD_WIDTH,
     fillMode: raw.fillMode === 'hand' ? 'hand' : 'printed',
-    required: raw.required === true
+    required: raw.required === true,
+    calendar: raw.calendar === 'hijri' || raw.calendar === 'both' || raw.calendar === 'gregorian' ? raw.calendar : undefined
   } as DocField;
 }
 

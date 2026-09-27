@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import DocEditor from '../components/DocEditor';
-import { docFromLegacy, docText, type Doc, type Watermark } from '@shared/doc';
+import { docFromLegacy, docText, normalizeDoc, type Doc, type Watermark } from '@shared/doc';
 import type { Clip, Seal } from '@shared/api';
 import type { TemplateDetail } from '@shared/api';
 import {
@@ -18,6 +18,8 @@ import {
   normalizeLayout, type Letterhead } from '@shared/letterhead';
 import { splitSheetHead } from '@shared/sheetHead';
 import LetterheadView from '../components/LetterheadView';
+import AddressingPicker from '../components/AddressingPicker';
+import RevisionsMenu from '../components/RevisionsMenu';
 import { errorText } from '../lib/errors';
 import SpellingPanel from '../components/SpellingPanel';
 import { docSpelling, fixDocSpelling } from '@shared/spelling';
@@ -65,6 +67,8 @@ export default function TemplateDesigner({
    */
   const editing = Boolean(initial && initial.id > 0);
   const [error, setError] = useState<string | null>(null);
+  /** نسخةٌ سابقة حُمّلت ولم تُحفظ بعد — تُذكر حتى يُعتمد بالحفظ أو يُترك. */
+  const [restored, setRestored] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [usage, setUsage] = useState(0);
@@ -240,6 +244,29 @@ export default function TemplateDesigner({
             <span className="font-headline-sm text-headline-sm text-on-surface">
               {editing ? 'تعديل النموذج' : initial ? 'نموذج مستورد' : 'مصمّم النماذج والمُعاملات'}
             </span>
+            {editing && initial && (
+              <RevisionsMenu
+                current={initial.revision}
+                id={initial.id}
+                kind="template"
+                onRestore={(p, revision) => {
+                  setTitle(p.title);
+                  setCode(p.code ?? '');
+                  setSubtitle(p.subtitle ?? '');
+                  setCategory(p.category ?? '');
+                  setSubjectLine(p.subjectLine ?? '');
+                  setLetterheadId(p.letterheadId);
+                  let restoredDoc: Doc;
+                  try {
+                    restoredDoc = p.docJson ? normalizeDoc(JSON.parse(p.docJson)) : docFromLegacy(p.bodyHtml, legacyFieldMeta);
+                  } catch {
+                    restoredDoc = docFromLegacy(p.bodyHtml, legacyFieldMeta);
+                  }
+                  setDoc(restoredDoc);
+                  setRestored(revision);
+                }}
+              />
+            )}
             {editing && usage > 0 && (
               <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
                 صدر عنه {usage} كتابًا
@@ -390,6 +417,12 @@ export default function TemplateDesigner({
                     ))}
                   </select>
                 </div>
+                <div className="col-span-2">
+                  <AddressingPicker
+                    value={doc.meta.addressing ?? null}
+                    onChange={(a) => setDoc((d) => ({ ...d, meta: { ...d.meta, addressing: a ?? undefined } }))}
+                  />
+                </div>
                 {headSplit && (
                   <div
                     className="col-span-2 flex flex-col gap-space-xs p-space-sm rounded-lg bg-surface-container-lowest"
@@ -523,6 +556,37 @@ export default function TemplateDesigner({
                 تُرسم خلف المتن باهتةً فلا تحجب حرفًا — وتُطبع كما تراها.
               </p>
             </section>
+
+            {/* الصفحات — لكتابٍ يطول فتقسمه الطابعة. ويرثها كل كتابٍ من هذا النموذج. */}
+            <section className="mt-space-md bg-surface-container-low rounded-xl p-space-md space-y-space-sm" data-designer-page="">
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">الصفحات</h3>
+              <label className="flex items-center gap-space-xs cursor-pointer font-label-md text-label-md text-on-surface">
+                <input
+                  checked={doc.pageSetup.pageNumbers}
+                  className="w-4 h-4 accent-secondary"
+                  data-act="page-numbers"
+                  type="checkbox"
+                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, pageNumbers: e.target.checked } }))}
+                />
+                ترقيم الصفحات («صفحة ١ من ٢» أسفل كلٍّ منها)
+              </label>
+              <label
+                className={`flex items-center gap-space-xs font-label-md text-label-md ${letterhead ? 'cursor-pointer text-on-surface' : 'text-on-surface-variant'}`}
+              >
+                <input
+                  checked={doc.pageSetup.repeatLetterhead && Boolean(letterhead)}
+                  className="w-4 h-4 accent-secondary"
+                  data-act="repeat-head"
+                  disabled={!letterhead}
+                  type="checkbox"
+                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, repeatLetterhead: e.target.checked } }))}
+                />
+                الترويسة في أعلى كل صفحة
+              </label>
+              {!letterhead && (
+                <p className="font-label-sm text-label-sm text-on-surface-variant">تكرار الترويسة لنموذجٍ له ترويسة مختارة.</p>
+              )}
+            </section>
           </div>
 
           {/* الورقة هي مساحة التأليف الوحيدة؛ المتغيّرات ترافقها في اللوح الجانبي. */}
@@ -557,6 +621,12 @@ export default function TemplateDesigner({
         {/* التذييل */}
         <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-space-sm min-w-0">
+            {restored !== null && !error && (
+              <span className="flex items-center gap-space-xs font-label-md text-label-md text-secondary truncate" data-restored="">
+                <span className="material-symbols-outlined text-[18px]">history</span>
+                حُمّلت النسخة {restored} — احفظ لتعتمدها، أو أغلق لتبقى الحالية
+              </span>
+            )}
             {error && (
               <span className="flex items-center gap-space-xs font-label-md text-label-md text-error truncate">
                 <span className="material-symbols-outlined text-[18px]">warning</span>

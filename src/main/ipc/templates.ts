@@ -9,6 +9,12 @@ import { importTemplateFile, parseTemplateXml } from '../services/import';
 import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, saveClip, touchClip } from '../services/clips';
+import { listRevisions, revisionPayload } from '../services/revisions';
+import type { Addressing, RevisionKind } from '@shared/api';
+
+/** نوع القطعة يصل من الواجهة ويُبنى منه اسم جدول — فلا يُقبل إلا المعروف. */
+const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
+const isKind = (k: unknown): k is RevisionKind => KINDS.includes(k as RevisionKind);
 import { pickFolderPath, pickOpenPath } from './files';
 import {
   applyHabits,
@@ -57,11 +63,21 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('clips:list', (_e, query?: string) => listClips(getDb(), query ?? ''));
   ipcMain.handle(
     'clips:save',
-    (_e, input: { id: number | null; title: string; body: string; category?: string | null }) =>
-      saveClip(getDb(), input)
+    (
+      _e,
+      input: { id: number | null; title: string; body: string; category?: string | null; direction?: Addressing | null }
+    ) => saveClip(getDb(), input)
   );
   ipcMain.handle('clips:delete', (_e, id: number) => deleteClip(getDb(), id));
   ipcMain.handle('clips:touch', (_e, id: number) => touchClip(getDb(), id));
+
+  /** النسخ السابقة — للعودة إلى «نسخة أمس» من نموذجٍ أو ترويسةٍ أو كليشة. */
+  ipcMain.handle('revisions:list', (_e, kind: unknown, id: number) =>
+    isKind(kind) ? listRevisions(getDb(), kind, Number(id)) : []
+  );
+  ipcMain.handle('revisions:get', (_e, kind: unknown, id: number, revision: number) =>
+    isKind(kind) ? revisionPayload(getDb(), kind, Number(id), Number(revision)) : null
+  );
 
   /** وثيقة النموذج كتلًا — مقروءةً، ومُرحَّلةً إن حُفظت قبل النواة. */
   ipcMain.handle('templates:doc', (_e, id: number) => {

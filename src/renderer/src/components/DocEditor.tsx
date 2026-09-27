@@ -11,7 +11,7 @@
  * الوثيقة نفسها — `marks` للنصّ و`align`/`indent` للفقرة — فيخرج في الطباعة
  * كما رُئي، لأن محرّك الرسم واحد.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import {
   fieldRef,
   itemScore,
@@ -33,6 +33,9 @@ import {
   type TableBlock
 } from '@shared/doc';
 import { marker, watermarkHtml } from '@shared/docHtml';
+import { CALENDAR_LABEL, type Calendar } from '@shared/dates';
+import { ADDRESSING_LABEL, rankByAddressing } from '@shared/addressing';
+import type { Addressing } from '@shared/api';
 import {
   addColumn,
   addRow,
@@ -70,10 +73,31 @@ import type { Seal } from '@shared/api';
 export type DocEditorProps = {
   doc: Doc;
   onChange: (doc: Doc) => void;
-  /** عبارات المكتب — تُدرج من قائمة `/`. */
-  clips?: { id: number; title: string; body: string }[];
+  /** عبارات المكتب — تُدرج من قائمة `/`، وكليشات اتجاه الكتاب أولًا (`doc.meta.addressing`). */
+  clips?: MenuClip[];
   /** يُرسم أعلى الورقة قبل الكتل — الترويسة عادةً — فيكتب المكتب على ورقةٍ حقيقية. */
   header?: ReactNode;
+  /**
+   * قيم الحقول — في محرّر الكتب: الحقل على الورقة يُظهر قيمته حيث كُتب، لا اسمه.
+   * وفي مصمّم النماذج لا قيم، فيُظهر اسمه بين قوسين.
+   */
+  values?: Record<string, string>;
+  /**
+   * اللوح بجانب الورقة: `undefined` لوحُ تعريف الحقول (المصمّم)، و`null` لا لوح،
+   * وغيرهما يُرسم مكانه (لوح القيم في المحرّر).
+   */
+  aside?: ReactNode | null;
+  /** يُعطى الشاشةَ ما تفعله في موضع المؤشّر: حقلٌ أو نصٌّ يُدرج حيث وقف. */
+  apiRef?: MutableRefObject<DocEditorApi | null>;
+};
+
+export type DocEditorApi = {
+  /** حقلٌ موجود في الوثيقة يُدرج حيث وقف المؤشّر. */
+  insertField: (key: string) => void;
+  /** نصٌّ (رمزٌ أو عبارة) يُدرج حيث وقف المؤشّر. */
+  insertText: (text: string) => void;
+  /** حقلٌ جديد (من كتالوج المعاملات) يُعرَّف ويُدرج معًا حيث وقف المؤشّر — أو آخر الورقة. */
+  insertNewField: (field: DocField) => void;
 };
 
 /** الأحجام المعروضة: من الهامش إلى العنوان — والقائمة الطويلة عبءٌ لا ميزة. */
@@ -88,7 +112,12 @@ const OFFICIAL_INDENT_MM = 20;
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** الحقل صندوقٌ لا يُحرَّر: `contenteditable=false` يمنع كسره بنصف مسح. */
+/**
+ * الحقل صندوقٌ لا يُحرَّر: `contenteditable=false` يمنع كسره بنصف مسح.
+ *
+ * و`labelOf` يعيد ما يُكتب فيه: اسمه بين قوسين، أو قيمته إن مُلئ (`=` في أوّله
+ * علامة القيمة) — فيُرى الكتاب في المحرّر كما سيُطبع، والحقل ما زال حقلًا.
+ */
 function inlinesToHtml(inlines: Inline[], labelOf: (key: string) => string): string {
   return (
     inlines
@@ -102,10 +131,17 @@ function inlinesToHtml(inlines: Inline[], labelOf: (key: string) => string): str
           if (i.marks?.bold) out = `<strong>${out}</strong>`;
           return out;
         }
+        const shown = labelOf(i.ref);
+        if (shown.startsWith('=')) {
+          return (
+            `<span contenteditable="false" data-field="${esc(i.ref)}" data-filled="" ` +
+            `class="px-0.5 rounded bg-secondary-fixed/60 text-on-surface font-semibold">${esc(shown.slice(1))}</span>`
+          );
+        }
         return (
           `<span contenteditable="false" data-field="${esc(i.ref)}" ` +
           `class="px-1.5 py-0.5 mx-0.5 rounded-md bg-amber-500/15 text-amber-950 border border-amber-500/40 font-semibold font-label-sm text-label-sm shadow-xs">` +
-          `[ ${esc(labelOf(i.ref))} ]</span>`
+          `[ ${esc(shown)} ]</span>`
         );
       })
       .join('') || ''
@@ -352,7 +388,7 @@ function paraStyle(b: ParagraphBlock): React.CSSProperties {
 
 type Saved = { range: Range; host: HTMLElement };
 
-export default function DocEditor({ doc, onChange, clips = [], header }: DocEditorProps) {
+export default function DocEditor({ doc, onChange, clips = [], header, values, aside, apiRef }: DocEditorProps) {
   const [history, setHistory] = useState<History>(() => startHistory(doc));
   const [active, setActive] = useState<string | null>(doc.blocks[0]?.id ?? null);
   const [menu, setMenu] = useState(false);
@@ -398,8 +434,11 @@ export default function DocEditor({ doc, onChange, clips = [], header }: DocEdit
   );
 
   const labelOf = useCallback(
-    (key: string) => doc.fields.find((f) => f.key === key)?.label || key,
-    [doc.fields]
+    (key: string) => {
+      const value = values?.[key]?.trim();
+      return value ? `=${value}` : doc.fields.find((f) => f.key === key)?.label || key;
+    },
+    [doc.fields, values]
   );
 
   const nextLabel = (d: Doc, key: string) => d.fields.find((f) => f.key === key)?.label || key;
@@ -554,6 +593,42 @@ export default function DocEditor({ doc, onChange, clips = [], header }: DocEdit
   function insertClip(body: string) {
     insertBlocks(body.split('\n').map((line) => paragraph(line ? [run(line)] : [])));
   }
+
+  /** نصٌّ حيث وقف المؤشّر — رمزٌ من لوحة الرموز، أو كلمةٌ من لوح جانبي. */
+  function insertTextAtCaret(text: string) {
+    const host = restore();
+    if (!host) return;
+    document.execCommand('insertText', false, text);
+    apply(setInlines(doc, host.dataset.block ?? '', htmlToInlines(host)));
+  }
+
+  /**
+   * حقلٌ جديد يُعرَّف ويُدرج في خطوةٍ واحدة — فالإدراج يرفض حقلًا لم يُعرَّف بعد.
+   * وبلا موضع مؤشّرٍ محفوظ يُلحق بآخر سطرٍ في الورقة، ولا يضيع.
+   */
+  function insertNewFieldAtCaret(f: DocField) {
+    // تعديل الفقرة يعيد بناء قائمة الحقول مما يُستعمل على الورقة (`reconciled`)، فيُسقط
+    // حقلًا لم يُوضع بعد. فالترتيب: نصّ الفقرة أوّلًا، ثم يُعرَّف الحقل، ثم يُدرج.
+    const define = (d: Doc): Doc => (d.fields.some((x) => x.key === f.key) ? d : { ...d, fields: [...d.fields, f] });
+    const withField = define(doc);
+    const s = saved.current;
+    const id = s?.host.dataset.block;
+    if (s && id && s.host.isConnected) {
+      const at = caretOffsets(s.host, s.range);
+      if (at) {
+        const next = insertField(define(setInlines(doc, id, htmlToInlines(s.host))), id, at.start, f.key);
+        const block = next.blocks.find((b) => b.id === id) as ParagraphBlock | undefined;
+        if (block) s.host.innerHTML = inlinesToHtml(block.inlines, (k) => nextLabel(next, k));
+        apply(next);
+        return;
+      }
+    }
+    const last = [...withField.blocks].reverse().find((b) => b.kind === 'paragraph') as ParagraphBlock | undefined;
+    if (last) apply(setInlines(withField, last.id, [...last.inlines, run(' '), fieldRef(f.key)]));
+    else apply(insertBlock(withField, paragraph([fieldRef(f.key)]), null));
+  }
+
+  if (apiRef) apiRef.current = { insertField: insertFieldAtCaret, insertText: insertTextAtCaret, insertNewField: insertNewFieldAtCaret };
 
   // ── أدوات التنسيق ─────────────────────────────────────────────────
 
@@ -911,11 +986,12 @@ export default function DocEditor({ doc, onChange, clips = [], header }: DocEdit
         </button>
       </div>
 
-      {/* المتغيّرات الموضوعة على الورقة نفسها */}
-      <FieldPanel doc={doc} onChange={apply} onInsert={insertFieldAtCaret} />
+      {/* المتغيّرات الموضوعة على الورقة نفسها — أو لوح الشاشة مكانها */}
+      {aside === undefined ? <FieldPanel doc={doc} onChange={apply} onInsert={insertFieldAtCaret} /> : aside}
 
       {menu && (
         <InsertMenu
+          addressing={doc.meta.addressing ?? null}
           clips={clips}
           onClose={() => setMenu(false)}
           onClip={insertClip}
@@ -997,7 +1073,10 @@ type Preset = 'copies' | 'columns' | 'answer' | 'spacer' | 'pageBreak';
  * ولا توقيع فيها ولا ختم: المكتب يستنسخ ويطبع، والجهة توقّع وتختم بيدها بعد
  * الطباعة. فالصور شعاراتٌ تُطبع مع الورقة، لا أختامٌ تُزوَّر عليها.
  */
+type MenuClip = { id: number; title: string; body: string; direction?: Addressing | null };
+
 function InsertMenu({
+  addressing,
   clips,
   onPick,
   onTable,
@@ -1005,7 +1084,8 @@ function InsertMenu({
   onClip,
   onClose
 }: {
-  clips: { id: number; title: string; body: string }[];
+  addressing: Addressing | null;
+  clips: MenuClip[];
   onPick: (what: Preset) => void;
   onTable: (rows: number, cols: number) => void;
   onImage: (src: string, align: Align) => void;
@@ -1016,7 +1096,11 @@ function InsertMenu({
   const [query, setQuery] = useState('');
   const [hover, setHover] = useState({ r: 3, c: 3 });
   const [seals, setSeals] = useState<Seal[]>([]);
-  const shown = clips.filter((c) => !query.trim() || c.title.includes(query.trim()));
+  // كليشات اتجاه الكتاب أولًا — «يرجى» لجهةٍ أعلى و«تنسب» لأدنى — ولا يُخفى غيرها.
+  const shown = rankByAddressing(
+    clips.map((c) => ({ ...c, direction: c.direction ?? null })),
+    addressing
+  ).filter((c) => !query.trim() || c.title.includes(query.trim()) || c.body.includes(query.trim()));
 
   // الشعارات وحدها: الختم والتوقيع يوضعان باليد على الورقة المطبوعة.
   useEffect(() => {
@@ -1068,7 +1152,9 @@ function InsertMenu({
 
             {clips.length > 0 && (
               <div className="max-h-56 overflow-y-auto flex flex-col gap-1 pt-space-xs">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">كليشات المكتب</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  كليشات المكتب{addressing ? ` — ما يُكتب ${ADDRESSING_LABEL[addressing]} أولًا` : ''}
+                </span>
                 {shown.length === 0 ? (
                   <span className="font-label-sm text-label-sm text-on-surface-variant py-space-sm text-center">
                     لا كليشة بهذا الاسم
@@ -1078,10 +1164,22 @@ function InsertMenu({
                     <button
                       key={c.id}
                       className="text-right p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high flex flex-col gap-0.5"
+                      data-clip-direction={c.direction ?? ''}
                       type="button"
                       onClick={() => onClip(c.body)}
                     >
-                      <span className="font-label-md text-label-md text-on-surface">{c.title}</span>
+                      <span className="font-label-md text-label-md text-on-surface flex items-center gap-1">
+                        {c.title}
+                        {c.direction && (
+                          <span
+                            className={`font-label-sm text-label-sm px-1.5 rounded-full ${
+                              c.direction === addressing ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-surface-container-high text-on-surface-variant'
+                            }`}
+                          >
+                            {ADDRESSING_LABEL[c.direction]}
+                          </span>
+                        )}
+                      </span>
                       <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
                         {c.body.split('\n')[0]}
                       </span>
@@ -1374,6 +1472,34 @@ function FieldRow({
           <span className="material-symbols-outlined text-[14px]">backspace</span>
         </button>
       </div>
+      {/* النوع: التاريخ بتقويمه يُكتب «اليوم» أو من التقويم في الشبّاك والمحرّر. */}
+      <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+        نوعه
+        <select
+          className="flex-1 h-7 px-1 rounded bg-surface-container-lowest text-on-surface cursor-pointer"
+          data-field-kind={field.key}
+          value={field.type === 'date' ? `date:${field.calendar ?? 'gregorian'}` : field.type === 'text' ? 'text' : 'other'}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === 'other') return;
+            onChange(
+              patchField(doc, field.key, v.startsWith('date:') ? { type: 'date', calendar: v.slice(5) as Calendar } : { type: 'text', calendar: undefined })
+            );
+          }}
+        >
+          <option value="text">نصّ</option>
+          {(Object.keys(CALENDAR_LABEL) as Calendar[]).map((c) => (
+            <option key={c} value={`date:${c}`}>
+              تاريخ {CALENDAR_LABEL[c]}
+            </option>
+          ))}
+          {field.type !== 'text' && field.type !== 'date' && (
+            <option disabled value="other">
+              كما هو
+            </option>
+          )}
+        </select>
+      </label>
     </div>
   );
 }

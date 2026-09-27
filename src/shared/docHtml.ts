@@ -13,7 +13,8 @@ import {
   type ListItem,
   type ListStyle,
   type Numerals,
-  type ParagraphBlock
+  type ParagraphBlock,
+  type TableBlock
 } from './doc';
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 
@@ -187,24 +188,26 @@ function renderBlock(
       const cols = block.columns
         .map((w) => `<col style="width:${(w * 100) / (block.columns.reduce((a, b) => a + b, 0) || 1)}%"/>`)
         .join('');
-      const rows = block.rows
-        .map((row, ri) => {
-          const tag = block.header && ri === 0 ? 'th' : 'td';
-          const cells = row.cells
-            .map((cell) => {
-              const span = cell.colSpan && cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
-              const body = cell.blocks
-                .map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' }))
-                .join('');
-              const border = block.borders === false ? 'border:none' : 'border:1px solid currentColor';
-              return `<${tag}${span} style="${border};padding:2px 4px;vertical-align:top">${body}</${tag}>`;
-            })
-            .join('');
-          return `<tr>${cells}</tr>`;
-        })
-        .join('');
-      // الجدول يُقسم بصفوفه لا وسط الخليّة، ويعيد صفّ عناوينه في الصفحة التالية.
-      return `<table${dir} style="width:100%;border-collapse:collapse;page-break-inside:auto"><colgroup>${cols}</colgroup>${rows}</table>`;
+      const row = (r: TableBlock['rows'][number], tag: 'th' | 'td') => {
+        const cells = r.cells
+          .map((cell) => {
+            const span = cell.colSpan && cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
+            const body = cell.blocks
+              .map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' }))
+              .join('');
+            const border = block.borders === false ? 'border:none' : 'border:1px solid currentColor';
+            return `<${tag}${span} style="${border};padding:2px 4px;vertical-align:top">${body}</${tag}>`;
+          })
+          .join('');
+        // الصفّ لا يُشطر بين صفحتين: نصف خليّةٍ هنا ونصفها هناك لا يُقرأ.
+        return `<tr style="break-inside:avoid">${cells}</tr>`;
+      };
+      // صفّ العناوين رأسُ جدولٍ (thead) تعيده الطابعة أعلى كل صفحةٍ يمتدّ إليها الجدول
+      // — وكان صفًّا عاديًّا فيُطبع مرّةً واحدة ولو خُيِّر المكتب بتكراره.
+      const [first, ...rest] = block.rows;
+      const head = block.header && first ? `<thead>${row(first, 'th')}</thead>` : '';
+      const body = (head ? rest : block.rows).map((r) => row(r, 'td')).join('');
+      return `<table${dir} style="width:100%;border-collapse:collapse;page-break-inside:auto"><colgroup>${cols}</colgroup>${head}<tbody>${body}</tbody></table>`;
     }
 
     case 'image': {
@@ -345,6 +348,28 @@ export function watermarkHtml(doc: Doc): string {
   return (
     `<div data-watermark="" style="${box}">` +
     `<img alt="" src="diwan://store/${escapeHtml(wm.src)}" style="width:60%;opacity:${opacity}"/></div>`
+  );
+}
+
+/**
+ * قواعد الطباعة الخاصّة بهذه الورقة: هوامش كل صفحة، والترقيم إن طُلب.
+ *
+ * `@page` في الورقة نفسها يغلب `margin:0` العامّ في نافذة الطباعة لأنه بعده؛ والحشو
+ * الأعلى والأسفل يُنزع في الطباعة وحدها — فالمعاينة على الشاشة كما هي.
+ */
+export function pageCss(doc: Doc): string {
+  const m = doc.pageSetup.margins;
+  const indic = doc.pageSetup.numerals === 'indic' ? ', arabic-indic' : '';
+  const numbers = doc.pageSetup.pageNumbers;
+  const bottom = numbers ? Math.max(m.bottom, 14) : m.bottom;
+  const box = numbers
+    ? `@bottom-center{content:"صفحة " counter(page${indic}) " من " counter(pages${indic});` +
+      `font-family:'Noto Naskh Arabic','Amiri',serif;font-size:10pt;color:#333;direction:rtl}`
+    : '';
+  return (
+    `@page{margin:${m.top}mm 0 ${bottom}mm 0;${box}}` +
+    `@media print{.print-root{min-height:0!important}` +
+    `[data-letter-sheet]{padding-top:0!important;padding-bottom:0!important;min-height:0!important}}`
   );
 }
 

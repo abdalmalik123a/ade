@@ -8,7 +8,8 @@
  * بل كتل يركّبها صاحب المكتب ويرتّبها، وتُحفظ JSON.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Clip, Seal } from '@shared/api';
+import type { Addressing, Clip, Seal } from '@shared/api';
+import { ADDRESSING, ADDRESSING_HINT, ADDRESSING_LABEL, guessAddressing } from '@shared/addressing';
 import {
   emptyLayout,
   isLayoutEmpty,
@@ -20,6 +21,7 @@ import {
 import type { Client } from '@shared/orders';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterheadView from '../components/LetterheadView';
+import RevisionsMenu from '../components/RevisionsMenu';
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
@@ -55,6 +57,8 @@ export default function LetterheadScreen() {
   const [clipTitle, setClipTitle] = useState('');
   const [clipBody, setClipBody] = useState('');
   const [clipCategory, setClipCategory] = useState('');
+  /** اتجاه الكليشة: `auto` يُخمَّن من أفعالها عند الحفظ، و`any` لكلّ اتجاه. */
+  const [clipDirection, setClipDirection] = useState<Addressing | 'auto' | 'any'>('auto');
   const [editingClipId, setEditingClipId] = useState<number | null>(null);
 
   const [toast, setToast] = useState<Toast>(null);
@@ -125,6 +129,10 @@ export default function LetterheadScreen() {
     setCategory('');
     setLayout(emptyLayout());
     setDirty(false);
+    // والبسملة بتفضيل المكتب (FOUNDATION §٥) — تصل بعد لحظة، فلا يُنتظر لفتح الورقة.
+    void window.diwan.settings.get().then((s) => {
+      if (s.basmala) setLayout((cur) => (cur.basmala.show ? cur : { ...cur, basmala: { ...cur.basmala, show: true } }));
+    });
   }
 
   /** تعديل التخطيط من المصمّم — يخصّ الترويسة الجارية ويعلّمها غير محفوظة. */
@@ -223,12 +231,14 @@ export default function LetterheadScreen() {
       id: editingClipId,
       title: clipTitle.trim(),
       body: clipBody.trim(),
-      category: clipCategory.trim() || null
+      category: clipCategory.trim() || null,
+      direction: clipDirection === 'auto' ? undefined : clipDirection === 'any' ? null : clipDirection
     });
     setEditingClipId(null);
     setClipTitle('');
     setClipBody('');
     setClipCategory('');
+    setClipDirection('auto');
     await reloadClips();
     say('حُفظت الكليشة بنجاح');
   }
@@ -457,6 +467,22 @@ export default function LetterheadScreen() {
               </button>
 
               <div className="flex items-center gap-space-xs pt-space-xs">
+                {currentId !== null && (
+                  <RevisionsMenu
+                    current={current?.revision}
+                    id={currentId}
+                    kind="letterhead"
+                    onRestore={(p, revision) => {
+                      // تُحمَّل للمراجعة ولا تُكتب: الحفظ يعتمدها نسخةً جديدة.
+                      setName(p.name);
+                      setCategory(p.category ?? '');
+                      setAuthorityId(p.authorityId);
+                      setLayout(normalizeLayout(p.layout));
+                      setDirty(true);
+                      say(`حُمّلت النسخة ${revision} — احفظ لتعتمدها`);
+                    }}
+                  />
+                )}
                 {dirty && (
                   <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold shrink-0">
                     غير محفوظة
@@ -636,6 +662,30 @@ export default function LetterheadScreen() {
                     />
                   </label>
 
+                  {/* لمن تُكتب: فتتصدّر في كتابٍ باتجاهها (FOUNDATION §٦) */}
+                  <label className="flex items-center gap-space-xs">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant font-medium shrink-0">تُكتب</span>
+                    <select
+                      className={`${settingInput} cursor-pointer`}
+                      data-clip-direction-input=""
+                      value={clipDirection}
+                      onChange={(e) => setClipDirection(e.target.value as Addressing | 'auto' | 'any')}
+                    >
+                      <option value="auto">
+                        {(() => {
+                          const g = guessAddressing(clipBody);
+                          return g ? `تلقائيًّا من أفعالها — ${ADDRESSING_LABEL[g]}` : 'تلقائيًّا من أفعالها';
+                        })()}
+                      </option>
+                      {ADDRESSING.map((a) => (
+                        <option key={a} value={a}>
+                          {ADDRESSING_LABEL[a]} ({ADDRESSING_HINT[a]})
+                        </option>
+                      ))}
+                      <option value="any">لأيّ جهة</option>
+                    </select>
+                  </label>
+
                   <div className="flex items-center gap-space-xs pt-space-xs">
                     <button
                       className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all"
@@ -654,6 +704,7 @@ export default function LetterheadScreen() {
                           setClipTitle('');
                           setClipBody('');
                           setClipCategory('');
+                          setClipDirection('auto');
                         }}
                       >
                         إلغاء
@@ -701,6 +752,11 @@ export default function LetterheadScreen() {
                             {c.title}
                           </span>
                           <div className="flex items-center gap-1">
+                            {c.direction && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-surface-container-high text-on-surface-variant">
+                                {ADDRESSING_LABEL[c.direction]}
+                              </span>
+                            )}
                             {c.category && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] bg-secondary-container text-on-secondary-container font-semibold">
                                 {c.category}
@@ -714,6 +770,7 @@ export default function LetterheadScreen() {
                                 setEditingClipId(c.id);
                                 setClipTitle(c.title);
                                 setClipBody(c.body);
+                                setClipDirection(c.direction ?? 'any');
                                 setClipCategory(c.category ?? '');
                               }}
                             >

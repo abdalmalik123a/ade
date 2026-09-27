@@ -111,8 +111,12 @@ function items(list: ListItem[], visit: (text: string) => string): ListItem[] {
   }));
 }
 
-/** يمرّ على كل نصٍّ ثابت في الوثيقة: الفقرات والجداول والأسئلة ونصوص اللوحة. */
-function mapText(doc: Doc, visit: (text: string) => string): Doc {
+/**
+ * يمرّ على كل نصٍّ ثابت في الوثيقة: الفقرات والجداول والأعمدة والأسئلة ونصوص اللوحة.
+ * والحقول لا تُمسّ — ما يُمرّ عليه نصُّ المؤلّف وحده. (وكانت الأعمدة تُتخطّى، وأكثر ما
+ * يُستورد من Word رأسٌ بعمودين، فلا يُدقَّق إملاؤه.)
+ */
+export function mapDocText(doc: Doc, visit: (text: string) => string): Doc {
   const block = (b: Doc['blocks'][number]): Doc['blocks'][number] => {
     switch (b.kind) {
       case 'paragraph':
@@ -129,6 +133,8 @@ function mapText(doc: Doc, visit: (text: string) => string): Doc {
         };
       case 'group':
         return { ...b, blocks: b.blocks.map(block) };
+      case 'columns':
+        return { ...b, columns: b.columns.map((col) => col.map(block)) };
       default:
         return b;
     }
@@ -146,11 +152,11 @@ function mapText(doc: Doc, visit: (text: string) => string): Doc {
 /** اقتراحات نصّ الوثيقة الثابت — ما كتبه المؤلّف في الورشة. */
 export function docSpelling(doc: Doc): SpellIssue[] {
   const texts: string[] = [];
-  mapText(doc, (t) => (texts.push(t), t));
+  mapDocText(doc, (t) => (texts.push(t), t));
   return spellingIssues(texts.join('\n'));
 }
 
 /** يصحّح نصّ الوثيقة الثابت بالاقتراحات المختارة — والحقول لا تُمسّ. */
 export function fixDocSpelling(doc: Doc, issues: SpellIssue[]): Doc {
-  return mapText(doc, (t) => applySpelling(t, issues));
+  return mapDocText(doc, (t) => applySpelling(t, issues));
 }

@@ -172,6 +172,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const pdf = pdfFile ? readFileSync(join(saveDir, pdfFile), 'latin1') : '';
   const boxes = [...pdf.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/g)].map((m) => [Math.round(+m[1]), Math.round(+m[2])]);
   ok('وحُفظ PDF', Boolean(pdfFile));
+  ok('وفيه الأسماء لا ورقٌ أبيض', pdf.includes('/FontFile'));
   ok('بورقتين A4 أفقيّتين (٢٩٧ × ٢١٠ ملم)', boxes.length === 2 && boxes.every(([w, h]) => w === 842 && h === 595));
 
   // ── خيارات الورق وفاحص ما قبل الطباعة ─────────────────────────────

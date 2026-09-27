@@ -117,6 +117,7 @@ export default async function scenario(page, { shotsDir }) {
   const pdf = pdfFile ? readFileSync(join(saveDir, pdfFile), 'latin1') : '';
   const box = /\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/.exec(pdf);
   ok('وPDF بمقاس ورق الصور (١٠١٫٦ × ١٥٢٫٤ ملم)', Boolean(box) && Math.round(+box[1]) === 288 && Math.round(+box[2]) === 432);
+  ok('وفيه الصور لا ورقٌ أبيض', /\/Subtype\s*\/Image/.test(pdf));
 
   return steps.join('\n');
 }

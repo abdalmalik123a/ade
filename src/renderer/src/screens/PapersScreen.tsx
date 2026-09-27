@@ -50,42 +50,13 @@ import {
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
 import QuestionBankPanel from '../components/QuestionBankPanel';
+import SymbolPalette from '../components/SymbolPalette';
 import OmrPanel from '../components/OmrPanel';
 import type { OmrSpec } from '@shared/omr';
 
 const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
 
 /** رموزُ المواد: رياضياتٌ وفيزياءُ وكيمياء — تُدرج عند المؤشّر. */
-const SYMBOLS = [
-  '√',
-  '∑',
-  '∫',
-  '≤',
-  '≥',
-  '≠',
-  '±',
-  '×',
-  '÷',
-  '°',
-  '∞',
-  'π',
-  '⁰',
-  '¹',
-  '²',
-  '³',
-  '₁',
-  '₂',
-  '₃',
-  '→',
-  '⇌',
-  'Δ',
-  'λ',
-  'μ',
-  'Ω',
-  '½',
-  '¼',
-  '¾'
-];
 
 const SHEET_WIDTH = 794;
 
@@ -848,20 +819,7 @@ function PapersScreenInner(
             <div className="font-label-sm text-label-sm text-on-surface-variant mb-space-xs">
               رموزُ المواد — تُدرج عند المؤشّر
             </div>
-            <div className="flex flex-wrap gap-1">
-              {SYMBOLS.map((sym) => (
-                <button
-                  key={sym}
-                  className="w-8 h-8 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-body-md text-body-md"
-                  title={`أدرج ${sym}`}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => insertSymbol(sym)}
-                >
-                  {sym}
-                </button>
-              ))}
-            </div>
+            <SymbolPalette compact onPick={insertSymbol} />
           </div>
 
           {/* ── الأوراق المحفوظة ──────────────────────────────────── */}

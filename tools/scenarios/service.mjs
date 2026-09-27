@@ -7,7 +7,7 @@
  */
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import Database from 'better-sqlite3';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -132,7 +132,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const db = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
   const tx = db.prepare('SELECT id, sheets, fee, citizen_name AS name FROM transactions').all();
   const docs = db
-    .prepare('SELECT serial, sha256, transaction_id AS tx, citizen_name AS name, fee FROM documents ORDER BY id')
+    .prepare('SELECT id, serial, sha256, transaction_id AS tx, citizen_name AS name, fee FROM documents ORDER BY id')
     .all();
   db.close();
 
@@ -144,6 +144,14 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ولكلٍّ بصمته', docs[0]?.sha256 !== docs[1]?.sha256);
   ok('وكلاهما تحت المعاملة نفسها', docs.length === 2 && docs.every((d) => d.tx === tx[0]?.id));
   ok('ولا أجرة على ورقة', docs.length === 2 && docs.every((d) => d.fee === 0));
+  // ورقة الشبّاك تُحفظ علاماتٍ وتُرسم PDF عند الطلب من الأرشيف. والمرسومة فعلًا فيها
+  // خطٌّ مضمَّن؛ وكانت تخرج بيضاء صالحة الترويسة (أنماط الطباعة تُخفي ما ليس ‎.print-sheet‎).
+  const saveDir = process.env.DIWAN_TEST_SAVE_DIR;
+  if (saveDir && docs[0]) {
+    mkdirSync(saveDir, { recursive: true });
+    const path = await page.eval(`return window.diwan.documents.exportPdf(${docs[0].id});`);
+    ok('وورقته PDF من الأرشيف فيها نصّها', Boolean(path) && existsSync(path) && readFileSync(path, 'latin1').includes('/FontFile'));
+  }
 
   // ── الدمج: كتاب لكل اسم ───────────────────────────────────────────
   await page.goto('service-counter');

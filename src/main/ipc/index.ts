@@ -29,7 +29,8 @@ const DEFAULTS: OfficeSettings = {
   serialYear: 0,
   uiScale: 1,
   onboarded: false,
-  printOffsets: {}
+  printOffsets: {},
+  basmala: null
 };
 
 function readSettings(): OfficeSettings {
@@ -48,7 +49,8 @@ function readSettings(): OfficeSettings {
     serialYear: new Date().getFullYear(),
     uiScale: Math.min(1.5, Math.max(0.8, Number(map.get('uiScale') ?? DEFAULTS.uiScale) || 1)),
     onboarded: map.get('onboarded') === 'true',
-    printOffsets: parseOffsets(map.get('printOffsets'))
+    printOffsets: parseOffsets(map.get('printOffsets')),
+    basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala
   };
 }
 
@@ -76,14 +78,23 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
     `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
   );
-  const tx = db.transaction((entries: [string, string][]) => {
-    for (const [k, v] of entries) stmt.run(k, v);
+  // `null` «لم يُحدَّد» (طابعةٌ يسأل عنها النظام، بسملةٌ لم يخترها المكتب): يُمحى
+  // مفتاحه فيعود إلى أصله. وكان يُحفظ نصًّا "null" فيُقرأ اسم طابعةٍ أو اختيارًا.
+  const unset = db.prepare('DELETE FROM settings WHERE key = ?');
+  const tx = db.transaction((entries: [string, string | null][]) => {
+    for (const [k, v] of entries) {
+      if (v === null) unset.run(k);
+      else stmt.run(k, v);
+    }
   });
   tx(
     Object.entries(patch)
       // سنة القيد ليست إعدادًا: تُحسب يوم الإصدار. وما قد حُفظ منها قديمًا يُهمل.
       .filter(([k, v]) => v !== undefined && k !== 'serialYear')
-      .map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)] as [string, string])
+      .map(
+        ([k, v]) =>
+          [k, v === null ? null : typeof v === 'object' ? JSON.stringify(v) : String(v)] as [string, string | null]
+      )
   );
   return readSettings();
 }

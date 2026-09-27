@@ -23,6 +23,12 @@ export type OfficeSettings = {
    * موجبٌ نزولًا. وتُطبَّق على الطباعة الورقية وحدها، لا على PDF.
    */
   printOffsets: Record<string, { x: number; y: number }>;
+  /**
+   * البسملة تفضيلٌ للمكتب (FOUNDATION §٥): كل ترويسةٍ جديدة تبدأ بها أو بدونها.
+   * و`null` ما لم يختر المكتب بعد: فأوّل مرّة يشعلها في ترويسةٍ تصير تفضيله، ثم
+   * يُشعلها ويُطفئها من الإعدادات.
+   */
+  basmala: boolean | null;
 };
 
 export type SidebarCounts = {
@@ -268,6 +274,8 @@ export type TemplateSummary = {
   printCount: number;
   issuedThisMonth: number;
   variables: string[];
+  /** رقم النسخة: يزيد مع كل حفظٍ غيّر شيئًا (FOUNDATION §٣). */
+  revision?: number;
 };
 
 export type TemplateDetail = Omit<TemplateSummary, 'variables'> & {
@@ -335,6 +343,39 @@ export type Clip = {
   body: string;
   category: string | null;
   usedAt: string | null;
+  /** لمن تُكتب: جهةٌ أعلى أو أدنى أو مساوية — أو لأيٍّ منها (FOUNDATION §٦). */
+  direction: Addressing | null;
+  revision?: number;
+};
+
+/**
+ * اتجاه المخاطبة (FOUNDATION §٤): `up` من الأدنى إلى الأعلى («يرجى / الرجاء»)،
+ * و`down` من الأعلى إلى الأدنى («تنسب / تزويدنا»)، و`peer` بين المتساويين («إشارة إلى»).
+ */
+export type Addressing = 'up' | 'down' | 'peer';
+
+// ── النسخ: العودة إلى «نسخة أمس» ─────────────────────────────────────
+
+export type RevisionKind = 'template' | 'letterhead' | 'clip';
+
+/** نسخةٌ سابقة لقطعة — رقمها ووقت حلول ما بعدها محلّها. */
+export type Revision = { revision: number; createdAt: string };
+
+/** ما يُحفظ من كل قطعةٍ في نسخها — ما يُحرَّر، لا ترتيب القائمة ولا عدّاداتها. */
+export type RevisionPayloads = {
+  template: {
+    code: string | null;
+    title: string;
+    subtitle: string | null;
+    category: string | null;
+    subjectLine: string | null;
+    bodyHtml: string;
+    docJson: string | null;
+    letterheadId: number | null;
+    variables: TemplateVariable[];
+  };
+  letterhead: { name: string; category: string | null; authorityId: number | null; layout: LetterheadLayout };
+  clip: { title: string; body: string; category: string | null; direction: Addressing | null };
 };
 
 export type DraftRow = {
@@ -445,9 +486,16 @@ export type DiwanApi = {
       title: string;
       body: string;
       category?: string | null;
+      /** غائبٌ = يُخمَّن من أفعال العبارة («يرجى»، «تنسب»، «إشارة إلى»). */
+      direction?: Addressing | null;
     }): Promise<Clip>;
     delete(id: number): Promise<void>;
     touch(id: number): Promise<void>;
+  };
+  /** النسخ السابقة للنماذج والترويسات والكليشات — للعودة إلى «نسخة أمس». */
+  revisions: {
+    list(kind: RevisionKind, id: number): Promise<Revision[]>;
+    get<K extends RevisionKind>(kind: K, id: number, revision: number): Promise<RevisionPayloads[K] | null>;
   };
   seals: {
     list(): Promise<Seal[]>;

@@ -60,10 +60,13 @@ const api: DiwanApi = {
   },
   clips: {
     list: (query?: string) => invoke('clips:list', query ?? ''),
-    save: (input: { id: number | null; title: string; body: string; category?: string | null }) =>
-      invoke('clips:save', input),
+    save: (input) => invoke('clips:save', input),
     delete: (id: number) => invoke('clips:delete', id),
     touch: (id: number) => invoke('clips:touch', id)
+  },
+  revisions: {
+    list: (kind, id) => invoke('revisions:list', kind, id),
+    get: (kind, id, revision) => invoke('revisions:get', kind, id, revision)
   },
   seals: {
     list: (): Promise<Seal[]> => invoke('seals:list'),

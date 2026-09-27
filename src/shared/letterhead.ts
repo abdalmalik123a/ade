@@ -138,14 +138,15 @@ export function emptySection(weight = 1): LetterheadSection {
   return { id: newId('sec'), blocks: [], weight };
 }
 
-export function emptyLayout(): LetterheadLayout {
+/** ترويسةٌ فارغة — والبسملة بتفضيل المكتب إن اختاره (FOUNDATION §٥). */
+export function emptyLayout(opts: { basmala?: boolean } = {}): LetterheadLayout {
   return {
     margins: { ...DEFAULT_MARGINS },
     columns: 1,
     sections: [emptySection(), emptySection(), emptySection()],
     divider: true,
     registry: { show: false, mode: 'manual' },
-    basmala: { show: false, text: BASMALA_TEXT, size: 14, align: 'center' },
+    basmala: { show: opts.basmala === true, text: BASMALA_TEXT, size: 14, align: 'center' },
     font: 'naskh'
   };
 }
@@ -280,6 +281,8 @@ export type Letterhead = {
   isFavorite: boolean;
   /** آخر مرّة استُعملت فيها — عليها يقوم ترتيب القائمة. */
   usedAt: string | null;
+  /** رقم النسخة: يزيد مع كل حفظٍ غيّر شيئًا (FOUNDATION §٣). */
+  revision?: number;
 };
 
 /**

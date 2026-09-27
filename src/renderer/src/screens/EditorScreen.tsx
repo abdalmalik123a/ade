@@ -1,122 +1,52 @@
 /**
- * المحرر الذكي ومعاينة A4 — data-path="smart-editor-a4-preview"
+ * محرّر الكتب — data-path="smart-editor-a4-preview"
  *
- * علاماتها من stitch_/a4/code.html، وسلوكها من docs/design-behavior/a4.js:
- * ربط حيّ بين الحقول والورقة، حقن متغيرات بصيغة {الاسم}، تكبير محصور بين 45% و160%،
- * وورقة عرضها 794px = 210mm عند 96 نقطة/إنش.
+ * **التحرير على الورقة نفسها، والأدوات في الجوانب** (قرار المالك، أيلول ٢٠٢٦): يُكتب
+ * الكتاب في الورقة بمحرّر الكتل الذي يؤلّف به مصمّم النماذج — جدولٌ وأعمدةٌ وخطٌّ
+ * ومحاذاة وحقول (F4) — والحقل على الورقة يُظهر قيمته حيث كُتب. وفي اللوح الجانبي
+ * ما يُعمل عليه بالترتيب: النموذج والترويسة، ثم العدد والتاريخ، ثم القيم، ثم
+ * قائمة التحقّق فالإصدار.
  *
- * لا شيء مبرمَج: الترويسة من إعدادات المكتب، والنموذج من المكتبة، والمواطن من السجل،
- * قبل ذلك الورقة بيضاء — وهذا هو الصواب.
+ * وكان المتن مربّع نصٍّ بوسوم `{…}` ومعاينةً جانبية، ونموذجٌ مستوردٌ من Word يُحمَّل
+ * ظلَّه النصّي فتضيع جداوله وتنسيقه. والمسودات والكتب القديمة تُقرأ وتُرحَّل
+ * (`shared/letterDraft.ts`).
  *
- * ولا توقيع ولا ختم ولا رمز تحقّق على الورقة: المكتب يستنسخ ويطبع، والجهة توقّع
- * وتختم بيدها بعد الطباعة. فالورقة تحمل اسم الموقّع وصفته وفراغًا فوقهما.
- *
- * الإصدار يجري في نداء واحد إلى العملية الرئيسية: تحجز رقم القيد في أرشيف المكتب
- * وتحسب البصمة وتقيّد الكتاب — والرقم للأرشيف وحده لا يُطبع على الكتاب (§١)؛
- * و«العدد» على الكتاب ما أعطاه الزبون أو فراغٌ للجهة. فالورقة تُحفظ كما أُرسلت.
+ * والورقة التي تُصدر وتُطبع هي `LetterSheet` نفسها التي يُصدر منها الشبّاك — فلا
+ * تختلف ورقة المحرّر عن ورقة الشبّاك. ولا توقيع ولا ختم ولا رمز تحقّق: الجهة توقّع
+ * وتختم بيدها. ورقم القيد للأرشيف وحده، و«العدد» على الكتاب ما أعطاه الزبون (§١).
  */
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState
-} from 'react';
-import type {
-  CitizenDetail,
-  DocumentDetail,
-  IssueOutcome,
-  OfficeSettings,
-  PrinterInfo,
-  Seal,
-  TemplateSummary
-} from '@shared/api';
-import { formatGregorian, formatHijri } from '@shared/dates';
-import {
-  emptyLayout,
-  isLayoutEmpty,
-  mmToPx,
-  normalizeLayout,
-  type Letterhead,
-  type LetterheadLayout
-} from '@shared/letterhead';
-import {
-  defaultFields,
-  fieldByRole,
-  toField,
-  tokenFromLabel,
-  uniqueToken,
-  FIELD_GROUPS,
-  type CatalogField,
-  type LetterField
-} from '@shared/letterFields';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, PrinterInfo, TemplateSummary } from '@shared/api';
+import { CALENDAR_LABEL, formatGregorian, formatHijri, type Calendar } from '@shared/dates';
+import { patchField } from '@shared/docEdit';
+import { docText, emptyDoc, isDateField, makeField, pageMm, paragraph, type Doc, type DocField } from '@shared/doc';
+import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { CORE_FIELDS, FIELD_GROUPS, type CatalogField } from '@shared/letterFields';
+import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
+import { docSpelling, fixDocSpelling } from '@shared/spelling';
+import { countInDoc, replaceInDoc } from '@shared/findReplace';
+import { NO_REGISTRY, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
+import { isCombo, shortcut } from '@shared/shortcuts';
 import { errorText } from '../lib/errors';
+import AddressingPicker from '../components/AddressingPicker';
+import DateTools from '../components/DateTools';
+import DocEditor, { type DocEditorApi } from '../components/DocEditor';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
-import { amountWordsField, wordsForField } from '@shared/tafqeet';
-import { guessGender, hasChoiceText, resolveChoices, type Gender } from '@shared/gender';
-import { isCombo, shortcut } from '@shared/shortcuts';
+import LetterSheet, { gapAfter } from '../components/LetterSheet';
+import SpellingPanel from '../components/SpellingPanel';
+import SymbolPalette from '../components/SymbolPalette';
 
-const MIN_ZOOM = 0.45;
-const MAX_ZOOM = 1.6;
-const SHEET_WIDTH = 794;
 const AUTOSAVE_MS = 4000;
-
 const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مختومة'];
+const MM_PX = 96 / 25.4;
 
-const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
-
-type Fields = {
-  serial: string;
-  dateGreg: string;
-  dateHijri: string;
-  subject: string;
-  docType: string;
-  body: string;
-  copiesTo: string;
-  signerName: string;
-  signerRole: string;
-};
-
-const EMPTY: Fields = {
-  serial: '',
-  dateGreg: '',
-  dateHijri: '',
-  subject: '',
-  docType: '',
-  body: '',
-  copiesTo: '',
-  signerName: '',
-  signerRole: ''
-};
-
-const escape = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-/**
- * حقن المتغيّرات: نفس الصيغة التي يستعملها التصميم — {الاسم} لا [الاسم].
- * والأسماء تأتي من حقول الكتاب نفسها، فما يضيفه المكتب يصير متغيّرًا في متنه.
- */
-function injectTokens(body: string, f: Fields, fields: LetterField[]): string {
-  const map = new Map<string, string>([
-    ['{رقم_الصادر}', f.serial],
-    ['{التاريخ_الميلادي}', f.dateGreg],
-    ['{التاريخ_الهجري}', f.dateHijri]
-  ]);
-  for (const field of fields) map.set(`{${field.token}}`, field.value);
-
-  let out = escape(body);
-  for (const [token, value] of map) {
-    if (!value) continue;
-    out = out
-      .split(escape(token))
-      .join(
-        `<span class="font-bold text-black underline underline-offset-4 decoration-1">${escape(value)}</span>`
-      );
-  }
-  return out.replace(/\n/g, '<br/>');
+/** كتابٌ جديد: سطرٌ فارغ واحد — والبرنامج لا يزرع متنًا (المبدأ ١). */
+function blankLetter(): Doc {
+  const doc = emptyDoc();
+  doc.blocks = [paragraph([])];
+  return doc;
 }
 
 export type EditorHandle = {
@@ -136,39 +66,35 @@ type Props = {
 };
 
 function EditorScreen(
-  {
-    templateId = null,
-    citizenId = null,
-    draftId = null,
-    documentId = null,
-    printer,
-    onStatus,
-    onIssued
-  }: Props,
+  { templateId = null, citizenId = null, draftId = null, documentId = null, printer, onStatus, onIssued }: Props,
   ref: React.Ref<EditorHandle>
 ) {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
+  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [clips, setClips] = useState<{ id: number; title: string; body: string }[]>([]);
+
   const [letterheadId, setLetterheadId] = useState<number | null>(null);
-  /** ترويسة هذا الكتاب: نسخة تُحرَّر معه، لا إحالة إلى ترويسة محفوظة.
-   *  فالترويسة تختلف من كتاب إلى كتاب ومن دائرة إلى أخرى. */
+  /** ترويسة هذا الكتاب: نسخةٌ تُحرَّر معه، لا إحالةٌ إلى المحفوظة. */
   const [layout, setLayout] = useState<LetterheadLayout>(emptyLayout());
   const [layoutDirty, setLayoutDirty] = useState(false);
   const [designerOpen, setDesignerOpen] = useState(false);
   const [saveLayoutOpen, setSaveLayoutOpen] = useState(false);
-  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
-  const [seals, setSeals] = useState<Seal[]>([]);
-  const [activeTemplate, setActiveTemplate] = useState<number | null>(templateId);
-  /** ملف المواطن المرتبط بالكتاب: يأتي مع فتح الشاشة، أو يُختار بـF2.
-   *  الكتاب قد يصدر لمن لا ملفّ له، فيبقى فارغًا والاسم يُحفظ نصًّا. */
-  const [linkedCitizen, setLinkedCitizen] = useState<number | null>(citizenId);
-  const [f, setF] = useState<Fields>(EMPTY);
-  /** حقول صاحب العلاقة: يضيف المكتب ويحذف، ولكل حقل وسمٌ يُحقن في المتن. */
-  const [fields, setFields] = useState<LetterField[]>(defaultFields);
-  const [fieldPickerOpen, setFieldPickerOpen] = useState(false);
-  const [zoom, setZoom] = useState(1);
 
-  const [showWatermark, setShowWatermark] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<number | null>(templateId);
+  const [linkedCitizen, setLinkedCitizen] = useState<number | null>(citizenId);
+  const [doc, setDocState] = useState<Doc>(blankLetter);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [registry, setRegistry] = useState<Registry>(NO_REGISTRY);
+  const [docType, setDocType] = useState('');
+  /** اسم صاحب العلاقة حين لا حقل للاسم على الورقة — للأرشيف وحده. */
+  const [owner, setOwner] = useState('');
+  const [genderByHand, setGenderByHand] = useState(false);
+
+  const [view, setView] = useState<'edit' | 'preview'>('edit');
+  const [trial, setTrial] = useState(false);
+  const [tool, setTool] = useState<'find' | 'symbols' | null>(null);
+  const [spellOpen, setSpellOpen] = useState(false);
 
   const [draft, setDraft] = useState<number | null>(draftId);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -179,97 +105,108 @@ function EditorScreen(
   const [toast, setToast] = useState<string | null>(null);
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [fieldPickerOpen, setFieldPickerOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [issued, setIssued] = useState<IssueOutcome | null>(null);
 
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const deskRef = useRef<HTMLDivElement>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
+  const api = useRef<DocEditorApi | null>(null);
+  const printRef = useRef<HTMLDivElement | null>(null);
   const dirty = useRef(false);
+
+  const setDoc = useCallback((next: Doc | ((d: Doc) => Doc)) => {
+    dirty.current = true;
+    setDocState(next);
+  }, []);
 
   useEffect(() => {
     void (async () => {
-      const [s, lhs, tpls, sl] = await Promise.all([
+      const [s, lhs, tpls, cl] = await Promise.all([
         window.diwan.settings.get(),
         window.diwan.letterheads.list(),
         window.diwan.templates.list(),
-        window.diwan.seals.list()
+        window.diwan.clips.list()
       ]);
       setSettings(s);
       setLetterheads(lhs);
-      const initial = lhs.find((x) => x.isDefault) ?? lhs[0] ?? null;
-      setLetterheadId(initial?.id ?? null);
-      if (initial) setLayout(normalizeLayout(initial.layout));
       setTemplates(tpls);
-      setSeals(sl);
-    })();
-  }, []);
-
-  const setFieldValue = useCallback((id: string, value: string) => {
-    dirty.current = true;
-    setFields((prev) => prev.map((x) => (x.id === id ? { ...x, value } : x)));
-  }, []);
-
-  const addField = useCallback((catalog: CatalogField) => {
-    dirty.current = true;
-    setFields((prev) => [...prev, toField({ ...catalog, token: uniqueToken(catalog.token, prev) })]);
-  }, []);
-
-  const removeField = useCallback((id: string) => {
-    dirty.current = true;
-    setFields((prev) => prev.filter((x) => x.id !== id));
-  }, []);
-
-  /**
-   * الرقم كلماتٍ بوحدته (المال تفقيطًا، والدرجة والمدّة عددًا ومعدودًا) في حقل
-   * كتابته بعينه — وإلا نُسخ وقيل ذلك، ولا يُخمَّن حقل.
-   */
-  const handleTafqeet = useCallback(
-    (field: LetterField) => {
-      const words = wordsForField(field, fields);
-      if (!words) return;
-      const partner = amountWordsField(field, fields);
-      if (partner) {
-        dirty.current = true;
-        setFields((prev) => prev.map((f) => (f.id === partner.id ? { ...f, value: words } : f)));
-        setToast(`كُتب «${words}» في «${partner.label}»`);
-      } else {
-        void navigator.clipboard?.writeText(words);
-        setToast('لا حقلَ «كتابة» لهذا الرقم — نُسخت كلماته، فالصقها حيث تريد');
+      setClips(cl);
+      // الترويسة الافتراضية لكتابٍ جديد — ما لم يأتِ الكتاب بترويسته.
+      if (templateId === null && draftId === null && documentId === null) {
+        const initial = lhs.find((x) => x.isDefault) ?? null;
+        if (initial) applyLetterhead(initial, true);
       }
-    },
-    [fields]
-  );
-
-  const set = useCallback((patch: Partial<Fields>) => {
-    dirty.current = true;
-    setError(null);
-    setF((prev) => ({ ...prev, ...patch }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // استيراد مواطن قادم من سجل المواطنين (زرّ «إدراج في محرر الكتب»).
   useEffect(() => {
-    if (citizenId === null) return;
-    setLinkedCitizen(citizenId);
-    void window.diwan.citizens.get(citizenId).then((c) => {
-      if (c) fillFromCitizen(c as unknown as Record<string, unknown>);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [citizenId]);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
-  /** يملأ ما له مصدرٌ في ملف المواطن، ويترك ما كتبه الموظف بيده إن كان مملوءًا. */
-  function fillFromCitizen(citizen: Record<string, unknown>) {
-    dirty.current = true;
-    setFields((prev) =>
-      prev.map((field) => {
-        if (!field.source) return field;
-        const value = citizen[field.source];
-        return typeof value === 'string' && value ? { ...field, value } : field;
-      })
-    );
+  // ── الترويسة ─────────────────────────────────────────────────────────
+  const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
+
+  /** ترويسةٌ من المكتبة تُنسخ إلى الكتاب؛ وكتابٌ فارغٌ يأخذ هوامشها معها. */
+  function applyLetterhead(found: Letterhead | null, blank = false) {
+    setLetterheadId(found?.id ?? null);
+    setLayoutDirty(false);
+    const next = found ? normalizeLayout(found.layout) : emptyLayout();
+    setLayout(next);
+    if (found && (blank || !docText(doc).trim())) {
+      setDocState((d) => ({ ...d, pageSetup: { ...d.pageSetup, margins: { ...next.margins } } }));
+    }
   }
 
-  // فتح مسودة محفوظة: تعود بحقولها كما تُركت.
+  async function storeLayout(name: string, asNew: boolean) {
+    const saved = await window.diwan.letterheads.save({
+      id: asNew ? null : letterheadId,
+      name: name.trim() || 'ترويسة بلا اسم',
+      authorityId: letterhead?.authorityId ?? null,
+      layout
+    });
+    setLetterheads(await window.diwan.letterheads.list());
+    setLetterheadId(saved.id);
+    setLayoutDirty(false);
+    setSaveLayoutOpen(false);
+    setToast(asNew ? `حُفظت الترويسة «${saved.name}» في المكتبة` : 'حُدّثت الترويسة المحفوظة');
+  }
+
+  // ── النموذج والمسودة والكتاب المكرَّر ─────────────────────────────────
+  /** نموذجٌ من المكتبة يُفتح بكتله كما حُفظ — جداوله وتنسيقه — لا ظلَّه النصّي. */
+  async function loadTemplate(id: number | null) {
+    setActiveTemplate(id);
+    if (id === null) return;
+    const [detail, tdoc] = await Promise.all([window.diwan.templates.get(id), window.diwan.templates.doc(id)]);
+    if (!detail) return;
+    setDoc(tdoc ?? blankLetter());
+    setDocType(detail.title);
+    if (detail.letterheadId) applyLetterhead(letterheads.find((l) => l.id === detail.letterheadId) ?? null);
+    setToast(`فُتح النموذج «${detail.title}» — اكتب على الورقة واملأ قيمه من الجانب`);
+  }
+
+  useEffect(() => {
+    if (templateId !== null && letterheads !== undefined) void loadTemplate(templateId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId]);
+
+  /** ما حُفظ (مسودةً أو كتابًا صادرًا) يعود بورقته وقيمه وترويسته. */
+  function restore(raw: string, keepNumber: boolean) {
+    const saved = readSavedLetter(raw);
+    if (!saved) {
+      setError('تعذّرت قراءة الكتاب المحفوظ — فُتح فارغًا');
+      return;
+    }
+    setDocState(saved.doc);
+    setValues(saved.values);
+    setRegistry(keepNumber ? saved.registry : { ...saved.registry, number: '' });
+    setDocType(saved.docType);
+    setOwner(saved.owner);
+    if (saved.layout) setLayout(saved.layout);
+  }
+
   useEffect(() => {
     if (draftId === null) return;
     void window.diwan.drafts.list().then((rows) => {
@@ -278,146 +215,171 @@ function EditorScreen(
       setDraft(row.id);
       setActiveTemplate(row.templateId);
       setLinkedCitizen(row.citizenId);
-      try {
-        const values = JSON.parse(row.valuesJson) as Partial<Fields> & {
-          __letterhead?: unknown;
-          __fields?: LetterField[];
-        };
-        const { __letterhead, __fields, ...rest } = values;
-        setF({ ...EMPTY, ...rest });
-        if (Array.isArray(__fields) && __fields.length) setFields(__fields);
-        if (__letterhead) setLayout(normalizeLayout(__letterhead));
-      } catch {
-        setError('تعذّرت قراءة قيم المسودة — فُتحت فارغة');
-      }
+      restore(row.valuesJson, true);
       dirty.current = false;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId]);
 
-  /** كتاب صادر يُفتح في المحرر: نسخة قابلة للتعديل تصدر برقم جديد.
-   *  الكتاب الأصل يبقى في الأرشيف كما صدر — بصمته تمنع تعديله في مكانه. */
+  /** «كرّره»: نسخةٌ تصدر برقمٍ جديد، والأصل في الأرشيف كما صدر. */
   useEffect(() => {
     if (documentId === null) return;
-    void window.diwan.documents.get(documentId).then((doc: DocumentDetail | null) => {
-      if (!doc) return;
-      setActiveTemplate(doc.templateId);
-      setLinkedCitizen(doc.citizenId);
-      try {
-        const values = JSON.parse(doc.valuesJson) as Partial<Fields> & {
-          __letterhead?: unknown;
-          __fields?: LetterField[];
-        };
-        const { __letterhead, __fields, ...rest } = values;
-        setF({ ...EMPTY, ...rest, serial: '' });
-        if (Array.isArray(__fields) && __fields.length) setFields(__fields);
-        if (__letterhead) setLayout(normalizeLayout(__letterhead));
-      } catch {
-        setF(EMPTY);
-      }
-      setToast(`نسخة عن ${doc.serial} — تصدر برقم صادر جديد`);
+    void window.diwan.documents.get(documentId).then((d: DocumentDetail | null) => {
+      if (!d) return;
+      setActiveTemplate(d.templateId);
+      setLinkedCitizen(d.citizenId);
+      restore(d.valuesJson, false);
+      setToast(`نسخة عن ${d.serial} — تصدر برقم قيدٍ جديد، والأصل كما صدر`);
       dirty.current = true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
-  const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
-
-  /** اختيار ترويسة من المكتبة ينسخها إلى الكتاب؛ وما يُعدَّل بعدها يخصّ الكتاب وحده. */
-  function useLetterhead(id: number | null) {
-    setLetterheadId(id);
-    setLayoutDirty(false);
-    const found = letterheads.find((x) => x.id === id);
-    setLayout(found ? normalizeLayout(found.layout) : emptyLayout());
-  }
-
-  function editLayout(next: LetterheadLayout) {
-    setLayout(next);
-    setLayoutDirty(true);
+  // ── القيم ────────────────────────────────────────────────────────────
+  const nameField = nameFieldOf(doc);
+  const ownerName = (nameField ? values[nameField.key] : owner)?.trim() ?? '';
+  const byRole = (role: DocField['role']) => {
+    const f = doc.fields.find((x) => x.role === role);
+    return f ? (values[f.key]?.trim() ?? '') : '';
+  };
+  const setValue = (key: string, value: string) => {
     dirty.current = true;
-  }
+    setError(null);
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
 
-  /** حفظ ترويسة الكتاب في المكتبة: تحديثًا لمحفوظة، أو باسم جديد. */
-  async function storeLayout(name: string, asNew: boolean) {
-    const saved = await window.diwan.letterheads.save({
-      id: asNew ? null : letterheadId,
-      name: name.trim() || 'ترويسة بلا اسم',
-      authorityId: letterhead?.authorityId ?? null,
-      layout
+  /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه — وما كُتب باليد لا يُطمس. */
+  function fillFromCitizen(c: CitizenDetail) {
+    const citizen = c as unknown as Record<string, unknown>;
+    setLinkedCitizen(c.id);
+    setValues((prev) => {
+      const next = { ...prev };
+      for (const f of doc.fields) {
+        const raw = f.source ? citizen[f.source] : f.role === 'name' ? c.fullName : f.role === 'nationalId' ? c.nationalId : null;
+        if (typeof raw === 'string' && raw.trim() && !next[f.key]?.trim()) next[f.key] = raw;
+      }
+      return next;
     });
-    const list = await window.diwan.letterheads.list();
-    setLetterheads(list);
-    setLetterheadId(saved.id);
-    setLayoutDirty(false);
-    setSaveLayoutOpen(false);
-    setToast(asNew ? `حُفظت الترويسة «${saved.name}» في المكتبة` : 'حُدّثت الترويسة المحفوظة');
-  }
-  const template = templates.find((t) => t.id === activeTemplate) ?? null;
-  const crest = seals.find((s) => s.kind === 'شعار') ?? null;
-
-  const transaction = f.subject || template?.title || null;
-
-  useEffect(() => {
-    onStatus?.({ transaction, busy, exporting });
-  }, [transaction, busy, exporting, onStatus]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  function loadTemplate(id: number | null) {
-    setActiveTemplate(id);
-    const t = templates.find((x) => x.id === id);
-    if (t) set({ body: t.bodyHtml, subject: t.subjectLine ?? '', docType: t.title });
+    if (!nameField) setOwner(c.fullName);
+    dirty.current = true;
+    setToast('استُوردت بيانات المواطن');
   }
 
-  function stampToday() {
+  useEffect(() => {
+    if (citizenId === null) return;
+    void window.diwan.citizens.get(citizenId).then((c) => c && fillFromCitizen(c));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [citizenId, doc.fields.length]);
+
+  /** الجنس لـ«{الطالب|الطالبة}»: مقترحٌ من الاسم ما لم يختره الموظف، ويُقلب بضغطة. */
+  const needsGender = useMemo(() => docHasChoices(doc), [doc]);
+  useEffect(() => {
+    if (!needsGender || genderByHand || !ownerName) return;
+    const g = guessGender(ownerName);
+    if (g && values[GENDER_KEY] !== g.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: g.gender }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsGender, genderByHand, ownerName]);
+
+  const keys = useMemo(() => doc.fields.map((f) => f.key), [doc.fields]);
+  /** القيم كما تُطبع: ما كُتب، وحقول «كتابةً» الفارغة من أرقامها. */
+  const effective = useMemo(() => derivedWords(values, keys), [values, keys]);
+  const shown = useMemo(() => (trial ? sampleValues(doc.fields, effective) : effective), [trial, doc.fields, effective]);
+
+  /** حقول التفقيط بصيغتها: المفتاح وسمٌ، والقيمة معه. */
+  const named = useMemo(
+    () => doc.fields.map((f) => ({ id: f.key, token: f.key.replace(/\s+/g, '_'), label: f.label, value: values[f.key] ?? '' })),
+    [doc.fields, values]
+  );
+  function writeWords(key: string) {
+    const field = named.find((n) => n.id === key);
+    if (!field) return;
+    const words = wordsForField(field, named);
+    if (!words) return;
+    const partner = amountWordsField(field, named);
+    if (partner) {
+      setValue(partner.id, words);
+      setToast(`كُتب «${words}» في «${partner.label}»`);
+    } else {
+      void navigator.clipboard?.writeText(words);
+      setToast('لا حقلَ «كتابة» لهذا الرقم — نُسخت كلماته، فالصقها حيث تريد');
+    }
+  }
+
+  /** حقلٌ من كتالوج المعاملات: يُعرَّف ويُدرج في الورقة حيث وقف المؤشّر. */
+  function addCatalogField(c: CatalogField) {
+    let key = c.label;
+    for (let n = 2; doc.fields.some((f) => f.key === key); n++) key = `${c.label} ${n}`;
+    const f = makeField({ key, label: c.label, source: c.source ?? null, role: c.role ?? null, required: c.role === 'name', ...(c.date ? { type: 'date' as const } : {}) });
+    if (api.current) api.current.insertNewField(f);
+    else setDoc((d) => ({ ...d, fields: [...d.fields, f] }));
+    setFieldPickerOpen(false);
+    setToast(`أُدرج الحقل «${c.label}» في الورقة`);
+  }
+
+  // ── العدد والتاريخ ────────────────────────────────────────────────────
+  const setReg = (patch: Partial<Registry>) => {
+    dirty.current = true;
+    setRegistry((r) => ({ ...r, ...patch }));
+  };
+  const stampToday = () => {
     const now = new Date();
-    set({ dateGreg: formatGregorian(now), dateHijri: formatHijri(now) });
-  }
-
-  function insertToken(token: string) {
-    const el = bodyRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const next = f.body.slice(0, start) + token + f.body.slice(end);
-    set({ body: next });
-    requestAnimationFrame(() => {
-      el.focus();
-      el.selectionStart = el.selectionEnd = start + token.length;
+    setReg({ dateGreg: formatGregorian(now), dateHijri: formatHijri(now) });
+  };
+  /** حقول الترويسة التلقائية — والعدد ما أعطاه الزبون لا رقم المكتب (§١). */
+  const resolveHead = (text: string): string =>
+    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
+      const key = raw.trim();
+      if (key === 'رقم_الصادر') return registry.number;
+      if (key === 'التاريخ_الميلادي') return registry.dateGreg;
+      if (key === 'التاريخ_الهجري') return registry.dateHijri;
+      return shown[key] ?? shown[key.replace(/_/g, ' ')] ?? '';
     });
-  }
+  const headLayout = isLayoutEmpty(layout) ? null : layout;
+  const regValues = { number: registry.number, date: registry.dateGreg };
 
-  function fitZoom() {
-    const desk = deskRef.current;
-    if (!desk) return;
-    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, (desk.clientWidth - 64) / SHEET_WIDTH)));
-  }
+  // ── القياس: ارتفاع الترويسة وعدد الصفحات، من الورقة التي تُطبع ─────────
+  const [measure, setMeasure] = useState<{ headRatio: number | null; pages: number | null }>({ headRatio: null, pages: null });
+  useLayoutEffect(() => {
+    const sheet = printRef.current;
+    if (!sheet) return;
+    const page = pageMm(doc.pageSetup);
+    const m = doc.pageSetup.margins;
+    const pagePx = page.h * MM_PX;
+    const head = sheet.querySelector<HTMLElement>('[data-letterhead]');
+    const body = sheet.querySelector<HTMLElement>('[data-body]');
+    const top = sheet.getBoundingClientRect().top;
+    const bottom = body ? body.getBoundingClientRect().bottom - top : 0;
+    const printable = (page.h - m.top - m.bottom) * MM_PX;
+    setMeasure({
+      headRatio: head ? head.getBoundingClientRect().height / pagePx : null,
+      pages: printable > 0 ? Math.max(1, Math.ceil((bottom - m.top * MM_PX) / printable)) : null
+    });
+  }, [doc, shown, layout, registry]);
 
-  /**
-   * علامات الورقة كما ستُطبع — وتُقيَّد كما هي، فلا شيء يُملأ فيها بعد الإصدار.
-   */
-  const sheetHtml = useCallback((_forIssue: boolean): string => {
-    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
-    if (!node) return '';
-    node.style.transform = '';
-    return node.outerHTML;
-  }, []);
+  const spelling = useMemo(() => docSpelling(doc), [doc]);
+  const checks = useMemo(
+    () =>
+      letterChecks({
+        doc,
+        values: effective,
+        owner: ownerName,
+        spelling: spelling.length,
+        registryPrinted: asksLetterNumber(headLayout),
+        number: registry.number,
+        headRatio: measure.headRatio,
+        pages: measure.pages
+      }),
+    [doc, effective, ownerName, spelling.length, headLayout, registry.number, measure]
+  );
+  const blocked = checks.some((c) => c.level === 'block');
 
-  const citizenName = fieldByRole(fields, 'name');
-  const destination = fieldByRole(fields, 'destination');
-  const purpose = fieldByRole(fields, 'purpose');
-  const nationalId = fieldByRole(fields, 'nationalId');
-
-  const hasContent = citizenName.length > 0 || f.body.trim().length > 0;
-  const sheetName = f.serial || f.subject || citizenName || 'كتاب';
-
-  // ── المسودات: حفظ يدوي وحفظ تلقائي ──────────────────────────────────
+  // ── المسودات ─────────────────────────────────────────────────────────
+  const hasContent = Boolean(docText(doc).trim() || ownerName);
+  const savedLetter = () => ({ doc, values, registry, layout, docType, owner });
   const saveDraft = useCallback(
     async (silent: boolean) => {
       if (!hasContent) {
-        if (!silent) setError('لا تُحفظ مسودة فارغة — اكتب الاسم أو المتن أولًا');
+        if (!silent) setError('لا تُحفظ مسودة فارغة — اكتب في الورقة أو اسم صاحب العلاقة أولًا');
         return;
       }
       setSaving(true);
@@ -426,91 +388,60 @@ function EditorScreen(
           id: draft,
           templateId: activeTemplate,
           citizenId: linkedCitizen,
-          title: f.subject || citizenName || 'مسودة بلا عنوان',
-          values: {
-            ...(f as unknown as Record<string, string>),
-            __letterhead: JSON.stringify(layout),
-            __fields: JSON.stringify(fields)
-          },
-          bodyHtml: f.body
+          title: docType || ownerName || 'مسودة بلا عنوان',
+          values: letterValues(savedLetter()),
+          bodyHtml: docText(doc, values)
         });
         setDraft(id);
         setSavedAt(new Date());
         dirty.current = false;
         if (!silent) setToast('حُفظت المسودة');
       } catch (e) {
-        setError(errorText(e, 'تعذّر إتمام العملية'));
+        setError(errorText(e, 'تعذّر حفظ المسودة'));
       } finally {
         setSaving(false);
       }
     },
-    [activeTemplate, linkedCitizen, draft, f, fields, hasContent, layout]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasContent, draft, activeTemplate, linkedCitizen, docType, ownerName, doc, values, registry, layout, owner]
   );
 
   useEffect(() => {
     if (!dirty.current || !hasContent) return;
     const timer = setTimeout(() => void saveDraft(true), AUTOSAVE_MS);
     return () => clearTimeout(timer);
-  }, [f, hasContent, saveDraft]);
+  }, [doc, values, registry, hasContent, saveDraft]);
 
-  // ── الإخراج ─────────────────────────────────────────────────────────
-  async function exportPdf() {
+  // ── الإخراج والإصدار ──────────────────────────────────────────────────
+  /** علامات الورقة كما تُطبع — وتُقيَّد كما هي، فلا شيء يُملأ فيها بعد الإصدار. */
+  const sheetHtml = () => printRef.current?.outerHTML ?? '';
+  const sheetName = docType || ownerName || 'كتاب';
+  const pageOf = () => pageMm(doc.pageSetup);
+
+  async function run(label: string, work: () => Promise<string | null | undefined | void>) {
     setExporting(true);
     setError(null);
     try {
-      const path = await window.diwan.output.savePdf({
-        sheetHtml: sheetHtml(false),
-        suggestedName: sheetName
-      });
-      if (path) setToast(`حُفظ PDF: ${path}`);
+      const path = await work();
+      if (path) setToast(`${label}: ${path}`);
     } catch (e) {
       setError(errorText(e, 'تعذّر إتمام العملية'));
     } finally {
       setExporting(false);
     }
   }
+  const exportPdf = () => run('حُفظ PDF', () => window.diwan.output.savePdf({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
+  const exportWord = () =>
+    run('حُفظ مستند Word', () => window.diwan.output.saveDocx({ sheetHtml: sheetHtml(), suggestedName: sheetName, title: docType || 'كتاب رسمي' }));
+  const exportPng = () =>
+    run('حُفظت صورة بدقة 300 نقطة/إنش', () => window.diwan.output.savePng300({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
 
-  async function exportWord() {
-    setExporting(true);
-    setError(null);
-    try {
-      const path = await window.diwan.output.saveDocx({
-        sheetHtml: sheetHtml(false),
-        suggestedName: sheetName,
-        title: f.subject || f.docType || 'كتاب رسمي'
-      });
-      if (path) setToast(`حُفظ مستند Word: ${path}`);
-    } catch (e) {
-      setError(errorText(e, 'تعذّر إتمام العملية'));
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function exportPng() {
-    setExporting(true);
-    setError(null);
-    try {
-      const path = await window.diwan.output.savePng300({
-        sheetHtml: sheetHtml(false),
-        suggestedName: sheetName
-      });
-      if (path) setToast(`حُفظت صورة بدقة 300 نقطة/إنش: ${path}`);
-    } catch (e) {
-      setError(errorText(e, 'تعذّر إتمام العملية'));
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  /** الإصدار: يفتح حوار النسخ، فالطباعة تستهلك رقم صادر ولا تُستأنف. */
+  /** الإصدار: قائمة التحقّق أولًا — وما يمنعه يُقال ولا يُفتح الحوار. */
   function requestIssue() {
-    if (!citizenName) {
-      setError('لا يصدر كتاب بلا اسم صاحب العلاقة');
-      return;
-    }
-    if (!f.body.trim()) {
-      setError('لا يصدر كتاب بلا متن');
+    setTrial(false);
+    const first = checks.find((c) => c.level === 'block');
+    if (first) {
+      setError(`لا يصدر الكتاب بعد: ${first.text}`);
       return;
     }
     setError(null);
@@ -524,35 +455,29 @@ function EditorScreen(
     try {
       const outcome = await window.diwan.documents.issue(
         {
-          sheetHtml: sheetHtml(true),
+          sheetHtml: sheetHtml(),
           templateId: activeTemplate,
           citizenId: linkedCitizen,
           authorityId: letterhead?.authorityId ?? null,
-          citizenName,
-          nationalId: nationalId || null,
-          docType: f.docType.trim() || template?.title || null,
-          destination: destination || null,
-          purpose: purpose || null,
-          values: {
-            ...(f as unknown as Record<string, string>),
-            __letterhead: JSON.stringify(layout),
-            __fields: JSON.stringify(fields)
-          },
+          citizenName: ownerName,
+          nationalId: byRole('nationalId') || null,
+          docType: docType.trim() || null,
+          destination: byRole('destination') || null,
+          purpose: byRole('purpose') || null,
+          values: letterValues(savedLetter()),
           copies: opts.copies,
           copyKind: opts.copyKind,
           fee: 0,
-          gregorianDate: f.dateGreg || formatGregorian(new Date()),
-          hijriDate: f.dateHijri || null,
+          gregorianDate: registry.dateGreg || formatGregorian(new Date()),
+          hijriDate: registry.dateHijri || null,
           operator: settings.operatorName || null,
           printer: printer?.name ?? null,
           serialPrefix: settings.serialPrefix,
           serialYear: settings.serialYear,
-          // اللقطة في `values.__letterhead` هي ما يُرسم؛ وهذا يقول من أين جاءت.
           letterheadId
         },
         opts.print
       );
-
       setIssued(outcome);
       setIssueOpen(false);
       dirty.current = false;
@@ -561,57 +486,71 @@ function EditorScreen(
         setDraft(null);
       }
       onIssued?.();
-
       if (outcome.archiveError) {
         setError(
-          `صدر الكتاب برقم ${outcome.serial}، لكن نسخته PDF لم تُحفظ في الأرشيف ` +
-            `(${outcome.archiveError}) — متنه محفوظ في السجل، ويمكن حفظ نسخته من شاشة الأرشيف.`
+          `صدر الكتاب برقم ${outcome.serial}، لكن نسخته PDF لم تُحفظ في الأرشيف (${outcome.archiveError}) — متنه محفوظ في السجل.`
         );
       } else if (outcome.printed === 'failed') {
         setError(
-          `صدر الكتاب برقم ${outcome.serial} وقُيّد في الأرشيف، لكن الطباعة لم تتم` +
-            (outcome.printError ? ` (${outcome.printError})` : '') +
-            ' — أعِد طباعته من سجل الأرشيف.'
+          `صدر الكتاب برقم ${outcome.serial} وقُيّد، لكن الطباعة لم تتم${outcome.printError ? ` (${outcome.printError})` : ''} — أعِدها من الأرشيف.`
         );
       }
     } catch (e) {
-      setError(errorText(e, 'تعذّر إتمام العملية'));
+      setError(errorText(e, 'تعذّر الإصدار'));
     } finally {
       setBusy(false);
     }
   }
 
-  /** طباعة الورقة الجارية بلا إصدار — للمراجعة قبل استهلاك رقم صادر. */
+  /** طباعة للمراجعة — بلا قيدٍ في الأرشيف. */
   async function printDraftSheet() {
     setBusy(true);
-    setError(null);
     try {
-      const result = await window.diwan.output.print({
-        sheetHtml: sheetHtml(false),
-        printer: printer?.name ?? null,
-        copies: 1,
-        silent: false
-      });
-      if (!result.ok && result.reason) setError(`تعذّرت الطباعة: ${result.reason}`);
+      const r = await window.diwan.output.print({ sheetHtml: sheetHtml(), printer: printer?.name ?? null, copies: 1, silent: false, page: pageOf() });
+      if (!r.ok && r.reason) setError(`تعذّرت الطباعة: ${r.reason}`);
     } catch (e) {
-      setError(errorText(e, 'تعذّر إتمام العملية'));
+      setError(errorText(e, 'تعذّرت الطباعة'));
     } finally {
       setBusy(false);
     }
   }
+
+  /** «اجعله نموذجًا»: الكتاب يصير نموذجًا في المكتبة — بحقوله فارغةً لا بقيمه (§١٠، البند ٦). */
+  async function saveAsTemplate(title: string) {
+    try {
+      await window.diwan.templates.save({
+        id: null,
+        code: null,
+        title,
+        subtitle: null,
+        category: null,
+        subjectLine: null,
+        bodyHtml: docText(doc),
+        letterheadId,
+        variables: doc.fields.map((f) => ({ token: f.key, label: f.label, source: f.source ? 'citizen' : 'manual', required: f.required })),
+        doc
+      });
+      setTemplates(await window.diwan.templates.list());
+      setTemplateOpen(false);
+      setToast(`حُفظ «${title}» نموذجًا في المكتبة — يُملأ مرارًا من الشبّاك`);
+    } catch (e) {
+      setError(errorText(e, 'تعذّر الحفظ نموذجًا'));
+    }
+  }
+
+  const transaction = docType || null;
+  useEffect(() => {
+    onStatus?.({ transaction, busy, exporting });
+  }, [transaction, busy, exporting, onStatus]);
 
   useImperativeHandle(
     ref,
-    () => ({
-      saveDraft: () => void saveDraft(false),
-      exportPdf: () => void exportPdf(),
-      print: () => requestIssue()
-    }),
+    () => ({ saveDraft: () => void saveDraft(false), exportPdf: () => void exportPdf(), print: () => requestIssue() }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [saveDraft, f, settings, printer, activeTemplate, letterhead]
+    [saveDraft, checks, settings, printer]
   );
 
-  // اختصارات المحرر: F2 استيراد مواطن، Ctrl+S حفظ مسودة.
+  // F2 استيراد مواطن، وCtrl+S حفظ مسودة — بموضع المفتاح فتعمل واللوحة عربية.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isCombo(e, shortcut('citizen').combo)) {
@@ -627,762 +566,481 @@ function EditorScreen(
     return () => window.removeEventListener('keydown', onKey);
   }, [saveDraft]);
 
-  /**
-   * التذكير والتأنيث: «{الطالب|الطالبة}» في المتن يُحلّ بجنس صاحب الكتاب —
-   * مقترحًا من اسمه، ويقلبه الموظف بضغطة فلا يغيّره الاقتراح بعدها.
-   */
-  const needsGender = hasChoiceText(f.body);
-  const [genderPick, setGenderPick] = useState<Gender | null>(null);
-  const gender: Gender | undefined = genderPick ?? (citizenName ? guessGender(citizenName)?.gender : undefined);
-  const rendered = useMemo(
-    () => injectTokens(needsGender ? resolveChoices(f.body, gender) : f.body, f, fields),
-    [f, fields, needsGender, gender]
+  // ── الواجهة ──────────────────────────────────────────────────────────
+  const head = headLayout ? (
+    <div className={gapAfter(headLayout) ? 'mb-space-md' : ''}>
+      <LetterheadView layout={headLayout} registryValues={regValues} resolve={resolveHead} />
+    </div>
+  ) : null;
+
+  const section = 'bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm';
+  const title = (icon: string, text: string, extra?: React.ReactNode) => (
+    <div className="flex items-center justify-between gap-space-xs">
+      <h3 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs">
+        <span className="material-symbols-outlined text-secondary text-[20px]">{icon}</span>
+        {text}
+      </h3>
+      {extra}
+    </div>
   );
-  const copiesTo = f.copiesTo.split('\n').map((l) => l.trim()).filter(Boolean);
-
-  /** المتغيّرات المتاحة: ما يعرّفه النموذج المحمَّل، أو لا شيء قبل تحميله. */
-  const tokens = template?.variables.map((v) => `{${v}}`) ?? [];
-
-  /** حجم الوثيقة كما يعرضه شريط الحالة في التصميم — من علاماتها الفعلية. */
-  const sizeKb = Math.max(1, Math.round(new Blob([rendered + f.body]).size / 102.4) / 10);
 
   return (
-    <main className="relative pt-16 bg-surface min-h-screen w-full">
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] overflow-hidden bg-surface">
-        {/* لوح الإدخال */}
-        <div className="w-full lg:w-[480px] xl:w-[520px] shrink-0 h-full flex flex-col bg-surface-container-lowest shadow-[0_10px_30px_rgba(11,28,48,0.06)] z-20 overflow-hidden">
-          <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-space-xs">
-                <span className="p-1 rounded-lg bg-primary-container text-on-primary">
-                  <span className="material-symbols-outlined text-[18px]">auto_stories</span>
-                </span>
-                <span className="font-headline-sm text-headline-sm text-on-surface">
-                  محرر الكتب الرسمية الذكي
-                </span>
-              </div>
-              <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-                مزامنة فورية
-              </span>
-            </div>
-
-            <div className="bg-surface-container-lowest p-space-sm rounded-xl shadow-sm flex flex-col gap-space-xs">
-              <div className="flex items-center justify-between">
-                <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
-                  النموذج الرسمي النشط
-                </label>
-                <span className="font-label-sm text-label-sm text-secondary font-semibold">
-                  مكتبة النماذج (Ctrl+M)
-                </span>
-              </div>
-              <div className="flex items-center gap-space-xs">
-                <select
-                  className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
-                  value={activeTemplate ?? ''}
-                  onChange={(e) => loadTemplate(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">
-                    {templates.length === 0 ? '— لا نماذج في المكتبة بعد —' : '— اختر نموذجًا —'}
-                  </option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.title}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="h-9 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors"
-                  title="استيراد سريع من سجل المواطنين"
-                  type="button"
-                  onClick={() => setPickerOpen(true)}
-                >
-                  <span className="material-symbols-outlined text-[16px] text-secondary">
-                    person_search
-                  </span>
-                  <span>استيراد (F2)</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-space-md space-y-space-md">
-            {error && (
-              <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md">
-                <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
-                <span className="flex-1">{error}</span>
-                <button
-                  className="material-symbols-outlined text-[16px]"
-                  type="button"
-                  onClick={() => setError(null)}
-                >
-                  close
-                </button>
-              </div>
-            )}
-            {toast && (
-              <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md">
-                <span className="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
-                <span className="flex-1 break-all">{toast}</span>
-              </div>
-            )}
-
-            {/* القسم الأول: الترويسة */}
-            <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">
-                    account_balance
-                  </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    ترويسة الجهة الإدارية
-                  </h3>
-                </div>
-                {layoutDirty && (
-                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-semibold">
-                    خاصّة بهذا الكتاب
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-space-xs">
-                <select
-                  className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
-                  value={letterheadId ?? ''}
-                  onChange={(e) => useLetterhead(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">
-                    {letterheads.length === 0 ? '— لا ترويسة محفوظة بعد —' : '— بلا ترويسة —'}
-                  </option>
-                  {letterheads.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="h-9 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm flex items-center gap-1"
-                  type="button"
-                  onClick={() => setDesignerOpen(true)}
-                >
-                  <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                  تحرير الترويسة
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between gap-space-xs">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  {isLayoutEmpty(layout)
-                    ? 'الورقة بلا ترويسة — حرّرها لتظهر أعلى الكتاب'
-                    : `${layout.columns === 1 ? 'قسم واحد' : layout.columns === 2 ? 'قسمان' : 'ثلاثة أقسام'} · ${layout.sections
-                        .slice(0, layout.columns)
-                        .reduce((n, sec) => n + sec.blocks.length, 0)} عنصرًا`}
-                </span>
-                <button
-                  className="font-label-sm text-label-sm text-secondary font-semibold hover:underline disabled:opacity-40 disabled:no-underline"
-                  type="button"
-                  disabled={isLayoutEmpty(layout)}
-                  onClick={() => setSaveLayoutOpen(true)}
-                >
-                  حفظ في المكتبة
-                </button>
-              </div>
-            </section>
-
-            {/* القسم الثاني: سجل الصادر والتاريخ */}
-            <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">123</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    العدد والتاريخ على الكتاب
-                  </h3>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-space-sm">
-                <Field label="العدد">
-                  <input
-                    className={inputCls}
-                    id="inputSerial"
-                    type="text"
-                    value={f.serial}
-                    placeholder="كما أعطاه الزبون، أو فارغًا للجهة"
-                    onChange={(e) => set({ serial: e.target.value })}
-                  />
-                </Field>
-                <Field label="التاريخ الميلادي">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.dateGreg}
-                    placeholder="—"
-                    onChange={(e) => set({ dateGreg: e.target.value })}
-                  />
-                </Field>
-                <Field label="التاريخ الهجري">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.dateHijri}
-                    placeholder="—"
-                    onChange={(e) => set({ dateHijri: e.target.value })}
-                  />
-                </Field>
-              </div>
-              <button
-                className="w-full h-8 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-colors"
-                type="button"
-                onClick={stampToday}
-              >
-                ختم تاريخ اليوم (ميلادي وهجري)
-              </button>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                العدد والتاريخ يظهران في الترويسة لا في متن الكتاب، وإظهارهما اختياري —
-                من «تحرير الترويسة». والكتاب يُقيَّد في الأرشيف برقمه على كل حال، والرقم
-                المعروض هنا اطّلاعٌ يُحجز النهائيُّ منه لحظة الإصدار.
-              </p>
-            </section>
-
-            {/* القسم الثالث: صاحب العلاقة — حقول يبنيها المكتب */}
-            <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">badge</span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    بيانات صاحب العلاقة
-                  </h3>
-                </div>
-                <button
-                  className="h-8 px-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1 shadow-sm"
-                  type="button"
-                  onClick={() => setFieldPickerOpen(true)}
-                >
-                  <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>إضافة حقل</span>
-                </button>
-              </div>
-
-              {fields.length === 0 ? (
-                <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[24px]">person_add</span>
-                  <span className="font-label-md text-label-md">لا حقول في هذا الكتاب</span>
-                  <span className="font-label-sm text-label-sm">أضف ما تطلبه المعاملة</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-space-sm">
-                  {needsGender && (
-                    <div className="col-span-2 flex items-center gap-space-xs" data-gender="">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">الجنس:</span>
-                      {(['ذكر', 'أنثى'] as const).map((g) => (
-                        <button
-                          key={g}
-                          className={`h-8 px-3 rounded-lg font-label-sm text-label-sm ${
-                            gender === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
-                          }`}
-                          type="button"
-                          onClick={() => setGenderPick(g)}
-                        >
-                          {g}
-                        </button>
-                      ))}
-                      {!genderPick && citizenName && (
-                        <span className="font-label-sm text-label-sm text-on-surface-variant">مقترحٌ من الاسم</span>
-                      )}
-                    </div>
-                  )}
-                  {fields.map((field) => (
-                    <div key={field.id} className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <label className="font-label-sm text-label-sm text-on-surface-variant truncate">
-                          {field.label} {field.role === 'name' && <span className="text-error">*</span>}
-                        </label>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            className="px-1 rounded font-mono text-[10px] text-secondary hover:bg-surface-container-high"
-                            title={`إدراج {${field.token}} في المتن`}
-                            type="button"
-                            onClick={() => insertToken(`{${field.token}}`)}
-                          >
-                            {'{'}
-                            {field.token}
-                            {'}'}
-                          </button>
-                          <button
-                            className="w-5 h-5 rounded flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error-container"
-                            title="حذف الحقل من هذا الكتاب"
-                            type="button"
-                            onClick={() => removeField(field.id)}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">close</span>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <input
-                          className={`${inputCls} ${field.role === 'nationalId' ? 'font-mono' : ''}`}
-                          type="text"
-                          value={field.value}
-                          placeholder="—"
-                          onChange={(e) => setFieldValue(field.id, e.target.value)}
-                        />
-                        {wordsForField(field, fields) && (
-                          <button
-                            className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-secondary flex items-center justify-center shrink-0"
-                            title={`كتابةً: ${wordsForField(field, fields)}${
-                              amountWordsField(field, fields) ? ` — يُكتب في «${amountWordsField(field, fields)!.label}»` : ' — يُنسخ'
-                            }`}
-                            type="button"
-                            onClick={() => handleTafqeet(field)}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">payments</span>
-                          </button>
-                        )}
-                        {field.date && (
-                          <button
-                            className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant"
-                            title="ختم تاريخ اليوم"
-                            type="button"
-                            onClick={() => setFieldValue(field.id, formatGregorian(new Date()))}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">event</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    className="min-h-[4.5rem] rounded-lg border border-dashed border-outline-variant hover:border-secondary hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors flex flex-col items-center justify-center gap-0.5 px-space-xs"
-                    type="button"
-                    onClick={() => setFieldPickerOpen(true)}
-                  >
-                    <span className="material-symbols-outlined text-[20px] text-secondary">
-                      add_circle
-                    </span>
-                    <span className="font-label-md text-label-md font-semibold">إضافة حقل</span>
-                    <span className="font-label-sm text-label-sm text-center leading-tight">
-                      من معاملات التربية والجنسية والجوازات، أو حقل تسمّيه بنفسك
-                    </span>
-                  </button>
-                </div>
-              )}
-            </section>
-
-            {/* القسم الرابع: المتن والمتغيرات */}
-            <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">
-                    text_fields
-                  </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    منطوق الكتاب والمتغيرات
-                  </h3>
-                </div>
-              </div>
-
-              {tokens.length > 0 && (
-                <div className="flex flex-wrap items-center gap-space-xs">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    حقن سريع:
-                  </span>
-                  {tokens.map((t) => (
-                    <button
-                      key={t}
-                      className="px-2 py-0.5 rounded bg-surface-container-high text-secondary font-mono font-label-sm text-label-sm hover:bg-secondary-fixed transition-colors"
-                      type="button"
-                      onClick={() => insertToken(t)}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-space-sm">
-                <Field label="سطر الموضوع (م /)">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.subject}
-                    placeholder="—"
-                    onChange={(e) => set({ subject: e.target.value })}
-                  />
-                </Field>
-                <Field label="نوع الوثيقة (للسجل)">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.docType}
-                    placeholder={template?.title ?? '—'}
-                    onChange={(e) => set({ docType: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <Field label="المتن الرسمي">
-                <textarea
-                  ref={bodyRef}
-                  className="w-full p-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md leading-relaxed focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
-                  rows={7}
-                  value={f.body}
-                  placeholder={
-                    templates.length === 0
-                      ? 'اكتب المتن هنا، أو أنشئ نموذجًا في المكتبة لتحميله'
-                      : 'اختر نموذجًا من الأعلى أو اكتب المتن هنا'
-                  }
-                  onChange={(e) => set({ body: e.target.value })}
-                />
-              </Field>
-
-              <Field label="نسخة منه إلى (سطر لكل جهة)">
-                <textarea
-                  className="w-full p-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm leading-relaxed focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
-                  rows={3}
-                  value={f.copiesTo}
-                  placeholder="—"
-                  onChange={(e) => set({ copiesTo: e.target.value })}
-                />
-              </Field>
-            </section>
-
-            {/* القسم الخامس: الموقّع — اسمه وصفته مطبوعان، والتوقيع والختم حيّان بعد الطباعة. */}
-            <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">
-                    person
-                  </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">الموقّع</h3>
-                </div>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  يوقّع ويختم بيده بعد الطباعة
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-space-sm">
-                <Field label="الموقّع والمخوّل بالتوقيع">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.signerName}
-                    placeholder="—"
-                    onChange={(e) => set({ signerName: e.target.value })}
-                  />
-                </Field>
-                <Field label="المنصب الإداري">
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={f.signerRole}
-                    placeholder="—"
-                    onChange={(e) => set({ signerRole: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <div className="pt-space-xs flex items-center bg-surface-container-low p-space-sm rounded-lg">
-                <Toggle checked={showWatermark} onChange={setShowWatermark} label="علامة مائية" />
-              </div>
-            </section>
-          </div>
-
-          {/* شريط الحالة: الحفظ التلقائي وحجم الوثيقة — كما في التصميم */}
-          <div className="p-space-sm px-space-md bg-surface-container-low flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm shrink-0">
-            <div className="flex items-center gap-1">
-              <span
-                className={`material-symbols-outlined text-[16px] ${
-                  saving ? 'animate-spin text-on-surface-variant' : 'text-secondary'
-                }`}
-              >
-                {saving ? 'progress_activity' : savedAt ? 'cloud_done' : 'cloud_off'}
-              </span>
-              <span>
-                {saving
-                  ? 'الحفظ التلقائي: يحفظ الآن...'
-                  : savedAt
-                    ? `الحفظ التلقائي: حُفظت ${savedAt.toLocaleTimeString('ar-IQ', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                      })}`
-                    : hasContent
-                      ? 'الحفظ التلقائي: لم تُحفظ بعد'
-                      : 'الحفظ التلقائي: لا مسودة'}
-              </span>
-            </div>
-            <div className="flex items-center gap-space-xs">
-              <span className="font-mono text-on-surface font-semibold">{sizeKb} KB</span>
-              <span>
-                | كود الوثيقة: {template?.code ?? (f.serial ? f.serial : 'لم يُحدَّد بعد')}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* منضدة الورق */}
-        <div className="flex-1 h-full flex flex-col overflow-hidden bg-surface-dim/40">
-          <div className="h-14 shrink-0 px-space-md flex items-center justify-between bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-            <div className="flex items-center gap-space-sm">
-              <button
-                className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                title="تصغير"
-                type="button"
-                onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))}
-              >
-                <span className="material-symbols-outlined text-[18px]">zoom_out</span>
-              </button>
-              <span className="font-label-md text-label-md text-on-surface font-semibold tabular w-12 text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                title="تكبير"
-                type="button"
-                onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z + 0.1))}
-              >
-                <span className="material-symbols-outlined text-[18px]">zoom_in</span>
-              </button>
-              <button
-                className="px-space-sm h-8 rounded text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm transition-colors"
-                type="button"
-                onClick={fitZoom}
-              >
-                ملاءمة العرض
-              </button>
-              <span className="hidden sm:flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
-                <span className="material-symbols-outlined text-[16px]">aspect_ratio</span>
-                قياس المعاينة: ISO 216 (A4 — 210×297mm)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-space-xs">
-              <button
-                className="h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
-                type="button"
-                disabled={exporting || busy}
-                onClick={() => void exportWord()}
-              >
-                <span className="material-symbols-outlined text-[16px] text-secondary">
-                  description
-                </span>
-                <span className="hidden md:inline">تصدير Word (.docx)</span>
-              </button>
-              <button
-                className="h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
-                type="button"
-                disabled={exporting || busy}
-                onClick={() => void exportPng()}
-              >
-                <span className="material-symbols-outlined text-[16px] text-error">
-                  picture_as_pdf
-                </span>
-                <span className="hidden md:inline">
-                  {exporting ? 'جاري التصدير 300DPI...' : 'تصدير بدقة عالية (300 DPI)'}
-                </span>
-              </button>
-              <button
-                className="h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
-                type="button"
-                disabled={busy}
-                title="طباعة الورقة للمراجعة — بلا رقم صادر وبلا قيد في الأرشيف"
-                onClick={() => void printDraftSheet()}
-              >
-                <span className="material-symbols-outlined text-[16px]">preview</span>
-                <span className="hidden lg:inline">طباعة تجريبية</span>
-              </button>
-              <button
-                className="h-9 px-space-md rounded-lg bg-primary text-on-primary hover:bg-surface-tint font-label-md text-label-md font-semibold flex items-center gap-1.5 transition-colors shadow-md disabled:opacity-50"
-                type="button"
-                disabled={busy}
-                onClick={requestIssue}
-              >
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                <span>{busy ? 'يصدر الكتاب...' : 'إصدار وطباعة الورقة الرسمية'}</span>
+    <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="editor">
+      <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        {/* ── اللوح: ما يُعمل عليه بالترتيب ─────────────────────────── */}
+        <aside className="w-[400px] shrink-0 h-full overflow-y-auto bg-surface-container-low p-space-md flex flex-col gap-space-md" data-editor-panel="">
+          {error && (
+            <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md" data-editor-error="">
+              <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+              <span className="flex-1">{error}</span>
+              <button className="material-symbols-outlined text-[16px]" type="button" onClick={() => setError(null)}>
+                close
               </button>
             </div>
-          </div>
+          )}
+          {toast && (
+            <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md">
+              <span className="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
+              <span className="flex-1 break-all">{toast}</span>
+            </div>
+          )}
 
-          <div ref={deskRef} className="flex-1 overflow-auto flex flex-col items-center py-space-xl">
-            <div
-              ref={sheetRef}
-              className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0 relative"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}
+          {/* ١ — النموذج والترويسة */}
+          <section className={section}>
+            {title('article', 'النموذج والترويسة')}
+            <select
+              className={inputCls}
+              data-editor-template=""
+              value={activeTemplate ?? ''}
+              onChange={(e) => void loadTemplate(e.target.value ? Number(e.target.value) : null)}
             >
-              {showWatermark && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                  {crest ? (
-                    <img
-                      alt=""
-                      src={storeUrl(crest.imagePath)}
-                      style={{ width: 420, opacity: 0.06 }}
-                    />
-                  ) : (
-                    <span
-                      className="font-headline-xl text-on-surface opacity-[0.12] select-none"
-                      style={{ fontSize: '96px', transform: 'rotate(-30deg)' }}
-                    >
-                      مسودة
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div
-                className="relative flex flex-col min-h-[1123px]"
-                style={{
-                  paddingTop: mmToPx(layout.margins.top),
-                  paddingRight: mmToPx(layout.margins.right),
-                  paddingBottom: mmToPx(layout.margins.bottom),
-                  paddingLeft: mmToPx(layout.margins.left)
-                }}
+              <option value="">{templates.length === 0 ? '— لا نماذج في المكتبة بعد —' : '— كتابٌ جديد، أو اختر نموذجًا —'}</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+            <div className="flex items-center gap-space-xs">
+              <select
+                className={`${inputCls} flex-1`}
+                value={letterheadId ?? ''}
+                onChange={(e) => applyLetterhead(letterheads.find((l) => l.id === Number(e.target.value)) ?? null)}
               >
-                {/* الترويسة كما بناها المكتب لهذا الكتاب */}
-                <LetterheadView
-                  layout={layout}
-                  registryValues={{ number: f.serial, date: f.dateGreg }}
-                  resolve={(value) =>
-                    injectTokens(value, f, fields).replace(/<[^>]+>/g, '') || value
-                  }
+                <option value="">{letterheads.length === 0 ? '— لا ترويسة محفوظة بعد —' : '— بلا ترويسة —'}</option>
+                {letterheads.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="h-9 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm flex items-center gap-1"
+                type="button"
+                onClick={() => setDesignerOpen(true)}
+              >
+                <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                تحرير الترويسة
+              </button>
+            </div>
+            <div className="flex items-center justify-between font-label-sm text-label-sm">
+              <span className="text-on-surface-variant">{layoutDirty ? 'الترويسة خاصّةٌ بهذا الكتاب' : isLayoutEmpty(layout) ? 'بلا ترويسة' : 'كما في المكتبة'}</span>
+              <button
+                className="text-secondary font-semibold hover:underline disabled:opacity-40"
+                type="button"
+                disabled={isLayoutEmpty(layout)}
+                onClick={() => setSaveLayoutOpen(true)}
+              >
+                حفظ الترويسة في المكتبة
+              </button>
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="font-label-sm text-label-sm text-on-surface-variant">نوع الكتاب — يُقيَّد به في الأرشيف</span>
+              <input className={inputCls} value={docType} placeholder="مثال: تأييد استمرار بالخدمة" onChange={(e) => (dirty.current = true, setDocType(e.target.value))} />
+            </label>
+            <AddressingPicker
+              value={doc.meta.addressing ?? null}
+              onChange={(a) => setDoc((d) => ({ ...d, meta: { ...d.meta, addressing: a ?? undefined } }))}
+            />
+          </section>
+
+          {/* ٢ — العدد والتاريخ والصفحة */}
+          <section className={section}>
+            {title('123', 'العدد والتاريخ والصفحة')}
+            <div className="grid grid-cols-3 gap-space-xs">
+              <label className="flex flex-col gap-1">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">العدد</span>
+                <input className={inputCls} data-editor-number="" value={registry.number} placeholder="من الزبون" onChange={(e) => setReg({ number: e.target.value })} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">ميلادي</span>
+                <input className={inputCls} value={registry.dateGreg} placeholder="—" onChange={(e) => setReg({ dateGreg: e.target.value })} />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">هجري</span>
+                <input className={inputCls} value={registry.dateHijri} placeholder="—" onChange={(e) => setReg({ dateHijri: e.target.value })} />
+              </label>
+            </div>
+            <button
+              className="h-8 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
+              type="button"
+              onClick={stampToday}
+            >
+              تاريخ اليوم (ميلادي وهجري)
+            </button>
+            <div className="flex flex-wrap gap-x-space-md gap-y-1 font-label-sm text-label-sm text-on-surface">
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  checked={doc.pageSetup.pageNumbers}
+                  className="w-4 h-4 accent-secondary"
+                  data-act="page-numbers"
+                  type="checkbox"
+                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, pageNumbers: e.target.checked } }))}
                 />
-
-                {/* المرسل إليه والموضوع */}
-                <div className="mt-space-lg space-y-space-md">
-                  {destination && (
-                    <div className="font-bold text-on-surface" style={{ fontSize: '15px' }}>
-                      إلى / {destination}
-                    </div>
-                  )}
-                  {f.subject && (
-                    <div
-                      className="font-bold text-on-surface text-center underline underline-offset-8"
-                      style={{ fontSize: '15px' }}
-                    >
-                      م / {f.subject}
-                    </div>
-                  )}
-                </div>
-
-                {/* المتن */}
-                <div
-                  className="mt-space-lg text-on-surface"
-                  style={{ fontSize: '14px', lineHeight: 2, textAlign: 'justify' }}
-                  dangerouslySetInnerHTML={{ __html: rendered }}
+                ترقيم الصفحات
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input
+                  checked={doc.pageSetup.repeatLetterhead}
+                  className="w-4 h-4 accent-secondary"
+                  data-act="repeat-head"
+                  type="checkbox"
+                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, repeatLetterhead: e.target.checked } }))}
                 />
+                الترويسة في كل صفحة
+              </label>
+            </div>
+          </section>
 
-                {/* الموقّع: اسمه وصفته، وفوقهما فراغٌ يوقّع فيه ويختم بيده بعد الطباعة. */}
-                {(f.signerName || f.signerRole) && (
-                  <div className="mt-space-xl flex items-end justify-end">
-                    <div className="flex flex-col items-center gap-1 min-w-[150px]">
-                      {f.signerName && (
-                        <span className="font-bold text-on-surface" style={{ fontSize: '14px' }}>
-                          {f.signerName}
-                        </span>
-                      )}
-                      {f.signerRole && (
-                        <span
-                          className="text-on-surface-variant text-center"
-                          style={{ fontSize: '12px' }}
+          {/* ٣ — القيم */}
+          <section className={section} data-editor-values="">
+            {title(
+              'badge',
+              'القيم',
+              <button
+                className="h-8 px-2.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+                type="button"
+                onClick={() => setPickerOpen(true)}
+              >
+                <span className="material-symbols-outlined text-[16px] text-secondary">person_search</span>
+                استيراد (F2)
+              </button>
+            )}
+            {!nameField && (
+              <label className="flex flex-col gap-1">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  اسم صاحب العلاقة <span className="text-error">*</span> — للأرشيف، ولا حقل له على الورقة
+                </span>
+                <input className={inputCls} data-editor-owner="" value={owner} onChange={(e) => (dirty.current = true, setOwner(e.target.value))} />
+              </label>
+            )}
+            {needsGender && (
+              <div className="flex items-center gap-space-xs" data-gender="">
+                <span className="font-label-sm text-label-sm text-on-surface-variant">الجنس:</span>
+                {(['ذكر', 'أنثى'] as const).map((g) => (
+                  <button
+                    key={g}
+                    className={`h-8 px-3 rounded-lg font-label-sm text-label-sm ${
+                      values[GENDER_KEY] === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
+                    }`}
+                    type="button"
+                    onClick={() => {
+                      setGenderByHand(true);
+                      setValue(GENDER_KEY, g);
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            )}
+            {doc.fields.filter((f) => !isChoiceKey(f.key)).length === 0 ? (
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                لا حقول على الورقة — ظلّل عبارةً في الورقة واضغط F4، أو أضف حقلًا من كتالوج المعاملات.
+              </p>
+            ) : (
+              doc.fields
+                .filter((f) => !isChoiceKey(f.key))
+                .map((f) => {
+                  const words = wordsForField(named.find((n) => n.id === f.key)!, named);
+                  return (
+                    <label key={f.key} className="flex flex-col gap-1" data-value-of={f.key}>
+                      <span className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+                        {f.label} {f.required && <span className="text-error">*</span>}
+                        <span className="flex-1" />
+                        {isDateField(f) && (
+                          <select
+                            className="h-6 px-1 rounded bg-surface-container-low text-on-surface-variant cursor-pointer"
+                            data-calendar-of={f.key}
+                            title="بأيّ تقويمٍ يُكتب التاريخ"
+                            value={f.calendar ?? 'gregorian'}
+                            onChange={(e) => setDoc((d) => patchField(d, f.key, { type: 'date', calendar: e.target.value as Calendar }))}
+                          >
+                            {(Object.keys(CALENDAR_LABEL) as Calendar[]).map((k) => (
+                              <option key={k} value={k}>
+                                {CALENDAR_LABEL[k]}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          className="text-secondary hover:underline"
+                          title="أدرجه مرّةً أخرى حيث وقف المؤشّر في الورقة"
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => api.current?.insertField(f.key)}
                         >
-                          {f.signerRole}
-                        </span>
-                      )}
+                          + في الورقة
+                        </button>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <input className={inputCls} value={values[f.key] ?? ''} placeholder="—" onChange={(e) => setValue(f.key, e.target.value)} />
+                        {words && (
+                          <button
+                            className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-secondary shrink-0"
+                            title={`كتابةً: ${words}`}
+                            type="button"
+                            onClick={() => writeWords(f.key)}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">spellcheck</span>
+                          </button>
+                        )}
+                        {isDateField(f) && <DateTools calendar={f.calendar} onPick={(t) => setValue(f.key, t)} />}
+                      </span>
+                    </label>
+                  );
+                })
+            )}
+            <button
+              className="h-9 rounded-lg border border-dashed border-outline-variant hover:border-secondary text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+              data-act="add-field"
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setFieldPickerOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">add_circle</span>
+              أضف حقلًا من كتالوج المعاملات
+            </button>
+          </section>
 
-                    </div>
-                  </div>
-                )}
+          {/* ٤ — قبل الإصدار */}
+          <section className={section} data-checks="">
+            {title('fact_check', 'قبل الإصدار')}
+            <ul className="flex flex-col gap-1">
+              {checks.map((c, i) => (
+                <li
+                  key={i}
+                  className={`flex items-start gap-1 font-label-sm text-label-sm ${
+                    c.level === 'block' ? 'text-error' : c.level === 'warn' ? 'text-on-surface' : 'text-on-surface-variant'
+                  }`}
+                  data-check={c.level}
+                >
+                  <span className="material-symbols-outlined text-[16px] shrink-0">
+                    {c.level === 'block' ? 'block' : c.level === 'warn' ? 'warning' : 'info'}
+                  </span>
+                  <span className="flex-1">{c.text}</span>
+                  {c.act === 'spelling' && (
+                    <button className="text-secondary font-semibold hover:underline" type="button" onClick={() => setSpellOpen(true)}>
+                      راجعه
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {spellOpen && spelling.length > 0 && (
+              <SpellingPanel
+                issues={spelling}
+                note="اقتراحاتٌ على نصّ الكتاب — اختر ما تريد، والحقول لا تُمسّ"
+                onFix={(chosen) => {
+                  setDoc((d) => fixDocSpelling(d, chosen));
+                  setSpellOpen(false);
+                }}
+              />
+            )}
+            <button
+              className="h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              data-act="issue"
+              disabled={busy}
+              type="button"
+              onClick={requestIssue}
+            >
+              <span className="material-symbols-outlined text-[18px]">print</span>
+              {busy ? 'يصدر الكتاب...' : blocked ? 'أصدر — بعد إكمال ما يمنع' : 'أصدر واطبع'}
+            </button>
+          </section>
 
-                {/* نسخة منه إلى، وسطر الطابع */}
-                <div className="mt-auto pt-space-lg">
-                  {copiesTo.length > 0 && (
-                    <div
-                      className="pt-space-sm border-t border-outline-variant text-on-surface-variant"
-                      style={{ fontSize: '11px', lineHeight: 1.9 }}
-                    >
-                      <div className="font-bold text-on-surface mb-0.5">نسخة منه إلى:</div>
-                      <ul className="list-disc list-inside">
-                        {copiesTo.map((line, i) => (
-                          <li key={i}>{line}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {settings?.operatorName && (
-                    <div
-                      className="mt-space-sm flex items-center justify-between text-on-surface-variant font-mono"
-                      style={{ fontSize: '10px' }}
-                    >
-                      <span>طُبع بواسطة: {settings.operatorName}</span>
-                      <span>{settings.officeName}</span>
-                    </div>
-                  )}
+          <div className="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+            <span className={`material-symbols-outlined text-[16px] ${saving ? 'animate-spin' : 'text-secondary'}`}>
+              {saving ? 'progress_activity' : savedAt ? 'cloud_done' : 'cloud_off'}
+            </span>
+            {saving
+              ? 'تُحفظ المسودة…'
+              : savedAt
+                ? `حُفظت المسودة ${savedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`
+                : hasContent
+                  ? 'تُحفظ مسودةً تلقائيًّا بعد ثوانٍ من الكتابة'
+                  : 'لا مسودة'}
+          </div>
+        </aside>
+
+        {/* ── الورقة ─────────────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 h-full flex flex-col">
+          <div className="h-12 shrink-0 px-space-md flex items-center gap-space-xs bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex-wrap">
+            <div className="flex p-0.5 rounded-lg bg-surface-container-low">
+              {(
+                [
+                  ['edit', 'تحرير على الورقة'],
+                  ['preview', 'معاينة كما تُطبع']
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  className={`h-8 px-3 rounded-md font-label-md text-label-md ${view === v ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                  data-view={v}
+                  type="button"
+                  onClick={() => setView(v)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {view === 'preview' && (
+              <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface cursor-pointer" title="قيمٌ طويلة للفارغ — تكشف الفراغ القصير والسطر الزائد قبل الورق">
+                <input checked={trial} className="w-4 h-4 accent-secondary" data-act="trial" type="checkbox" onChange={(e) => setTrial(e.target.checked)} />
+                جرّبها بقيمٍ وهمية
+              </label>
+            )}
+            <span className="w-px h-6 bg-outline-variant/60 mx-1" />
+            <button
+              className={`h-9 px-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${tool === 'find' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
+              data-act="find"
+              type="button"
+              onClick={() => setTool((t) => (t === 'find' ? null : 'find'))}
+            >
+              <span className="material-symbols-outlined text-[18px]">find_replace</span>
+              بحث واستبدال
+            </button>
+            <button
+              className={`h-9 px-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${tool === 'symbols' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
+              data-act="symbols"
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setTool((t) => (t === 'symbols' ? null : 'symbols'))}
+            >
+              <span className="material-symbols-outlined text-[18px]">function</span>
+              رموز
+            </button>
+            <span className="flex-1" />
+            <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="save" type="button" onClick={() => void saveDraft(false)}>
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              حفظ مسودة
+            </button>
+            <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="as-template" type="button" onClick={() => setTemplateOpen(true)}>
+              <span className="material-symbols-outlined text-[18px]">library_add</span>
+              اجعله نموذجًا
+            </button>
+            <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-word" disabled={exporting || busy} type="button" onClick={() => void exportWord()}>
+              <span className="material-symbols-outlined text-[18px] text-secondary">description</span>
+              Word
+            </button>
+            <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-pdf" disabled={exporting || busy} type="button" onClick={() => void exportPdf()}>
+              <span className="material-symbols-outlined text-[18px] text-error">picture_as_pdf</span>
+              PDF
+            </button>
+            <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-png" disabled={exporting || busy} type="button" onClick={() => void exportPng()}>
+              <span className="material-symbols-outlined text-[18px]">image</span>
+              صورة عالية الدقّة
+            </button>
+            <button
+              className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40"
+              disabled={busy}
+              title="طباعة للمراجعة — بلا قيدٍ في الأرشيف"
+              type="button"
+              onClick={() => void printDraftSheet()}
+            >
+              <span className="material-symbols-outlined text-[18px]">preview</span>
+              طباعة تجريبية
+            </button>
+          </div>
+
+          {tool === 'find' && <FindReplaceBar doc={doc} templates={templates} onChange={setDoc} onOpenTemplate={(id) => void loadTemplate(id)} />}
+          {tool === 'symbols' && (
+            <div className="px-space-md py-space-sm bg-surface-container-low border-b border-outline-variant/40">
+              <SymbolPalette onPick={(s) => api.current?.insertText(s)} />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0">
+            {view === 'edit' ? (
+              <DocEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
+            ) : (
+              <div className="h-full overflow-auto flex justify-center py-space-lg bg-surface-dim/40" data-preview="">
+                <div style={{ zoom: 0.85 }} className="w-fit">
+                  <LetterSheet doc={doc} layout={headLayout} values={shown} registry={regValues} resolve={resolveHead} />
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {pickerOpen && (
-        <CitizenPicker
-          onClose={() => setPickerOpen(false)}
-          onPick={(c) => {
-            setLinkedCitizen(c.id);
-            fillFromCitizen(c as unknown as Record<string, unknown>);
-            setPickerOpen(false);
+      {/* الورقة التي تُصدر وتُطبع وتُقاس — مرسومةً خارج الشاشة بمقاسها الحقيقي، وبالقيم الحقيقية لا الوهمية. */}
+      <div aria-hidden className="fixed top-0 pointer-events-none" style={{ left: -20000 }}>
+        <LetterSheet
+          doc={doc}
+          layout={headLayout}
+          values={effective}
+          registry={regValues}
+          resolve={(t) =>
+            t.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
+              const key = raw.trim();
+              if (key === 'رقم_الصادر') return registry.number;
+              if (key === 'التاريخ_الميلادي') return registry.dateGreg;
+              if (key === 'التاريخ_الهجري') return registry.dateHijri;
+              return effective[key] ?? effective[key.replace(/_/g, ' ')] ?? '';
+            })
+          }
+          sheetRef={(el) => {
+            printRef.current = el;
           }}
         />
-      )}
+      </div>
 
-      {fieldPickerOpen && (
-        <FieldPicker
-          existing={fields}
-          onClose={() => setFieldPickerOpen(false)}
-          onPick={(catalog) => {
-            addField(catalog);
-            setFieldPickerOpen(false);
-          }}
-        />
-      )}
-
+      {pickerOpen && <CitizenPicker onClose={() => setPickerOpen(false)} onPick={(c) => (fillFromCitizen(c), setPickerOpen(false))} />}
+      {fieldPickerOpen && <FieldPicker existing={doc.fields.map((f) => f.label)} onClose={() => setFieldPickerOpen(false)} onPick={addCatalogField} />}
       {designerOpen && (
         <Modal title="ترويسة هذا الكتاب" onClose={() => setDesignerOpen(false)}>
           <div className="max-h-[70vh] overflow-y-auto">
-            <LetterheadDesigner layout={layout} onChange={editLayout} showPageOptions />
+            <LetterheadDesigner
+              layout={layout}
+              onChange={(next) => {
+                setLayout(next);
+                setLayoutDirty(true);
+                dirty.current = true;
+              }}
+              showPageOptions
+            />
           </div>
           <div className="flex items-center justify-between pt-space-md">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              التعديل يخصّ هذا الكتاب. لإبقائه لكتب أخرى احفظه في المكتبة.
-            </span>
-            <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
-              type="button"
-              onClick={() => setDesignerOpen(false)}
-            >
+            <span className="font-label-sm text-label-sm text-on-surface-variant">التعديل يخصّ هذا الكتاب. لإبقائه لكتب أخرى احفظه في المكتبة.</span>
+            <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" type="button" onClick={() => setDesignerOpen(false)}>
               تم
             </button>
           </div>
         </Modal>
       )}
-
-      {saveLayoutOpen && (
-        <SaveLayoutDialog
-          current={letterhead}
-          onClose={() => setSaveLayoutOpen(false)}
-          onSave={(name, asNew) => void storeLayout(name, asNew)}
-        />
-      )}
-
+      {saveLayoutOpen && <SaveLayoutDialog current={letterhead} onClose={() => setSaveLayoutOpen(false)} onSave={(n, asNew) => void storeLayout(n, asNew)} />}
+      {templateOpen && <AsTemplateDialog initial={docType} onClose={() => setTemplateOpen(false)} onSave={(t) => void saveAsTemplate(t)} />}
       {issueOpen && (
         <IssueDialog
-          serial={f.serial}
-          name={citizenName}
+          number={registry.number}
+          name={ownerName}
           printerName={printer?.displayName ?? null}
           busy={busy}
           onClose={() => setIssueOpen(false)}
           onIssue={(opts) => void issue(opts)}
         />
       )}
-
       {issued && (
         <IssuedDialog
           outcome={issued}
@@ -1403,70 +1061,79 @@ function EditorScreen(
 export default forwardRef(EditorScreen);
 
 const inputCls =
-  'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+  'w-full h-9 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
 
-function Field({
-  label,
-  required,
-  children
+/** بحثٌ واستبدال في الكتاب — متساهلٌ مع الهمزة — وبحثٌ في نصوص المكتبة كلّها. */
+function FindReplaceBar({
+  doc,
+  templates,
+  onChange,
+  onOpenTemplate
 }: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
+  doc: Doc;
+  templates: TemplateSummary[];
+  onChange: (d: Doc) => void;
+  onOpenTemplate: (id: number) => void;
 }) {
+  const [find, setFind] = useState('');
+  const [replace, setReplace] = useState('');
+  const [loose, setLoose] = useState(true);
+  const [msg, setMsg] = useState<string | null>(null);
+  const count = countInDoc(doc, find, loose);
+  const inLibrary = useMemo(() => {
+    if (!find.trim()) return [];
+    const probe = emptyDoc();
+    return templates.filter((t) => {
+      probe.blocks = [paragraph([{ kind: 'run', text: `${t.title}\n${t.bodyHtml}` }])];
+      return countInDoc(probe, find, loose) > 0;
+    });
+  }, [find, loose, templates]);
   return (
-    <div className="flex flex-col gap-1">
-      <label className="font-label-sm text-label-sm text-on-surface-variant">
-        {label} {required && <span className="text-error">*</span>}
-      </label>
-      {children}
+    <div className="px-space-md py-space-sm bg-surface-container-low border-b border-outline-variant/40 flex flex-col gap-space-xs" data-find="">
+      <div className="flex flex-wrap items-center gap-space-xs">
+        <input className={`${inputCls} w-56`} data-find-input="" placeholder="ابحث عن…" value={find} onChange={(e) => (setFind(e.target.value), setMsg(null))} />
+        <input className={`${inputCls} w-56`} data-replace-input="" placeholder="واستبدل بـ…" value={replace} onChange={(e) => setReplace(e.target.value)} />
+        <label className="flex items-center gap-1 font-label-sm text-label-sm cursor-pointer">
+          <input checked={loose} className="w-4 h-4 accent-secondary" type="checkbox" onChange={(e) => setLoose(e.target.checked)} />
+          متساهلٌ مع الهمزة
+        </label>
+        <span className="font-label-sm text-label-sm text-on-surface-variant" data-find-count="">
+          {find.trim() ? `${count} في الكتاب` : ''}
+        </span>
+        <button
+          className="h-9 px-3 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm disabled:opacity-40"
+          data-act="replace-all"
+          disabled={count === 0}
+          type="button"
+          onClick={() => {
+            const out = replaceInDoc(doc, find, replace, loose);
+            onChange(out.doc);
+            setMsg(`استُبدل ${out.count} — والحقول لا تُمسّ`);
+          }}
+        >
+          استبدل الكل
+        </button>
+        {msg && <span className="font-label-sm text-label-sm text-secondary">{msg}</span>}
+      </div>
+      {inLibrary.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 font-label-sm text-label-sm">
+          <span className="text-on-surface-variant">وفي المكتبة:</span>
+          {inLibrary.slice(0, 12).map((t) => (
+            <button key={t.id} className="h-7 px-2 rounded-full bg-surface-container-lowest hover:bg-surface-container-high" type="button" onClick={() => onOpenTemplate(t.id)}>
+              {t.title}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function Toggle({
-  checked,
-  onChange,
-  label,
-  disabled
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <label
-      className={`flex items-center gap-space-xs ${
-        disabled ? 'opacity-40' : 'cursor-pointer'
-      } select-none`}
-    >
-      <input
-        className="w-4 h-4 accent-secondary"
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span className="font-label-sm text-label-sm text-on-surface font-medium">{label}</span>
-    </label>
-  );
-}
-
 /** استيراد سريع من سجل المواطنين — F2، والبحث متساهل مع الهمزة. */
-function CitizenPicker({
-  onClose,
-  onPick
-}: {
-  onClose: () => void;
-  onPick: (c: CitizenDetail) => void;
-}) {
+function CitizenPicker({ onClose, onPick }: { onClose: () => void; onPick: (c: CitizenDetail) => void }) {
   const [query, setQuery] = useState('');
-  const [rows, setRows] = useState<
-    { id: number; fullName: string; nationalId: string | null; jobTitle: string | null }[]
-  >([]);
+  const [rows, setRows] = useState<{ id: number; fullName: string; nationalId: string | null; jobTitle: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -1482,53 +1149,27 @@ function CitizenPicker({
       clearTimeout(timer);
     };
   }, [query]);
-
-  async function pick(id: number) {
-    const c = await window.diwan.citizens.get(id);
-    if (c) onPick(c);
-  }
-
   return (
     <Modal title="استيراد من سجل المواطنين" onClose={onClose}>
-      <input
-        autoFocus
-        className={inputCls}
-        placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..."
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <input autoFocus className={inputCls} placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..." type="text" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="mt-space-sm max-h-[50vh] overflow-y-auto divide-y divide-outline-variant">
         {loading ? (
-          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">
-            جارٍ البحث...
-          </div>
+          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">جارٍ البحث...</div>
         ) : rows.length === 0 ? (
-          <div className="py-space-lg flex flex-col items-center gap-space-xs text-on-surface-variant">
-            <span className="material-symbols-outlined text-[32px]">person_off</span>
-            <span className="font-label-md text-label-md">
-              {query ? 'لا مواطن بهذا البحث' : 'سجل المواطنين فارغ'}
-            </span>
-          </div>
+          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">{query ? 'لا مواطن بهذا البحث' : 'سجل المواطنين فارغ'}</div>
         ) : (
           rows.map((r) => (
             <button
               key={r.id}
-              className="w-full text-right py-space-sm px-space-xs hover:bg-surface-container-high transition-colors flex items-center justify-between"
+              className="w-full text-right py-space-sm px-space-xs hover:bg-surface-container-high flex items-center justify-between"
               type="button"
-              onClick={() => void pick(r.id)}
+              onClick={() => void window.diwan.citizens.get(r.id).then((c) => c && onPick(c))}
             >
-              <div className="flex flex-col">
-                <span className="font-label-lg text-label-lg text-on-surface font-bold">
-                  {r.fullName}
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  {r.jobTitle ?? '—'}
-                </span>
-              </div>
-              <span className="font-mono font-label-sm text-label-sm text-on-surface-variant">
-                {r.nationalId ?? ''}
+              <span className="flex flex-col">
+                <span className="font-label-lg text-label-lg text-on-surface font-bold">{r.fullName}</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">{r.jobTitle ?? '—'}</span>
               </span>
+              <span className="font-mono font-label-sm text-label-sm text-on-surface-variant">{r.nationalId ?? ''}</span>
             </button>
           ))
         )}
@@ -1537,160 +1178,85 @@ function CitizenPicker({
   );
 }
 
-/**
- * إضافة حقل: من كتالوج المعاملات الرسمية، أو حقل يسمّيه المكتب بنفسه.
- * الكتالوج اقتراح لا إلزام — والحذف متاح من البطاقة نفسها.
- */
-function FieldPicker({
-  existing,
-  onClose,
-  onPick
-}: {
-  existing: LetterField[];
-  onClose: () => void;
-  onPick: (field: CatalogField) => void;
-}) {
+/** حقلٌ من كتالوج المعاملات الرسمية، أو حقلٌ يسمّيه المكتب — يُدرج في الورقة حيث وقف المؤشّر. */
+function FieldPicker({ existing, onClose, onPick }: { existing: string[]; onClose: () => void; onPick: (f: CatalogField) => void }) {
   const [query, setQuery] = useState('');
-  const [customLabel, setCustomLabel] = useState('');
-
+  const [custom, setCustom] = useState('');
   const term = query.trim();
-  const groups = FIELD_GROUPS.map((group) => ({
-    ...group,
-    fields: group.fields.filter(
-      (field) => !term || field.label.includes(term) || field.token.includes(term)
-    )
-  })).filter((group) => group.fields.length > 0);
-
-  const used = new Set(existing.map((f) => f.label));
-
+  // صاحب العلاقة أوّلًا: الاسم والرقم الوطني والجهة والغرض — ما لا يخلو منه كتاب.
+  const all = [{ name: 'صاحب العلاقة', hint: 'الاسم والرقم الوطني والجهة والغرض', fields: CORE_FIELDS }, ...FIELD_GROUPS];
+  const groups = all.map((g) => ({ ...g, fields: g.fields.filter((f) => !term || f.label.includes(term)) })).filter((g) => g.fields.length > 0);
+  const used = new Set(existing);
   return (
-    <Modal title="إضافة حقل إلى الكتاب" onClose={onClose}>
-      <div className="space-y-space-md">
-        <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
-            حقل تسمّيه بنفسك — يظهر فارغًا، ويصير وسمًا في المتن
-          </span>
-          <div className="flex items-center gap-space-xs">
-            <input
-              autoFocus
-              className={inputCls}
-              placeholder="مثال: رقم الإضبارة"
-              type="text"
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && customLabel.trim()) {
-                  onPick({ label: customLabel.trim(), token: tokenFromLabel(customLabel) });
-                }
-              }}
-            />
-            <button
-              className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
-              type="button"
-              disabled={!customLabel.trim()}
-              onClick={() => onPick({ label: customLabel.trim(), token: tokenFromLabel(customLabel) })}
-            >
-              إضافة
-            </button>
-          </div>
+    <Modal title="أضف حقلًا إلى الكتاب" onClose={onClose}>
+      <div className="flex flex-col gap-space-md">
+        <div className="flex items-center gap-space-xs">
+          <input
+            autoFocus
+            className={inputCls}
+            placeholder="حقلٌ تسمّيه بنفسك — مثال: رقم الإضبارة"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && custom.trim()) onPick({ label: custom.trim(), token: custom.trim() });
+            }}
+          />
+          <button
+            className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            disabled={!custom.trim()}
+            type="button"
+            onClick={() => onPick({ label: custom.trim(), token: custom.trim() })}
+          >
+            أضف
+          </button>
         </div>
-
-        <input
-          className={inputCls}
-          placeholder="ابحث في حقول المعاملات الرسمية..."
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-
-        <div className="max-h-[45vh] overflow-y-auto space-y-space-md">
-          {groups.length === 0 ? (
-            <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">
-              لا حقل بهذا الاسم — أضفه حقلًا مخصّصًا من الأعلى
-            </div>
-          ) : (
-            groups.map((group) => (
-              <div key={group.name} className="space-y-space-xs">
-                <div className="flex items-baseline gap-space-xs">
-                  <span className="font-label-lg text-label-lg text-on-surface font-bold">
-                    {group.name}
-                  </span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    {group.hint}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-space-xs">
-                  {group.fields.map((field) => (
-                    <button
-                      key={field.token}
-                      className={`h-8 px-space-sm rounded-lg font-label-sm text-label-sm transition-colors ${
-                        used.has(field.label)
-                          ? 'bg-surface-container text-on-surface-variant'
-                          : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'
-                      }`}
-                      type="button"
-                      onClick={() => onPick(field)}
-                    >
-                      {field.label}
-                      {used.has(field.label) && ' ✓'}
-                    </button>
-                  ))}
-                </div>
+        <input className={inputCls} placeholder="ابحث في حقول المعاملات الرسمية..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="max-h-[45vh] overflow-y-auto flex flex-col gap-space-md">
+          {groups.map((g) => (
+            <div key={g.name} className="flex flex-col gap-space-xs">
+              <span className="font-label-lg text-label-lg text-on-surface font-bold">
+                {g.name} <span className="font-label-sm text-label-sm text-on-surface-variant font-normal">{g.hint}</span>
+              </span>
+              <div className="flex flex-wrap gap-space-xs">
+                {g.fields.map((f) => (
+                  <button
+                    key={f.token}
+                    className={`h-8 px-space-sm rounded-lg font-label-sm text-label-sm ${used.has(f.label) ? 'bg-surface-container text-on-surface-variant' : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'}`}
+                    type="button"
+                    onClick={() => onPick(f)}
+                  >
+                    {f.label}
+                    {used.has(f.label) && ' ✓'}
+                  </button>
+                ))}
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       </div>
     </Modal>
   );
 }
 
-/** حفظ ترويسة الكتاب في المكتبة: تحديثًا للمحفوظة أو باسم جديد. */
-function SaveLayoutDialog({
-  current,
-  onClose,
-  onSave
-}: {
-  current: Letterhead | null;
-  onClose: () => void;
-  onSave: (name: string, asNew: boolean) => void;
-}) {
+function SaveLayoutDialog({ current, onClose, onSave }: { current: Letterhead | null; onClose: () => void; onSave: (name: string, asNew: boolean) => void }) {
   const [name, setName] = useState(current?.name ?? '');
-
   return (
     <Modal title="حفظ الترويسة في المكتبة" onClose={onClose}>
-      <div className="space-y-space-md">
-        <Field label="اسم الترويسة">
-          <input
-            autoFocus
-            className={inputCls}
-            placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </Field>
+      <div className="flex flex-col gap-space-md">
+        <input autoFocus className={inputCls} placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex items-center justify-end gap-space-sm">
-          <button
-            className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-            type="button"
-            onClick={onClose}
-          >
+          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             تراجع
           </button>
           {current && (
-            <button
-              className="h-10 px-space-md rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md"
-              type="button"
-              onClick={() => onSave(name || current.name, false)}
-            >
+            <button className="h-10 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => onSave(name || current.name, false)}>
               تحديث «{current.name}»
             </button>
           )}
           <button
             className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
-            type="button"
             disabled={!name.trim()}
+            type="button"
             onClick={() => onSave(name, true)}
           >
             حفظ باسم جديد
@@ -1701,16 +1267,44 @@ function SaveLayoutDialog({
   );
 }
 
-/** حوار الإصدار: عدد النسخ ونوعها — الأعمدة التي يعرضها سجل الأرشيف. (والمال صامت: §١) */
+function AsTemplateDialog({ initial, onClose, onSave }: { initial: string; onClose: () => void; onSave: (title: string) => void }) {
+  const [title, setTitle] = useState(initial);
+  return (
+    <Modal title="اجعله نموذجًا في المكتبة" onClose={onClose}>
+      <div className="flex flex-col gap-space-md">
+        <p className="font-label-md text-label-md text-on-surface-variant">
+          يُحفظ الكتاب نموذجًا بترويسته وحقوله فارغةً — لا بقيم هذا الزبون — فيُملأ مرارًا من الشبّاك.
+        </p>
+        <input autoFocus className={inputCls} data-template-title="" placeholder="عنوان النموذج" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="flex items-center justify-end gap-space-sm">
+          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+            تراجع
+          </button>
+          <button
+            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+            data-act="save-as-template"
+            disabled={!title.trim()}
+            type="button"
+            onClick={() => onSave(title.trim())}
+          >
+            احفظه نموذجًا
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** حوار الإصدار: عدد النسخ ونوعها. (والمال صامت: §١) */
 function IssueDialog({
-  serial,
+  number,
   name,
   printerName,
   busy,
   onClose,
   onIssue
 }: {
-  serial: string;
+  number: string;
   name: string;
   printerName: string | null;
   busy: boolean;
@@ -1720,46 +1314,35 @@ function IssueDialog({
   const [copies, setCopies] = useState(1);
   const [copyKind, setCopyKind] = useState(COPY_KINDS[0]!);
   return (
-    <Modal title="إصدار الكتاب الرسمي" onClose={onClose}>
-      <div className="space-y-space-md">
+    <Modal title="إصدار الكتاب" onClose={onClose}>
+      <div className="flex flex-col gap-space-md">
         <div className="p-space-sm rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
-          يُقيَّد الكتاب في أرشيف المكتب برقمٍ متسلسل وبصمة — والرقم للأرشيف وحده، لا يُطبع
-          على الكتاب ولا يُلغى بعد الإصدار.
+          يُقيَّد الكتاب في أرشيف المكتب برقمٍ متسلسل وبصمة — والرقم للأرشيف وحده، لا يُطبع على الكتاب ولا يُلغى بعد الإصدار.
           <div className="mt-1 text-on-surface">
             صاحب العلاقة: <span className="font-bold">{name}</span>
-            {serial && (
+            {number && (
               <>
-                {' · '}العدد على الكتاب: <span className="font-mono">{serial}</span>
+                {' · '}العدد على الكتاب: <span className="font-mono">{number}</span>
               </>
             )}
           </div>
         </div>
-
-        <div className="grid grid-cols-3 gap-space-sm">
-          <Field label="عدد النسخ">
-            <input
-              className={inputCls}
-              min={1}
-              type="number"
-              value={copies}
-              onChange={(e) => setCopies(Math.max(1, Number(e.target.value) || 1))}
-            />
-          </Field>
-          <Field label="نوع النسخة">
-            <select
-              className={inputCls}
-              value={copyKind}
-              onChange={(e) => setCopyKind(e.target.value)}
-            >
+        <div className="grid grid-cols-2 gap-space-sm">
+          <label className="flex flex-col gap-1">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">عدد النسخ</span>
+            <input className={inputCls} min={1} type="number" value={copies} onChange={(e) => setCopies(Math.max(1, Number(e.target.value) || 1))} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">نوع النسخة</span>
+            <select className={inputCls} value={copyKind} onChange={(e) => setCopyKind(e.target.value)}>
               {COPY_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {k}
                 </option>
               ))}
             </select>
-          </Field>
+          </label>
         </div>
-
         <div className="font-label-sm text-label-sm text-on-surface-variant">
           {printerName ? (
             <>
@@ -1769,27 +1352,23 @@ function IssueDialog({
             'لم تُختر طابعة — سيفتح حوار الطباعة في النظام'
           )}
         </div>
-
-        <div className="flex items-center justify-end gap-space-sm pt-space-xs">
-          <button
-            className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-            type="button"
-            onClick={onClose}
-          >
+        <div className="flex items-center justify-end gap-space-sm">
+          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             تراجع
           </button>
           <button
-            className="h-10 px-space-md rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-50"
-            type="button"
+            className="h-10 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-50"
+            data-act="issue-no-print"
             disabled={busy}
+            type="button"
             onClick={() => onIssue({ copies, copyKind, print: false })}
           >
             إصدار وقيد بلا طباعة
           </button>
           <button
             className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
-            type="button"
             disabled={busy}
+            type="button"
             onClick={() => onIssue({ copies, copyKind, print: true })}
           >
             {busy ? 'يصدر...' : 'إصدار وطباعة'}
@@ -1800,63 +1379,34 @@ function IssueDialog({
   );
 }
 
-function IssuedDialog({
-  outcome,
-  onClose,
-  onReprint,
-  onExport
-}: {
-  outcome: IssueOutcome;
-  onClose: () => void;
-  onReprint: () => Promise<void>;
-  onExport: () => Promise<void>;
-}) {
+function IssuedDialog({ outcome, onClose, onReprint, onExport }: { outcome: IssueOutcome; onClose: () => void; onReprint: () => Promise<void>; onExport: () => Promise<void> }) {
   return (
     <Modal title="صدر الكتاب" onClose={onClose}>
-      <div className="space-y-space-md">
+      <div className="flex flex-col gap-space-md" data-issued="">
         <div className="flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-[32px] text-secondary">verified</span>
-          <div className="flex flex-col">
-            <span className="font-headline-md text-headline-md text-on-surface font-mono">
-              {outcome.serial}
-            </span>
+          <span className="flex flex-col">
+            <span className="font-headline-md text-headline-md text-on-surface font-mono">{outcome.serial}</span>
             <span className="font-label-sm text-label-sm text-on-surface-variant">
               {outcome.printed === 'ok'
-                ? 'أُرسل إلى الطابعة وقُيّد في سجل الصادر'
+                ? 'أُرسل إلى الطابعة وقُيّد في الأرشيف'
                 : outcome.printed === 'skipped'
-                  ? 'قُيّد في سجل الصادر بلا طباعة'
-                  : 'قُيّد في سجل الصادر — الطباعة لم تتم'}
+                  ? 'قُيّد في الأرشيف بلا طباعة'
+                  : 'قُيّد في الأرشيف — الطباعة لم تتم'}
             </span>
-          </div>
+            <span className="font-mono font-label-sm text-label-sm text-on-surface-variant" title={outcome.sha256}>
+              البصمة: {outcome.sha256.slice(0, 16)}…
+            </span>
+          </span>
         </div>
-
-        <div className="p-space-sm rounded-lg bg-surface-container-low">
-          <div className="font-label-sm text-label-sm text-on-surface-variant mb-1">
-            بصمة التوثيق (SHA-256)
-          </div>
-          <div className="font-mono text-body-sm break-all text-on-surface">{outcome.sha256}</div>
-        </div>
-
         <div className="flex items-center justify-end gap-space-sm">
-          <button
-            className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-            type="button"
-            onClick={() => void onExport()}
-          >
+          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onExport()}>
             حفظ PDF
           </button>
-          <button
-            className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-            type="button"
-            onClick={() => void onReprint()}
-          >
+          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onReprint()}>
             طباعة نسخة أخرى
           </button>
-          <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
-            type="button"
-            onClick={onClose}
-          >
+          <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" type="button" onClick={onClose}>
             تم
           </button>
         </div>
@@ -1865,15 +1415,7 @@ function IssuedDialog({
   );
 }
 
-function Modal({
-  title,
-  onClose,
-  children
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -1881,17 +1423,12 @@ function Modal({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 p-space-lg">
       <div className="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">{title}</span>
-          <button
-            className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
-            type="button"
-            onClick={onClose}
-          >
+          <button className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" type="button" onClick={onClose}>
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>

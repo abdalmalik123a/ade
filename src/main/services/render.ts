@@ -33,6 +33,11 @@ function printCss(page: PageMm, offset: { x: number; y: number } = { x: 0, y: 0 
   .print-root { position: relative; left: ${offset.x}mm; top: ${offset.y}mm; }
   html, body { margin: 0; padding: 0; background: #fff; }
   body > :not(.print-root) { display: none !important; }
+  /* أنماط التطبيق تُخفي عند الطباعة كلَّ ‎body *‎ عدا ‎.print-sheet‎. وهذه النافذة لا
+     تحوي إلا الورقة المحقونة، فتظهر أيًّا كان صنفها — وكانت ورقة الشبّاك والتصاميم
+     والكتاب المشترك تخرج بيضاء. وبالخصوصية نفسها لا أعلى: ما أُخفي عمدًا
+     (‎.invisible‎ أو نمطٌ مضمَّن) يبقى مخفيًّا. */
+  body * { visibility: visible; }
   .print-root {
     width: ${page.w}mm;
     min-height: ${page.h}mm;
@@ -199,7 +204,10 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
             copies: req.copies ?? 1,
             deviceName: req.deviceName,
             pageSize,
-            margins: { marginType: 'none' },
+            // «default» يأخذ هوامش `@page` التي تعلنها الورقة: الكتاب يعلن هوامشه فتتكرّر
+            // في كل صفحة (LetterSheet)، والتصاميم تعلن صفرًا (printCss). و«none» كان يُسقط
+            // هوامش الورقة فتبدأ الصفحة الثانية من كتابٍ طويل عند حافّة الورق.
+            margins: { marginType: 'default' },
             landscape,
             duplexMode: req.duplex ? (landscape ? 'shortEdge' : 'longEdge') : 'simplex',
             scaleFactor: 100
