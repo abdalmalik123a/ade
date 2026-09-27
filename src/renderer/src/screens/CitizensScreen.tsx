@@ -8,8 +8,10 @@
  * ولا مواطن مبرمَج: يبدأ الدليل فارغًا.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, ScannerDevice } from '@shared/api';
+import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, PrinterInfo, ScannerDevice } from '@shared/api';
 import CitizenForm from './CitizenForm';
+import IdDuplexDialog from './IdDuplexDialog';
+import DeskewModal from './DeskewModal';
 import { errorText } from '../lib/errors';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -20,9 +22,10 @@ type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 type Props = {
   onInsertIntoEditor?: (citizenId: number) => void;
   onChanged?: () => void;
+  printer?: PrinterInfo | null;
 };
 
-export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props) {
+export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer }: Props) {
   const [stats, setStats] = useState<CitizenStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<CitizenSummary[]>([]);
@@ -40,6 +43,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props)
   const [confirmDelete, setConfirmDelete] = useState<{ usage: number } | null>(null);
   const [preview, setPreview] = useState<Attachment | null>(null);
   const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number } | null>(null);
+  const [idDuplexOpen, setIdDuplexOpen] = useState(false);
+  const [deskewAttachment, setDeskewAttachment] = useState<Attachment | null>(null);
   const [toast, setToast] = useState<Toast>(null);
   const timer = useRef<number | null>(null);
 
@@ -221,6 +226,15 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props)
                   {scanners.length > 0 ? 'متصل' : 'غير متصل'}
                 </span>
               )}
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+              type="button"
+              title="طباعة واستنساخ الهويات والبطاقات بمقاس 1:1 الحقيقي على ورقة A4"
+              onClick={() => setIdDuplexOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px]">badge</span>
+              <span>استنساخ هوية 1:1 (وجه وظهر)</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold transition-all"
@@ -524,6 +538,15 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props)
                         <span>تصدير الكل ZIP</span>
                       </button>
                       <button
+                        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
+                        type="button"
+                        title="طباعة واستنساخ مستمسكات المواطن بوجهين 1:1"
+                        onClick={() => setIdDuplexOpen(true)}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">badge</span>
+                        <span>طباعة هوية وجه وظهر 1:1</span>
+                      </button>
+                      <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all disabled:opacity-40"
                         type="button"
                         disabled={busy === 'scan'}
@@ -603,6 +626,11 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props)
                                 icon="visibility"
                                 title="معاينة بكامل الشاشة"
                                 onClick={() => setPreview(a)}
+                              />
+                              <IconBtn
+                                icon="crop_free"
+                                title="إزالة الميلان والتسوية (De-skew)"
+                                onClick={() => setDeskewAttachment(a)}
                               />
                               <IconBtn
                                 icon={busy === `ocr-${a.id}` ? 'hourglass_top' : 'raw_on'}
@@ -902,6 +930,38 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged }: Props)
             </div>
           </div>
         </div>
+      )}
+
+      {idDuplexOpen && (
+        <IdDuplexDialog
+          isOpen={true}
+          onClose={() => setIdDuplexOpen(false)}
+          printer={printer ?? null}
+          citizenName={detail?.fullName}
+          attachments={detail?.attachments ?? []}
+        />
+      )}
+
+      {deskewAttachment && (
+        <DeskewModal
+          isOpen={true}
+          imageSrc={storeUrl(deskewAttachment.filePath) ?? ''}
+          onClose={() => setDeskewAttachment(null)}
+          onApply={(dataUrl) => {
+            if (detail) {
+              void (async () => {
+                await window.diwan.attachments.addFromDataUrl(
+                  detail.id,
+                  `${deskewAttachment.docType} (مستوٍ)`,
+                  dataUrl
+                );
+                await reloadDetail(detail.id);
+                say('تمت إضافة النسخة المستوية إلى مستمسكات المواطن');
+              })();
+            }
+            setDeskewAttachment(null);
+          }}
+        />
       )}
 
       {toast && (

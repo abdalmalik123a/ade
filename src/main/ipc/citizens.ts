@@ -162,6 +162,30 @@ export function registerCitizenIpc(): void {
     }
   );
 
+  ipcMain.handle(
+    'attachments:addFromDataUrl',
+    async (_e, citizenId: number, docType: string, dataUrl: string) => {
+      const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || !matches[2]) throw new Error('صيغة الصورة غير صالحة');
+      const buffer = Buffer.from(matches[2], 'base64');
+      const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
+      const isPng = matches[1]?.includes('png');
+      const ext = isPng ? '.png' : '.jpg';
+      const name = `${hash}${ext}`;
+      const target = join(storeDir('attachments'), name);
+      await writeFile(target, buffer);
+      const relative = `attachments/${name}`;
+      return svc.addAttachment(getDb(), {
+        citizenId,
+        docType: docType || 'مستمسك معدل',
+        filePath: relative,
+        fileFormat: ext.slice(1).toUpperCase(),
+        dpi: null,
+        sha256: createHash('sha256').update(buffer).digest('hex')
+      });
+    }
+  );
+
   ipcMain.handle('attachments:rename', (_e, id: number, docType: string) =>
     svc.renameAttachment(getDb(), id, docType)
   );
@@ -262,5 +286,7 @@ export function registerCitizenIpc(): void {
 
   // ── الماسح والتعرّف ────────────────────────────────────────────────
   ipcMain.handle('scanner:list', () => listScanners());
+  // مسحٌ لا يُقيَّد مستمسكًا لأحد: وجهُ هويةٍ وظهرُها يُستنسخان والزبون واقف.
+  ipcMain.handle('scanner:scanImage', async (_e, dpi: number) => (await scanPage({ dpi: dpi || 300 })).relativePath);
   ipcMain.handle('scanner:ocrAvailable', () => ocrAvailable());
 }

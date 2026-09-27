@@ -99,6 +99,8 @@ export type TextElement = ElementBase & {
   fit?: 'shrink';
   /** تباعد الكلمات بوحدة em — بعض الخطوط الكوفية مسافتها ثُمن حرف فتلتصق الكلمات. */
   wordSpacing?: number;
+  /** تباعد الحروف بوحدة em — كما يكتبه Photoshop في «Tracking» للعناوين المتباعدة. */
+  letterSpacing?: number;
 };
 
 /** صورةٌ ثابتة، أو صورةُ حقلٍ من سجل المستمسكات والماسح (`ref`). */
@@ -113,7 +115,11 @@ export type ImageElement = ElementBase & {
 /** الباركود: Code128 للأرقام، وQR لما يُقرأ بالهاتف. */
 export type BarcodeElement = ElementBase & {
   kind: 'barcode';
-  symbology: 'code128' | 'qr';
+  /**
+   * `seal` نقشُ أمانٍ فريد بذرتُه قيمته (`securitySeal.ts`) — و`value` فيه
+   * وسومٌ تُملأ: «{اسم الطالب} {الرقم}»، فلكلّ بطاقةٍ نقشها.
+   */
+  symbology: 'code128' | 'qr' | 'seal';
   value: string;
   ref?: string;
 };
@@ -127,13 +133,34 @@ export type ShapeElement = ElementBase & {
   radius?: number;
 };
 
-export type CanvasElement = TextElement | ImageElement | BarcodeElement | ShapeElement;
+/** عنصر فيكتور SVG حُرّ — للزخارف والشعارات والأيقونات الحادة. */
+export type SvgElement = ElementBase & {
+  kind: 'svg';
+  svg: string;
+};
+
+/** عنصر ويب متقدم HTML/CSS — للتنسيقات الغنية والتدرجات الخاصة. */
+export type HtmlElement = ElementBase & {
+  kind: 'html';
+  html: string;
+  content?: string;
+};
+
+export type CanvasElement =
+  | TextElement
+  | ImageElement
+  | BarcodeElement
+  | ShapeElement
+  | SvgElement
+  | HtmlElement;
 
 export type Background =
   | { kind: 'none' }
   | { kind: 'color'; color: string }
   /** `dpi` دقّةُ الصورة الأصلية — تُحفظ فلا تُطبع خلفيةٌ ضبابية بلا علم. */
-  | { kind: 'image'; src: string; dpi?: number };
+  | { kind: 'image'; src: string; dpi?: number }
+  /** تدرجات CSS وخلفيات الويب المتطورة. */
+  | { kind: 'css'; style: string };
 
 export type Canvas = {
   size: CanvasSize;
@@ -254,6 +281,14 @@ export function shapeElement(patch: Partial<ShapeElement> & { box: Box }): Shape
   return { id: newUuid(), kind: 'shape', shape: 'rect', z: 1, ...patch };
 }
 
+export function svgElement(patch: Partial<SvgElement> & { box: Box }): SvgElement {
+  return { id: newUuid(), kind: 'svg', svg: '', z: 1, ...patch };
+}
+
+export function htmlElement(patch: Partial<HtmlElement> & { box: Box }): HtmlElement {
+  return { id: newUuid(), kind: 'html', html: '', z: 1, ...patch };
+}
+
 // ── التقويم ──────────────────────────────────────────────────────────
 
 const num = (v: unknown, fallback: number): number =>
@@ -271,7 +306,7 @@ export function clampBox(box: Box): Box {
   };
 }
 
-const ELEMENT_KINDS = new Set(['text', 'image', 'barcode', 'shape']);
+const ELEMENT_KINDS = new Set(['text', 'image', 'barcode', 'shape', 'svg', 'html']);
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
@@ -279,13 +314,127 @@ function isObj(v: unknown): v is Record<string, unknown> {
 
 function normalizeElement(raw: unknown, index: number): CanvasElement | null {
   if (!isObj(raw) || typeof raw.kind !== 'string' || !ELEMENT_KINDS.has(raw.kind)) return null;
-  const el = raw as unknown as CanvasElement;
-  return {
-    ...el,
-    id: typeof el.id === 'string' && el.id ? el.id : newUuid(),
-    box: clampBox(isObj(el.box) ? (el.box as unknown as Box) : ({} as Box)),
-    z: num(el.z, index + 1)
-  };
+  const id = typeof raw.id === 'string' && raw.id ? raw.id : newUuid();
+  const box = clampBox(isObj(raw.box) ? (raw.box as unknown as Box) : ({} as Box));
+  const z = num(raw.z, index + 1);
+  const name = typeof raw.name === 'string' ? raw.name : undefined;
+  const locked = raw.locked === true;
+  const rotate = typeof raw.rotate === 'number' ? raw.rotate : undefined;
+  const dir = raw.dir === 'ltr' ? 'ltr' : 'rtl';
+
+  switch (raw.kind) {
+    case 'text': {
+      const rawInlines = Array.isArray(raw.inlines)
+        ? raw.inlines
+        : typeof (raw as Record<string, unknown>).text === 'string'
+          ? [{ kind: 'run', text: (raw as Record<string, unknown>).text as string }]
+          : [];
+      const inlines = rawInlines.map((i) =>
+        isObj(i) && typeof i.kind === 'string'
+          ? (i as unknown as Inline)
+          : { kind: 'run' as const, text: String(i ?? '') }
+      );
+      return {
+        id,
+        kind: 'text',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        inlines,
+        align: raw.align === 'left' ? 'left' : raw.align === 'right' ? 'right' : 'center',
+        vAlign: raw.vAlign === 'top' ? 'top' : raw.vAlign === 'bottom' ? 'bottom' : 'middle',
+        size: typeof raw.size === 'number' && raw.size > 0 ? raw.size : 14,
+        color: typeof raw.color === 'string' && raw.color ? raw.color : '#111111',
+        font: typeof raw.font === 'string' ? raw.font : undefined,
+        bold: raw.bold === true,
+        italic: raw.italic === true,
+        lineHeight: typeof raw.lineHeight === 'number' ? raw.lineHeight : undefined,
+        fit: raw.fit === 'shrink' ? 'shrink' : undefined,
+        wordSpacing: typeof raw.wordSpacing === 'number' ? raw.wordSpacing : undefined,
+        letterSpacing: typeof raw.letterSpacing === 'number' ? raw.letterSpacing : undefined
+      };
+    }
+    case 'svg': {
+      return {
+        id,
+        kind: 'svg',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        svg: typeof raw.svg === 'string' ? raw.svg : ''
+      };
+    }
+    case 'html': {
+      return {
+        id,
+        kind: 'html',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        html: typeof raw.html === 'string' ? raw.html : '',
+        content: typeof raw.content === 'string' ? raw.content : undefined
+      };
+    }
+    case 'image': {
+      return {
+        id,
+        kind: 'image',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        src: typeof raw.src === 'string' ? raw.src : '',
+        ref: typeof raw.ref === 'string' ? raw.ref : undefined,
+        fit: raw.fit === 'contain' ? 'contain' : 'cover',
+        radius: typeof raw.radius === 'number' ? raw.radius : undefined
+      };
+    }
+    case 'barcode': {
+      return {
+        id,
+        kind: 'barcode',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        symbology: raw.symbology === 'qr' ? 'qr' : raw.symbology === 'seal' ? 'seal' : 'code128',
+        value: typeof raw.value === 'string' ? raw.value : '',
+        ref: typeof raw.ref === 'string' ? raw.ref : undefined
+      };
+    }
+    case 'shape': {
+      return {
+        id,
+        kind: 'shape',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        shape: raw.shape === 'ellipse' || raw.shape === 'line' ? raw.shape : 'rect',
+        fill: typeof raw.fill === 'string' ? raw.fill : undefined,
+        stroke: typeof raw.stroke === 'string' ? raw.stroke : undefined,
+        strokeWidth: typeof raw.strokeWidth === 'number' ? raw.strokeWidth : undefined,
+        radius: typeof raw.radius === 'number' ? raw.radius : undefined
+      };
+    }
+    default:
+      return null;
+  }
 }
 
 function normalizeBackground(raw: unknown): Background {
@@ -296,6 +445,9 @@ function normalizeBackground(raw: unknown): Background {
   if (raw.kind === 'image' && typeof raw.src === 'string') {
     const dpi = typeof raw.dpi === 'number' && raw.dpi > 0 ? raw.dpi : undefined;
     return dpi ? { kind: 'image', src: raw.src, dpi } : { kind: 'image', src: raw.src };
+  }
+  if (raw.kind === 'css' && typeof raw.style === 'string') {
+    return { kind: 'css', style: raw.style };
   }
   return { kind: 'none' };
 }

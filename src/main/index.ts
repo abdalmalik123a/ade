@@ -4,6 +4,10 @@ import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
 
+// المِقْود وحده (tools/drive.mjs): كاميرا مصنوعةٌ يرسمها Chromium — فيُختبر
+// استوديو التصوير على التطبيق الحقيقي بلا كاميرا موصولة.
+if (process.env['DIWAN_TEST_FAKE_CAMERA']) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+
 // مخطط مخصّص لعرض ملفات المخزن (الصور والمستمسكات) دون فتح file:// على كامل القرص.
 protocol.registerSchemesAsPrivileged([
   { scheme: 'diwan', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
@@ -17,7 +21,7 @@ function createWindow(): void {
     height: 1000,
     minWidth: 1280,
     minHeight: 800,
-    show: false,
+    show: true,
     autoHideMenuBar: true,
     backgroundColor: '#f8f9ff', // لون surface من توكنات التصميم
     title: 'ديوان — منظومة الكتب والتحارير',
@@ -30,7 +34,23 @@ function createWindow(): void {
     }
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  const bringToFront = (): void => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.center();
+    mainWindow.show();
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.focus();
+    mainWindow.setAlwaysOnTop(false);
+  };
+
+  mainWindow.once('ready-to-show', bringToFront);
+  bringToFront();
+
+  // تسجيل أخطاء الواجهة لسرعة التشخيص
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    console.log(`[RENDERER ${level}] ${message} (${sourceId}:${line})`);
+  });
 
   // أي رابط خارجي يُفتح في المتصفح، لا داخل نافذة التطبيق.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

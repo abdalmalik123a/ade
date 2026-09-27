@@ -344,6 +344,8 @@ export type Doc = {
      * والكتل صورته. وبه يُفتح ما حُفظ فتعود الحقول إلى خاناتها.
      */
     head?: Record<string, string>;
+    /** ورقة الإجابة بالدوائر ومفتاحها — لورقة الأسئلة (`shared/omr.ts`). */
+    omr?: { questions: number; choices: number; idDigits: number; key: number[] };
   };
 };
 
@@ -411,6 +413,13 @@ export function usedKeys(doc: Doc): string[] {
       for (const node of el.inlines) if (node.kind === 'field') seen.add(node.ref);
     } else if ((el.kind === 'image' || el.kind === 'barcode') && el.ref) {
       seen.add(el.ref);
+    } else if (el.kind === 'html') {
+      for (const m of el.html.matchAll(/\{([^{}]+)\}/g)) {
+        const token = m[1]!.trim();
+        if (!token.includes(':') && !token.includes(';') && !token.includes('\n') && token.length <= 40) {
+          seen.add(token);
+        }
+      }
     }
   }
   return [...seen];

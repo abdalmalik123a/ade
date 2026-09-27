@@ -19,6 +19,8 @@ import {
 import { splitSheetHead } from '@shared/sheetHead';
 import LetterheadView from '../components/LetterheadView';
 import { errorText } from '../lib/errors';
+import SpellingPanel from '../components/SpellingPanel';
+import { docSpelling, fixDocSpelling } from '@shared/spelling';
 
 const inputCls =
   'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
@@ -71,6 +73,9 @@ export default function TemplateDesigner({
     () => initialDoc ?? docFromLegacy(initial?.bodyHtml ?? '', legacyFieldMeta)
   );
   const [clips, setClips] = useState<Clip[]>([]);
+  /** التدقيق الإملائي: اقتراحاتٌ على نصّ النموذج تُختار ثم تُصلح. */
+  const [spellOpen, setSpellOpen] = useState(false);
+  const spelling = useMemo(() => docSpelling(doc), [doc]);
 
   // وثيقة النموذج المحفوظة كتلًا — وإلا رُحّلت من متنه النصّي.
   useEffect(() => {
@@ -250,6 +255,33 @@ export default function TemplateDesigner({
               <span className="material-symbols-outlined text-[18px]">file_upload</span>
               <span>استيراد DOCX / XML</span>
             </button>
+            <span className="relative">
+              <button
+                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+                data-act="spelling"
+                type="button"
+                onClick={() => setSpellOpen((o) => !o)}
+              >
+                <span className="material-symbols-outlined text-[18px]">spellcheck</span>
+                <span>تدقيق إملائي{spelling.length ? ` (${spelling.length})` : ' ✓'}</span>
+              </button>
+              {spellOpen && (
+                <div className="absolute left-0 top-11 z-10 w-96 shadow-xl rounded-xl bg-surface-container-lowest">
+                  {spelling.length ? (
+                    <SpellingPanel
+                      issues={spelling}
+                      note="اقتراحاتٌ على نصّ النموذج — اختر ما تريد، والحقول لا تُمسّ"
+                      onFix={(chosen) => {
+                        setDoc((d) => fixDocSpelling(d, chosen));
+                        setSpellOpen(false);
+                      }}
+                    />
+                  ) : (
+                    <div className="p-space-sm font-label-md text-label-md text-on-surface-variant">لا اقتراحات — النصّ سليم.</div>
+                  )}
+                </div>
+              )}
+            </span>
             <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
               type="button"

@@ -7,8 +7,9 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { DocField } from '@shared/doc';
-import { matchPhotos, parseRows, type Photo } from '@shared/batch';
+import { matchPhotos, nameKeyOf, parseRows, type Photo } from '@shared/batch';
 import { sheetCount, type Imposition } from '@shared/imposition';
+import CameraStudio from './CameraStudio';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -18,7 +19,8 @@ export default function BatchPanel({
   imp,
   initialText = '',
   onRows,
-  onPreview
+  onPreview,
+  photoSize = { w: 30, h: 40 }
 }: {
   /** قائمةٌ جاءت مع طلب — تُفتح بها الدفعة جاهزة. */
   initialText?: string;
@@ -28,14 +30,19 @@ export default function BatchPanel({
   imp: Imposition;
   onRows: (rows: Record<string, string>[]) => void;
   onPreview: () => void;
+  /** مقاس صورة البطاقة بالملّم — نسبةُ ما يقصّه الاستوديو. */
+  photoSize?: { w: number; h: number };
 }) {
   const [text, setText] = useState(initialText);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [busy, setBusy] = useState(false);
+  const [studio, setStudio] = useState(false);
 
   const textKeys = fields.map((f) => f.key).filter((k) => !imageKeys.includes(k));
   const parsed = useMemo(() => parseRows(text, textKeys), [text, textKeys.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   const photoKey = imageKeys[0];
+  /** الاستوديو ينادي كلَّ طالبٍ باسمه — لا بأوّل عمود (قد يكون «المدرسة»). */
+  const studioKey = nameKeyOf(parsed.mapped) ?? parsed.mapped[0] ?? '';
   const matched = useMemo(
     () => (photoKey && photos.length ? matchPhotos(parsed.rows, photos, photoKey, textKeys) : null),
     [parsed, photos, photoKey, textKeys.join('|')] // eslint-disable-line react-hooks/exhaustive-deps
@@ -129,6 +136,15 @@ export default function BatchPanel({
             <span className="material-symbols-outlined text-[18px]">photo_library</span>
             {busy ? 'تُنسخ الصور…' : 'مجلّد الصور — كلٌّ باسم صاحبه أو رقمه'}
           </button>
+          <button
+            className="w-full h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center justify-center gap-1.5"
+            data-act="studio"
+            type="button"
+            onClick={() => setStudio(true)}
+          >
+            <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+            استوديو التصوير — صوّرهم بأسمائهم
+          </button>
           {matched && (
             <p
               className={`font-label-sm text-label-sm ${matched.unmatched.length ? 'text-error' : 'text-secondary'}`}
@@ -140,6 +156,19 @@ export default function BatchPanel({
             </p>
           )}
         </div>
+      )}
+
+      {studio && photoKey && (
+        <CameraStudio
+          aspect={photoSize}
+          people={parsed.rows
+            .map((row) => row[studioKey] ?? '')
+            .filter(Boolean)
+            .map((name) => ({ name, key: name }))}
+          photoOf={(key) => photos.find((p) => p.name === key)?.src ?? rows.find((r) => r[studioKey] === key)?.[photoKey]}
+          onClose={() => setStudio(false)}
+          onShot={(photo) => setPhotos((prev) => [...prev.filter((p) => p.name !== photo.name), photo])}
+        />
       )}
 
       {parsed.rows.length > 0 && (

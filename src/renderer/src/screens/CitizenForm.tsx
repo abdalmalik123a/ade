@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { CitizenDetail, CitizenInput } from '@shared/api';
+import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { errorText } from '../lib/errors';
 
 const inputCls =
@@ -86,6 +87,7 @@ export default function CitizenForm({
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
 
   useEffect(() => setError(null), [form.fullName, form.nationalId]);
 
@@ -133,15 +135,50 @@ export default function CitizenForm({
               {initial ? 'تعديل بيانات المواطن' : 'إضافة ملف مواطن'}
             </span>
           </div>
-          <button
-            className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
-            title="إغلاق (Esc)"
-            type="button"
-            onClick={onClose}
-          >
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
+
+          <div className="flex items-center gap-space-sm">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-semibold hover:bg-secondary-fixed-dim transition-colors shadow-sm"
+              onClick={() => setWhatsappOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px]">chat_paste</span>
+              <span>لصق ذكي من واتساب</span>
+            </button>
+            <button
+              className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
+              title="إغلاق (Esc)"
+              type="button"
+              onClick={onClose}
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
         </div>
+
+        <WhatsAppPasteDialog
+          isOpen={whatsappOpen}
+          onClose={() => setWhatsappOpen(false)}
+          onApply={(extracted) => {
+            setForm((prev) => ({
+              ...prev,
+              fullName: extracted.fullName ?? prev.fullName,
+              nationalId: extracted.nationalId ?? prev.nationalId,
+              phone: extracted.phone ?? prev.phone,
+              birthDate: extracted.birthDate ?? prev.birthDate,
+              birthPlace: extracted.birthPlace ?? prev.birthPlace,
+              housingCardNo: extracted.housingCardNo ?? prev.housingCardNo,
+              address: extracted.address ?? prev.address,
+              landmark: extracted.landmark ?? prev.landmark,
+              jobTitle: extracted.jobTitle ?? prev.jobTitle,
+              workplace: extracted.workplace ?? prev.workplace,
+              employeeCode: extracted.employeeCode ?? prev.employeeCode,
+              notes:
+                extracted.notes ??
+                (extracted.motherName ? `اسم الأم: ${extracted.motherName}` : prev.notes)
+            }));
+          }}
+        />
 
         <div className="flex-1 overflow-y-auto p-space-lg space-y-space-md">
           <div className="flex items-start gap-space-lg">

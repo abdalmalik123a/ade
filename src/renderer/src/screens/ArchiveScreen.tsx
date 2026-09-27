@@ -8,7 +8,7 @@
  * الكتاب الصادر لا يُعدَّل في مكانه: بصمته تشهد على متنه. «تعديل المتغيرات»
  * يفتح نسخةً منه في المحرر تصدر برقم جديد، والأصل يبقى في الأرشيف كما صدر.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ArchiveStats, DocumentDetail, DocumentRow } from '@shared/api';
 import { errorText } from '../lib/errors';
 
@@ -36,6 +36,32 @@ function todayIso(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+type PeriodType = 'today' | 'week' | 'month' | 'all' | 'custom';
+
+function getRange(
+  period: PeriodType,
+  customFrom: string,
+  customTo: string
+): { from: string | null; to: string | null } {
+  const today = todayIso();
+  if (period === 'today') return { from: today, to: today };
+  if (period === 'all') return { from: null, to: null };
+  const d = new Date();
+  if (period === 'week') {
+    const past = new Date(d.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return {
+      from: `${past.getFullYear()}-${pad(past.getMonth() + 1)}-${pad(past.getDate())}`,
+      to: today
+    };
+  }
+  if (period === 'month') {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return { from: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`, to: today };
+  }
+  return { from: customFrom || null, to: customTo || null };
+}
+
 type Props = {
   onOpenInEditor?: (documentId: number) => void;
   onChanged?: () => void;
@@ -48,22 +74,29 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
   const [inspected, setInspected] = useState<number | null>(null);
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [query, setQuery] = useState('');
+  const [period, setPeriod] = useState<PeriodType>('today');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const day = todayIso();
+  const range = useMemo(
+    () => getRange(period, customFrom, customTo),
+    [period, customFrom, customTo]
+  );
 
   const load = useCallback(async () => {
     const [s, r] = await Promise.all([
       window.diwan.archive.stats(),
-      window.diwan.documents.list({ from: day, to: day, query })
+      window.diwan.documents.list({ from: range.from, to: range.to, query })
     ]);
     setStats(s);
     setRows(r);
     setSelected((prev) => new Set([...prev].filter((id) => r.some((row) => row.id === id))));
     setInspected((prev) => (prev && r.some((row) => row.id === prev) ? prev : (r[0]?.id ?? null)));
-  }, [day, query]);
+  }, [range, query]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), query ? 180 : 0);
@@ -124,11 +157,21 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
 
   const exportReport = () =>
     run('excel', async () => {
+      const periodLabel =
+        period === 'today'
+          ? `اليوم — ${day}`
+          : period === 'week'
+          ? 'الأسبوع الأخير'
+          : period === 'month'
+          ? 'الشهر الحالي'
+          : period === 'all'
+          ? 'كامل الأرشيف'
+          : `${range.from ?? 'البداية'} إلى ${range.to ?? 'اليوم'}`;
       const result = await window.diwan.documents.exportReport({
-        from: day,
-        to: day,
+        from: range.from,
+        to: range.to,
         query,
-        title: `سجل الصادر — ${day}`
+        title: `سجل الصادر — ${periodLabel}`
       });
       if (result) setToast(`حُفظ التقرير (${nf.format(result.count)} سجلًا): ${result.path}`);
     });
@@ -295,9 +338,56 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
           </div>
         )}
 
-        {/* شريط الأوامر */}
-        <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-md flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
-          <div className="flex items-center gap-space-sm flex-1">
+        {/* شريط الأوامر والمرشحات */}
+        <section className="bg-surface-container-lowest rounded-xl p-space-md shadow-md flex flex-col gap-space-sm">
+          <div className="flex flex-wrap items-center justify-between gap-space-sm">
+            {/* أزرار الفترات الزمنية للأرشيف */}
+            <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+              {(
+                [
+                  { id: 'today', label: 'اليوم' },
+                  { id: 'week', label: 'آخر 7 أيام' },
+                  { id: 'month', label: 'هذا الشهر' },
+                  { id: 'all', label: 'كامل الأرشيف' },
+                  { id: 'custom', label: 'تاريخ مخصص' }
+                ] as const
+              ).map((p) => (
+                <button
+                  key={p.id}
+                  className={`px-3 py-1 text-label-sm font-semibold rounded-md transition-colors ${
+                    period === p.id
+                      ? 'bg-surface-container-lowest text-on-surface shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                  type="button"
+                  onClick={() => setPeriod(p.id)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {period === 'custom' && (
+              <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-lg">
+                <span className="text-label-sm text-on-surface-variant">من:</span>
+                <input
+                  type="date"
+                  className="h-8 px-2 rounded bg-surface-container-lowest text-on-surface text-body-sm border border-outline-variant focus:outline-none"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                />
+                <span className="text-label-sm text-on-surface-variant">إلى:</span>
+                <input
+                  type="date"
+                  className="h-8 px-2 rounded bg-surface-container-lowest text-on-surface text-body-sm border border-outline-variant focus:outline-none"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md pt-1">
             <div className="relative flex-1 max-w-xl">
               <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
                 filter_alt
@@ -310,38 +400,38 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-          </div>
-          <div className="flex items-center gap-space-sm">
-            <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md transition-all disabled:opacity-40"
-              type="button"
-              disabled={selected.size === 0 || busy !== null}
-              onClick={() => void reprint([...selected])}
-            >
-              <span className="material-symbols-outlined text-[18px]">print</span>
-              <span>{busy === 'print' ? 'يطبع...' : 'طباعة المحددة دفعة واحدة'}</span>
-              <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
-                {selected.size}
-              </span>
-            </button>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void exportReport()}
-            >
-              <span className="material-symbols-outlined text-[18px]">table_view</span>
-              <span>{busy === 'excel' ? 'يُصدَّر...' : 'تقرير إحصائي Excel'}</span>
-            </button>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void backup()}
-            >
-              <span className="material-symbols-outlined text-[18px]">backup</span>
-              <span>{busy === 'backup' ? 'ينسخ...' : 'نسخ احتياطي فوري'}</span>
-            </button>
+            <div className="flex items-center gap-space-sm flex-wrap">
+              <button
+                className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md transition-all disabled:opacity-40"
+                type="button"
+                disabled={selected.size === 0 || busy !== null}
+                onClick={() => void reprint([...selected])}
+              >
+                <span className="material-symbols-outlined text-[18px]">print</span>
+                <span>{busy === 'print' ? 'يطبع...' : 'طباعة المحددة دفعة واحدة'}</span>
+                <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
+                  {selected.size}
+                </span>
+              </button>
+              <button
+                className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void exportReport()}
+              >
+                <span className="material-symbols-outlined text-[18px]">table_view</span>
+                <span>{busy === 'excel' ? 'يُصدَّر...' : 'تقرير إحصائي Excel'}</span>
+              </button>
+              <button
+                className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void backup()}
+              >
+                <span className="material-symbols-outlined text-[18px]">backup</span>
+                <span>{busy === 'backup' ? 'ينسخ...' : 'نسخ احتياطي فوري'}</span>
+              </button>
+            </div>
           </div>
         </section>
 

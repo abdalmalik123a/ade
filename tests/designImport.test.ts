@@ -47,15 +47,15 @@ const anchoredImage = (xEmu: number, yEmu: number, cx: number, cy: number) => `
 </wp:anchor></w:drawing>`;
 
 /** PSD: ترويسةٌ ومَورد `ResolutionInfo`. */
-function psd(w: number, h: number, dpi?: number): Uint8Array {
+function psd(w: number, h: number, dpi?: number, colorMode = 3, channelValues = [10, 20, 30]): Uint8Array {
   const head = Buffer.alloc(26);
   head.write('8BPS', 0, 'ascii');
   head.writeUInt16BE(1, 4);
-  head.writeUInt16BE(3, 12); // قنوات
+  head.writeUInt16BE(channelValues.length, 12); // قنوات
   head.writeUInt32BE(h, 14);
   head.writeUInt32BE(w, 18);
   head.writeUInt16BE(8, 22);
-  head.writeUInt16BE(3, 24); // RGB
+  head.writeUInt16BE(colorMode, 24); // 3=RGB, 4=CMYK, 1=Grayscale
 
   const color = Buffer.alloc(4); // صفر: لا بيانات صيغة
 
@@ -74,18 +74,16 @@ function psd(w: number, h: number, dpi?: number): Uint8Array {
   const length = Buffer.alloc(4);
   length.writeUInt32BE(resources.length);
 
-  // قسمُ الطبقات: طولان ثم عددُ الطبقات صفرًا — ستّةَ عشر بايتًا، فالقارئ
-  // يقرأ العدد بعد الطولين مهما كانا، ويسقط بأقلّ منها.
   const layers = Buffer.alloc(16);
   layers.writeUInt32BE(12, 0);
   layers.writeUInt32BE(8, 4);
 
   const compression = Buffer.alloc(2); // ٠ = خام
-  const px = Buffer.alloc(w * h * 3);
-  for (let i = 0; i < w * h; i++) {
-    px[i] = 10;
-    px[w * h + i] = 20;
-    px[2 * w * h + i] = 30;
+  const px = Buffer.alloc(w * h * channelValues.length);
+  for (let c = 0; c < channelValues.length; c++) {
+    for (let i = 0; i < w * h; i++) {
+      px[c * w * h + i] = channelValues[c]!;
+    }
   }
 
   return Buffer.concat([head, color, length, resources, layers, compression, px]);
@@ -222,6 +220,27 @@ describe('Photoshop: المقاس من الترويسة والدقّة من ال
     expect(read.rgba).not.toBeNull();
     expect([...read.rgba!.slice(0, 4)]).toEqual([10, 20, 30, 255]);
     expect(read.rgba!.length).toBe(4 * 2 * 4);
+  });
+
+  /**
+   * وPhotoshop يخزّن CMYK **مقلوبًا**: ٢٥٥ ورقٌ بلا حبر. فالأحمر (M وY كاملان)
+   * يُخزَّن [٢٥٥، ٠، ٠، ٢٥٥]. وكان الاختبار يكتبه حبرًا فأجاز قارئًا يُخرج
+   * هويّات Photoshop كلّها سالبةً — وكُشف ذلك بملفّات قوالب حقيقية لا بالنظر هنا.
+   */
+  it('ويقرأ ملفات CMYK كما يخزّنها Photoshop: مقلوبةً', () => {
+    const red = readPsd(psd(2, 2, 300, 4, [255, 0, 0, 255]))!;
+    expect([...red.rgba!.slice(0, 4)]).toEqual([255, 0, 0, 255]);
+    const paper = readPsd(psd(2, 2, 300, 4, [255, 255, 255, 255]))!;
+    expect([...paper.rgba!.slice(0, 4)]).toEqual([255, 255, 255, 255]);
+    const black = readPsd(psd(2, 2, 300, 4, [255, 255, 255, 0]))!;
+    expect([...black.rgba!.slice(0, 4)]).toEqual([0, 0, 0, 255]);
+  });
+
+  it('ويقرأ ملفات Grayscale', () => {
+    // Gray=128 -> (128, 128, 128, 255)
+    const read = readPsd(psd(2, 2, 300, 1, [128]))!;
+    expect(read.rgba).not.toBeNull();
+    expect([...read.rgba!.slice(0, 4)]).toEqual([128, 128, 128, 255]);
   });
 
   it('ويفكّ ضغط PackBits كما يفكّ الخام', () => {

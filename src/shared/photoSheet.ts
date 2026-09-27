@@ -105,3 +105,15 @@ export function photoSheetsHtml(sheet: PhotoSheet, url: (src: string) => string)
   }
   return pages;
 }
+
+/**
+ * ما يُلتقط من الصورة الأصلية بعد القصّ — بكسلاتٍ في مقاسها الطبيعي.
+ *
+ * عكسُ `cropBox`: ما يراه الموظف في الإطار هو ما يُقصّ من إطار الكاميرا، لا
+ * أكثر ولا أقلّ — فالوجه في الدليل البيضاوي على الشاشة هو الوجه في البطاقة.
+ */
+export function sourceRect(frame: Size, natural: Size, crop: Crop): { x: number; y: number; w: number; h: number } {
+  const box = cropBox(frame, natural, crop);
+  const scale = box.width / natural.w;
+  return { x: -box.left / scale, y: -box.top / scale, w: frame.w / scale, h: frame.h / scale };
+}

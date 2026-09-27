@@ -178,3 +178,17 @@ img[data-placeholder='image'] {
   object-fit: cover;
 }
 
+
+/* معاينة «القيم وحدها» في الشبّاك: ما لن يُطبع على الاستمارة المطبوعة باهتٌ، والقيم بسوادها. */
+.values-preview,
+.values-preview * {
+  color: rgb(0 0 0 / 0.18) !important;
+  border-color: rgb(0 0 0 / 0.1) !important;
+}
+.values-preview img {
+  opacity: 0.15;
+}
+.values-preview .fv,
+.values-preview .fv * {
+  color: #000 !important;
+}

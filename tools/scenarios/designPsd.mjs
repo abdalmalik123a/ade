@@ -79,6 +79,15 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   const design = await page.eval(`return document.querySelector('[data-design]')?.innerHTML ?? '';`);
   ok('وسُطّحت الطبقات خلفيةً تُرسم', design.includes('diwan://store/designs/'));
+  // المسار وحده لا يكفي: كانت الصورة تُكتب تالفةً (deflate بلا zlib) فيبقى
+  // مسارها صحيحًا والورقة بيضاء — والمتصفّح وحده يشهد أنها فُكّت.
+  const decoded = await page.eval(`
+    const img = document.querySelector('[data-design] img');
+    if (!img) return 0;
+    if (!img.complete) await new Promise((r) => { img.onload = img.onerror = r; });
+    return img.naturalWidth;
+  `);
+  ok('والخلفية صورةٌ تُفكّ فعلًا', decoded === 1011);
 
   await page.type('input[data-title]', 'هوية موظف');
   await wait(200);

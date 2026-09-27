@@ -11,6 +11,14 @@
 import type { CanvasSize } from './canvas';
 import { barcodeSvg } from './barcode';
 import { qrSvg } from './qr';
+import { sealSvg } from './securitySeal';
+
+/** يرسم الرمز بنوعه — المعاينة والطباعة من هنا وحده. */
+export function drawCode(kind: string, value: string): string {
+  if (!value) return '';
+  if (kind === 'seal') return sealSvg(value);
+  return kind === 'qr' ? qrSvg(value) : barcodeSvg(value, { height: 40 });
+}
 
 export type Imposition = {
   sheet: CanvasSize;
@@ -125,8 +133,7 @@ export function inlineBarcodes(html: string): string {
     (_all, kind: string, value: string, style: string) => {
       if (!value) return '';
       try {
-        const svg = kind === 'qr' ? qrSvg(value) : barcodeSvg(value, { height: 40 });
-        return `<div style="${style}">${svg}</div>`;
+        return `<div style="${style}">${drawCode(kind, value)}</div>`;
       } catch {
         return '';
       }
@@ -134,30 +141,140 @@ export function inlineBarcodes(html: string): string {
   );
 }
 
+/** ورقةٌ في الخطّة: خاناتٌ فيها بطاقاتٌ بأرقامها، أو ورقةٌ فاصلة بين مجموعتين. */
+export type SheetLayout =
+  | { kind: 'cards'; cells: { slot: number; item: number }[] }
+  | { kind: 'separator'; label: string; count: number };
+
+export type SheetOptions = {
+  /**
+   * أوّلُ خانةٍ فارغة في الورقة الأولى (من ٠): ورقة ملصقاتٍ أو كرتونٍ استُعمل
+   * نصفها تُكمَل ولا تُرمى. وتسري على الورقة الأولى وحدها.
+   */
+  startSlot?: number;
+  /**
+   * مجموعةُ كلّ بطاقة (الصفّ والشعبة): كلّ مجموعةٍ تبدأ ورقةً جديدة تسبقها
+   * ورقةٌ فاصلة باسمها وعددها — فتُسلَّم الرزم للمدرسة مفروزة.
+   */
+  groupOf?: (item: number) => string | null;
+};
+
 /**
- * أوراق الطباعة: كل ورقةٍ `per` خانة، وكل خانةٍ بطاقةُ شخصٍ بقيمه.
+ * خطّة الأوراق: أين تقع كلّ بطاقةٍ من `items` (أرقامها في القائمة، بترتيب
+ * الطباعة) — وهي ما يُرسم، وما يُعاد منه عند الاستئناف.
+ *
+ * والمجموعات تُرتَّب متّصلةً بترتيب أوّل ظهورها (ترتيبًا ثابتًا): قائمةٌ خُلطت
+ * فيها الشُّعب لا تخرج رزمًا مخلوطة.
+ */
+export function planSheets(imp: Imposition, items: number[], opts: SheetOptions = {}): SheetLayout[] {
+  const { groupOf } = opts;
+  let order = items;
+  const counts = new Map<string, number>();
+  if (groupOf) {
+    const first = new Map<string, number>();
+    items.forEach((item, k) => {
+      const g = groupOf(item) ?? '';
+      if (!first.has(g)) first.set(g, k);
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+    });
+    order = [...items].sort((a, b) => first.get(groupOf(a) ?? '')! - first.get(groupOf(b) ?? '')!);
+  }
+
+  const out: SheetLayout[] = [];
+  let slot = groupOf ? 0 : Math.max(0, Math.min(imp.per - 1, Math.floor(opts.startSlot ?? 0)));
+  let cells: { slot: number; item: number }[] = [];
+  let group: string | undefined;
+  const flush = () => {
+    if (cells.length) out.push({ kind: 'cards', cells });
+    cells = [];
+  };
+  for (const item of order) {
+    if (groupOf) {
+      const g = groupOf(item) ?? '';
+      if (g !== group) {
+        flush();
+        slot = 0;
+        out.push({ kind: 'separator', label: g || 'بلا مجموعة', count: counts.get(g) ?? 0 });
+        group = g;
+      }
+    }
+    cells.push({ slot, item });
+    slot++;
+    if (slot >= imp.per) {
+      flush();
+      slot = 0;
+    }
+  }
+  flush();
+  return out;
+}
+
+const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+
+const pageDiv = (imp: Imposition, inner: string) =>
+  `<div class="print-page" style="position:relative;width:${mm(imp.sheet.w)};height:${mm(imp.sheet.h)};overflow:hidden;background:#fff;break-after:page;page-break-after:always">${inner}</div>`;
+
+/** الورقة الفاصلة: اسم المجموعة وعددها بخطٍّ يُقرأ من بعيد فوق الرزمة. */
+function separatorHtml(imp: Imposition, label: string, count: number, unit: string): string {
+  return pageDiv(
+    imp,
+    `<div dir="rtl" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6mm;font-family:'Cairo','IBM Plex Sans Arabic',sans-serif;color:#000">` +
+      `<div style="font-size:15mm;font-weight:800;text-align:center;line-height:1.3">${label.replace(/[<>&]/g, '')}</div>` +
+      `<div style="font-size:9mm;font-weight:600">${toIndic(count)} ${unit}</div>` +
+      `<div style="margin-top:10mm;font-size:4mm;color:#555">ورقةٌ فاصلة — لا تُقصّ</div>` +
+      `</div>`
+  );
+}
+
+/**
+ * أوراق الطباعة من خطّتها: كل ورقةٍ `per` خانة، وكل خانةٍ بطاقةُ شخصٍ بقيمه.
  *
  * `card(i)` يرسم البطاقة `i` (بنزفها، عند ٩٦ نقطة/إنش — أي بالملّم الحقيقي في
- * الطباعة). والورقة الأخيرة تُترك خاناتها الزائدة فارغة لا مكرّرة.
+ * الطباعة). والخانات الفارغة تبقى فارغة لا مكرّرة. و`mirror` لظهر الورقة،
+ * وظهرُ الورقة الفاصلة أبيض — فيبقى كلُّ وجهٍ مع ظهره في الطباعة على الوجهين.
  */
+export function renderPlan(
+  imp: Imposition,
+  plan: SheetLayout[],
+  card: (i: number) => string,
+  opts: { mirror?: boolean; unit?: string } = {}
+): string[] {
+  return plan.map((sheet) => {
+    if (sheet.kind === 'separator') {
+      return opts.mirror ? pageDiv(imp, '') : separatorHtml(imp, sheet.label, sheet.count, opts.unit ?? 'بطاقة');
+    }
+    const cells = sheet.cells.map(({ slot, item }) => {
+      const at = cellAt(imp, slot, opts.mirror);
+      return `<div style="position:absolute;left:${mm(at.x)};top:${mm(at.y)};width:${mm(imp.cell.w)};height:${mm(imp.cell.h)};overflow:hidden">${inlineBarcodes(card(item))}</div>`;
+    });
+    return pageDiv(imp, cells.join('') + marks(imp));
+  });
+}
+
+/** كلّ البطاقات بالترتيب من أوّل خانة — الطريق القديم، وهو خطّةٌ بلا خيارات. */
 export function sheetsHtml(
   imp: Imposition,
   count: number,
   card: (i: number) => string,
   opts: { mirror?: boolean } = {}
 ): string[] {
-  const pages: string[] = [];
-  for (let start = 0; start < count; start += imp.per) {
-    const cells: string[] = [];
-    for (let i = start; i < Math.min(count, start + imp.per); i++) {
-      const at = cellAt(imp, i - start, opts.mirror);
-      cells.push(
-        `<div style="position:absolute;left:${mm(at.x)};top:${mm(at.y)};width:${mm(imp.cell.w)};height:${mm(imp.cell.h)};overflow:hidden">${inlineBarcodes(card(i))}</div>`
-      );
-    }
-    pages.push(
-      `<div class="print-page" style="position:relative;width:${mm(imp.sheet.w)};height:${mm(imp.sheet.h)};overflow:hidden;background:#fff;break-after:page;page-break-after:always">${cells.join('')}${marks(imp)}</div>`
-    );
+  return renderPlan(imp, planSheets(imp, Array.from({ length: count }, (_, i) => i)), card, opts);
+}
+
+/**
+ * يقرأ «٥، ١٢-١٤» أرقامَ بطاقاتٍ (من ١) — لإعادة ما تلف وحده. وما خرج عن
+ * القائمة يُهمل، والمكرّر يُطبع مرّة. ويعود `null` لنصٍّ لا يُفهم.
+ */
+export function parseCardList(text: string, total: number): number[] | null {
+  const clean = text.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim();
+  if (!clean) return null;
+  const out = new Set<number>();
+  for (const part of clean.split(/[،,\s]+/).filter(Boolean)) {
+    const m = /^(\d+)(?:\s*[-–]\s*(\d+))?$/.exec(part);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const b = m[2] ? Number(m[2]) : a;
+    for (let n = Math.min(a, b); n <= Math.max(a, b); n++) if (n >= 1 && n <= total) out.add(n - 1);
   }
-  return pages;
+  return [...out].sort((x, y) => x - y);
 }

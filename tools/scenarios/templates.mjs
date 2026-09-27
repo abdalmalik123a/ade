@@ -134,7 +134,13 @@ export default async function scenario(page, { profile, shotsDir }) {
     await page.eval(`return !!document.querySelector('button[title="حذف النموذج"]')`));
   ok('زرّ التصدير ظاهر على البطاقة',
     await page.eval(`return !!document.querySelector('button[title^="تصدير النموذج"]')`));
-  ok('و«نموذجٌ جديد» ظاهرٌ بطرقه الثلاث', await page.eval(`return document.querySelectorAll('[data-new-template] [data-act]').length === 3;`));
+  // الطرق الثلاث (§٦) باقية ومعها باب العقود — فيُسأل عن كلٍّ باسمه لا بالعدد.
+  ok(
+    'و«نموذجٌ جديد» ظاهرٌ بطرقه الثلاث وباب العقود',
+    await page.eval(
+      `return ['new-blank', 'new-word', 'new-folder', 'install-contracts'].every((a) => document.querySelector('[data-new-template] [data-act="' + a + '"]'));`
+    )
+  );
   ok('زرّ تصدير المكتبة ظاهر', (await page.text()).includes('تصدير المكتبة كاملة'));
   ok('زرّ استرجاع المكتبة ظاهر', (await page.text()).includes('استرجاع مكتبة'));
 

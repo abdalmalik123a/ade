@@ -24,6 +24,12 @@ import type {
 } from '@shared/api';
 import { formatGregorian } from '@shared/dates';
 import LetterheadView from '../components/LetterheadView';
+import WhatsAppPasteDialog from './WhatsAppPasteDialog';
+import { valuesFromMessage } from '@shared/whatsappParser';
+import { derivedWords } from '@shared/tafqeet';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
+import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
+import SpellingPanel from '../components/SpellingPanel';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -92,6 +98,10 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
+  /** رسالة الزبون من واتساب تُلصق كما هي فتتوزّع على الحقول. */
+  const [pasteOpen, setPasteOpen] = useState(false);
+  /** استمارةٌ مطبوعةٌ مسبقًا في الطابعة: تُطبع القيم وحدها في فراغاتها. */
+  const [valuesOnly, setValuesOnly] = useState(false);
   /** الدمج: سطرٌ لكل اسم، ولكلٍّ معاملتُه وأوراقُه. */
   const [merge, setMerge] = useState(false);
   const [names, setNames] = useState('');
@@ -144,6 +154,19 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
   /** الحقول التي تُعرض: اتحاد ما تطلبه المختارات، بلا تكرار. */
   const fields: DocField[] = useMemo(() => mergeFields(loaded.map((l) => l.doc)), [loaded]);
+
+  /**
+   * القيم كما تُطبع: ما كتبه الموظف، وحقولُ «الكتابة» الفارغة مملوءةً من أرقامها —
+   * «الدرجة» ٩٥ تكتب «خمس وتسعون درجة»، و«المبلغ» يُفقَّط. وما كُتب باليد يغلب.
+   */
+  const keys = useMemo(() => fields.map((f) => f.key), [fields]);
+
+  /** أفي الأوراق المختارة «{الطالب|الطالبة}»؟ فيُسأل عن الجنس — ويُقترح من الاسم. */
+  const needsGender = useMemo(() => loaded.some((l) => docHasChoices(l.doc)), [loaded]);
+  /** اختاره الموظف بيده؟ فلا يغيّره الاقتراح بعدها. */
+  const [genderByHand, setGenderByHand] = useState(false);
+  const asPrinted = useCallback((v: Record<string, string>) => derivedWords(v, keys), [keys]);
+  const effective = useMemo(() => asPrinted(values), [asPrinted, values]);
 
   const toggle = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -202,10 +225,20 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
   };
 
   /** اسم صاحب العلاقة: من حقلٍ بدوره، وإلا من أول حقل مملوء. */
+  // وخانةُ «{الطالب|الطالبة}» ليست حقلًا يُملأ، فلا تُعدّ أوّلَ الحقول.
+  const firstField = fields.find((f) => f.source === 'fullName') ?? fields.find((f) => !isChoiceKey(f.key));
   const citizenName =
-    byRole('name') || values[fields[0]?.key ?? '']?.trim() || '';
+    byRole('name') || values[firstField?.key ?? '']?.trim() || '';
 
-  const missing = fields.filter((f) => f.required && !values[f.key]?.trim());
+  const missing = fields.filter((f) => f.required && !isChoiceKey(f.key) && !values[f.key]?.trim());
+
+  // الجنس يُقترح من الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة.
+  useEffect(() => {
+    if (!needsGender || genderByHand || !citizenName) return;
+    const guess = guessGender(citizenName);
+    if (guess && values[GENDER_KEY] !== guess.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsGender, genderByHand, citizenName]);
 
   /** حقل الاسم: عليه يدور الدمج، وبغيره لا معنى لقائمة أسماء. */
   const nameField = fields.find((f) => f.role === 'name') ?? null;
@@ -226,10 +259,12 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
    * يُعاد رسمه بالمحرّك نفسه — فورقة الاسم الثلاثين مثلُ ورقة الأول تمامًا.
    */
   const collect = useCallback((rowValues?: Record<string, string>): TransactionSheet[] => {
-    const use = rowValues ?? values;
+    const use = asPrinted(rowValues ?? values);
     return loaded.map((l) => {
       const node = sheets.current.get(l.summary.id)?.cloneNode(true) as HTMLElement | undefined;
       if (node) {
+        // معاينة «القيم وحدها» صفةُ شاشة لا صفةُ كتاب: الأرشيف يقيّد الورقة كاملة.
+        node.classList.remove('values-preview');
         if (rowValues) {
           const body = node.querySelector('[data-body]');
           if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank', paragraphs: 'blocks' });
@@ -253,7 +288,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, values, fee, fields]);
+  }, [loaded, values, fee, fields, asPrinted]);
 
   const common = () => ({
     operator: settings?.operatorName || null,
@@ -281,7 +316,8 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
           nationalId: byRole('nationalId') || null,
           sheets: collect()
         },
-        print
+        print,
+        valuesOnly ? 'values' : 'full'
       );
       say(`صدرت ${out.documents.length} ورقة بمعاملة واحدة — ${out.documents[0]?.serial ?? ''}`);
       onIssued?.();
@@ -289,6 +325,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       setPicked([]);
       setLoaded([]);
       setValues({});
+      setGenderByHand(false);
       setCitizenId(null);
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
@@ -309,6 +346,9 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       const all = await window.diwan.documents.issueBatch(
         rows.map((name) => {
           const rowValues = { ...values, [nameField.key]: name };
+          // ولكلّ اسمٍ في القائمة جنسُه من اسمه: «زينب» طالبةٌ و«أحمد» طالب.
+          const g = needsGender ? guessGender(name)?.gender : undefined;
+          if (g) rowValues[GENDER_KEY] = g;
           return {
             ...common(),
             citizenId: null,
@@ -317,7 +357,8 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
             sheets: collect(rowValues)
           };
         }),
-        print
+        print,
+        valuesOnly ? 'values' : 'full'
       );
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
       say(`صدرت ${papers} ورقة لـ${all.length} اسمًا — كلٌّ بمعاملته`);
@@ -334,6 +375,30 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       setBusy(false);
     }
   }
+
+  /**
+   * التنبيه الإملائي قبل الطباعة: ما كتبه الموظف يُصلح هنا بضغطة، وما في نصّ
+   * النموذج نفسه يُقال ويُصلح في الورشة — فالشبّاك لا يعدّل النماذج.
+   */
+  const typedSpelling = useMemo(
+    () =>
+      spellingIssues(
+        Object.entries(values)
+          .filter(([k]) => k !== GENDER_KEY)
+          .map(([, v]) => v)
+          .join('\n')
+      ),
+    [values]
+  );
+  const templateSpelling = useMemo(() => {
+    const merged = new Map<string, SpellIssue>();
+    for (const issue of loaded.flatMap((l) => docSpelling(l.doc))) {
+      const key = `${issue.word}→${issue.fix}`;
+      const prev = merged.get(key);
+      merged.set(key, prev ? { ...prev, count: prev.count + issue.count } : issue);
+    }
+    return [...merged.values()];
+  }, [loaded]);
 
   const current = loaded[Math.min(at, loaded.length - 1)];
   /** ما يمنع الإصدار: حقلٌ إلزامي فارغ، أو دمجٌ بلا أسماء. */
@@ -527,6 +592,15 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   <span className="material-symbols-outlined text-[18px] text-secondary">badge</span>
                   استيراد (F2)
                 </button>
+                <button
+                  className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+                  data-act="whatsapp-paste"
+                  type="button"
+                  onClick={() => setPasteOpen(true)}
+                >
+                  <span className="material-symbols-outlined text-[18px] text-secondary">chat_paste</span>
+                  لصق من واتساب
+                </button>
               </div>
 
               {nameField && (
@@ -564,7 +638,34 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                 </span>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+                  {needsGender && (
+                    <div className="md:col-span-2 flex items-center gap-space-sm" data-gender="">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        الجنس (للتذكير والتأنيث في الأوراق)
+                      </span>
+                      {(['ذكر', 'أنثى'] as const).map((g) => (
+                        <button
+                          key={g}
+                          className={`h-9 px-4 rounded-lg font-label-md text-label-md ${
+                            values[GENDER_KEY] === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
+                          }`}
+                          data-gender-value={g}
+                          type="button"
+                          onClick={() => {
+                            setGenderByHand(true);
+                            setValues((prev) => ({ ...prev, [GENDER_KEY]: g }));
+                          }}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">
+                        {merge ? 'وفي القائمة: لكلّ اسمٍ جنسُه من اسمه' : genderByHand ? '' : 'مقترحٌ من الاسم'}
+                      </span>
+                    </div>
+                  )}
                   {fields
+                    .filter((f) => !isChoiceKey(f.key))
                     .filter((f) => !(merge && f.key === nameField?.key))
                     .map((f) => (
                     <label key={f.key} className="flex flex-col gap-1">
@@ -575,6 +676,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                       <input
                         className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                         type="text"
+                        placeholder={effective[f.key] && !values[f.key] ? effective[f.key] : undefined}
                         value={values[f.key] ?? ''}
                         onChange={(e) =>
                           setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
@@ -598,7 +700,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                       <div
                         className={`${gapAfter(loaded[0].layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
                         dangerouslySetInnerHTML={{
-                          __html: renderDocHtml(loaded[0].doc, values, { missing: 'blank', paragraphs: 'blocks' })
+                          __html: renderDocHtml(loaded[0].doc, effective, { missing: 'blank', paragraphs: 'blocks' })
                         }}
                       />
                     </div>
@@ -610,6 +712,24 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
           {/* ٣ — راجع */}
           <div className={step === 'review' ? 'flex flex-col items-center gap-space-md' : 'hidden'}>
+            {(typedSpelling.length > 0 || templateSpelling.length > 0) && (
+              <div className="w-full max-w-3xl flex flex-col gap-space-xs">
+                <SpellingPanel
+                  issues={typedSpelling}
+                  title="فيما كُتب في الحقول"
+                  onFix={(chosen) =>
+                    setValues((prev) =>
+                      Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, k === GENDER_KEY ? v : applySpelling(v, chosen)]))
+                    )
+                  }
+                />
+                <SpellingPanel
+                  issues={templateSpelling}
+                  title="في نصّ النموذج نفسه"
+                  note="يُصلح من الورشة (تدقيق إملائي في مصمّم النماذج) — فالشبّاك لا يعدّل النماذج"
+                />
+              </div>
+            )}
             {merge && rows.length > 0 && (
               <span className="font-label-md text-label-md text-on-surface-variant">
                 معاينة الاسم الأول ({rows[0]}) — وبقيّة الأسماء {rows.length - 1} مثلها
@@ -645,7 +765,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   ref={(el) => {
                     sheets.current.set(l.summary.id, el);
                   }}
-                  className="a4-sheet bg-white text-black shadow-lg"
+                  className={`a4-sheet bg-white text-black shadow-lg ${valuesOnly ? 'values-preview' : ''}`}
                   style={sheetStyle(l.doc)}
                 >
                   <div dangerouslySetInnerHTML={{ __html: watermarkHtml(l.doc) }} />
@@ -654,7 +774,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                     className={`${gapAfter(l.layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
                     data-body=""
                     dangerouslySetInnerHTML={{
-                      __html: renderDocHtml(l.doc, values, { missing: 'blank', paragraphs: 'blocks' })
+                      __html: renderDocHtml(l.doc, effective, { missing: 'blank', paragraphs: 'blocks' })
                     }}
                   />
                 </div>
@@ -678,6 +798,19 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
           {step === 'review' && (
             <>
+              <label
+                className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface cursor-pointer"
+                title="الاستمارة الحكومية المطبوعة في الطابعة: تُطبع القيم وحدها في فراغاتها المنقّطة، والأرشيف يقيّد الورقة كاملة. اضبط إزاحة الطابعة من الإعدادات إن لزم."
+              >
+                <input
+                  checked={valuesOnly}
+                  className="w-4 h-4 accent-secondary"
+                  data-act="values-only"
+                  type="checkbox"
+                  onChange={(e) => setValuesOnly(e.target.checked)}
+                />
+                على استمارةٍ مطبوعة — القيم وحدها
+              </label>
               <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
                 الأجرة للورقة
                 <input
@@ -751,6 +884,18 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       </div>
 
       {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
+
+      <WhatsAppPasteDialog
+        isOpen={pasteOpen}
+        onClose={() => setPasteOpen(false)}
+        onApply={(extracted) => {
+          const filled = valuesFromMessage(fields, extracted, values);
+          const n = Object.keys(filled).length;
+          setValues((prev) => ({ ...prev, ...filled }));
+          setPasteOpen(false);
+          say(n ? `مُلئ ${n} حقلًا من الرسالة — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
+        }}
+      />
 
       {toast && (
         <div

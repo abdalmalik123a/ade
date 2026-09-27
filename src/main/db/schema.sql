@@ -259,3 +259,20 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 CREATE INDEX IF NOT EXISTS ix_orders_status ON orders(status, due_date);
 CREATE INDEX IF NOT EXISTS ix_orders_authority ON orders(authority_id);
+
+-- بنك الأسئلة: سؤالٌ بفروعه ودرجته وإجابته النموذجية، يُحفظ مرّةً ويُدرج في كل
+-- ورقةٍ بعدها. والمادة والصف من رأس الورقة التي حُفظ منها — فيُعرض للمدرّس
+-- بنكُ مادّته وصفّه أوّلًا. و`item_json` عقدةُ القائمة نفسها (ListItem).
+CREATE TABLE IF NOT EXISTS question_bank (
+  id          INTEGER PRIMARY KEY,
+  subject     TEXT,
+  grade       TEXT,
+  item_json   TEXT NOT NULL,
+  text        TEXT NOT NULL,               -- نصّ السؤال وفروعه مجرّدًا — للعرض
+  search_fold TEXT NOT NULL,               -- مطبَّعًا للبحث المتساهل مع الهمزة
+  score       REAL,
+  use_count   INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  used_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_question_bank_subject ON question_bank(subject, grade);

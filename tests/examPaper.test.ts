@@ -7,6 +7,7 @@ import { listScore, normalizeDoc, run, type ListItem } from '../src/shared/doc';
 import { renderDocHtml } from '../src/shared/docHtml';
 import {
   EXAM_CATEGORY,
+  EXAM_PRESETS,
   HEAD_INPUTS,
   emptyHead,
   examDoc,
@@ -222,5 +223,13 @@ describe('الفصل بالحكم لا بالتصنيف', () => {
     conn.exec('ALTER TABLE templates DROP COLUMN issuing');
     expect(() => listTemplates(conn)).not.toThrow();
     expect(listTemplates(conn)).toEqual([]);
+  });
+});
+
+describe('نماذج الرأس السريعة', () => {
+  /** كانت تكتب مدرسةً ومحافظةً وتاريخًا مخترَعة فوق ما كتبه المدرّس. */
+  it('لا تمسّ المدرسة ولا المادة ولا الصف ولا التاريخ ولا العام', () => {
+    const own = ['المحافظة', 'القضاء', 'المدرسة', 'المادة', 'الصف', 'الشعبة', 'التاريخ', 'العام الدراسي', 'مدرس المادة'];
+    for (const preset of EXAM_PRESETS) for (const key of own) expect(preset.head).not.toHaveProperty(key);
   });
 });

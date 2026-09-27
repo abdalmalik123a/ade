@@ -65,7 +65,64 @@ export const HEAD_INPUTS: HeadInput[] = [
   { key: 'نوع الامتحان', label: 'نوع الامتحان', width: 14, hint: 'نصف السنة' },
   { key: 'العام الدراسي', label: 'العام الدراسي', width: 12, hint: '2025 - 2026' },
   { key: 'الدور', label: 'الدور', width: 8, hint: 'الأول' },
-  { key: 'الملاحظة', label: 'ملاحظةٌ تحت الرأس', width: 44, hint: 'أجب عن خمسة أسئلة فقط' }
+  { key: 'الملاحظة', label: 'ملاحظةٌ تحت الرأس', width: 44, hint: 'أجب عن خمسة أسئلة فقط' },
+  { key: 'التمنيات', label: 'تمنيات الختام', width: 32, hint: 'مع تمنياتنا لكم بالنجاح والتفوق' },
+  { key: 'مدرس المادة', label: 'مدرس المادة', width: 18, hint: 'أستاذ المادة' }
+];
+
+export type ExamPreset = {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  head: Partial<Record<string, string>>;
+};
+
+/**
+ * نماذج سريعة لرأس الامتحان — تملأ **ما يخصّ نوع الامتحان وحده**.
+ *
+ * وكانت تكتب «ثانوية المتميزين للبنين» و«بغداد / الكرخ الأولى» وتاريخًا
+ * ثابتًا فوق ما كتبه المدرّس: يضغط «نصف السنة» فتصير مدرسته مدرسةً أخرى، ويطبع
+ * ثلاثين نسخة باسمها — وهو خطأ «الاسم السابق» نفسه الذي وُجد البرنامج ليمنعه.
+ * فالمدرسة والمادة والصف والتاريخ والعام لا يمسّها نموذج.
+ */
+export const EXAM_PRESETS: ExamPreset[] = [
+  {
+    id: 'midyear',
+    name: 'امتحان نصف السنة',
+    badge: 'نصف السنة',
+    description: 'ساعتان، والإجابة عن خمسة أسئلة لكلٍّ منها ٢٠ درجة',
+    head: {
+      'نوع الامتحان': 'نصف السنة',
+      'الدور': '',
+      'الزمن': 'ساعتان',
+      'الملاحظة': 'ملاحظة: الإجابة عن خمسة أسئلة فقط، ولكل سؤال ٢٠ درجة بالتساوي'
+    }
+  },
+  {
+    id: 'monthly',
+    name: 'امتحان شهري',
+    badge: 'شهري',
+    description: 'ساعة واحدة، والإجابة عن جميع الأسئلة',
+    head: {
+      'نوع الامتحان': 'الامتحان الشهري الأول',
+      'الدور': '',
+      'الزمن': 'ساعة واحدة',
+      'الملاحظة': 'ملاحظة: الإجابة عن جميع الأسئلة والدرجة من ١٠٠'
+    }
+  },
+  {
+    id: 'final_exam',
+    name: 'امتحان نهاية السنة (الدور الأول)',
+    badge: 'نهاية السنة',
+    description: 'ساعتان ونصف، الدور الأول',
+    head: {
+      'نوع الامتحان': 'نهاية السنة',
+      'الدور': 'الأول',
+      'الزمن': 'ساعتان ونصف',
+      'الملاحظة': 'ملاحظة: الإجابة عن خمسة أسئلة فقط، ولكل سؤال ٢٠ درجة بالتساوي'
+    }
+  }
 ];
 
 const BOLD = { bold: true } as const;
@@ -151,8 +208,24 @@ export function examList(items: ListItem[] = [newQuestion()], dir: Dir = 'rtl'):
   return { id: newUuid(), kind: 'list', dir, styles: [...EXAM_STYLES], items };
 }
 
+export function examFooterBlocks(): Block[] {
+  return [
+    spacer(12),
+    whenFilled('التمنيات', [
+      paragraph([run('— ', BOLD), fieldRef('التمنيات'), run(' —', BOLD)], {
+        align: 'center'
+      })
+    ]),
+    whenFilled('مدرس المادة', [
+      paragraph([run('مدرس المادة: ', BOLD), fieldRef('مدرس المادة')], {
+        align: 'left'
+      })
+    ])
+  ];
+}
+
 /**
- * ورقةٌ كاملة: رأسٌ مولَّدٌ من القيم، ومتنٌ هو قائمة الأسئلة.
+ * ورقةٌ كاملة: رأسٌ مولَّدٌ من القيم، ومتنٌ هو قائمة الأسئلة، وتذييلٌ بالتمنيات والتوقيع.
  *
  * والحكم `print-only` — فلا تظهر في مكتبة الكتب ولا في الشبّاك، ولا تحرق رقم
  * صادرٍ حين تُطبع ثلاثين نسخة.
@@ -161,7 +234,7 @@ export function examDoc(head: Record<string, string>, body: ListBlock): Doc {
   const doc = emptyDoc();
   doc.issuing = 'print-only';
   doc.pageSetup = { ...doc.pageSetup, letterheadMode: 'none' };
-  doc.blocks = [...examHeadBlocks(), body];
+  doc.blocks = [...examHeadBlocks(), body, ...examFooterBlocks()];
   doc.meta = {
     title: paperTitle(head),
     subject: head['المادة']?.trim() || undefined,

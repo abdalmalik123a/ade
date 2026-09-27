@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellAt, impose, inlineBarcodes, sheetCount, sheetsHtml } from '../src/shared/imposition';
+import { cellAt, impose, inlineBarcodes, parseCardList, planSheets, renderPlan, sheetCount, sheetsHtml } from '../src/shared/imposition';
 import { matchPhotos, parseRows } from '../src/shared/batch';
 
 describe('الترتيب على الورق', () => {
@@ -99,5 +99,42 @@ describe('الدفعة', () => {
     expect(out.rows[0]!.الصورة).toBe('p/1.jpg');
     expect(out.rows[1]!.الصورة).toBe('p/2.jpg');
     expect(out.unmatched).toEqual(['مريم']);
+  });
+});
+
+describe('خطّة الأوراق: البدء من خانة، والبطاقات بعينها، والفواصل', () => {
+  const imp = impose({ w: 85.6, h: 54 }, 3); // تسعٌ في الورقة
+
+  it('ورقةٌ استُعمل نصفها: البطاقات تبدأ من الخانة الخامسة وتُكمل الورقة التالية من أوّلها', () => {
+    const plan = planSheets(imp, [0, 1, 2, 3, 4, 5], { startSlot: 4 });
+    expect(plan).toHaveLength(2);
+    expect(plan[0]).toEqual({ kind: 'cards', cells: [4, 5, 6, 7, 8].map((slot, k) => ({ slot, item: k })) });
+    expect(plan[1]).toEqual({ kind: 'cards', cells: [{ slot: 0, item: 5 }] });
+  });
+
+  it('إعادة ما تلف وحده: «٥، ١٢-١٤» أرقامٌ من القائمة', () => {
+    expect(parseCardList('٥، ١٢-١٤', 20)).toEqual([4, 11, 12, 13]);
+    expect(parseCardList('5, 99', 20)).toEqual([4]);
+    expect(parseCardList('خمسة', 20)).toBeNull();
+  });
+
+  it('الفواصل: كلّ شعبةٍ بورقتها الفاصلة وعددها، والمخلوطة تُجمع', () => {
+    const cls = ['أ', 'ب', 'أ', 'ب', 'أ'];
+    const plan = planSheets(imp, [0, 1, 2, 3, 4], { groupOf: (i) => `الخامس / ${cls[i]}` });
+    expect(plan.map((p) => (p.kind === 'separator' ? `${p.label}:${p.count}` : p.cells.map((c) => c.item).join(',')))).toEqual([
+      'الخامس / أ:3',
+      '0,2,4',
+      'الخامس / ب:2',
+      '1,3'
+    ]);
+  });
+
+  it('وظهرُ الورقة الفاصلة أبيض — فيبقى كلُّ وجهٍ مع ظهره', () => {
+    const plan = planSheets(imp, [0, 1], { groupOf: () => 'أ' });
+    const front = renderPlan(imp, plan, () => '<b>x</b>');
+    const back = renderPlan(imp, plan, () => '<b>y</b>', { mirror: true });
+    expect(front[0]).toContain('ورقةٌ فاصلة');
+    expect(back[0]).not.toContain('ورقةٌ فاصلة');
+    expect(front).toHaveLength(back.length);
   });
 });

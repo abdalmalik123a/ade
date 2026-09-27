@@ -1,6 +1,6 @@
 import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus } from './orders';
 import type { Letterhead, LetterheadLayout } from './letterhead';
-import type { Doc, Suggestion } from './doc';
+import type { Doc, ListItem, Suggestion } from './doc';
 import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
@@ -477,6 +477,7 @@ export type DiwanApi = {
     /** يستورد ملفًا من الحاسوب إلى مخزن التطبيق ويقيّده مستمسكًا. */
     importFile(citizenId: number, docType: string): Promise<Attachment | null>;
     scan(citizenId: number, docType: string, dpi: number): Promise<Attachment>;
+    addFromDataUrl(citizenId: number, docType: string, dataUrl: string): Promise<Attachment>;
     rename(id: number, docType: string): Promise<void>;
     ocr(id: number): Promise<{ text: string; confidence: number }>;
     print(id: number): Promise<boolean>;
@@ -486,6 +487,8 @@ export type DiwanApi = {
   };
   scanner: {
     list(): Promise<ScannerDevice[]>;
+    /** يمسح صفحةً إلى المخزن ويعيد مسارها — بلا قيدٍ على مواطن. */
+    scanImage(dpi: number): Promise<string>;
     ocrAvailable(): Promise<boolean>;
   };
   documents: {
@@ -493,9 +496,10 @@ export type DiwanApi = {
     /** الإصدار: رقم وبصمة ورمز تحقق وقيد في السجل، ثم طباعة وأرشفة PDF. */
     issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
     /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. */
-    issueTransaction(input: TransactionInput, print: boolean): Promise<TransactionResult>;
+    /** `mode: 'values'` يطبع القيم وحدها في مواضعها — على استمارةٍ مطبوعةٍ مسبقًا. */
+    issueTransaction(input: TransactionInput, print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult>;
     /** الدمج: معاملةٌ لكل اسم في القائمة، والدفعة كلّها أو لا شيء. */
-    issueBatch(inputs: TransactionInput[], print: boolean): Promise<TransactionResult[]>;
+    issueBatch(inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult[]>;
     get(id: number): Promise<DocumentDetail | null>;
     list(opts?: {
       from?: string | null;
@@ -592,6 +596,42 @@ export type DiwanApi = {
       suggestedName: string;
       title: string;
     }): Promise<string | null>;
+    /**
+     * دفعةٌ كبيرة ورقةً ورقة بسجلٍّ على القرص — فتُستأنف بعد انقطاع الكهرباء.
+     * وبلا طابعةٍ مختارة تُطبع مهمّةً واحدة بحوار النظام، بلا سجلّ.
+     */
+    printJob(payload: {
+      label: string;
+      pages: string[];
+      printer: string | null;
+      page: { w: number; h: number };
+      duplex: boolean;
+    }): Promise<PrintJobResult>;
+    /** دفعاتٌ لم تكتمل — تُعرض عند الإقلاع ليُستأنف منها. */
+    pendingJobs(): Promise<PendingPrintJob[]>;
+    /** يستأنف من الورقة `from` (من ٠). */
+    resumeJob(id: string, from: number): Promise<PrintJobResult>;
+    discardJob(id: string): Promise<void>;
+    /** تقدّم الدفعة الجارية — ويعيد ما يُلغي الاشتراك. */
+    onPrintProgress(listener: (p: { id: string; sent: number; total: number }) => void): () => void;
+  };
+  /** بنك الأسئلة: سؤالٌ يُحفظ مرّةً ويُدرج في كل ورقةٍ بعدها. */
+  bank: {
+    save(input: { item: ListItem; subject?: string | null; grade?: string | null }): Promise<BankQuestion>;
+    list(filter?: { query?: string; subject?: string | null; grade?: string | null }): Promise<BankQuestion[]>;
+    facets(): Promise<{ subjects: string[]; grades: string[] }>;
+    used(id: number): Promise<void>;
+    delete(id: number): Promise<void>;
+  };
+  /** استوديو التصوير: حفظ اللقطة، ومراقبة مجلّد الكاميرا الاحترافية. */
+  camera: {
+    /** لقطةٌ مقصوصة (dataURL) تُحفظ في المخزن — ويعود مسارها. */
+    store(dataUrl: string): Promise<string>;
+    /** يختار مجلّد لقطات الكاميرا ويراقبه — ويعود مساره أو `null`. */
+    watchFolder(): Promise<string | null>;
+    unwatch(): Promise<void>;
+    /** كلّ صورةٍ جديدة في المجلّد المراقَب — ويعيد ما يُلغي الاشتراك. */
+    onShot(listener: (shot: { dataUrl: string; file: string }) => void): () => void;
   };
   designs: {
     /**
@@ -609,6 +649,12 @@ export type DiwanApi = {
       canvas: unknown | null;
       stored: string[];
     } | null>;
+    /** يرسل التوجيه إلى Gemini بالمفتاح المحفوظ، ويعيد نصّ الجواب — أو سبب تعذّره. */
+    gemini(prompt: string): Promise<{ text: string | null; error?: string }>;
+    /** أمحفوظٌ مفتاح؟ — والمفتاح نفسه لا يعود إلى الواجهة. */
+    hasGeminiKey(): Promise<boolean>;
+    /** يحفظ المفتاح مشفَّرًا، والنصّ الفارغ يحذفه. */
+    setGeminiKey(key: string): Promise<void>;
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;
@@ -635,4 +681,36 @@ export type DiwanApi = {
     }): Promise<string | null>;
     reveal(path: string): Promise<void>;
   };
+};
+
+/** ناتج دفعة الطباعة: كم ورقةً أُرسلت من كم، ولماذا توقّفت إن توقّفت. */
+export type PrintJobResult = {
+  ok: boolean;
+  sent: number;
+  total: number;
+  reason?: string;
+  /** أسُجّلت لتُستأنف؟ لا — حين لا طابعة مختارة. */
+  journaled: boolean;
+  id?: string;
+};
+
+export type PendingPrintJob = {
+  id: string;
+  label: string;
+  printer: string;
+  total: number;
+  sent: number;
+  createdAt: string;
+};
+
+/** سؤالٌ في البنك — عقدةُ القائمة نفسها، ومادّتها وصفّها. */
+export type BankQuestion = {
+  id: number;
+  subject: string | null;
+  grade: string | null;
+  item: ListItem;
+  text: string;
+  score: number | null;
+  useCount: number;
+  createdAt: string;
 };

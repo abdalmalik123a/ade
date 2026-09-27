@@ -86,6 +86,8 @@ const api: DiwanApi = {
       invoke('attachments:importFile', citizenId, docType),
     scan: (citizenId: number, docType: string, dpi: number) =>
       invoke('attachments:scan', citizenId, docType, dpi),
+    addFromDataUrl: (citizenId: number, docType: string, dataUrl: string) =>
+      invoke('attachments:addFromDataUrl', citizenId, docType, dataUrl),
     rename: (id: number, docType: string) => invoke('attachments:rename', id, docType),
     ocr: (id: number) => invoke('attachments:ocr', id),
     print: (id: number) => invoke('attachments:print', id),
@@ -95,15 +97,16 @@ const api: DiwanApi = {
   },
   scanner: {
     list: () => invoke('scanner:list'),
+    scanImage: (dpi: number) => invoke('scanner:scanImage', dpi),
     ocrAvailable: () => invoke('scanner:ocrAvailable')
   },
   documents: {
     peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year),
     issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
-    issueTransaction: (input: TransactionInput, print: boolean) =>
-      invoke('documents:issueTransaction', input, print),
-    issueBatch: (inputs: TransactionInput[], print: boolean) =>
-      invoke('documents:issueBatch', inputs, print),
+    issueTransaction: (input: TransactionInput, print: boolean, mode?: 'full' | 'values') =>
+      invoke('documents:issueTransaction', input, print, mode ?? 'full'),
+    issueBatch: (inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values') =>
+      invoke('documents:issueBatch', inputs, print, mode ?? 'full'),
     get: (id: number) => invoke('documents:get', id),
     list: (opts?: { from?: string | null; to?: string | null; query?: string; limit?: number }) =>
       invoke('documents:list', opts ?? {}),
@@ -135,7 +138,17 @@ const api: DiwanApi = {
     savePng300: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
       invoke('output:savePng300', payload),
     saveDocx: (payload: { sheetHtml: string; suggestedName: string; title: string }) =>
-      invoke('output:saveDocx', payload)
+      invoke('output:saveDocx', payload),
+    printJob: (payload: { label: string; pages: string[]; printer: string | null; page: { w: number; h: number }; duplex: boolean }) =>
+      invoke('output:printJob', payload),
+    pendingJobs: () => invoke('output:pendingJobs'),
+    resumeJob: (id: string, from: number) => invoke('output:resumeJob', id, from),
+    discardJob: (id: string) => invoke('output:discardJob', id),
+    onPrintProgress: (listener: (p: { id: string; sent: number; total: number }) => void) => {
+      const handler = (_e: unknown, p: { id: string; sent: number; total: number }) => listener(p);
+      ipcRenderer.on('print:progress', handler);
+      return () => ipcRenderer.removeListener('print:progress', handler);
+    }
   },
   templates: {
     list: (category?: string | null, issuing?: string) =>
@@ -172,8 +185,28 @@ const api: DiwanApi = {
     }) => invoke('drafts:save', input),
     delete: (id: number) => invoke('drafts:delete', id)
   },
+  bank: {
+    save: (input: unknown) => invoke('bank:save', input),
+    list: (filter?: unknown) => invoke('bank:list', filter ?? {}),
+    facets: () => invoke('bank:facets'),
+    used: (id: number) => invoke('bank:used', id),
+    delete: (id: number) => invoke('bank:delete', id)
+  },
+  camera: {
+    store: (dataUrl: string) => invoke('camera:store', dataUrl),
+    watchFolder: () => invoke('camera:watchFolder'),
+    unwatch: () => invoke('camera:unwatch'),
+    onShot: (listener: (shot: { dataUrl: string; file: string }) => void) => {
+      const handler = (_e: unknown, shot: { dataUrl: string; file: string }) => listener(shot);
+      ipcRenderer.on('camera:shot', handler);
+      return () => ipcRenderer.removeListener('camera:shot', handler);
+    }
+  },
   designs: {
-    import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback)
+    import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback),
+    gemini: (prompt: string) => invoke('designs:gemini', prompt),
+    hasGeminiKey: () => invoke('designs:hasGeminiKey'),
+    setGeminiKey: (key: string) => invoke('designs:setGeminiKey', key)
   },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),

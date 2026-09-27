@@ -20,6 +20,7 @@ import {
 } from './canvas';
 import type { Doc, DocField, Inline } from './doc';
 import { escapeHtml, type MissingMode } from './docHtml';
+import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 
 export type CanvasRenderOptions = {
   /** نقطة/إنش: ٩٦ للشاشة و٣٠٠ للطباعة. */
@@ -54,12 +55,13 @@ function inlinesHtml(
     .map((node) => {
       if (node.kind === 'break') return '<br/>';
       if (node.kind === 'run') {
-        let out = escapeHtml(node.text);
+        let out = escapeHtml(resolveChoices(node.text, values[GENDER_KEY]));
         const m = node.marks;
         if (m?.underline) out = `<u>${out}</u>`;
         if (m?.bold) out = `<strong>${out}</strong>`;
         return out;
       }
+      if (isChoiceKey(node.ref)) return escapeHtml(pickChoice(node.ref, values[GENDER_KEY]));
       const value = values[node.ref];
       // قيمةٌ لاتينية (رقمٌ بشَرطة، بريد) تُعزل باتجاهها: «2026-0457» داخل سطرٍ
       // عربي كانت تُعرض «0457-2026». والعربية تبقى في مجرى السطر كما هي.
@@ -94,13 +96,6 @@ const V_ALIGN: Record<TextElement['vAlign'], string> = {
   bottom: 'flex-end'
 };
 
-const H_ALIGN: Record<string, string> = {
-  right: 'flex-end',
-  left: 'flex-start',
-  center: 'center',
-  justify: 'stretch'
-};
-
 /**
  * عرض النصّ تقديرًا بوحدة em — قبل أن يقيسه المتصفّح.
  *
@@ -124,8 +119,10 @@ function plainText(inlines: Inline[], values: Record<string, string>, fields: Ma
   return inlines
     .map((n) =>
       n.kind === 'run'
-        ? n.text
-        : n.kind === 'break'
+        ? resolveChoices(n.text, values[GENDER_KEY])
+        : n.kind === 'field' && isChoiceKey(n.ref)
+          ? pickChoice(n.ref, values[GENDER_KEY])
+          : n.kind === 'break'
           ? ' '
           : values[n.ref] || '—'.repeat(Math.ceil((fields.get(n.ref)?.width ?? 10) / 3))
     )
@@ -145,14 +142,20 @@ function textHtml(
   let size = max;
   if (el.fit === 'shrink') {
     const width = el.box.w * mmToPx(canvas.size.w, opts.dpi);
-    const em = estimateEm(plainText(el.inlines, values, fields), el.bold);
+    const text = plainText(el.inlines, values, fields);
+    const em = estimateEm(text, el.bold) + (el.letterSpacing ?? 0) * [...text].length;
     if (em > 0) size = Math.min(max, (width * 0.96) / em);
   }
+  // `flex-start` في صندوقٍ عربيّ هو اليمين: فالمحاذاة تُقلب مع الاتجاه، وإلا
+  // وقع الاسم المحاذى يمينًا على اليسار حين يصغر ليسع.
+  const rtl = (el.dir ?? 'rtl') === 'rtl';
+  const justify =
+    el.align === 'center' ? 'center' : el.align === 'justify' ? 'stretch' : (el.align === 'right') === rtl ? 'flex-start' : 'flex-end';
   const style = [
     boxStyle(el, canvas, opts.dpi),
     'display:flex',
     `align-items:${V_ALIGN[el.vAlign]}`,
-    `justify-content:${H_ALIGN[el.align] ?? 'center'}`,
+    `justify-content:${justify}`,
     `text-align:${el.align}`,
     `font-size:${size.toFixed(2)}px`,
     `line-height:${el.lineHeight ?? 1.4}`,
@@ -161,6 +164,7 @@ function textHtml(
     el.bold ? 'font-weight:700' : '',
     el.italic ? 'font-style:italic' : '',
     el.wordSpacing ? `word-spacing:${el.wordSpacing}em` : '',
+    el.letterSpacing ? `letter-spacing:${el.letterSpacing}em` : '',
     'overflow:hidden'
   ]
     .filter(Boolean)
@@ -200,7 +204,9 @@ export function renderCanvasHtml(
       ? `<img alt="" src="${escapeHtml(url(canvas.background.src))}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0"/>`
       : canvas.background.kind === 'color'
         ? `<div style="position:absolute;inset:0;background:${canvas.background.color};z-index:0"></div>`
-        : '';
+        : canvas.background.kind === 'css'
+          ? `<div style="position:absolute;inset:0;background:${canvas.background.style};z-index:0"></div>`
+          : '';
 
   const body = byLayer(canvas.elements)
     .map((el) => {
@@ -214,7 +220,13 @@ export function renderCanvasHtml(
           return `<img alt="" src="${escapeHtml(url(src))}" style="${boxStyle(el, canvas, opts.dpi)};object-fit:${el.fit}${radius}"/>`;
         }
         case 'barcode': {
-          const value = (el.ref && values[el.ref]) || el.value;
+          // النقش بذرتُه قيمُ صاحبه: وسومُ `value` تُملأ، فلكلّ بطاقةٍ نقشها.
+          const value =
+            el.symbology === 'seal'
+              ? [el.ref ? values[el.ref] ?? '' : '', el.value.replace(/\{([^{}]+)\}/g, (_m, k: string) => values[k.trim()] ?? '')]
+                  .join(' ')
+                  .trim()
+              : (el.ref && values[el.ref]) || el.value;
           // الرسم الفعلي يُحقن عند العرض؛ وهنا موضعه وقيمته فلا يُنسى مكانه.
           return `<div data-barcode="${escapeHtml(el.symbology)}" data-value="${escapeHtml(value)}" style="${boxStyle(el, canvas, opts.dpi)}"></div>`;
         }
@@ -229,6 +241,23 @@ export function renderCanvasHtml(
             ? `;border:${(el.strokeWidth ?? 1) * (opts.dpi / 96)}px solid ${el.stroke}`
             : '';
           return `<div style="${boxStyle(el, canvas, opts.dpi)};background:${el.fill ?? 'transparent'}${border}${radius}"></div>`;
+        }
+        case 'svg': {
+          // رسمة فيكتور SVG نقية بدقة طباعية فائقة
+          const rawSvg = el.svg.trim();
+          const svgContent = rawSvg.includes('<svg')
+            ? rawSvg.replace(/<svg\b([^>]*)>/i, '<svg$1 style="width:100%;height:100%;display:block">')
+            : `<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block">${rawSvg}</svg>`;
+          return `<div style="${boxStyle(el, canvas, opts.dpi)};display:flex;align-items:center;justify-content:center;overflow:hidden">${svgContent}</div>`;
+        }
+        case 'html': {
+          let renderedHtml = el.html;
+          for (const [key, val] of Object.entries(values)) {
+            if (val !== undefined && val !== null) {
+              renderedHtml = renderedHtml.replaceAll(`{${key}}`, escapeHtml(val));
+            }
+          }
+          return `<div style="${boxStyle(el, canvas, opts.dpi)};overflow:hidden">${renderedHtml}</div>`;
         }
       }
     })

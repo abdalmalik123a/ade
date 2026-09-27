@@ -1,13 +1,21 @@
 import { join } from 'node:path';
 import { writeFile, readFile, unlink, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
+import { printJournal, runJob, type PrintJob } from '../services/printJobs';
 import { zip } from 'fflate';
 import { getDb, dataDir, storeDir } from '../db';
 import * as svc from '../services/documents';
 import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
 import { reportToExcel, sheetToDocx } from '../services/export';
 import { pickSavePath } from './files';
+import { valuesOnlySheet } from '@shared/docHtml';
+
+/** `full` الورقة كما رُئيت، و`values` القيم وحدها على استمارةٍ مطبوعةٍ مسبقًا. */
+type PrintMode = 'full' | 'values';
+
+/** والأرشيف يقيّد الورقة كاملةً أبدًا — «القيم وحدها» طريقةُ طباعةٍ لا صورةُ الكتاب. */
+const forPrint = (sheetHtml: string, mode: PrintMode) => (mode === 'values' ? valuesOnlySheet(sheetHtml) : sheetHtml);
 import type {
   IssueInput,
   IssueOutcome,
@@ -203,14 +211,14 @@ export function registerDocumentIpc(): void {
    */
   ipcMain.handle(
     'documents:issueTransaction',
-    async (e, input: TransactionInput, print: boolean): Promise<TransactionResult> => {
+    async (e, input: TransactionInput, print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult> => {
       const out = svc.issueTransaction(getDb(), input);
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const doc of out.documents) {
           try {
             await printSheet({
-              sheetHtml: doc.sheetHtml,
+              sheetHtml: forPrint(doc.sheetHtml, mode),
               deviceName: input.printer ?? undefined,
               parent: win ?? null
             });
@@ -231,7 +239,7 @@ export function registerDocumentIpc(): void {
    */
   ipcMain.handle(
     'documents:issueBatch',
-    async (e, inputs: TransactionInput[], print: boolean): Promise<TransactionResult[]> => {
+    async (e, inputs: TransactionInput[], print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult[]> => {
       const all = svc.issueBatch(getDb(), inputs);
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
@@ -239,7 +247,7 @@ export function registerDocumentIpc(): void {
           for (const doc of out.documents) {
             try {
               await printSheet({
-                sheetHtml: doc.sheetHtml,
+                sheetHtml: forPrint(doc.sheetHtml, mode),
                 deviceName: inputs[0]?.printer ?? undefined,
                 parent: win ?? null
               });
@@ -321,6 +329,47 @@ export function registerDocumentIpc(): void {
         duplex: payload.duplex
       })
   );
+
+  // ── الطباعة الكبيرة بسجلٍّ يُستأنف بعد انقطاع الكهرباء ─────────────
+  const journal = () => printJournal(join(app.getPath('userData'), 'print-jobs'));
+  const sendSheet = (e: Electron.IpcMainInvokeEvent) => (pages: string[], job: PrintJob) =>
+    printSheet({
+      sheetHtml: pages.join(''),
+      deviceName: job.printer,
+      silent: true,
+      parent: win(e),
+      page: job.page,
+      duplex: job.duplex
+    });
+  const progress = (e: Electron.IpcMainInvokeEvent, id: string) => (sent: number, total: number) => {
+    if (!e.sender.isDestroyed()) e.sender.send('print:progress', { id, sent, total });
+  };
+
+  /**
+   * دفعةٌ كبيرة إلى طابعةٍ معروفة: ورقةً ورقة، وسجلٌّ على القرص بعد كلٍّ منها.
+   * وبلا طابعةٍ مختارة لا سجلّ: حوارُ النظام يختار الطابعة، والدفعة مهمّةٌ واحدة.
+   */
+  ipcMain.handle(
+    'output:printJob',
+    async (
+      e,
+      payload: { label: string; pages: string[]; printer: string | null; page: { w: number; h: number }; duplex: boolean }
+    ) => {
+      if (!payload.printer) {
+        const out = await printSheet({ sheetHtml: payload.pages.join(''), silent: false, parent: win(e), page: payload.page, duplex: payload.duplex });
+        return { ...out, journaled: false, sent: out.ok ? payload.pages.length : 0, total: payload.pages.length };
+      }
+      const job = journal().create({ label: payload.label, printer: payload.printer, page: payload.page, duplex: payload.duplex, pages: payload.pages });
+      return { ...(await runJob(journal(), job.id, 0, sendSheet(e), progress(e, job.id))), journaled: true, id: job.id };
+    }
+  );
+  ipcMain.handle('output:pendingJobs', () => journal().pending());
+  ipcMain.handle('output:resumeJob', async (e, id: string, from: number) => ({
+    ...(await runJob(journal(), id, Math.max(0, from), sendSheet(e), progress(e, id))),
+    journaled: true,
+    id
+  }));
+  ipcMain.handle('output:discardJob', (_e, id: string) => journal().finish(id));
 
   // ورقة المعايرة بلا إزاحة — فهي ما تُقاس به الإزاحة.
   ipcMain.handle('output:printCalibration', async (e, printer: string | null) =>

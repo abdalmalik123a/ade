@@ -20,6 +20,7 @@ import { basename, extname } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import {
   BLEED_MM,
+  barcodeElement,
   clampBox,
   emptyCanvas,
   imageElement,
@@ -29,9 +30,12 @@ import {
   type CanvasElement,
   type CanvasSize
 } from '@shared/canvas';
-import { tokenInlines, type Inline } from '@shared/doc';
+import { tokenInlines, type Align, type Inline } from '@shared/doc';
+import { FONT } from '@shared/designKit/styles';
 import { imageMeta } from './imageSize';
-import { psdMeta } from './psd';
+import { writePng } from './png';
+import { readPsd } from './psd';
+import { eraseLayers, parsePsdLayers, psdItems, type PsdItem, type Rect } from './psdLayers';
 
 /** الوحدات إلى الملّم — وكلٌّ منها من معيار صاحبه. */
 export const TWIP_MM = 25.4 / 1440;
@@ -50,7 +54,29 @@ export type DesignImport = {
   /** صورٌ تُحفظ في المخزن: الخلفية أولها إن وُجدت. */
   images: { name: string; bytes: Uint8Array }[];
   /** ما استُخرج من عناصر بمواضعها — نِسَبًا من المقاس. */
-  elements: { box: Box; inlines?: Inline[]; imageIndex?: number; size?: number }[];
+  elements: {
+    box: Box;
+    inlines?: Inline[];
+    imageIndex?: number;
+    /** حجم الخطّ بالنقاط — أو `sizeFrac`: نسبةً من ارتفاع التصميم حين لا تُعرف دقّته. */
+    size?: number;
+    sizeFrac?: number;
+    ref?: string;
+    kind?: 'text' | 'image' | 'barcode';
+    symbology?: 'qr' | 'code128';
+    // شكلُ النصّ كما في ملفه (Photoshop).
+    color?: string;
+    align?: Align;
+    bold?: boolean;
+    italic?: boolean;
+    dir?: 'rtl' | 'ltr';
+    font?: string;
+    letterSpacing?: number;
+    lineHeight?: number;
+    vAlign?: 'top' | 'middle' | 'bottom';
+    fit?: 'shrink' | 'cover' | 'contain';
+    radius?: number;
+  }[];
   warnings: string[];
 };
 
@@ -199,26 +225,124 @@ export function wordDesign(bytes: Uint8Array, name: string): DesignImport {
 
 // ── Photoshop ────────────────────────────────────────────────────────
 
+/**
+ * خطّ النصّ من اسم خطّه في Photoshop — إلى أقرب ما عندنا محزومًا.
+ *
+ * فخطوط القوالب (Poppins، Montserrat…) ليست عندنا ولا تُحزم بلا ترخيصها؛
+ * والعائلة أهمّ من الاسم: نسخٌ لما كان نسخًا، وكوفيٌّ لما كان كوفيًّا، والباقي
+ * القاهرة — وحروفها اللاتينية هندسيّةٌ كخطوط هذه القوالب.
+ */
+function fontFor(name: string | null): string {
+  const n = (name ?? '').toLowerCase();
+  if (/ruq|رقعة/.test(n)) return FONT.ruqaa;
+  if (/kufi|كوفي/.test(n)) return FONT.kufiText;
+  if (/naskh|amiri|lotus|traditional|badr|mudir|times|georgia|garamond|serif(?!.*sans)|playfair|merriweather|نسخ/.test(n)) {
+    return FONT.naskh;
+  }
+  return FONT.cairo;
+}
+
+const ARABIC = /[؀-ۿ]/;
+
+/**
+ * صندوق النصّ من موضع حبره: الارتفاع سطرٌ كامل حول وسط الحبر، والعرض يزيد
+ * قليلًا من جهة المحاذاة — فخطّنا ليس خطّ التصميم، والاسم الأطول يصغر ولا يُقصّ.
+ */
+function textBox(item: Extract<PsdItem, { kind: 'text' }>, W: number, H: number): Box {
+  const s = item.style.sizePx;
+  const { top, bottom, left, right } = item.rect;
+  const toBox = (x0: number, y0: number, x1: number, y1: number) =>
+    // المواضع نِسَبٌ من اليمين: اللوحة عربية.
+    clampBox({ x: (W - Math.min(W, x1)) / W, y: y0 / H, w: (Math.min(W, x1) - Math.max(0, x0)) / W, h: (y1 - y0) / H });
+  // الصندوق الملتفّ كما رسمه المصمّم، والنصّ يلتفّ فيه بخطّنا.
+  if (!item.single) return toBox(left, top, right, bottom + s * 0.3);
+  const h = Math.max(bottom - top, s * 1.3);
+  const cy = (top + bottom) / 2;
+  const w = (right - left) * 1.12 + s * 0.4;
+  let x0 =
+    item.style.align === 'left'
+      ? left - s * 0.05
+      : item.style.align === 'right'
+        ? right + s * 0.05 - w
+        : (left + right) / 2 - w / 2;
+  x0 = Math.max(0, Math.min(W - Math.min(w, W), x0));
+  return toBox(x0, cy - h / 2, x0 + w, cy + h / 2);
+}
+
+/**
+ * Photoshop: الخلفيةُ صورتُه المسطَّحة، والنصوصُ والصورةُ والرمز عناصرُ فوقها.
+ *
+ * وكلُّ ما صار عنصرًا يُمحى من الخلفية (`psdLayers.eraseLayers`) — وإلا ظهر
+ * الاسم مرّتين: المطبوعُ في الصورة، والمحرَّرُ فوقه بخطٍّ آخر.
+ */
 export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
-  const meta = psdMeta(bytes);
-  const warnings: string[] = [];
-  if (!meta) {
+  const read = readPsd(bytes);
+  if (!read) {
     return { source: 'psd', name, size: null, dpi: null, images: [], elements: [], warnings: ['ليس ملف Photoshop'] };
   }
-  if (!meta.dpi) warnings.push('الملف لا يذكر دقّته — اختر المقاس');
+  const warnings = [...read.warnings];
+  if (!read.dpi) warnings.push('الملف لا يذكر دقّته — اختر المقاس');
+  const W = read.width;
+  const H = read.height;
+
+  const doc = parsePsdLayers(bytes);
+  const items = doc ? psdItems(bytes, doc) : [];
+  const background = doc ? eraseLayers(bytes, doc, read.rgba, read.planes ?? null, items.map((i) => i.layer), read.dpi) : null;
+  const rgba = background?.rgba ?? read.rgba;
+  const images = rgba
+    ? [{ name: `${basename(name, extname(name))}.png`, bytes: writePng(rgba, W, H, read.dpi ?? 300) }]
+    : [];
+
+  const elements: DesignImport['elements'] = items.map((item) => {
+    const box = (r: Rect) =>
+      clampBox({ x: (W - r.right) / W, y: r.top / H, w: (r.right - r.left) / W, h: (r.bottom - r.top) / H });
+    if (item.kind === 'photo') {
+      return { kind: 'image', box: box(item.rect), ref: 'صورة الموظف', fit: 'cover', radius: item.round ? 50 : undefined };
+    }
+    if (item.kind === 'barcode') {
+      return { kind: 'barcode', box: box(item.rect), symbology: 'qr', ref: 'الرقم' };
+    }
+    const arabic = ARABIC.test(item.text);
+    return {
+      kind: 'text',
+      box: textBox(item, W, H),
+      // أسطر الصندوق فواصلُ في النصّ نفسه، والحقول `{…}` عُقدٌ في كلّ سطر.
+      inlines: item.text
+        .split('\n')
+        .flatMap((line, i): Inline[] => [...(i ? [{ kind: 'break' as const }] : []), ...tokenInlines(line)]),
+      sizeFrac: item.style.sizePx / H,
+      color: item.style.color,
+      align: item.style.align,
+      bold: item.style.bold,
+      italic: item.style.italic || undefined,
+      dir: arabic ? 'rtl' : 'ltr',
+      font: fontFor(item.style.font),
+      letterSpacing: item.style.tracking || undefined,
+      fit: item.single ? 'shrink' : undefined,
+      vAlign: item.single ? undefined : 'top',
+      lineHeight: item.single ? 1.2 : item.style.lineHeight
+    };
+  });
+
+  if (items.length) {
+    const texts = items.filter((i) => i.kind === 'text').length;
+    warnings.push(`صار ${texts} نصًّا${items.length > texts ? ' والصورة والرمز' : ''} عناصرَ تُحرَّر، ومُحيت من الخلفية`);
+  }
+  if (background?.filledAreas) {
+    warnings.push(`${background.filledAreas} موضعًا تحته مؤثّرٌ لا يُرسم فمُلئ ممّا حوله — راجعه في المعاينة`);
+  }
+  if (background?.recomposed) {
+    warnings.push('الصورة المسطَّحة في الملف فارغة (حُفظ بلا «توافقٍ أقصى») — رُكّبت الخلفية من طبقاته بلا مؤثّراتها');
+  }
 
   return {
     source: 'psd',
     name,
-    size: meta.dpi ? { w: (meta.w / meta.dpi) * 25.4, h: (meta.h / meta.dpi) * 25.4 } : null,
-    dpi: meta.dpi,
-    images: [],
-    elements: [],
-    warnings: [
-      ...warnings,
-        // والصورة المسطَّحة تُقرأ في العملية الرئيسية — وهذا المقاس وحده.
-      'طبقات Photoshop تُسطَّح خلفيةً واحدة'
-    ]
+    size: read.dpi ? { w: (W / read.dpi) * 25.4, h: (H / read.dpi) * 25.4 } : null,
+    dpi: read.dpi,
+    images,
+    elements,
+    warnings
   };
 }
 
@@ -316,11 +440,49 @@ export function canvasFromImport(
   }
 
   canvas.elements = imported.elements.flatMap<CanvasElement>((el, i) => {
-    if (el.imageIndex !== undefined) {
-      const src = stored[el.imageIndex];
-      return src ? [imageElement({ box: el.box, src, fit: 'contain', z: i + 1 })] : [];
+    if (el.kind === 'barcode' || el.symbology) {
+      return [
+        barcodeElement({
+          box: el.box,
+          symbology: el.symbology ?? 'qr',
+          ref: el.ref ?? 'الرقم',
+          z: i + 1
+        })
+      ];
     }
-    return [textElement({ box: el.box, inlines: el.inlines ?? [], size: el.size ?? 14, z: i + 1 })];
+    if (el.kind === 'image' || el.imageIndex !== undefined || el.ref?.includes('صورة')) {
+      const src = el.imageIndex !== undefined ? stored[el.imageIndex] : '';
+      return [
+        imageElement({
+          box: el.box,
+          src: src ?? '',
+          ref: el.ref,
+          fit: el.fit === 'cover' ? 'cover' : 'contain',
+          radius: el.radius,
+          z: i + 1
+        })
+      ];
+    }
+    // النسبة تصير نقاطًا بمقاس الورقة الذي عُرف — من الملف أو من اختيار المكتب.
+    const size = el.sizeFrac ? Math.round(((el.sizeFrac * canvas.size.h) / POINT_MM) * 100) / 100 : (el.size ?? 14);
+    return [
+      textElement({
+        box: el.box,
+        inlines: el.inlines ?? [],
+        size,
+        ...(el.color && { color: el.color }),
+        ...(el.align && { align: el.align }),
+        ...(el.dir && { dir: el.dir }),
+        ...(el.font && { font: el.font }),
+        ...(el.bold && { bold: true }),
+        ...(el.italic && { italic: true }),
+        ...(el.letterSpacing && { letterSpacing: el.letterSpacing }),
+        ...(el.lineHeight && { lineHeight: el.lineHeight }),
+        ...(el.vAlign && { vAlign: el.vAlign }),
+        ...(el.fit === 'shrink' && { fit: 'shrink' as const }),
+        z: i + 1
+      })
+    ];
   });
 
   return canvas;

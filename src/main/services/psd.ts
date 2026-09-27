@@ -2,8 +2,8 @@
  * قراءة Photoshop — الترويسة والدقّة والصورة المسطَّحة.
  *
  * وملفُّ PSD يحمل **صورةً مسطَّحة جاهزة** في آخره (يكتبها Photoshop لتوافُق
- * البرامج الأخرى)، وهي بالضبط ما نريد: خلفيةٌ واحدة تُرسم تحت الحقول. فلا حاجة
- * إلى إعادة تركيب الطبقات.
+ * البرامج الأخرى)، وهي الخلفية: بمؤثّراتها وظلالها التي لا نرسمها. وما صار
+ * منها عنصرًا يُحرَّر يُمحى من مواضعه في `psdLayers.ts`.
  *
  * وجُرِّبت `@webtoon/psd` فأعادت صورةً رماديةً من ملفٍ بلا طبقات: كرّرت القناة
  * الأولى في الثلاث. فأُسقطت، وقُرئت الصورة المسطَّحة هنا — ستّون سطرًا، وبلا
@@ -21,6 +21,8 @@ export type PsdImage = {
   dpi: number | null;
   /** RGBA — أو `null` إن لم تُقرأ الصورة المسطَّحة. */
   rgba: Uint8Array | null;
+  /** قنوات اللون بصيغة الملف (CMYK مقلوبًا كما خُزّن) — لمن يمزج بها. */
+  planes?: Uint8Array[];
   warnings: string[];
 };
 
@@ -34,7 +36,7 @@ const RLE = 1;
  * بايتُ العدّاد: ٠..١٢٧ يعني «انسخ ما بعده حرفيًّا ن+١»، و١٢٩..٢٥٥ يعني «كرّر
  * التالي ٢٥٧−ن»، و١٢٨ لا شيء.
  */
-function unpackBits(src: Buffer, at: number, length: number, out: Uint8Array, to: number): number {
+export function unpackBits(src: Buffer, at: number, length: number, out: Uint8Array, to: number): number {
   const end = at + length;
   let write = to;
   while (at < end && write < out.length) {
@@ -92,26 +94,28 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
   if (at + 4 > buf.length) return { width, height, dpi, rgba: null, warnings: ['الملف مبتور'] };
   at += 4 + buf.readUInt32BE(at);
 
+  const supportedModes = [1, 3, 4]; // Grayscale, RGB, CMYK
   if (depth !== 8) warnings.push(`عمقُ الملف ${depth} بتًّا — تُقرأ ثمانيةٌ وحدها`);
-  if (colorMode !== 3) warnings.push('الملف ليس RGB — قد تختلف ألوانه');
-  if (at + 2 > buf.length || depth !== 8 || colorMode !== 3) {
+  if (!supportedModes.includes(colorMode)) {
+    warnings.push(`نمط ألوان الملف (${colorMode}) غير مدعوم — يُدعم RGB و CMYK و Grayscale`);
+  }
+  if (at + 2 > buf.length || depth !== 8 || !supportedModes.includes(colorMode)) {
     return { width, height, dpi, rgba: null, warnings: [...warnings, 'تعذّرت قراءة الصورة المسطَّحة'] };
   }
 
   const compression = buf.readUInt16BE(at);
   at += 2;
   const pixels = width * height;
-  const planes = Math.min(channels, 4);
-  const plane = new Uint8Array(pixels);
-  const rgba = new Uint8Array(pixels * 4);
-  rgba.fill(255);
+  const channelPlanes: Uint8Array[] = [];
 
   if (compression === RAW) {
-    for (let c = 0; c < planes; c++) {
+    for (let c = 0; c < channels; c++) {
+      const plane = new Uint8Array(pixels);
       const from = at + c * pixels;
-      if (from + pixels > buf.length) break;
-      plane.set(buf.subarray(from, from + pixels));
-      for (let i = 0; i < pixels; i++) rgba[i * 4 + c] = plane[i]!;
+      if (from + pixels <= buf.length) {
+        plane.set(buf.subarray(from, from + pixels));
+      }
+      channelPlanes.push(plane);
     }
   } else if (compression === RLE) {
     // جدولُ أطوال الصفوف أولًا: لكل قناةٍ صفوفُها، طولُ كلٍّ منها u16.
@@ -122,6 +126,7 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
       at += 2;
     }
     for (let c = 0; c < channels; c++) {
+      const plane = new Uint8Array(pixels);
       let write = 0;
       for (let y = 0; y < height; y++) {
         const length = lengths[c * height + y] ?? 0;
@@ -129,7 +134,7 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
         write = unpackBits(buf, at, length, plane, write);
         at += length;
       }
-      if (c < planes) for (let i = 0; i < pixels; i++) rgba[i * 4 + c] = plane[i]!;
+      channelPlanes.push(plane);
     }
   } else {
     return {
@@ -141,7 +146,55 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
     };
   }
 
-  return { width, height, dpi, rgba, warnings };
+  const rgba = new Uint8Array(pixels * 4);
+  rgba.fill(255);
+
+  if (colorMode === 3) {
+    // RGB
+    const rPlane = channelPlanes[0];
+    const gPlane = channelPlanes[1];
+    const bPlane = channelPlanes[2];
+    const aPlane = channelPlanes[3];
+    for (let i = 0; i < pixels; i++) {
+      if (rPlane) rgba[i * 4 + 0] = rPlane[i]!;
+      if (gPlane) rgba[i * 4 + 1] = gPlane[i]!;
+      if (bPlane) rgba[i * 4 + 2] = bPlane[i]!;
+      if (aPlane) rgba[i * 4 + 3] = aPlane[i]!;
+    }
+  } else if (colorMode === 4) {
+    // CMYK: أربع قنوات وقناةٌ شفافة محتملة. وPhotoshop يخزّن الحبر **مقلوبًا**:
+    // ٢٥٥ ورقٌ بلا حبر و٠ حبرٌ كامل — فمن قرأها حبرًا أخرج الصورة سالبةً.
+    // فالمخزَّن هو «ما يبقى من الضوء» نفسه: R = C × K / ٢٥٥.
+    const cPlane = channelPlanes[0];
+    const mPlane = channelPlanes[1];
+    const yPlane = channelPlanes[2];
+    const kPlane = channelPlanes[3];
+    const aPlane = channelPlanes[4];
+    for (let i = 0; i < pixels; i++) {
+      const c = cPlane ? cPlane[i]! : 255;
+      const m = mPlane ? mPlane[i]! : 255;
+      const y = yPlane ? yPlane[i]! : 255;
+      const k = kPlane ? kPlane[i]! : 255;
+      rgba[i * 4 + 0] = Math.round((c * k) / 255);
+      rgba[i * 4 + 1] = Math.round((m * k) / 255);
+      rgba[i * 4 + 2] = Math.round((y * k) / 255);
+      if (aPlane) rgba[i * 4 + 3] = aPlane[i]!;
+    }
+  } else if (colorMode === 1) {
+    // Grayscale
+    const gPlane = channelPlanes[0];
+    const aPlane = channelPlanes[1];
+    for (let i = 0; i < pixels; i++) {
+      const g = gPlane ? gPlane[i]! : 0;
+      rgba[i * 4 + 0] = g;
+      rgba[i * 4 + 1] = g;
+      rgba[i * 4 + 2] = g;
+      if (aPlane) rgba[i * 4 + 3] = aPlane[i]!;
+    }
+  }
+
+  const colors = colorMode === 4 ? 4 : colorMode === 1 ? 1 : 3;
+  return { width, height, dpi, rgba, planes: channelPlanes.slice(0, colors), warnings };
 }
 
 /** المقاس والدقّة وحدهما — بلا فكّ الصورة. */

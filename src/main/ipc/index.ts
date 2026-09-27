@@ -7,6 +7,8 @@ import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
 import { registerOrderIpc } from './orders';
+import { registerCameraIpc } from './camera';
+import { registerQuestionIpc } from './questions';
 import { orderCounts } from '../services/orders';
 import { archiveStats, listDocuments } from '../services/documents';
 import type {
@@ -92,6 +94,8 @@ export function registerIpc(): void {
   registerCitizenIpc();
   registerDocumentIpc();
   registerOrderIpc();
+  registerCameraIpc();
+  registerQuestionIpc();
 
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 

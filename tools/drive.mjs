@@ -225,5 +225,6 @@ if (process.argv[2]) {
     keepOnboarding: mod.keepOnboarding === true
   });
   if (out !== undefined) console.log(out);
-  process.exit(0);
+  // فحصٌ واحدٌ فاشل يُفشل السيناريو كلّه — وإلا مرّ ✗ في سجلٍّ لا يقرؤه أحد.
+  process.exit(typeof out === 'string' && out.includes('✗') ? 1 : 0);
 }

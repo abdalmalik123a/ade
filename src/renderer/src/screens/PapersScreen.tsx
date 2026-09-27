@@ -24,6 +24,7 @@ import type { PrinterInfo, TemplateSummary } from '@shared/api';
 import {
   itemScore,
   listScore,
+  newUuid,
   run,
   type Dir,
   type Inline,
@@ -33,6 +34,7 @@ import {
 import { marker, renderDocHtml } from '@shared/docHtml';
 import {
   EXAM_CATEGORY,
+  EXAM_PRESETS,
   EXAM_STYLES,
   HEAD_INPUTS,
   MAX_DEPTH,
@@ -47,6 +49,11 @@ import {
   versionItems
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
+import QuestionBankPanel from '../components/QuestionBankPanel';
+import OmrPanel from '../components/OmrPanel';
+import type { OmrSpec } from '@shared/omr';
+
+const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
 
 /** رموزُ المواد: رياضياتٌ وفيزياءُ وكيمياء — تُدرج عند المؤشّر. */
 const SYMBOLS = [
@@ -138,6 +145,8 @@ type NodeProps = {
   onBranch: (id: string) => void;
   onRemove: (id: string) => void;
   onMove: (id: string, step: -1 | 1) => void;
+  /** يحفظ السؤال (بفروعه) في بنك الأسئلة — للأسئلة الأمّ وحدها. */
+  onBank?: (item: ListItem) => void;
   onFocusInput: (el: HTMLTextAreaElement | HTMLInputElement) => void;
 };
 
@@ -206,6 +215,17 @@ function QuestionNode(props: NodeProps) {
 
         <div className="flex-1" />
 
+        {depth === 0 && props.onBank && (
+          <button
+            className={ICON_BTN}
+            data-act="bank-save"
+            title="احفظه في بنك الأسئلة — بفروعه ودرجته"
+            type="button"
+            onClick={() => props.onBank!(item)}
+          >
+            <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
+          </button>
+        )}
         <button
           className={ICON_BTN}
           title="ارفع"
@@ -281,6 +301,16 @@ function QuestionNode(props: NodeProps) {
   );
 }
 
+/** نسخةٌ من سؤال البنك بمعرّفاتٍ جديدة — فلا تشترك ورقتان في عقدةٍ واحدة. */
+function freshCopy(item: ListItem): ListItem {
+  return {
+    ...item,
+    id: newUuid(),
+    inlines: item.inlines.map((n) => (n.kind === 'field' ? { ...n, id: newUuid() } : n)),
+    items: item.items?.map(freshCopy)
+  };
+}
+
 // ── الشاشة ───────────────────────────────────────────────────────────
 
 export type PapersScreenProps = {
@@ -315,6 +345,10 @@ function PapersScreenInner(
   const [versions, setVersions] = useState(false);
   const [showB, setShowB] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
+  const [omr, setOmr] = useState<OmrSpec>(newOmr);
+  const [omrOpen, setOmrOpen] = useState(false);
+  /** يزيد مع كل ورقةٍ تُفتح أو تُبدأ — فتُبنى لوحة الدوائر من مفتاح الورقة الجديدة. */
+  const [omrEpoch, setOmrEpoch] = useState(0);
   const [papers, setPapers] = useState<TemplateSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
@@ -447,6 +481,22 @@ function PapersScreenInner(
     setItems((prev) => moveIn(prev, id, step));
   }, []);
 
+  /** بنك الأسئلة: يُحفظ السؤال بمادة الورقة وصفّها، ويُدرج منه بنسخةٍ جديدة. */
+  const [bankOpen, setBankOpen] = useState(false);
+  const [bankTick, setBankTick] = useState(0);
+  const saveToBank = useCallback(
+    (item: ListItem) => {
+      void window.diwan.bank
+        .save({ item, subject: head['المادة'] || null, grade: head['الصف'] || null })
+        .then(() => {
+          setBankTick((t) => t + 1);
+          say(`حُفظ في بنك الأسئلة${head['المادة'] ? ` — ${head['المادة']}` : ''}`);
+        })
+        .catch((e: unknown) => say(e instanceof Error ? e.message : 'تعذّر الحفظ في البنك', 'warn'));
+    },
+    [head, say]
+  );
+
   const addQuestion = useCallback(() => {
     const fresh = newQuestion();
     setItems((prev) => [...prev, fresh]);
@@ -497,7 +547,8 @@ function PapersScreenInner(
         bodyHtml: written.map((it) => textOf(it.inlines)).join('\n'),
         letterheadId: null,
         variables: [],
-        doc
+        // مفتاح الدوائر يُحفظ مع الورقة ولا يغيّر صورتها.
+        doc: omr.key.length ? { ...doc, meta: { ...doc.meta, omr } } : doc
       });
       setPaperId(saved.id);
       await loadPapers();
@@ -508,7 +559,7 @@ function PapersScreenInner(
     } finally {
       setBusy(false);
     }
-  }, [written, paperId, title, head, doc, loadPapers, onChanged, say]);
+  }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say]);
 
   const print = useCallback(async () => {
     const sheets = sheetsFor();
@@ -564,6 +615,8 @@ function PapersScreenInner(
         setPick(list?.pick);
         setDir(list?.dir === 'ltr' ? 'ltr' : 'rtl');
         setNumerals(loaded.pageSetup.numerals);
+        setOmr(loaded.meta.omr ?? newOmr());
+        setOmrEpoch((n) => n + 1);
         setPaperId(id);
         say('فُتحت الورقة');
       } catch (e) {
@@ -577,6 +630,8 @@ function PapersScreenInner(
     setHead(emptyHead());
     setItems([newQuestion()]);
     setPick(undefined);
+    setOmr(newOmr());
+    setOmrEpoch((n) => n + 1);
     setPaperId(null);
     say('ورقة جديدة');
   }, [say]);
@@ -627,29 +682,25 @@ function PapersScreenInner(
                 </h2>
               </div>
             </div>
-            {/* نماذج سريعة لتعبئة ترويسة الامتحان */}
+            {/* نماذج وزارية سريعة لتعبئة ترويسة الامتحان */}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {[
-                {
-                  label: 'نصف السنة',
-                  data: { 'نوع الامتحان': 'نصف السنة', 'الدور': '', 'الملاحظة': 'أجب عن 5 أسئلة فقط (لكل سؤال 20 درجة)' }
-                },
-                {
-                  label: 'نهائي — الدور الأول',
-                  data: { 'نوع الامتحان': 'النهائي (الدور الأول)', 'الدور': 'الأول', 'الملاحظة': 'أجب عن جميع الأسئلة' }
-                },
-                {
-                  label: 'امتحان شهري',
-                  data: { 'نوع الامتحان': 'الشهر الأول', 'الدور': '', 'الملاحظة': 'الزمن ساعة واحدة' }
-                }
-              ].map((preset) => (
+              {EXAM_PRESETS.map((preset) => (
                 <button
-                  key={preset.label}
-                  className="h-7 px-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors"
+                  key={preset.id}
+                  className="h-7 px-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors flex items-center gap-1 shadow-sm"
                   type="button"
-                  onClick={() => setHead((h) => ({ ...h, ...preset.data }))}
+                  title={preset.description}
+                  onClick={() => {
+                    setHead((h) => {
+                      const next = { ...h };
+                      for (const [k, v] of Object.entries(preset.head)) {
+                        if (v !== undefined) next[k] = v;
+                      }
+                      return next;
+                    });
+                  }}
                 >
-                  ⚡ {preset.label}
+                  <span className="text-secondary font-bold">⚡ {preset.name}</span>
                 </button>
               ))}
             </div>
@@ -657,7 +708,9 @@ function PapersScreenInner(
               {HEAD_INPUTS.map((input) => (
                 <label
                   key={input.key}
-                  className={`flex flex-col gap-1 ${input.key === 'الملاحظة' ? 'col-span-2' : ''}`}
+                  className={`flex flex-col gap-1 ${
+                    input.key === 'الملاحظة' || input.key === 'التمنيات' ? 'col-span-2' : ''
+                  }`}
                 >
                   <span className="font-label-sm text-label-sm text-on-surface-variant">
                     {input.label}
@@ -730,6 +783,7 @@ function PapersScreenInner(
                   onBranch={branch}
                   onRemove={remove}
                   onMove={move}
+                  onBank={saveToBank}
                   onFocusInput={(el) => (focused.current = el)}
                 />
               ))}
@@ -743,6 +797,50 @@ function PapersScreenInner(
               <span className="material-symbols-outlined text-[20px]">add</span>
               أضف سؤالًا
             </button>
+            <button
+              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+              data-act="bank-open"
+              type="button"
+              onClick={() => setBankOpen((o) => !o)}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">inventory_2</span>
+              {bankOpen ? 'أخفِ بنك الأسئلة' : 'أدرج من بنك الأسئلة'}
+            </button>
+            {bankOpen && (
+              <QuestionBankPanel
+                grade={head['الصف'] ?? ''}
+                refreshKey={bankTick}
+                subject={head['المادة'] ?? ''}
+                onClose={() => setBankOpen(false)}
+                onInsert={(q) => {
+                  const fresh = freshCopy(q.item);
+                  // ورقةٌ فيها سؤالٌ واحد فارغ (البداية): يحلّ المُدرَج محلّه.
+                  setItems((prev) => (prev.length === 1 && !textOf(prev[0]!.inlines).trim() && !prev[0]!.items?.length ? [fresh] : [...prev, fresh]));
+                  void window.diwan.bank.used(q.id);
+                  say('أُدرج السؤال في آخر الورقة');
+                }}
+              />
+            )}
+            <button
+              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+              data-act="omr-open"
+              type="button"
+              onClick={() => setOmrOpen((o) => !o)}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">checklist</span>
+              {omrOpen ? 'أخفِ تصحيح الدوائر' : 'ورقة إجابة بالدوائر وتصحيحها'}
+            </button>
+            {omrOpen && (
+              <OmrPanel
+                key={omrEpoch}
+                lines={[head['المدرسة'], head['الدور']].map((l) => l?.trim() ?? '').filter(Boolean)}
+                printer={printer}
+                spec={omr}
+                title={title}
+                onSay={say}
+                onSpec={setOmr}
+              />
+            )}
           </div>
 
           {/* ── الرموز ────────────────────────────────────────────── */}

@@ -9,9 +9,9 @@
  * خانة المقاس وتقول لماذا.
  */
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
-import { BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, safeStorage, screen } from 'electron';
 import type { Canvas, CanvasSize } from '@shared/canvas';
 import { canvasFromImport, readDesign, type DesignImport } from '../services/designImport';
 import { readPsd } from '../services/psd';
@@ -111,7 +111,79 @@ export type DesignImportResult = {
   stored: string[];
 };
 
+/**
+ * أحدثُ Flash دائمًا — فلا ينكسر التوليد حين يُتقاعد إصدار، كما تقاعد
+ * `gemini-1.5-flash` الذي كُتب هنا أولًا.
+ */
+const GEMINI_MODEL = 'gemini-flash-latest';
+
+/**
+ * مفتاح Gemini في ملفٍ واحد بمجلد التطبيق — مشفَّرًا بتشفير ويندوز للمستخدم.
+ *
+ * وكان في `localStorage` الواجهة، وهو يتبع «أصل» الصفحة: التطبيق المبنيّ يُفتح من
+ * `file://` وخادم التطوير من `localhost:5173` (أو ٥١٧٤ إن انشغل المنفذ) — فلكلّ
+ * طريقة تشغيلٍ مخزنُها، وبدا المفتاح يُمحى بين دخولٍ وآخر. وليس في مجلّد
+ * القاعدة (`data/`) فلا يخرج مع النسخ الاحتياطي إلى جهازٍ آخر.
+ */
+const geminiKeyFile = () => join(app.getPath('userData'), 'gemini.key');
+
+async function readGeminiKey(): Promise<string | null> {
+  try {
+    const bytes = await readFile(geminiKeyFile());
+    // البايت الأول يقول كيف حُفظ: E مشفَّرًا، P نصًّا حين لا يتاح التشفير.
+    const body = bytes.subarray(1);
+    const key = bytes[0] === 0x45 ? safeStorage.decryptString(body) : body.toString('utf8');
+    return key.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveGeminiKey(key: string): Promise<void> {
+  const clean = key.trim();
+  if (!clean) {
+    await rm(geminiKeyFile(), { force: true });
+    return;
+  }
+  const encrypted = safeStorage.isEncryptionAvailable();
+  const body = encrypted ? safeStorage.encryptString(clean) : Buffer.from(clean, 'utf8');
+  await writeFile(geminiKeyFile(), Buffer.concat([Buffer.from(encrypted ? 'E' : 'P'), body]));
+}
+
+/**
+ * نداء Gemini من العملية الرئيسية: الواجهة ممنوعةٌ من الشبكة بسياسة أمانها.
+ * والمفتاح في ترويسة `x-goog-api-key` لا في الرابط — فالرابط يُسجَّل ويُخزَّن.
+ */
+async function askGemini(prompt: string, apiKey: string): Promise<{ text: string | null; error?: string }> {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+      }),
+      signal: AbortSignal.timeout(90_000)
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    if (!res.ok) return { text: null, error: data.error?.message || `خطأ من الخادم (${res.status})` };
+    return { text: data.candidates?.[0]?.content?.parts?.[0]?.text ?? null };
+  } catch (e) {
+    return { text: null, error: `تعذّر الاتصال بـGemini: ${e instanceof Error ? e.message : 'تحقّق من الإنترنت'}` };
+  }
+}
+
 export function registerDesignIpc(): void {
+  ipcMain.handle('designs:gemini', async (_e, prompt: string) => {
+    const key = await readGeminiKey();
+    return key ? askGemini(String(prompt), key) : { text: null, error: 'لا مفتاح Gemini محفوظ — الصقه في خانته' };
+  });
+  ipcMain.handle('designs:hasGeminiKey', async () => Boolean(await readGeminiKey()));
+  ipcMain.handle('designs:setGeminiKey', (_e, key: string) => saveGeminiKey(String(key ?? '')));
+
   ipcMain.handle(
     'designs:import',
     async (e, fallback: CanvasSize | null): Promise<DesignImportResult | null> => {
@@ -130,8 +202,9 @@ export function registerDesignIpc(): void {
       const imported = readDesign(bytes, basename(path));
       const warnings = [...imported.warnings];
 
-      // Photoshop وPDF: لا صورة في المستورَد، فتُسطَّح هنا.
-      if (imported.source === 'psd') {
+      // Photoshop يأتي بخلفيته ممحوّةً منها العناصر؛ وإن تعذّرت سُطّح هنا كما هو.
+      // وPDF لا صورة فيه، فتُرسم صفحته.
+      if (imported.source === 'psd' && !imported.images.length) {
         const flat = flattenPsd(bytes);
         warnings.push(...flat.warnings);
         if (flat.png) imported.images.unshift({ name: `${basename(path, '.psd')}.png`, bytes: flat.png });

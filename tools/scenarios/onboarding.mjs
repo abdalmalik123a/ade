@@ -49,7 +49,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // ── مكتبة النماذج: مدخلٌ واحد لنموذجٍ جديد بطرقه الثلاث ─────────────
   const hub = await page.eval(`return [...document.querySelectorAll('[data-new-template] [data-act]')].map((b) => b.dataset.act).join(',');`);
-  ok('ونموذجٌ جديد بطرقه الثلاث في مكانٍ واحد', hub === 'new-blank,new-word,new-folder');
+  ok('ونموذجٌ جديد بطرقه الثلاث وباب العقود في مكانٍ واحد', hub === 'new-blank,install-contracts,new-word,new-folder');
   ok('بلا زرّ إضافةٍ مكرّر', !(await page.text()).includes('إضافة نموذج'));
 
   // ── الشريط العلوي يتبع الشاشة ──────────────────────────────────────

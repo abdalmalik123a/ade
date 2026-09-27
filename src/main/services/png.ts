@@ -7,7 +7,7 @@
  * **و`pHYs` يُكتب دائمًا**: الصورة التي نولّدها تحمل دقّتها، فلا يُسأل عنها
  * المكتب مرّةً أخرى حين تُفتح — وهي القاعدة نفسها التي نقرأ بها (§`imageSize.ts`).
  */
-import { deflateSync } from 'fflate';
+import { zlibSync } from 'fflate';
 
 const CRC_TABLE = (() => {
   const table = new Int32Array(256);
@@ -72,7 +72,7 @@ export function writePng(
     MAGIC,
     chunk('IHDR', ihdr),
     chunk('pHYs', phys),
-    chunk('IDAT', deflateSync(raw, { level: 6 })),
+    chunk('IDAT', zlibSync(raw, { level: 6 })),
     chunk('IEND', new Uint8Array(0))
   ]);
 }

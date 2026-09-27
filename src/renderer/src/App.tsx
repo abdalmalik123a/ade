@@ -16,6 +16,11 @@ import ClientsScreen from './screens/ClientsScreen';
 import PhotosScreen from './screens/PhotosScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
+import CommandPalette from './components/CommandPalette';
+import IdDuplexDialog from './screens/IdDuplexDialog';
+import ErrorBoundary from './components/ErrorBoundary';
+import LiveDemoRobot from './components/LiveDemoRobot';
+import ResumePrintDialog from './components/ResumePrintDialog';
 
 /** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
 type EditorTarget = {
@@ -47,11 +52,25 @@ export default function App() {
   const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
   /** ما تُفتح به التصاميم من غيرها: تصميم طلبٍ بقائمته، أو المعرض على جهة. */
   const [designRequest, setDesignRequest] = useState<DesignRequest | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [idDuplexOpen, setIdDuplexOpen] = useState(false);
+  const [robotActive, setRobotActive] = useState(false);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
     busy: boolean;
     exporting: boolean;
   }>({ transaction: null, busy: false, exporting: false });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F9') {
+        e.preventDefault();
+        setRobotActive((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   /** أدوات المحرر التي يناديها الشريط العلوي — تُسجَّل ما دام المحرر معروضًا. */
   const editorRef = useRef<EditorHandle | null>(null);
@@ -105,6 +124,10 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
       if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         handlePrint();
@@ -158,6 +181,7 @@ export default function App() {
       case 'citizens':
         return (
           <CitizensScreen
+            printer={selectedPrinter}
             onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
             onChanged={() => void refresh()}
           />
@@ -238,6 +262,7 @@ export default function App() {
             setSearch(value);
             if (value.trim() && route !== 'search') navigate('search');
           }}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           context={
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
             route === 'editor' ? (
@@ -260,8 +285,47 @@ export default function App() {
             ) : undefined
           }
         />
-        {renderScreen()}
+        <ErrorBoundary key={route}>
+          {renderScreen()}
+        </ErrorBoundary>
       </div>
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={(r) => navigate(r)}
+        onOpenCitizen={(cId) => openEditor({ citizenId: cId })}
+        onOpenTemplate={(tId) => openEditor({ templateId: tId })}
+        onOpenIdDuplex={() => setIdDuplexOpen(true)}
+      />
+
+      {idDuplexOpen && (
+        <IdDuplexDialog
+          isOpen={true}
+          onClose={() => setIdDuplexOpen(false)}
+          printer={selectedPrinter}
+        />
+      )}
+
+      {/* زر عائم لتشغيل محاكاة المستخدم الآلية */}
+      <button
+        type="button"
+        className="fixed bottom-5 left-5 z-40 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-primary to-secondary text-on-primary font-bold text-[13px] shadow-[0_4px_20px_rgba(0,0,0,0.25)] flex items-center gap-2.5 border-2 border-white/30 transition-all hover:scale-105 active:scale-95 ring-4 ring-primary/20"
+        onClick={() => setRobotActive(true)}
+        title="اضغط لتشغيل محاكاة حركة ونقرات المستخدم آليًّا أمامك (أو اضغط F9)"
+      >
+        <span className="material-symbols-outlined text-[20px] text-amber-300 animate-spin">smart_toy</span>
+        <span>🤖 بدء العرض الآلي (محاكاة نقرات المستخدم) [F9]</span>
+      </button>
+
+      {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
+      <ResumePrintDialog />
+
+      <LiveDemoRobot
+        isActive={robotActive}
+        onStop={() => setRobotActive(false)}
+        onNavigate={(r) => navigate(r)}
+      />
     </>
   );
 }

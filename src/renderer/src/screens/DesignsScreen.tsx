@@ -55,13 +55,20 @@ import {
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { fitCanvasText } from '@shared/canvasFit';
 import { buildDesign } from '@shared/designKit';
-import { impose, sheetsHtml } from '@shared/imposition';
-import { barcodeSvg } from '@shared/barcode';
-import { qrSvg } from '@shared/qr';
+import { drawCode, impose, parseCardList, planSheets, renderPlan } from '@shared/imposition';
+import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
+import { derivedWords } from '@shared/tafqeet';
+import { nameKeyOf } from '@shared/batch';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
 import { errorText } from '../lib/errors';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
 import SheetsPreview from '../designs/SheetsPreview';
+import PrintOptions from '../designs/PrintOptions';
+import AiRecipeDialog from '../designs/AiRecipeDialog';
+import ClipartModal from '../designs/ClipartModal';
+import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
+import { extractEditableTexts } from '@shared/webDesign';
 
 const DESIGN_CATEGORY = 'تصاميم';
 const NUM =
@@ -81,22 +88,41 @@ type Drag =
   | { kind: 'move'; ids: string[]; from: { x: number; y: number }; boxes: Map<string, Box> }
   | { kind: 'resize'; id: string; edge: Edge; from: { x: number; y: number }; box: Box };
 
-const textOf = (inlines: Inline[]): string =>
-  inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? `{${n.ref}}` : ' ')).join('');
+const textOf = (inlines?: Inline[]): string =>
+  Array.isArray(inlines)
+    ? inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? `{${n.ref}}` : ' ')).join('')
+    : '';
+
+function toHexColor(color: string | undefined): string {
+  if (!color) return '#111111';
+  const c = color.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(c)) return c;
+  if (/^#[0-9a-f]{3}$/.test(c)) {
+    return `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`;
+  }
+  return '#111111';
+}
 
 /** `{اسم}` عقدةَ حقل — والمُرمِّز واحدٌ مع الترحيل والاستيراد (`shared/doc.ts`). */
 const inlinesOf = tokenInlines;
 
-const kindName = (el: CanvasElement): string =>
-  el.kind === 'text'
-    ? textOf(el.inlines).trim() || 'نصّ'
-    : el.kind === 'image'
-      ? el.ref
-        ? `صورة {${el.ref}}`
-        : 'صورة'
-      : el.kind === 'barcode'
-        ? `${el.symbology === 'qr' ? 'QR' : 'باركود'} ${el.ref ? `{${el.ref}}` : el.value}`
-        : 'شكل';
+const kindName = (el: CanvasElement): string => {
+  if (el.name) return el.name;
+  switch (el.kind) {
+    case 'text':
+      return textOf(el.inlines).trim() || 'نصّ';
+    case 'image':
+      return el.ref ? `صورة {${el.ref}}` : 'صورة';
+    case 'barcode':
+      return `${el.symbology === 'qr' ? 'QR' : el.symbology === 'seal' ? 'نقش أمان' : 'باركود'} ${el.ref ? `{${el.ref}}` : el.value}`;
+    case 'shape':
+      return 'شكل';
+    case 'svg':
+      return 'رسمة فيكتور SVG';
+    case 'html':
+      return el.content || 'عنصر ويب HTML';
+  }
+};
 
 /**
  * ما تُفتح به الشاشة من غيرها: تصميمُ طلبٍ بقائمته، أو المعرضُ على جهة.
@@ -128,6 +154,8 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [preview, setPreview] = useState(false);
   const [grid, setGrid] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
+  const [aiRecipeOpen, setAiRecipeOpen] = useState(false);
+  const [clipartModalOpen, setClipartModalOpen] = useState(false);
   const [zoom, setZoom] = useState(0.5);
   /** المعرض أولًا: يبدأ المكتب من «لمن التصميم؟» لا من لوحةٍ فارغة. */
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
@@ -204,8 +232,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         continue;
       }
       try {
-        node.innerHTML =
-          node.dataset.barcode === 'qr' ? qrSvg(value) : barcodeSvg(value, { height: 40 });
+        node.innerHTML = drawCode(node.dataset.barcode ?? '', value);
       } catch {
         // قيمةٌ لا تُرمَّز (حروفٌ عربية في Code128) — تُترك فارغة ولا تُسقط الشاشة.
         node.innerHTML = '';
@@ -331,6 +358,31 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     },
     [canvas, apply]
   );
+
+  const handleSelectClipart = useCallback(
+    (item: ClipartItem) => {
+      add(
+        imageElement({
+          box: clampBox({ x: 0.35, y: 0.35, w: 0.3, h: 0.3 }),
+          src: svgToDataUrl(item.svg),
+          fit: 'contain'
+        })
+      );
+      say(`أُدرجت رسمة «${item.name}» في اللوحة`);
+    },
+    [add, say]
+  );
+
+  /**
+   * صورةٌ ثابتة من الجهاز — تُحفظ في المخزن باسم بصمتها كسائر الصور (§١٧).
+   * وكانت تُقرأ dataURL وتُكتب داخل التصميم نفسه، فتنتفخ القاعدة بكل صورة.
+   */
+  const pickLocalImage = useCallback(async () => {
+    const src = await window.diwan.files.pickImage('designs');
+    if (!src) return;
+    add(imageElement({ box: clampBox({ x: 0.25, y: 0.25, w: 0.5, h: 0.5 }), src, fit: 'contain' }));
+    say('أُدرجت الصورة في اللوحة');
+  }, [add, say]);
 
   const patchElement = useCallback(
     (id: string, patch: Partial<CanvasElement>, commit = true) => {
@@ -518,39 +570,62 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const single = selected.length === 1 ? selected[0]! : null;
 
   // ── الحفظ والطباعة ─────────────────────────────────────────────────
-  const save = useCallback(async () => {
-    const name = title.trim();
-    if (!name) {
-      say('سمِّ التصميم قبل الحفظ', 'warn');
-      return;
-    }
-    setBusy(true);
-    try {
-      const saved = await window.diwan.templates.save({
-        id: designId,
-        code: null,
-        title: name,
-        subtitle: `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)} ملم`,
-        category: DESIGN_CATEGORY,
-        subjectLine: null,
-        bodyHtml: canvas.elements
-          .filter((el): el is TextElement => el.kind === 'text')
-          .map((el) => textOf(el.inlines))
-          .join('\n'),
-        letterheadId: null,
-        variables: [],
-        doc
-      });
-      setDesignId(saved.id);
-      await loadDesigns();
-      onChanged?.();
-      say('حُفظ التصميم');
-    } catch (e) {
-      say(errorText(e, 'تعذّر حفظ التصميم'), 'warn');
-    } finally {
-      setBusy(false);
-    }
-  }, [title, designId, canvas, doc, loadDesigns, onChanged, say]);
+  const save = useCallback(
+    async (asCopy = false) => {
+      const name = title.trim();
+      if (!name) {
+        say('سمِّ التصميم قبل الحفظ', 'warn');
+        return;
+      }
+      setBusy(true);
+      try {
+        const finalTitle = asCopy ? `${name} (نسخة)` : name;
+        const saved = await window.diwan.templates.save({
+          id: asCopy ? null : designId,
+          code: null,
+          title: finalTitle,
+          subtitle: `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)} ملم`,
+          category: DESIGN_CATEGORY,
+          subjectLine: null,
+          bodyHtml: canvas.elements
+            .filter((el): el is TextElement => el.kind === 'text')
+            .map((el) => textOf(el.inlines))
+            .join('\n'),
+          letterheadId: null,
+          variables: [],
+          doc
+        });
+        setDesignId(saved.id);
+        if (asCopy) setTitle(finalTitle);
+        await loadDesigns();
+        onChanged?.();
+        say(asCopy ? 'حُفظت نسخة جديدة من التصميم' : designId === null ? 'حُفظ التصميم' : 'حُفظت التعديلات');
+      } catch (e) {
+        say(errorText(e, 'تعذّر حفظ التصميم'), 'warn');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [title, designId, canvas, doc, loadDesigns, onChanged, say]
+  );
+
+  const deleteDesign = useCallback(
+    async (id: number) => {
+      try {
+        await window.diwan.templates.delete(id);
+        if (designId === id) {
+          setDesignId(null);
+          setTitle('');
+        }
+        await loadDesigns();
+        onChanged?.();
+        say('تم حذف التصميم');
+      } catch (e) {
+        say(errorText(e, 'تعذّر حذف التصميم'), 'warn');
+      }
+    },
+    [designId, loadDesigns, onChanged, say]
+  );
 
   /** الترتيب على الورق: كم بطاقةً في A4 وأين تُقصّ — من مقاس التصميم ونزفه. */
   const imp = useMemo(() => impose(canvas.size, canvas.bleed), [canvas.size, canvas.bleed]);
@@ -561,13 +636,24 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
    * والصفّ يرث القيم المكتوبة: «العام الدراسي» واحدٌ للصفّ كلّه، يُكتب مرّةً في
    * «املأ» ولا يُطلب عمودًا في Excel — وما في الصفّ يغلبه.
    */
-  const cards = useMemo(
-    () =>
+  const cards = useMemo(() => {
+    // وحقولُ «الكتابة» من أرقامها لكل بطاقة: درجةُ كلّ طالبٍ كتابةً في شهادته.
+    const keys = doc.fields.map((f) => f.key);
+    // والتذكير والتأنيث لكلّ بطاقةٍ من اسم صاحبها — وعمود «الجنس» في القائمة يغلب.
+    const nameKey = docHasChoices(doc) ? nameKeyOf(keys) : undefined;
+    return (
       batchRows.length
         ? batchRows.map((row) => ({ ...values, ...row }))
-        : Array.from({ length: Math.max(1, copies) }, () => values),
-    [batchRows, copies, values]
-  );
+        : Array.from({ length: Math.max(1, copies) }, () => values)
+    ).map((card) => {
+      const out = derivedWords(card, keys);
+      if (nameKey && !out[GENDER_KEY] && out[nameKey]) {
+        const g = guessGender(out[nameKey]!);
+        if (g) out[GENDER_KEY] = g.gender;
+      }
+      return out;
+    });
+  }, [batchRows, copies, values, doc]);
 
   /**
    * أوراق الطباعة بالملّم الحقيقي (٩٦ نقطة/إنش في CSS = الملّم على الورق).
@@ -575,17 +661,72 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
    * كانت تُرسم بـ٣٠٠ نقطة/إنش بكسلاتٍ فتخرج البطاقة بثلاثة أضعاف مقاسها،
    * والدقّة ليست في البكسلات: الخطوط والزخرفة متّجهة، والطابعة ترسمها بدقّتها.
    */
+  /**
+   * خيارات الورق: أوّل خانةٍ فارغة في ورقةٍ استُعمل بعضها، وبطاقاتٌ بعينها
+   * تُعاد (ما تلف وحده)، وعمودٌ تُفصل به الرزم (الصفّ والشعبة).
+   */
+  const [startSlot, setStartSlot] = useState(0);
+  const [pickText, setPickText] = useState('');
+  const [groupCol, setGroupCol] = useState('');
+  const picked = useMemo(() => parseCardList(pickText, cards.length), [pickText, cards.length]);
+  const items = useMemo(() => picked ?? cards.map((_, i) => i), [picked, cards]);
+  const plan = useMemo(
+    () =>
+      planSheets(imp, items, {
+        startSlot,
+        groupOf: groupCol ? (i) => cards[i]?.[groupCol]?.trim() || null : undefined
+      }),
+    [imp, items, startSlot, groupCol, cards]
+  );
+  const batchColumns = useMemo(() => Object.keys(batchRows[0] ?? {}), [batchRows]);
+
   const pages = useMemo(() => {
     if (!sheetsOpen) return [];
     const draw = (d: Doc) => (i: number) =>
       renderCanvasHtml(d, cards[i]!, { dpi: SCREEN_DPI, missing: 'blank', marks: false });
-    const front = sheetsHtml(imp, cards.length, draw(doc));
+    const front = renderPlan(imp, plan, draw(doc));
     if (!backDoc) return front;
     // الوجه ثم ظهره، وظهره معكوس الأعمدة — فالورقة المقلوبة يقع كلّ ظهرٍ خلف وجهه.
     // والظهر يُملأ بقيم صاحبه أيضًا (رقمه، صفّه) لا بقيمٍ ثابتة.
-    const back = sheetsHtml(imp, cards.length, draw(backDoc), { mirror: true });
+    const back = renderPlan(imp, plan, draw(backDoc), { mirror: true });
     return front.flatMap((p, i) => [p, back[i]!]);
-  }, [sheetsOpen, imp, cards, doc, backDoc]);
+  }, [sheetsOpen, imp, plan, cards, doc, backDoc]);
+
+  /**
+   * فاحص ما قبل الطباعة: ما يُعرف من التصميم وقيمه، ثم دقّةُ كلّ صورةٍ في موضعها
+   * بعد أن تُحمَّل — صورة طالبٍ من هاتفٍ قديم تخرج ضبابيةً في ثلاثين بطاقة.
+   */
+  const [lowRes, setLowRes] = useState<PreflightIssue[]>([]);
+  const issues = useMemo(
+    () => (sheetsOpen ? [...designPreflight(canvas, batchRows.length ? cards : []), ...lowRes] : []),
+    [sheetsOpen, canvas, cards, batchRows.length, lowRes]
+  );
+  useEffect(() => {
+    if (!sheetsOpen) return;
+    let alive = true;
+    const jobs: { label: string; src: string; boxMm: number }[] = [];
+    for (const el of canvas.elements) {
+      if (el.kind !== 'image') continue;
+      const boxMm = el.box.w * canvas.size.w;
+      const label = el.ref ?? el.name ?? 'صورة';
+      const srcs = el.ref ? cards.map((c) => c[el.ref!] || el.src) : [el.src];
+      for (const src of new Set(srcs)) if (src && !src.startsWith('data:image/svg')) jobs.push({ label, src, boxMm });
+    }
+    void Promise.all(
+      jobs.slice(0, 600).map(
+        (job) =>
+          new Promise<{ label: string; dpi: number } | null>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve({ label: job.label, dpi: placedDpi(img.naturalWidth, job.boxMm) });
+            img.onerror = () => resolve(null);
+            img.src = job.src.startsWith('data:') ? job.src : `diwan://store/${job.src}`;
+          })
+      )
+    ).then((found) => alive && setLowRes(lowResIssues(found.filter((f): f is { label: string; dpi: number } => f !== null))));
+    return () => {
+      alive = false;
+    };
+  }, [sheetsOpen, canvas, cards]);
 
   /** تصاميمُ محفوظة بمقاس هذه البطاقة — تصلح ظهرًا لها. */
   const sizeTag = `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)}`;
@@ -599,31 +740,38 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     void window.diwan.templates.doc(backId).then((d) => setBackDoc(d?.canvas ? d : null));
   }, [backId]);
 
+  /**
+   * الطباعة: إلى الطابعة المختارة ورقةً ورقة بسجلٍّ على القرص — فإن انقطعت
+   * الكهرباء عند الورقة ٢٤ من ٤٥ سُئل المكتب في الإقلاع التالي ويستأنف منها.
+   * وبلا طابعةٍ مختارة يُفتح حوار النظام والدفعة مهمّةٌ واحدة.
+   */
   const print = useCallback(async () => {
     setBusy(true);
+    const off = window.diwan.output.onPrintProgress((p) => say(`يُطبع… ${p.sent} من ${p.total} ورقة`));
     try {
-      const out = await window.diwan.output.print({
-        sheetHtml: pages.join(''),
+      const out = await window.diwan.output.printJob({
+        label: title.trim() || 'تصميم',
+        pages,
         printer: printer?.name ?? null,
-        copies: 1,
-        silent: false,
         page: imp.sheet,
         duplex: Boolean(backDoc)
       });
+      const sheets = backDoc ? pages.length / 2 : pages.length;
       say(
         out.ok
-          ? backDoc
-            ? `أُرسلت ${pages.length / 2} ورقة بوجهيها إلى الطابعة`
-            : `أُرسلت ${pages.length} ورقة إلى الطابعة`
-          : out.reason || 'لم تتم الطباعة',
+          ? `أُرسلت ${sheets} ورقة${backDoc ? ' بوجهيها' : ''} إلى الطابعة`
+          : `توقّفت الطباعة بعد ${out.sent} من ${out.total} ورقة${out.reason ? ` — ${out.reason}` : ''}${
+              out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''
+            }`,
         out.ok ? 'ok' : 'warn'
       );
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), 'warn');
     } finally {
+      off();
       setBusy(false);
     }
-  }, [pages, printer, imp, backDoc, say]);
+  }, [pages, printer, imp, backDoc, title, say]);
 
   const savePdf = useCallback(async () => {
     setBusy(true);
@@ -640,6 +788,12 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       setBusy(false);
     }
   }, [pages, title, imp, say]);
+
+  /** مقاسُ صورة الطالب في البطاقة بالملّم — منه يقصّ الاستوديو لقطاته. */
+  const photoSize = useMemo(() => {
+    const el = canvas.elements.find((e) => e.kind === 'image' && e.ref);
+    return el ? { w: el.box.w * canvas.size.w, h: el.box.h * canvas.size.h } : undefined;
+  }, [canvas]);
 
   /** حقول الصور في التصميم — تُختار صورةً لا تُكتب نصًّا. */
   const imageKeys = useMemo(
@@ -701,25 +855,76 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
           onImport={() => void importDesign()}
           onOpenImage={() => void openBackground()}
           onOpenSaved={(id) => void openDesign(id)}
+          onDeleteSaved={(id) => void deleteDesign(id)}
+          onOpenAiRecipe={() => setAiRecipeOpen(true)}
           onPick={pickFromGallery}
         />
       </div>
+
+      {aiRecipeOpen && (
+        <AiRecipeDialog
+          isOpen={aiRecipeOpen}
+          onClose={() => setAiRecipeOpen(false)}
+          onApply={(aiCanvas, recipeTitle) => {
+            apply(normalizeCanvas(aiCanvas));
+            setTitle(recipeTitle);
+            setDesignId(null);
+            setSelection([]);
+            setAskSize(false);
+            setView('editor');
+            say('تم إنشاء التصميم من كود الذكاء الاصطناعي — يمكنك تعديله بالفأرة الآن');
+          }}
+        />
+      )}
+
+      {clipartModalOpen && (
+        <ClipartModal
+          isOpen={clipartModalOpen}
+          onClose={() => setClipartModalOpen(false)}
+          onSelect={handleSelectClipart}
+        />
+      )}
+
       <div className={view === 'editor' ? 'flex h-[calc(100vh-4rem)]' : 'hidden'}>
         {/* ── الأدوات ──────────────────────────────────────────────── */}
         <section className="w-[420px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md">
           <header className="flex items-center justify-between gap-space-sm">
-            <button
-              className="h-9 px-space-sm -mx-space-sm rounded-lg hover:bg-surface-container-high font-label-md text-label-md text-on-surface-variant flex items-center gap-1"
-              data-act="gallery"
-              type="button"
-              onClick={() => setView('gallery')}
-            >
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              كل التصاميم
-            </button>
-            <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-size-chip="">
-              {canvas.size.w} × {canvas.size.h} ملم
-            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                className="h-9 px-space-sm -mx-space-sm rounded-lg hover:bg-surface-container-high font-label-md text-label-md text-on-surface-variant flex items-center gap-1"
+                data-act="gallery"
+                type="button"
+                onClick={() => setView('gallery')}
+              >
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                كل التصاميم
+              </button>
+              <button
+                className="h-8 px-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high border border-outline-variant font-label-xs text-label-xs text-on-surface flex items-center gap-1"
+                title="بدء تصميم فارغ جديد"
+                type="button"
+                onClick={() => {
+                  setDesignId(null);
+                  setTitle('');
+                  setSelection([]);
+                  apply(emptyCanvas(SIZE_PRESETS[1]!.size));
+                  say('بدء تصميم فارغ جديد');
+                }}
+              >
+                <span className="material-symbols-outlined text-[15px]">add</span>
+                جديد
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {designId !== null && (
+                <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary font-label-xs text-[11px] font-bold">
+                  تعديل محفوظ
+                </span>
+              )}
+              <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-size-chip="">
+                {canvas.size.w} × {canvas.size.h} ملم
+              </span>
+            </div>
           </header>
 
           <input
@@ -736,7 +941,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
               <h2 className="font-body-md text-body-md text-on-surface font-semibold">
                 {batchRows.length ? 'ما يشترك فيه الجميع — والقائمة تغلبه' : `املأ الحقول (${doc.fields.length})`}
               </h2>
-              {doc.fields.map((f) =>
+              {doc.fields.filter((f) => !isChoiceKey(f.key)).map((f) =>
                 imageKeys.includes(f.key) ? (
                   <div key={f.key} className="flex items-center gap-space-sm">
                     {values[f.key] ? (
@@ -779,6 +984,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
               imageKeys={imageKeys}
               imp={imp}
               initialText={batchSeed}
+              photoSize={photoSize}
               onPreview={() => setSheetsOpen(true)}
               onRows={setBatchRows}
             />
@@ -947,7 +1153,25 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                 )
               }
             />
-            <div className="flex items-center gap-space-xs">
+            <div className="flex items-center gap-space-xs flex-wrap">
+              <button
+                className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface flex items-center gap-1 shadow-xs border border-outline-variant/60"
+                data-add="clipart"
+                type="button"
+                onClick={() => setClipartModalOpen(true)}
+              >
+                <span className="material-symbols-outlined text-[16px] text-secondary">auto_awesome</span>
+                <span>+ رسمة / أيقونة</span>
+              </button>
+              <button
+                className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface flex items-center gap-1 shadow-xs border border-outline-variant/60"
+                data-add="local-image"
+                type="button"
+                onClick={() => void pickLocalImage()}
+              >
+                <span className="material-symbols-outlined text-[16px] text-secondary">image</span>
+                <span>+ صورة من الجهاز</span>
+              </button>
               <button
                 className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface"
                 data-add="image"
@@ -1082,7 +1306,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                       className="w-10 h-8 rounded border border-outline-variant bg-surface-container-low"
                       title="اللون"
                       type="color"
-                      value={single.color}
+                      value={toHexColor(single.color)}
                       onChange={(e) => patchElement(single.id, { color: e.target.value })}
                     />
                   </div>
@@ -1108,13 +1332,114 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                   className="h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
                   title="نوع الرمز"
                   value={single.symbology}
-                  onChange={(e) =>
-                    patchElement(single.id, { symbology: e.target.value as 'code128' | 'qr' })
-                  }
+                  onChange={(e) => {
+                    const symbology = e.target.value as 'code128' | 'qr' | 'seal';
+                    // النقش بذرتُه الاسم والرقم: تُقترح وسومُ حقول التصميم النصّية بذرةً له.
+                    const seed =
+                      symbology === 'seal' && !single.value
+                        ? doc.fields
+                            .filter((f) => !imageKeys.includes(f.key))
+                            .map((f) => `{${f.key}}`)
+                            .join(' ')
+                        : single.value;
+                    patchElement(single.id, { symbology, value: seed });
+                  }}
                 >
                   <option value="code128">Code128 — للأرقام واللاتيني</option>
                   <option value="qr">QR — يُقرأ بالهاتف</option>
+                  <option value="seal">نقش أمان فريد لكل بطاقة</option>
                 </select>
+              )}
+
+              {single.kind === 'svg' && (
+                <label className="flex flex-col gap-1">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    اسم الطبقة في القائمة
+                  </span>
+                  <input
+                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+                    value={single.name ?? ''}
+                    placeholder="رسمة فيكتور SVG"
+                    onChange={(e) => patchElement(single.id, { name: e.target.value })}
+                  />
+                </label>
+              )}
+
+              {single.kind === 'html' && (
+                <div className="space-y-space-sm pt-1">
+                  <label className="flex flex-col gap-1">
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">
+                      اسم الطبقة في القائمة
+                    </span>
+                    <input
+                      className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+                      value={single.name ?? ''}
+                      placeholder="عنصر ويب"
+                      onChange={(e) => patchElement(single.id, { name: e.target.value })}
+                    />
+                  </label>
+
+                  {/* نصوص التصميم القابلة للتعديل السريع */}
+                  <div className="space-y-2 pt-2 border-t border-outline-variant/60">
+                    <div className="flex items-center justify-between">
+                      <span className="font-label-sm text-label-sm font-semibold text-on-surface">
+                        نصوص التصميم (تعديل مباشر)
+                      </span>
+                      <button
+                        className="text-[11px] text-secondary hover:underline font-bold"
+                        type="button"
+                        onClick={() => {
+                          const nameItem = extractEditableTexts(single.html).find((it) =>
+                            it.label.includes('اسم')
+                          );
+                          if (nameItem) {
+                            patchElement(single.id, {
+                              html: single.html.replaceAll(nameItem.original, '{اسم الطالب}')
+                            });
+                            say('تم تحويل الاسم إلى حقل {اسم الطالب} للطباعة المجمعة');
+                          }
+                        }}
+                      >
+                        + جعل الاسم {'{اسم الطالب}'}
+                      </button>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto space-y-2 pr-0.5">
+                      {extractEditableTexts(single.html).map((item, idx) => (
+                        <div key={idx} className="flex flex-col gap-0.5">
+                          <span className="text-[11px] text-on-surface-variant font-medium">
+                            {item.label}:
+                          </span>
+                          <input
+                            className="h-8 px-2 rounded-md bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+                            defaultValue={item.original}
+                            onBlur={(e) => {
+                              const nextVal = e.target.value.trim();
+                              if (nextVal && nextVal !== item.original) {
+                                patchElement(single.id, {
+                                  html: single.html.replaceAll(item.original, nextVal)
+                                });
+                                say(`تم تحديث ${item.label}`);
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <details className="pt-2 border-t border-outline-variant/60 text-label-xs text-on-surface-variant cursor-pointer">
+                    <summary className="font-semibold select-none hover:text-on-surface">
+                      تحرير كود الـ HTML / CSS المباشر
+                    </summary>
+                    <textarea
+                      className="w-full h-36 mt-1 p-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-mono text-[11px] text-on-surface text-left dir-ltr"
+                      dir="ltr"
+                      value={single.html}
+                      onChange={(e) => patchElement(single.id, { html: e.target.value })}
+                    />
+                  </details>
+                </div>
               )}
             </div>
           )}
@@ -1301,17 +1626,44 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                   onChange={(e) => setCopies(Number(e.target.value.replace(/[^\d]/g, '')) || 1)}
                 />
               </label>
-              <button
-                className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
-                data-act="save"
-                title="احفظ التصميم"
-                type="button"
-                disabled={busy}
-                onClick={() => void save()}
-              >
-                <span className="material-symbols-outlined text-[18px]">save</span>
-                حفظ
-              </button>
+              {designId !== null ? (
+                <>
+                  <button
+                    className="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+                    data-act="save"
+                    title="احفظ التعديلات على نفس التصميم"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void save(false)}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">save</span>
+                    حفظ التعديلات
+                  </button>
+                  <button
+                    className="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+                    data-act="save-copy"
+                    title="احفظ كنسخة جديدة منفصلة"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void save(true)}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                    حفظ كنسخة
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+                  data-act="save"
+                  title="احفظ التصميم"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void save(false)}
+                >
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  حفظ التصميم
+                </button>
+              )}
               <button
                 className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
                 data-act="print"
@@ -1455,8 +1807,23 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       {sheetsOpen && (
         <SheetsPreview
           busy={busy}
-          cards={cards.length}
+          cards={items.length}
           duplex={Boolean(backDoc)}
+          issues={issues}
+          options={
+            <PrintOptions
+              columns={batchColumns}
+              groupCol={groupCol}
+              imp={imp}
+              pickText={pickText}
+              picked={picked}
+              startSlot={startSlot}
+              total={cards.length}
+              onGroupCol={setGroupCol}
+              onPickText={setPickText}
+              onStartSlot={setStartSlot}
+            />
+          }
           pages={pages}
           sheet={imp.sheet}
           onClose={() => setSheetsOpen(false)}

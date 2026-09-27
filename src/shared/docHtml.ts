@@ -15,6 +15,7 @@ import {
   type Numerals,
   type ParagraphBlock
 } from './doc';
+import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 
 export const escapeHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -42,7 +43,21 @@ export type RenderOptions = {
 };
 
 /** الحقل المملوء يُظلَّل: أن يرى الموظفُ ما مُلئ وما بقي فارغًا قبل الطباعة. */
-const FILLED_CLASS = 'font-bold text-black underline underline-offset-4 decoration-1';
+const FILLED_CLASS = 'fv font-bold text-black underline underline-offset-4 decoration-1';
+
+/**
+ * الطباعة على استمارةٍ مطبوعةٍ مسبقًا: الورقة كلّها مخفيّةٌ **ولها مكانها**، والقيم
+ * المملوءة (`fv`) وحدها ظاهرة — فتقع كلُّ قيمةٍ في فراغها المنقّط على الاستمارة
+ * الحكومية كما وقعت في المعاينة. `visibility` لا `display`: المخفيّ يحفظ موضعه،
+ * فلا ينزاح سطرٌ. وإزاحة الطابعة (المعايرة) تُطبَّق بعدها كما في كل طباعة.
+ */
+export function valuesOnlySheet(sheetHtml: string): string {
+  return (
+    '<style>.values-only,.values-only *{visibility:hidden!important}' +
+    '.values-only .fv,.values-only .fv *{visibility:visible!important;text-decoration:none!important}</style>' +
+    `<div class="values-only">${sheetHtml}</div>`
+  );
+}
 const TOKEN_CLASS = 'px-1 rounded bg-surface-container-high text-secondary font-mono';
 
 /** فراغٌ بطول ما كُتب — لا ينكمش فتتشوّه الورقة. */
@@ -62,7 +77,8 @@ function renderInlines(
       if (node.kind === 'break') return '<br/>';
 
       if (node.kind === 'run') {
-        let out = escapeHtml(node.text);
+        // «{الطالب|الطالبة}» مكتوبًا نصًّا يُحلّ بجنس صاحب الورقة.
+        let out = escapeHtml(resolveChoices(node.text, values[GENDER_KEY]));
         const m = node.marks;
         if (!m) return out;
         if (m.size) out = `<span style="font-size:${m.size}px">${out}</span>`;
@@ -71,6 +87,8 @@ function renderInlines(
         return out;
       }
 
+      // والوسم نفسه عقدةَ حقل: ليس فراغًا يُملأ بل خيارٌ يُحلّ.
+      if (isChoiceKey(node.ref)) return escapeHtml(pickChoice(node.ref, values[GENDER_KEY]));
       const field = fields.get(node.ref);
       const value = values[node.ref];
       if (value) return `<span class="${FILLED_CLASS}">${escapeHtml(value)}</span>`;

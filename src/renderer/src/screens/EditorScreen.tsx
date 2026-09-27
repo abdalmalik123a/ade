@@ -56,6 +56,8 @@ import {
 import { errorText } from '../lib/errors';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
+import { amountWordsField, wordsForField } from '@shared/tafqeet';
+import { guessGender, hasChoiceText, resolveChoices, type Gender } from '@shared/gender';
 
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.6;
@@ -217,6 +219,27 @@ function EditorScreen(
     dirty.current = true;
     setFields((prev) => prev.filter((x) => x.id !== id));
   }, []);
+
+  /**
+   * الرقم كلماتٍ بوحدته (المال تفقيطًا، والدرجة والمدّة عددًا ومعدودًا) في حقل
+   * كتابته بعينه — وإلا نُسخ وقيل ذلك، ولا يُخمَّن حقل.
+   */
+  const handleTafqeet = useCallback(
+    (field: LetterField) => {
+      const words = wordsForField(field, fields);
+      if (!words) return;
+      const partner = amountWordsField(field, fields);
+      if (partner) {
+        dirty.current = true;
+        setFields((prev) => prev.map((f) => (f.id === partner.id ? { ...f, value: words } : f)));
+        setToast(`كُتب «${words}» في «${partner.label}»`);
+      } else {
+        void navigator.clipboard?.writeText(words);
+        setToast('لا حقلَ «كتابة» لهذا الرقم — نُسخت كلماته، فالصقها حيث تريد');
+      }
+    },
+    [fields]
+  );
 
   const set = useCallback((patch: Partial<Fields>) => {
     dirty.current = true;
@@ -620,7 +643,17 @@ function EditorScreen(
     return () => window.removeEventListener('keydown', onKey);
   }, [saveDraft]);
 
-  const rendered = useMemo(() => injectTokens(f.body, f, fields), [f, fields]);
+  /**
+   * التذكير والتأنيث: «{الطالب|الطالبة}» في المتن يُحلّ بجنس صاحب الكتاب —
+   * مقترحًا من اسمه، ويقلبه الموظف بضغطة فلا يغيّره الاقتراح بعدها.
+   */
+  const needsGender = hasChoiceText(f.body);
+  const [genderPick, setGenderPick] = useState<Gender | null>(null);
+  const gender: Gender | undefined = genderPick ?? (citizenName ? guessGender(citizenName)?.gender : undefined);
+  const rendered = useMemo(
+    () => injectTokens(needsGender ? resolveChoices(f.body, gender) : f.body, f, fields),
+    [f, fields, needsGender, gender]
+  );
   const copiesTo = f.copiesTo.split('\n').map((l) => l.trim()).filter(Boolean);
 
   /** المتغيّرات المتاحة: ما يعرّفه النموذج المحمَّل، أو لا شيء قبل تحميله. */
@@ -861,6 +894,26 @@ function EditorScreen(
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-space-sm">
+                  {needsGender && (
+                    <div className="col-span-2 flex items-center gap-space-xs" data-gender="">
+                      <span className="font-label-sm text-label-sm text-on-surface-variant">الجنس:</span>
+                      {(['ذكر', 'أنثى'] as const).map((g) => (
+                        <button
+                          key={g}
+                          className={`h-8 px-3 rounded-lg font-label-sm text-label-sm ${
+                            gender === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
+                          }`}
+                          type="button"
+                          onClick={() => setGenderPick(g)}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                      {!genderPick && citizenName && (
+                        <span className="font-label-sm text-label-sm text-on-surface-variant">مقترحٌ من الاسم</span>
+                      )}
+                    </div>
+                  )}
                   {fields.map((field) => (
                     <div key={field.id} className="flex flex-col gap-1">
                       <div className="flex items-center justify-between gap-1">
@@ -896,6 +949,18 @@ function EditorScreen(
                           placeholder="—"
                           onChange={(e) => setFieldValue(field.id, e.target.value)}
                         />
+                        {wordsForField(field, fields) && (
+                          <button
+                            className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-secondary flex items-center justify-center shrink-0"
+                            title={`كتابةً: ${wordsForField(field, fields)}${
+                              amountWordsField(field, fields) ? ` — يُكتب في «${amountWordsField(field, fields)!.label}»` : ' — يُنسخ'
+                            }`}
+                            type="button"
+                            onClick={() => handleTafqeet(field)}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">payments</span>
+                          </button>
+                        )}
                         {field.date && (
                           <button
                             className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant"

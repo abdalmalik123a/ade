@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTER, PAPERS, PHOTO_SIZES, cropBox, photoLayout, photoSheetsHtml } from '../src/shared/photoSheet';
+import { CENTER, PAPERS, PHOTO_SIZES, cropBox, photoLayout, photoSheetsHtml, sourceRect } from '../src/shared/photoSheet';
 
 const size = (key: string) => PHOTO_SIZES.find((s) => s.key === key)!.size;
 const paper = (key: string) => PAPERS.find((p) => p.key === key)!.size;
@@ -44,5 +44,20 @@ describe('الصور الشخصية', () => {
     expect(pages).toHaveLength(2);
     expect((pages[1]!.match(/<img/g) ?? []).length).toBe(2);
     expect(pages[0]).toContain('width:101.6mm');
+  });
+});
+
+describe('ما يُلتقط من إطار الكاميرا', () => {
+  it('بلا تكبير: أوسعُ ما يسع بنسبة الإطار في وسط الصورة', () => {
+    // كاميرا ١٢٨٠×٧٢٠ وصورة شخصية ٣×٤: يُقصّ ٥٤٠×٧٢٠ من الوسط.
+    const r = sourceRect({ w: 3, h: 4 }, { w: 1280, h: 720 }, CENTER);
+    expect([r.x, r.y, r.w, r.h].map((v) => Math.round(v) + 0)).toEqual([370, 0, 540, 720]);
+  });
+
+  it('والتكبير يضيّق المقصوص حول مركزه', () => {
+    const r = sourceRect({ w: 3, h: 4 }, { w: 1280, h: 720 }, { zoom: 2, x: 0.5, y: 0.5 });
+    expect(r.w).toBeCloseTo(270);
+    expect(r.h).toBeCloseTo(360);
+    expect(r.x + r.w / 2).toBeCloseTo(640);
   });
 });

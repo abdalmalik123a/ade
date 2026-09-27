@@ -173,6 +173,36 @@ export default async function scenario(page, { profile, shotsDir }) {
   const boxes = [...pdf.matchAll(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/g)].map((m) => [Math.round(+m[1]), Math.round(+m[2])]);
   ok('وحُفظ PDF', Boolean(pdfFile));
   ok('بورقتين A4 أفقيّتين (٢٩٧ × ٢١٠ ملم)', boxes.length === 2 && boxes.every(([w, h]) => w === 842 && h === 595));
+
+  // ── خيارات الورق وفاحص ما قبل الطباعة ─────────────────────────────
+  const sheetState = () =>
+    page.eval(`
+      const o = document.querySelector('[data-sheets]');
+      return { summary: o.querySelector('[data-sheets-summary]').innerText, text: o.innerText, first: o.querySelectorAll('.print-page')[0]?.innerText ?? '' };
+    `);
+  ok('وفاحص ما قبل الطباعة ظاهر', await page.eval(`return Boolean(document.querySelector('[data-preflight]'));`));
+  // ورقةٌ استُعمل منها أربع خانات: تُكمَل من الخامسة، فتبقى ورقتان لاثنتي عشرة.
+  await page.eval(`document.querySelector('[data-sheets] button[data-slot="4"]').click(); return true;`);
+  await wait(500);
+  ok('البدء من الخانة الخامسة: ١٢ بطاقة على ورقتين', (await sheetState()).summary.includes('٢ ورقة'));
+  await page.eval(`document.querySelector('[data-sheets] button[data-slot="0"]').click(); return true;`);
+  // بطاقتان تلفتا تُعادان وحدهما.
+  await page.type('[data-sheets] input[data-act="pick-cards"]', '3-4');
+  await wait(500);
+  ok('وإعادة ما تلف وحده: «3-4» بطاقتان على ورقة', (await sheetState()).summary.includes('٢ بطاقة على ١ ورقة'));
+  await page.type('[data-sheets] input[data-act="pick-cards"]', '');
+  // ورقةٌ فاصلة لكلّ صفّ: الخامس (١١) والسادس (١).
+  await page.eval(`
+    const s = document.querySelector('[data-sheets] select[data-act="group-col"]');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'الصف');
+    s.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  `);
+  await wait(700);
+  const grouped = await sheetState();
+  ok('والفواصل: أوّل ورقةٍ فاصلةُ «الخامس» بعددها', grouped.first.includes('الخامس') && grouped.first.includes('١١'));
+  ok('وخمس أوراق: فاصلٌ وورقتان للخامس، وفاصلٌ وورقة للسادس', grouped.summary.includes('٥ ورقة'));
+
   await page.eval(`document.querySelector('[data-sheets] button[title="رجوع (Esc)"]').click()`);
   await wait(400);
   await page.type('textarea[data-batch-text]', '');
@@ -315,8 +345,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   const opened = await page.eval(`
     const el = document.querySelector('button[data-saved]');
     if (!el) return null;
+    // البطاقة تحمل الاسم، والزرّ فيها «فتح وتعديل».
+    const card = el.parentElement?.textContent.trim() ?? '';
     el.click();
-    return el.textContent.trim();
+    return card;
   `);
   ok('والمحفوظ معروضٌ في قسمه', Boolean(opened) && opened.includes('هوية طالب'));
   await wait(900);
@@ -327,6 +359,17 @@ export default async function scenario(page, { profile, shotsDir }) {
     return [...document.querySelectorAll('input[data-value]')].map((el) => el.dataset.value);
   `);
   ok('وحقوله كما حُفظت لا كما كانت الشاشة', JSON.stringify(reopened) === '["اسم الطالب"]');
+
+  // ── مفتاح Gemini يبقى بين دخولٍ ودخول، ولا يُكتب نصًّا ─────────────
+  // كان في localStorage الواجهة، وهو يتبع أصل الصفحة — فيضيع بين طرق التشغيل.
+  await page.eval(`await window.diwan.designs.setGeminiKey('AIza-test-key-123'); return true;`);
+  await page.eval(`location.reload(); return true;`);
+  await wait(1500);
+  ok('ومفتاح Gemini محفوظٌ بعد إعادة التحميل', await page.eval(`return await window.diwan.designs.hasGeminiKey();`));
+  const keyFile = readFileSync(join(profile, 'gemini.key'));
+  ok('ومشفَّرٌ على القرص لا نصًّا', !keyFile.toString('latin1').includes('AIza-test-key-123'));
+  await page.eval(`await window.diwan.designs.setGeminiKey(''); return true;`);
+  ok('ويُحذف بالنصّ الفارغ', !(await page.eval(`return await window.diwan.designs.hasGeminiKey();`)));
 
   if (shotsDir) await page.shot(join(shotsDir, 'designs.png'));
   return steps.join('\n');

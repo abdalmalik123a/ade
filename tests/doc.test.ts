@@ -95,20 +95,25 @@ describe('ترحيل المتن القديم إلى وثيقة', () => {
 
 describe('الرسم لا يغيّر ورقة المكتب', () => {
   const values = { الاسم: 'أحمد عادل', الرقم_الوطني: '198421098312' };
+  /**
+   * صنف `fv` علامةٌ على القيمة المملوءة لا شكل لها — تُظهر القيم وحدها في
+   * الطباعة على استمارةٍ مطبوعة. فتُنزع قبل المقارنة بما كان يخرج قبل النواة.
+   */
+  const render = (...args: Parameters<typeof renderBody>) => renderBody(...args).replace(/class="fv /g, 'class="');
 
   it('يطابق ما كان يخرج قبل النواة حرفًا بحرف', () => {
-    expect(renderBody(SAMPLE, values)).toBe(legacyRender(SAMPLE, values));
+    expect(render(SAMPLE, values)).toBe(legacyRender(SAMPLE, values));
   });
 
   it('ويطابقه حين يُطلب إخفاء الفارغ', () => {
-    expect(renderBody(SAMPLE, values, { markMissing: false })).toBe(
+    expect(render(SAMPLE, values, { markMissing: false })).toBe(
       legacyRender(SAMPLE, values, { markMissing: false })
     );
   });
 
   it('ويطابقه في نصّ فيه محارف علامات', () => {
     const body = 'قيمة < & > في المتن {الاسم}';
-    expect(renderBody(body, { الاسم: '<b>خطر</b>' })).toBe(
+    expect(render(body, { الاسم: '<b>خطر</b>' })).toBe(
       legacyRender(body, { الاسم: '<b>خطر</b>' })
     );
   });

@@ -24,6 +24,7 @@ import {
 import LetterheadView from '../components/LetterheadView';
 import TemplateDesigner from './TemplateDesigner';
 import { errorText } from '../lib/errors';
+import { installContracts } from '@shared/contracts';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -244,6 +245,28 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     }
   }
 
+  async function handleInstallContracts() {
+    setBusy(true);
+    try {
+      const existing = new Set(items.map((i) => i.code).filter(Boolean) as string[]);
+      const res = await installContracts(
+        (preset) => window.diwan.templates.save(preset),
+        existing
+      );
+      await reload(active);
+      onChanged?.();
+      if (res.installed > 0) {
+        say(`حُفظت ${res.installed} نماذج عقود وكمبيالات في المكتبة بنجاح`);
+      } else {
+        say('جميع نماذج العقود والكمبيالات مثبتة مسبقًا في المكتبة', 'ok');
+      }
+    } catch (e) {
+      say(errorText(e, 'تعذر تثبيت نماذج العقود'), 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function removeTemplate(id: number, title: string) {
     await window.diwan.templates.delete(id);
     await reload(active);
@@ -396,6 +419,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             {(
               [
                 { act: 'new-blank', icon: 'note_add', label: 'ورقة فارغة', hint: 'اكتب على الورقة، وظلّل ما يتغيّر واضغط F4', run: () => void openDesigner(null) },
+                { act: 'install-contracts', icon: 'gavel', label: 'العقود والكمبيالات العرفية', hint: 'عقد إيجار، مكاتبة سيارة، كمبيالة وكفيل، تعهد', run: () => void handleInstallContracts() },
                 { act: 'new-word', icon: 'upload_file', label: 'استيراد نموذج من Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
                 { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() }
               ] as const
