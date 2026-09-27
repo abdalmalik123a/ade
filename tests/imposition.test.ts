@@ -138,3 +138,14 @@ describe('خطّة الأوراق: البدء من خانة، والبطاقات
     expect(front).toHaveLength(back.length);
   });
 });
+
+describe('الرمز في علامات الطباعة', () => {
+  it('يُرمَّز بنصّه الحقيقي لا بترميز السمة — «&» تبقى «&»', () => {
+    const html = inlineBarcodes('<div data-barcode="qr" data-value="A&amp;B &quot;1&quot;" style="left:0"></div>');
+    const plain = inlineBarcodes('<div data-barcode="qr" data-value="A&B &quot;1&quot;" style="left:0"></div>');
+    expect(html).toContain('<svg');
+    // النصّان واحد بعد الفكّ، فالرمزان واحد.
+    expect(html).toBe(plain);
+    expect(inlineBarcodes('<div data-barcode="code128" data-value="" style="x"></div>')).toBe('');
+  });
+});

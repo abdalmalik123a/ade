@@ -88,7 +88,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // ── معايرة الطابعة ─────────────────────────────────────────────────
   await page.eval(`return window.diwan.settings.set({ defaultPrinter: 'طابعة المكتب' }).then(() => true);`);
-  await page.goto('header-seal-configuration');
+  await page.goto('office-settings');
   await wait(1000);
   ok('وللطابعة معايرةٌ في الإعدادات', await page.eval(`return Boolean(document.querySelector('[data-calibration] [data-act="print-calibration"]'));`));
   await page.type('input[data-measure-right]', '22');

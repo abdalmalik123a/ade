@@ -4,7 +4,7 @@ import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
 import Onboarding from './shell/Onboarding';
-import ServiceScreen from './screens/ServiceScreen';
+import ServiceScreen, { type RepeatRequest } from './screens/ServiceScreen';
 import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
@@ -16,11 +16,12 @@ import ClientsScreen from './screens/ClientsScreen';
 import PhotosScreen from './screens/PhotosScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import SearchScreen from './screens/SearchScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import ErrorBoundary from './components/ErrorBoundary';
-import LiveDemoRobot from './components/LiveDemoRobot';
 import ResumePrintDialog from './components/ResumePrintDialog';
+import { isCombo, shortcut } from '@shared/shortcuts';
 
 /** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
 type EditorTarget = {
@@ -48,29 +49,24 @@ export default function App() {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 } });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    void window.diwan.ui.info().then((i) => setVersion(i.version));
+  }, []);
   const [search, setSearch] = useState('');
   const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
   /** ما تُفتح به التصاميم من غيرها: تصميم طلبٍ بقائمته، أو المعرض على جهة. */
   const [designRequest, setDesignRequest] = useState<DesignRequest | null>(null);
+  /** «كرّره» لكتابٍ صدر من الشبّاك: يُفتح فيه لا في المحرّر. */
+  const [repeatRequest, setRepeatRequest] = useState<RepeatRequest | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
-  const [robotActive, setRobotActive] = useState(false);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
     busy: boolean;
     exporting: boolean;
   }>({ transaction: null, busy: false, exporting: false });
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'F9') {
-        e.preventDefault();
-        setRobotActive((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   /** أدوات المحرر التي يناديها الشريط العلوي — تُسجَّل ما دام المحرر معروضًا. */
   const editorRef = useRef<EditorHandle | null>(null);
@@ -111,6 +107,20 @@ export default function App() {
     [navigate]
   );
 
+  /** كتابٌ صدر يُكرَّر من حيث كُتب: المحرّر لكتبه، والشبّاك لمعاملاته. */
+  const repeatDocument = useCallback(
+    async (id: number) => {
+      const src = await window.diwan.documents.repeatSource(id);
+      if (src?.kind === 'counter' && src.templateIds.length > 0) {
+        setRepeatRequest({ key: Date.now(), serial: src.serial, templateIds: src.templateIds, values: src.values });
+        navigate('service');
+      } else {
+        openEditor({ documentId: id });
+      }
+    },
+    [navigate, openEditor]
+  );
+
   /**
    * `Ctrl+P` يطبع المعروض: الكتاب في المحرّر، والورقة في الأسئلة.
    *
@@ -124,15 +134,16 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+      // بموضع المفتاح لا بحرفه — فتعمل ولوحة المفاتيح عربية (shared/shortcuts.ts).
+      if (isCombo(e, shortcut('palette').combo)) {
         e.preventDefault();
         setCommandPaletteOpen((prev) => !prev);
       }
-      if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) {
+      if (isCombo(e, shortcut('print').combo)) {
         e.preventDefault();
         handlePrint();
       }
-      if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) {
+      if (isCombo(e, shortcut('library').combo)) {
         e.preventDefault();
         navigate('templates');
       }
@@ -149,7 +160,8 @@ export default function App() {
   function renderScreen() {
     switch (route) {
       case 'service':
-        return <ServiceScreen printer={selectedPrinter} onIssued={() => void refresh()} />;
+        // مركّبٌ دائمًا خارج هذا الاختيار — فلا تضيع المعاملة بالانتقال.
+        return null;
       case 'editor':
         return (
           <EditorScreen
@@ -174,7 +186,7 @@ export default function App() {
       case 'archive':
         return (
           <ArchiveScreen
-            onOpenInEditor={(id) => openEditor({ documentId: id })}
+            onOpenInEditor={(id) => void repeatDocument(id)}
             onChanged={() => void refresh()}
           />
         );
@@ -222,6 +234,8 @@ export default function App() {
         return <LetterheadScreen />;
       case 'search':
         return <SearchScreen query={search} />;
+      case 'settings':
+        return <SettingsScreen onChanged={() => void refresh()} />;
     }
   }
 
@@ -253,7 +267,7 @@ export default function App() {
         supplyPercent={null}
         operatorName={settings?.operatorName || 'لم يُسجّل مشغّل'}
         officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
-        onSignOut={() => navigate('letterhead')}
+        version={version}
       />
       <div className="pr-72">
         <Header
@@ -285,9 +299,18 @@ export default function App() {
             ) : undefined
           }
         />
-        <ErrorBoundary key={route}>
-          {renderScreen()}
-        </ErrorBoundary>
+        {/* الشبّاك يبقى مركّبًا مخفيًّا حين يُترك: المعاملة الجارية لا تضيع بالانتقال. */}
+        <div className={route === 'service' ? '' : 'hidden'}>
+          <ErrorBoundary key="service">
+            <ServiceScreen
+              active={route === 'service'}
+              repeat={repeatRequest}
+              printer={selectedPrinter}
+              onIssued={() => void refresh()}
+            />
+          </ErrorBoundary>
+        </div>
+        {route !== 'service' && <ErrorBoundary key={route}>{renderScreen()}</ErrorBoundary>}
       </div>
 
       <CommandPalette
@@ -307,25 +330,9 @@ export default function App() {
         />
       )}
 
-      {/* زر عائم لتشغيل محاكاة المستخدم الآلية */}
-      <button
-        type="button"
-        className="fixed bottom-5 left-5 z-40 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-primary to-secondary text-on-primary font-bold text-[13px] shadow-[0_4px_20px_rgba(0,0,0,0.25)] flex items-center gap-2.5 border-2 border-white/30 transition-all hover:scale-105 active:scale-95 ring-4 ring-primary/20"
-        onClick={() => setRobotActive(true)}
-        title="اضغط لتشغيل محاكاة حركة ونقرات المستخدم آليًّا أمامك (أو اضغط F9)"
-      >
-        <span className="material-symbols-outlined text-[20px] text-amber-300 animate-spin">smart_toy</span>
-        <span>🤖 بدء العرض الآلي (محاكاة نقرات المستخدم) [F9]</span>
-      </button>
-
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
 
-      <LiveDemoRobot
-        isActive={robotActive}
-        onStop={() => setRobotActive(false)}
-        onNavigate={(r) => navigate(r)}
-      />
     </>
   );
 }

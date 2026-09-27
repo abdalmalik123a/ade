@@ -17,8 +17,7 @@ const COLUMNS = [
   'المواطن والمستمسك',
   'الوثيقة الرسمية',
   'الجهة الموجه إليها',
-  'التوقيت والنسخ',
-  'الرسوم'
+  'التوقيت والنسخ'
 ];
 
 const nf = new Intl.NumberFormat('en-US');
@@ -195,7 +194,7 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="p-space-lg flex flex-col gap-space-md">
         {/* شريط المؤشرات */}
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
           <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden group">
             <div className="flex flex-col gap-space-xs z-10">
               <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
@@ -242,35 +241,6 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
             </svg>
           </div>
 
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden group">
-            <div className="flex flex-col gap-space-xs z-10">
-              <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
-                الإيراد المالي المستوفى
-              </span>
-              <div className="flex items-baseline gap-space-xs">
-                <span className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight tabular">
-                  {nf.format(stats?.revenueToday ?? 0)}
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant font-bold">
-                  د.ع
-                </span>
-              </div>
-              <div className="flex items-center gap-1 mt-1">
-                <span className="material-symbols-outlined text-secondary text-[16px]">
-                  payments
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  {stats && stats.revenueToday > 0
-                    ? 'تم تدقيق الجباية النقدية'
-                    : 'لم تُستوفَ رسوم بعد'}
-                </span>
-              </div>
-            </div>
-            <div className="w-14 h-14 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container z-10 shadow-sm">
-              <span className="material-symbols-outlined text-[28px]">account_balance_wallet</span>
-            </div>
-          </div>
-
           <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex items-center justify-between relative overflow-hidden">
             <div className="flex flex-col gap-space-xs z-10 max-w-[65%]">
               <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
@@ -301,19 +271,6 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
             </div>
           </div>
 
-          {/* مستلزمات الطباعة — تُقاس من الطابعة لا من تخمين، فتبقى صامتة حتى تُربط */}
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-md flex flex-col justify-center gap-space-sm">
-            <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
-              مؤشر رصيد مستلزمات الطباعة
-            </span>
-            <div className="flex items-center gap-space-sm text-on-surface-variant">
-              <span className="material-symbols-outlined text-[20px]">print_disabled</span>
-              <span className="font-label-md text-label-md">لم تُربط طابعة بعد</span>
-            </div>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              اخترها من إعدادات الطباعة ليظهر الحبر والورق
-            </span>
-          </div>
         </section>
 
         {(error || toast) && (
@@ -587,9 +544,6 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
                           </span>
                         </div>
                       </td>
-                      <td className="p-space-md font-mono font-bold text-on-surface">
-                        {nf.format(row.fee)} د.ع
-                      </td>
                       <td className="p-space-md text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -606,7 +560,7 @@ export default function ArchiveScreen({ onOpenInEditor, onChanged }: Props) {
                           </button>
                           <button
                             className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-all"
-                            title="تعديل المتغيرات السريعة — نسخة جديدة في المحرر"
+                            title="كرّره — نسخةٌ جديدة من حيث كُتب (الشبّاك أو المحرّر)، والأصل يبقى كما صدر"
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();

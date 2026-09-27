@@ -46,6 +46,16 @@ export type ColumnCount = 1 | 2 | 3;
  */
 export type RegistryMode = 'manual' | 'printed';
 
+/**
+ * أفي الترويسة موضعٌ للعدد على الكتاب — سطرُ «العدد:» مطبوعًا، أو حقلٌ فيه؟
+ * فيُسأل الموظف عنه في الشبّاك، وإلا لم يُسأل عن شيءٍ لا يُطبع.
+ */
+export function asksLetterNumber(layout: LetterheadLayout | null): boolean {
+  if (!layout) return false;
+  if (layout.registry.show && layout.registry.mode === 'printed') return true;
+  return layout.sections.some((s) => s.blocks.some((b) => b.kind === 'field' && b.value.includes('رقم_الصادر')));
+}
+
 export type LetterheadRegistry = {
   show: boolean;
   mode: RegistryMode;
@@ -277,7 +287,8 @@ export type Letterhead = {
  * هذه أسماء يعرفها المحرّك ويملؤها عند الإصدار — وليست بيانات مبرمَجة.
  */
 export const HEADER_FIELDS = [
-  { token: '{رقم_الصادر}', label: 'رقم الصادر' },
+  // الوسم باقٍ باسمه للترويسات المحفوظة، ومعناه العدد على الكتاب — لا رقم المكتب (§١).
+  { token: '{رقم_الصادر}', label: 'العدد على الكتاب' },
   { token: '{التاريخ_الميلادي}', label: 'التاريخ الميلادي' },
   { token: '{التاريخ_الهجري}', label: 'التاريخ الهجري' },
   { token: '{الجهة}', label: 'اسم الجهة' },
@@ -289,199 +300,4 @@ export const HEADER_FIELDS = [
 export function mmToPx(mm: number): number {
   return (mm * 96) / 25.4;
 }
-
-export type LetterheadPreset = {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  createLayout: () => LetterheadLayout;
-};
-
-export const IRAQI_LETTERHEAD_PRESETS: LetterheadPreset[] = [
-  {
-    id: 'ministry_standard',
-    name: 'جمهورية العراق — وزارة ومديرية عامة',
-    category: 'وزارات ومديريات',
-    description: 'ترويسة 3 أقسام رسمية (يمين: الوزارة والمديرية، وسط: الشعار والبسملة، يسار: التاريخ والعدد)',
-    createLayout: () => ({
-      margins: { top: 20, right: 20, bottom: 20, left: 20 },
-      columns: 3,
-      divider: true,
-      font: 'naskh',
-      basmala: { show: true, text: BASMALA_TEXT, size: 14, align: 'center' },
-      registry: { show: true, mode: 'printed' },
-      sections: [
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'جمهورية العراق', align: 'right', size: 16, bold: true },
-            { id: newId('b'), kind: 'text', value: 'وزارة التربية', align: 'right', size: 14, bold: true },
-            { id: newId('b'), kind: 'text', value: 'المديرية العامة لتربية بغداد / الرصافة الأولى', align: 'right', size: 12, bold: false }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'شعار جمهورية العراق', align: 'center', size: 12, bold: true }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        }
-      ]
-    })
-  },
-  {
-    id: 'governorate_council',
-    name: 'محافظة ومجلس المحافظة',
-    category: 'محافظات',
-    description: 'ترويسة 3 أقسام محلية (يمين: المحافظة والقائممقامية، وسط: الشعار، يسار: المرفقات والتاريخ)',
-    createLayout: () => ({
-      margins: { top: 20, right: 20, bottom: 20, left: 20 },
-      columns: 3,
-      divider: true,
-      font: 'cairo',
-      basmala: { show: true, text: BASMALA_TEXT, size: 13, align: 'center' },
-      registry: { show: true, mode: 'printed' },
-      sections: [
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'محافظة بغداد', align: 'right', size: 16, bold: true },
-            { id: newId('b'), kind: 'text', value: 'مكتب المحافظ', align: 'right', size: 14, bold: true },
-            { id: newId('b'), kind: 'text', value: 'قسم الشؤون الإدارية', align: 'right', size: 12, bold: false }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'ختم / شعار المحافظة', align: 'center', size: 12, bold: true }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        }
-      ]
-    })
-  },
-  {
-    id: 'law_office',
-    name: 'مكتب استشارات قانونية ومحاماة',
-    category: 'استشارات ومحاماة',
-    description: 'ترويسة قسمين أنيقة (يمين: اسم المحامي ورقم الترخيص، يسار: الهاتف والعنوان)',
-    createLayout: () => ({
-      margins: { top: 20, right: 20, bottom: 20, left: 20 },
-      columns: 2,
-      divider: true,
-      font: 'amiri',
-      basmala: { show: true, text: BASMALA_TEXT, size: 14, align: 'center' },
-      registry: { show: false, mode: 'manual' },
-      sections: [
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'مكتب المحامي أستاذ / أحمد علي المحترم', align: 'right', size: 16, bold: true },
-            { id: newId('b'), kind: 'text', value: 'المحامي أمام محاكم الاستئناف والتمييز', align: 'right', size: 13, bold: false },
-            { id: newId('b'), kind: 'text', value: 'رقم الإجازة والنقابة: 48590', align: 'right', size: 11, bold: false }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'بغداد — الكرخ — شارع حيفا', align: 'left', size: 12, bold: false },
-            { id: newId('b'), kind: 'text', value: 'هاتف: 07700000000', align: 'left', size: 12, bold: true }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        }
-      ]
-    })
-  },
-  {
-    id: 'sworn_translator',
-    name: 'مكتب ترجمة قانونية محلفة',
-    description: 'ترويسة بعرض الورقة قسم واحد متكامل مع شريط اعتماد الترجمة واللغات',
-    category: 'ترجمة وتصديق',
-    createLayout: () => ({
-      margins: { top: 20, right: 20, bottom: 20, left: 20 },
-      columns: 1,
-      divider: true,
-      font: 'cairo',
-      basmala: { show: false, text: BASMALA_TEXT, size: 14, align: 'center' },
-      registry: { show: true, mode: 'printed' },
-      sections: [
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'مكتب المترجم المحلف المعتمد', align: 'center', size: 18, bold: true },
-            { id: newId('b'), kind: 'text', value: 'ترجمة قانونية وفنية معتمدة لدى السفارات والوزارات (عربي - إنجليزي - فرنسي)', align: 'center', size: 12, bold: false },
-            { id: newId('b'), kind: 'text', value: 'عضو جمعية المترجمين العراقيين رقم القيد: 12845', align: 'center', size: 11, bold: false }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        }
-      ]
-    })
-  },
-  {
-    id: 'company_commercial',
-    name: 'شركة مقاولات وتجارة عامة',
-    category: 'شركات ومكاتب',
-    description: 'ترويسة تجارية 3 أقسام بختم وشعار ورقم السجل التجاري والمالي',
-    createLayout: () => ({
-      margins: { top: 20, right: 20, bottom: 20, left: 20 },
-      columns: 3,
-      divider: true,
-      font: 'plex',
-      basmala: { show: true, text: BASMALA_TEXT, size: 13, align: 'center' },
-      registry: { show: true, mode: 'printed' },
-      sections: [
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: 'شركة الرافدين للمقاولات العامة', align: 'right', size: 15, bold: true },
-            { id: newId('b'), kind: 'text', value: 'شركة ذات مسؤولية محدودة', align: 'right', size: 12, bold: false },
-            { id: newId('b'), kind: 'text', value: 'سجل تجاري رقم: 98451', align: 'right', size: 11, bold: false }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: [
-            { id: newId('b'), kind: 'text', value: '[ شعار الشركة التجاري ]', align: 'center', size: 12, bold: true }
-          ]
-        },
-        {
-          id: newId('sec'),
-          weight: 1,
-          blocks: []
-        }
-      ]
-    })
-  }
-];
 

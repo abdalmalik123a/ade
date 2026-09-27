@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { QR_SLOT, type TransactionInput, type TransactionSheet } from '../src/shared/api';
+import type { TransactionInput, TransactionSheet } from '../src/shared/api';
 import {
   issueBatch,
   issueTransaction,
+  linkTransactionCitizen,
   prepareDocuments,
+  repeatSource,
   transactionSheets
 } from '../src/main/services/documents';
+import { ensureSearchColumn as prepareCitizens, saveCitizen } from '../src/main/services/citizens';
+import type { CitizenInput } from '../src/shared/api';
 import { docFromLegacy, emptyDoc, makeField, mergeFields } from '../src/shared/doc';
 
 const sheet = (patch: Partial<TransactionSheet> = {}): TransactionSheet => ({
-  sheetHtml: `<div class="a4-sheet">نؤيد لكم أن السيد أحمد يعمل لدينا.<div data-slot="qr">${QR_SLOT}</div></div>`,
+  sheetHtml: `<div class="a4-sheet">نؤيد لكم أن السيد أحمد يعمل لدينا.</div>`,
   templateId: null,
   letterheadId: null,
   authorityId: null,
@@ -223,5 +227,81 @@ describe('الدمج: كتاب لكل اسم', () => {
 
   it('ولا دفعة بلا اسم واحد', () => {
     expect(() => issueBatch(freshDb(), [])).toThrow(/اسم واحد/);
+  });
+});
+
+describe('الكتاب يُربط بصاحبه', () => {
+  const citizen = (patch: Partial<CitizenInput> = {}): CitizenInput => ({
+    id: null, fullName: 'أحمد عادل كريم', nationalId: '198421098312', jobTitle: null, workplace: null,
+    employeeCode: null, serviceStatus: null, birthDate: null, birthPlace: null, enrollmentDept: null,
+    address: null, housingCardNo: null, landmark: null, phone: null, photoPath: null, category: null,
+    notes: null, verified: false, ...patch
+  });
+
+  it('بالرقم الوطني وإن كُتب الاسم باليد ولم يُختر من السجل', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    prepareCitizens(db);
+    const saved = saveCitizen(db, citizen());
+    const out = issueTransaction(db, input({ citizenId: null }));
+    expect(out.citizenId).toBe(saved.id);
+    const row = db.prepare('SELECT citizen_id AS c FROM documents').get() as { c: number };
+    expect(row.c).toBe(saved.id);
+  });
+
+  it('ولا يُربط بالاسم وحده — فالأسماء تتشابه (المبدأ ٥)', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    prepareCitizens(db);
+    saveCitizen(db, citizen({ nationalId: '111' }));
+    const out = issueTransaction(db, input({ citizenId: null, nationalId: null }));
+    expect(out.citizenId).toBeNull();
+  });
+
+  it('وحين يُحفظ الزبون الجديد بعد الإصدار تُربط به كتب معاملته، والمتن والبصمة كما هما', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    prepareCitizens(db);
+    const out = issueTransaction(db, input({ citizenId: null, nationalId: '777', sheets: [sheet(), sheet()] }));
+    expect(out.citizenId).toBeNull();
+    const before = db.prepare('SELECT body_html AS b, sha256 AS h FROM documents ORDER BY id').all();
+    const saved = saveCitizen(db, citizen({ nationalId: '777' }));
+    expect(linkTransactionCitizen(db, out.transactionId, saved.id)).toBe(2);
+    const after = db.prepare('SELECT body_html AS b, sha256 AS h, citizen_id AS c FROM documents ORDER BY id').all() as { b: string; h: string; c: number }[];
+    expect(after.every((d) => d.c === saved.id)).toBe(true);
+    expect(after.map(({ b, h }) => ({ b, h }))).toEqual(before);
+  });
+});
+
+describe('«كرّره» من حيث كُتب', () => {
+  it('معاملة الشبّاك تعود إليه بنماذجها كلّها وقيمها — بلا مفاتيح اللقطة', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    const t1 = Number(db.prepare("INSERT INTO templates (title, body_html) VALUES ('تأييد', '')").run().lastInsertRowid);
+    const t2 = Number(db.prepare("INSERT INTO templates (title, body_html) VALUES ('إنذار', '')").run().lastInsertRowid);
+    const out = issueTransaction(
+      db,
+      input({
+        sheets: [
+          sheet({ templateId: t1, values: { الاسم: 'أحمد', الغرض: 'سلفة' } }),
+          sheet({ templateId: t2, values: { الاسم: 'أحمد', الغرض: 'سلفة' } })
+        ]
+      })
+    );
+    const src = repeatSource(db, out.documents[1]!.id);
+    expect(src).toEqual({
+      kind: 'counter',
+      serial: out.documents[1]!.serial,
+      templateIds: [t1, t2],
+      values: { الاسم: 'أحمد', الغرض: 'سلفة' }
+    });
+  });
+
+  it('وكتاب المحرّر يعود إلى المحرّر — فهو يحمل لقطة ترويسته وحقوله', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    const out = issueTransaction(db, input({ sheets: [sheet({ values: { __letterhead: '{}', __fields: '[]' } })] }));
+    expect(repeatSource(db, out.documents[0]!.id)).toEqual({ kind: 'editor' });
+    expect(repeatSource(db, 99999)).toBeNull();
   });
 });

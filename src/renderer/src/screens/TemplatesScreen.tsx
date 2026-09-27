@@ -274,7 +274,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     say('حُذف النموذج: ' + title);
   }
 
-  /** «نسخ قالب»: نسخة مستقلّة تُعدَّل دون المساس بالأصل — الأصل لا يُفتح أبدًا. */
+  /** «نسخ نموذج»: نسخة مستقلّة تُعدَّل دون المساس بالأصل — الأصل لا يُفتح أبدًا. */
   async function duplicateTemplate(id: number, title: string) {
     setBusy(true);
     try {
@@ -362,7 +362,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             {
               label: 'النماذج الرسمية المعتمدة',
               value: stats?.activeTemplates ?? 0,
-              unit: 'صيغة نافذة',
+              unit: 'نموذجًا نافذًا',
               icon: 'verified',
               hint:
                 (stats?.activeTemplates ?? 0) === 0
@@ -952,7 +952,7 @@ function TemplateCard({
           </button>
           <button
             className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
-            title="نسخ قالب — نسخة مستقلّة تُعدَّل دون المساس بالأصل"
+            title="نسخ النموذج — نسخة مستقلّة تُعدَّل دون المساس بالأصل"
             type="button"
             onClick={onDuplicate}
           >

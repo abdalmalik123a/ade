@@ -17,13 +17,11 @@ import {
   recordReprint,
   reserveSerial
 } from '../src/main/services/documents';
-import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '../src/shared/api';
 import type { IssueInput } from '../src/shared/api';
 
 const SHEET =
-  `<div class="a4-sheet"><div>العدد: <span data-slot="serial">${SERIAL_SLOT}</span></div>` +
-  `<div>إلى / مصرف الرشيد</div><div>نؤيد لكم أن السيد أحمد عبد الله يعمل لدينا.</div>` +
-  `<div data-slot="qr">${QR_SLOT}</div><span data-slot="fingerprint">${FINGERPRINT_SLOT}</span></div>`;
+  `<div class="a4-sheet"><div>العدد: <span>٤٥١٢</span></div>` +
+  `<div>إلى / مصرف الرشيد</div><div>نؤيد لكم أن السيد أحمد عبد الله يعمل لدينا.</div></div>`;
 
 function input(patch: Partial<IssueInput> = {}): IssueInput {
   return {
@@ -119,18 +117,16 @@ describe('الترحيل على قاعدة قائمة', () => {
 });
 
 describe('إصدار الكتاب', () => {
-  it('يملأ المواضع المحجوزة: الرقم والبصمة ورمز التحقق', () => {
+  it('رقم المكتب قيدٌ في الأرشيف ولا يُطبع على الكتاب — والورقة تُحفظ كما أُرسلت', () => {
     const db = freshDb();
     const result = issueDocument(db, input());
 
     expect(result.serial).toBe('م/2026/1');
     expect(result.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(result.sheetHtml).not.toContain(SERIAL_SLOT);
-    expect(result.sheetHtml).not.toContain(QR_SLOT);
-    expect(result.sheetHtml).not.toContain(FINGERPRINT_SLOT);
-    expect(result.sheetHtml).toContain('م/2026/1');
-    expect(result.sheetHtml).toContain('<svg'); // الرمز مرسوم داخل الورقة
-    expect(result.sheetHtml).toContain(result.sha256.slice(0, 6));
+    // العدد على الكتاب ما أعطاه الزبون (٤٥١٢)، لا رقم المكتب — ولا رمز تحقّق.
+    expect(result.sheetHtml).toBe(SHEET);
+    expect(result.sheetHtml).not.toContain('م/2026/1');
+    expect(result.sheetHtml).not.toContain('<svg');
   });
 
   it('المتن المحفوظ هو ما طُبع بالضبط — فإعادة الطباعة طبق الأصل', () => {

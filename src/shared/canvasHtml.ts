@@ -242,23 +242,6 @@ export function renderCanvasHtml(
             : '';
           return `<div style="${boxStyle(el, canvas, opts.dpi)};background:${el.fill ?? 'transparent'}${border}${radius}"></div>`;
         }
-        case 'svg': {
-          // رسمة فيكتور SVG نقية بدقة طباعية فائقة
-          const rawSvg = el.svg.trim();
-          const svgContent = rawSvg.includes('<svg')
-            ? rawSvg.replace(/<svg\b([^>]*)>/i, '<svg$1 style="width:100%;height:100%;display:block">')
-            : `<svg viewBox="0 0 100 100" style="width:100%;height:100%;display:block">${rawSvg}</svg>`;
-          return `<div style="${boxStyle(el, canvas, opts.dpi)};display:flex;align-items:center;justify-content:center;overflow:hidden">${svgContent}</div>`;
-        }
-        case 'html': {
-          let renderedHtml = el.html;
-          for (const [key, val] of Object.entries(values)) {
-            if (val !== undefined && val !== null) {
-              renderedHtml = renderedHtml.replaceAll(`{${key}}`, escapeHtml(val));
-            }
-          }
-          return `<div style="${boxStyle(el, canvas, opts.dpi)};overflow:hidden">${renderedHtml}</div>`;
-        }
       }
     })
     .join('');

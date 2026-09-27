@@ -44,7 +44,7 @@ export function registerTemplateIpc(): void {
     svc.listTemplates(getDb(), category, issuing ?? 'registered')
   );
   ipcMain.handle('templates:get', (_e, id: number) => svc.getTemplate(getDb(), id));
-  ipcMain.handle('templates:categories', () => svc.listCategories(getDb()));
+  ipcMain.handle('templates:categories', (_e, issuing?: Issuing) => svc.listCategories(getDb(), issuing ?? 'registered'));
   ipcMain.handle('templates:stats', () => svc.templateStats(getDb()));
   ipcMain.handle('templates:save', (_e, input: TemplateInput & { doc?: Doc | null }) =>
     svc.saveTemplate(getDb(), input)

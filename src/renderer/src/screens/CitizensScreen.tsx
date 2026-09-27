@@ -13,6 +13,7 @@ import CitizenForm from './CitizenForm';
 import IdDuplexDialog from './IdDuplexDialog';
 import DeskewModal from './DeskewModal';
 import { errorText } from '../lib/errors';
+import { isCombo, shortcut } from '@shared/shortcuts';
 
 const nf = new Intl.NumberFormat('en-US');
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
@@ -98,11 +99,11 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer 
   // F2 — إضافة ملف مواطن، كما يعلن التصميم على الزرّ.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'F2' && !form.open) {
+      if (isCombo(e, shortcut('new-citizen').combo) && !form.open) {
         e.preventDefault();
         setForm({ open: true, initial: null });
       }
-      if (e.ctrlKey && e.key === 'Enter' && detail && !form.open) {
+      if (isCombo(e, shortcut('to-editor').combo) && detail && !form.open) {
         e.preventDefault();
         onInsertIntoEditor?.(detail.id);
       }

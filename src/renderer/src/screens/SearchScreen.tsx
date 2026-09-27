@@ -28,8 +28,7 @@ const COLUMNS = [
   'المواطن والمستمسك',
   'الوثيقة الرسمية',
   'الجهة الموجه إليها',
-  'التوقيت والنسخ',
-  'الرسوم'
+  'التوقيت والنسخ'
 ];
 
 const nf = new Intl.NumberFormat('en-US');
@@ -143,12 +142,6 @@ export default function SearchScreen({ query: initialQuery = '' }: { query?: str
       unit: 'وثيقة رسمية'
     },
     {
-      icon: 'payments',
-      label: 'الإيراد المالي المستوفى',
-      value: nf.format(stats?.revenue ?? 0),
-      unit: 'د.ع'
-    },
-    {
       icon: 'groups',
       label: 'المواطنون المخدومون',
       value: nf.format(stats?.citizens ?? 0),
@@ -166,7 +159,7 @@ export default function SearchScreen({ query: initialQuery = '' }: { query?: str
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="p-space-lg space-y-space-md">
         {/* بطاقات المؤشرات */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
           {cards.map((s) => (
             <div
               key={s.label}
@@ -300,9 +293,6 @@ export default function SearchScreen({ query: initialQuery = '' }: { query?: str
                   <span className="font-label-sm text-label-sm text-on-surface-variant tabular w-24 text-left">
                     {nf.format(t.count)} كتاب
                   </span>
-                  <span className="font-label-sm text-label-sm text-on-surface tabular w-28 text-left font-mono">
-                    {nf.format(t.revenue)} د.ع
-                  </span>
                 </div>
               ))}
             </div>
@@ -400,9 +390,6 @@ export default function SearchScreen({ query: initialQuery = '' }: { query?: str
                             {row.copies === 1 ? 'نسخة واحدة' : `${nf.format(row.copies)} نسخ`}
                           </span>
                         </div>
-                      </td>
-                      <td className="p-space-md font-mono font-bold text-on-surface">
-                        {nf.format(row.fee)} د.ع
                       </td>
                       <td className="p-space-md text-center">
                         <div className="flex items-center justify-center gap-1">

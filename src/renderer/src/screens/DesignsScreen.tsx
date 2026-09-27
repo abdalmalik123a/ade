@@ -65,10 +65,8 @@ import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
 import SheetsPreview from '../designs/SheetsPreview';
 import PrintOptions from '../designs/PrintOptions';
-import AiRecipeDialog from '../designs/AiRecipeDialog';
 import ClipartModal from '../designs/ClipartModal';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
-import { extractEditableTexts } from '@shared/webDesign';
 
 const DESIGN_CATEGORY = 'تصاميم';
 const NUM =
@@ -117,10 +115,6 @@ const kindName = (el: CanvasElement): string => {
       return `${el.symbology === 'qr' ? 'QR' : el.symbology === 'seal' ? 'نقش أمان' : 'باركود'} ${el.ref ? `{${el.ref}}` : el.value}`;
     case 'shape':
       return 'شكل';
-    case 'svg':
-      return 'رسمة فيكتور SVG';
-    case 'html':
-      return el.content || 'عنصر ويب HTML';
   }
 };
 
@@ -154,7 +148,6 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [preview, setPreview] = useState(false);
   const [grid, setGrid] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
-  const [aiRecipeOpen, setAiRecipeOpen] = useState(false);
   const [clipartModalOpen, setClipartModalOpen] = useState(false);
   const [zoom, setZoom] = useState(0.5);
   /** المعرض أولًا: يبدأ المكتب من «لمن التصميم؟» لا من لوحةٍ فارغة. */
@@ -227,12 +220,16 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     if (!root) return;
     for (const node of root.querySelectorAll<HTMLElement>('[data-barcode]')) {
       const value = node.dataset.value ?? '';
+      const kind = node.dataset.barcode ?? '';
       if (!value) {
-        node.innerHTML = '';
+        // لا قيمة بعد (حقلٌ لم يُملأ): عيّنةٌ باهتة في التحرير فيُرى موضع الرمز وحجمه —
+        // كان الصندوق يبقى فارغًا فيُظنّ أن الباركود لم يُنشأ. وفي «المعاينة» لا شيء:
+        // المعاينة ما سيُطبع، ولا يُطبع رمزٌ بقيمةٍ مخترعة.
+        node.innerHTML = preview ? '' : `<div style="opacity:.3;width:100%;height:100%">${drawCode(kind, '0000000000')}</div>`;
         continue;
       }
       try {
-        node.innerHTML = drawCode(node.dataset.barcode ?? '', value);
+        node.innerHTML = drawCode(kind, value);
       } catch {
         // قيمةٌ لا تُرمَّز (حروفٌ عربية في Code128) — تُترك فارغة ولا تُسقط الشاشة.
         node.innerHTML = '';
@@ -241,7 +238,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     // الأسماء الطويلة تصغر لتسع — بعد الرسم وبعد تحميل الخطوط.
     fitCanvasText(root);
     void document.fonts.ready.then(() => paintRef.current && fitCanvasText(paintRef.current));
-  }, [html]);
+  }, [html, preview]);
 
   const page = canvasPx(canvas, SCREEN_DPI);
   const pxW = mmToPx(canvas.size.w, SCREEN_DPI);
@@ -856,26 +853,9 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
           onOpenImage={() => void openBackground()}
           onOpenSaved={(id) => void openDesign(id)}
           onDeleteSaved={(id) => void deleteDesign(id)}
-          onOpenAiRecipe={() => setAiRecipeOpen(true)}
           onPick={pickFromGallery}
         />
       </div>
-
-      {aiRecipeOpen && (
-        <AiRecipeDialog
-          isOpen={aiRecipeOpen}
-          onClose={() => setAiRecipeOpen(false)}
-          onApply={(aiCanvas, recipeTitle) => {
-            apply(normalizeCanvas(aiCanvas));
-            setTitle(recipeTitle);
-            setDesignId(null);
-            setSelection([]);
-            setAskSize(false);
-            setView('editor');
-            say('تم إنشاء التصميم من كود الذكاء الاصطناعي — يمكنك تعديله بالفأرة الآن');
-          }}
-        />
-      )}
 
       {clipartModalOpen && (
         <ClipartModal
@@ -1351,96 +1331,6 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                 </select>
               )}
 
-              {single.kind === 'svg' && (
-                <label className="flex flex-col gap-1">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    اسم الطبقة في القائمة
-                  </span>
-                  <input
-                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
-                    value={single.name ?? ''}
-                    placeholder="رسمة فيكتور SVG"
-                    onChange={(e) => patchElement(single.id, { name: e.target.value })}
-                  />
-                </label>
-              )}
-
-              {single.kind === 'html' && (
-                <div className="space-y-space-sm pt-1">
-                  <label className="flex flex-col gap-1">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      اسم الطبقة في القائمة
-                    </span>
-                    <input
-                      className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
-                      value={single.name ?? ''}
-                      placeholder="عنصر ويب"
-                      onChange={(e) => patchElement(single.id, { name: e.target.value })}
-                    />
-                  </label>
-
-                  {/* نصوص التصميم القابلة للتعديل السريع */}
-                  <div className="space-y-2 pt-2 border-t border-outline-variant/60">
-                    <div className="flex items-center justify-between">
-                      <span className="font-label-sm text-label-sm font-semibold text-on-surface">
-                        نصوص التصميم (تعديل مباشر)
-                      </span>
-                      <button
-                        className="text-[11px] text-secondary hover:underline font-bold"
-                        type="button"
-                        onClick={() => {
-                          const nameItem = extractEditableTexts(single.html).find((it) =>
-                            it.label.includes('اسم')
-                          );
-                          if (nameItem) {
-                            patchElement(single.id, {
-                              html: single.html.replaceAll(nameItem.original, '{اسم الطالب}')
-                            });
-                            say('تم تحويل الاسم إلى حقل {اسم الطالب} للطباعة المجمعة');
-                          }
-                        }}
-                      >
-                        + جعل الاسم {'{اسم الطالب}'}
-                      </button>
-                    </div>
-
-                    <div className="max-h-56 overflow-y-auto space-y-2 pr-0.5">
-                      {extractEditableTexts(single.html).map((item, idx) => (
-                        <div key={idx} className="flex flex-col gap-0.5">
-                          <span className="text-[11px] text-on-surface-variant font-medium">
-                            {item.label}:
-                          </span>
-                          <input
-                            className="h-8 px-2 rounded-md bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
-                            defaultValue={item.original}
-                            onBlur={(e) => {
-                              const nextVal = e.target.value.trim();
-                              if (nextVal && nextVal !== item.original) {
-                                patchElement(single.id, {
-                                  html: single.html.replaceAll(item.original, nextVal)
-                                });
-                                say(`تم تحديث ${item.label}`);
-                              }
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <details className="pt-2 border-t border-outline-variant/60 text-label-xs text-on-surface-variant cursor-pointer">
-                    <summary className="font-semibold select-none hover:text-on-surface">
-                      تحرير كود الـ HTML / CSS المباشر
-                    </summary>
-                    <textarea
-                      className="w-full h-36 mt-1 p-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-mono text-[11px] text-on-surface text-left dir-ltr"
-                      dir="ltr"
-                      value={single.html}
-                      onChange={(e) => patchElement(single.id, { html: e.target.value })}
-                    />
-                  </details>
-                </div>
-              )}
             </div>
           )}
 

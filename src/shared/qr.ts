@@ -437,7 +437,11 @@ export function encodeQr(text: string): QrMatrix {
  * الرمز صورةً داخل الورقة: SVG مضمّن، لا ملف ولا خدمة.
  * الهامش الصامت أربع وحدات — أقلّ منه لا تقرأه الماسحات.
  */
-export function qrSvg(text: string, pixels = 64): string {
+/**
+ * `pixels` حجمٌ ثابت لمن يطلبه؛ وبغيره يملأ الرمز صندوقه ويبقى مربّعًا في وسطه.
+ * كان ٦٤ بكسلًا ثابتة دائمًا: لا يكبر في صندوقٍ كبير، ويفيض خارج الصغير.
+ */
+export function qrSvg(text: string, pixels?: number): string {
   const { size, modules } = encodeQr(text);
   const quiet = 4;
   const total = size + quiet * 2;
@@ -449,7 +453,10 @@ export function qrSvg(text: string, pixels = 64): string {
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" ` +
-    `width="${pixels}" height="${pixels}" shape-rendering="crispEdges">` +
+    (pixels
+      ? `width="${pixels}" height="${pixels}" `
+      : `width="100%" height="100%" preserveAspectRatio="xMidYMid meet" `) +
+    `shape-rendering="crispEdges">` +
     `<rect width="${total}" height="${total}" fill="#ffffff"/>` +
     `<path d="${path}" fill="#000000"/></svg>`
   );

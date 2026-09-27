@@ -360,16 +360,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   ok('وحقوله كما حُفظت لا كما كانت الشاشة', JSON.stringify(reopened) === '["اسم الطالب"]');
 
-  // ── مفتاح Gemini يبقى بين دخولٍ ودخول، ولا يُكتب نصًّا ─────────────
-  // كان في localStorage الواجهة، وهو يتبع أصل الصفحة — فيضيع بين طرق التشغيل.
-  await page.eval(`await window.diwan.designs.setGeminiKey('AIza-test-key-123'); return true;`);
-  await page.eval(`location.reload(); return true;`);
-  await wait(1500);
-  ok('ومفتاح Gemini محفوظٌ بعد إعادة التحميل', await page.eval(`return await window.diwan.designs.hasGeminiKey();`));
-  const keyFile = readFileSync(join(profile, 'gemini.key'));
-  ok('ومشفَّرٌ على القرص لا نصًّا', !keyFile.toString('latin1').includes('AIza-test-key-123'));
-  await page.eval(`await window.diwan.designs.setGeminiKey(''); return true;`);
-  ok('ويُحذف بالنصّ الفارغ', !(await page.eval(`return await window.diwan.designs.hasGeminiKey();`)));
+  // ── لا ذكاء اصطناعي ولا شبكة (المبدأ ٣): لا زرّ له، ولا جسر إليه ───────
+  await page.eval(`document.querySelector('[data-act="gallery"]')?.click(); return true;`);
+  await wait(400);
+  ok('لا زرّ للتصميم بالذكاء الاصطناعي', await page.eval(`return !document.querySelector('[data-act="ai-recipe"]');`));
+  ok('ولا جسر إلى Gemini', await page.eval(`return !('gemini' in window.diwan.designs) && !('setGeminiKey' in window.diwan.designs);`));
 
   if (shotsDir) await page.shot(join(shotsDir, 'designs.png'));
   return steps.join('\n');

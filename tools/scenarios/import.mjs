@@ -160,8 +160,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('والنموذج يشير إليها', saved?.lh === head?.id);
   ok('والورقة بلا رأسها', doc2 && !doc2.blocks.some((b) => b.kind === 'columns'));
 
+  // الشبّاك يحفظ معاملته حين يُترك — فيُعاد إليها. تُلغى لتبدأ الورقة من جديد.
   await page.goto('service-counter');
   await wait(900);
+  ok('والشبّاك عاد إلى المعاملة كما تُركت', await page.eval(`return Boolean(document.querySelector('[data-act="discard"]'));`));
+  await page.eval(`document.querySelector('[data-act="discard"]').click(); return true;`);
+  await wait(500);
   await page.clickText('انذار', 'button');
   await wait(300);
   await page.clickText('املأ', 'button');

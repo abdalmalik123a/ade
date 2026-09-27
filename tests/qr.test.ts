@@ -198,3 +198,12 @@ describe('الرسم', () => {
     expect(qrSvg('م/2026/1')).toContain(`viewBox="0 0 ${size + 8} ${size + 8}"`);
   });
 });
+
+describe('في اللوحة', () => {
+  it('يملأ صندوقه مربّعًا في وسطه — لا ٦٤ بكسلًا ثابتة تفيض أو تصغر', () => {
+    const svg = qrSvg('198421098312');
+    expect(svg).toContain('width="100%"');
+    expect(svg).toContain('preserveAspectRatio="xMidYMid meet"');
+    expect(qrSvg('x', 64)).toContain('width="64"');
+  });
+});

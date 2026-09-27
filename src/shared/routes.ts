@@ -17,7 +17,9 @@ export const ROUTES = {
   /** التصاميم — اللوحة: شهادةٌ وهويةٌ وملصق. لا مقابل له في التصميم. */
   designs: 'designed-documents',
   letterhead: 'header-seal-configuration',
-  search: 'administrative-archive-search'
+  search: 'administrative-archive-search',
+  /** الإعدادات — ما يغيّره صاحب المكتب، وسياسة الخصوصية والاختصارات. لا مقابل لها في التصميم. */
+  settings: 'office-settings'
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

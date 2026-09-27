@@ -58,12 +58,17 @@ async function saveAs(
   return path;
 }
 
+/**
+ * سنة القيد سنةُ يوم الإصدار — تُقرأ هنا لحظة الإصدار، لا من الواجهة ولا من الإعدادات.
+ *
+ * كانت «سنة السجل» خانةً تُحفظ مع إعدادات المكتب، فتثبت على سنتها: يُفتح البرنامج
+ * في ٢ كانون الثاني فيُكمل ترقيم السنة الماضية. وكذا برنامجٌ بقي مفتوحًا ليلة رأس
+ * السنة يحمل إعداداتٍ قرأها أمس.
+ */
+const thisYear = () => new Date().getFullYear();
+
 export function registerDocumentIpc(): void {
   svc.prepareDocuments(getDb());
-
-  ipcMain.handle('documents:peekSerial', (_e, prefix: string, year: number) =>
-    svc.peekSerial(getDb(), prefix, year)
-  );
 
   /**
    * الإصدار كاملًا في نداء واحد: قيد في السجل ببصمته ورقمه ورمزه، ثم نسخة PDF
@@ -74,7 +79,7 @@ export function registerDocumentIpc(): void {
     'documents:issue',
     async (e, input: IssueInput, print: boolean): Promise<IssueOutcome> => {
       const db = getDb();
-      const issued = svc.issueDocument(db, input);
+      const issued = svc.issueDocument(db, { ...input, serialYear: thisYear() });
 
       let archivedPath: string | null = null;
       let archiveError: string | undefined;
@@ -212,7 +217,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueTransaction',
     async (e, input: TransactionInput, print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult> => {
-      const out = svc.issueTransaction(getDb(), input);
+      const out = svc.issueTransaction(getDb(), { ...input, serialYear: thisYear() });
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const doc of out.documents) {
@@ -240,7 +245,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueBatch',
     async (e, inputs: TransactionInput[], print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult[]> => {
-      const all = svc.issueBatch(getDb(), inputs);
+      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear() })));
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const out of all) {
@@ -259,6 +264,12 @@ export function registerDocumentIpc(): void {
       }
       return all;
     }
+  );
+
+  ipcMain.handle('documents:repeatSource', (_e, id: number) => svc.repeatSource(getDb(), Number(id)));
+
+  ipcMain.handle('documents:linkCitizen', (_e, transactionId: number, citizenId: number) =>
+    svc.linkTransactionCitizen(getDb(), Number(transactionId), Number(citizenId))
   );
 
   /**

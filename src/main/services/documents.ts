@@ -1,8 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { normalizeFold } from '@shared/arabic';
-import { qrSvg } from '@shared/qr';
-import { FINGERPRINT_SLOT, QR_SLOT, SERIAL_SLOT } from '@shared/api';
 import { touchLetterhead } from './letterheads';
 import type {
   ArchiveStats,
@@ -18,9 +16,12 @@ import type {
  * سجل الصادر: الإصدار والبصمة وإعادة الطباعة والتقارير.
  *
  * التسلسل مستقلّ لكل سنة، و«الاطّلاع» لا يستهلك رقمًا — الاستهلاك عند الإصدار
- * وحده، وإلا احترقت أرقام كلما فتح الموظف شاشة المحرر. ولذلك يجري الإصدار كلّه
- * في نداء واحد: الرقم يُحجز، والبصمة تُحسب، والرمز يُرسم، ثم تُحقن الثلاثة في
- * علامات الورقة نفسها قبل حفظها — فلا نافذة زمنية يُحرق فيها رقم بلا كتاب.
+ * وحده، وإلا احترقت أرقام كلما فتح الموظف شاشة المحرر. ويجري الإصدار كلّه في
+ * نداء واحد: الرقم يُحجز والبصمة تُحسب والقيد يُكتب معًا.
+ *
+ * **والرقم قيدٌ في أرشيف المكتب وحده** (§١): ديوان مُنشئ لا جهة رسمية، فلا يُطبع
+ * رقمه في خانة «العدد:» على الكتاب — تلك تكتبها الجهة، أو يُكتب فيها ما أعطاه
+ * الزبون. فالورقة تُحفظ كما طُبعت حرفًا بحرف، بلا مواضع تُملأ بعد.
  */
 
 export function peekSerial(db: Database, prefix: string, year: number): string {
@@ -166,8 +167,8 @@ export type IssueResult = {
 };
 
 /**
- * يصدر الكتاب: رقم صادر محجوز، وبصمة، ورمز تحقق، وقيد في السجل — كلها في
- * معاملة واحدة. يعيد علامات الورقة النهائية ليطبعها النداء أو يحفظها PDF.
+ * يصدر الكتاب: رقم قيدٍ محجوز، وبصمة، وقيد في السجل — كلها في معاملة واحدة.
+ * يعيد علامات الورقة ليطبعها النداء أو يحفظها PDF — وهي ما أُرسل بلا تغيير.
  */
 export function issueDocument(db: Database, input: IssueInput): IssueResult {
   const name = input.citizenName.trim();
@@ -181,7 +182,7 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
 
     // البصمة تُحسب على النصّ لا على العلامات: تغيّر خطّ أو صنف لا يكسر التوثيق،
     // وتغيّر كلمة واحدة في المنطوق يكسره.
-    const bodyText = htmlToText(input.sheetHtml.split(QR_SLOT).join(' '));
+    const bodyText = htmlToText(input.sheetHtml);
     const sha256 = fingerprint({
       serial,
       bodyHtml: bodyText,
@@ -190,13 +191,7 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
       destination: input.destination ?? ''
     });
 
-    const sheetHtml = input.sheetHtml
-      .split(SERIAL_SLOT)
-      .join(escapeHtml(serial))
-      .split(FINGERPRINT_SLOT)
-      .join(escapeHtml(shortFingerprint(sha256)))
-      .split(QR_SLOT)
-      .join(qrSvg(`${serial}\n${sha256}`, 64));
+    const sheetHtml = input.sheetHtml;
 
     const info = db
       .prepare(
@@ -266,12 +261,44 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
  * **والكل أو لا شيء.** إن سقطت الورقة الثالثة رُدّت الأولى والثانية معها، فلا
  * يُحرق رقم صادر على كتاب لم يخرج، ولا تبقى في الأرشيف نصفُ معاملة.
  */
+/**
+ * ملف المواطن بالرقم الوطني وحده — لا بالاسم.
+ *
+ * الكتاب الذي كُتب اسم صاحبه باليد ولم يُختر من السجل كان يصدر بلا ربط، فيقول
+ * ملفُّه «لم يصدر أي كتاب» والأرشيف فيه كتبه. والرقم الوطني يعيّن صاحبه يقينًا؛
+ * أمّا الاسم فيتشابه، والربط به تخمين (المبدأ ٥).
+ */
+export function citizenByNationalId(db: Database, nationalId: string | null | undefined): number | null {
+  const nid = nationalId?.trim();
+  if (!nid) return null;
+  const row = db.prepare('SELECT id FROM citizens WHERE national_id = ? LIMIT 1').get(nid) as { id: number } | undefined;
+  return row?.id ?? null;
+}
+
+/**
+ * يُربط كتابُ معاملةٍ بملف مواطن بعد صدوره — حين يُحفظ الزبون الجديد في السجل.
+ * والمتن والبصمة لا يُمسّان: الربط عمودٌ في القيد، لا تعديلٌ في الكتاب.
+ */
+export function linkTransactionCitizen(db: Database, transactionId: number, citizenId: number): number {
+  return db.transaction(() => {
+    const changed = db
+      .prepare('UPDATE documents SET citizen_id = ? WHERE transaction_id = ? AND citizen_id IS NULL')
+      .run(citizenId, transactionId).changes;
+    db.prepare('UPDATE transactions SET citizen_id = ? WHERE id = ? AND citizen_id IS NULL').run(citizenId, transactionId);
+    db.prepare(
+      `INSERT INTO audit_log (entity, entity_id, action, detail) VALUES ('transaction', ?, 'link-citizen', ?)`
+    ).run(transactionId, `ملف المواطن ${citizenId}`);
+    return changed;
+  })();
+}
+
 export function issueTransaction(db: Database, input: TransactionInput): TransactionResult {
   const name = input.citizenName.trim();
   if (!name) throw new Error('لا تصدر معاملة بلا اسم صاحب العلاقة');
   if (input.sheets.length === 0) throw new Error('لا تصدر معاملة بلا ورقة واحدة');
 
   prepareDocuments(db);
+  const citizenId = input.citizenId ?? citizenByNationalId(db, input.nationalId);
 
   return db.transaction((): TransactionResult => {
     const fee = input.sheets.reduce((sum, s) => sum + Math.max(0, s.fee), 0);
@@ -280,13 +307,13 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
         `INSERT INTO transactions (citizen_id, citizen_name, citizen_nid, sheets, fee, operator)
          VALUES (?, ?, ?, ?, ?, ?)`
       )
-      .run(input.citizenId, name, input.nationalId, input.sheets.length, fee, input.operator);
+      .run(citizenId, name, input.nationalId, input.sheets.length, fee, input.operator);
     const transactionId = Number(tx.lastInsertRowid);
 
     const documents = input.sheets.map((sheet) =>
       issueDocument(db, {
         ...sheet,
-        citizenId: input.citizenId,
+        citizenId,
         citizenName: name,
         nationalId: input.nationalId,
         operator: input.operator,
@@ -304,7 +331,7 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
        VALUES ('transaction', ?, 'issue', ?, ?)`
     ).run(transactionId, `${input.sheets.length} ورقة — ${name}`, input.operator);
 
-    return { transactionId, fee, documents };
+    return { transactionId, fee, citizenId, documents };
   })();
 }
 
@@ -323,6 +350,49 @@ export function issueBatch(db: Database, inputs: TransactionInput[]): Transactio
   return db.transaction(() => inputs.map((one) => issueTransaction(db, one)))();
 }
 
+export type RepeatSource =
+  | { kind: 'editor' }
+  | { kind: 'counter'; serial: string; templateIds: number[]; values: Record<string, string> };
+
+/**
+ * «كرّره»: كتابٌ صدر يُفتح نسخةً جديدة من حيث كُتب.
+ *
+ * ما صدر من المحرّر يحمل لقطة ترويسته وحقوله (`__letterhead` و`__fields`) فيعود
+ * إليه. وما صدر من الشبّاك قيمٌ بمفاتيح حقول نماذجه — فيعود إلى الشبّاك بنماذج
+ * معاملته كلّها وقيمها، ويبدّل الموظف ما يلزم. وكان يُفتح في المحرّر فيجد قيمًا
+ * لا يعرف مفاتيحها، فيفتح فارغًا.
+ */
+export function repeatSource(db: Database, id: number): RepeatSource | null {
+  prepareDocuments(db);
+  const doc = db
+    .prepare('SELECT serial, template_id AS templateId, transaction_id AS tx, values_json AS v FROM documents WHERE id = ?')
+    .get(id) as { serial: string; templateId: number | null; tx: number | null; v: string } | undefined;
+  if (!doc) return null;
+  const parse = (raw: string): Record<string, unknown> => {
+    try {
+      const v = JSON.parse(raw) as unknown;
+      return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  };
+  if ('__letterhead' in parse(doc.v)) return { kind: 'editor' };
+
+  const rows = doc.tx
+    ? (db
+        .prepare('SELECT template_id AS templateId, values_json AS v FROM documents WHERE transaction_id = ? ORDER BY id')
+        .all(doc.tx) as { templateId: number | null; v: string }[])
+    : [{ templateId: doc.templateId, v: doc.v }];
+  const templateIds = [...new Set(rows.map((r) => r.templateId).filter((t): t is number => t !== null))];
+  const values: Record<string, string> = {};
+  for (const r of rows) {
+    for (const [k, v] of Object.entries(parse(r.v))) {
+      if (!k.startsWith('__') && typeof v === 'string') values[k] = v;
+    }
+  }
+  return { kind: 'counter', serial: doc.serial, templateIds, values };
+}
+
 /** أوراق معاملة واحدة — لإعادة طباعتها معًا أو مراجعتها. */
 export function transactionSheets(db: Database, transactionId: number): DocumentRow[] {
   return db
@@ -332,10 +402,6 @@ export function transactionSheets(db: Database, transactionId: number): Document
        WHERE d.transaction_id = ? ORDER BY d.id`
     )
     .all(transactionId) as DocumentRow[];
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 /** إعادة الطباعة تُقيَّد ولا تُنشئ رقمًا جديدًا — الكتاب واحد ونسخه تُعدّ. */

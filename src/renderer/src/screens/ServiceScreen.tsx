@@ -13,16 +13,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mergeFields, pageMm, type Doc, type DocField } from '@shared/doc';
 import { renderDocHtml, watermarkHtml } from '@shared/docHtml';
-import { normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
-import { SERIAL_SLOT } from '@shared/api';
+import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
+  CitizenInput,
   OfficeSettings,
   PrinterInfo,
   TemplateDetail,
   TemplateSummary,
   TransactionSheet
 } from '@shared/api';
-import { formatGregorian } from '@shared/dates';
+import { formatGregorian, formatHijri } from '@shared/dates';
 import LetterheadView from '../components/LetterheadView';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
@@ -30,6 +30,7 @@ import { derivedWords } from '@shared/tafqeet';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
 import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import SpellingPanel from '../components/SpellingPanel';
+import { isCombo, shortcut } from '@shared/shortcuts';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -73,6 +74,33 @@ type Loaded = {
 export type ServiceScreenProps = {
   printer: PrinterInfo | null;
   onIssued?: () => void;
+  /**
+   * الشبّاك لا يُهدم حين يُترك: يبقى مركّبًا مخفيًّا فتبقى المعاملة كما تُركت —
+   * كان الموظف يذهب إلى «المواطنين» ليتحقّق من رقمٍ فيعود إلى شاشةٍ فارغة.
+   * و`active` يقول أهو المعروض: فيُعاد تحميل النماذج عند العودة، ولا يستجيب
+   * لاختصاراته وهو مخفيّ.
+   */
+  active?: boolean;
+  /** «كرّره» من الأرشيف: نماذج معاملةٍ صدرت وقيمها — تُفتح نسخةً جديدة للتعديل. */
+  repeat?: RepeatRequest | null;
+};
+
+export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
+
+/** معاملةٌ معلّقة: زبونٌ ذهب ليجلب مستمسكًا، والمكتب يخدم غيره حتى يعود. */
+type Parked = {
+  key: number;
+  label: string;
+  step: Step;
+  picked: number[];
+  loaded: Loaded[];
+  values: Record<string, string>;
+  letterNo: string;
+  citizenId: number | null;
+  merge: boolean;
+  names: string;
+  valuesOnly: boolean;
+  genderByHand: boolean;
 };
 
 const STEPS: { key: Step; label: string; hint: string }[] = [
@@ -81,7 +109,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps) {
+export default function ServiceScreen({ printer, onIssued, active = true, repeat = null }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -92,12 +120,26 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
   const [picked, setPicked] = useState<number[]>([]);
   const [loaded, setLoaded] = useState<Loaded[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
+  /** العدد على الكتاب كما أعطاه الزبون — وفارغًا تكتبه الجهة بيدها. لا رقم المكتب (§١). */
+  const [letterNo, setLetterNo] = useState('');
   const [at, setAt] = useState(0);
-  const [fee, setFee] = useState(0);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
+
+  // F2 في خطوة «املأ»: ما يعرفه البرنامج عن المواطن — كما يعلن زرّه (§١).
+  useEffect(() => {
+    if (step !== 'fill' || !active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (isCombo(e, shortcut('citizen').combo)) {
+        e.preventDefault();
+        setPicker(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [step, active]);
   /** رسالة الزبون من واتساب تُلصق كما هي فتتوزّع على الحقول. */
   const [pasteOpen, setPasteOpen] = useState(false);
   /** استمارةٌ مطبوعةٌ مسبقًا في الطابعة: تُطبع القيم وحدها في فراغاتها. */
@@ -121,7 +163,10 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
     toastTimer.current = window.setTimeout(() => setToast(null), 3200);
   };
 
+  // النماذج والترويسات والإعدادات تُقرأ عند كل عودةٍ إلى الشبّاك — فما أُضيف في
+  // المكتبة يظهر — والمعاملة الجارية لا تُمسّ.
   useEffect(() => {
+    if (!active) return;
     void (async () => {
       const [list, cats, lhs, s] = await Promise.all([
         window.diwan.templates.list(null),
@@ -134,7 +179,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       setLetterheads(lhs);
       setSettings(s);
     })();
-  }, []);
+  }, [active]);
 
   const topFavorites = useMemo(() => {
     return [...items].sort((a, b) => b.printCount - a.printCount).slice(0, 4);
@@ -172,14 +217,16 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   /** تحميل تفاصيل المختارات مرّة عند الانتقال — لا مع كل ضغطة. */
-  async function goFill() {
+  async function goFill(ids: number[] = picked) {
     setBusy(true);
     try {
-      const details = await Promise.all(picked.map((id) => window.diwan.templates.get(id)));
+      const details = await Promise.all(ids.map((id) => window.diwan.templates.get(id)));
       const next: Loaded[] = [];
-      for (const [i, detail] of details.entries()) {
+      for (const detail of details) {
         if (!detail) continue;
-        const summary = items.find((t) => t.id === picked[i])!;
+        // الملخّص من القائمة، وإلا من التفاصيل نفسها — نموذجٌ مُكرَّر قد لا يكون فيها.
+        const summary =
+          items.find((t) => t.id === detail.id) ?? { ...detail, variables: detail.variables.map((v) => v.token) };
         const lh = letterheads.find((x) => x.id === detail.letterheadId) ?? null;
         next.push({
           summary,
@@ -232,6 +279,23 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
 
   const missing = fields.filter((f) => f.required && !isChoiceKey(f.key) && !values[f.key]?.trim());
 
+  /** رأس الورقة: تاريخ اليوم، والعدد كما أعطاه الزبون — وفارغًا فراغٌ منقوط للجهة. */
+  const registry = { number: letterNo.trim(), date: formatGregorian(new Date()) };
+  const printsRegistry = loaded.some((l) => asksLetterNumber(l.layout));
+
+  /**
+   * حقول الترويسة التلقائية: التاريخان، والعدد على الكتاب، وما سواها من قيم
+   * المعاملة. وما لا قيمة له يُطبع فارغًا — لا وسمًا بين قوسين على الورق.
+   */
+  const resolveHead = (text: string): string =>
+    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
+      const key = raw.trim();
+      if (key === 'رقم_الصادر') return letterNo.trim();
+      if (key === 'التاريخ_الميلادي') return formatGregorian(new Date());
+      if (key === 'التاريخ_الهجري') return formatHijri(new Date());
+      return values[key] ?? values[key.replace(/_/g, ' ')] ?? '';
+    });
+
   // الجنس يُقترح من الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة.
   useEffect(() => {
     if (!needsGender || genderByHand || !citizenName) return;
@@ -269,9 +333,6 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
           const body = node.querySelector('[data-body]');
           if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank', paragraphs: 'blocks' });
         }
-        node.querySelectorAll('[data-slot="serial"]').forEach((el) => {
-          el.textContent = SERIAL_SLOT;
-        });
       }
       return {
         sheetHtml: node?.outerHTML ?? '',
@@ -284,11 +345,12 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
         values: use,
         copies: 1,
         copyKind: 'نسخة أصلية',
-        fee
+        // المال صامت (§١): العمود باقٍ في القاعدة بلا قيمة.
+        fee: 0
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, values, fee, fields, asPrinted]);
+  }, [loaded, values, fields, asPrinted]);
 
   const common = () => ({
     operator: settings?.operatorName || null,
@@ -321,17 +383,125 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       );
       say(`صدرت ${out.documents.length} ورقة بمعاملة واحدة — ${out.documents[0]?.serial ?? ''}`);
       onIssued?.();
-      setStep('pick');
-      setPicked([]);
-      setLoaded([]);
-      setValues({});
-      setGenderByHand(false);
-      setCitizenId(null);
+      // لا ملفّ له في السجل (لم يُختر ولم يدلّ عليه رقمه)؟ يُعرض حفظه قبل أن تُمحى الحقول.
+      if (out.citizenId === null) offerToRegistry(out.transactionId);
+      else setNewCitizen(null);
+      reset();
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
     } finally {
       setBusy(false);
     }
+  }
+
+  /** معاملةٌ جديدة: كل ما كُتب يُمحى، والنماذج المختارة معه. */
+  function reset() {
+    setStep('pick');
+    setPicked([]);
+    setLoaded([]);
+    setValues({});
+    setLetterNo('');
+    setGenderByHand(false);
+    setCitizenId(null);
+    setNames('');
+    setMerge(false);
+    setValuesOnly(false);
+    setAt(0);
+  }
+
+  // ── الزبون الجديد إلى السجل ───────────────────────────────────────
+  /**
+   * صدرت المعاملة لاسمٍ كُتب باليد لا في السجل؟ يُعرض حفظه — بما كُتب في حقوله
+   * (كل حقلٍ يعرف خانته في ملف المواطن: `source`) — وتُربط كتبه به. عرضٌ لا
+   * حفظٌ صامت: قد يكون زبونًا عابرًا لا يريد المكتب ملفًّا له.
+   */
+  const [newCitizen, setNewCitizen] = useState<{ transactionId: number; input: CitizenInput } | null>(null);
+
+  function offerToRegistry(transactionId: number) {
+    const input: CitizenInput = {
+      id: null, fullName: citizenName, nationalId: null, jobTitle: null, workplace: null, employeeCode: null,
+      serviceStatus: null, birthDate: null, birthPlace: null, enrollmentDept: null, address: null,
+      housingCardNo: null, landmark: null, phone: null, photoPath: null, category: null, notes: null, verified: false
+    };
+    for (const f of fields) {
+      const v = values[f.key]?.trim();
+      if (!v || !f.source || !(f.source in input) || f.source === 'id' || f.source === 'verified') continue;
+      (input as unknown as Record<string, string>)[f.source] = v;
+    }
+    input.nationalId ||= byRole('nationalId') || null;
+    input.fullName = citizenName;
+    setNewCitizen({ transactionId, input });
+  }
+
+  async function saveNewCitizen() {
+    if (!newCitizen) return;
+    try {
+      const saved = await window.diwan.citizens.save(newCitizen.input);
+      await window.diwan.documents.linkCitizen(newCitizen.transactionId, saved.id);
+      say(`حُفظ «${saved.fullName}» في سجل المواطنين، ورُبطت به كتبه`);
+      setNewCitizen(null);
+    } catch (e) {
+      say(e instanceof Error ? e.message : 'تعذّر الحفظ في السجل', 'warn');
+    }
+  }
+
+  // ── «كرّره» من الأرشيف ─────────────────────────────────────────────
+  // «اطبع لي مثل كتاب أمس وبدّل الاسم»: تُفتح نماذج تلك المعاملة بقيمها، والجارية
+  // — إن كان فيها شيء — تُعلَّق لا تُمحى. والإصدار برقمٍ جديد، والأصل كما صدر.
+  useEffect(() => {
+    if (!repeat) return;
+    if (loaded.length > 0) park();
+    setPicked(repeat.templateIds);
+    void goFill(repeat.templateIds).then(() => {
+      setValues(repeat.values);
+      say(`نسخة عن ${repeat.serial} — بدّل ما يلزم ثم أصدر، والأصل يبقى كما صدر`);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repeat?.key]);
+
+  // ── المعاملات المعلّقة ─────────────────────────────────────────────
+  const [parked, setParked] = useState<Parked[]>([]);
+
+  const snapshot = (): Parked => ({
+    key: Date.now(),
+    label: citizenName || loaded.map((l) => l.summary.title).join('، ') || 'معاملة',
+    step,
+    picked,
+    loaded,
+    values,
+    letterNo,
+    citizenId,
+    merge,
+    names,
+    valuesOnly,
+    genderByHand
+  });
+
+  /** تُعلَّق المعاملة كما هي، ويُفتح الشبّاك لزبونٍ آخر. */
+  function park() {
+    setParked((list) => [...list, snapshot()]);
+    reset();
+    say('عُلّقت المعاملة — تُستأنف من «معاملات معلّقة» حين يعود صاحبها');
+  }
+
+  /** تُستأنف معلّقةٌ من حيث تُركت — والجارية إن كان فيها شيء تُعلَّق مكانها. */
+  function resume(key: number) {
+    const p = parked.find((x) => x.key === key);
+    if (!p) return;
+    const current = loaded.length > 0 ? snapshot() : null;
+    setParked((list) => [...list.filter((x) => x.key !== key), ...(current ? [current] : [])]);
+    setStep(p.step);
+    setPicked(p.picked);
+    setLoaded(p.loaded);
+    setValues(p.values);
+    setLetterNo(p.letterNo);
+    setCitizenId(p.citizenId);
+    setMerge(p.merge);
+    setNames(p.names);
+    setValuesOnly(p.valuesOnly);
+    setGenderByHand(p.genderByHand);
+    setAt(0);
+    say(`استُؤنفت معاملة ${p.label}`);
   }
 
   /** الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء. */
@@ -363,12 +533,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
       say(`صدرت ${papers} ورقة لـ${all.length} اسمًا — كلٌّ بمعاملته`);
       onIssued?.();
-      setStep('pick');
-      setPicked([]);
-      setLoaded([]);
-      setValues({});
-      setNames('');
-      setMerge(false);
+      reset();
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
     } finally {
@@ -451,6 +616,58 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   انقر ما يريده — واحدةً أو عدّة أوراقٍ معًا — ثم املأها مرّةً واحدة.
                 </p>
               </div>
+              {newCitizen && (
+                <div className="p-space-sm rounded-xl bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-new-citizen="">
+                  <span className="material-symbols-outlined text-[20px] text-secondary">person_add</span>
+                  <span className="flex-1 font-label-md text-label-md text-on-surface">
+                    «{newCitizen.input.fullName}» ليس في سجل المواطنين — أيُحفظ بما كُتب له، فتُجلب بياناته بـF2
+                    في المرّة القادمة وتُربط به كتبه؟
+                  </span>
+                  <button
+                    className="h-9 px-4 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md font-bold"
+                    data-act="save-new-citizen"
+                    type="button"
+                    onClick={() => void saveNewCitizen()}
+                  >
+                    احفظه في السجل
+                  </button>
+                  <button
+                    className="h-9 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+                    type="button"
+                    onClick={() => setNewCitizen(null)}
+                  >
+                    لا — زبونٌ عابر
+                  </button>
+                </div>
+              )}
+              {parked.length > 0 && (
+                <div className="p-space-sm rounded-xl bg-tertiary-fixed/40 flex flex-wrap items-center gap-space-xs" data-parked="">
+                  <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">pending_actions</span>
+                    معاملات معلّقة
+                  </span>
+                  {parked.map((p) => (
+                    <span key={p.key} className="flex items-center rounded-lg bg-surface-container-lowest overflow-hidden">
+                      <button
+                        className="h-9 px-3 font-label-md text-label-md text-on-surface hover:bg-surface-container-high"
+                        data-act="resume"
+                        type="button"
+                        onClick={() => resume(p.key)}
+                      >
+                        {p.label} — استأنف
+                      </button>
+                      <button
+                        className="h-9 px-2 text-on-surface-variant hover:text-error"
+                        title="ألغِ المعاملة المعلّقة"
+                        type="button"
+                        onClick={() => setParked((list) => list.filter((x) => x.key !== p.key))}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* الأكثر استخداماً — الوصول السريع */}
               {topFavorites.length > 0 && !query.trim() && !activeCategory && (
                 <div className="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-space-xs">
@@ -632,6 +849,19 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                 </div>
               )}
 
+              {printsRegistry && (
+                <label className="flex flex-col gap-1" data-letter-no="">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    العدد على الكتاب — كما أعطاه الزبون، أو يُترك فارغًا تكتبه الجهة
+                  </span>
+                  <input
+                    className="h-10 px-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+                    value={letterNo}
+                    onChange={(e) => setLetterNo(e.target.value)}
+                  />
+                </label>
+              )}
+
               {fields.length === 0 ? (
                 <span className="font-body-md text-body-md text-on-surface-variant">
                   لا حقول في هذه النماذج — امضِ إلى المراجعة.
@@ -696,7 +926,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                       style={sheetStyle(loaded[0].doc)}
                     >
                       <div dangerouslySetInnerHTML={{ __html: watermarkHtml(loaded[0].doc) }} />
-                      {loaded[0].layout && <LetterheadView layout={loaded[0].layout} />}
+                      {loaded[0].layout && <LetterheadView layout={loaded[0].layout} registryValues={registry} resolve={resolveHead} />}
                       <div
                         className={`${gapAfter(loaded[0].layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
                         dangerouslySetInnerHTML={{
@@ -769,7 +999,7 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   style={sheetStyle(l.doc)}
                 >
                   <div dangerouslySetInnerHTML={{ __html: watermarkHtml(l.doc) }} />
-                  {l.layout && <LetterheadView layout={l.layout} />}
+                  {l.layout && <LetterheadView layout={l.layout} registryValues={registry} resolve={resolveHead} />}
                   <div
                     className={`${gapAfter(l.layout) ? 'mt-space-md ' : ''}font-body-md text-body-md leading-8`}
                     data-body=""
@@ -794,6 +1024,35 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
               رجوع
             </button>
           )}
+          {step !== 'pick' && (
+            <button
+              className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
+              data-act="park"
+              title="الزبون ذهب ليجلب مستمسكًا؟ علّقها واخدم غيره، ثم استأنفها من حيث تُركت"
+              type="button"
+              disabled={busy}
+              onClick={park}
+            >
+              <span className="material-symbols-outlined text-[18px]">pause_circle</span>
+              علّق المعاملة
+            </button>
+          )}
+          {step !== 'pick' && (
+            <button
+              className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container font-label-md text-label-md flex items-center gap-1"
+              data-act="discard"
+              title="زبونٌ عدل عن طلبه: تُمحى المعاملة ويُفتح الشبّاك نظيفًا — ولا يُقيَّد شيء"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                reset();
+                say('أُلغيت المعاملة — لم يُقيَّد شيء');
+              }}
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+              ألغِ المعاملة
+            </button>
+          )}
           <span className="flex-1" />
 
           {step === 'review' && (
@@ -810,16 +1069,6 @@ export default function ServiceScreen({ printer, onIssued }: ServiceScreenProps)
                   onChange={(e) => setValuesOnly(e.target.checked)}
                 />
                 على استمارةٍ مطبوعة — القيم وحدها
-              </label>
-              <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-                الأجرة للورقة
-                <input
-                  className="w-20 h-9 px-2 rounded-lg bg-surface-container-lowest text-on-surface text-center font-label-md text-label-md"
-                  min={0}
-                  type="number"
-                  value={fee}
-                  onChange={(e) => setFee(Math.max(0, Number(e.target.value) || 0))}
-                />
               </label>
               {merge ? (
                 <span className="font-label-md text-label-md text-on-surface">

@@ -123,13 +123,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   await typeLines('قسم التعليم العام');
   await wait(200);
 
-  // حقل رقم الصادر داخل الترويسة: يُملأ عند الإصدار لا قبله
+  // حقل «العدد على الكتاب» داخل الترويسة: يُكتب في خانته، لا رقم المكتب (§١)
   await page.clickText('حقل تلقائي');
   await wait(200);
   await page.eval(`
     const sel = [...document.querySelectorAll('select')].find(s =>
-      [...s.options].some(o => o.textContent.includes('رقم الصادر')));
-    const opt = [...sel.options].find(o => o.textContent.includes('رقم الصادر'));
+      [...s.options].some(o => o.textContent.includes('العدد على الكتاب')));
+    const opt = [...sel.options].find(o => o.textContent.includes('العدد على الكتاب'));
     Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, opt.value);
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   `);
@@ -159,13 +159,13 @@ export default async function scenario(page, { profile, shotsDir }) {
       (await fieldValue('الرقم الوطني / البطاقة الموحدة')) === '198421098312'
   );
 
-  // رقم الصادر: اطّلاع لا يستهلك
-  await page.clickText('توليد متسلسل');
-  await wait(400);
-  ok('عُرض رقم الاطّلاع', (await page.text()).includes('م/'));
+  // العدد على الكتاب: ما أعطاه الزبون — ورقم المكتب لا يُولَّد فيه ولا يُطبع (§١)
+  ok('لا «توليد متسلسل» لرقم المكتب', !(await page.text()).includes('توليد متسلسل'));
+  await fill('العدد', '٤٥١٢');
+  await wait(300);
 
   // الأصل أن يكتب العدد والتاريخ موظّفُ الاستلام بخطّه
-  const serialNow = `م/${new Date().getFullYear()}/1`;
+  const serialNow = `م/${new Date().getFullYear()}/`;
   /** سطر العدد والتاريخ داخل الترويسة — لا بقيّة الورقة. */
   const registry = () =>
     page.eval(`
@@ -176,7 +176,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   let line = await registry();
   ok('العدد والتاريخ في الترويسة', line.includes('العدد:') && line.includes('التاريخ:'));
   ok('والتاريخ فوق العدد', line.indexOf('التاريخ:') < line.indexOf('العدد:'));
-  ok('وهو فراغ يُملأ باليد افتراضًا', line.startsWith('manual|') && !line.includes(serialNow));
+  ok('وهو فراغ يُملأ باليد افتراضًا', line.startsWith('manual|') && !line.includes('٤٥١٢'));
 
   await page.clickText('تحرير الترويسة');
   await wait(500);
@@ -185,7 +185,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickExact('تم');
   await wait(400);
   line = await registry();
-  ok('اختيار «مطبوعان» يطبع الرقم في سطر العدد', line.startsWith('printed|') && line.includes(serialNow));
+  ok('اختيار «مطبوعان» يطبع العدد الذي أعطاه الزبون', line.startsWith('printed|') && line.includes('٤٥١٢'));
+  ok('ولا يطبع رقم المكتب أبدًا', !line.includes(serialNow));
 
   await page.clickText('تحرير الترويسة');
   await wait(500);
@@ -194,7 +195,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickExact('تم');
   await wait(400);
   line = await registry();
-  ok('والعودة إلى الفراغ تُخفيه', line.startsWith('manual|') && !line.includes(serialNow));
+  ok('والعودة إلى الفراغ تُخفيه', line.startsWith('manual|') && !line.includes('٤٥١٢'));
 
   await page.clickText('ختم تاريخ اليوم');
   await wait(300);
@@ -266,7 +267,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(600);
   ok('انفتح حوار الإصدار', (await page.text()).includes('إصدار الكتاب الرسمي'));
 
-  await fill('الرسوم (د.ع)', '1000');
+  // والمال صامت (§١): لا خانة رسومٍ في حوار الإصدار.
+  ok('ولا رسوم فيه', !(await page.text()).includes('الرسوم'));
   await fill('عدد النسخ', '2');
   await page.clickText('إصدار وقيد بلا طباعة');
   await wait(2500);
@@ -291,10 +293,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('حمل رقم صادر متسلسلًا', doc?.serial === `م/${new Date().getFullYear()}/1`);
   ok('استُهلك رقم واحد لا أكثر', counter?.v === 1);
   ok('حُفظت البصمة كاملة', /^[0-9a-f]{64}$/.test(doc?.sha256 ?? ''));
-  ok('حُفظت الرسوم والنسخ', doc?.fee === 1000 && doc?.copies === 2);
+  ok('حُفظت النسخ، والرسوم صفرٌ صامت', doc?.fee === 0 && doc?.copies === 2);
   ok('حُفظ اسم صاحب العلاقة', doc?.citizen_name === 'أحمد عادل كريم الموسوي');
   ok('رُبط بملف المواطن', Number.isInteger(doc?.citizen_id));
-  ok('الرقم النهائي حُقن في الورقة', (doc?.body_html ?? '').includes(doc?.serial ?? '—'));
+  ok('ورقم المكتب لم يُطبع على الكتاب — قيدٌ في الأرشيف وحده', !(doc?.body_html ?? '').includes(doc?.serial ?? '—'));
+  ok('والعدد الذي أعطاه الزبون على الكتاب', (doc?.body_html ?? '').includes('٤٥١٢'));
   ok('لم يبقَ موضع محجوز في الورقة', !(doc?.body_html ?? '').includes('{{DIWAN_'));
   ok('ولا رمز تحقّق في الورقة المحفوظة', !(doc?.body_html ?? '').includes('data-slot="qr"'));
   ok('كُتبت صورة البحث المطبَّعة', (doc?.search_fold ?? '').includes('احمد'));
@@ -327,7 +330,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   text = await page.text();
   ok('ظهر الكتاب في سجل اليوم', text.includes(doc?.serial ?? '—'));
   ok('عُدّ في مؤشر اليوم', text.includes('1') && text.includes('الكتب الصادرة اليوم'));
-  ok('ظهر الإيراد المستوفى', text.includes('1,000'));
+  ok('ولا إيراد ولا رسوم في الأرشيف', !text.includes('الإيراد') && !text.includes('د.ع'));
   ok('ظهرت بصمة الكتاب للتدقيق', text.includes(doc?.sha256?.slice(0, 16) ?? '—'));
 
   // البحث داخل الأرشيف — متساهل مع الهمزة

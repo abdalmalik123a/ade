@@ -68,16 +68,16 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(200);
   await typeLines('شعار الجهة');
 
-  // القسم الثالث: حقل تلقائي — رقم الصادر
+  // القسم الثالث: حقل تلقائي — العدد على الكتاب
   await page.clickText('القسم الثالث');
   await wait(200);
   await page.clickText('حقل تلقائي');
   await wait(200);
   const fieldSet = await page.eval(`
     const sel = [...document.querySelectorAll('select')].find(s =>
-      [...s.options].some(o => o.textContent.includes('رقم الصادر')));
+      [...s.options].some(o => o.textContent.includes('العدد على الكتاب')));
     if (!sel) return false;
-    const opt = [...sel.options].find(o => o.textContent.includes('رقم الصادر'));
+    const opt = [...sel.options].find(o => o.textContent.includes('العدد على الكتاب'));
     Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, opt.value);
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     return true;
@@ -158,18 +158,18 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('حُفظ الخط', layout.font === 'amiri');
 
   // ── المكتبة: البحث والمفضّلة والتكرار ──────────────────────────────
-  await page.type('input[placeholder^="ابحث"]', 'الرصافه');
+  await page.type('input[placeholder^="ابحث: هيت"]', 'الرصافه');
   await wait(500);
   ok(
     'البحث المتساهل مع الهمزة يجدها',
     (await page.text()).includes('مديرية تربية بغداد / الرصافة الأولى')
   );
 
-  await page.type('input[placeholder^="ابحث"]', 'جوازات');
+  await page.type('input[placeholder^="ابحث: هيت"]', 'جوازات');
   await wait(500);
   ok('ولا يجد ما ليس فيها', (await page.text()).includes('لا ترويسة بهذا الوصف'));
 
-  await page.type('input[placeholder^="ابحث"]', '');
+  await page.type('input[placeholder^="ابحث: هيت"]', '');
   await wait(500);
 
   ok('ضُغط نجم المفضّلة', await clickTitle('أضفها إلى المفضّلة'));

@@ -13,7 +13,8 @@ const api: DiwanApi = {
     set: (patch: Partial<OfficeSettings>) => invoke('settings:set', patch)
   },
   ui: {
-    setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(1.5, Math.max(0.8, factor || 1)))
+    setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(1.5, Math.max(0.8, factor || 1))),
+    info: () => invoke('app:info')
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')
@@ -101,12 +102,13 @@ const api: DiwanApi = {
     ocrAvailable: () => invoke('scanner:ocrAvailable')
   },
   documents: {
-    peekSerial: (prefix: string, year: number) => invoke('documents:peekSerial', prefix, year),
     issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
     issueTransaction: (input: TransactionInput, print: boolean, mode?: 'full' | 'values') =>
       invoke('documents:issueTransaction', input, print, mode ?? 'full'),
     issueBatch: (inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values') =>
       invoke('documents:issueBatch', inputs, print, mode ?? 'full'),
+    linkCitizen: (transactionId: number, citizenId: number) => invoke('documents:linkCitizen', transactionId, citizenId),
+    repeatSource: (id: number) => invoke('documents:repeatSource', id),
     get: (id: number) => invoke('documents:get', id),
     list: (opts?: { from?: string | null; to?: string | null; query?: string; limit?: number }) =>
       invoke('documents:list', opts ?? {}),
@@ -154,7 +156,7 @@ const api: DiwanApi = {
     list: (category?: string | null, issuing?: string) =>
       invoke('templates:list', category ?? null, issuing ?? 'registered'),
     get: (id: number) => invoke('templates:get', id),
-    categories: () => invoke('templates:categories'),
+    categories: (issuing?: 'registered' | 'print-only') => invoke('templates:categories', issuing),
     stats: () => invoke('templates:stats'),
     save: (input: TemplateInput & { doc?: unknown }) => invoke('templates:save', input),
     duplicate: (id: number) => invoke('templates:duplicate', id),
@@ -203,10 +205,7 @@ const api: DiwanApi = {
     }
   },
   designs: {
-    import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback),
-    gemini: (prompt: string) => invoke('designs:gemini', prompt),
-    hasGeminiKey: () => invoke('designs:hasGeminiKey'),
-    setGeminiKey: (key: string) => invoke('designs:setGeminiKey', key)
+    import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback)
   },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
@@ -218,8 +217,7 @@ const api: DiwanApi = {
       suggestedName: string;
       filterName: string;
       ext: string;
-    }) => invoke('files:saveAs', payload),
-    reveal: (path: string) => invoke('files:reveal', path)
+    }) => invoke('files:saveAs', payload)
   }
 };
 

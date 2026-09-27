@@ -1,5 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron';
-import { getDb } from '../db';
+import { app, ipcMain, BrowserWindow } from 'electron';
+import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
@@ -26,7 +26,7 @@ const DEFAULTS: OfficeSettings = {
   operatorName: '',
   defaultPrinter: null,
   serialPrefix: 'م',
-  serialYear: new Date().getFullYear(),
+  serialYear: 0,
   uiScale: 1,
   onboarded: false,
   printOffsets: {}
@@ -44,7 +44,8 @@ function readSettings(): OfficeSettings {
     operatorName: map.get('operatorName') ?? DEFAULTS.operatorName,
     defaultPrinter: map.get('defaultPrinter') ?? DEFAULTS.defaultPrinter,
     serialPrefix: map.get('serialPrefix') ?? DEFAULTS.serialPrefix,
-    serialYear: Number(map.get('serialYear') ?? DEFAULTS.serialYear),
+    // سنة القيد سنة اليوم دائمًا — لا تُحفظ فتثبت (ipc/documents.ts).
+    serialYear: new Date().getFullYear(),
     uiScale: Math.min(1.5, Math.max(0.8, Number(map.get('uiScale') ?? DEFAULTS.uiScale) || 1)),
     onboarded: map.get('onboarded') === 'true',
     printOffsets: parseOffsets(map.get('printOffsets'))
@@ -80,7 +81,8 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
   });
   tx(
     Object.entries(patch)
-      .filter(([, v]) => v !== undefined)
+      // سنة القيد ليست إعدادًا: تُحسب يوم الإصدار. وما قد حُفظ منها قديمًا يُهمل.
+      .filter(([k, v]) => v !== undefined && k !== 'serialYear')
       .map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)] as [string, string])
   );
   return readSettings();
@@ -97,6 +99,9 @@ export function registerIpc(): void {
   registerCameraIpc();
   registerQuestionIpc();
 
+  // رقم الإصدار من package.json — لا نصًّا مكتوبًا في الشريط يتخلّف عن الحزمة.
+  ipcMain.handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir() }));
+
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 
   ipcMain.handle(
@@ -110,7 +115,7 @@ export function registerIpc(): void {
       .prepare('SELECT COUNT(*) AS n FROM templates WHERE is_active = 1')
       .get() as { n: number };
     const issuedToday = db
-      .prepare("SELECT COUNT(*) AS n FROM documents WHERE date(issued_at) = date('now','localtime')")
+      .prepare("SELECT COUNT(*) AS n FROM documents WHERE date(issued_at,'localtime') = date('now','localtime')")
       .get() as { n: number };
     return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db) };
   });

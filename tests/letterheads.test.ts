@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
+  asksLetterNumber,
   defaultAlign,
   emptyLayout,
   isLayoutEmpty,
@@ -492,5 +493,18 @@ describe('ترحيل قاعدة المكتب القائمة', () => {
     expect(list[0]!.category).toBeNull();
     // والبنية القديمة تُرحَّل عند القراءة كما كانت.
     expect(list[0]!.layout.sections[0]!.blocks[0]!.value).toBe('جمهورية العراق');
+  });
+});
+
+describe('العدد على الكتاب — لا رقم المكتب (§١)', () => {
+  it('يُسأل عنه حين يُطبع سطر «العدد:» أو يحمله حقلٌ في الترويسة، ولا يُسأل بغيرهما', () => {
+    const plain = emptyLayout();
+    expect(asksLetterNumber(null)).toBe(false);
+    expect(asksLetterNumber(plain)).toBe(false);
+    expect(asksLetterNumber({ ...plain, registry: { show: true, mode: 'manual' } })).toBe(false);
+    expect(asksLetterNumber({ ...plain, registry: { show: true, mode: 'printed' } })).toBe(true);
+    const withField = emptyLayout();
+    withField.sections[2].blocks.push({ id: 'f', kind: 'field', value: 'العدد: {رقم_الصادر}', align: 'left', size: 12, bold: false });
+    expect(asksLetterNumber(withField)).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { bars128, barcodeSvg, checksum128, encode128, units128 } from '../src/shared/barcode';
+import { QUIET_128, bars128, barcodeSvg, checksum128, encode128, units128 } from '../src/shared/barcode';
 
 /**
  * جدول الرموز يُفحص بحسابين لا بالعين.
@@ -92,5 +92,18 @@ describe('Code128: ما يُطبع على الهوية ويُقرأ بالماس
 
   it('وما لا يُرمز يُرفض ولا يُطبع باركودٌ كاذب', () => {
     expect(() => encode128('اسم')).toThrow(/ASCII/);
+  });
+});
+
+describe('ما يحتاجه قارئ الهاتف', () => {
+  it('هامشٌ صامت عشر وحداتٍ أبيض قبل الرمز وبعده — فيُقرأ على خلفيةٍ ملوّنة', () => {
+    const text = '198421098312';
+    const width = units128(bars128(text));
+    const svg = barcodeSvg(text);
+    expect(svg).toContain(`viewBox="0 0 ${width + QUIET_128 * 2} 40"`);
+    // الخلفية البيضاء تغطّي الهامشين، وأوّل خطٍّ أسود بعد الهامش لا عند الصفر.
+    expect(svg).toContain(`<rect width="${width + QUIET_128 * 2}" height="40" fill="#fff"/>`);
+    const firstBar = /<rect x="(\d+)"/.exec(svg);
+    expect(Number(firstBar?.[1])).toBe(QUIET_128);
   });
 });

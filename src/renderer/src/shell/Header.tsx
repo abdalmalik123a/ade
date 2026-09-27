@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { isCombo, shortcut } from '@shared/shortcuts';
 
 /**
  * الشريط العلوي — البحث الشامل، وسياق الشاشة إن كان لها سياق.
@@ -23,7 +24,7 @@ export default function Header({ search, onSearch, context, onOpenCommandPalette
   // Ctrl+F — البحث الشامل، كما يعلن الحقل نفسه.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) {
+      if (isCombo(e, shortcut('search').combo)) {
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();

@@ -120,14 +120,8 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   if (shotsDir) await page.shot(join(shotsDir, 'service-review.png'));
 
-  await page.eval(`
-    const input = [...document.querySelectorAll('input[type="number"]')].pop();
-    if (input) {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '750');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-  `);
-  await wait(300);
+  // والمال صامت (§١): لا خانة أجرةٍ في شريط القرار.
+  ok('لا أجرة ولا رسوم في الشبّاك', !(await page.text()).includes('الأجرة'));
 
   await page.clickText('أصدر بلا طباعة');
   await wait(1500);
@@ -143,13 +137,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   db.close();
 
   ok('قُيّدت معاملة واحدة', tx.length === 1);
-  ok('بعدد أوراقها وأجرتها', tx[0]?.sheets === 2 && tx[0]?.fee === 1500);
+  ok('بعدد أوراقها، والأجرة صفرٌ صامت', tx[0]?.sheets === 2 && tx[0]?.fee === 0);
   ok('وباسم صاحب العلاقة', tx[0]?.name === 'أحمد عادل كريم الموسوي');
   ok('وصدر كتابان', docs.length === 2);
   ok('لكلٍّ رقم صادره', docs[0]?.serial !== docs[1]?.serial);
   ok('ولكلٍّ بصمته', docs[0]?.sha256 !== docs[1]?.sha256);
   ok('وكلاهما تحت المعاملة نفسها', docs.length === 2 && docs.every((d) => d.tx === tx[0]?.id));
-  ok('وأجرة كل ورقة محفوظة', docs.length === 2 && docs.every((d) => d.fee === 750));
+  ok('ولا أجرة على ورقة', docs.length === 2 && docs.every((d) => d.fee === 0));
 
   // ── الدمج: كتاب لكل اسم ───────────────────────────────────────────
   await page.goto('service-counter');
@@ -203,6 +197,90 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وورقة لكل اسم', all.length === 4);
   ok('واسم كلٍّ مرسوم في ورقته', all[2]?.body?.includes('سالم محمود جاسم') && all[3]?.body?.includes('ليلى عبد الله حسن'));
   ok('ولا يختلط اسمٌ بورقة غيره', !all[3]?.body?.includes('سالم محمود جاسم'));
+
+  // ── F2 بالمفتاح، والمعاملة لا تضيع بالانتقال، والتعليق ───────────────
+  const pickFirst = async () => {
+    await page.eval(`
+      const cards = [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('انذار'));
+      cards[0]?.click();
+    `);
+    await wait(400);
+    await page.clickText('املأ (1)');
+    await wait(1200);
+  };
+  /** خانة الاسم في ورقة الإدخال: التي عنوانها «اسم…» — لا أوّل خانة. */
+  const NAME_INPUT = `[...document.querySelectorAll('label')]
+      .filter((l) => (l.textContent ?? '').trim().startsWith('اسم') && l.querySelector('input[type="text"]'))
+      .map((l) => l.querySelector('input[type="text"]'))[0]`;
+  const typeFirst = (value) =>
+    page.eval(`
+      const input = ${NAME_INPUT};
+      if (!input) return false;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    `);
+  const firstValue = () => page.eval(`return (${NAME_INPUT})?.value ?? '';`);
+
+  await page.goto('service-counter');
+  await wait(800);
+  await pickFirst();
+  const f2 = { code: 'F2', key: 'F2', windowsVirtualKeyCode: 113, nativeVirtualKeyCode: 113 };
+  await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...f2 });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...f2 });
+  await wait(600);
+  ok('F2 في الشبّاك يفتح سجل المواطنين — كما يعلن زرّه', (await page.text()).includes('استيراد من سجل المواطنين'));
+  await page.clickExact('إغلاق');
+  await wait(300);
+
+  await typeFirst('كريم حسن علي');
+  await wait(300);
+  await page.goto('citizens-identity-records');
+  await wait(700);
+  await page.goto('service-counter');
+  await wait(900);
+  ok('والمعاملة الجارية لا تضيع بالذهاب إلى المواطنين والعودة', (await firstValue()) === 'كريم حسن علي');
+
+  await page.eval(`document.querySelector('[data-act="park"]').click(); return true;`);
+  await wait(600);
+  ok('«علّق المعاملة» تفتح الشبّاك لزبونٍ آخر', (await page.text()).includes('ماذا يطلب الزبون'));
+  ok('والمعلّقة ظاهرةٌ باسم صاحبها', (await page.eval(`return document.querySelector('[data-parked]')?.innerText ?? '';`)).includes('كريم حسن علي'));
+  await page.eval(`document.querySelector('[data-act="resume"]').click(); return true;`);
+  await wait(900);
+  ok('وتُستأنف من حيث تُركت', (await firstValue()) === 'كريم حسن علي');
+
+  // ── زبونٌ جديد: يُعرض حفظه في السجل، وتُربط به كتبه ──────────────────
+  await page.clickText('راجع الأوراق');
+  await wait(1000);
+  await page.clickText('أصدر بلا طباعة');
+  await wait(1500);
+  ok('صدرت معاملة الزبون الجديد', (await page.text()).includes('صدرت 1 ورقة بمعاملة واحدة'));
+  ok('وعُرض حفظه في سجل المواطنين', (await page.eval(`return document.querySelector('[data-new-citizen]')?.innerText ?? '';`)).includes('كريم حسن علي'));
+  await page.eval(`document.querySelector('[data-act="save-new-citizen"]').click(); return true;`);
+  await wait(900);
+  ok('فحُفظ ورُبطت به كتبه', (await page.text()).includes('حُفظ «كريم حسن علي» في سجل المواطنين'));
+  const db3 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const karim = db3.prepare("SELECT id FROM citizens WHERE full_name = 'كريم حسن علي'").get();
+  const karimDocs = db3.prepare("SELECT citizen_id AS c FROM documents WHERE citizen_name = 'كريم حسن علي'").all();
+  const lastDoc = db3.prepare("SELECT id FROM documents WHERE citizen_name = 'أحمد عادل كريم الموسوي' ORDER BY id LIMIT 1").get();
+  db3.close();
+  ok('في القاعدة: ملفٌّ جديد، وكتابه مربوطٌ به', Boolean(karim) && karimDocs.length === 1 && karimDocs[0]?.c === karim?.id);
+
+  // ── «كرّره» من الأرشيف: كتاب الشبّاك يعود إلى الشبّاك بقيمه ────────────
+  await page.goto('transactions-archive-ledger');
+  await wait(900);
+  const repeated = await page.eval(`
+    const btn = [...document.querySelectorAll('button[title^="كرّره"]')].pop();
+    if (!btn) return false;
+    btn.click();
+    return true;
+  `);
+  await wait(1500);
+  ok('زرّ «كرّره» في الأرشيف', repeated);
+  ok('فيُفتح كتاب الشبّاك في الشبّاك لا في المحرّر', (await page.eval(`return document.querySelector('[data-screen="service"]')?.offsetParent !== null;`)) && (await page.text()).includes('بيانات صاحب العلاقة'));
+  ok('بقيم معاملته الأولى ليبدّل ما يلزم', (await firstValue()) === 'أحمد عادل كريم الموسوي' && Boolean(lastDoc));
+  await page.eval(`document.querySelector('[data-act="park"]').click(); return true;`);
+  await wait(500);
 
   rmSync(FOLDER, { recursive: true, force: true });
   return steps.join('\n');

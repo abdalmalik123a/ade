@@ -11,9 +11,9 @@
  * ولا توقيع ولا ختم ولا رمز تحقّق على الورقة: المكتب يستنسخ ويطبع، والجهة توقّع
  * وتختم بيدها بعد الطباعة. فالورقة تحمل اسم الموقّع وصفته وفراغًا فوقهما.
  *
- * الإصدار يجري في نداء واحد إلى العملية الرئيسية: هي تحجز رقم الصادر وتحقنه في
- * موضعه المحجوز داخل الورقة. ولذلك تُرسَل الورقة
- * بعلامات {{DIWAN_…}} بدل القيم — فلا يُحرق رقمُ صادرٍ على كتاب لم يصدر.
+ * الإصدار يجري في نداء واحد إلى العملية الرئيسية: تحجز رقم القيد في أرشيف المكتب
+ * وتحسب البصمة وتقيّد الكتاب — والرقم للأرشيف وحده لا يُطبع على الكتاب (§١)؛
+ * و«العدد» على الكتاب ما أعطاه الزبون أو فراغٌ للجهة. فالورقة تُحفظ كما أُرسلت.
  */
 import {
   forwardRef,
@@ -33,7 +33,6 @@ import type {
   Seal,
   TemplateSummary
 } from '@shared/api';
-import { SERIAL_SLOT } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
 import {
   emptyLayout,
@@ -58,6 +57,7 @@ import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import { amountWordsField, wordsForField } from '@shared/tafqeet';
 import { guessGender, hasChoiceText, resolveChoices, type Gender } from '@shared/gender';
+import { isCombo, shortcut } from '@shared/shortcuts';
 
 const MIN_ZOOM = 0.45;
 const MAX_ZOOM = 1.6;
@@ -371,15 +371,6 @@ function EditorScreen(
     if (t) set({ body: t.bodyHtml, subject: t.subjectLine ?? '', docType: t.title });
   }
 
-  async function generateSerial() {
-    if (!settings) return;
-    const serial = await window.diwan.documents.peekSerial(
-      settings.serialPrefix,
-      settings.serialYear
-    );
-    set({ serial });
-  }
-
   function stampToday() {
     const now = new Date();
     set({ dateGreg: formatGregorian(now), dateHijri: formatHijri(now) });
@@ -405,18 +396,12 @@ function EditorScreen(
   }
 
   /**
-   * علامات الورقة كما ستُطبع. عند الإصدار تُستبدل القيم المؤقتة بمواضع محجوزة
-   * تملؤها العملية الرئيسية داخل معاملة الإصدار نفسها.
+   * علامات الورقة كما ستُطبع — وتُقيَّد كما هي، فلا شيء يُملأ فيها بعد الإصدار.
    */
-  const sheetHtml = useCallback((forIssue: boolean): string => {
+  const sheetHtml = useCallback((_forIssue: boolean): string => {
     const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
     if (!node) return '';
     node.style.transform = '';
-    if (forIssue) {
-      node.querySelectorAll('[data-slot="serial"]').forEach((el) => {
-        el.textContent = SERIAL_SLOT;
-      });
-    }
     return node.outerHTML;
   }, []);
 
@@ -518,7 +503,7 @@ function EditorScreen(
     }
   }
 
-  /** الإصدار: يفتح حوار النسخ والرسوم، فالطباعة تستهلك رقم صادر ولا تُستأنف. */
+  /** الإصدار: يفتح حوار النسخ، فالطباعة تستهلك رقم صادر ولا تُستأنف. */
   function requestIssue() {
     if (!citizenName) {
       setError('لا يصدر كتاب بلا اسم صاحب العلاقة');
@@ -532,7 +517,7 @@ function EditorScreen(
     setIssueOpen(true);
   }
 
-  async function issue(opts: { copies: number; copyKind: string; fee: number; print: boolean }) {
+  async function issue(opts: { copies: number; copyKind: string; print: boolean }) {
     if (!settings) return;
     setBusy(true);
     setError(null);
@@ -555,7 +540,7 @@ function EditorScreen(
           },
           copies: opts.copies,
           copyKind: opts.copyKind,
-          fee: opts.fee,
+          fee: 0,
           gregorianDate: f.dateGreg || formatGregorian(new Date()),
           hijriDate: f.dateHijri || null,
           operator: settings.operatorName || null,
@@ -570,7 +555,6 @@ function EditorScreen(
 
       setIssued(outcome);
       setIssueOpen(false);
-      set({ serial: outcome.serial });
       dirty.current = false;
       if (draft !== null) {
         await window.diwan.drafts.delete(draft);
@@ -630,11 +614,11 @@ function EditorScreen(
   // اختصارات المحرر: F2 استيراد مواطن، Ctrl+S حفظ مسودة.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'F2') {
+      if (isCombo(e, shortcut('citizen').combo)) {
         e.preventDefault();
         setPickerOpen(true);
       }
-      if (e.ctrlKey && (e.key === 's' || e.key === 'S')) {
+      if (isCombo(e, shortcut('save').combo)) {
         e.preventDefault();
         void saveDraft(false);
       }
@@ -811,26 +795,18 @@ function EditorScreen(
                 <div className="flex items-center gap-space-xs">
                   <span className="material-symbols-outlined text-secondary text-[20px]">123</span>
                   <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    سجل الصادر والتأريخ الرسمي
+                    العدد والتاريخ على الكتاب
                   </h3>
                 </div>
-                <button
-                  className="font-label-sm text-label-sm text-secondary font-semibold flex items-center gap-1 hover:underline"
-                  type="button"
-                  onClick={() => void generateSerial()}
-                >
-                  <span className="material-symbols-outlined text-[16px]">autorenew</span>
-                  <span>توليد متسلسل</span>
-                </button>
               </div>
               <div className="grid grid-cols-3 gap-space-sm">
-                <Field label="رقم الصادر" required>
+                <Field label="العدد">
                   <input
                     className={inputCls}
                     id="inputSerial"
                     type="text"
                     value={f.serial}
-                    placeholder="—"
+                    placeholder="كما أعطاه الزبون، أو فارغًا للجهة"
                     onChange={(e) => set({ serial: e.target.value })}
                   />
                 </Field>
@@ -1263,7 +1239,7 @@ function EditorScreen(
                 {/* الترويسة كما بناها المكتب لهذا الكتاب */}
                 <LetterheadView
                   layout={layout}
-                  registryValues={{ serial: f.serial, date: f.dateGreg }}
+                  registryValues={{ number: f.serial, date: f.dateGreg }}
                   resolve={(value) =>
                     injectTokens(value, f, fields).replace(/<[^>]+>/g, '') || value
                   }
@@ -1725,7 +1701,7 @@ function SaveLayoutDialog({
   );
 }
 
-/** حوار الإصدار: النسخ والرسوم — الأعمدة التي يعرضها سجل الأرشيف. */
+/** حوار الإصدار: عدد النسخ ونوعها — الأعمدة التي يعرضها سجل الأرشيف. (والمال صامت: §١) */
 function IssueDialog({
   serial,
   name,
@@ -1739,23 +1715,21 @@ function IssueDialog({
   printerName: string | null;
   busy: boolean;
   onClose: () => void;
-  onIssue: (opts: { copies: number; copyKind: string; fee: number; print: boolean }) => void;
+  onIssue: (opts: { copies: number; copyKind: string; print: boolean }) => void;
 }) {
   const [copies, setCopies] = useState(1);
   const [copyKind, setCopyKind] = useState(COPY_KINDS[0]!);
-  const [fee, setFee] = useState(0);
-
   return (
     <Modal title="إصدار الكتاب الرسمي" onClose={onClose}>
       <div className="space-y-space-md">
         <div className="p-space-sm rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
-          يُحجز رقم الصادر الآن ويُقيَّد الكتاب في الأرشيف ببصمته. الرقم لا يُلغى بعد
-          الإصدار.
+          يُقيَّد الكتاب في أرشيف المكتب برقمٍ متسلسل وبصمة — والرقم للأرشيف وحده، لا يُطبع
+          على الكتاب ولا يُلغى بعد الإصدار.
           <div className="mt-1 text-on-surface">
             صاحب العلاقة: <span className="font-bold">{name}</span>
             {serial && (
               <>
-                {' · '}الرقم المتوقَّع: <span className="font-mono">{serial}</span>
+                {' · '}العدد على الكتاب: <span className="font-mono">{serial}</span>
               </>
             )}
           </div>
@@ -1784,16 +1758,6 @@ function IssueDialog({
               ))}
             </select>
           </Field>
-          <Field label="الرسوم (د.ع)">
-            <input
-              className={inputCls}
-              min={0}
-              step={250}
-              type="number"
-              value={fee}
-              onChange={(e) => setFee(Math.max(0, Number(e.target.value) || 0))}
-            />
-          </Field>
         </div>
 
         <div className="font-label-sm text-label-sm text-on-surface-variant">
@@ -1818,7 +1782,7 @@ function IssueDialog({
             className="h-10 px-space-md rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-50"
             type="button"
             disabled={busy}
-            onClick={() => onIssue({ copies, copyKind, fee, print: false })}
+            onClick={() => onIssue({ copies, copyKind, print: false })}
           >
             إصدار وقيد بلا طباعة
           </button>
@@ -1826,7 +1790,7 @@ function IssueDialog({
             className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
             type="button"
             disabled={busy}
-            onClick={() => onIssue({ copies, copyKind, fee, print: true })}
+            onClick={() => onIssue({ copies, copyKind, print: true })}
           >
             {busy ? 'يصدر...' : 'إصدار وطباعة'}
           </button>

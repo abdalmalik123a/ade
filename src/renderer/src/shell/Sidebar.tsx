@@ -38,7 +38,8 @@ export type SidebarProps = {
   supplyPercent: number | null;
   operatorName: string;
   officeName: string;
-  onSignOut: () => void;
+  /** رقم الإصدار من الحزمة — لا نصًّا مكتوبًا يتخلّف عنها. */
+  version: string | null;
 };
 
 export default function Sidebar({
@@ -50,7 +51,7 @@ export default function Sidebar({
   supplyPercent,
   operatorName,
   officeName,
-  onSignOut
+  version
 }: SidebarProps) {
   /**
    * الشاشة اليومية وحدها في الأعلى.
@@ -105,7 +106,8 @@ export default function Sidebar({
   ];
 
   const tools: NavItem[] = [
-    { key: 'search', icon: 'manage_search', label: 'البحث والتقارير الدورية' }
+    { key: 'search', icon: 'manage_search', label: 'البحث والتقارير الدورية' },
+    { key: 'settings', icon: 'settings', label: 'الإعدادات' }
   ];
 
   return (
@@ -118,7 +120,7 @@ export default function Sidebar({
             </div>
             <div className="flex flex-col">
               <span className="font-headline-sm text-headline-sm text-on-surface tracking-tight">
-                ديوان 2.4
+                {version ? `ديوان ${version}` : 'ديوان'}
               </span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 منظومة الكتب والتحارير
@@ -240,7 +242,7 @@ export default function Sidebar({
                   ? printerReady
                     ? 'جاهزة للطباعة الإدارية'
                     : 'غير متاحة الآن'
-                  : 'اخترها من إعدادات الطباعة'}
+                  : 'اخترها من «الإعدادات»'}
               </span>
             </div>
           </div>
@@ -271,11 +273,12 @@ export default function Sidebar({
           </div>
           <button
             className="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-            title="تبديل الحساب أو خروج"
+            data-act="open-settings"
+            title="الإعدادات"
             type="button"
-            onClick={onSignOut}
+            onClick={() => onNavigate('settings')}
           >
-            <span className="material-symbols-outlined text-[20px]">logout</span>
+            <span className="material-symbols-outlined text-[20px]">settings</span>
           </button>
         </div>
       </div>

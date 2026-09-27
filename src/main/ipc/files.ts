@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
 import { sheetToText } from '../services/sheetRead';
@@ -192,9 +192,4 @@ export function registerFileIpc(): void {
       return path;
     }
   );
-
-  /** إظهار ملف ناتج في مستعرض النظام — بعد أن ينتهي التطبيق من عمله، لا بدلًا عنه. */
-  ipcMain.handle('files:reveal', (_e, path: string) => {
-    shell.showItemInFolder(path);
-  });
 }

@@ -82,8 +82,7 @@ export function registerCitizenIpc(): void {
       { header: 'الجهة الموجه إليها', key: 'destination', width: 34 },
       { header: 'الغرض', key: 'purpose', width: 28 },
       { header: 'التاريخ', key: 'issuedDate', width: 14 },
-      { header: 'النسخ', key: 'copies', width: 8 },
-      { header: 'الرسوم', key: 'fee', width: 12 }
+      { header: 'النسخ', key: 'copies', width: 8 }
     ];
     for (const d of c.documents) docs.addRow(d);
     docs.getRow(1).font = { bold: true };

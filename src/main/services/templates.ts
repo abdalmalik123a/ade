@@ -38,7 +38,7 @@ const SUMMARY = `t.id, t.code, t.title, t.subtitle, t.category,
 
 const MONTH_COUNT = `(SELECT COUNT(*) FROM documents d
    WHERE d.template_id = t.id
-     AND strftime('%Y-%m', d.issued_at) = strftime('%Y-%m','now','localtime')) AS issuedThisMonth`;
+     AND strftime('%Y-%m', d.issued_at, 'localtime') = strftime('%Y-%m','now','localtime')) AS issuedThisMonth`;
 
 function loadVariables(db: Database, templateId: number): TemplateVariable[] {
   return db
@@ -91,14 +91,21 @@ export function getTemplate(db: Database, id: number): TemplateDetail | null {
 }
 
 /** التصنيفات تُشتقّ مما أدخله المكتب فعلًا — لا قائمة مبرمَجة. */
-export function listCategories(db: Database): { name: string; count: number }[] {
+/**
+ * التصنيفات بما تعرضه القائمة نفسها — بحكمها (`issuing`) كما تُسرد النماذج.
+ *
+ * كانت تعدّ كل النماذج، فتظهر في الشبّاك والمكتبة «أسئلة (١)» و«تصاميم (١)»:
+ * أوراقٌ لا تُقيَّد تُسرد في شاشتيهما، فيُضغط الزرّ فتخرج قائمةٌ فارغة.
+ */
+export function listCategories(db: Database, issuing: Issuing = 'registered'): { name: string; count: number }[] {
+  prepareTemplates(db);
   return db
     .prepare(
       `SELECT category AS name, COUNT(*) AS count FROM templates
-       WHERE is_active = 1 AND category IS NOT NULL AND category <> ''
+       WHERE is_active = 1 AND issuing = ? AND category IS NOT NULL AND category <> ''
        GROUP BY category ORDER BY count DESC, category`
     )
-    .all() as { name: string; count: number }[];
+    .all(issuing) as { name: string; count: number }[];
 }
 
 export function templateStats(db: Database): TemplateStats {
@@ -108,7 +115,7 @@ export function templateStats(db: Database): TemplateStats {
     drafts: one('SELECT COUNT(*) AS n FROM drafts'),
     issuedThisMonth: one(
       `SELECT COUNT(*) AS n FROM documents
-       WHERE strftime('%Y-%m', issued_at) = strftime('%Y-%m','now','localtime')`
+       WHERE strftime('%Y-%m', issued_at, 'localtime') = strftime('%Y-%m','now','localtime')`
     )
   };
 }

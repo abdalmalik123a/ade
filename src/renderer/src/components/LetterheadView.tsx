@@ -20,8 +20,8 @@ const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefin
 export type LetterheadViewProps = {
   layout: LetterheadLayout;
   /** قيمتا العدد والتاريخ حين تكون الترويسة «مطبوعة» لا فراغًا. */
-  registryValues?: { serial: string; date: string };
-  /** يملأ الحقول التلقائية مثل {رقم_الصادر}؛ بلا دالّة يبقى الوسم كما هو. */
+  registryValues?: { number: string; date: string };
+  /** يملأ الحقول التلقائية مثل {رقم_الصادر} (العدد على الكتاب)؛ بلا دالّة يبقى الوسم كما هو. */
   resolve?: (value: string) => string;
   /** يُنادى عند النقر على كتلة — للتحديد في المصمّم. */
   onPickBlock?: (sectionIndex: number, blockId: string) => void;
@@ -75,15 +75,10 @@ function Block({
   }
 
   const text = block.kind === 'field' && resolve ? resolve(block.value) : block.value;
-  // حقل رقم الصادر في الترويسة يُملأ عند الإصدار كما يُملأ في سطر العدد:
-  // ما يُعرض قبله اطّلاعٌ، والموضع محجوز ليحلّ فيه الرقم المحجوز فعلًا.
-  const slot =
-    block.kind === 'field' && block.value.includes('رقم_الصادر') ? 'serial' : undefined;
   return (
     <div
       className={`${block.bold ? 'font-bold' : ''} ${ring}`}
       style={{ textAlign: align, fontSize: `${block.size}px`, lineHeight: 1.7 }}
-      data-slot={slot}
       onClick={onClick}
     >
       {text || ' '}
@@ -94,13 +89,17 @@ function Block({
 /**
  * العدد والتاريخ في رأس القسم الأخير — التاريخ فوق العدد كما تكتبه الدوائر.
  * والأصل فراغ منقوط: الكتاب يخرج من المكتب ليكتبهما موظّف الاستلام بخطّه.
+ *
+ * و«مطبوع» يعني ما كُتب في خانته: تاريخ اليوم، والعدد الذي أعطاه الزبون. ورقم
+ * المكتب لا يُطبع هنا أبدًا — فهو قيدٌ في أرشيفه، والمكتب ليس جهة رسمية (§١).
+ * وما بقي فارغًا يُطبع فراغًا منقوطًا، لا شرطةً تُكتب فوقها.
  */
 function Registry({
   mode,
   values
 }: {
   mode: 'manual' | 'printed';
-  values?: { serial: string; date: string };
+  values?: { number: string; date: string };
 }) {
   const blank = (
     <span className="flex-1" style={{ borderBottom: '1px dotted currentColor', height: '1em' }} />
@@ -110,17 +109,11 @@ function Registry({
     <div className="flex flex-col gap-1 text-on-surface" data-registry={mode}>
       <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
         <span className="font-semibold shrink-0">التاريخ:</span>
-        {mode === 'printed' ? <span>{values?.date || '—'}</span> : blank}
+        {mode === 'printed' && values?.date ? <span>{values.date}</span> : blank}
       </div>
       <div className="flex items-baseline gap-2" style={{ fontSize: '12px' }}>
         <span className="font-semibold shrink-0">العدد:</span>
-        {mode === 'printed' ? (
-          <span className="font-mono font-bold" data-slot="serial">
-            {values?.serial || '—'}
-          </span>
-        ) : (
-          blank
-        )}
+        {mode === 'printed' && values?.number ? <span className="font-bold">{values.number}</span> : blank}
       </div>
     </div>
   );

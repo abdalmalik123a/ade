@@ -121,6 +121,15 @@ function marks(imp: Imposition): string {
   return out.join('');
 }
 
+function unescapeAttr(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 /**
  * الباركود مرسومًا في علامات الطباعة — لا مُؤجَّلًا إلى المتصفّح.
  *
@@ -130,7 +139,10 @@ function marks(imp: Imposition): string {
 export function inlineBarcodes(html: string): string {
   return html.replace(
     /<div data-barcode="([^"]*)" data-value="([^"]*)" style="([^"]*)"><\/div>/g,
-    (_all, kind: string, value: string, style: string) => {
+    (_all, kind: string, raw: string, style: string) => {
+      // القيمة في السمة مرمَّزةٌ للعلامات (&amp; ‎&quot;) — ويُرمَّز الرمز بنصّها الحقيقي،
+      // وإلا قرأ الهاتف «&amp;» حيث كُتب «&».
+      const value = unescapeAttr(raw);
       if (!value) return '';
       try {
         return `<div style="${style}">${drawCode(kind, value)}</div>`;

@@ -177,6 +177,26 @@ describe('ما حُفظ يُقرأ، وما فسد يُردّ إلى حدّه', 
     expect(canvas.elements[0]!.id).toBeTruthy();
   });
 
+  it('وتصميمٌ حُفظ أيام الذكاء الاصطناعي: رسمته تصير صورةً بشكلها، وعنصر الويب يسقط', () => {
+    const svg = '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="#1b3a5c"/></svg>';
+    const canvas = normalizeCanvas({
+      size: { w: 85.6, h: 54 },
+      elements: [
+        { kind: 'svg', box: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }, svg, name: 'زخرفة' },
+        { kind: 'html', box: { x: 0, y: 0, w: 1, h: 1 }, html: '<div>{الاسم}</div>' },
+        { kind: 'svg', box: { x: 0, y: 0, w: 1, h: 1 }, svg: '  ' }
+      ]
+    });
+    expect(canvas.elements).toHaveLength(1);
+    const el = canvas.elements[0]!;
+    expect(el.kind).toBe('image');
+    expect(el.name).toBe('زخرفة');
+    expect(el.kind === 'image' && decodeURIComponent(el.src)).toContain('<circle');
+    const html = renderCanvasHtml(canvasDoc(canvas), {}, { dpi: 96 });
+    expect(html).toContain('<img');
+    expect(html).not.toContain('{الاسم}');
+  });
+
   it('ولوحةٌ بلا مقاسٍ تأخذ مقاسًا معياريًّا لا صفرًا', () => {
     const canvas = normalizeCanvas({});
     expect(canvas.size.w).toBeGreaterThan(0);

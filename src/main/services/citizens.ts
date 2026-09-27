@@ -96,7 +96,7 @@ export function citizenStats(db: Database): CitizenStats {
     ocrAccuracy: acc.a,
     issuedThisMonth: one(
       `SELECT COUNT(*) AS n FROM documents
-       WHERE strftime('%Y-%m', issued_at) = strftime('%Y-%m','now','localtime')`
+       WHERE strftime('%Y-%m', issued_at, 'localtime') = strftime('%Y-%m','now','localtime')`
     )
   };
 }
@@ -321,7 +321,7 @@ export function listCitizenDocuments(db: Database, citizenId: number): CitizenDo
     .prepare(
       `SELECT d.id, d.serial, d.doc_type AS docType, d.destination, d.purpose,
               d.template_id AS templateId, d.copies, d.fee,
-              date(d.issued_at) AS issuedDate, d.status
+              date(d.issued_at, 'localtime') AS issuedDate, d.status
        FROM documents d WHERE d.citizen_id = ? ORDER BY d.issued_at DESC`
     )
     .all(citizenId) as CitizenDocumentRow[];

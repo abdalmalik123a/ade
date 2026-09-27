@@ -131,13 +131,20 @@ export const units128 = (bars: Bar[]): number => bars.reduce((sum, b) => sum + b
  * و`viewBox` بالوحدات لا بالبكسل: فالرسم يتمدّد بلا تشوّه، ويُطبع بدقّة
  * الطابعة لا بدقّة الشاشة — وهذا شرطُ أن يُقرأ بالماسح.
  */
+/**
+ * الهامش الصامت: عشرُ وحداتٍ بيضاء قبل الرمز وبعده (ISO/IEC 15417). بلاه لا يجد
+ * قارئ الهاتف أول الرمز — وأكثر ما يقع ذلك على بطاقةٍ خلفيتها ملوّنة أو منقوشة
+ * تلامس الخطّ الأول، فيبدو الرمز سليمًا ولا يُقرأ.
+ */
+export const QUIET_128 = 10;
+
 export function barcodeSvg(text: string, opts: { height?: number; color?: string } = {}): string {
   const bars = bars128(text);
-  const total = units128(bars);
+  const total = units128(bars) + QUIET_128 * 2;
   const height = opts.height ?? 40;
   const color = opts.color ?? '#000';
 
-  let at = 0;
+  let at = QUIET_128;
   const rects: string[] = [];
   for (const bar of bars) {
     if (bar.dark) {

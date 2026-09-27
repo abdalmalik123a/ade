@@ -5,15 +5,6 @@ import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
 
-/**
- * مواضع محجوزة داخل علامات الورقة تملؤها العملية الرئيسية وقت الإصدار.
- * الواجهة لا تعرف رقم الصادر النهائي ولا البصمة قبل حجزهما، فترسل الموضع
- * بدل القيمة — فلا يُحرق رقم على كتاب لم يصدر.
- */
-export const SERIAL_SLOT = '{{DIWAN_SERIAL}}';
-export const QR_SLOT = '{{DIWAN_QR}}';
-export const FINGERPRINT_SLOT = '{{DIWAN_FINGERPRINT}}';
-
 export type OfficeSettings = {
   officeName: string;
   operatorName: string;
@@ -152,6 +143,8 @@ export type TransactionInput = {
 export type TransactionResult = {
   transactionId: number;
   fee: number;
+  /** ملف المواطن الذي رُبطت به — المختار، أو ما دلّ عليه رقمه الوطني، أو لا شيء. */
+  citizenId: number | null;
   documents: { id: number; serial: string; sha256: string; sheetHtml: string }[];
 };
 
@@ -397,6 +390,8 @@ export type DiwanApi = {
   ui: {
     /** يكبّر الواجهة كلّها في مكانها — والطباعة في نافذتها لا تتأثّر. */
     setZoom(factor: number): void;
+    /** رقم الإصدار من الحزمة، ومجلّد بيانات المكتب — لـ«الإعدادات» وحول البرنامج. */
+    info(): Promise<{ version: string; dataDir: string }>;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;
@@ -492,7 +487,6 @@ export type DiwanApi = {
     ocrAvailable(): Promise<boolean>;
   };
   documents: {
-    peekSerial(prefix: string, year: number): Promise<string>;
     /** الإصدار: رقم وبصمة ورمز تحقق وقيد في السجل، ثم طباعة وأرشفة PDF. */
     issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
     /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. */
@@ -500,6 +494,12 @@ export type DiwanApi = {
     issueTransaction(input: TransactionInput, print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult>;
     /** الدمج: معاملةٌ لكل اسم في القائمة، والدفعة كلّها أو لا شيء. */
     issueBatch(inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult[]>;
+    /** يربط كتب معاملةٍ بملف مواطنٍ حُفظ بعدها — المتن والبصمة لا يُمسّان. */
+    linkCitizen(transactionId: number, citizenId: number): Promise<number>;
+    /** «كرّره»: أمِن المحرّر صدر فيعود إليه، أم من الشبّاك فيعود بنماذجه وقيمه؟ */
+    repeatSource(
+      id: number
+    ): Promise<{ kind: 'editor' } | { kind: 'counter'; serial: string; templateIds: number[]; values: Record<string, string> } | null>;
     get(id: number): Promise<DocumentDetail | null>;
     list(opts?: {
       from?: string | null;
@@ -529,7 +529,8 @@ export type DiwanApi = {
       issuing?: 'registered' | 'print-only'
     ): Promise<TemplateSummary[]>;
     get(id: number): Promise<TemplateDetail | null>;
-    categories(): Promise<{ name: string; count: number }[]>;
+    /** التصنيفات بحكم القائمة نفسه — الكتب افتراضًا، كما يُسرد `list`. */
+    categories(issuing?: 'registered' | 'print-only'): Promise<{ name: string; count: number }[]>;
     stats(): Promise<TemplateStats>;
     save(input: TemplateInput & { doc?: Doc | null }): Promise<TemplateDetail>;
     /** نسخة مستقلّة من نموذج — الأصل لا يُمسّ، والكود يُترك فارغًا. */
@@ -649,12 +650,6 @@ export type DiwanApi = {
       canvas: unknown | null;
       stored: string[];
     } | null>;
-    /** يرسل التوجيه إلى Gemini بالمفتاح المحفوظ، ويعيد نصّ الجواب — أو سبب تعذّره. */
-    gemini(prompt: string): Promise<{ text: string | null; error?: string }>;
-    /** أمحفوظٌ مفتاح؟ — والمفتاح نفسه لا يعود إلى الواجهة. */
-    hasGeminiKey(): Promise<boolean>;
-    /** يحفظ المفتاح مشفَّرًا، والنصّ الفارغ يحذفه. */
-    setGeminiKey(key: string): Promise<void>;
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;
@@ -679,7 +674,6 @@ export type DiwanApi = {
       filterName: string;
       ext: string;
     }): Promise<string | null>;
-    reveal(path: string): Promise<void>;
   };
 };
 

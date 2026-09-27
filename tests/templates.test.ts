@@ -15,6 +15,7 @@ import {
   templateUsage
 } from '../src/main/services/templates';
 import { extractTokens, reconcileVariables, renderBody } from '../src/shared/template';
+import { emptyDoc } from '../src/shared/doc';
 import type { TemplateInput } from '../src/shared/template';
 
 function tpl(over: Partial<TemplateInput> = {}): TemplateInput {
@@ -143,7 +144,7 @@ describe('حفظ النماذج', () => {
     expect(getTemplate(db, saved.id)?.variables).toHaveLength(1);
   });
 
-  it('نسخ قالب يُنشئ بطاقةً مستقلّة بمتغيّراتها والأصل لا يُمسّ', () => {
+  it('نسخ نموذج يُنشئ بطاقةً مستقلّة بمتغيّراتها والأصل لا يُمسّ', () => {
     const db = freshDb();
     const src = saveTemplate(db, tpl({ code: 'DIW-1', category: 'كتب التأييد' }));
     const copy = duplicateTemplate(db, src.id);
@@ -159,7 +160,7 @@ describe('حفظ النماذج', () => {
     expect(listTemplates(db)).toHaveLength(2);
   });
 
-  it('نسخ قالب غير موجود يُرجع null', () => {
+  it('نسخ نموذج غير موجود يُرجع null', () => {
     const db = freshDb();
     expect(duplicateTemplate(db, 9999)).toBeNull();
   });
@@ -181,6 +182,16 @@ describe('حفظ النماذج', () => {
       { name: 'كتب التأييد', count: 2 },
       { name: 'قرارات', count: 1 }
     ]);
+  });
+
+  it('والتصنيفات بحكم القائمة: أوراق الأسئلة والتصاميم لا تُعدّ في تصنيفات الكتب', () => {
+    const db = freshDb();
+    saveTemplate(db, tpl({ category: 'كتب التأييد' }));
+    const paper = emptyDoc();
+    paper.issuing = 'print-only';
+    saveTemplate(db, { ...tpl({ title: 'أسئلة العلوم', category: 'أسئلة' }), doc: paper });
+    expect(listCategories(db)).toEqual([{ name: 'كتب التأييد', count: 1 }]);
+    expect(listCategories(db, 'print-only')).toEqual([{ name: 'أسئلة', count: 1 }]);
   });
 
   it('الترشيح بالتصنيف يعيد ما يخصّه فقط', () => {

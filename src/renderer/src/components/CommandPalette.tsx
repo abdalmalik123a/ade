@@ -20,7 +20,6 @@ type Props = {
   onOpenCitizen?: (citizenId: number) => void;
   onOpenTemplate?: (templateId: number) => void;
   onOpenIdDuplex?: () => void;
-  onOpenAiRecipe?: () => void;
 };
 
 type CommandItem = {
@@ -38,8 +37,7 @@ export default function CommandPalette({
   onNavigate,
   onOpenCitizen,
   onOpenTemplate,
-  onOpenIdDuplex,
-  onOpenAiRecipe
+  onOpenIdDuplex
 }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -114,17 +112,6 @@ export default function CommandPalette({
         action: () => {
           onClose();
           onOpenIdDuplex?.();
-        }
-      },
-      {
-        id: 'ai-recipe',
-        title: 'تصميم بالذكاء الاصطناعي (AI Recipe)',
-        subtitle: 'توليد كانفاس قابل للتحرير من كود وصفة التصميم',
-        category: 'أدوات سريعة',
-        icon: 'smart_toy',
-        action: () => {
-          onClose();
-          onOpenAiRecipe?.();
         }
       },
       {
@@ -216,7 +203,7 @@ export default function CommandPalette({
         }
       }
     ];
-  }, [onNavigate, onClose, onOpenIdDuplex, onOpenAiRecipe]);
+  }, [onNavigate, onClose, onOpenIdDuplex]);
 
   // تصفية الأوامر حسب نص البحث
   const filteredCommands = useMemo(() => {

@@ -145,8 +145,7 @@ export default function Gallery({
   onOpenSaved,
   onDeleteSaved,
   onOpenImage,
-  onImport,
-  onOpenAiRecipe
+  onImport
 }: {
   saved: TemplateSummary[];
   /** «صمّم لها» من ملف الجهة: يُفتح المعرض عليها. */
@@ -156,7 +155,6 @@ export default function Gallery({
   onDeleteSaved?: (id: number) => void;
   onOpenImage: () => void;
   onImport: () => void;
-  onOpenAiRecipe?: () => void;
 }) {
   const [logos, setLogos] = useState<Seal[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -239,18 +237,6 @@ export default function Gallery({
             </p>
           </div>
           <div className="flex items-center gap-space-sm flex-wrap">
-            {onOpenAiRecipe && (
-              <button
-                className="h-10 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-sm hover:opacity-90 transition-all border border-secondary/20"
-                data-act="ai-recipe"
-                title="صمم بالذكاء الاصطناعي والصق الكود"
-                type="button"
-                onClick={onOpenAiRecipe}
-              >
-                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                تصميم بالذكاء الاصطناعي (كود)
-              </button>
-            )}
             <button
               className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               data-act="background"

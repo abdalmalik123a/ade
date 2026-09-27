@@ -66,7 +66,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وفي المحرّر سياقُ الكتاب وتبديله', editorBar.includes('لم يُختر نموذج') && editorBar.includes('نموذجٌ آخر'));
 
   // ── حجم الخطّ يُعدَّل من الإعدادات ────────────────────────────────
-  await page.goto('header-seal-configuration');
+  await page.goto('office-settings');
   await wait(900);
   await click('[data-ui-scale] [data-scale="1"]');
   await wait(600);

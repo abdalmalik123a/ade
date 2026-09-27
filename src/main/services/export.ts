@@ -214,7 +214,6 @@ export async function reportToExcel(input: {
   summary.addRows([
     { k: 'المدة', v: input.title },
     { k: 'الكتب الصادرة', v: input.stats.issued },
-    { k: 'الإيراد المالي المستوفى (د.ع)', v: input.stats.revenue },
     { k: 'المواطنون المخدومون', v: input.stats.citizens },
     { k: 'النسخ المطبوعة', v: input.stats.printedCopies }
   ]);
@@ -229,8 +228,7 @@ export async function reportToExcel(input: {
     { header: 'الرقم الوطني', key: 'nid', width: 20 },
     { header: 'الوثيقة الرسمية', key: 'type', width: 26 },
     { header: 'الجهة الموجه إليها', key: 'dest', width: 30 },
-    { header: 'النسخ', key: 'copies', width: 8 },
-    { header: 'الرسوم', key: 'fee', width: 12 }
+    { header: 'النسخ', key: 'copies', width: 8 }
   ];
   for (const r of input.rows) {
     ledger.addRow({
@@ -241,8 +239,7 @@ export async function reportToExcel(input: {
       nid: r.nationalId ?? '',
       type: r.docType ?? '',
       dest: r.destination ?? '',
-      copies: r.copies,
-      fee: r.fee
+      copies: r.copies
     });
   }
   ledger.getRow(1).font = { bold: true };
@@ -250,8 +247,7 @@ export async function reportToExcel(input: {
   const byType = wb.addWorksheet('حسب نوع الوثيقة', { views: [{ rightToLeft: true }] });
   byType.columns = [
     { header: 'نوع الوثيقة', key: 'name', width: 34 },
-    { header: 'العدد', key: 'count', width: 12 },
-    { header: 'الإيراد', key: 'revenue', width: 14 }
+    { header: 'العدد', key: 'count', width: 12 }
   ];
   byType.addRows(input.stats.byType);
   byType.getRow(1).font = { bold: true };
@@ -259,8 +255,7 @@ export async function reportToExcel(input: {
   const byDay = wb.addWorksheet('حسب اليوم', { views: [{ rightToLeft: true }] });
   byDay.columns = [
     { header: 'اليوم', key: 'day', width: 16 },
-    { header: 'العدد', key: 'count', width: 12 },
-    { header: 'الإيراد', key: 'revenue', width: 14 }
+    { header: 'العدد', key: 'count', width: 12 }
   ];
   byDay.addRows(input.stats.byDay);
   byDay.getRow(1).font = { bold: true };

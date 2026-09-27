@@ -8,50 +8,18 @@
  * بل كتل يركّبها صاحب المكتب ويرتّبها، وتُحفظ JSON.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Clip, OfficeSettings, PrinterInfo, Seal } from '@shared/api';
+import type { Clip, Seal } from '@shared/api';
 import {
   emptyLayout,
   isLayoutEmpty,
   mmToPx,
   normalizeLayout,
-  IRAQI_LETTERHEAD_PRESETS,
   type Letterhead,
-  type LetterheadLayout,
-  type LetterheadPreset
+  type LetterheadLayout
 } from '@shared/letterhead';
 import type { Client } from '@shared/orders';
 import LetterheadDesigner from '../components/LetterheadDesigner';
-import { UI_SCALES } from '../shell/Onboarding';
-import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import LetterheadView from '../components/LetterheadView';
-
-const DEFAULT_IRAQI_CLIPS = [
-  {
-    title: 'افتتاحية محكمة البداءة',
-    category: 'محاكم وقضاء',
-    body: 'إلى / محكمة بداءة الكرخ المحترمة\nالموضوع / لائحة جوابية\n\nتحية طيبة وبعد…'
-  },
-  {
-    title: 'طلب موافقة رسمية',
-    category: 'كتب إدارية',
-    body: 'يرجى التفضل بالاطلاع والموافقة على طيّه، للتفضل بالإيعاز إلى الجهة المختصة لإكمال الإجراءات…'
-  },
-  {
-    title: 'إرفاق المستمسكات الثبوتية',
-    category: 'معاملات مواطنين',
-    body: 'نرفق لكم طياً المستمسكات الثبوتية (البطاقة الموحدة، بطاقة السكن، صور شخصية) الخاصة بالمواطن المذكور أعلاه.'
-  },
-  {
-    title: 'ختام رسمي محترم',
-    category: 'صيغ ختامية',
-    body: 'وتفضلوا بقبول فائق الاحترام والتقدير…'
-  },
-  {
-    title: 'إخلاء مسؤولية وتصديق',
-    category: 'تصاديق وقانونية',
-    body: 'أصادق على صحة البيانات والمستندات المرفقة أعلاه تحت طائلة المسؤولية القانونية.'
-  }
-];
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
@@ -89,22 +57,11 @@ export default function LetterheadScreen() {
   const [clipCategory, setClipCategory] = useState('');
   const [editingClipId, setEditingClipId] = useState<number | null>(null);
 
-  const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
-  const [settingsDirty, setSettingsDirty] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const toastTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    void Promise.all([
-      window.diwan.settings.get(),
-      window.diwan.printers.list(),
-      window.diwan.clips.list()
-    ]).then(([loaded, list, clips]) => {
-      setSettings(loaded);
-      setPrinters(list);
-      setClipsList(clips);
-    });
+    void window.diwan.clips.list().then(setClipsList);
   }, []);
 
   const reloadClips = useCallback(async () => {
@@ -168,15 +125,6 @@ export default function LetterheadScreen() {
     setCategory('');
     setLayout(emptyLayout());
     setDirty(false);
-  }
-
-  function applyPreset(preset: LetterheadPreset) {
-    setLayout(preset.createLayout());
-    setName(preset.name);
-    setCategory(preset.category);
-    setCurrentId(null);
-    setDirty(true);
-    say(`تم تطبيق نموذج: ${preset.name}`);
   }
 
   /** تعديل التخطيط من المصمّم — يخصّ الترويسة الجارية ويعلّمها غير محفوظة. */
@@ -291,19 +239,6 @@ export default function LetterheadScreen() {
     say('حُذفت الكليشة');
   }
 
-  async function populateDefaultClips() {
-    for (const c of DEFAULT_IRAQI_CLIPS) {
-      await window.diwan.clips.save({
-        id: null,
-        title: c.title,
-        body: c.body,
-        category: c.category
-      });
-    }
-    await reloadClips();
-    say('تُم إضافة الكليشات الإدارية القياسية');
-  }
-
   /** الترويسة الجارية من المكتبة — منها الافتراضيةُ والجهة عند الحفظ. */
   const current = list.find((x) => x.id === currentId) ?? null;
   const isDefault = current?.isDefault ?? false;
@@ -346,29 +281,6 @@ export default function LetterheadScreen() {
           {activeTab === 'letterhead' ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm shrink-0 border-b border-outline-variant/30">
-                {/* نماذج ترويسات رسمية جاهزة */}
-                <div className="space-y-space-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-label-sm font-bold text-on-surface flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[16px] text-secondary">auto_awesome</span>
-                      نماذج رسمية جاهزة (تطبيق بضغطة زر)
-                    </span>
-                  </div>
-                  <div className="flex gap-1.5 overflow-x-auto pb-1">
-                    {IRAQI_LETTERHEAD_PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        className="h-8 px-3 rounded-lg bg-surface-container-lowest border border-outline-variant/40 hover:border-secondary hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm shrink-0 transition-all flex items-center gap-1 shadow-xs"
-                        type="button"
-                        title={p.description}
-                        onClick={() => applyPreset(p)}
-                      >
-                        <span>{p.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="bg-surface-container-lowest p-space-sm rounded-xl shadow-xs flex flex-col gap-space-xs">
                   <div className="flex items-center justify-between">
                     <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
@@ -668,170 +580,6 @@ export default function LetterheadScreen() {
               )}
             </div>
 
-            {/* إعدادات المكتب والطباعة — هويّة الكتاب وتسلسله ومخرجه */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
-              <div className="flex items-center justify-between pb-space-xs">
-                <div className="flex items-center gap-space-xs">
-                  <span className="material-symbols-outlined text-secondary text-[20px]">
-                    settings
-                  </span>
-                  <h3 className="font-headline-sm text-headline-sm text-on-surface">
-                    إعدادات المكتب والطباعة
-                  </h3>
-                </div>
-                {settingsDirty && (
-                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold">
-                    غير محفوظة
-                  </span>
-                )}
-              </div>
-
-              {settings && (
-                <>
-                  {/* حجم الواجهة: يُطبَّق ويُحفظ فورًا — تغييرٌ يُرى لا يحتاج «حفظ». */}
-                  <div className="flex items-center justify-between gap-space-sm" data-ui-scale="">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">حجم الخطّ في البرنامج</span>
-                    <div className="flex p-0.5 rounded-lg bg-surface-container-low">
-                      {UI_SCALES.map((o) => (
-                        <button
-                          key={o.value}
-                          className={`h-8 px-3 rounded-md font-label-md text-label-md ${
-                            (settings.uiScale || 1) === o.value
-                              ? 'bg-primary-container text-on-primary font-semibold'
-                              : 'text-on-surface-variant hover:bg-surface-container-high'
-                          }`}
-                          data-scale={o.value}
-                          type="button"
-                          onClick={() => {
-                            window.diwan.ui.setZoom(o.value);
-                            void window.diwan.settings.set({ uiScale: o.value }).then((next) =>
-                              setSettings((cur) => (cur ? { ...cur, uiScale: next.uiScale } : next))
-                            );
-                          }}
-                        >
-                          {o.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-space-sm">
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        اسم المكتب
-                      </span>
-                      <input
-                        className={settingInput}
-                        type="text"
-                        value={settings.officeName}
-                        placeholder="—"
-                        onChange={(e) => {
-                          setSettings({ ...settings, officeName: e.target.value });
-                          setSettingsDirty(true);
-                        }}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        اسم المشغّل (يُطبع أسفل الكتاب)
-                      </span>
-                      <input
-                        className={settingInput}
-                        type="text"
-                        value={settings.operatorName}
-                        placeholder="—"
-                        onChange={(e) => {
-                          setSettings({ ...settings, operatorName: e.target.value });
-                          setSettingsDirty(true);
-                        }}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        بادئة رقم الصادر
-                      </span>
-                      <input
-                        className={settingInput}
-                        type="text"
-                        value={settings.serialPrefix}
-                        onChange={(e) => {
-                          setSettings({ ...settings, serialPrefix: e.target.value });
-                          setSettingsDirty(true);
-                        }}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        سنة السجل
-                      </span>
-                      <input
-                        className={settingInput}
-                        type="number"
-                        value={settings.serialYear}
-                        onChange={(e) => {
-                          setSettings({
-                            ...settings,
-                            serialYear: Number(e.target.value) || settings.serialYear
-                          });
-                          setSettingsDirty(true);
-                        }}
-                      />
-                    </label>
-                  </div>
-
-                  <label className="flex flex-col gap-1">
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      الطابعة الافتراضية
-                    </span>
-                    <select
-                      className={settingInput}
-                      value={settings.defaultPrinter ?? ''}
-                      onChange={(e) => {
-                        setSettings({ ...settings, defaultPrinter: e.target.value || null });
-                        setSettingsDirty(true);
-                      }}
-                    >
-                      <option value="">— يسأل النظام عند كل طباعة —</option>
-                      {printers.map((p) => (
-                        <option key={p.name} value={p.name}>
-                          {p.displayName}
-                          {p.isDefault ? ' (طابعة النظام)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <p className="font-label-sm text-label-sm text-on-surface-variant">
-                    {printers.length === 0
-                      ? 'لا طابعة مثبَّتة على هذا الجهاز'
-                      : settings.defaultPrinter
-                        ? 'الطباعة تخرج مباشرةً إلى هذه الطابعة بلا حوار'
-                        : 'بلا طابعة محدَّدة يُفتح حوار الطباعة في النظام'}
-                  </p>
-
-                  <PrinterCalibration
-                    printer={settings.defaultPrinter}
-                    offsets={settings.printOffsets ?? {}}
-                    onSaved={(printOffsets) => setSettings((cur) => (cur ? { ...cur, printOffsets } : cur))}
-                    say={say}
-                  />
-
-                  <button
-                    className="w-full h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
-                    type="button"
-                    disabled={!settingsDirty}
-                    onClick={() => {
-                      void window.diwan.settings.set(settings).then((saved) => {
-                        setSettings(saved);
-                        setSettingsDirty(false);
-                        say('حُفظت إعدادات المكتب');
-                      });
-                    }}
-                  >
-                    حفظ إعدادات المكتب
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         </div>
       ) : (
@@ -846,16 +594,6 @@ export default function LetterheadScreen() {
                       {editingClipId ? 'تعديل كليشة' : 'إضافة كليشة جديدة'}
                     </h3>
                   </div>
-                  {clipsList.length === 0 && (
-                    <button
-                      className="font-label-sm text-label-sm text-secondary font-bold hover:underline flex items-center gap-1"
-                      type="button"
-                      onClick={() => void populateDefaultClips()}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">download_for_offline</span>
-                      تحميل الكليشات القياسية الجاهزة
-                    </button>
-                  )}
                 </div>
 
                 <div className="space-y-space-xs">
@@ -950,13 +688,7 @@ export default function LetterheadScreen() {
                     <div className="py-space-xl text-center flex flex-col items-center gap-2 text-on-surface-variant">
                       <span className="material-symbols-outlined text-[32px]">article</span>
                       <span className="font-label-md text-label-md">لا توجد كليشات محفوظة</span>
-                      <button
-                        className="mt-2 h-8 px-3 rounded-lg bg-secondary text-on-secondary font-label-sm text-label-sm font-bold"
-                        type="button"
-                        onClick={() => void populateDefaultClips()}
-                      >
-                        إضافة 5 كليشات إدارية عراقية جاهزة فورًا
-                      </button>
+                      <span className="font-label-sm text-label-sm">تُبنى من عمل المكتب: اكتب العبارة التي تتكرّر واحفظها</span>
                     </div>
                   ) : (
                     clipsList.map((c) => (
@@ -1057,101 +789,5 @@ export default function LetterheadScreen() {
         </div>
       )}
     </main>
-  );
-}
-
-/**
- * معايرة الطابعة: ورقةٌ تُطبع، وقياسان بالمسطرة يُكتبان كما هما.
- *
- * الطابعات تزيح الطباعة ملّمًا أو اثنين — فتقع الكتابة خارج خانات الاستمارة
- * المطبوعة سلفًا، ويُقصّ طرف الهويّة. والإزاحة لكل طابعة، وللطباعة الورقية وحدها.
- */
-function PrinterCalibration({
-  printer,
-  offsets,
-  onSaved,
-  say
-}: {
-  printer: string | null;
-  offsets: Record<string, { x: number; y: number }>;
-  onSaved: (next: Record<string, { x: number; y: number }>) => void;
-  say: (text: string, tone?: 'ok' | 'warn') => void;
-}) {
-  const current = offsets[printer ?? ''] ?? { x: 0, y: 0 };
-  const seed = measureFromOffset(current);
-  const [fromRight, setFromRight] = useState(String(seed.fromRight));
-  const [fromTop, setFromTop] = useState(String(seed.fromTop));
-  useEffect(() => {
-    const m = measureFromOffset(offsets[printer ?? ''] ?? { x: 0, y: 0 });
-    setFromRight(String(m.fromRight));
-    setFromTop(String(m.fromTop));
-  }, [printer, offsets]);
-
-  const num = (v: string) => Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace('٫', '.'));
-  const box =
-    'w-20 h-9 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
-
-  if (!printer)
-    return (
-      <p className="font-label-sm text-label-sm text-on-surface-variant" data-calibration="">
-        معايرة الطابعة: اختر الطابعة الافتراضية واحفظ، ثم عايرها من هنا.
-      </p>
-    );
-
-  return (
-    <div className="rounded-lg bg-surface-container-low p-space-sm space-y-space-xs" data-calibration="">
-      <div className="flex items-center justify-between">
-        <span className="font-label-md text-label-md text-on-surface font-semibold">معايرة الطابعة</span>
-        <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-calibration-offset="">
-          {current.x || current.y ? `الإزاحة: ${current.x} يمينًا، ${current.y} نزولًا (ملم)` : 'بلا إزاحة'}
-        </span>
-      </div>
-      <p className="font-label-sm text-label-sm text-on-surface-variant">
-        اطبع الورقة، وقِس بُعد العلامة العليا عن حافّتي الورقة (الصحيح ٢٠ ملم)، واكتب القياسين كما هما.
-      </p>
-      <div className="flex flex-wrap items-center gap-space-sm">
-        <button
-          className="h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
-          data-act="print-calibration"
-          type="button"
-          onClick={() =>
-            void window.diwan.output
-              .printCalibration(printer)
-              .then((r) => say(r.ok ? 'أُرسلت ورقة المعايرة' : r.reason || 'لم تُطبع', r.ok ? 'ok' : 'warn'))
-          }
-        >
-          <span className="material-symbols-outlined text-[16px]">straighten</span>
-          اطبع ورقة المعايرة
-        </button>
-        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-          من اليمين
-          <input className={box} data-measure-right="" inputMode="decimal" value={fromRight} onChange={(e) => setFromRight(e.target.value)} />
-        </label>
-        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-          من الأعلى
-          <input className={box} data-measure-top="" inputMode="decimal" value={fromTop} onChange={(e) => setFromTop(e.target.value)} />
-        </label>
-        <button
-          className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold"
-          data-act="save-calibration"
-          type="button"
-          onClick={() => {
-            const r = num(fromRight);
-            const t = num(fromTop);
-            if (!Number.isFinite(r) || !Number.isFinite(t) || r < 5 || r > 35 || t < 5 || t > 35) {
-              say('القياس بين ٥ و٣٥ ملم — قِس ثانيةً', 'warn');
-              return;
-            }
-            const next = { ...offsets, [printer]: offsetFromMeasure(r, t) };
-            void window.diwan.settings.set({ printOffsets: next }).then((saved) => {
-              onSaved(saved.printOffsets);
-              say('حُفظت معايرة الطابعة');
-            });
-          }}
-        >
-          احفظ القياس
-        </button>
-      </div>
-    </div>
   );
 }

@@ -60,7 +60,7 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
   if (canvas.bleed > 0) {
     const { w, h } = canvas.size;
     for (const el of canvas.elements) {
-      if (el.kind === 'shape' || el.kind === 'svg' || el.kind === 'html') continue;
+      if (el.kind === 'shape') continue;
       // ما يغطّي معظم البطاقة خلفيةٌ مقصودةٌ أن تمتدّ إلى الحافّة.
       if (el.box.w * el.box.h > 0.8) continue;
       const gap = Math.min(el.box.x * w, (1 - el.box.x - el.box.w) * w, el.box.y * h, (1 - el.box.y - el.box.h) * h);
