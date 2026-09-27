@@ -407,10 +407,20 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
  * **والدفعة كلّها أو لا شيء**: اسمٌ يسقط في آخر القائمة يردّ ما قبله، فلا يخرج
  * المكتب بنصف صفّ مطبوع ونصفه محروق الأرقام.
  */
-export function issueBatch(db: Database, inputs: TransactionInput[]): TransactionResult[] {
+/**
+ * الدفعة كلّها قيدٌ واحد: تصدر كلّها أو لا يصدر منها شيء — ولو انقطعت الكهرباء في
+ * منتصفها. و`afterEach` لفحص ذلك وحده: يُبطئ القيد ليُقتل البرنامج في منتصفه.
+ */
+export function issueBatch(db: Database, inputs: TransactionInput[], afterEach?: () => void): TransactionResult[] {
   if (inputs.length === 0) throw new Error('لا تصدر دفعة بلا اسم واحد');
   prepareDocuments(db);
-  return db.transaction(() => inputs.map((one) => issueTransaction(db, one)))();
+  return db.transaction(() =>
+    inputs.map((one) => {
+      const out = issueTransaction(db, one);
+      afterEach?.();
+      return out;
+    })
+  )();
 }
 
 export type RepeatSource =
@@ -508,6 +518,27 @@ export function voidDocument(db: Database, id: number, reason: string, operator:
  * والبصمة تُحسب بـ`htmlToText` نفسها التي صدر بها الكتاب — فهي لا تُغيَّر: أيّ تغييرٍ
  * فيها يجعل كتب الأمس «معدَّلة» وهي لم تُمسّ.
  */
+/**
+ * كتب الإصدار الأوّل (قبل التطوير ١) طُبع عليها رقم المكتب وبصمته ورمز QR في مواضع
+ * (`data-slot`)، وحُسبت بصمتها **والمواضع فارغةٌ بعلاماتها** ثم مُلئت. فالنصّ المحفوظ
+ * غير النصّ المبصوم — ويُعاد هنا كما بُصم: تُردّ المواضع إلى علاماتها. وما في المواضع
+ * لم يدخل البصمة يومها أصلًا، فلا يضعف التحقّق: الرقم نفسه في البصمة وفي السلسلة.
+ *
+ * وبغير هذا كان كلّ كتابٍ قديمٍ يُعلَن «تغيّر بعد صدوره» عند أوّل تحديثٍ للبرنامج.
+ */
+const LEGACY_SLOTS: [string, string][] = [
+  ['serial', '{{DIWAN_SERIAL}}'],
+  ['fingerprint', '{{DIWAN_FINGERPRINT}}'],
+  ['qr', ' ']
+];
+function legacySlots(html: string): string {
+  let out = html;
+  for (const [slot, mark] of LEGACY_SLOTS) {
+    out = out.replace(new RegExp(String.raw`(<([a-z]+)[^>]*data-slot="${slot}"[^>]*>)[\s\S]*?(</\2>)`, 'g'), `$1${mark}$3`);
+  }
+  return out;
+}
+
 export function verifyArchive(db: Database): ArchiveCheck {
   prepareDocuments(db);
   const rows = db
@@ -532,14 +563,15 @@ export function verifyArchive(db: Database): ArchiveCheck {
   const problems: ArchiveCheck['problems'] = [];
   let prev = CHAIN_GENESIS;
   for (const r of rows) {
-    const again = fingerprint({
-      serial: r.serial,
-      bodyHtml: htmlToText(r.body),
-      gregorianDate: r.date,
-      citizenName: r.name ?? '',
-      destination: r.destination ?? ''
-    });
-    if (again !== r.sha256) {
+    const hash = (body: string) =>
+      fingerprint({
+        serial: r.serial,
+        bodyHtml: htmlToText(body),
+        gregorianDate: r.date,
+        citizenName: r.name ?? '',
+        destination: r.destination ?? ''
+      });
+    if (hash(r.body) !== r.sha256 && hash(legacySlots(r.body)) !== r.sha256) {
       problems.push({ id: r.id, serial: r.serial, kind: 'content', text: 'متنه أو بياناته تغيّرت بعد صدوره — بصمته لا تطابقه' });
     }
     const link = chainLink(prev, r.sha256, r.serial);

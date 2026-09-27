@@ -516,6 +516,8 @@ export type DiwanApi = {
     setZoom(factor: number): void;
     /** رقم الإصدار من الحزمة، ومجلّد بيانات المكتب — لـ«الإعدادات» وحول البرنامج. */
     info(): Promise<{ version: string; dataDir: string }>;
+    /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
+    onError(listener: (message: string) => void): () => void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;

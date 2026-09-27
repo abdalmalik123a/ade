@@ -9,8 +9,12 @@ import ExcelJS from 'exceljs';
  */
 export async function sheetToText(file: string): Promise<{ text: string; rows: number }> {
   const book = new ExcelJS.Workbook();
-  if (/\.csv$/i.test(file)) await book.csv.readFile(file);
-  else await book.xlsx.readFile(file);
+  try {
+    if (/\.csv$/i.test(file)) await book.csv.readFile(file);
+    else await book.xlsx.readFile(file);
+  } catch {
+    throw new Error('تعذّر قراءة ملف Excel — قد يكون تالفًا، أو بصيغة .xls القديمة (احفظه .xlsx أو CSV)');
+  }
   const sheet = book.worksheets[0];
   if (!sheet) return { text: '', rows: 0 };
 

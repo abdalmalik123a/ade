@@ -5,6 +5,10 @@ import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
 import { prepareDocuments } from './services/documents';
 import { prepareSearch } from './services/searchIndex';
+import { installMainErrorHandlers, logError } from './errorLog';
+
+// قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
+installMainErrorHandlers();
 
 // المِقْود وحده (tools/drive.mjs): كاميرا مصنوعةٌ يرسمها Chromium — فيُختبر
 // استوديو التصوير على التطبيق الحقيقي بلا كاميرا موصولة.
@@ -52,6 +56,8 @@ function createWindow(): void {
   // تسجيل أخطاء الواجهة لسرعة التشخيص
   mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     console.log(`[RENDERER ${level}] ${message} (${sourceId}:${line})`);
+    // أخطاء الواجهة في سجلّ الأخطاء أيضًا — فعطلٌ يصفه الموظف يُرى بسياقه.
+    if (level >= 3) logError('renderer', new Error(`${message} (${sourceId}:${line})`));
   });
 
   // أي رابط خارجي يُفتح في المتصفح، لا داخل نافذة التطبيق.

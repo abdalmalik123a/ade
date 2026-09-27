@@ -29,6 +29,7 @@ import {
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
 import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
+import { isoDate } from '@shared/dates'; // اسم الملف بيوم المكتب لا بيوم UTC
 
 /** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
 const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 'clip'];
@@ -222,7 +223,7 @@ export function registerTemplateIpc(): void {
       .filter((t): t is NonNullable<typeof t> => t !== null);
     if (all.length === 0) throw new Error('لا نماذج لتصديرها');
 
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = isoDate(new Date());
     const result = await dialog.showSaveDialog(win, {
       title: 'تصدير المكتبة كاملة',
       defaultPath: `diwan-library-${stamp}.xml`,
@@ -285,7 +286,7 @@ export function registerTemplateIpc(): void {
       templates: svc.listTemplates(db).map((t) => svc.getTemplate(db, t.id)),
       drafts: svc.listDrafts(db)
     };
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = isoDate(new Date());
     const result = await dialog.showSaveDialog(win, {
       title: 'نسخ احتياطي للنماذج والمسودات',
       defaultPath: `diwan-templates-${stamp}.json`,

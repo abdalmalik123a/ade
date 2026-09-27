@@ -20,6 +20,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBar from './components/ErrorBar';
 import ResumePrintDialog from './components/ResumePrintDialog';
 import TodayPanel from './components/TodayPanel';
 import { agendaHasItems } from '@shared/agenda';
@@ -373,6 +374,8 @@ export default function App() {
         </div>
         {route !== 'service' && <ErrorBoundary key={route}>{renderScreen()}</ErrorBoundary>}
       </div>
+
+      <ErrorBar />
 
       <CommandPalette
         isOpen={commandPaletteOpen}

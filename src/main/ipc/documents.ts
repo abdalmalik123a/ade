@@ -23,6 +23,7 @@ import type {
   TransactionInput,
   TransactionResult
 } from '@shared/api';
+import { isoDate } from '@shared/dates'; // اسم الملف بيوم المكتب لا بيوم UTC
 
 /**
  * الإصدار والإخراج.
@@ -67,6 +68,17 @@ async function saveAs(
  * السنة يحمل إعداداتٍ قرأها أمس.
  */
 const thisYear = () => new Date().getFullYear();
+
+/**
+ * تحت المِقْود وحده (`DIWAN_TEST_SLOW_ISSUE` بالملّي ثانية): يتمهّل القيد بعد كلّ كتاب،
+ * فيُقتل البرنامج والدفعة في منتصف قيدها — ويُفحص أنها لم تصدر نصفًا. ولا أثر له بدونه.
+ */
+const testPause = (): (() => void) | undefined => {
+  const ms = Number(process.env['DIWAN_TEST_SLOW_ISSUE'] ?? 0);
+  if (!ms) return undefined;
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  return () => void Atomics.wait(cell, 0, 0, ms);
+};
 
 export function registerDocumentIpc(): void {
   svc.prepareDocuments(getDb());
@@ -210,7 +222,7 @@ export function registerDocumentIpc(): void {
         rows,
         stats
       });
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = isoDate(new Date());
       const path = await saveAs(w, buffer, `diwan-report-${stamp}.xlsx`, 'Excel', 'xlsx');
       return path ? { path, count: rows.length } : null;
     }
@@ -253,7 +265,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueBatch',
     async (e, inputs: TransactionInput[], print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult[]> => {
-      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear() })));
+      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear() })), testPause());
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const out of all) {

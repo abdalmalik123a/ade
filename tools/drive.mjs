@@ -6,6 +6,12 @@
  *
  * الاستعمال:
  *   node tools/drive.mjs <script.mjs>     يشغّل سيناريو ويخرج
+ *
+ * - **استثناءٌ غير ممسوك** في الواجهة (أو وعدٌ رُفض بلا من يلتقطه) يُفشل السيناريو
+ *   كائنًا ما كان: خطأٌ يُبلع صامتًا هو ما لا يراه الموظف ولا نحن.
+ * - `afterRestart` في السيناريو: يُقتل التطبيق فجأةً بعد السيناريو (كانقطاع الكهرباء)
+ *   ثم يُشغَّل على الملف الشخصي نفسه، فيُتفقَّد ما بقي.
+ * - `DIWAN_EXE`: يُشغَّل التطبيق المُثبَّت (المبني بـelectron-builder) لا نسخة التطوير.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -14,6 +20,8 @@ import { pathToFileURL } from 'node:url';
 
 const PORT = 9223;
 const ELECTRON = resolve('node_modules/electron/dist/electron.exe');
+/** التطبيق المُثبَّت إن طُلب — ويُشغَّل بلا مسار المشروع. */
+const EXE = process.env.DIWAN_EXE ? resolve(process.env.DIWAN_EXE) : null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -34,11 +42,18 @@ class Page {
   #ws;
   #id = 0;
   #pending = new Map();
+  /** الاستثناءات غير الممسوكة في الصفحة، بنصّها. */
+  exceptions = [];
 
   constructor(ws) {
     this.#ws = ws;
     ws.addEventListener('message', (ev) => {
       const msg = JSON.parse(ev.data);
+      if (msg.method === 'Runtime.exceptionThrown') {
+        const d = msg.params.exceptionDetails;
+        this.exceptions.push(d.exception?.description?.split('\n')[0] ?? d.text);
+        return;
+      }
       const entry = this.#pending.get(msg.id);
       if (entry) {
         this.#pending.delete(msg.id);
@@ -169,17 +184,17 @@ class Page {
   }
 }
 
-export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false } = {}) {
+export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false, keepProfile = false } = {}) {
   const profile = userDataDir ?? join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
-  rmSync(profile, { recursive: true, force: true });
+  if (!keepProfile) rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
   if (shotsDir) mkdirSync(shotsDir, { recursive: true });
 
-  const child = spawn(
-    ELECTRON,
-    ['.', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`],
-    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...(env ?? {}) } }
-  );
+  const args = [`--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`];
+  const child = spawn(EXE ?? ELECTRON, EXE ? args : ['.', ...args], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ...(env ?? {}) }
+  });
   const logs = [];
   child.stdout.on('data', (d) => logs.push(String(d)));
   child.stderr.on('data', (d) => logs.push(String(d)));
@@ -206,9 +221,14 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
       await sleep(500);
     }
 
-    const result = await scenario(page, { profile, shotsDir });
+    // `kill` يقتل البرنامج فورًا من خارج البروتوكول: والعملية الرئيسة مشغولةٌ بقيدٍ
+    // متزامن لا تمرّر رسائل البروتوكول حتى تفرغ — فلا يُقتل «في منتصف القيد» من داخله.
+    const result = await scenario(page, { profile, shotsDir, kill: () => child.kill() });
+    await sleep(300);
     ws.close();
-    return result;
+    // خطأٌ لم يلتقطه أحد يُقال — ولو مرّت فحوص السيناريو كلّها.
+    const thrown = page.exceptions.map((e) => `✗ استثناءٌ غير ممسوك في الواجهة: ${e}`);
+    return typeof result === 'string' && thrown.length ? [result, ...thrown].join('\n') : result;
   } finally {
     child.kill();
     await sleep(400);
@@ -220,11 +240,18 @@ if (process.argv[2]) {
   const mod = await import(pathToFileURL(resolve(process.argv[2])).href);
   // سيناريو يحتاج تهيئةً قبل إقلاع التطبيق (ملفًا يُبنى، أو متغيّر بيئة يُضبط).
   const env = mod.prepare ? await mod.prepare() : undefined;
-  const out = await drive(mod.default, {
+  const profile = join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
+  let out = await drive(mod.default, {
+    userDataDir: profile,
     shotsDir: process.env.SHOT_DIR,
     env,
     keepOnboarding: mod.keepOnboarding === true
   });
+  // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
+  if (mod.afterRestart) {
+    const again = await drive(mod.afterRestart, { userDataDir: profile, keepProfile: true, shotsDir: process.env.SHOT_DIR, env, keepOnboarding: true });
+    out = [out, again].filter((x) => typeof x === 'string').join('\n');
+  }
   if (out !== undefined) console.log(out);
   // فحصٌ واحدٌ فاشل يُفشل السيناريو كلّه — وإلا مرّ ✗ في سجلٍّ لا يقرؤه أحد.
   process.exit(typeof out === 'string' && out.includes('✗') ? 1 : 0);

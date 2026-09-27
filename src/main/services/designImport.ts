@@ -124,12 +124,15 @@ function paragraphText(xml: string): string {
  * الشهادة كومةَ أسطرٍ في أعلى الورقة.
  */
 export function wordDesign(bytes: Uint8Array, name: string): DesignImport {
-  const zip = unzipSync(bytes);
+  let zip: Record<string, Uint8Array>;
+  try {
+    zip = unzipSync(bytes);
+  } catch {
+    throw new Error('تعذّر فتح ملف Word — قد يكون تالفًا أو مقطوعًا، أو بصيغة .doc القديمة (احفظه .docx)');
+  }
   const doc = zip['word/document.xml'];
   const warnings: string[] = [];
-  if (!doc) {
-    return { source: 'word', name, size: null, dpi: null, images: [], elements: [], warnings: ['لا يحوي الملف مستند Word'] };
-  }
+  if (!doc) throw new Error('الملف ليس مستند Word — لا مستند فيه');
   const xml = strFromU8(doc);
 
   // ── المقاس: twips ────────────────────────────────────────────────
@@ -282,9 +285,8 @@ function textBox(item: Extract<PsdItem, { kind: 'text' }>, W: number, H: number)
  */
 export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
   const read = readPsd(bytes);
-  if (!read) {
-    return { source: 'psd', name, size: null, dpi: null, images: [], elements: [], warnings: ['ليس ملف Photoshop'] };
-  }
+  // ملفٌّ لا يُقرأ يُقال — لا لوحةٌ فارغة تسأل عن مقاس ملفٍّ لم يُفتح.
+  if (!read) throw new Error('تعذّر قراءة ملف Photoshop — قد يكون تالفًا أو مقطوعًا');
   const warnings = [...read.warnings];
   if (!read.dpi) warnings.push('الملف لا يذكر دقّته — اختر المقاس');
   const W = read.width;
@@ -292,6 +294,7 @@ export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
 
   const doc = parsePsdLayers(bytes);
   const items = doc ? psdItems(bytes, doc) : [];
+  if (!read.rgba && !items.length) throw new Error('ملف Photoshop مبتور — لم تُقرأ صورته ولا طبقاته');
   const background = doc ? eraseLayers(bytes, doc, read.rgba, read.planes ?? null, items.map((i) => i.layer), read.dpi) : null;
   const rgba = background?.rgba ?? read.rgba;
   const images = rgba
@@ -372,6 +375,9 @@ export function pdfSize(bytes: Uint8Array): CanvasSize | null {
 }
 
 export function pdfDesign(bytes: Uint8Array, name: string): DesignImport {
+  if (!Buffer.from(bytes.subarray(0, 1024)).toString('latin1').includes('%PDF-')) {
+    throw new Error('الملف ليس PDF — قد يكون تالفًا أو أُعيدت تسميته');
+  }
   const size = pdfSize(bytes);
   return {
     source: 'pdf',
@@ -388,7 +394,22 @@ export function pdfDesign(bytes: Uint8Array, name: string): DesignImport {
 
 // ── صورة ─────────────────────────────────────────────────────────────
 
+/** أصورةٌ هي؟ — من توقيع أوّل بايتاتها لا من امتداد اسمها. */
+function isImage(bytes: Uint8Array): boolean {
+  const b = Buffer.from(bytes.subarray(0, 12));
+  return (
+    b.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47])) || // PNG
+    b.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) || // JPEG
+    b.toString('latin1', 0, 4) === 'GIF8' ||
+    b.toString('latin1', 0, 2) === 'BM' ||
+    (b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP') ||
+    (b[0] === 0x49 && b[1] === 0x49 && b[2] === 0x2a && b[3] === 0) || // TIFF (II)
+    (b[0] === 0x4d && b[1] === 0x4d && b[2] === 0 && b[3] === 0x2a) // TIFF (MM)
+  );
+}
+
 export function imageDesign(bytes: Uint8Array, name: string): DesignImport {
+  if (!isImage(bytes)) throw new Error('الملف ليس صورةً تُقرأ (PNG أو JPEG أو WebP أو BMP) — قد يكون تالفًا أو أُعيدت تسميته');
   const meta = imageMeta(bytes);
   return {
     source: 'image',

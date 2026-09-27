@@ -8,6 +8,8 @@ Thumbs.db
 .vite/
 /data/
 *.db
+# قاعدة الإصدار الأوّل مرجعٌ للاختبار (agedDb) — لا بيانات مكتب
+!tests/fixtures/*.db
 *.db-shm
 *.db-wal
 

@@ -107,7 +107,7 @@ describe('استيراد نموذج من Word', () => {
 
   it('يرفض الصيغ غير المدعومة', async () => {
     const path = makeFile('x.txt', 'نص');
-    await expect(importTemplateFile(path)).rejects.toThrow('الصيغ المدعومة');
+    await expect(importTemplateFile(path)).rejects.toThrow('الملف ليس Word ولا XML');
   });
 });
 

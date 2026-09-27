@@ -6,6 +6,7 @@
  * ثم يُكتشف أن ثلاثين منها بلا صورة.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { errorText } from '../lib/errors';
 import type { DocField } from '@shared/doc';
 import { matchPhotos, nameKeyOf, parseRows, type BatchMap, type Photo } from '@shared/batch';
 import { sheetCount, type Imposition } from '@shared/imposition';
@@ -48,6 +49,7 @@ export default function BatchPanel({
   const [photos, setPhotos] = useState<Photo[]>(seedPhotos);
   const [busy, setBusy] = useState(false);
   const [studio, setStudio] = useState(false);
+  const [sheetError, setSheetError] = useState<string | null>(null);
 
   const textKeys = fields.map((f) => f.key).filter((k) => !imageKeys.includes(k));
   const parsed = useMemo(() => parseRows(text, textKeys, mapping), [text, textKeys.join('|'), mapping]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -99,7 +101,13 @@ export default function BatchPanel({
           className="shrink-0 h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
           data-act="open-sheet"
           type="button"
-          onClick={() => void window.diwan.files.readSheet().then((out) => out && setText(out.text))}
+          onClick={() => {
+            setSheetError(null);
+            window.diwan.files
+              .readSheet()
+              .then((out) => out && setText(out.text))
+              .catch((e: unknown) => setSheetError(errorText(e, 'تعذّر قراءة الملف')));
+          }}
         >
           <span className="material-symbols-outlined text-[16px]">table_view</span>
           ملف Excel
@@ -117,6 +125,11 @@ export default function BatchPanel({
           </button>
         )}
       </div>
+      {sheetError && (
+        <p className="font-label-sm text-label-sm text-error" data-sheet-error="">
+          {sheetError}
+        </p>
+      )}
       <textarea
         className="w-full h-28 p-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
         data-batch-text=""

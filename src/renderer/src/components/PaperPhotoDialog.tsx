@@ -28,7 +28,12 @@ const REASON: Record<ReviewReason, string> = {
 async function pixelsOf(dataUrl: string, maxSide = 3600): Promise<PixelData> {
   const img = new Image();
   img.src = dataUrl;
-  await img.decode();
+  try {
+    await img.decode();
+  } catch {
+    // رسالة المتصفّح إنكليزية («The source image cannot be decoded») — والسبب يُقال بالعربية.
+    throw new Error('الملف ليس صورةً تُقرأ — قد يكون تالفًا أو أُعيدت تسميته');
+  }
   const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
   const c = document.createElement('canvas');
   c.width = Math.round(img.naturalWidth * k);

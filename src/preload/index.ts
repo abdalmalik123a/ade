@@ -14,7 +14,12 @@ const api: DiwanApi = {
   },
   ui: {
     setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(1.5, Math.max(0.8, factor || 1))),
-    info: () => invoke('app:info')
+    info: () => invoke('app:info'),
+    onError: (listener: (message: string) => void) => {
+      const handler = (_e: unknown, message: string) => listener(message);
+      ipcRenderer.on('app:error', handler);
+      return () => ipcRenderer.removeListener('app:error', handler);
+    }
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')

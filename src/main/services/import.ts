@@ -379,6 +379,8 @@ export function parseTemplateXml(xml: string): {
 }
 
 function xmlToTemplate(xml: string, fallbackTitle: string): ImportedTemplate {
+  // XML بلا وسمٍ واحد ليس XML: نصٌّ أُعيدت تسميته، لا نموذجٌ بلا <body>.
+  if (!/<[A-Za-zء-ي]/.test(xml)) throw new Error('الملف ليس XML — لا وسوم فيه، فليس نموذجًا مصدَّرًا');
   const warnings: string[] = [];
   const body = tag(xml, 'body') ?? tag(xml, 'متن');
   if (!body) {
@@ -546,5 +548,5 @@ export async function importTemplateFile(
     };
   }
 
-  throw new Error('الصيغ المدعومة: .docx و .xml');
+  throw new Error(`الملف ليس Word ولا XML (${ext || 'بلا امتداد'}) — يُستورد النموذج من .docx أو .xml`);
 }
