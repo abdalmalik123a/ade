@@ -193,6 +193,8 @@ const api: DiwanApi = {
     delete: (id: number) => invoke('templates:delete', id),
     doc: (id: number) => invoke('templates:doc', id),
     importFile: () => invoke('templates:importFile'),
+    pickPaper: () => invoke('templates:pickPaper'),
+    readPaper: (png: Uint8Array, dpi: number | null) => invoke('templates:readPaper', png, dpi),
     planFolder: () => invoke('templates:planFolder'),
     applyImport: (plan: unknown, choices: unknown) =>
       invoke('templates:applyImport', plan, choices),

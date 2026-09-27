@@ -744,7 +744,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
   return (
     <div className="flex gap-space-md h-full min-h-0">
       {/* الورقة */}
-      <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40">
+      <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="">
         <div className="sticky top-0 z-10 bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
           <button
             className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-secondary transition-all shadow-xs"

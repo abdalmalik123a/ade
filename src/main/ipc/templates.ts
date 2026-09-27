@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
@@ -16,6 +16,8 @@ import type { Addressing, RevisionKind } from '@shared/api';
 const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
 const isKind = (k: unknown): k is RevisionKind => KINDS.includes(k as RevisionKind);
 import { pickFolderPath, pickOpenPath } from './files';
+import { imageMeta } from '../services/imageSize';
+import { recognizeLayout } from '../services/ocr';
 import {
   applyHabits,
   applyImportPlan,
@@ -106,6 +108,33 @@ export function registerTemplateIpc(): void {
 
     return importTemplateFile(source, storeLetterheadImage);
   });
+
+  /**
+   * صورة ورقةٍ تُقرأ لتصير كتابًا (هـ٨) — تُعاد بايتاتها ولا تُحفظ في المخزن: صورة
+   * كتابٍ فيه أسماء الناس لا تبقى على القرص لأنها قُرئت مرّة.
+   */
+  ipcMain.handle('templates:pickPaper', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const source = await pickOpenPath(win, {
+      title: 'صورة الورقة',
+      buttonLabel: 'اقرأها',
+      filterName: 'صور',
+      extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']
+    });
+    if (!source) return null;
+    const bytes = await readFile(source);
+    const ext = source.toLowerCase().split('.').pop() ?? 'png';
+    const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : ext === 'bmp' ? 'image/bmp' : 'image/png';
+    return {
+      name: basename(source),
+      dataUrl: `data:${mime};base64,${bytes.toString('base64')}`,
+      dpi: imageMeta(bytes)?.dpi ?? null
+    };
+  });
+
+  /** القارئ المحلي على صورة الورقة بعد تنظيفها: الأسطر بكلماتها ومواضعها. */
+  ipcMain.handle('templates:readPaper', (_e, png: Uint8Array, dpi: number | null) => recognizeLayout(png, dpi));
 
   /**
    * «استورد مجلدي»: يقرأ المجلد ويبني خطّةً تُعرض — ولا يمسّ القاعدة.

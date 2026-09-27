@@ -16,7 +16,7 @@ import { flattenLight } from './deskew';
 const lum = (r: number, g: number, b: number) => 0.299 * r + 0.587 * g + 0.114 * b;
 
 /** أملوّنٌ هذا البكسل حبرًا — لا ورقًا ولا رماديًّا؟ */
-function isColoredInk(r: number, g: number, b: number): boolean {
+export function isColoredInk(r: number, g: number, b: number): boolean {
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   // الورق المصفرّ خفيف التشبّع؛ والختم الأزرق أو الأحمر مشبعٌ وليس أبيض.

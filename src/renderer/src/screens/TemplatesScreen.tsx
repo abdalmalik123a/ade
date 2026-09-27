@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ImportPlanDialog from '../components/ImportPlanDialog';
+import PaperPhotoDialog from '../components/PaperPhotoDialog';
 import type {
   DraftRow,
   ImportChoices,
@@ -67,6 +68,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
   const [toast, setToast] = useState<Toast>(null);
   const [busy, setBusy] = useState(false);
   const [pendingImport, setPendingImport] = useState<ImportedTemplate | null>(null);
+  const [paperOpen, setPaperOpen] = useState(false);
   /** خطّة «استورد مجلدي» — تُعرض للمراجعة، ولا يُحفظ منها إلا ما يُقبل. */
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const timer = useRef<number | null>(null);
@@ -413,7 +415,7 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
             </div>
           ))}
 
-          {/* نموذجٌ جديد: طرقُه الثلاث في مكانٍ واحد — كانت ثلاثة أزرارٍ لفعلٍ واحد، والاستيراد في التذييل. */}
+          {/* نموذجٌ جديد: طرقُه كلّها في مكانٍ واحد — ورقةٌ فارغة، وWord، والمجلد، وصورة الورقة (هـ٨). */}
           <div className="bg-primary-container text-on-primary p-space-md rounded-xl shadow-md flex flex-col gap-space-xs" data-new-template="">
             <span className="font-headline-sm text-headline-sm">نموذجٌ جديد</span>
             {(
@@ -421,7 +423,8 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
                 { act: 'new-blank', icon: 'note_add', label: 'ورقة فارغة', hint: 'اكتب على الورقة، وظلّل ما يتغيّر واضغط F4', run: () => void openDesigner(null) },
                 { act: 'install-contracts', icon: 'gavel', label: 'العقود والكمبيالات العرفية', hint: 'عقد إيجار، مكاتبة سيارة، كمبيالة وكفيل، تعهد', run: () => void handleInstallContracts() },
                 { act: 'new-word', icon: 'upload_file', label: 'استيراد نموذج من Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
-                { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() }
+                { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() },
+                { act: 'new-photo', icon: 'document_scanner', label: 'من صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) }
               ] as const
             ).map((o) => (
               <button
@@ -617,6 +620,17 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
           plan={plan}
           onApply={(edited, choices) => void applyPlan(edited, choices)}
           onCancel={() => setPlan(null)}
+        />
+      )}
+
+      {paperOpen && (
+        <PaperPhotoDialog
+          onClose={() => setPaperOpen(false)}
+          onOpen={({ doc, title, notes }) => {
+            setPaperOpen(false);
+            // يدخل المصمّم من طريق Word نفسه: ورقةٌ واحدة بتنسيقها، ورأسُها يُفصل ترويسةً إن شاء المكتب.
+            openImported({ title, subtitle: null, category: null, code: null, subjectLine: null, body: '', warnings: notes, letterhead: null, doc }, null);
+          }}
         />
       )}
 

@@ -47,9 +47,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ولا يعود المعالج', rows.onboarded === 'true');
   ok('واسم المكتب في الشريط الجانبي', (await page.text()).includes('مكتب الرافدين للاستنساخ'));
 
-  // ── مكتبة النماذج: مدخلٌ واحد لنموذجٍ جديد بطرقه الثلاث ─────────────
+  // ── مكتبة النماذج: مدخلٌ واحد لنموذجٍ جديد بطرقه كلّها ──────────────
   const hub = await page.eval(`return [...document.querySelectorAll('[data-new-template] [data-act]')].map((b) => b.dataset.act).join(',');`);
-  ok('ونموذجٌ جديد بطرقه الثلاث وباب العقود في مكانٍ واحد', hub === 'new-blank,install-contracts,new-word,new-folder');
+  ok('ونموذجٌ جديد بطرقه وباب العقود وصورة الورقة في مكانٍ واحد', hub === 'new-blank,install-contracts,new-word,new-folder,new-photo');
   ok('بلا زرّ إضافةٍ مكرّر', !(await page.text()).includes('إضافة نموذج'));
 
   // ── الشريط العلوي يتبع الشاشة ──────────────────────────────────────

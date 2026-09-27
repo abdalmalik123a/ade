@@ -1,6 +1,7 @@
 import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus } from './orders';
 import type { Letterhead, LetterheadLayout } from './letterhead';
 import type { Doc, ListItem, Suggestion } from './doc';
+import type { OcrLine } from './paperDoc';
 import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
@@ -706,6 +707,10 @@ export type DiwanApi = {
     delete(id: number): Promise<void>;
     doc(id: number): Promise<Doc>;
     importFile(): Promise<ImportedTemplate | null>;
+    /** صورة ورقةٍ تُقرأ لتصير كتابًا (هـ٨) — لا تُحفظ في المخزن. */
+    pickPaper(): Promise<{ name: string; dataUrl: string; dpi: number | null } | null>;
+    /** القارئ المحلي على الورقة بعد تنظيفها: الأسطر بكلماتها ومواضعها. */
+    readPaper(png: Uint8Array, dpi: number | null): Promise<OcrLine[]>;
     /** يقرأ مجلدًا ويبني خطّة — ولا يمسّ القاعدة. */
     planFolder(): Promise<ImportPlan | null>;
     /** ينفّذ ما قبِله الموظف من الخطّة. */

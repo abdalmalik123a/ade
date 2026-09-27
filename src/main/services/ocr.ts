@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
 import { createWorker, type Worker } from 'tesseract.js';
+import type { OcrLine } from '@shared/paperDoc';
 
 /**
  * استخراج النصوص من المستمسكات الممسوحة.
@@ -53,9 +54,60 @@ export async function recognize(imagePath: string): Promise<OcrResult> {
   };
 }
 
+// ── صورة الورقة ← كتاب (هـ٨): الأسطر بكلماتها ومواضعها ─────────────────
+
+/**
+ * عاملٌ مستقلّ لقراءة الورقة: إعداداته (الدقّة) لا تمسّ قراءة المستمسكات، وقراءةُ
+ * مستمسكٍ في أثناء قراءة ورقةٍ لا تنتظر دورها خلفها.
+ */
+let pageWorker: Worker | null = null;
+
+async function getPageWorker(): Promise<Worker> {
+  if (pageWorker) return pageWorker;
+  pageWorker = await createWorker(['ara', 'eng'], 1, {
+    langPath: tessdataDir(),
+    gzip: true,
+    cacheMethod: 'none'
+  });
+  return pageWorker;
+}
+
+/**
+ * يقرأ صورة ورقةٍ (PNG بعد تقويمها ومحو خطوطها وأختامها) ويعيد كلَّ سطرٍ بكلماته
+ * وصناديقها وثقتها — فالكتاب يُبنى من المواضع لا من نصٍّ مسطَّح.
+ *
+ * `dpi` دقّة الصورة إن عُرفت (الماسح يكتبها، وصورة الهاتف تُقدَّر من عرض A4).
+ */
+export async function recognizeLayout(png: Uint8Array, dpi: number | null): Promise<OcrLine[]> {
+  if (!ocrAvailable()) {
+    throw new Error('بيانات التعرّف على النصوص غير مثبّتة مع التطبيق');
+  }
+  const w = await getPageWorker();
+  await w.setParameters({ user_defined_dpi: String(Math.round(dpi && dpi >= 70 ? dpi : 300)) });
+  const { data } = await w.recognize(Buffer.from(png), {}, { blocks: true });
+  const box = (b: { x0: number; y0: number; x1: number; y1: number }) => ({ x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 });
+  const lines: OcrLine[] = [];
+  for (const block of data.blocks ?? []) {
+    for (const para of block.paragraphs) {
+      for (const line of para.lines) {
+        lines.push({
+          conf: Math.round(line.confidence),
+          box: box(line.bbox),
+          words: line.words.map((word) => ({ text: word.text, conf: Math.round(word.confidence), box: box(word.bbox) }))
+        });
+      }
+    }
+  }
+  return lines;
+}
+
 export async function shutdownOcr(): Promise<void> {
   if (worker) {
     await worker.terminate();
     worker = null;
+  }
+  if (pageWorker) {
+    await pageWorker.terminate();
+    pageWorker = null;
   }
 }
