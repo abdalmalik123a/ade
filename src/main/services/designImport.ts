@@ -30,7 +30,9 @@ import {
   type CanvasElement,
   type CanvasSize
 } from '@shared/canvas';
-import { tokenInlines, type Align, type Inline } from '@shared/doc';
+import { tokenInlines, type Align, type Inline, type Suggestion } from '@shared/doc';
+import { fieldFromLayerName } from '@shared/layerFields';
+import type { FieldSuggestion } from '@shared/api';
 import { FONT } from '@shared/designKit/styles';
 import { imageMeta } from './imageSize';
 import { writePng } from './png';
@@ -63,6 +65,9 @@ export type DesignImport = {
     sizeFrac?: number;
     ref?: string;
     kind?: 'text' | 'image' | 'barcode';
+    /** اسم طبقة Photoshop، والحقل المقترح منه — يؤكّده المكتب (هـ٤). */
+    layerName?: string;
+    suggest?: Suggestion<string>;
     symbology?: 'qr' | 'code128';
     // شكلُ النصّ كما في ملفه (Photoshop).
     color?: string;
@@ -303,8 +308,11 @@ export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
       return { kind: 'barcode', box: box(item.rect), symbology: 'qr', ref: 'الرقم' };
     }
     const arabic = ARABIC.test(item.text);
+    const suggest = fieldFromLayerName(item.name, item.text) ?? undefined;
     return {
       kind: 'text',
+      layerName: item.name,
+      suggest,
       box: textBox(item, W, H),
       // أسطر الصندوق فواصلُ في النصّ نفسه، والحقول `{…}` عُقدٌ في كلّ سطر.
       inlines: item.text
@@ -418,6 +426,23 @@ export async function readDesignFile(path: string): Promise<DesignImport> {
  * والخلفيةُ أولُ صورةٍ إن ملأت الورقة، والباقي عناصرُ صور. و`fallback` مقاسٌ
  * يختاره المكتب حين يسكت الملف — فلا يُخمَّن هنا.
  */
+/**
+ * الحقول المقترحة من أسماء الطبقات، بمعرّفات عناصرها في اللوحة (هـ٤) — تُعرض ليقبلها
+ * المكتب أو يرفضها. وكلّ عنصرٍ مستورد صار عنصرًا واحدًا في اللوحة بترتيبه.
+ */
+export function layerSuggestions(imported: DesignImport, canvas: Canvas | null): FieldSuggestion[] {
+  if (!canvas || canvas.elements.length !== imported.elements.length) return [];
+  return imported.elements.flatMap((el, i) => {
+    const target = canvas.elements[i];
+    if (!el.suggest || !target || target.kind !== 'text') return [];
+    const sample = (el.inlines ?? [])
+      .map((n) => (n.kind === 'run' ? n.text : n.kind === 'break' ? ' ' : ''))
+      .join('')
+      .trim();
+    return [{ elementId: target.id, layer: el.layerName ?? '', sample, key: el.suggest.value, confidence: el.suggest.confidence, reason: el.suggest.reason }];
+  });
+}
+
 export function canvasFromImport(
   imported: DesignImport,
   stored: string[],

@@ -8,7 +8,7 @@ import * as svc from '../services/templates';
 import { importTemplateFile, parseTemplateXml } from '../services/import';
 import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
-import { deleteClip, listClips, saveClip, touchClip } from '../services/clips';
+import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
 import { listRevisions, revisionPayload } from '../services/revisions';
 import type { Addressing, RevisionKind } from '@shared/api';
 
@@ -29,7 +29,7 @@ import type { Doc, Issuing } from '@shared/doc';
 import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
 
 /** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
-const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate'];
+const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 'clip'];
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -73,6 +73,10 @@ export function registerTemplateIpc(): void {
   );
   ipcMain.handle('clips:delete', (_e, id: number) => deleteClip(getDb(), id));
   ipcMain.handle('clips:touch', (_e, id: number) => touchClip(getDb(), id));
+  /** الفقرة التي تتكرّر في الكتب الصادرة — يُقترح حفظها كليشة (د١٢). */
+  ipcMain.handle('clips:repeated', (_e, paragraphs: string[]) =>
+    repeatedParagraphs(getDb(), Array.isArray(paragraphs) ? paragraphs.slice(0, 40).map(String) : [])
+  );
 
   /** النسخ السابقة — للعودة إلى «نسخة أمس» من نموذجٍ أو ترويسةٍ أو كليشة. */
   ipcMain.handle('revisions:list', (_e, kind: unknown, id: number) =>
@@ -135,6 +139,9 @@ export function registerTemplateIpc(): void {
     c && LEARNABLE.includes(c.kind)
       ? recordCorrection(getDb(), { kind: c.kind, input: String(c.input ?? ''), suggested: c.suggested ?? null, chosen: String(c.chosen ?? '') })
       : false
+  );
+  ipcMain.handle('templates:setBatchMap', (_e, id: number, map: Record<string, string | null>) =>
+    svc.setBatchMap(getDb(), Number(id), map && typeof map === 'object' ? map : {})
   );
   ipcMain.handle('learning:category', (_e, title: string) => suggestCategory(getDb(), String(title ?? '')));
 

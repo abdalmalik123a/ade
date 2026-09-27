@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PrinterInfo, TemplateSummary } from '@shared/api';
-import { newUuid, reconcileFields, tokenInlines, type Doc, type Inline } from '@shared/doc';
+import { fieldRef, newUuid, reconcileFields, tokenInlines, type Doc, type Inline } from '@shared/doc';
 import {
   BLEED_MM,
   SCREEN_DPI,
@@ -62,6 +62,11 @@ import { nameKeyOf } from '@shared/batch';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import GenderReview from '../components/GenderReview';
+import LayerFieldsReview from '../designs/LayerFieldsReview';
+import CitizenMultiPicker from '../components/CitizenMultiPicker';
+import { rowFromCitizen, rowsToTsv } from '@shared/citizenFields';
+import type { Photo } from '@shared/batch';
+import type { FieldSuggestion } from '@shared/api';
 import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
@@ -166,6 +171,10 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   /** صفوف الدفعة — وبغيرها تُطبع البطاقة بقيمها المكتوبة، نسخًا. */
   const [batchRows, setBatchRows] = useState<Record<string, string>[]>([]);
+  /** ربط أعمدة الدفعة بالحقول (هـ٥) — من التصميم المفتوح، ويُحفظ فيه. */
+  const [batchMap, setBatchMap] = useState<Record<string, string | null>>({});
+  /** حقولٌ مقترحة من أسماء طبقات Photoshop — تُعرض بعد الاستيراد (هـ٤). */
+  const [layerReview, setLayerReview] = useState<FieldSuggestion[] | null>(null);
   /** التذكير والتأنيث في الدفعة (ج٤): ما تعلّمه المكتب، وما أجاب عنه الموظف لهذه القائمة. */
   const [learned, remember] = useLearnedGenders();
   const [genderDecisions, setGenderDecisions] = useState<Record<string, Gender>>({});
@@ -180,6 +189,9 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [sheetsOpen, setSheetsOpen] = useState(false);
   /** قائمةٌ جاءت مع طلب، ومفتاحٌ يعيد بناء لوح الدفعة بها. */
   const [batchSeed, setBatchSeed] = useState('');
+  /** صور القائمة من ملفّات المواطنين (د١٥) — تُعطى للوح الدفعة مع نصّها. */
+  const [batchPhotos, setBatchPhotos] = useState<Photo[]>([]);
+  const [registryOpen, setRegistryOpen] = useState(false);
   const [batchKey, setBatchKey] = useState(0);
   /** ظهر البطاقة: تصميمٌ محفوظٌ بالمقاس نفسه، يُطبع خلف كل وجه. */
   const [backId, setBackId] = useState<number | null>(null);
@@ -219,8 +231,9 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const doc: Doc = useMemo(() => {
     const built = canvasDoc(canvas, { title: title || 'تصميم', category: DESIGN_CATEGORY });
     built.fields = reconcileFields(built);
+    if (Object.keys(batchMap).length) built.meta = { ...built.meta, batchMap };
     return built;
-  }, [canvas, title]);
+  }, [canvas, title, batchMap]);
 
   const html = useMemo(
     // مع دفعةٍ تُعرض بطاقة أوّل اسمٍ فيها — فيُرى الاسم الحقيقي في موضعه لا وسمُه.
@@ -325,6 +338,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         apply(normalizeCanvas(out.canvas));
         setSelection([]);
         setAskSize(false);
+        if (out.fieldSuggestions?.length) setLayerReview(out.fieldSuggestions);
       } else {
         setAskSize(true);
       }
@@ -362,6 +376,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       setValues({});
       setSelection([]);
       setDesignId(null);
+      setBatchMap({});
       setAskSize(false);
       setTitle(brand.name ? `${kind.title} — ${brand.name}` : kind.title);
       setView('editor');
@@ -635,6 +650,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         await window.diwan.templates.delete(id);
         if (designId === id) {
           setDesignId(null);
+          setBatchMap({});
           setTitle('');
         }
         await loadDesigns();
@@ -875,6 +891,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         setHistory(startCanvasHistory(normalizeCanvas(loaded.canvas)));
         setTitle(loaded.meta.title ?? '');
         setValues({});
+        setBatchMap(loaded.meta.batchMap ?? {});
         setDesignId(id);
         setSelection([]);
         setView('editor');
@@ -896,6 +913,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     if (request.templateId) {
       void openDesign(request.templateId).then(() => {
         setBatchSeed(request.batchText ?? '');
+        setBatchPhotos([]);
         setBatchKey((k) => k + 1);
       });
     } else setView('gallery');
@@ -956,6 +974,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
                 type="button"
                 onClick={() => {
                   setDesignId(null);
+                  setBatchMap({});
                   setTitle('');
                   setSelection([]);
                   apply(emptyCanvas(SIZE_PRESETS[1]!.size));
@@ -1038,6 +1057,14 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
               photoSize={photoSize}
               onPreview={() => setSheetsOpen(true)}
               onRows={setBatchRows}
+              seedPhotos={batchPhotos}
+              onFromRegistry={() => setRegistryOpen(true)}
+              mapping={batchMap}
+              onMapping={(map) => {
+                // في التصميم نفسه، ويُكتب فورًا إن كان محفوظًا — فلا يضيع بنسيان «حفظ».
+                setBatchMap(map);
+                if (designId !== null) void window.diwan.learning.setBatchMap(designId, map);
+              }}
             />
           )}
 
@@ -1802,6 +1829,52 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
           onClose={() => setSheetsOpen(false)}
           onPdf={() => (unsureBatch.length ? setGenderReview('pdf') : void savePdf())}
           onPrint={() => (unsureBatch.length ? setGenderReview('print') : void print())}
+        />
+      )}
+
+      {registryOpen && (
+        <CitizenMultiPicker
+          confirmLabel="اجعلهم قائمة الدفعة"
+          title="هويّات الموظفين من السجل — اختر أصحابها"
+          onClose={() => setRegistryOpen(false)}
+          onPick={(ids) => {
+            setRegistryOpen(false);
+            void (async () => {
+              const records = await window.diwan.citizens.records(ids);
+              // بياناتهم من ملفّاتهم بمعنى كلّ حقل، والنصّ يمرّ بقراءة الدفعة نفسها (والربط اليدوي).
+              const textFields = doc.fields.filter((f) => !imageKeys.includes(f.key));
+              const rows = records.map((r) => rowFromCitizen(r, textFields));
+              const keys = textFields.map((f) => f.key).filter((k) => rows.some((r) => r[k]));
+              setBatchSeed(rowsToTsv(keys, rows));
+              // وصورهم من ملفّاتهم إن كانت — وإلا فالاستوديو يلتقطها بالدور.
+              setBatchPhotos(records.filter((r) => r.photoPath).map((r) => ({ name: r.fullName, src: r.photoPath! })));
+              setBatchKey((k) => k + 1);
+              const noPhoto = records.filter((r) => !r.photoPath).length;
+              say(
+                `${records.length} موظفًا من السجل${noPhoto && imageKeys.length ? ` — ${noPhoto} بلا صورة: التقطها في الاستوديو` : ''}`
+              );
+            })();
+          }}
+        />
+      )}
+
+      {layerReview && (
+        <LayerFieldsReview
+          suggestions={layerReview}
+          onClose={() => setLayerReview(null)}
+          onApply={(chosen) => {
+            setLayerReview(null);
+            const byId = new Map(chosen.map((c) => [c.elementId, c]));
+            apply({
+              ...canvas,
+              elements: canvas.elements.map((el) =>
+                el.kind === 'text' && byId.has(el.id) ? { ...el, inlines: [fieldRef(byId.get(el.id)!.key)] } : el
+              )
+            });
+            // النصّ النموذجيّ قيمةٌ للمعاينة: يُرى القالب كما كان، والحقل يُملأ لكلّ بطاقة.
+            setValues((v) => ({ ...Object.fromEntries(chosen.map((c) => [c.key, c.sample])), ...v }));
+            say(`صارت ${chosen.length} طبقةً حقولًا تُملأ لكلّ بطاقة`);
+          }}
         />
       )}
 

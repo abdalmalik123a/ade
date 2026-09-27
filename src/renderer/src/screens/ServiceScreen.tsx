@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isDateField, mergeFields, type Doc, type DocField } from '@shared/doc';
+import { normalizeFold } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
 import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
@@ -32,6 +33,7 @@ import { derivedWords } from '@shared/tafqeet';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import GenderReview from '../components/GenderReview';
+import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import SpellingPanel from '../components/SpellingPanel';
 import { isCombo, shortcut } from '@shared/shortcuts';
@@ -164,12 +166,53 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
     if (activeCategory) {
       res = res.filter((t) => t.category === activeCategory);
     }
-    const q = query.trim();
+    // متساهلٌ مع الهمزة والتاء المربوطة: «تاييد» تجد «تأييد».
+    const q = normalizeFold(query.trim());
     if (q) {
-      res = res.filter((t) => `${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`.includes(q));
+      res = res.filter((t) => normalizeFold(`${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`).includes(q));
     }
     return res;
   }, [items, activeCategory, query]);
+
+  /** البطاقات بترتيب عرضها: الأكثر طلبًا أولًا — وأوّل تسعٍ منها بأرقامها (د١١). */
+  const ordered = useMemo(() => [...shown].sort((a, b) => b.printCount - a.printCount), [shown]);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  /**
+   * الشبّاك بلوحة المفاتيح (د١١): الكتابة تصفّي، والأرقام ١–٩ تختار بطاقتها، وEnter
+   * تملأ، وEsc تمحو البحث. والرقم بموضع مفتاحه (`code`) — فيعمل واللوحة عربية.
+   */
+  useEffect(() => {
+    if (!active || step !== 'pick') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      const inSearch = target === searchRef.current;
+      const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+      if (typing && !inSearch) return;
+      const digit = /^(Digit|Numpad)([1-9])$/.exec(e.code);
+      if (digit) {
+        e.preventDefault();
+        const card = ordered[Number(digit[2]) - 1];
+        if (card) toggle(card.id);
+        return;
+      }
+      if (e.key === 'Enter' && picked.length > 0) {
+        e.preventDefault();
+        void goFill();
+        return;
+      }
+      if (e.key === 'Escape' && query) {
+        setQuery('');
+        return;
+      }
+      // حرفٌ يُكتب في أيّ موضع: يذهب إلى البحث.
+      if (!inSearch && e.key.length === 1 && e.key.trim()) searchRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, step, ordered, picked, query]);
 
   /** الحقول التي تُعرض: اتحاد ما تطلبه المختارات، بلا تكرار. */
   const fields: DocField[] = useMemo(() => mergeFields(loaded.map((l) => l.doc)), [loaded]);
@@ -186,6 +229,8 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
   const [genderByHand, setGenderByHand] = useState(false);
   /** ما تعلّمه المكتب من التذكير والتأنيث — ويُضاف إليه ما يُجاب هنا (ج٤). */
   const [learned, remember] = useLearnedGenders();
+  /** اختيار أسماء القائمة من السجل (د١٢). */
+  const [mergePicker, setMergePicker] = useState(false);
   /** أسماء القائمة التي لم يُعرف جنسها — تُسأل قبل أن تُطبع الدفعة. */
   const [genderReview, setGenderReview] = useState<{ names: string[]; print: boolean } | null>(null);
   const asPrinted = useCallback((v: Record<string, string>) => derivedWords(v, keys), [keys]);
@@ -703,8 +748,10 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
 
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
                 <input
+                  ref={searchRef}
                   className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-                  placeholder="ابحث عن نموذج…"
+                  data-counter-search=""
+                  placeholder="اكتب لتصفّي — والأرقام ١–٩ تختار، وEnter تملأ"
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -749,7 +796,7 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                 </div>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
-                  {[...shown].sort((a, b) => b.printCount - a.printCount).map((t) => {
+                  {ordered.map((t, i) => {
                     const on = picked.includes(t.id);
                     return (
                       <button
@@ -772,7 +819,14 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                           )}
                         </span>
                         <span className="w-11 h-11 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[22px]">description</span>
+                          {i < 9 ? (
+                            // رقمه على لوحة المفاتيح — ١ لأكثرها طلبًا.
+                            <span className="font-headline-sm text-headline-sm font-bold" data-card-key={i + 1}>
+                              {i + 1}
+                            </span>
+                          ) : (
+                            <span className="material-symbols-outlined text-[22px]">description</span>
+                          )}
                         </span>
                         <span className="font-headline-sm text-headline-sm text-on-surface leading-snug">
                           {t.title}
@@ -840,6 +894,16 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                         value={names}
                         onChange={(e) => setNames(e.target.value)}
                       />
+                      {/* الدمج من السجل (د١٢): صفٌّ مسجَّل يُختار كلّه بتصنيفه، لا يُكتب اسمًا اسمًا */}
+                      <button
+                        className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                        data-act="merge-registry"
+                        type="button"
+                        onClick={() => setMergePicker(true)}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">badge</span>
+                        أضف من سجل المواطنين
+                      </button>
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
                         {rows.length} اسمًا × {loaded.length} ورقة ={' '}
                         <b>{rows.length * loaded.length}</b> ورقة، لكل اسم معاملتُه.
@@ -1164,6 +1228,23 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       </div>
 
       {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
+
+      {mergePicker && (
+        <CitizenMultiPicker
+          confirmLabel="أضفهم إلى القائمة"
+          title="قائمة الدمج من السجل — ورقةٌ لكلّ اسم"
+          onClose={() => setMergePicker(false)}
+          onPick={(ids) => {
+            setMergePicker(false);
+            void window.diwan.citizens.records(ids).then((records) => {
+              const have = new Set(rows);
+              const added = records.map((r) => r.fullName.trim()).filter((n) => n && !have.has(n));
+              setNames((prev) => [prev.trim(), ...added].filter(Boolean).join('\n'));
+              say(`أُضيف ${added.length} اسمًا من السجل`);
+            });
+          }}
+        />
+      )}
 
       {genderReview && (
         <GenderReview

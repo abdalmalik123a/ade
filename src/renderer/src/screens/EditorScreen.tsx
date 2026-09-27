@@ -19,6 +19,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffec
 import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, PrinterInfo, TemplateSummary } from '@shared/api';
 import { CALENDAR_LABEL, formatGregorian, formatHijri, type Calendar } from '@shared/dates';
 import { patchField } from '@shared/docEdit';
+import { normalizeFold } from '@shared/arabic';
 import { docText, emptyDoc, isDateField, makeField, pageMm, paragraph, type Doc, type DocField } from '@shared/doc';
 import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import { CORE_FIELDS, FIELD_GROUPS, type CatalogField } from '@shared/letterFields';
@@ -112,6 +113,8 @@ function EditorScreen(
   const [issueOpen, setIssueOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [issued, setIssued] = useState<IssueOutcome | null>(null);
+  /** فقراتٌ كُتبت حرفيًّا في ثلاثة كتبٍ فأكثر — يُقترح حفظها كليشة بعد الإصدار (د١٢). */
+  const [repeated, setRepeated] = useState<{ text: string; count: number }[]>([]);
 
   const api = useRef<DocEditorApi | null>(null);
   const printRef = useRef<HTMLDivElement | null>(null);
@@ -487,6 +490,11 @@ function EditorScreen(
       setIssued(outcome);
       setIssueOpen(false);
       dirty.current = false;
+      // الصياغة التي تتكرّر (لا الأسماء): فقراتُ الورقة بقيمها تُقارن بما صدر.
+      void window.diwan.clips
+        .repeated(docText(doc, effective).split('\n'))
+        .then(setRepeated)
+        .catch(() => setRepeated([]));
       // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
       const chosen = values[GENDER_KEY] as Gender | undefined;
       const guessed = guessGender(ownerName, learned);
@@ -1071,7 +1079,21 @@ function EditorScreen(
       {issued && (
         <IssuedDialog
           outcome={issued}
-          onClose={() => setIssued(null)}
+          repeated={repeated}
+          onSaveClip={async (text) => {
+            await window.diwan.clips.save({ id: null, title: text.slice(0, 48), body: text });
+            setRepeated((r) => r.filter((x) => x.text !== text));
+            setClips(await window.diwan.clips.list());
+          }}
+          onRejectClip={(text) => {
+            // رفضٌ يُقيَّد (FOUNDATION §١٦): فلا تُقترح الفقرة نفسها ثانيةً.
+            void window.diwan.learning.record({ kind: 'clip', input: normalizeFold(text).slice(0, 200), suggested: 'save', chosen: 'reject' });
+            setRepeated((r) => r.filter((x) => x.text !== text));
+          }}
+          onClose={() => {
+            setIssued(null);
+            setRepeated([]);
+          }}
           onReprint={async () => {
             await window.diwan.documents.reprint([issued.id], 1);
           }}
@@ -1406,7 +1428,23 @@ function IssueDialog({
   );
 }
 
-function IssuedDialog({ outcome, onClose, onReprint, onExport }: { outcome: IssueOutcome; onClose: () => void; onReprint: () => Promise<void>; onExport: () => Promise<void> }) {
+function IssuedDialog({
+  outcome,
+  repeated,
+  onSaveClip,
+  onRejectClip,
+  onClose,
+  onReprint,
+  onExport
+}: {
+  outcome: IssueOutcome;
+  repeated: { text: string; count: number }[];
+  onSaveClip: (text: string) => Promise<void>;
+  onRejectClip: (text: string) => void;
+  onClose: () => void;
+  onReprint: () => Promise<void>;
+  onExport: () => Promise<void>;
+}) {
   return (
     <Modal title="صدر الكتاب" onClose={onClose}>
       <div className="flex flex-col gap-space-md" data-issued="">
@@ -1426,6 +1464,32 @@ function IssuedDialog({ outcome, onClose, onReprint, onExport }: { outcome: Issu
             </span>
           </span>
         </div>
+        {repeated.map((r) => (
+          <div key={r.text} className="p-space-sm rounded-lg bg-secondary-fixed/60 flex flex-col gap-space-xs" data-repeated-clip="">
+            <span className="font-label-md text-label-md text-on-surface">
+              كتبتَ هذه الفقرة في {r.count} كتب — احفظها كليشة تُدرج بضغطة؟
+            </span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant line-clamp-2">«{r.text}»</span>
+            <div className="flex gap-space-xs">
+              <button
+                className="h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md"
+                data-act="repeated-save"
+                type="button"
+                onClick={() => void onSaveClip(r.text)}
+              >
+                احفظها كليشة
+              </button>
+              <button
+                className="h-8 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+                data-act="repeated-reject"
+                type="button"
+                onClick={() => onRejectClip(r.text)}
+              >
+                لا
+              </button>
+            </div>
+          </div>
+        ))}
         <div className="flex items-center justify-end gap-space-sm">
           <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onExport()}>
             حفظ PDF

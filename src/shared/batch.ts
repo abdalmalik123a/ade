@@ -15,9 +15,23 @@ export type Parsed = {
   /** عناوين أعمدةٍ لا حقل لها — تُعرض ليعرف المكتب ما تُرك. */
   ignored: string[];
   headed: boolean;
+  /**
+   * كلّ عمودٍ وحقله: `id` مفتاحه في ربط المكتب (عنوانه مطويًّا، أو «#رقمه» بلا عناوين)،
+   * و`manual` أربطه الموظف بيده — فيُحفظ مع التصميم ويُطبَّق على قائمة السنة القادمة.
+   */
+  columns: { id: string; header: string; key: string | null; manual: boolean }[];
 };
 
+/**
+ * ربط الأعمدة بالحقول يدويًّا (هـ٥): عنوان العمود مطويًّا ← مفتاح الحقل، و`null` «اتركه».
+ * يغلب المطابقة الآلية؛ فقائمة مدرسةٍ عنوانها «اسم التلميذ» تذهب إلى «الاسم» مرّةً وإلى الأبد.
+ */
+export type BatchMap = Record<string, string | null>;
+
 const fold = (s: string) => normalizeFold(s).replace(/[_\s]+/g, ' ').trim();
+
+/** مفتاح العمود في الربط — ما يُحفظ مع التصميم. */
+export const columnId = (header: string, index: number, headed: boolean) => (headed ? fold(header) : `#${index + 1}`);
 
 function split(line: string): string[] {
   if (line.includes('\t')) return line.split('\t');
@@ -26,19 +40,26 @@ function split(line: string): string[] {
   return [line];
 }
 
-export function parseRows(text: string, keys: string[]): Parsed {
+export function parseRows(text: string, keys: string[], map: BatchMap = {}): Parsed {
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+$/, ''))
     .filter((l) => l.trim());
-  if (!lines.length) return { rows: [], mapped: [], ignored: [], headed: false };
+  if (!lines.length) return { rows: [], mapped: [], ignored: [], headed: false, columns: [] };
 
   const byFold = new Map(keys.map((k) => [fold(k), k]));
   const first = split(lines[0]!).map((c) => c.trim());
   const hits = first.map((c) => byFold.get(fold(c)) ?? null);
-  const headed = hits.some(Boolean);
-
-  const columns: (string | null)[] = headed ? hits : keys.slice(0, first.length);
+  // السطر الأول عناوين إن طابق حقلًا — أو إن ربط المكتب عنوانًا منه بيده من قبل.
+  const headed = hits.some(Boolean) || first.some((c) => fold(c) in map);
+  const auto: (string | null)[] = headed ? hits : keys.slice(0, first.length);
+  const known = new Set(keys);
+  const columns: (string | null)[] = auto.map((key, i) => {
+    const id = columnId(first[i] ?? '', i, headed);
+    if (!(id in map)) return key;
+    const manual = map[id];
+    return manual && known.has(manual) ? manual : null;
+  });
   const body = headed ? lines.slice(1) : lines;
   const rows = body
     .map((line) => {
@@ -55,8 +76,12 @@ export function parseRows(text: string, keys: string[]): Parsed {
   return {
     rows,
     mapped: columns.filter((k): k is string => Boolean(k)),
-    ignored: headed ? first.filter((_, i) => !hits[i]) : [],
-    headed
+    ignored: headed ? first.filter((_, i) => !columns[i]) : [],
+    headed,
+    columns: first.map((header, i) => {
+      const id = columnId(header, i, headed);
+      return { id, header: headed ? header : `العمود ${i + 1}`, key: columns[i] ?? null, manual: id in map };
+    })
   };
 }
 

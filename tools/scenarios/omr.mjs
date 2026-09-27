@@ -174,7 +174,7 @@ export default async function scenario(page, { profile }) {
   let rows = [];
   for (let i = 0; i < 60 && rows.length < 4; i++) {
     await wait(500);
-    rows = await page.eval(`return [...document.querySelectorAll('[data-omr-results] tbody tr')].map((tr) => [...tr.cells].map((c) => c.innerText.trim()));`);
+    rows = await page.eval(`return [...document.querySelectorAll('[data-omr-results] tbody tr:not([data-item])')].map((tr) => [...tr.cells].map((c) => c.innerText.trim()));`);
   }
   const row = (name) => rows.find((r) => r[0] === name) ?? [];
   ok('صُحّحت الأوراق الأربع', rows.length === 4);
@@ -183,6 +183,13 @@ export default async function scenario(page, { profile }) {
   ok('المائلة من الماسح بدقّة ٢٠٠: الرقم ٣٠٩ و١٠ من ٢٠', row('3-tilted')[1] === '309' && row('3-tilted')[2] === '١٠ / ٢٠ (٥٠٪)');
   ok('والبيضاء تُقال ولا يُخترع لها جواب', (row('4-empty')[1] ?? '').includes('لم تُوجد مربّعات'));
   if (rows.length < 4 || !row('1-full')[1]) steps.push(`  … الجدول: ${JSON.stringify(rows)}`);
+
+  // ── تحليل الأسئلة (د٩): من الأوراق الثلاث المصحّحة ─────────────────
+  const items = await page.eval(`return [...document.querySelectorAll('[data-item-analysis] tr[data-item]')].map((tr) => [...tr.cells].map((c) => c.textContent.trim()));`);
+  ok(`وتحليل الأسئلة بعد التصحيح: عشرون سؤالًا (${items.length})`, items.length === 20);
+  ok('الأول أصابه الجميع: سهلٌ لا يفرّق', items[0]?.[1] === '١٠٠٪' && (items[0]?.[4] ?? '').includes('سهل'));
+  // الحادي عشر: الكاملة وحدها أصابته، والمختلطة والمائلة أخطأتاه ببديلين مختلفين.
+  ok(`والحادي عشر أصابه الثلث، وأكثر خطئه يُسمّى (${JSON.stringify(items[10])})`, items[10]?.[1] === '٣٣٪' && (items[10]?.[3] ?? '').includes('٣٣٪'));
 
   // ── Excel ────────────────────────────────────────────────────────
   await page.clickText('احفظ النتائج لـExcel');

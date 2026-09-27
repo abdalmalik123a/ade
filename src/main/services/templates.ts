@@ -244,6 +244,25 @@ export function saveTemplate(
   return getTemplate(db, id)!;
 }
 
+/**
+ * يكتب ربط أعمدة الدفعة في وثيقة التصميم وحده (هـ٥) — بلا حفظٍ للتصميم كلّه ولا نسخةٍ
+ * جديدة: هو ما تعلّمه التصميم من قائمةٍ لُصقت، لا تعديلٌ في رسمه.
+ */
+export function setBatchMap(db: Database, id: number, map: Record<string, string | null>): void {
+  prepareTemplates(db);
+  const row = db.prepare('SELECT doc_json AS docJson FROM templates WHERE id = ?').get(id) as { docJson: string | null } | undefined;
+  if (!row?.docJson) return;
+  let doc: Record<string, unknown>;
+  try {
+    doc = JSON.parse(row.docJson) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const meta = (doc.meta && typeof doc.meta === 'object' ? doc.meta : {}) as Record<string, unknown>;
+  doc.meta = { ...meta, batchMap: map };
+  db.prepare('UPDATE templates SET doc_json = ? WHERE id = ?').run(JSON.stringify(doc), id);
+}
+
 export function deleteTemplate(db: Database, id: number): void {
   prepareTemplates(db);
   forgetRevisions(db, 'template', id);

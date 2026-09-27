@@ -336,7 +336,7 @@ describe('ما يصير عنصرًا', () => {
 });
 
 describe('psdDesign: الخلفية ممحوّة، والنصّ عنصرٌ بشكله', () => {
-  it('صورةٌ تُقرأ بلا النصّ، والنصّ عنصرٌ بلونه وحجمه نسبةً', () => {
+  it('صورةٌ تُقرأ بلا النصّ، والنصّ عنصرٌ بلونه وحجمه نسبةً', async () => {
     const bg = [30, 40, 90];
     const name: Rect = { top: 20, left: 10, bottom: 30, right: 50 };
     const file = layeredPsd({
@@ -363,5 +363,10 @@ describe('psdDesign: الخلفية ممحوّة، والنصّ عنصرٌ بش�
     const text = out.elements.find((e) => e.kind === 'text')!;
     expect(text).toMatchObject({ color: '#ff7a12', align: 'center', dir: 'ltr' });
     expect(text.sizeFrac).toBeCloseTo(10 / 40);
+    // واسم الطبقة يصل إلى العنصر مقترحًا حقلَه (هـ٤) — من الملف نفسه لا من كائنٍ مصنوع.
+    expect(text).toMatchObject({ layerName: 'Name', suggest: { value: 'الاسم' } });
+    const { canvasFromImport, layerSuggestions } = await import('../src/main/services/designImport');
+    const canvas = canvasFromImport(out, []);
+    expect(layerSuggestions(out, canvas)).toMatchObject([{ layer: 'Name', sample: 'Daniel', key: 'الاسم' }]);
   });
 });

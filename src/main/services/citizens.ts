@@ -139,6 +139,22 @@ const FIELDS = [
   'notes'
 ] as const;
 
+/**
+ * ملفّات عدّة مواطنين بخاناتها كلّها — بلا مستمسكاتهم (د١٥): هويّات الموظفين من السجل،
+ * وقائمة الدمج منه. بترتيب المعرّفات المعطاة، وما لم يُوجد يُسقط.
+ */
+export function getCitizenRecords(db: Database, ids: number[]): Omit<CitizenDetail, 'attachments'>[] {
+  const out: Omit<CitizenDetail, 'attachments'>[] = [];
+  for (const id of ids) {
+    const c = getCitizen(db, Number(id));
+    if (!c) continue;
+    const { attachments: _drop, ...rest } = c;
+    void _drop;
+    out.push(rest);
+  }
+  return out;
+}
+
 export function getCitizen(db: Database, id: number): CitizenDetail | null {
   const row = db.prepare('SELECT * FROM citizens WHERE id = ?').get(id) as
     | Record<string, unknown>

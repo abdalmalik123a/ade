@@ -935,6 +935,8 @@ export type PsdItem =
   | {
       kind: 'text';
       layer: number;
+      /** اسم الطبقة في Photoshop — منه يُقترح الحقل (هـ٤). */
+      name: string;
       rect: Rect;
       text: string;
       style: PsdText;
@@ -981,6 +983,7 @@ function textPieces(bytes: Uint8Array, doc: PsdDoc, layer: PsdLayer, style: PsdT
   const piece = (r: Rect, t: string, single: boolean): PsdItem => ({
     kind: 'text',
     layer: layer.index,
+    name: layer.name,
     rect: r,
     text: t.replace(/\t+/g, ' ').trim(),
     style,

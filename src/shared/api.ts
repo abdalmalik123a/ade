@@ -119,6 +119,17 @@ export type ArchiveCheck = {
   head: string | null;
 };
 
+/** حقلٌ مقترح لعنصرٍ نصّي من اسم طبقته في Photoshop (هـ٤). */
+export type FieldSuggestion = {
+  elementId: string;
+  layer: string;
+  /** النصّ النموذجيّ في الطبقة — يبقى قيمةً للمعاينة. */
+  sample: string;
+  key: string;
+  confidence: number;
+  reason: string;
+};
+
 /** طلبٌ في «ما ينتظرك اليوم» — ما يُعرض ويُنسخ في رسالته. */
 export type AgendaOrder = { id: number; customer: string; title: string; dueDate: string | null; phone: string | null };
 
@@ -562,6 +573,8 @@ export type DiwanApi = {
     }): Promise<Clip>;
     delete(id: number): Promise<void>;
     touch(id: number): Promise<void>;
+    /** فقراتٌ تتكرّر حرفيًّا في الكتب الصادرة (ثلاثًا فأكثر) — يُقترح حفظها كليشة (د١٢). */
+    repeated(paragraphs: string[]): Promise<{ text: string; count: number }[]>;
   };
   /** النسخ السابقة للنماذج والترويسات والكليشات — للعودة إلى «نسخة أمس». */
   revisions: {
@@ -582,6 +595,8 @@ export type DiwanApi = {
     categories(): Promise<{ name: string; count: number }[]>;
     stats(): Promise<CitizenStats>;
     get(id: number): Promise<CitizenDetail | null>;
+    /** ملفّات عدّة مواطنين بخاناتها — لهويّات الموظفين وقائمة الدمج (د١٥، د١٢). */
+    records(ids: number[]): Promise<Omit<CitizenDetail, 'attachments'>[]>;
     save(input: CitizenInput): Promise<CitizenDetail>;
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
@@ -708,16 +723,18 @@ export type DiwanApi = {
       habits: number;
     }>;
     /** ما اعتاده المكتب لمدخلٍ بعينه — بثقته وسببه، أو عدم. */
-    suggest(kind: 'letterheadEdge' | 'category' | 'duplicate', input: string): Promise<Suggestion<string> | null>;
+    suggest(kind: 'letterheadEdge' | 'category' | 'duplicate' | 'clip', input: string): Promise<Suggestion<string> | null>;
     /** يقيّد تصحيحًا — ولا يقيّد موافقة (ما اختير = ما اقتُرح). */
     record(c: {
-      kind: 'letterheadEdge' | 'category' | 'duplicate';
+      kind: 'letterheadEdge' | 'category' | 'duplicate' | 'clip';
       input: string;
       suggested: string | null;
       chosen: string;
     }): Promise<boolean>;
     /** تصنيف النموذج من عنوانه: من نماذج المكتب المصنَّفة، وما صحّحه. */
     category(title: string): Promise<Suggestion<string> | null>;
+    /** ربط أعمدة الدفعة يدويًّا يُحفظ في التصميم (هـ٥). */
+    setBatchMap(templateId: number, map: Record<string, string | null>): Promise<void>;
   };
   drafts: {
     list(): Promise<DraftRow[]>;
@@ -812,6 +829,8 @@ export type DiwanApi = {
       warnings: string[];
       canvas: unknown | null;
       stored: string[];
+      /** الحقول المقترحة من أسماء طبقات Photoshop — يؤكّدها المكتب (هـ٤). */
+      fieldSuggestions: FieldSuggestion[];
     } | null>;
   };
   files: {

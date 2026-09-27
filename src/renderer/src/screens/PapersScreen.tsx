@@ -32,6 +32,7 @@ import {
   type Numerals
 } from '@shared/doc';
 import { marker, renderDocHtml } from '@shared/docHtml';
+import { secondRound } from '@shared/examAnalysis';
 import {
   EXAM_CATEGORY,
   EXAM_PRESETS,
@@ -273,6 +274,14 @@ function QuestionNode(props: NodeProps) {
 }
 
 /** نسخةٌ من سؤال البنك بمعرّفاتٍ جديدة — فلا تشترك ورقتان في عقدةٍ واحدة. */
+/**
+ * «الدور الثاني» من البنك (د٩): الأسئلة نفسها عددًا ودرجاتٍ، من البنك في مادّتها وصفّها،
+ * لا من الدور الأول. وتُفتح ورقةً جديدة غير محفوظة — فلا تُكتب فوق ورقة الدور الأول.
+ */
+export function roundTwoHead(head: Record<string, string>): Record<string, string> {
+  return { ...head, الدور: 'الثاني' };
+}
+
 function freshCopy(item: ListItem): ListItem {
   return {
     ...item,
@@ -607,6 +616,26 @@ function PapersScreenInner(
     say('ورقة جديدة');
   }, [say]);
 
+  /** «الدور الثاني» من البنك (د٩) — ورقةٌ جديدة لا تُكتب فوق الأولى. */
+  async function secondRoundPaper() {
+    const bank = await window.diwan.bank.list({ subject: head['المادة'] || null, grade: head['الصف'] || null });
+    const { picks, missing } = secondRound(items, bank);
+    if (!picks.length) {
+      say('لا أسئلة في البنك لهذه المادة والصفّ غير أسئلة هذه الورقة — احفظ أسئلةً في البنك أولًا', 'warn');
+      return;
+    }
+    setItems(picks.map((p) => freshCopy(p.item)));
+    setHead((h) => roundTwoHead(h));
+    setPaperId(null);
+    for (const p of picks) void window.diwan.bank.used(p.id);
+    say(
+      missing.length
+        ? `ورقة الدور الثاني: ${picks.length} سؤالًا من البنك — ولم يُوجد بديلٌ للسؤال ${missing.join('، ')}؛ أكمله بيدك`
+        : `ورقة الدور الثاني: ${picks.length} سؤالًا من البنك بدرجاتها — احفظها باسمها`,
+      missing.length ? 'warn' : 'ok'
+    );
+  }
+
   useImperativeHandle(
     ref,
     () => ({
@@ -792,6 +821,16 @@ function PapersScreenInner(
                 }}
               />
             )}
+            <button
+              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+              data-act="second-round"
+              title="ورقةٌ بالبنية نفسها من أسئلة البنك التي لم تُطبع في هذا الدور"
+              type="button"
+              onClick={() => void secondRoundPaper()}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">autorenew</span>
+              ورقة الدور الثاني من البنك
+            </button>
             <button
               className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
               data-act="omr-open"

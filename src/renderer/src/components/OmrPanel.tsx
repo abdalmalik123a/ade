@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import type { PrinterInfo } from '@shared/api';
 import { CHOICE_LETTERS, gradeOmr, omrCapacity, omrSheetHtml, parseKey, readOmr, type OmrGrade, type OmrSpec } from '@shared/omr';
 import type { PixelData } from '@shared/deskew';
+import { itemAnalysis, itemNote } from '@shared/examAnalysis';
 
 const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -220,6 +221,46 @@ export default function OmrPanel({
               ))}
             </tbody>
           </table>
+          {/* تحليل الأسئلة (د٩): صعوبة كلّ سؤالٍ وتمييزه — والمفتاح المقلوب يُقال */}
+          {(() => {
+            const graded = results.filter((r): r is Extract<Result, { answers: number[] }> => 'answers' in r);
+            const stats = itemAnalysis(graded, key);
+            if (graded.length < 2 || !stats.length) return null;
+            return (
+              <details className="mt-space-xs" data-item-analysis="" open={stats.some((s) => s.flags.includes('key?'))}>
+                <summary className="cursor-pointer font-label-md text-label-md text-on-surface font-semibold">
+                  تحليل الأسئلة ({toIndic(graded.length)} ورقة)
+                  {stats.some((s) => s.flags.includes('key?')) ? ' — في المفتاح ما يُراجَع' : ''}
+                </summary>
+                <table className="w-full font-label-sm text-label-sm mt-1">
+                  <thead>
+                    <tr className="text-on-surface-variant">
+                      <th className="text-right">س</th>
+                      <th>أصاب</th>
+                      <th>يفرّق</th>
+                      <th>أكثر خطأ</th>
+                      <th className="text-right">ملاحظة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.map((s) => (
+                      <tr key={s.q} className={`border-t border-outline-variant/50 ${s.flags.includes('key?') ? 'text-error font-semibold' : ''}`} data-item={s.q}>
+                        <td>{toIndic(s.q)}</td>
+                        <td className="text-center tabular">{toIndic(Math.round(s.difficulty * 100))}٪</td>
+                        <td className="text-center tabular" dir="ltr">
+                          {s.discrimination.toFixed(2)}
+                        </td>
+                        <td className="text-center">
+                          {s.topWrong ? `${CHOICE_LETTERS[s.topWrong.choice]} (${toIndic(Math.round(s.topWrong.share * 100))}٪)` : '—'}
+                        </td>
+                        <td>{itemNote(s)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            );
+          })()}
           <div className="flex gap-space-xs">
             <button className="h-8 px-space-sm rounded-lg bg-secondary text-on-secondary font-label-sm text-label-sm" type="button" onClick={() => void exportCsv()}>
               احفظ النتائج لـExcel

@@ -62,7 +62,8 @@ const api: DiwanApi = {
     list: (query?: string) => invoke('clips:list', query ?? ''),
     save: (input) => invoke('clips:save', input),
     delete: (id: number) => invoke('clips:delete', id),
-    touch: (id: number) => invoke('clips:touch', id)
+    touch: (id: number) => invoke('clips:touch', id),
+    repeated: (paragraphs) => invoke('clips:repeated', paragraphs)
   },
   revisions: {
     list: (kind, id) => invoke('revisions:list', kind, id),
@@ -80,6 +81,7 @@ const api: DiwanApi = {
     categories: () => invoke('citizens:categories'),
     stats: () => invoke('citizens:stats'),
     get: (id: number) => invoke('citizens:get', id),
+    records: (ids: number[]) => invoke('citizens:records', ids),
     save: (input: CitizenInput) => invoke('citizens:save', input),
     usage: (id: number) => invoke('citizens:usage', id),
     delete: (id: number) => invoke('citizens:delete', id),
@@ -203,7 +205,8 @@ const api: DiwanApi = {
     stats: () => invoke('learning:stats'),
     suggest: (kind, input) => invoke('learning:suggest', kind, input),
     record: (c) => invoke('learning:record', c),
-    category: (title) => invoke('learning:category', title)
+    category: (title) => invoke('learning:category', title),
+    setBatchMap: (templateId, map) => invoke('templates:setBatchMap', templateId, map)
   },
   drafts: {
     list: () => invoke('drafts:list'),

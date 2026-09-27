@@ -357,6 +357,8 @@ export type Doc = {
     omr?: { questions: number; choices: number; idDigits: number; key: number[] };
     /** لمن يُكتب الكتاب: جهةٌ أعلى أو أدنى أو مساوية — فتتصدّر كليشاتُ اتجاهه (FOUNDATION §٦). */
     addressing?: Addressing;
+    /** ربط أعمدة الدفعة بالحقول يدويًّا — يتذكّره التصميم لقائمة السنة القادمة (هـ٥). */
+    batchMap?: Record<string, string | null>;
   };
 };
 

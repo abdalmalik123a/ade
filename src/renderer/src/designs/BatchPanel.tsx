@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { DocField } from '@shared/doc';
-import { matchPhotos, nameKeyOf, parseRows, type Photo } from '@shared/batch';
+import { matchPhotos, nameKeyOf, parseRows, type BatchMap, type Photo } from '@shared/batch';
 import { sheetCount, type Imposition } from '@shared/imposition';
 import CameraStudio from './CameraStudio';
 
@@ -20,8 +20,19 @@ export default function BatchPanel({
   initialText = '',
   onRows,
   onPreview,
-  photoSize = { w: 30, h: 40 }
+  photoSize = { w: 30, h: 40 },
+  mapping = {},
+  onMapping,
+  seedPhotos = [],
+  onFromRegistry
 }: {
+  /** صورٌ جاءت مع القائمة — من ملفّات المواطنين في السجل (د١٥). */
+  seedPhotos?: Photo[];
+  /** «من سجل المواطنين»: هويّات الموظفين بياناتهم من ملفّاتهم. */
+  onFromRegistry?: () => void;
+  /** ربط الأعمدة الذي تعلّمه التصميم — يغلب المطابقة الآلية (هـ٥). */
+  mapping?: BatchMap;
+  onMapping?: (map: BatchMap) => void;
   /** قائمةٌ جاءت مع طلب — تُفتح بها الدفعة جاهزة. */
   initialText?: string;
   fields: DocField[];
@@ -34,12 +45,13 @@ export default function BatchPanel({
   photoSize?: { w: number; h: number };
 }) {
   const [text, setText] = useState(initialText);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>(seedPhotos);
   const [busy, setBusy] = useState(false);
   const [studio, setStudio] = useState(false);
 
   const textKeys = fields.map((f) => f.key).filter((k) => !imageKeys.includes(k));
-  const parsed = useMemo(() => parseRows(text, textKeys), [text, textKeys.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const parsed = useMemo(() => parseRows(text, textKeys, mapping), [text, textKeys.join('|'), mapping]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [mapOpen, setMapOpen] = useState(false);
   const photoKey = imageKeys[0];
   /** الاستوديو ينادي كلَّ طالبٍ باسمه — لا بأوّل عمود (قد يكون «المدرسة»). */
   const studioKey = nameKeyOf(parsed.mapped) ?? parsed.mapped[0] ?? '';
@@ -92,6 +104,18 @@ export default function BatchPanel({
           <span className="material-symbols-outlined text-[16px]">table_view</span>
           ملف Excel
         </button>
+        {onFromRegistry && (
+          <button
+            className="shrink-0 h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+            data-act="batch-registry"
+            title="هويّات الموظفين: بياناتهم من ملفّاتهم في السجل، وصورهم منها أو من الاستوديو"
+            type="button"
+            onClick={onFromRegistry}
+          >
+            <span className="material-symbols-outlined text-[16px]">badge</span>
+            من السجل
+          </button>
+        )}
       </div>
       <textarea
         className="w-full h-28 p-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
@@ -120,6 +144,43 @@ export default function BatchPanel({
             <p className="font-label-sm text-label-sm text-on-surface-variant">
               عمودٌ بلا حقلٍ في التصميم فتُرك: {parsed.ignored.join('، ')}
             </p>
+          )}
+          {/* ربط الأعمدة بيد المكتب (هـ٥): عنوانٌ لم يُعرف يُربط مرّة، ويتذكّره التصميم */}
+          {onMapping && (
+            <button
+              className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
+              data-act="batch-map"
+              type="button"
+              onClick={() => setMapOpen((o) => !o)}
+            >
+              {mapOpen ? 'أخفِ ربط الأعمدة' : 'اربط الأعمدة بالحقول بيدك'}
+            </button>
+          )}
+          {mapOpen && onMapping && (
+            <div className="flex flex-col gap-1 p-space-xs rounded-lg bg-surface-container-low" data-batch-map="">
+              {parsed.columns.map((col) => (
+                <label key={col.id} className="flex items-center gap-space-xs font-label-sm text-label-sm">
+                  <span className="w-28 truncate text-on-surface" title={col.header}>
+                    {col.header}
+                  </span>
+                  <span className="text-on-surface-variant">←</span>
+                  <select
+                    className={`flex-1 h-7 px-1 rounded bg-surface-container-lowest text-on-surface ${col.manual ? 'ring-1 ring-secondary' : ''}`}
+                    data-batch-column={col.header}
+                    value={col.key ?? ''}
+                    onChange={(e) => onMapping({ ...mapping, [col.id]: e.target.value || null })}
+                  >
+                    <option value="">— اتركه —</option>
+                    {textKeys.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+              <span className="font-label-sm text-label-sm text-on-surface-variant">يُحفظ الربط مع التصميم — فقائمة السنة القادمة تُربط وحدها.</span>
+            </div>
           )}
         </div>
       )}

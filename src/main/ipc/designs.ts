@@ -13,7 +13,8 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import type { Canvas, CanvasSize } from '@shared/canvas';
-import { canvasFromImport, readDesign, type DesignImport } from '../services/designImport';
+import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } from '../services/designImport';
+import type { FieldSuggestion } from '@shared/api';
 import { readPsd } from '../services/psd';
 import { writePng } from '../services/png';
 import { storeDir } from '../db';
@@ -109,6 +110,7 @@ export type DesignImportResult = {
   canvas: Canvas | null;
   /** ما خُزّن من صور، بترتيب `images` — لبناء اللوحة بعد اختيار المقاس. */
   stored: string[];
+  fieldSuggestions: FieldSuggestion[];
 };
 
 /**
@@ -165,6 +167,7 @@ export function registerDesignIpc(): void {
       const stored: string[] = [];
       for (const image of imported.images) stored.push(await store(image.bytes, image.name));
 
+      const canvas = canvasFromImport({ ...imported, warnings }, stored, fallback ?? undefined);
       return {
         name: imported.name,
         source: imported.source,
@@ -172,7 +175,8 @@ export function registerDesignIpc(): void {
         dpi: imported.dpi,
         warnings,
         stored,
-        canvas: canvasFromImport({ ...imported, warnings }, stored, fallback ?? undefined)
+        canvas,
+        fieldSuggestions: layerSuggestions(imported, canvas)
       };
     }
   );

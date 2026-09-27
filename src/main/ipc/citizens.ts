@@ -30,6 +30,7 @@ export function registerCitizenIpc(): void {
   ipcMain.handle('citizens:categories', () => svc.listCategories(getDb()));
   ipcMain.handle('citizens:stats', () => svc.citizenStats(getDb()));
   ipcMain.handle('citizens:get', (_e, id: number) => svc.getCitizen(getDb(), id));
+  ipcMain.handle('citizens:records', (_e, ids: number[]) => svc.getCitizenRecords(getDb(), Array.isArray(ids) ? ids.slice(0, 2000) : []));
   ipcMain.handle('citizens:save', (_e, input: CitizenInput) => svc.saveCitizen(getDb(), input));
   ipcMain.handle('citizens:usage', (_e, id: number) => svc.citizenUsage(getDb(), id));
 
