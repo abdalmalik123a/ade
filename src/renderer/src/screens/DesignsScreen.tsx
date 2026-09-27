@@ -62,6 +62,7 @@ import { nameKeyOf } from '@shared/batch';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import GenderReview from '../components/GenderReview';
+import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
@@ -171,6 +172,11 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   /** ما يُنتظر بعد أن تُحسم الأسماء: الطباعة أو PDF. */
   const [genderReview, setGenderReview] = useState<'print' | 'pdf' | null>(null);
   const [afterReview, setAfterReview] = useState<'print' | 'pdf' | null>(null);
+  /**
+   * PDF معاينةٍ للزبون (هـ٣): «معاينة — ليست للطباعة» مكرَّرةً فوق كل ورقة، فيوافق
+   * عليها ولا يطبعها في غير المكتب. والطباعة نفسها بلا علامة دائمًا.
+   */
+  const [previewMark, setPreviewMark] = useState(false);
   const [sheetsOpen, setSheetsOpen] = useState(false);
   /** قائمةٌ جاءت مع طلب، ومفتاحٌ يعيد بناء لوح الدفعة بها. */
   const [batchSeed, setBatchSeed] = useState('');
@@ -823,7 +829,14 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     setBusy(true);
     try {
       const path = await window.diwan.output.savePdf({
-        sheetHtml: pages.join(''),
+        sheetHtml: previewMark
+          ? pages
+              .map(
+                (p) =>
+                  `<div style="position:relative;break-inside:avoid">${p}${tiledWatermark({ text: WATERMARK_PRESETS.preview, opacity: 0.2, sizeMm: 9 })}</div>`
+              )
+              .join('')
+          : pages.join(''),
         suggestedName: title.trim() || 'تصميم',
         page: imp.sheet
       });
@@ -833,7 +846,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     } finally {
       setBusy(false);
     }
-  }, [pages, title, imp, say]);
+  }, [pages, title, imp, say, previewMark]);
 
   // حُسمت الأسماء: تُطبع الدفعة بأجناسها الجديدة — بعد أن تُعاد بطاقاتها وأوراقها.
   useEffect(() => {
@@ -1759,18 +1772,30 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
           duplex={Boolean(backDoc)}
           issues={issues}
           options={
-            <PrintOptions
-              columns={batchColumns}
-              groupCol={groupCol}
-              imp={imp}
-              pickText={pickText}
-              picked={picked}
-              startSlot={startSlot}
-              total={cards.length}
-              onGroupCol={setGroupCol}
-              onPickText={setPickText}
-              onStartSlot={setStartSlot}
-            />
+            <>
+              <PrintOptions
+                columns={batchColumns}
+                groupCol={groupCol}
+                imp={imp}
+                pickText={pickText}
+                picked={picked}
+                startSlot={startSlot}
+                total={cards.length}
+                onGroupCol={setGroupCol}
+                onPickText={setPickText}
+                onStartSlot={setStartSlot}
+              />
+              <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface cursor-pointer" title="للـPDF وحده — الطباعة بلا علامة">
+                <input
+                  checked={previewMark}
+                  className="w-3.5 h-3.5 accent-secondary"
+                  data-act="preview-watermark"
+                  type="checkbox"
+                  onChange={(e) => setPreviewMark(e.target.checked)}
+                />
+                PDF معاينةٍ للزبون: «معاينة — ليست للطباعة»
+              </label>
+            </>
           }
           pages={pages}
           sheet={imp.sheet}

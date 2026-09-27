@@ -108,6 +108,9 @@ const api: DiwanApi = {
   today: {
     agenda: () => invoke('today:agenda')
   },
+  fillCard: {
+    open: (citizenId) => invoke('fillcard:open', citizenId)
+  },
   gender: {
     learned: () => invoke('gender:learned'),
     learn: (answers) => invoke('gender:learn', answers)

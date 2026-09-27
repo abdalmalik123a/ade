@@ -12,6 +12,9 @@ import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, PrinterIn
 import CitizenForm from './CitizenForm';
 import IdDuplexDialog from './IdDuplexDialog';
 import DeskewModal from './DeskewModal';
+import CameraCapture from '../components/CameraCapture';
+import MultiCardDialog from '../components/MultiCardDialog';
+import { readMrz } from '@shared/mrz';
 import { errorText } from '../lib/errors';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
@@ -50,6 +53,19 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
   const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number } | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   const [deskewAttachment, setDeskewAttachment] = useState<Attachment | null>(null);
+  /** التقاطٌ بالكاميرا (ج١٢): الكاميرا مفتوحة، ثم اللقطة تُسوّى قبل أن تُحفظ. */
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraShot, setCameraShot] = useState<string | null>(null);
+  /** عدّة بطاقاتٍ بمسحةٍ واحدة (هـ٢). */
+  const [multiOpen, setMultiOpen] = useState(false);
+
+  async function saveShot(dataUrl: string, docType: string) {
+    if (!detail) return;
+    await window.diwan.attachments.addFromDataUrl(detail.id, docType, dataUrl);
+    await reloadDetail(detail.id);
+    await reloadList();
+    say('حُفظت اللقطة في مستمسكات المواطن');
+  }
   const [toast, setToast] = useState<Toast>(null);
   const timer = useRef<number | null>(null);
 
@@ -410,6 +426,16 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                       <span className="font-code-sm text-code-sm opacity-70">Ctrl+Enter</span>
                     </button>
                     <button
+                      className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-colors"
+                      data-act="fill-card"
+                      title="بطاقة التعبئة: نافذةٌ صغيرة فوق المتصفّح — الاسم مفرَّقًا والأرقام بصيغها، والنقر ينسخ"
+                      type="button"
+                      onClick={() => void window.diwan.fillCard.open(detail.id)}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">content_paste</span>
+                      <span>بطاقة التعبئة</span>
+                    </button>
+                    <button
                       className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
                       title="تعديل بيانات المواطن"
                       type="button"
@@ -538,6 +564,26 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                       >
                         <span className="material-symbols-outlined text-[18px]">folder_open</span>
                         <span>استعراض من الحاسوب</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+                        data-act="camera-attachment"
+                        title="صوّر المستمسك بكاميرا الحاسوب — ثم يُسوّى ويُقوَّم كالمسح"
+                        type="button"
+                        onClick={() => setCameraOpen(true)}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                        <span>التقط بالكاميرا</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+                        data-act="multi-card"
+                        title="عدّة بطاقاتٍ على الزجاج معًا: تُعرف كلٌّ وتُقصّ، ويُطابَق ظهرها بوجهها"
+                        type="button"
+                        onClick={() => setMultiOpen(true)}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">view_module</span>
+                        <span>عدّة بطاقات بمسحة</span>
                       </button>
                       <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
@@ -923,6 +969,56 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
               </div>
             </div>
             <div className="p-space-md overflow-y-auto">
+              {/* ظهر البطاقة (هـ٧): سطور MRZ تُقرأ حقولًا — ولكلٍّ رقم تحقّقه */}
+              {(() => {
+                const mrz = readMrz(ocrPanel.text);
+                if (!mrz || !detail) return null;
+                const row = (label: string, value: string | null, good?: boolean) =>
+                  value ? (
+                    <div key={label} className="flex items-center gap-space-xs">
+                      <span className="w-28 text-on-surface-variant">{label}</span>
+                      <span className="font-mono text-on-surface">{value}</span>
+                      {good !== undefined && (
+                        <span className={good ? 'text-secondary' : 'text-error font-semibold'}>{good ? '✓' : 'رقم التحقّق لا يطابق'}</span>
+                      )}
+                    </div>
+                  ) : null;
+                const personal = [mrz.optional1, mrz.optional2].map((v) => v.replace(/\D/g, '')).find((v) => v.length === 12) ?? null;
+                return (
+                  <div className="mb-space-md p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1 font-label-md text-label-md" data-mrz={mrz.valid ? 'valid' : 'invalid'}>
+                    <span className="font-semibold text-on-surface">
+                      ظهر البطاقة (MRZ) — {mrz.valid ? 'قُرئ وتحقّقت أرقامه' : 'قُرئ، وفي بعض أرقامه خطأ قراءة — راجِعه'}
+                    </span>
+                    <span className="font-label-sm text-label-sm text-tertiary">تجريبي: يُعتمد بعد التحقّق ببطاقةٍ عراقية حقيقية.</span>
+                    {row('رقم الوثيقة', mrz.documentNumber, mrz.checks.documentNumber)}
+                    {row('الرقم الشخصي', personal)}
+                    {row('الولادة', mrz.birthDate, mrz.checks.birthDate)}
+                    {row('الجنس', mrz.sex)}
+                    {row('النفاذ', mrz.expiryDate, mrz.checks.expiryDate)}
+                    {row('الاسم (لاتيني)', [mrz.givenNames, mrz.surname].filter(Boolean).join(' '))}
+                    <button
+                      className="self-start mt-1 h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md disabled:opacity-40"
+                      data-act="mrz-fill"
+                      type="button"
+                      disabled={!mrz.valid}
+                      title={mrz.valid ? 'تُفتح بطاقة المواطن مملوءةً — تراجعها ثم تحفظ' : 'لا يُملأ ملفٌّ من قراءةٍ لم تتحقّق'}
+                      onClick={() => {
+                        setOcrPanel(null);
+                        setForm({
+                          open: true,
+                          initial: {
+                            ...detail,
+                            birthDate: detail.birthDate || mrz.birthDate,
+                            nationalId: detail.nationalId || personal
+                          }
+                        });
+                      }}
+                    >
+                      املأ ملفّه بها
+                    </button>
+                  </div>
+                );
+              })()}
               {ocrPanel.confidence < 0.9 && (
                 <p className="font-label-sm text-label-sm text-error mb-space-sm">
                   الدقة دون 90% — راجع النصّ قبل اعتماده في كتاب رسمي.
@@ -955,6 +1051,49 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
           printer={printer ?? null}
           citizenName={detail?.fullName}
           attachments={detail?.attachments ?? []}
+        />
+      )}
+
+      {cameraOpen && (
+        <CameraCapture
+          confirmLabel="سوِّها وقوِّمها"
+          secondary={{
+            label: 'احفظها كما هي',
+            onPick: (dataUrl) => {
+              setCameraOpen(false);
+              void saveShot(dataUrl, 'مستمسك بالكاميرا');
+            }
+          }}
+          title="صوّر المستمسك — ضعه على سطحٍ داكن واملأ به الإطار"
+          onCapture={(dataUrl) => {
+            setCameraOpen(false);
+            setCameraShot(dataUrl);
+          }}
+          onClose={() => setCameraOpen(false)}
+        />
+      )}
+
+      {multiOpen && detail && (
+        <MultiCardDialog
+          citizenId={detail.id}
+          onClose={() => setMultiOpen(false)}
+          onSaved={(n) => {
+            setMultiOpen(false);
+            void reloadDetail(detail.id).then(() => reloadList());
+            say(`حُفظت ${n} صورة في مستمسكاته — كلّ بطاقةٍ بوجهها وظهرها`);
+          }}
+        />
+      )}
+
+      {cameraShot && (
+        <DeskewModal
+          isOpen={true}
+          imageSrc={cameraShot}
+          onClose={() => setCameraShot(null)}
+          onApply={(dataUrl) => {
+            setCameraShot(null);
+            void saveShot(dataUrl, 'مستمسك بالكاميرا (مستوٍ)');
+          }}
         />
       )}
 

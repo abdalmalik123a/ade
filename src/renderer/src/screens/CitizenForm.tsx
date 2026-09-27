@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import type { CitizenDetail, CitizenInput } from '@shared/api';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { errorText } from '../lib/errors';
+import CameraCapture from '../components/CameraCapture';
+import { nationalIdHint, phoneHint } from '@shared/idChecks';
 
 const inputCls =
   'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
@@ -107,6 +109,9 @@ export default function CitizenForm({
     if (picked) set('photoPath', picked);
   }
 
+  /** الصورة الشخصية بالكاميرا (ج١٢): إطار ٤×٦ في وسط الصورة، يُحفظ في المخزن. */
+  const [cameraOpen, setCameraOpen] = useState(false);
+
   async function save() {
     if (!form.fullName.trim()) {
       setError('اسم المواطن مطلوب');
@@ -180,6 +185,18 @@ export default function CitizenForm({
           }}
         />
 
+        {cameraOpen && (
+          <CameraCapture
+            aspect={{ w: 4, h: 6 }}
+            title="الصورة الشخصية 4×6 — الوجه في وسط الإطار"
+            onCapture={(dataUrl) => {
+              setCameraOpen(false);
+              void window.diwan.camera.store(dataUrl).then((src) => set('photoPath', src));
+            }}
+            onClose={() => setCameraOpen(false)}
+          />
+        )}
+
         <div className="flex-1 overflow-y-auto p-space-lg space-y-space-md">
           <div className="flex items-start gap-space-lg">
             <div className="flex flex-col items-center gap-space-xs shrink-0">
@@ -203,6 +220,15 @@ export default function CitizenForm({
               >
                 {form.photoPath ? 'تغيير الصورة' : 'إضافة صورة 6×4'}
               </button>
+              <button
+                className="font-label-sm text-label-sm text-secondary font-semibold hover:underline flex items-center gap-0.5"
+                data-act="camera-photo"
+                type="button"
+                onClick={() => setCameraOpen(true)}
+              >
+                <span className="material-symbols-outlined text-[14px]">photo_camera</span>
+                بالكاميرا
+              </button>
               {form.photoPath && (
                 <button
                   className="font-label-sm text-label-sm text-error hover:underline"
@@ -222,10 +248,21 @@ export default function CitizenForm({
                   </label>
                   <input
                     className={f.mono ? `${inputCls} font-mono` : inputCls}
+                    data-citizen-field={f.key}
                     type="text"
                     value={(form[f.key] as string | null) ?? ''}
                     onChange={(e) => set(f.key, e.target.value || null)}
                   />
+                  {/* تنبيهٌ خفيف لا منع (د١٣): يُحفظ ما كُتب كما كُتب. */}
+                  {(() => {
+                    const v = (form[f.key] as string | null) ?? '';
+                    const hint = f.key === 'nationalId' ? nationalIdHint(v) : f.key === 'phone' ? phoneHint(v) : null;
+                    return hint ? (
+                      <span className="font-label-sm text-label-sm text-tertiary" data-field-hint={f.key}>
+                        {hint}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
               ))}
 

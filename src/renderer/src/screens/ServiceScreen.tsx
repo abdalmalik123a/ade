@@ -24,6 +24,7 @@ import type {
 } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
 import DateTools from '../components/DateTools';
+import { nationalIdHint, phoneHint } from '@shared/idChecks';
 import LetterSheet from '../components/LetterSheet';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
@@ -921,6 +922,21 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                           />
                         )}
                       </span>
+                      {/* تنبيهٌ خفيف لا منع (د١٣) */}
+                      {(() => {
+                        const v = values[f.key] ?? '';
+                        const hint =
+                          f.role === 'nationalId' || f.source === 'nationalId'
+                            ? nationalIdHint(v)
+                            : f.source === 'phone' || /هاتف|موبايل|جوال/.test(f.label)
+                              ? phoneHint(v)
+                              : null;
+                        return hint ? (
+                          <span className="font-label-sm text-label-sm text-tertiary" data-field-hint={f.key}>
+                            {hint}
+                          </span>
+                        ) : null;
+                      })()}
                     </label>
                   ))}
                 </div>

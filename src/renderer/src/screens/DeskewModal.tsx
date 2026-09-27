@@ -16,6 +16,7 @@ import {
   type Point,
   type Quad
 } from '@shared/deskew';
+import { cleanScan, despeckle, inkCoverage, straighten } from '@shared/scanClean';
 
 type Props = {
   isOpen: boolean;
@@ -40,12 +41,24 @@ function detectCorners(img: HTMLImageElement): Quad | null {
   return px ? detectQuad(px) : null;
 }
 
+/** ما يُجرى بعد التسوية (هـ١) — ويُعرض أثره: زاوية التقويم، والبقع الممحوّة، والحبر. */
+type Cleaning = { keepColor: boolean; despeckle: boolean; straighten: boolean };
+type Finished = { px: PixelData; angle: number; specks: number; ink: number; heavy: boolean };
+
 /**
- * «مسح نظيف»: ظلُّ اليد ووهجُ المصباح يُسوَّيان، والورق أبيض والحبر حبر —
- * كأنها خرجت من ماسح. وسائر المرشّحات جرت في التسوية نفسها.
+ * «مسح نظيف»: ظلُّ اليد ووهجُ المصباح يُسوَّيان، والورق أبيض والحبر حبر — **والختم
+ * الأزرق والتوقيع الأحمر بلونهما** إن طُلب. ثم التقويم من الأسطر (ورقةٌ مائلة على
+ * الزجاج لا أركان لها تُكشف)، ثم محو البقع المعزولة.
  */
-function finish(px: PixelData, mode: string): PixelData {
-  return mode === 'scan' ? flattenLight(px, { gray: true, ink: 1.3 }) : px;
+function finish(px: PixelData, mode: string, cleaning: Cleaning): Finished {
+  let out = px;
+  let angle = 0;
+  if (cleaning.straighten) ({ px: out, angle } = straighten(out));
+  if (mode === 'scan') out = cleaning.keepColor ? cleanScan(out, { keepColor: true }) : flattenLight(out, { gray: true, ink: 1.3 });
+  let specks = 0;
+  if (cleaning.despeckle && mode !== 'color') ({ px: out, removed: specks } = despeckle(out));
+  const { coverage, heavy } = inkCoverage(out);
+  return { px: out, angle, specks, ink: coverage, heavy };
 }
 
 export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Props) {
@@ -58,6 +71,9 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
   const [contrast, setContrast] = useState(1);
   const [activeCorner, setActiveCorner] = useState<'tl' | 'tr' | 'br' | 'bl' | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [cleaning, setCleaning] = useState<Cleaning>({ keepColor: true, despeckle: true, straighten: false });
+  /** أثر التنظيف في المعاينة: الزاوية والبقع والحبر. */
+  const [effect, setEffect] = useState<Omit<Finished, 'px'> | null>(null);
 
   const imgRef = useRef<HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -101,15 +117,18 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
     offCtx.drawImage(img, 0, 0);
     const srcData = offCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
 
-    const warped = finish(
+    const done = finish(
       warpPerspective(srcData, quad, targetW, targetH, {
         grayscale: filterMode === 'grayscale',
         highContrast: filterMode === 'photocopy',
         brightness,
         contrast
       }),
-      filterMode
+      filterMode,
+      cleaning
     );
+    const warped = done.px;
+    setEffect({ angle: done.angle, specks: done.specks, ink: done.ink, heavy: done.heavy });
 
     previewCanvas.width = targetW;
     previewCanvas.height = targetH;
@@ -119,7 +138,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
       outImg.data.set(warped.data);
       pCtx.putImageData(outImg, 0, 0);
     }
-  }, [quad, aspectKey, filterMode, brightness, contrast]);
+  }, [quad, aspectKey, filterMode, brightness, contrast, cleaning]);
 
   useEffect(() => {
     updatePreview();
@@ -272,8 +291,9 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
           brightness,
           contrast
         }),
-        filterMode
-      );
+        filterMode,
+        cleaning
+      ).px;
 
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = outW;
@@ -414,6 +434,36 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* التنظيف (هـ١): الأختام بألوانها، والبقع، والتقويم من الأسطر — وأثرها يُقال */}
+            <div className="space-y-1 text-xs" data-cleaning="">
+              {(
+                [
+                  { key: 'keepColor', label: 'احفظ ألوان الأختام والتواقيع', hint: 'في «مسح نظيف»' },
+                  { key: 'despeckle', label: 'أزل البقع المعزولة', hint: 'نقاط الحروف تبقى' },
+                  { key: 'straighten', label: 'قوِّم من الأسطر', hint: 'ورقةٌ مائلة على الزجاج' }
+                ] as const
+              ).map((o) => (
+                <label key={o.key} className="flex items-center gap-1.5 cursor-pointer text-on-surface" title={o.hint}>
+                  <input
+                    checked={cleaning[o.key]}
+                    className="w-3.5 h-3.5 accent-secondary"
+                    data-clean={o.key}
+                    type="checkbox"
+                    onChange={(e) => setCleaning((c) => ({ ...c, [o.key]: e.target.checked }))}
+                  />
+                  {o.label}
+                </label>
+              ))}
+              {effect && (
+                <p className={`pt-1 ${effect.heavy ? 'text-error font-semibold' : 'text-on-surface-variant'}`} data-clean-effect="">
+                  {effect.angle ? `قُوّمت ${Math.abs(effect.angle).toFixed(1)}° · ` : ''}
+                  {effect.specks ? `مُحيت ${effect.specks} بقعة · ` : ''}
+                  الحبر {Math.round(effect.ink * 100)}٪ من الورقة
+                  {effect.heavy ? ' — ثقيل: جرّب «مسح نظيف» ليبيضّ الخلفية' : ''}
+                </p>
+              )}
             </div>
 
             {/* منزلقات السطوع والتباين */}

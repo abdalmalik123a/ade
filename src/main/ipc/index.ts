@@ -12,6 +12,7 @@ import { registerCameraIpc } from './camera';
 import { registerQuestionIpc } from './questions';
 import { orderCounts } from '../services/orders';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
+import { openFillCard } from '../fillCard';
 import { archiveStats, listDocuments } from '../services/documents';
 import type {
   OfficeSettings,
@@ -114,6 +115,9 @@ export function registerIpc(): void {
   registerCameraIpc();
   registerQuestionIpc();
   registerBackupIpc();
+
+  /** بطاقة التعبئة للمواقع الحكومية (هـ٦): نافذةٌ فوق المتصفّح لمواطنٍ من السجل. */
+  ipcMain.handle('fillcard:open', (_e, citizenId: number) => openFillCard(Number(citizenId)));
 
   /** ما تعلّمه المكتب من التذكير والتأنيث (ج٤): يُحمَّل مرّة، ويُضاف إليه ما يُجاب. */
   ipcMain.handle('gender:learned', () => learnedGenders(getDb()));

@@ -12,6 +12,7 @@
  *    في عين الإحداثيات تمامًا ليتطابقا ١٠٠٪ عند خروج الورقة من طابعة الوجهين.
  * ٤. تكرار (Batch): تكرار البطاقة على الورقة لطباعة عدة نسخ دفعة واحدة.
  */
+import { tiledWatermark, type WatermarkOptions } from './watermark';
 
 export type CardDimension = {
   key: string;
@@ -40,6 +41,8 @@ export type IdCardConfig = {
   showDividerLine?: boolean;
   showCutMarks?: boolean;
   repeatCount?: number;
+  /** علامةٌ مائية مكرَّرة **فوق** صورة البطاقة (هـ٣): «نسخة لغرض …». */
+  watermark?: WatermarkOptions | null;
 };
 
 export type CardPlacement = {
@@ -182,7 +185,9 @@ export function generateIdDuplexHtml(config: IdCardConfig, resolveUrl: (src: str
             src
               ? `<img alt="${card.side}" src="${resolveUrl(
                   src
-                )}" style="width:100%;height:100%;object-fit:cover;filter:${filterStr};display:block"/>`
+                )}" style="width:100%;height:100%;object-fit:cover;filter:${filterStr};display:block"/>${
+                  config.watermark ? tiledWatermark(config.watermark) : ''
+                }`
               : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;font-family:sans-serif">
                   ${card.side === 'front' ? 'وجه الهوية' : 'ظهر الهوية'}
                 </div>`

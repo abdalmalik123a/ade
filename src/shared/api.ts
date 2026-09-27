@@ -653,6 +653,10 @@ export type DiwanApi = {
   search: {
     others(query: string): Promise<SearchHits>;
   };
+  /** بطاقة التعبئة للمواقع الحكومية (هـ٦) — نافذةٌ صغيرة فوق المتصفّح. */
+  fillCard: {
+    open(citizenId: number): Promise<void>;
+  };
   /** «ما ينتظرك اليوم» (د٧). */
   today: {
     agenda(): Promise<TodayAgenda>;

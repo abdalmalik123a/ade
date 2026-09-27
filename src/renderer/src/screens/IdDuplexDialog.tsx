@@ -15,6 +15,7 @@ import {
   type IdDuplexLayoutMode
 } from '@shared/idCardDuplex';
 import DeskewModal from './DeskewModal';
+import { WATERMARK_PRESETS, purposeWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
 
 type Props = {
@@ -41,6 +42,11 @@ export default function IdDuplexDialog({
   const [contrast, setContrast] = useState(1);
   const [showDivider, setShowDivider] = useState(true);
   const [showCutMarks, setShowCutMarks] = useState(true);
+  /** العلامة المائية فوق النسخة (هـ٣): الجهة التي تُقدَّم إليها تُسمّى فيها. */
+  const [wmOn, setWmOn] = useState(false);
+  const [wmTo, setWmTo] = useState('');
+  const [wmText, setWmText] = useState<string>(WATERMARK_PRESETS.copy);
+  const [wmOpacity, setWmOpacity] = useState(0.22);
   const [busy, setBusy] = useState(false);
   const [deskewTarget, setDeskewTarget] = useState<'front' | 'back' | null>(null);
   const [toast, setToast] = useState<{ text: string; warn?: boolean } | null>(null);
@@ -65,9 +71,10 @@ export default function IdDuplexDialog({
       brightness,
       contrast,
       showDividerLine: showDivider,
-      showCutMarks
+      showCutMarks,
+      watermark: wmOn ? { text: wmText, opacity: wmOpacity, sizeMm: Math.max(2.4, cardSize.h / 16) } : null
     }),
-    [cardSize, mode, frontSrc, backSrc, colorFilter, brightness, contrast, showDivider, showCutMarks]
+    [cardSize, mode, frontSrc, backSrc, colorFilter, brightness, contrast, showDivider, showCutMarks, wmOn, wmText, wmOpacity]
   );
 
   const resolveUrl = (src: string) => {
@@ -496,6 +503,52 @@ export default function IdDuplexDialog({
                 />
                 <span>إطار إرشادي خفيف حول الهوية</span>
               </label>
+            </div>
+
+            {/* العلامة المائية فوق النسخة — فالنسخة المعطاة لجهةٍ لا تصلح لغيرها */}
+            <div className="space-y-2 pt-2 border-t border-outline-variant text-xs" data-id-watermark="">
+              <label className="flex items-center gap-2 cursor-pointer font-bold">
+                <input
+                  type="checkbox"
+                  checked={wmOn}
+                  data-act="id-watermark"
+                  onChange={(e) => setWmOn(e.target.checked)}
+                  className="rounded text-primary focus:ring-primary"
+                />
+                <span>علامة مائية فوق النسخة</span>
+              </label>
+              {wmOn && (
+                <>
+                  <input
+                    className="w-full h-8 px-2 rounded bg-surface text-on-surface border border-outline-variant"
+                    data-watermark-to=""
+                    placeholder="الجهة التي تُقدَّم إليها — مثال: مصرف الرشيد"
+                    value={wmTo}
+                    onChange={(e) => {
+                      setWmTo(e.target.value);
+                      setWmText(purposeWatermark(e.target.value));
+                    }}
+                  />
+                  <input
+                    className="w-full h-8 px-2 rounded bg-surface text-on-surface border border-outline-variant"
+                    data-watermark-text=""
+                    value={wmText}
+                    onChange={(e) => setWmText(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <span>الوضوح</span>
+                    <input
+                      className="flex-1"
+                      max={0.5}
+                      min={0.1}
+                      step={0.02}
+                      type="range"
+                      value={wmOpacity}
+                      onChange={(e) => setWmOpacity(Number(e.target.value))}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
