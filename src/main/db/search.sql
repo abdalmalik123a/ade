@@ -3,7 +3,9 @@
 --   1) content='' — فهرس خارجي بلا تكرار للنص، والمحتوى يُحقن يدويًا من طبقة التطبيق.
 --   2) الحقول المفهرسة تُخزَّن مُطبَّعة مسبقًا (normalizeFold) — لا تطبيع وقت الاستعلام.
 --   3) prefix='2 3 4' — يجعل البحث الجزئي فوريًا وهو النمط الغالب عند الموظف.
---   4) detail='none' — يقلّص الفهرس كثيرًا، ولا نحتاج مواضع الكلمات.
+--   4) detail='none' — يقلّص الفهرس كثيرًا، ولا نحتاج مواضع الكلمات (فلا عبارات: السؤال كلماتٌ بادئة).
+--   5) contentless_delete=1 — يُحذف الصفّ ويُحدَّث (مواطنٌ عُدّل، نموذجٌ حُذف) بلا نصّه القديم.
+-- وتُملأ وتُطابَق في services/searchIndex.ts؛ والقاعدة التي سبقت (5) يُعاد بناء فهارسها هناك.
 
 CREATE VIRTUAL TABLE IF NOT EXISTS citizens_fts USING fts5(
   full_name,
@@ -13,6 +15,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS citizens_fts USING fts5(
   employee_code,
   phone,
   content='',
+  contentless_delete=1,
   prefix='2 3 4',
   detail='none'
 );
@@ -25,6 +28,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
   citizen_name,
   body_text,
   content='',
+  contentless_delete=1,
   prefix='2 3 4',
   detail='none'
 );
@@ -36,6 +40,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS templates_fts USING fts5(
   category,
   body_text,
   content='',
+  contentless_delete=1,
   prefix='2 3 4',
   detail='none'
 );
@@ -44,6 +49,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS attachments_fts USING fts5(
   doc_type,
   ocr_text,
   content='',
+  contentless_delete=1,
   prefix='2 3 4',
   detail='none'
 );

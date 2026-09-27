@@ -119,5 +119,63 @@ export default async function scenario(page, { profile }) {
   ok('وحُفظ ترقيم الصفحات معه', doc.pageSetup?.pageNumbers === true);
   ok('وحقل التاريخ بتقويمه', doc.fields?.[0]?.type === 'date' && doc.fields?.[0]?.calendar === 'both');
 
+  // ── التعلّم في المصمّم (ج١٣): حدّ الترويسة يُعدَّل ويُقيَّد، والتصنيف يُقترح ──────
+  const sheet = await page.eval(`
+    const p = (id, text) => ({ id, kind: 'paragraph', align: 'right', inlines: text ? [{ kind: 'run', text }] : [] });
+    const doc = {
+      id: 'head-doc', schemaVersion: 1, kind: 'flow', issuing: 'registered',
+      blocks: [
+        { id: 'row', kind: 'columns', columns: [[p('c1', 'إدارة مدرسة الصحوة الابتدائية')], [p('c2', 'العدد: ')]] },
+        p('h2', 'قسم الشؤون الإدارية'),
+        p('gap', ''),
+        p('b1', 'م / تأييد'),
+        p('b2', 'نؤيد أن الطالب مستمر بالدوام.')
+      ],
+      fields: [], meta: {}
+    };
+    const t = await window.diwan.templates.save({ id: null, code: null, title: 'تأييد دوام — الصحوة', subtitle: null, category: 'تربية',
+      subjectLine: null, letterheadId: null, bodyHtml: 'نؤيد أن الطالب مستمر بالدوام.', variables: [], doc });
+    return t.id;`);
+  await page.goto('service-counter');
+  await wait(300);
+  await page.goto('templates-library-drafts');
+  await wait(1000);
+  await page.eval(`
+    // بطاقة النموذج بعنوانه — فالمكتبة ترتّب بالاستعمال والعنوان لا بالأحدث.
+    const edit = [...document.querySelectorAll('button[title="تعديل صيغ المتغيرات"]')].find((b) => {
+      let el = b;
+      for (let i = 0; i < 8 && el; i++, el = el.parentElement) if (el.innerText?.includes('الصحوة')) return true;
+      return false;
+    });
+    edit?.click();
+    return true;`);
+  await wait(1300);
+  const edge = () => page.eval(`return Number(document.querySelector('[data-head-edge]')?.getAttribute('data-head-edge') ?? 0);`);
+  ok(`يُقترح فصل أعلى الورقة ترويسةً بحدٍّ مخمَّن (${await edge()} أسطر)`, (await edge()) === 2);
+  await page.eval(`document.querySelector('[data-act="head-more"]').click(); return true;`);
+  await wait(300);
+  ok('ويُزاد الحدّ سطرًا ويُرى ما يدخل فيه', (await edge()) === 3 && (await page.eval(`return document.querySelectorAll('[data-head-preview] span').length;`)) === 3);
+  await page.eval(`document.querySelector('[data-act="head-less"]').click(); return true;`);
+  await wait(300);
+  await page.eval(`document.querySelector('[data-act="head-less"]').click(); return true;`);
+  await wait(300);
+  ok('ويُنقص', (await edge()) === 1);
+  await page.eval(`document.querySelector('[data-act="save-head"]').click(); return true;`);
+  await wait(1000);
+  const db2 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const corr = db2.prepare("SELECT suggested, chosen FROM corrections WHERE kind = 'letterheadEdge'").all();
+  db2.close();
+  ok(`وما صحّحه الموظف من الحدّ يُقيَّد ليُقترح لكتب الجهة القادمة (${JSON.stringify(corr)})`, corr.length === 1 && corr[0].suggested === '2' && corr[0].chosen === '1');
+  await page.clickText('إلغاء', 'button');
+  await wait(600);
+
+  // التصنيف من العنوان: نماذج المكتب المصنَّفة شواهد
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('ورقة فارغة'))?.click(); return true;`);
+  await wait(1200);
+  await page.type('input[placeholder="مثال: تأييد استمرار بالخدمة"]', 'تأييد دوام طالبة');
+  await wait(1200);
+  ok('وتصنيف النموذج يُقترح من عنوانه — «تربية» بنماذج المكتب', (await page.eval(`return document.querySelector('[data-category-suggest]')?.getAttribute('data-category-suggest') ?? '';`)) === 'تربية');
+  void sheet;
+
   return steps.join('\n');
 }

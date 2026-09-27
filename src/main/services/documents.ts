@@ -2,8 +2,11 @@ import type { Database } from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { normalizeFold } from '@shared/arabic';
 import { touchLetterhead } from './letterheads';
+import { digitsOf, indexRow, matchIds } from './searchIndex';
 import type {
+  ArchiveCheck,
   ArchiveStats,
+  AuditEntry,
   DocumentDetail,
   DocumentRow,
   IssueInput,
@@ -114,7 +117,7 @@ const ROW_COLUMNS = `d.id, d.serial,
   d.destination,
   strftime('%H:%M', d.issued_at, 'localtime') AS issuedTime,
   date(d.issued_at, 'localtime') AS issuedDate,
-  d.copies, d.fee`;
+  d.copies, d.fee, d.status, d.void_reason AS voidReason`;
 
 /** أعمدة اسم المواطن ورقمه تُحفظ نصًّا أيضًا: الكتاب قد يصدر لمن لا ملفّ له. */
 export function ensureCitizenSnapshot(db: Database): void {
@@ -152,11 +155,64 @@ export function ensureTransactionLink(db: Database): void {
   db.exec('CREATE INDEX IF NOT EXISTS ix_docs_transaction ON documents(transaction_id)');
 }
 
+/** الإبطال: الكتاب يبقى برقمه وبصمته، ومعه سببُه ووقتُه ومن أبطله. */
+export function ensureVoidColumns(db: Database): void {
+  const cols = (db.prepare('PRAGMA table_info(documents)').all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes('void_reason')) db.exec('ALTER TABLE documents ADD COLUMN void_reason TEXT');
+  if (!cols.includes('voided_at')) db.exec('ALTER TABLE documents ADD COLUMN voided_at TEXT');
+  if (!cols.includes('voided_by')) db.exec('ALTER TABLE documents ADD COLUMN voided_by TEXT');
+}
+
+/** أوّل حلقةٍ في السلسلة: لا كتاب قبلها. */
+export const CHAIN_GENESIS = '0'.repeat(64);
+
+/**
+ * حلقة الكتاب في سلسلة البصمات: بصمةُ ما قبله وبصمتُه ورقمه معًا.
+ *
+ * فبصمة الكتاب تشهد على متنه، والسلسلة تشهد على الأرشيف كلّه: كتابٌ يُحذف من
+ * وسطه أو يُقحَم أو تُبدَّل بصمته يكسر كلَّ حلقةٍ بعده.
+ */
+export function chainLink(prev: string, sha256: string, serial: string): string {
+  return createHash('sha256').update(`${prev}|${sha256}|${serial}`, 'utf8').digest('hex');
+}
+
+/**
+ * عمود السلسلة — وما صدر قبله يُسلسَل بترتيب صدوره، مرّةً واحدة.
+ *
+ * وما يُسلسَل هنا بصمته كما هي في القيد؛ فالأرشيف القائم يدخل السلسلة كما هو اليوم،
+ * وما يُمسّ بعدها يُكشف.
+ */
+export function ensureChain(db: Database): void {
+  const cols = (db.prepare('PRAGMA table_info(documents)').all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes('chain')) db.exec('ALTER TABLE documents ADD COLUMN chain TEXT');
+  // يُسأل عند كل إصدار (prepareDocuments): فهرسٌ جزئيّ يجعل «أبقي كتابٌ بلا حلقة؟»
+  // سؤالًا واحدًا لا مسحًا لخمسين ألف كتاب.
+  db.exec('CREATE INDEX IF NOT EXISTS ix_docs_unchained ON documents(id) WHERE chain IS NULL');
+  if (!db.prepare('SELECT 1 FROM documents WHERE chain IS NULL LIMIT 1').get()) return;
+  db.transaction(() => {
+    const rows = db.prepare('SELECT id, serial, sha256, chain FROM documents ORDER BY id').all() as {
+      id: number;
+      serial: string;
+      sha256: string;
+      chain: string | null;
+    }[];
+    const set = db.prepare('UPDATE documents SET chain = ? WHERE id = ?');
+    let prev = CHAIN_GENESIS;
+    for (const r of rows) {
+      const link = r.chain ?? chainLink(prev, r.sha256, r.serial);
+      if (!r.chain) set.run(link, r.id);
+      prev = link;
+    }
+  })();
+}
+
 export function prepareDocuments(db: Database): void {
   ensureSearchColumn(db);
   ensureCitizenSnapshot(db);
   ensureLetterheadLink(db);
   ensureTransactionLink(db);
+  ensureVoidColumns(db);
+  ensureChain(db);
 }
 
 export type IssueResult = {
@@ -192,6 +248,10 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
     });
 
     const sheetHtml = input.sheetHtml;
+    const prev = db.prepare('SELECT chain FROM documents ORDER BY id DESC LIMIT 1').get() as
+      | { chain: string | null }
+      | undefined;
+    const chain = chainLink(prev?.chain ?? CHAIN_GENESIS, sha256, serial);
 
     const info = db
       .prepare(
@@ -199,8 +259,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
            serial, serial_year, serial_seq, template_id, citizen_id, authority_id,
            citizen_name, citizen_nid, doc_type, destination, purpose, values_json,
            body_html, copies, copy_kind, fee, gregorian_date, hijri_date, operator,
-           sha256, status, search_fold, letterhead_id, transaction_id
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?)`
+           sha256, status, search_fold, letterhead_id, transaction_id, chain
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?,?)`
       )
       .run(
         serial,
@@ -225,7 +285,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         sha256,
         searchFold([serial, name, input.nationalId, input.docType, input.destination, input.purpose, bodyText]),
         input.letterheadId ?? null,
-        input.transactionId ?? null
+        input.transactionId ?? null,
+        chain
       );
 
     // آخر استعمال للترويسة — عليه يقوم ترتيب المكتبة، وهو في المعاملة نفسها.
@@ -248,6 +309,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
       `INSERT INTO audit_log (entity, entity_id, action, detail, operator)
        VALUES ('document', ?, 'issue', ?, ?)`
     ).run(id, `${serial} — ${name}`, input.operator);
+
+    indexRow(db, 'documents', id);
 
     return { id, serial, sha256, sheetHtml };
   })();
@@ -404,12 +467,169 @@ export function transactionSheets(db: Database, transactionId: number): Document
     .all(transactionId) as DocumentRow[];
 }
 
+/** كتابٌ مُبطَل لا يُعاد طبعه ولا يُخرَج PDF: ورقته لو خرجت لم يعرف حاملُها أنها باطلة. */
+export function assertNotVoid(db: Database, id: number): void {
+  prepareDocuments(db);
+  const row = db.prepare('SELECT serial, status FROM documents WHERE id = ?').get(id) as
+    | { serial: string; status: string }
+    | undefined;
+  if (row?.status === 'void') throw new Error(`الكتاب ${row.serial} مُبطَل — لا يُعاد طبعه`);
+}
+
+/**
+ * إبطال كتابٍ صادر (د٣): يبقى في الأرشيف برقمه وبصمته — فالرقم لا يُثقب ولا يُعاد —
+ * ومعه سببُه ووقتُه ومن أبطله، ويُقيَّد في سجلّ التدقيق. والإبطال لا يمسّ المتن ولا
+ * البصمة ولا السلسلة: هو حكمٌ على الكتاب لا تعديلٌ فيه.
+ */
+export function voidDocument(db: Database, id: number, reason: string, operator: string | null): DocumentDetail {
+  prepareDocuments(db);
+  const why = reason.trim();
+  if (!why) throw new Error('اذكر سبب الإبطال — يُقيَّد مع الكتاب');
+  return db.transaction(() => {
+    const row = db.prepare('SELECT serial, status FROM documents WHERE id = ?').get(id) as
+      | { serial: string; status: string }
+      | undefined;
+    if (!row) throw new Error('الكتاب غير موجود');
+    if (row.status === 'void') throw new Error(`الكتاب ${row.serial} مُبطَلٌ من قبل`);
+    db.prepare(
+      "UPDATE documents SET status = 'void', void_reason = ?, voided_at = datetime('now'), voided_by = ? WHERE id = ?"
+    ).run(why, operator, id);
+    db.prepare(
+      `INSERT INTO audit_log (entity, entity_id, action, detail, operator) VALUES ('document', ?, 'void', ?, ?)`
+    ).run(id, `${row.serial} — ${why}`, operator);
+    return getDocument(db, id)!;
+  })();
+}
+
+/**
+ * «تحقّق من سلامة الأرشيف» (د٥): كل بصمةٍ تُعاد من متن كتابها، والسلسلة من أوّلها،
+ * وأرقام كل سنةٍ تُعدّ فلا يغيب منها رقم.
+ *
+ * والبصمة تُحسب بـ`htmlToText` نفسها التي صدر بها الكتاب — فهي لا تُغيَّر: أيّ تغييرٍ
+ * فيها يجعل كتب الأمس «معدَّلة» وهي لم تُمسّ.
+ */
+export function verifyArchive(db: Database): ArchiveCheck {
+  prepareDocuments(db);
+  const rows = db
+    .prepare(
+      `SELECT id, serial, serial_year AS year, serial_seq AS seq, body_html AS body, gregorian_date AS date,
+              citizen_name AS name, destination, sha256, chain
+       FROM documents ORDER BY id`
+    )
+    .all() as {
+    id: number;
+    serial: string;
+    year: number;
+    seq: number;
+    body: string;
+    date: string;
+    name: string | null;
+    destination: string | null;
+    sha256: string;
+    chain: string | null;
+  }[];
+
+  const problems: ArchiveCheck['problems'] = [];
+  let prev = CHAIN_GENESIS;
+  for (const r of rows) {
+    const again = fingerprint({
+      serial: r.serial,
+      bodyHtml: htmlToText(r.body),
+      gregorianDate: r.date,
+      citizenName: r.name ?? '',
+      destination: r.destination ?? ''
+    });
+    if (again !== r.sha256) {
+      problems.push({ id: r.id, serial: r.serial, kind: 'content', text: 'متنه أو بياناته تغيّرت بعد صدوره — بصمته لا تطابقه' });
+    }
+    const link = chainLink(prev, r.sha256, r.serial);
+    if (r.chain !== link) {
+      problems.push({
+        id: r.id,
+        serial: r.serial,
+        kind: 'chain',
+        text: 'السلسلة مكسورة عنده: كتابٌ قبله حُذف أو أُقحم، أو بُدّلت بصمته'
+      });
+    }
+    // ما بعد الكسر يُقاس بحلقته المقيَّدة — فيُذكر موضع الكسر مرّةً لا في كل كتابٍ بعده.
+    prev = r.chain ?? link;
+  }
+
+  // الأرقام: لكل سنةٍ من ١ إلى أكبرها، بلا ثقب.
+  const years = new Map<number, Set<number>>();
+  for (const r of rows) {
+    if (!years.has(r.year)) years.set(r.year, new Set());
+    years.get(r.year)!.add(r.seq);
+  }
+  const prefix = (year: number) => rows.find((r) => r.year === year)?.serial.split('/')[0] ?? '';
+  for (const [year, seqs] of years) {
+    const top = Math.max(...seqs);
+    for (let n = 1; n <= top; n++) {
+      if (!seqs.has(n)) {
+        problems.push({ id: null, serial: `${prefix(year)}/${year}/${n}`, kind: 'gap', text: 'رقمٌ غائب من سجلّ الصادر' });
+      }
+    }
+  }
+
+  return { checked: rows.length, problems, head: rows.length ? (rows[rows.length - 1]!.chain ?? null) : null };
+}
+
+/** سجلّ التدقيق (د٤): الأحدث أولًا، ولقيد الكتاب رقمُ صادره. */
+export function listAudit(
+  db: Database,
+  opts: { entity?: string | null; documentId?: number | null; query?: string; limit?: number } = {}
+): AuditEntry[] {
+  prepareDocuments(db);
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (opts.entity) {
+    where.push('a.entity = ?');
+    args.push(opts.entity);
+  }
+  if (opts.documentId) {
+    where.push("a.entity = 'document' AND a.entity_id = ?");
+    args.push(opts.documentId);
+  }
+  const q = (opts.query ?? '').trim();
+  if (q) {
+    where.push('(a.detail LIKE ? OR a.operator LIKE ? OR d.serial LIKE ?)');
+    args.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+  args.push(opts.limit ?? 300);
+  return db
+    .prepare(
+      `SELECT a.id, a.entity, a.entity_id AS entityId, a.action, a.detail, a.operator, a.at,
+              CASE WHEN a.entity = 'document' THEN d.serial END AS serial
+       FROM audit_log a LEFT JOIN documents d ON a.entity = 'document' AND d.id = a.entity_id
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY a.id DESC LIMIT ?`
+    )
+    .all(...args) as AuditEntry[];
+}
+
+/** قيدٌ في سجلّ التدقيق لما ليس كتابًا: النسخة الاحتياطية واسترجاعها. */
+export function logAudit(
+  db: Database,
+  entity: string,
+  action: string,
+  detail: string | null,
+  operator: string | null = null
+): void {
+  db.prepare('INSERT INTO audit_log (entity, entity_id, action, detail, operator) VALUES (?, NULL, ?, ?, ?)').run(
+    entity,
+    action,
+    detail,
+    operator
+  );
+}
+
 /** إعادة الطباعة تُقيَّد ولا تُنشئ رقمًا جديدًا — الكتاب واحد ونسخه تُعدّ. */
 export function recordReprint(
   db: Database,
   id: number,
   opts: { copies: number; printer: string | null; operator: string | null }
 ): void {
+  assertNotVoid(db, id);
   db.transaction(() => {
     db.prepare(
       `INSERT INTO document_prints (document_id, copies, printer, reason, operator)
@@ -435,7 +655,8 @@ export function getDocument(db: Database, id: number): DocumentDetail | null {
               d.gregorian_date AS gregorianDate, d.hijri_date AS hijriDate,
               d.issued_at AS issuedAt, d.operator, d.sha256, d.status,
               (SELECT COALESCE(SUM(p.copies), 0) FROM document_prints p WHERE p.document_id = d.id)
-                AS printedCopies
+                AS printedCopies,
+              d.void_reason AS voidReason, d.voided_at AS voidedAt, d.voided_by AS voidedBy
        FROM documents d LEFT JOIN citizens c ON c.id = d.citizen_id
        WHERE d.id = ?`
     )
@@ -464,17 +685,35 @@ export function listDocuments(db: Database, opts: ListOptions = {}): DocumentRow
   ];
   const args: unknown[] = [from, from, to, to];
 
-  if (q) {
-    where.push('(d.search_fold LIKE ? OR d.serial LIKE ?)');
-    args.push(`%${normalizeFold(q)}%`, `%${q}%`);
+  // رقم الصادر («م/2026/14») يُسأل عنه عمودُه ببدايته: كلماته في الفهرس «م» و«2026»
+  // و«14»، و«2» بادئةً تطابق «2026» في كل كتاب. والمطابق تمامًا أوّلًا.
+  const serialQuery = q.includes('/') ? normalizeFold(q).replace(/\s+/g, '') : null;
+  if (serialQuery) {
+    where.push('d.serial LIKE ?');
+    args.push(`${serialQuery}%`);
+  } else if (q) {
+    // الفهرس أولًا (بدايات الكلمات في المتن والاسم والجهة)، ورقم الصادر ووسطُ الرقم
+    // الوطني مسحًا في أعمدتهما القصيرة. وإن تعذّر الفهرس فالمسح القديم كلّه.
+    const ids = matchIds(db, 'documents', q);
+    if (ids === null) {
+      where.push('(d.search_fold LIKE ? OR d.serial LIKE ?)');
+      args.push(`%${normalizeFold(q)}%`, `%${q}%`);
+    } else {
+      const digits = digitsOf(q);
+      where.push(
+        `(d.id IN (SELECT value FROM json_each(?)) OR d.serial LIKE ? OR (? IS NOT NULL AND d.citizen_nid LIKE ?))`
+      );
+      const nid = digits.length >= 3 ? `%${digits}%` : null;
+      args.push(JSON.stringify(ids), `%${q}%`, nid, nid);
+    }
   }
 
-  args.push(limit);
+  args.push(serialQuery, limit);
   return db
     .prepare(
       `SELECT ${ROW_COLUMNS} FROM documents d LEFT JOIN citizens c ON c.id = d.citizen_id
        WHERE ${where.join(' AND ')}
-       ORDER BY d.issued_at DESC, d.id DESC LIMIT ?`
+       ORDER BY (d.serial = ?) DESC, d.issued_at DESC, d.id DESC LIMIT ?`
     )
     .all(...args) as DocumentRow[];
 }

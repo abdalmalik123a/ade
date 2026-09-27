@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
+import { digitsOf, indexRow, matchIds, unindexRow } from './searchIndex';
 import type {
   Attachment,
   CitizenDetail,
@@ -55,6 +56,24 @@ export function listCitizens(
          ORDER BY c.updated_at DESC LIMIT ?`
       )
       .all(category, category, limit) as CitizenSummary[];
+  }
+
+  // الفهرس أولًا: بدايات الكلمات في الاسم والوظيفة والرقم. ووسطُ رقمٍ (آخر أربعةٍ
+  // من الوطني أو الهاتف) يُمسح في أعمدته القصيرة.
+  const ids = matchIds(db, 'citizens', q);
+  if (ids !== null) {
+    const digits = digitsOf(q);
+    const numeric = digits.length >= 3 ? `%${digits}%` : null;
+    return db
+      .prepare(
+        `SELECT ${SUMMARY} FROM citizens c
+         WHERE (? IS NULL OR c.category = ?)
+           AND (c.id IN (SELECT value FROM json_each(?))
+                OR (? IS NOT NULL AND (c.national_id LIKE ? OR c.phone LIKE ? OR c.housing_card_no LIKE ?
+                                       OR c.employee_code LIKE ?)))
+         ORDER BY c.full_name LIMIT ?`
+      )
+      .all(category, category, JSON.stringify(ids), numeric, numeric, numeric, numeric, numeric, limit) as CitizenSummary[];
   }
 
   const like = `%${normalizeFold(q)}%`;
@@ -219,6 +238,7 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
     return input.id;
   })();
 
+  indexRow(db, 'citizens', id);
   return getCitizen(db, id)!;
 }
 
@@ -233,7 +253,13 @@ export function deleteCitizen(db: Database, id: number): string[] {
     | { p: string | null }
     | undefined;
   if (photo?.p) paths.push(photo.p);
+  // المستمسكات تُحذف معه (ON DELETE CASCADE) — وفهارسها معها.
+  const attachments = (db.prepare('SELECT id FROM attachments WHERE citizen_id = ?').all(id) as { id: number }[]).map(
+    (r) => r.id
+  );
   db.prepare('DELETE FROM citizens WHERE id = ?').run(id);
+  unindexRow(db, 'citizens', id);
+  for (const a of attachments) unindexRow(db, 'attachments', a);
   return paths;
 }
 
@@ -280,6 +306,7 @@ export function addAttachment(
       input.dpi,
       input.sha256
     );
+  indexRow(db, 'attachments', Number(info.lastInsertRowid));
   return db
     .prepare(
       `SELECT id, citizen_id AS citizenId, doc_type AS docType, file_path AS filePath,
@@ -292,6 +319,7 @@ export function addAttachment(
 
 export function renameAttachment(db: Database, id: number, docType: string): void {
   db.prepare('UPDATE attachments SET doc_type = ? WHERE id = ?').run(docType, id);
+  indexRow(db, 'attachments', id);
 }
 
 export function setAttachmentOcr(
@@ -305,6 +333,7 @@ export function setAttachmentOcr(
     accuracy,
     id
   );
+  indexRow(db, 'attachments', id);
 }
 
 export function deleteAttachment(db: Database, id: number): string | null {
@@ -312,6 +341,7 @@ export function deleteAttachment(db: Database, id: number): string | null {
     | { p: string }
     | undefined;
   db.prepare('DELETE FROM attachments WHERE id = ?').run(id);
+  unindexRow(db, 'attachments', id);
   return row?.p ?? null;
 }
 

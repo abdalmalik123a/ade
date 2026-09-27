@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { renameField, unfield, type Doc, type Suggestion } from '@shared/doc';
 import { isLayoutEmpty } from '@shared/letterhead';
 import type { ImportChoices, ImportPlan } from '@shared/api';
+import { similarityBucket } from '@shared/learningKeys';
 import LetterheadView from './LetterheadView';
 
 export type ImportPlanDialogProps = {
@@ -152,6 +153,19 @@ export default function ImportPlanDialog({
   }
 
   function apply() {
+    // نسخةٌ نزع البرنامج اختيارها فأعادها الموظف: ليست نسخةً في عُرف هذا المكتب (ج١٣).
+    for (const g of plan.duplicates) {
+      for (const id of g.ids.slice(1)) {
+        if (accept.has(id)) {
+          void window.diwan.learning.record({
+            kind: 'duplicate',
+            input: similarityBucket(g.confidence),
+            suggested: 'copy',
+            chosen: 'keep'
+          });
+        }
+      }
+    }
     onApply(
       { ...plan, candidates: plan.candidates.map((c) => ({ ...c, doc: docs[c.id] ?? c.doc })) },
       {

@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { TemplateSummary } from '@shared/api';
+import { readyMessage } from '@shared/agenda';
 import {
   OPEN_STATUSES,
   STATUSES,
@@ -48,6 +49,11 @@ export type OrdersScreenProps = {
 };
 
 export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenProps) {
+  /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨). */
+  const [officeName, setOfficeName] = useState('');
+  useEffect(() => {
+    void window.diwan.settings.get().then((s) => setOfficeName(s.officeName ?? ''));
+  }, []);
   const [tab, setTab] = useState<'open' | 'delivered'>('open');
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState('');
@@ -162,6 +168,10 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
                         onEdit={() => setEditing(o)}
                         onMove={(s) => void move(o, s)}
                         onOpenDesign={() => onOpenDesign(o)}
+                        onCopyReady={() => {
+                          void navigator.clipboard.writeText(readyMessage(o, officeName));
+                          say(`نُسخت رسالة «طلبكم جاهز» لـ${o.customer} — الصقها في محادثته`);
+                        }}
                       />
                     ))}
                     {list.length === 0 && (
@@ -248,13 +258,16 @@ function OrderCard({
   today,
   onEdit,
   onMove,
-  onOpenDesign
+  onOpenDesign,
+  onCopyReady
 }: {
   order: Order;
   today: string;
   onEdit: () => void;
   onMove: (s: OrderStatus) => void;
   onOpenDesign: () => void;
+  /** رسالة «طلبكم جاهز» تُنسخ ليلصقها الموظف في واتساب الزبون — لا تُرسل من البرنامج. */
+  onCopyReady: () => void;
 }) {
   const due = dueLabel(order.dueDate, today);
   const info = statusOf(order.status);
@@ -306,6 +319,18 @@ function OrderCard({
           >
             <span className="material-symbols-outlined text-[16px]">draw</span>
             التصميم
+          </button>
+        )}
+        {order.status === 'ready' && (
+          <button
+            className="h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-secondary font-label-sm text-label-sm flex items-center gap-1"
+            data-act="copy-ready"
+            title="انسخ رسالةً للزبون: طلبكم جاهز — والصقها في محادثته"
+            type="button"
+            onClick={onCopyReady}
+          >
+            <span className="material-symbols-outlined text-[16px]">content_copy</span>
+            انسخ رسالة: طلبكم جاهز
           </button>
         )}
         {order.status !== 'waiting' && order.status !== 'ready' && (

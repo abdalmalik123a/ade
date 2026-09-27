@@ -28,7 +28,9 @@ import LetterSheet from '../components/LetterSheet';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
 import { derivedWords } from '@shared/tafqeet';
-import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
+import { useLearnedGenders } from '../lib/useLearnedGenders';
+import GenderReview from '../components/GenderReview';
 import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import SpellingPanel from '../components/SpellingPanel';
 import { isCombo, shortcut } from '@shared/shortcuts';
@@ -181,6 +183,10 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
   const needsGender = useMemo(() => loaded.some((l) => docHasChoices(l.doc)), [loaded]);
   /** اختاره الموظف بيده؟ فلا يغيّره الاقتراح بعدها. */
   const [genderByHand, setGenderByHand] = useState(false);
+  /** ما تعلّمه المكتب من التذكير والتأنيث — ويُضاف إليه ما يُجاب هنا (ج٤). */
+  const [learned, remember] = useLearnedGenders();
+  /** أسماء القائمة التي لم يُعرف جنسها — تُسأل قبل أن تُطبع الدفعة. */
+  const [genderReview, setGenderReview] = useState<{ names: string[]; print: boolean } | null>(null);
   const asPrinted = useCallback((v: Record<string, string>) => derivedWords(v, keys), [keys]);
   const effective = useMemo(() => asPrinted(values), [asPrinted, values]);
 
@@ -270,10 +276,10 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
   // الجنس يُقترح من الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة.
   useEffect(() => {
     if (!needsGender || genderByHand || !citizenName) return;
-    const guess = guessGender(citizenName);
+    const guess = guessGender(citizenName, learned);
     if (guess && values[GENDER_KEY] !== guess.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGender, genderByHand, citizenName]);
+  }, [needsGender, genderByHand, citizenName, learned]);
 
   /** حقل الاسم: عليه يدور الدمج، وبغيره لا معنى لقائمة أسماء. */
   const nameField = fields.find((f) => f.role === 'name') ?? null;
@@ -354,6 +360,12 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       );
       say(`صدرت ${out.documents.length} ورقة بمعاملة واحدة — ${out.documents[0]?.serial ?? ''}`);
       onIssued?.();
+      // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
+      const chosen = values[GENDER_KEY] as Gender | undefined;
+      const guessed = guessGender(citizenName, learned);
+      if (needsGender && genderByHand && chosen && (!guessed?.sure || guessed.gender !== chosen)) {
+        remember([{ name: citizenName, gender: chosen }]);
+      }
       // لا ملفّ له في السجل (لم يُختر ولم يدلّ عليه رقمه)؟ يُعرض حفظه قبل أن تُمحى الحقول.
       if (out.citizenId === null) offerToRegistry(out.transactionId);
       else setNewCitizen(null);
@@ -475,11 +487,21 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
     say(`استُؤنفت معاملة ${p.label}`);
   }
 
-  /** الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء. */
-  async function issueMerged(print: boolean) {
+  /**
+   * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء.
+   *
+   * ولكلّ اسمٍ جنسُه من اسمه — وما لم يُعرف يقينًا يُسأل عنه قبل الطباعة (ج٤)، فلا
+   * يخرج «الطالب رسل» تخمينًا. و`decided` ما أجاب عنه الموظف للتوّ.
+   */
+  async function issueMerged(print: boolean, decided: Record<string, Gender> = {}) {
     if (!settings || !nameField) return;
     if (rows.length === 0) {
       say('اكتب أسماء القائمة أولًا — سطرٌ لكل اسم', 'warn');
+      return;
+    }
+    const unsure = needsGender ? unsureNames(rows, learned, decided) : [];
+    if (unsure.length > 0) {
+      setGenderReview({ names: unsure, print });
       return;
     }
     setBusy(true);
@@ -487,8 +509,8 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       const all = await window.diwan.documents.issueBatch(
         rows.map((name) => {
           const rowValues = { ...values, [nameField.key]: name };
-          // ولكلّ اسمٍ في القائمة جنسُه من اسمه: «زينب» طالبةٌ و«أحمد» طالب.
-          const g = needsGender ? guessGender(name)?.gender : undefined;
+          // ولكلّ اسمٍ في القائمة جنسُه من اسمه: «زينب» طالبةٌ و«أحمد» طالب — وما سُئل عنه بجوابه.
+          const g = needsGender ? (decided[name] ?? guessGender(name, learned)?.gender) : undefined;
           if (g) rowValues[GENDER_KEY] = g;
           return {
             ...common(),
@@ -537,8 +559,15 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
   }, [loaded]);
 
   const current = loaded[Math.min(at, loaded.length - 1)];
-  /** ما يمنع الإصدار: حقلٌ إلزامي فارغ، أو دمجٌ بلا أسماء. */
-  const blocked = merge ? rows.length === 0 : missing.length > 0;
+  /**
+   * الجنس لم يُعرف يقينًا من الاسم ولم يختره الموظف: يُسأل قبل الطباعة (ج٤) —
+   * «ذكرٌ» صامتًا كان يُخرج «الطالب رسل».
+   */
+  const genderGuess = needsGender && citizenName ? guessGender(citizenName, learned) : null;
+  const genderUnsure = !merge && needsGender && !genderByHand && genderGuess !== null && !genderGuess.sure;
+
+  /** ما يمنع الإصدار: حقلٌ إلزامي فارغ، أو جنسٌ لم يُحسم، أو دمجٌ بلا أسماء. */
+  const blocked = merge ? rows.length === 0 : missing.length > 0 || genderUnsure;
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
@@ -1042,10 +1071,28 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                 <span className="font-label-md text-label-md text-on-surface">
                   {rows.length * loaded.length} ورقة لـ{rows.length} اسمًا
                 </span>
+              ) : missing.length > 0 ? (
+                <span className="font-label-md text-label-md text-error">
+                  {missing.length} حقلًا إلزاميًّا فارغًا
+                </span>
               ) : (
-                missing.length > 0 && (
-                  <span className="font-label-md text-label-md text-error">
-                    {missing.length} حقلًا إلزاميًّا فارغًا
+                genderUnsure && (
+                  <span className="flex items-center gap-space-xs font-label-md text-label-md text-error" data-gender-unsure="">
+                    «{citizenName.split(/\s+/)[0]}»: ذكرٌ أم أنثى؟
+                    {(['ذكر', 'أنثى'] as const).map((g) => (
+                      <button
+                        key={g}
+                        className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                        data-gender-choose={g}
+                        type="button"
+                        onClick={() => {
+                          setGenderByHand(true);
+                          setValues((prev) => ({ ...prev, [GENDER_KEY]: g }));
+                        }}
+                      >
+                        {g}
+                      </button>
+                    ))}
                   </span>
                 )
               )}
@@ -1101,6 +1148,20 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       </div>
 
       {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
+
+      {genderReview && (
+        <GenderReview
+          learned={learned}
+          names={genderReview.names}
+          onCancel={() => setGenderReview(null)}
+          onDone={(decisions) => {
+            const print = genderReview.print;
+            setGenderReview(null);
+            remember(Object.entries(decisions).map(([name, gender]) => ({ name, gender })));
+            void issueMerged(print, decisions);
+          }}
+        />
+      )}
 
       <WhatsAppPasteDialog
         isOpen={pasteOpen}

@@ -82,7 +82,7 @@ export default function Sidebar({
     {
       key: 'archive',
       icon: 'inventory_2',
-      label: 'سجل المعاملات والأرشيف',
+      label: 'الأرشيف والبحث',
       badge: { text: `اليوم ${counts.issuedToday}` }
     },
     { key: 'citizens', icon: 'badge', label: 'سجل المواطنين والمستمسكات' }
@@ -106,7 +106,7 @@ export default function Sidebar({
   ];
 
   const tools: NavItem[] = [
-    { key: 'search', icon: 'manage_search', label: 'البحث والتقارير الدورية' },
+    { key: 'audit', icon: 'verified_user', label: 'سجلّ التدقيق وسلامة الأرشيف' },
     { key: 'settings', icon: 'settings', label: 'الإعدادات' }
   ];
 

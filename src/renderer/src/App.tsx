@@ -15,12 +15,18 @@ import OrdersScreen from './screens/OrdersScreen';
 import ClientsScreen from './screens/ClientsScreen';
 import PhotosScreen from './screens/PhotosScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
-import SearchScreen from './screens/SearchScreen';
+import AuditScreen from './screens/AuditScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ResumePrintDialog from './components/ResumePrintDialog';
+import TodayPanel from './components/TodayPanel';
+import { agendaHasItems } from '@shared/agenda';
+import type { TodayAgenda } from '@shared/api';
+
+/** يومُ آخر عرضٍ لـ«ما ينتظرك اليوم» — تفضيلٌ لهذا الجهاز لا بيانات. */
+const TODAY_SEEN = 'diwan.todaySeen';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
 /** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
@@ -55,6 +61,8 @@ export default function App() {
     void window.diwan.ui.info().then((i) => setVersion(i.version));
   }, []);
   const [search, setSearch] = useState('');
+  /** ملفّ مواطنٍ يُفتح من البحث الشامل. */
+  const [citizenFocus, setCitizenFocus] = useState<{ key: number; citizenId: number } | null>(null);
   const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
   /** ما تُفتح به التصاميم من غيرها: تصميم طلبٍ بقائمته، أو المعرض على جهة. */
   const [designRequest, setDesignRequest] = useState<DesignRequest | null>(null);
@@ -89,6 +97,38 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /**
+   * «ما ينتظرك اليوم» (د٧): مرّةً في اليوم عند الإقلاع، بعد معالج البداية، وإن كان
+   * فيه ما يُقال. والطباعة المنقطعة لها حوارها — فتُترك اللوحة إلى إقلاعٍ بعده.
+   */
+  const [agenda, setAgenda] = useState<TodayAgenda | null>(null);
+  const onboarded = settings?.onboarded ?? false;
+  useEffect(() => {
+    if (!onboarded) return;
+    const day = new Date().toLocaleDateString('en-CA');
+    let seen: string | null = null;
+    try {
+      seen = localStorage.getItem(TODAY_SEEN);
+    } catch {
+      // التخزين راحةٌ لا شرط: بغيره تُعرض اللوحة، وتُغلق بضغطة.
+    }
+    if (seen === day) return;
+    void window.diwan.today
+      .agenda()
+      .then((a) => {
+        if (agendaHasItems(a) && a.pendingPrints.length === 0) setAgenda(a);
+      })
+      .catch(() => undefined);
+  }, [onboarded]);
+  const closeAgenda = () => {
+    setAgenda(null);
+    try {
+      localStorage.setItem(TODAY_SEEN, new Date().toLocaleDateString('en-CA'));
+    } catch {
+      // انظر أعلاه.
+    }
+  };
 
   // العدّادات تتغيّر بإصدار كتاب أو إضافة نموذج.
   const navigate = useCallback(
@@ -186,13 +226,20 @@ export default function App() {
       case 'archive':
         return (
           <ArchiveScreen
+            query={search}
             onOpenInEditor={(id) => void repeatDocument(id)}
+            onOpenCitizen={(id) => {
+              setCitizenFocus({ key: Date.now(), citizenId: id });
+              navigate('citizens');
+            }}
+            onOpenTemplate={(id) => openEditor({ templateId: id })}
             onChanged={() => void refresh()}
           />
         );
       case 'citizens':
         return (
           <CitizensScreen
+            focus={citizenFocus}
             printer={selectedPrinter}
             onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
             onChanged={() => void refresh()}
@@ -213,7 +260,13 @@ export default function App() {
           <OrdersScreen
             onChanged={() => void refresh()}
             onOpenDesign={(order) => {
-              setDesignRequest({ key: Date.now(), templateId: order.templateId ?? undefined, batchText: order.batchText, clientId: order.clientId ?? undefined });
+              setDesignRequest({
+                key: Date.now(),
+                templateId: order.templateId ?? undefined,
+                batchText: order.batchText,
+                clientId: order.clientId ?? undefined,
+                order: { id: order.id, title: order.title }
+              });
               navigate('designs');
             }}
           />
@@ -232,8 +285,15 @@ export default function App() {
         );
       case 'letterhead':
         return <LetterheadScreen />;
-      case 'search':
-        return <SearchScreen query={search} />;
+      case 'audit':
+        return (
+          <AuditScreen
+            onOpenSerial={(serial) => {
+              setSearch(serial);
+              navigate('archive');
+            }}
+          />
+        );
       case 'settings':
         return <SettingsScreen onChanged={() => void refresh()} />;
     }
@@ -274,7 +334,8 @@ export default function App() {
           search={search}
           onSearch={(value) => {
             setSearch(value);
-            if (value.trim() && route !== 'search') navigate('search');
+            // البحث الشامل يصل إلى الأرشيف — وفيه الكتب، ومعها المواطن والنموذج والمستمسك.
+            if (value.trim() && route !== 'archive') navigate('archive');
           }}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           context={
@@ -332,6 +393,10 @@ export default function App() {
 
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
+
+      {agenda && (
+        <TodayPanel agenda={agenda} officeName={settings?.officeName ?? ''} onClose={closeAgenda} onNavigate={navigate} />
+      )}
 
     </>
   );

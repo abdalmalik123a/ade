@@ -9,6 +9,8 @@
  * واللاحقة بالتطويل («ـه|ـها») تلتصق بالكلمة قبلها: «تأييد{ـه|ـها}» ← «تأييدها».
  */
 
+import { normalizeFold } from './arabic';
+
 /** اسم القيمة التي تحمل الجنس في كل ورقة: «ذكر» أو «أنثى». */
 export const GENDER_KEY = 'الجنس';
 
@@ -58,35 +60,105 @@ const FEMALE = new Set(
   ).split(/\s+/)
 );
 
-/** رجالٌ بأسماءٍ على هيئة المؤنّث — فلا تغلبهم اللاحقة. */
+/**
+ * أسماء رجالٍ شائعة في العراق — يقينًا لا اقتراحًا.
+ *
+ * وكانت القائمة رجالًا على هيئة المؤنّث وحدهم (حمزة، علاء، مصطفى)، و«أحمد» و«محمد»
+ * «ذكرٌ بلا يقين». فلمّا صار ما لا يقين فيه يُسأل قبل الطباعة (ج٤) كان كل صفٍّ من
+ * ثلاثين يُسأل عن أولاده جميعًا. فالشائع هنا، والنادر يُسأل مرّةً ويُحفظ جوابه.
+ */
 const MALE = new Set(
   (
+    // على هيئة المؤنّث — فلا تغلبهم اللاحقة
     'حمزة حمزه طلحة اسامة أسامة عبيدة معاوية قتيبة حذيفة عكرمة عطية علاء ضياء بهاء رضا زكريا ' +
-    'مصطفى مرتضى مجتبى موسى عيسى يحيى مثنى هادي علي'
+    'مصطفى مرتضى مجتبى موسى عيسى يحيى مثنى هادي علي ' +
+    // الشائع
+    'محمد أحمد احمد محمود حامد حميد حمود حسن حسين حسان حسام عباس جعفر كاظم كريم جاسم قاسم ' +
+    'منتظر مهدي صادق باقر جواد يوسف يعقوب إبراهيم ابراهيم إسماعيل اسماعيل نوح آدم ادم سليم سالم ' +
+    'سعد سعيد سعدون ماجد مجيد رشيد خالد وليد فراس فارس ياسر ياسين عمار عمر عثمان زيد زياد سيف ليث ' +
+    'حيدر كرار أمير امير منير نبيل جميل جمال كمال عادل عدنان عماد فاضل فيصل ناصر منصور أسعد اسعد ' +
+    'ثامر ثائر رعد صلاح فلاح طارق مهند مؤيد مؤمن سجاد همام عصام هشام بشار بشير مازن مالك مراد مصعب ' +
+    'نزار هاني هيثم وائل يزن يونس غسان غانم غازي فؤاد قصي لؤي معتز منذر ميثم نادر ناظم نجم نعمان نوري ' +
+    'هاشم هلال وحيد رائد رامي رياض زهير سامر سامي ستار سلمان شاكر شهاب طه ظافر عامر عقيل علوان عمران ' +
+    'غيث فالح فرحان قحطان كامل لطيف ماهر محسن مشتاق مظفر معاذ جبار عبود عدي قيس أيمن ايمن أنس انس ' +
+    'أيوب ايوب إدريس ادريس داود سليمان عبدالله عبدالرحمن رسول سرمد ضرغام'
   ).split(/\s+/)
 );
+
+/**
+ * اللقب يحسم: «الطالبة» و«السيدة» أنثى، و«السيد» و«الطالب» ذكر — كتبه الموظف بنفسه.
+ * وما لا يُذكّر ولا يؤنّث («الدكتور» يُقال للاثنين في بعض الكتب) لا يحسم.
+ */
+const FEMALE_TITLE = /^(السيدة|الست|الآنسة|الانسة|الطالبة|التلميذة|الأستاذة|الاستاذة|الدكتورة|الحاجة|المرحومة)$/;
+const MALE_TITLE = /^(السيد|الطالب|التلميذ|الأستاذ|الاستاذ|الحاج|المرحوم)$/;
+
+const MALE_FOLDED = new Set([...MALE].map((n) => normalizeFold(n)));
+const FEMALE_FOLDED = new Set([...FEMALE].map((n) => normalizeFold(n)));
 
 const TITLES = /^(السيد|السيدة|الست|الآنسة|الانسة|الطالب|الطالبة|التلميذ|التلميذة|الأستاذ|الاستاذ|الأستاذة|الاستاذة|الدكتور|الدكتورة|الحاج|الحاجة|المرحوم|المرحومة)$/;
 
 /**
+ * مفتاح الاسم فيما تعلّمه المكتب (ج٤): الاسم الأوّل بعد اللقب، مطويًّا — «رُسُل» و«رسل»
+ * واحد. و«عبد الله» و«أم البنين» كلمتان تُحفظان معًا.
+ */
+export function firstNameKey(fullName: string): string | null {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  const at = words.findIndex((w) => !TITLES.test(w));
+  if (at < 0) return null;
+  const first = words[at]!;
+  const pair = /^(عبد|أم|ام)$/.test(first) && words[at + 1] ? `${first} ${words[at + 1]}` : first;
+  return normalizeFold(pair);
+}
+
+/** ما تعلّمه المكتب: مفتاح الاسم ← جنسه (services/genderMemory.ts). */
+export type LearnedGenders = Record<string, Gender>;
+
+/**
  * اقتراح الجنس من الاسم الأول — للمراجعة لا للحكم.
  *
- * قائمة الأسماء أولًا، ثم اللاحقة: ما انتهى بتاءٍ مربوطة أو «اء» أو ألفٍ مقصورة
- * أنثى في الغالب، إلا أسماء رجالٍ معروفة (حمزة، علاء، مصطفى). ويعود «ذكر» لما
- * سوى ذلك مع `sure: false`، والموظف يقلبه بضغطة.
+ * ما تعلّمه المكتب أولًا (سُئل عنه فأجاب)، ثم قائمة الأسماء، ثم اللاحقة: ما انتهى
+ * بتاءٍ مربوطة أو «اء» أو ألفٍ مقصورة أنثى في الغالب، إلا أسماء رجالٍ معروفة (حمزة،
+ * علاء، مصطفى). ويعود «ذكر» لما سوى ذلك مع `sure: false` — فيُسأل عنه قبل الطباعة.
  */
-export function guessGender(fullName: string): { gender: Gender; sure: boolean } | null {
+export function guessGender(
+  fullName: string,
+  learned: LearnedGenders = {}
+): { gender: Gender; sure: boolean; learned?: boolean } | null {
+  const key = firstNameKey(fullName);
+  if (key && learned[key]) return { gender: learned[key]!, sure: true, learned: true };
   const words = fullName.trim().split(/\s+/).filter(Boolean);
+  const title = words.find((w) => TITLES.test(w));
   let first = words.find((w) => !TITLES.test(w));
   if (!first) return null;
+  if (title && FEMALE_TITLE.test(title)) return { gender: 'أنثى', sure: true };
+  if (title && MALE_TITLE.test(title)) return { gender: 'ذكر', sure: true };
   // «عبد الله» و«أم البنين» كلمتان.
   if (/^(أم|ام)$/.test(first)) return { gender: 'أنثى', sure: true };
   if (/^(عبد|عبد)$/.test(first)) return { gender: 'ذكر', sure: true };
   first = first.replace(/[ًٌٍَُِّْ]/g, '');
-  if (MALE.has(first)) return { gender: 'ذكر', sure: true };
-  if (FEMALE.has(first)) return { gender: 'أنثى', sure: true };
+  // القائمتان مطويّتان (الهمزة والتاء المربوطة): «احمد» و«أحمد» واحد.
+  const folded = normalizeFold(first);
+  if (MALE_FOLDED.has(folded)) return { gender: 'ذكر', sure: true };
+  if (FEMALE_FOLDED.has(folded)) return { gender: 'أنثى', sure: true };
   if (/(ة|اء|ى)$/.test(first)) return { gender: 'أنثى', sure: false };
   return { gender: 'ذكر', sure: false };
+}
+
+/**
+ * الأسماء التي لم يُعرف جنسها يقينًا — تُسأل قبل الطباعة (ج٤، المبدأ ٥: لا تخمين).
+ * وما حُسم لها (`decided`) أو عُرف من المكتب لا يُسأل عنه. بلا تكرار، بترتيبها.
+ */
+export function unsureNames(names: string[], learned: LearnedGenders = {}, decided: Record<string, Gender> = {}): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const name of names) {
+    const n = name.trim();
+    if (!n || seen.has(n) || decided[n]) continue;
+    seen.add(n);
+    const g = guessGender(n, learned);
+    if (g && !g.sure) out.push(n);
+  }
+  return out;
 }
 
 /**

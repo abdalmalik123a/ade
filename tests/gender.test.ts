@@ -22,8 +22,14 @@ describe('التذكير والتأنيث', () => {
     expect(guessGender('مريم عادل')).toEqual({ gender: 'أنثى', sure: true });
     expect(guessGender('حمزة كريم')).toEqual({ gender: 'ذكر', sure: true });
     expect(guessGender('مصطفى جاسم')).toEqual({ gender: 'ذكر', sure: true });
-    expect(guessGender('الطالبة رفيدة سالم')).toEqual({ gender: 'أنثى', sure: false });
-    expect(guessGender('أحمد عادل')).toEqual({ gender: 'ذكر', sure: false });
+    // اللقب يحسم: كتبه الموظف بنفسه
+    expect(guessGender('الطالبة رفيدة سالم')).toEqual({ gender: 'أنثى', sure: true });
+    expect(guessGender('رفيدة سالم')).toEqual({ gender: 'أنثى', sure: false });
+    // والشائع يقين — وإلا سُئل عن كل ولدٍ في الصف (ج٤)
+    expect(guessGender('أحمد عادل')).toEqual({ gender: 'ذكر', sure: true });
+    expect(guessGender('احمد عادل')).toEqual({ gender: 'ذكر', sure: true });
+    // والنادر بلا يقين: يُسأل مرّةً ويُحفظ
+    expect(guessGender('غسق عادل')).toEqual({ gender: 'ذكر', sure: false });
     expect(guessGender('')).toBeNull();
   });
 });

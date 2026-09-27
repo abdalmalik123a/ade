@@ -23,7 +23,8 @@ import { docText, emptyDoc, isDateField, makeField, pageMm, paragraph, type Doc,
 import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import { CORE_FIELDS, FIELD_GROUPS, type CatalogField } from '@shared/letterFields';
 import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
-import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, type Gender } from '@shared/gender';
+import { useLearnedGenders } from '../lib/useLearnedGenders';
 import { docSpelling, fixDocSpelling } from '@shared/spelling';
 import { countInDoc, replaceInDoc } from '@shared/findReplace';
 import { NO_REGISTRY, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
@@ -90,6 +91,8 @@ function EditorScreen(
   /** اسم صاحب العلاقة حين لا حقل للاسم على الورقة — للأرشيف وحده. */
   const [owner, setOwner] = useState('');
   const [genderByHand, setGenderByHand] = useState(false);
+  /** ما تعلّمه المكتب من التذكير والتأنيث (ج٤). */
+  const [learned, remember] = useLearnedGenders();
 
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [trial, setTrial] = useState(false);
@@ -275,10 +278,10 @@ function EditorScreen(
   const needsGender = useMemo(() => docHasChoices(doc), [doc]);
   useEffect(() => {
     if (!needsGender || genderByHand || !ownerName) return;
-    const g = guessGender(ownerName);
+    const g = guessGender(ownerName, learned);
     if (g && values[GENDER_KEY] !== g.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: g.gender }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGender, genderByHand, ownerName]);
+  }, [needsGender, genderByHand, ownerName, learned]);
 
   const keys = useMemo(() => doc.fields.map((f) => f.key), [doc.fields]);
   /** القيم كما تُطبع: ما كُتب، وحقول «كتابةً» الفارغة من أرقامها. */
@@ -367,9 +370,12 @@ function EditorScreen(
         registryPrinted: asksLetterNumber(headLayout),
         number: registry.number,
         headRatio: measure.headRatio,
-        pages: measure.pages
+        pages: measure.pages,
+        genderUnsure: needsGender && !genderByHand && ownerName && guessGender(ownerName, learned)?.sure === false
+          ? ownerName.trim().split(/\s+/)[0] ?? ownerName
+          : null
       }),
-    [doc, effective, ownerName, spelling.length, headLayout, registry.number, measure]
+    [doc, effective, ownerName, spelling.length, headLayout, registry.number, measure, needsGender, genderByHand, learned]
   );
   const blocked = checks.some((c) => c.level === 'block');
 
@@ -481,6 +487,12 @@ function EditorScreen(
       setIssued(outcome);
       setIssueOpen(false);
       dirty.current = false;
+      // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
+      const chosen = values[GENDER_KEY] as Gender | undefined;
+      const guessed = guessGender(ownerName, learned);
+      if (needsGender && genderByHand && chosen && (!guessed?.sure || guessed.gender !== chosen)) {
+        remember([{ name: ownerName, gender: chosen }]);
+      }
       if (draft !== null) {
         await window.diwan.drafts.delete(draft);
         setDraft(null);
@@ -844,6 +856,21 @@ function EditorScreen(
                       راجعه
                     </button>
                   )}
+                  {c.act === 'gender' &&
+                    (['ذكر', 'أنثى'] as const).map((g) => (
+                      <button
+                        key={g}
+                        className="text-secondary font-semibold hover:underline"
+                        data-gender-choose={g}
+                        type="button"
+                        onClick={() => {
+                          setGenderByHand(true);
+                          setValue(GENDER_KEY, g);
+                        }}
+                      >
+                        {g}
+                      </button>
+                    ))}
                 </li>
               ))}
             </ul>

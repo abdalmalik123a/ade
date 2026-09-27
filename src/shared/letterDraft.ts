@@ -140,8 +140,8 @@ export type Check = {
   /** `block` يمنع الإصدار، و`warn` يُقال ولا يمنع، و`info` معلومة. */
   level: 'block' | 'warn' | 'info';
   text: string;
-  /** زرٌّ يصلحه — الإملاء يفتح لوحته. */
-  act?: 'spelling';
+  /** زرٌّ يصلحه — الإملاء يفتح لوحته، والجنس يُختار في مكانه. */
+  act?: 'spelling' | 'gender';
 };
 
 /**
@@ -179,6 +179,8 @@ export function letterChecks(input: {
   /** نسبة ارتفاع الترويسة من الصفحة (٠..١) — أو لا قياس بعد. */
   headRatio: number | null;
   pages: number | null;
+  /** اسمٌ لم يُعرف جنسه يقينًا والورقة تُذكّر وتؤنّث — يُسأل قبل الإصدار (ج٤). */
+  genderUnsure?: string | null;
 }): Check[] {
   const { doc, values } = input;
   const checks: Check[] = [];
@@ -186,6 +188,13 @@ export function letterChecks(input: {
   if (!docText(doc).trim()) checks.push({ level: 'block', text: 'الورقة فارغة — لا يصدر كتابٌ بلا متن' });
   for (const f of missingRequired(doc, values)) {
     if (!isChoiceKey(f.key)) checks.push({ level: 'block', text: `«${f.label}» إلزاميٌّ وفارغ` });
+  }
+  if (input.genderUnsure) {
+    checks.push({
+      level: 'block',
+      text: `«${input.genderUnsure}»: ذكرٌ أم أنثى؟ — الورقة تطبع «الطالب» أو «الطالبة» بحسبه، والاسم لا يكفي`,
+      act: 'gender'
+    });
   }
 
   const text = docText(doc, values);

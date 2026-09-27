@@ -29,6 +29,8 @@ export type OfficeSettings = {
    * يُشعلها ويُطفئها من الإعدادات.
    */
   basmala: boolean | null;
+  /** آخر نسخةٍ احتياطية (ISO) — «آخر نسخة منذ…» ويُذكَّر بها إن طالت. */
+  lastBackupAt: string | null;
 };
 
 export type SidebarCounts = {
@@ -59,6 +61,9 @@ export type DocumentRow = {
   issuedDate: string;
   copies: number;
   fee: number;
+  /** `issued` أو `void` — والمُبطَل يبقى في الأرشيف برقمه وسببه. */
+  status: string;
+  voidReason: string | null;
 };
 
 /** الكتاب كاملًا — لإعادة الطباعة والتدقيق وفتحه في المحرر من جديد. */
@@ -85,6 +90,72 @@ export type DocumentDetail = {
   status: string;
   /** مجموع ما طُبع فعلًا: الإصدار الأول وكل إعادة طباعة. */
   printedCopies: number;
+  voidReason: string | null;
+  voidedAt: string | null;
+  voidedBy: string | null;
+};
+
+/** قيدٌ من سجلّ التدقيق: من فعل ماذا ومتى. */
+export type AuditEntry = {
+  id: number;
+  entity: string;
+  entityId: number | null;
+  action: string;
+  detail: string | null;
+  operator: string | null;
+  at: string;
+  /** رقم الصادر إن كان القيد لكتاب — ليُعرف بلا فتحه. */
+  serial: string | null;
+};
+
+/**
+ * «تحقّق من سلامة الأرشيف»: كل كتابٍ تُعاد بصمته من متنه، وتُعاد السلسلة من أوّلها.
+ * فالمتن المعدَّل بعد صدوره يُكشف، والكتاب المحذوف أو المُقحَم يكسر السلسلة.
+ */
+export type ArchiveCheck = {
+  checked: number;
+  problems: { id: number | null; serial: string; kind: 'content' | 'chain' | 'gap'; text: string }[];
+  /** بصمة آخر السلسلة — من يحتفظ بها يثبت بها أرشيفه كلّه. */
+  head: string | null;
+};
+
+/** طلبٌ في «ما ينتظرك اليوم» — ما يُعرض ويُنسخ في رسالته. */
+export type AgendaOrder = { id: number; customer: string; title: string; dueDate: string | null; phone: string | null };
+
+/** «ما ينتظرك اليوم» عند الإقلاع (د٧). */
+export type TodayAgenda = {
+  overdue: AgendaOrder[];
+  dueToday: AgendaOrder[];
+  /** جاهزةٌ تنتظر أصحابها — ومعها «انسخ رسالة: طلبكم جاهز» (د٨). */
+  ready: AgendaOrder[];
+  drafts: number;
+  /** طباعةٌ انقطعت: ما أُرسل من أوراقها ومجموعها. */
+  pendingPrints: { id: string; label: string; sent: number; total: number }[];
+  lastBackupAt: string | null;
+  /** مضى أسبوعٌ بلا نسخة (أو لم تُؤخذ قطّ) وفي الأرشيف كتب. */
+  backupDue: boolean;
+};
+
+/** ما في النسخة الاحتياطية — يُعرض قبل أن يوافق المكتب على استرجاعها. */
+export type BackupSummary = {
+  /** `integrity_check` قال «ok». */
+  ok: boolean;
+  integrity: string;
+  documents: number;
+  citizens: number;
+  templates: number;
+  /** ملفّات المخزن: المستمسكات والصور والشعارات ونسخ PDF. */
+  files: number;
+  /** آخر كتابٍ صدر فيها — إلى أين تصل. */
+  lastIssuedAt: string | null;
+};
+
+/** البحث الشامل فيما سوى الكتب — والكتب في الأرشيف نفسه بمدّتها. */
+export type SearchHits = {
+  query: string;
+  citizens: CitizenSummary[];
+  templates: { id: number; title: string; category: string | null; issuing: string }[];
+  attachments: { id: number; citizenId: number; citizenName: string; docType: string; snippet: string }[];
 };
 
 /**
@@ -167,7 +238,7 @@ export type IssueOutcome = {
   archiveError?: string;
 };
 
-/** مؤشرات مدة زمنية — شاشة البحث والتقارير الدورية. */
+/** مؤشرات مدة زمنية — سطر أرقام المدّة في الأرشيف، وتقرير Excel. */
 export type PeriodStats = {
   issued: number;
   revenue: number;
@@ -557,7 +628,7 @@ export type DiwanApi = {
     }): Promise<DocumentRow[]>;
     stats(opts?: { from?: string | null; to?: string | null }): Promise<PeriodStats>;
     /** إعادة طباعة طبق الأصل — تُقيَّد ولا تستهلك رقمًا جديدًا. */
-    reprint(ids: number[], copies: number): Promise<{ printed: number; failed: number }>;
+    reprint(ids: number[], copies: number): Promise<{ printed: number; failed: number; voided: number }>;
     /** تصدير الكتاب PDF إلى مكان يختاره المكتب. */
     exportPdf(id: number): Promise<string | null>;
     /** تقرير المدة جدولًا في Excel — العنوان يظهر في ورقة المؤشرات. */
@@ -569,6 +640,35 @@ export type DiwanApi = {
     }): Promise<{ path: string; count: number } | null>;
     /** نسخة احتياطية كاملة لقاعدة البيانات ومخزن الملفات. */
     backup(): Promise<{ path: string; bytes: number } | null>;
+    /** إبطال كتابٍ صادر بسببه: يبقى برقمه وبصمته، ولا يُعاد طبعه. */
+    void(id: number, reason: string, operator: string | null): Promise<DocumentDetail | null>;
+    /** سلسلة البصمات وبصمة كل كتاب من متنه — من أوّل الأرشيف إلى آخره. */
+    verify(): Promise<ArchiveCheck>;
+  };
+  /** سجلّ التدقيق: من أصدر ومن أعاد الطباعة ومن أبطل، ومتى. */
+  audit: {
+    list(opts?: { entity?: string | null; documentId?: number | null; query?: string; limit?: number }): Promise<AuditEntry[]>;
+  };
+  /** البحث الشامل فيما سوى الكتب: المواطنون والنماذج ونصّ المستمسكات. */
+  search: {
+    others(query: string): Promise<SearchHits>;
+  };
+  /** «ما ينتظرك اليوم» (د٧). */
+  today: {
+    agenda(): Promise<TodayAgenda>;
+  };
+  /** التذكير والتأنيث: ما أجاب عنه المكتب لأسماءٍ لم يُعرف جنسها (ج٤). */
+  gender: {
+    learned(): Promise<Record<string, 'ذكر' | 'أنثى'>>;
+    learn(answers: { name: string; gender: 'ذكر' | 'أنثى' }[]): Promise<number>;
+  };
+  /** النسخ الاحتياطي واسترجاعه (د١) — والتشفير بكلمة مرورٍ لا تُحفظ. */
+  backup: {
+    create(password?: string | null): Promise<{ path: string; bytes: number; encrypted: boolean } | null>;
+    pick(): Promise<{ path: string; encrypted: boolean } | null>;
+    inspect(path: string, password?: string | null): Promise<BackupSummary>;
+    /** يستبدل بيانات المكتب بالنسخة؛ وما كان يُنقل جانبًا إلى `aside`. ثم تُعاد الواجهة. */
+    restore(path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
   };
   templates: {
     /** `issuing` يفصل مكتبة الكتب عن أوراق الأسئلة — والأصل الكتب. */
@@ -603,6 +703,17 @@ export type DiwanApi = {
       byKind: { kind: string; count: number }[];
       habits: number;
     }>;
+    /** ما اعتاده المكتب لمدخلٍ بعينه — بثقته وسببه، أو عدم. */
+    suggest(kind: 'letterheadEdge' | 'category' | 'duplicate', input: string): Promise<Suggestion<string> | null>;
+    /** يقيّد تصحيحًا — ولا يقيّد موافقة (ما اختير = ما اقتُرح). */
+    record(c: {
+      kind: 'letterheadEdge' | 'category' | 'duplicate';
+      input: string;
+      suggested: string | null;
+      chosen: string;
+    }): Promise<boolean>;
+    /** تصنيف النموذج من عنوانه: من نماذج المكتب المصنَّفة، وما صحّحه. */
+    category(title: string): Promise<Suggestion<string> | null>;
   };
   drafts: {
     list(): Promise<DraftRow[]>;

@@ -59,7 +59,9 @@ import { drawCode, impose, parseCardList, planSheets, renderPlan } from '@shared
 import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
 import { derivedWords } from '@shared/tafqeet';
 import { nameKeyOf } from '@shared/batch';
-import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
+import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
+import { useLearnedGenders } from '../lib/useLearnedGenders';
+import GenderReview from '../components/GenderReview';
 import { errorText } from '../lib/errors';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
@@ -122,7 +124,14 @@ const kindName = (el: CanvasElement): string => {
  * ما تُفتح به الشاشة من غيرها: تصميمُ طلبٍ بقائمته، أو المعرضُ على جهة.
  * و`key` يتغيّر مع كل طلب — فيُفتح ثانيةً ولو كان الطلب نفسه.
  */
-export type DesignRequest = { key: number; templateId?: number; batchText?: string | null; clientId?: number };
+export type DesignRequest = {
+  key: number;
+  templateId?: number;
+  batchText?: string | null;
+  clientId?: number;
+  /** الطلب الذي فُتح منه التصميم — فإذا طُبع صار الطلب «جاهزًا للتسليم» (د٨). */
+  order?: { id: number; title: string };
+};
 
 export type DesignsScreenProps = {
   printer: PrinterInfo | null;
@@ -141,6 +150,8 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [guides, setGuides] = useState<Guide[]>([]);
   const [copies, setCopies] = useState(1);
   const [designId, setDesignId] = useState<number | null>(null);
+  /** الطلب الذي تُطبع له هذه الدفعة — ما دام التصميم تصميمَه. */
+  const [linkedOrder, setLinkedOrder] = useState<{ id: number; title: string; templateId: number } | null>(null);
   const [designs, setDesigns] = useState<TemplateSummary[]>([]);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -154,6 +165,12 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   /** صفوف الدفعة — وبغيرها تُطبع البطاقة بقيمها المكتوبة، نسخًا. */
   const [batchRows, setBatchRows] = useState<Record<string, string>[]>([]);
+  /** التذكير والتأنيث في الدفعة (ج٤): ما تعلّمه المكتب، وما أجاب عنه الموظف لهذه القائمة. */
+  const [learned, remember] = useLearnedGenders();
+  const [genderDecisions, setGenderDecisions] = useState<Record<string, Gender>>({});
+  /** ما يُنتظر بعد أن تُحسم الأسماء: الطباعة أو PDF. */
+  const [genderReview, setGenderReview] = useState<'print' | 'pdf' | null>(null);
+  const [afterReview, setAfterReview] = useState<'print' | 'pdf' | null>(null);
   const [sheetsOpen, setSheetsOpen] = useState(false);
   /** قائمةٌ جاءت مع طلب، ومفتاحٌ يعيد بناء لوح الدفعة بها. */
   const [batchSeed, setBatchSeed] = useState('');
@@ -645,12 +662,25 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
     ).map((card) => {
       const out = derivedWords(card, keys);
       if (nameKey && !out[GENDER_KEY] && out[nameKey]) {
-        const g = guessGender(out[nameKey]!);
-        if (g) out[GENDER_KEY] = g.gender;
+        const name = out[nameKey]!.trim();
+        const g = genderDecisions[name] ?? guessGender(name, learned)?.gender;
+        if (g) out[GENDER_KEY] = g;
       }
       return out;
     });
-  }, [batchRows, copies, values, doc]);
+  }, [batchRows, copies, values, doc, learned, genderDecisions]);
+
+  /**
+   * أسماء القائمة التي لم يُعرف جنسها يقينًا — ولا عمود «الجنس» يحسمها. تُسأل قبل
+   * الطباعة (ج٤): «ذكرٌ» صامتًا كان يُخرج «الطالب رسل» في شهادةٍ لطالبة.
+   */
+  const unsureBatch = useMemo(() => {
+    if (!batchRows.length || !docHasChoices(doc)) return [];
+    const nameKey = nameKeyOf(doc.fields.map((f) => f.key));
+    if (!nameKey) return [];
+    const names = batchRows.filter((r) => !r[GENDER_KEY]?.trim()).map((r) => r[nameKey] ?? '');
+    return unsureNames(names, learned, genderDecisions);
+  }, [batchRows, doc, learned, genderDecisions]);
 
   /**
    * أوراق الطباعة بالملّم الحقيقي (٩٦ نقطة/إنش في CSS = الملّم على الورق).
@@ -695,8 +725,17 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
    */
   const [lowRes, setLowRes] = useState<PreflightIssue[]>([]);
   const issues = useMemo(
-    () => (sheetsOpen ? [...designPreflight(canvas, batchRows.length ? cards : []), ...lowRes] : []),
-    [sheetsOpen, canvas, cards, batchRows.length, lowRes]
+    () =>
+      sheetsOpen
+        ? [
+            ...designPreflight(canvas, batchRows.length ? cards : []),
+            ...lowRes,
+            ...(unsureBatch.length
+              ? [{ level: 'warn' as const, text: `${unsureBatch.length} اسمًا لم يُعرف جنسه من اسمه — يُسأل عنه قبل الطباعة` }]
+              : [])
+          ]
+        : [],
+    [sheetsOpen, canvas, cards, batchRows.length, lowRes, unsureBatch.length]
   );
   useEffect(() => {
     if (!sheetsOpen) return;
@@ -754,9 +793,19 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
         duplex: Boolean(backDoc)
       });
       const sheets = backDoc ? pages.length / 2 : pages.length;
+      // الطلب يتبع الطباعة (د٨): طُبعت دفعته كلّها فصار جاهزًا للتسليم — ويُقال ذلك.
+      let orderNote = '';
+      if (out.ok && linkedOrder && linkedOrder.templateId === designId) {
+        const order = await window.diwan.orders.get(linkedOrder.id);
+        if (order && order.status !== 'ready' && order.status !== 'delivered' && order.status !== 'cancelled') {
+          await window.diwan.orders.setStatus(order.id, 'ready');
+          orderNote = ` — والطلب «${order.title}» صار جاهزًا للتسليم`;
+          onChanged?.();
+        }
+      }
       say(
         out.ok
-          ? `أُرسلت ${sheets} ورقة${backDoc ? ' بوجهيها' : ''} إلى الطابعة`
+          ? `أُرسلت ${sheets} ورقة${backDoc ? ' بوجهيها' : ''} إلى الطابعة${orderNote}`
           : `توقّفت الطباعة بعد ${out.sent} من ${out.total} ورقة${out.reason ? ` — ${out.reason}` : ''}${
               out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''
             }`,
@@ -768,7 +817,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       off();
       setBusy(false);
     }
-  }, [pages, printer, imp, backDoc, title, say]);
+  }, [pages, printer, imp, backDoc, title, say, linkedOrder, designId, onChanged]);
 
   const savePdf = useCallback(async () => {
     setBusy(true);
@@ -785,6 +834,14 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       setBusy(false);
     }
   }, [pages, title, imp, say]);
+
+  // حُسمت الأسماء: تُطبع الدفعة بأجناسها الجديدة — بعد أن تُعاد بطاقاتها وأوراقها.
+  useEffect(() => {
+    if (!afterReview) return;
+    const what = afterReview;
+    setAfterReview(null);
+    void (what === 'print' ? print() : savePdf());
+  }, [afterReview, print, savePdf]);
 
   /** مقاسُ صورة الطالب في البطاقة بالملّم — منه يقصّ الاستوديو لقطاته. */
   const photoSize = useMemo(() => {
@@ -822,6 +879,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
    */
   useEffect(() => {
     if (!request) return;
+    setLinkedOrder(request.order && request.templateId ? { ...request.order, templateId: request.templateId } : null);
     if (request.templateId) {
       void openDesign(request.templateId).then(() => {
         setBatchSeed(request.batchText ?? '');
@@ -1717,8 +1775,22 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
           pages={pages}
           sheet={imp.sheet}
           onClose={() => setSheetsOpen(false)}
-          onPdf={() => void savePdf()}
-          onPrint={() => void print()}
+          onPdf={() => (unsureBatch.length ? setGenderReview('pdf') : void savePdf())}
+          onPrint={() => (unsureBatch.length ? setGenderReview('print') : void print())}
+        />
+      )}
+
+      {genderReview && (
+        <GenderReview
+          learned={learned}
+          names={unsureBatch}
+          onCancel={() => setGenderReview(null)}
+          onDone={(decisions) => {
+            remember(Object.entries(decisions).map(([name, gender]) => ({ name, gender })));
+            setGenderDecisions((prev) => ({ ...prev, ...decisions }));
+            setAfterReview(genderReview);
+            setGenderReview(null);
+          }}
         />
       )}
 

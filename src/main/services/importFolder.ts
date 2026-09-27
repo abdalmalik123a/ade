@@ -31,6 +31,7 @@ import { importTemplateFile, type ImageSaver } from './import';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
 import { learned, recordCorrections, type Correction } from './learning';
+import { similarityBucket } from '@shared/learningKeys';
 
 export type { ImportCandidate, ImportChoices, ImportOutcome, ImportPlan };
 
@@ -159,8 +160,19 @@ function findShared(candidates: ImportCandidate[]): ImportPlan['sharedLetterhead
  * «اعتاده مكتبك: اختاره ٤ مرّات».
  */
 export function applyHabits(db: Database, plan: ImportPlan): ImportPlan {
+  // المتشابه الذي اعتاد المكتب إبقاءه بهذه الدرجة (ج١٣): لا يُنزع اختياره — ويُقال لماذا.
+  const kept: { ids: string[]; reason: string }[] = [];
+  const duplicates = plan.duplicates.filter((g) => {
+    const habit = learned(db, 'duplicate', similarityBucket(g.confidence));
+    if (!habit || habit.value !== 'keep' || habit.confidence < APPLY_THRESHOLD) return true;
+    kept.push({ ids: g.ids, reason: `متشابهان ${Math.round(g.confidence * 100)}٪ ويُبقيهما مكتبك — ${habit.reason}` });
+    return false;
+  });
+  const keptReason = new Map(kept.flatMap((k) => k.ids.map((id) => [id, k.reason] as const)));
+
   return {
     ...plan,
+    duplicates,
     candidates: plan.candidates.map((c) => {
       let doc = c.doc;
       const reasons: Suggestion<string>[] = [];
@@ -177,6 +189,8 @@ export function applyHabits(db: Database, plan: ImportPlan): ImportPlan {
         });
         doc = renameField(doc, field.key, habit.value);
       }
+      const keep = keptReason.get(c.id);
+      if (keep) reasons.push({ value: c.id, confidence: 0.9, reason: keep });
       return reasons.length ? { ...c, doc, suggestions: [...c.suggestions, ...reasons] } : c;
     })
   };

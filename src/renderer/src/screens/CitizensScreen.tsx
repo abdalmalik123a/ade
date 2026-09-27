@@ -24,15 +24,19 @@ type Props = {
   onInsertIntoEditor?: (citizenId: number) => void;
   onChanged?: () => void;
   printer?: PrinterInfo | null;
+  /** ملفٌّ يُفتح من خارج الشاشة — مواطنٌ وُجد في البحث الشامل. `key` يعيد فتحه ولو تكرّر. */
+  focus?: { key: number; citizenId: number } | null;
 };
 
-export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer }: Props) {
+export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer, focus = null }: Props) {
   const [stats, setStats] = useState<CitizenStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<CitizenSummary[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(focus?.citizenId ?? null);
+  /** الملف المفتوح من البحث يغلب «أوّل القائمة» في التحميل الأول وحده. */
+  const focusedRef = useRef<number | null>(focus?.citizenId ?? null);
   const [detail, setDetail] = useState<CitizenDetail | null>(null);
   const [form, setForm] = useState<{ open: boolean; initial: CitizenDetail | null }>({
     open: false,
@@ -75,9 +79,20 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer 
     setDetail(await window.diwan.citizens.get(id));
   }, []);
 
+  // مواطنٌ من البحث الشامل: يُفتح ملفّه ولو لم يكن في أوّل القائمة.
+  useEffect(() => {
+    if (!focus) return;
+    focusedRef.current = focus.citizenId;
+    setSelectedId(focus.citizenId);
+  }, [focus]);
+
   useEffect(() => {
     void (async () => {
       const list = await reloadList();
+      if (focusedRef.current !== null) {
+        focusedRef.current = null;
+        return;
+      }
       if (list.length > 0 && !list.some((x) => x.id === selectedId)) {
         setSelectedId(list[0]!.id);
       } else if (list.length === 0) {

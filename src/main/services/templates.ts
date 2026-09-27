@@ -3,6 +3,7 @@ import { legacyFieldMeta, type TemplateInput, type TemplateVariable } from '@sha
 import { docFromLegacy, normalizeDoc, type Doc, type Issuing } from '@shared/doc';
 import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow, RevisionPayloads } from '@shared/api';
 import { forgetRevisions, prepareIdentity, recordRevision, stampNew, withoutIds } from './revisions';
+import { indexRow, unindexRow } from './searchIndex';
 
 /** منطق مكتبة النماذج والمسودات. دوالّ نقيّة تأخذ الاتصال وسيطًا. */
 
@@ -239,6 +240,7 @@ export function saveTemplate(
     return templateId;
   })();
 
+  indexRow(db, 'templates', id);
   return getTemplate(db, id)!;
 }
 
@@ -246,6 +248,7 @@ export function deleteTemplate(db: Database, id: number): void {
   prepareTemplates(db);
   forgetRevisions(db, 'template', id);
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
+  unindexRow(db, 'templates', id);
 }
 
 /**

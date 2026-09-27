@@ -19,6 +19,7 @@
  */
 import type { Database } from 'better-sqlite3';
 import { APPLY_THRESHOLD, type Suggestion } from '@shared/doc';
+import { normalizeFold } from '@shared/arabic';
 
 /** ما يُصحَّح — ولكلٍّ مفتاحُ مدخلٍ يخصّه. */
 export type CorrectionKind =
@@ -177,3 +178,51 @@ export function learningStats(db: Database): LearningStats {
 
 /** عتبةُ التطبيق نفسها التي في النواة — فلا عتبتان تختلفان. */
 export const APPLY = APPLY_THRESHOLD;
+
+/** كلماتٌ لا تدلّ على تصنيف — تتكرّر في عناوين كل الأبواب. */
+const STOP = new Set(['من', 'الى', 'الي', 'في', 'على', 'علي', 'عن', 'مع', 'او', 'و', 'ال', 'بال', 'لل', 'كتاب', 'طلب', 'نموذج']);
+
+function titleWords(title: string): string[] {
+  return normalizeFold(title)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 3 && !STOP.has(w));
+}
+
+/**
+ * تصنيف النموذج من عنوانه (FOUNDATION §١٦): «مصنّفٌ نصّي بسيط يتدرّب على ملفات المكتب
+ * نفسه» — لا نموذج لغوي. النماذج المصنَّفة في المكتبة شواهد: كم نموذجًا في «تربية»
+ * يشارك هذا العنوانَ كلمة؟ وما صحّحه الموظف لعنوانٍ بعينه عادةٌ تغلب حين ترسخ.
+ */
+export function suggestCategory(db: Database, title: string): Suggestion<string> | null {
+  const words = new Set(titleWords(title));
+  const habit = words.size ? learned(db, 'category', normalizeFold(title)) : null;
+  if (!words.size) return habit;
+
+  const rows = db
+    .prepare(
+      `SELECT title, category FROM templates
+       WHERE is_active = 1 AND category IS NOT NULL AND TRIM(category) <> ''`
+    )
+    .all() as { title: string; category: string }[];
+  const score = new Map<string, { hits: number; rows: number }>();
+  for (const r of rows) {
+    const shared = titleWords(r.title).filter((w) => words.has(w)).length;
+    if (!shared) continue;
+    const s = score.get(r.category) ?? { hits: 0, rows: 0 };
+    s.hits += shared;
+    s.rows += 1;
+    score.set(r.category, s);
+  }
+  const ranked = [...score.entries()].sort((a, b) => b[1].hits - a[1].hits || b[1].rows - a[1].rows);
+  const top = ranked[0];
+  if (!top) return habit;
+  const total = ranked.reduce((n, [, s]) => n + s.hits, 0);
+  // شاهدٌ واحد اقتراحٌ خجول، وخمسةٌ متّفقة قريبةٌ من العادة — ولا تبلغها: الموظف يحكم.
+  const confidence = Math.min(0.78, 0.45 + 0.06 * top[1].rows) * (top[1].hits / total);
+  const rule: Suggestion<string> = {
+    value: top[0],
+    confidence,
+    reason: `${top[1].rows === 1 ? 'نموذجٌ مثله' : `${top[1].rows} نماذج مثله`} في «${top[0]}»`
+  };
+  return prefer(rule, habit);
+}

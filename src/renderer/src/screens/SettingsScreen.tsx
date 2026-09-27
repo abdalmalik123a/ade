@@ -12,6 +12,7 @@ import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
 import { UI_SCALES } from '../shell/Onboarding';
+import BackupPanel from '../components/BackupPanel';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -170,6 +171,14 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                 say={say}
               />
             </section>
+
+            {/* ── البيانات والنسخ الاحتياطية ─────────────────────────────── */}
+            <BackupPanel
+              card={card}
+              lastBackupAt={settings.lastBackupAt}
+              title={title('database', 'البيانات والنسخ الاحتياطية')}
+              onBackedUp={(at) => setSettings((cur) => (cur ? { ...cur, lastBackupAt: at } : cur))}
+            />
 
             {/* ── الترويسات ───────────────────────────────────────────── */}
             <BasmalaSetting

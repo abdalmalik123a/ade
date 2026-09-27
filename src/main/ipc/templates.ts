@@ -26,7 +26,10 @@ import {
 } from '../services/importFolder';
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
-import { learningStats } from '../services/learning';
+import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
+
+/** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
+const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate'];
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -121,6 +124,19 @@ export function registerTemplateIpc(): void {
 
   /** ما تعلّمه البرنامج من هذا المكتب — يُعرض، فالتعلّم لا يكون صامتًا. */
   ipcMain.handle('learning:stats', () => learningStats(getDb()));
+  /**
+   * التعلّم في المصمّم (ج١٣): ما اعتاده المكتب لمدخلٍ (حدّ الترويسة)، وتصنيف العنوان،
+   * وقيدُ ما صحّحه الموظف — والنوع من قائمةٍ معروفة لا غير.
+   */
+  ipcMain.handle('learning:suggest', (_e, kind: CorrectionKind, input: string) =>
+    LEARNABLE.includes(kind) ? learned(getDb(), kind, String(input ?? '')) : null
+  );
+  ipcMain.handle('learning:record', (_e, c: Correction) =>
+    c && LEARNABLE.includes(c.kind)
+      ? recordCorrection(getDb(), { kind: c.kind, input: String(c.input ?? ''), suggested: c.suggested ?? null, chosen: String(c.chosen ?? '') })
+      : false
+  );
+  ipcMain.handle('learning:category', (_e, title: string) => suggestCategory(getDb(), String(title ?? '')));
 
   /** ينفّذ ما قبِله الموظف من الخطّة — وما لم يُقبل لا يُحفظ. */
   ipcMain.handle(

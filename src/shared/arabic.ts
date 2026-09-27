@@ -49,11 +49,18 @@ export function normalizeFold(input: string): string {
     .toLowerCase();
 }
 
-/** يبني استعلام FTS5 آمنًا: كل كلمة بادئة، والاقتباس يمنع كسر الصيغة. */
+/**
+ * يبني استعلام FTS5 آمنًا: كل كلمة بادئة، والكلمات معًا (AND).
+ *
+ * والكلمة ما بين فاصلين كما يقطعها الفهرس نفسه — حرفٌ أو رقم — فـ«م/2026/1» ثلاث
+ * كلمات. ولو مُرّرت كما هي صارت عبارةً، والعبارات لا تُسأل في فهرسٍ بلا مواضع
+ * (`detail='none'`، services/searchIndex.ts). وبذلك لا تبقى في الكلمة علامةُ
+ * اقتباسٍ تكسر الصيغة.
+ */
 export function toFtsQuery(raw: string): string {
-  const terms = normalizeFold(raw)
-    .split(' ')
+  return normalizeFold(raw)
+    .split(/[^\p{L}\p{N}]+/u)
     .filter((t) => t.length > 0)
-    .map((t) => `"${t.replace(/"/g, '""')}"*`);
-  return terms.join(' AND ');
+    .map((t) => `"${t}"*`)
+    .join(' AND ');
 }

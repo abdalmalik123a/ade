@@ -6,7 +6,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import DocEditor from '../components/DocEditor';
-import { docFromLegacy, docText, normalizeDoc, type Doc, type Watermark } from '@shared/doc';
+import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
+import { normalizeFold } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
 import type { TemplateDetail } from '@shared/api';
 import {
@@ -16,7 +17,7 @@ import {
 } from '@shared/template';
 import {
   normalizeLayout, type Letterhead } from '@shared/letterhead';
-import { splitSheetHead } from '@shared/sheetHead';
+import { HEAD_MAX, findSheetHead, headFingerprint, splitSheetHead } from '@shared/sheetHead';
 import LetterheadView from '../components/LetterheadView';
 import AddressingPicker from '../components/AddressingPicker';
 import RevisionsMenu from '../components/RevisionsMenu';
@@ -153,8 +154,58 @@ export default function TemplateDesigner({
   const heads = savedHead ? [...letterheads.filter((l) => l.id !== savedHead.id), savedHead] : letterheads;
   const letterhead = heads.find((l) => l.id === letterheadId) ?? null;
 
-  /** رأس الورقة إن عُرف حدّه — وبغيره لا يُعرض الاقتراح. */
-  const headSplit = useMemo(() => (letterheadId ? null : splitSheetHead(doc)), [doc, letterheadId]);
+  /**
+   * رأس الورقة إن عُرف حدّه — وبغيره لا يُعرض الاقتراح.
+   *
+   * والحدّ يُقترح مما اختاره المكتب لكتب هذه الجهة من قبل (بصمة أعلى الورقة، ج١٣) —
+   * وإلا فمن الكاشف. ويُزاد سطرًا ويُنقص، وما صحّحه الموظف يُقيَّد فيُقترح في المرّة القادمة.
+   */
+  const detected = useMemo(() => (letterheadId ? 0 : findSheetHead(doc)), [doc, letterheadId]);
+  const fingerprint = useMemo(() => headFingerprint(doc), [doc]);
+  const [edgeHabit, setEdgeHabit] = useState<Suggestion<string> | null>(null);
+  useEffect(() => {
+    if (letterheadId || !fingerprint) {
+      setEdgeHabit(null);
+      return;
+    }
+    let alive = true;
+    void window.diwan.learning
+      .suggest('letterheadEdge', fingerprint)
+      .then((s) => alive && setEdgeHabit(s))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [fingerprint, letterheadId]);
+  const [headCount, setHeadCount] = useState<number | null>(null);
+  useEffect(() => setHeadCount(null), [fingerprint]);
+  const habitCount = edgeHabit && edgeHabit.confidence >= APPLY_THRESHOLD ? Number(edgeHabit.value) || 0 : 0;
+  const headLines = headCount ?? (habitCount || detected);
+  const headSplit = useMemo(
+    () => (letterheadId || headLines <= 0 ? null : splitSheetHead(doc, headLines)),
+    [doc, letterheadId, headLines]
+  );
+  const canGrow = headLines < HEAD_MAX && !letterheadId && Boolean(splitSheetHead(doc, headLines + 1));
+
+  /** تصنيفٌ يُقترح من العنوان: من نماذج المكتب المصنَّفة، وما صحّحه (ج١٣). */
+  const [catSuggest, setCatSuggest] = useState<Suggestion<string> | null>(null);
+  useEffect(() => {
+    if (!title.trim()) {
+      setCatSuggest(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      void window.diwan.learning
+        .category(title)
+        .then((s) => alive && setCatSuggest(s))
+        .catch(() => undefined);
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [title]);
   const [headName, setHeadName] = useState('');
   useEffect(() => setHeadName(headSplit?.name ?? ''), [headSplit?.name]);
 
@@ -175,6 +226,15 @@ export default function TemplateDesigner({
       setSavedHead(saved);
       setDoc(headSplit.doc);
       setLetterheadId(saved.id);
+      // حدٌّ غير ما خمّنه الكاشف: يُقيَّد لبصمة هذا الرأس، فيُقترح لكتب الجهة القادمة.
+      if (headLines !== detected) {
+        void window.diwan.learning.record({
+          kind: 'letterheadEdge',
+          input: fingerprint,
+          suggested: String(detected),
+          chosen: String(headLines)
+        });
+      }
     } catch (e) {
       setError(errorText(e, 'تعذّر حفظ الترويسة'));
     }
@@ -206,6 +266,11 @@ export default function TemplateDesigner({
         variables
       };
       await window.diwan.templates.save({ ...input, doc });
+      // تصنيفٌ غير المقترح: تصحيحٌ يُقيَّد لهذا العنوان (والموافقة لا تُقيَّد).
+      const chosen = category.trim();
+      if (catSuggest && chosen && chosen !== catSuggest.value) {
+        void window.diwan.learning.record({ kind: 'category', input: normalizeFold(title), suggested: catSuggest.value, chosen });
+      }
       onSaved();
     } catch (e) {
       setError(errorText(e, 'تعذّر الحفظ'));
@@ -387,6 +452,17 @@ export default function TemplateDesigner({
                       <option key={c} value={c} />
                     ))}
                   </datalist>
+                  {catSuggest && !category.trim() && (
+                    <button
+                      className="self-start font-label-sm text-label-sm text-secondary hover:underline text-right"
+                      data-category-suggest={catSuggest.value}
+                      title={catSuggest.reason}
+                      type="button"
+                      onClick={() => setCategory(catSuggest.value)}
+                    >
+                      مقترح: «{catSuggest.value}» — {catSuggest.reason}
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 col-span-2">
                   <label className="font-label-sm text-label-sm text-on-surface-variant">
@@ -434,6 +510,41 @@ export default function TemplateDesigner({
                     <span className="font-label-sm text-label-sm text-on-surface-variant">
                       تُحفظ كما هي، فتختارها لكتبٍ أخرى من الجهة نفسها. ولا يتغيّر شيءٌ على هذه الورقة.
                     </span>
+                    {/* الحدّ: كم سطرًا من أعلى الورقة رأس — يُزاد ويُنقص، ويُرى ما يدخل فيه */}
+                    <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface" data-head-edge={headLines}>
+                      <span>الرأس {headLines} {headLines === 1 ? 'سطر' : 'أسطر'}</span>
+                      <button
+                        className="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-30"
+                        data-act="head-less"
+                        title="سطرٌ أقلّ في الرأس"
+                        type="button"
+                        disabled={headLines <= 1}
+                        onClick={() => setHeadCount(headLines - 1)}
+                      >
+                        −
+                      </button>
+                      <button
+                        className="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-30"
+                        data-act="head-more"
+                        title="سطرٌ أكثر في الرأس"
+                        type="button"
+                        disabled={!canGrow}
+                        onClick={() => setHeadCount(headLines + 1)}
+                      >
+                        +
+                      </button>
+                      {habitCount > 0 && headCount === null && (
+                        <span className="text-on-surface-variant" title={edgeHabit?.reason}>
+                          — كما فصلتَه لكتب هذه الجهة
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0.5 p-space-xs rounded bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant max-h-24 overflow-y-auto" data-head-preview="">
+                      {(headSplit.layout.sheet ?? []).map((b, i) => {
+                        const line = docText({ ...emptyDoc(), blocks: [b] }).replace(/\s+/g, ' ').trim();
+                        return <span key={i} className="truncate">{line || '— سطرٌ فارغ —'}</span>;
+                      })}
+                    </div>
                     <input
                       className={inputCls}
                       type="text"

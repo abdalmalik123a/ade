@@ -1,11 +1,12 @@
 import { join } from 'node:path';
-import { writeFile, readFile, unlink, readdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { printJournal, runJob, type PrintJob } from '../services/printJobs';
-import { zip } from 'fflate';
-import { getDb, dataDir, storeDir } from '../db';
+import { getDb, storeDir } from '../db';
 import * as svc from '../services/documents';
+import { searchOthers } from '../services/search';
+import { todayAgenda } from '../services/today';
+import { createBackup } from './backup';
 import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
 import { reportToExcel, sheetToDocx } from '../services/export';
 import { pickSavePath } from './files';
@@ -137,7 +138,7 @@ export function registerDocumentIpc(): void {
   /** إعادة طباعة طبق الأصل — من المتن المحفوظ لا من إعادة تركيبه. */
   ipcMain.handle(
     'documents:reprint',
-    async (e, ids: number[], copies: number): Promise<{ printed: number; failed: number }> => {
+    async (e, ids: number[], copies: number): Promise<{ printed: number; failed: number; voided: number }> => {
       const db = getDb();
       const settings = db.prepare("SELECT value FROM settings WHERE key = 'defaultPrinter'").get() as
         | { value: string }
@@ -150,10 +151,16 @@ export function registerDocumentIpc(): void {
 
       let printed = 0;
       let failed = 0;
+      let voided = 0;
       for (const id of ids) {
         const doc = svc.getDocument(db, id);
         if (!doc) {
           failed++;
+          continue;
+        }
+        // المُبطَل لا يُطبع — يُعدّ ولا يُرسل إلى الطابعة أصلًا.
+        if (doc.status === 'void') {
+          voided++;
           continue;
         }
         const result = await printSheet({
@@ -174,7 +181,7 @@ export function registerDocumentIpc(): void {
           failed++;
         }
       }
-      return { printed, failed };
+      return { printed, failed, voided };
     }
   );
 
@@ -182,6 +189,7 @@ export function registerDocumentIpc(): void {
     const w = win(e);
     const doc = svc.getDocument(getDb(), id);
     if (!w || !doc) return null;
+    svc.assertNotVoid(getDb(), id);
     const pdf = await renderPdf(doc.bodyHtml);
     return saveAs(w, pdf, `${safeName(doc.serial)}.pdf`, 'PDF', 'pdf');
   });
@@ -268,52 +276,29 @@ export function registerDocumentIpc(): void {
 
   ipcMain.handle('documents:repeatSource', (_e, id: number) => svc.repeatSource(getDb(), Number(id)));
 
+  /** الإبطال بسببه (د٣)، والتحقّق من سلامة الأرشيف (د٥)، وسجلّ التدقيق (د٤). */
+  ipcMain.handle('documents:void', (_e, id: number, reason: string, operator: string | null) =>
+    svc.voidDocument(getDb(), Number(id), String(reason ?? ''), operator ?? null)
+  );
+  ipcMain.handle('documents:verify', () => svc.verifyArchive(getDb()));
+  ipcMain.handle(
+    'audit:list',
+    (_e, opts?: { entity?: string | null; documentId?: number | null; query?: string; limit?: number }) =>
+      svc.listAudit(getDb(), opts ?? {})
+  );
+  ipcMain.handle('search:others', (_e, query: string) => searchOthers(getDb(), String(query ?? '')));
+
   ipcMain.handle('documents:linkCitizen', (_e, transactionId: number, citizenId: number) =>
     svc.linkTransactionCitizen(getDb(), Number(transactionId), Number(citizenId))
   );
 
   /**
-   * نسخة احتياطية فورية: قاعدة البيانات ومخزن الملفات في أرشيف واحد.
-   * القاعدة تُنسخ بـVACUUM INTO فتخرج نسخة متّسقة ولو كان هناك كتاب يُصدَّر الآن.
+   * نسخة احتياطية فورية من الأرشيف: القاعدة ومخزن الملفات في حزمةٍ واحدة — بالمسار
+   * نفسه الذي في «الإعدادات» (ipc/backup.ts)، فيُقيَّد تاريخها ويُذكَّر بها.
    */
   ipcMain.handle('documents:backup', async (e): Promise<{ path: string; bytes: number } | null> => {
     const w = win(e);
-    if (!w) return null;
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-    const target = await pickSavePath(w, {
-      title: 'نسخة احتياطية كاملة',
-      defaultName: `diwan-backup-${stamp}.zip`,
-      filterName: 'أرشيف مضغوط',
-      ext: 'zip'
-    });
-    if (!target) return null;
-
-    const snapshot = join(dataDir(), `backup-${stamp}.db`);
-    if (existsSync(snapshot)) await unlink(snapshot);
-    getDb().exec(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
-
-    const files: Record<string, Uint8Array> = {
-      'diwan.db': new Uint8Array(await readFile(snapshot))
-    };
-
-    const root = storeDir();
-    const walk = async (dir: string, prefix: string): Promise<void> => {
-      for (const entry of await readdir(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name);
-        if (entry.isDirectory()) await walk(full, `${prefix}${entry.name}/`);
-        else files[`store/${prefix}${entry.name}`] = new Uint8Array(await readFile(full));
-      }
-    };
-    await walk(root, '');
-
-    const archive = await new Promise<Uint8Array>((resolve, reject) => {
-      zip(files, { level: 6 }, (err, data) => (err ? reject(err) : resolve(data)));
-    });
-    await writeFile(target, archive);
-    await unlink(snapshot);
-
-    const info = await stat(target);
-    return { path: target, bytes: info.size };
+    return w ? createBackup(w, null) : null;
   });
 
   // ── إخراج الورقة الجارية في المحرر (قبل الإصدار أو بلا إصدار) ─────────
@@ -375,6 +360,8 @@ export function registerDocumentIpc(): void {
     }
   );
   ipcMain.handle('output:pendingJobs', () => journal().pending());
+  /** «ما ينتظرك اليوم» (د٧): من القاعدة، ومعها ما انقطع من الطباعة. */
+  ipcMain.handle('today:agenda', () => todayAgenda(getDb(), journal().pending()));
   ipcMain.handle('output:resumeJob', async (e, id: string, from: number) => ({
     ...(await runJob(journal(), id, Math.max(0, from), sendSheet(e), progress(e, id))),
     journaled: true,

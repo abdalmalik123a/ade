@@ -17,7 +17,11 @@ export const ROUTES = {
   /** التصاميم — اللوحة: شهادةٌ وهويةٌ وملصق. لا مقابل له في التصميم. */
   designs: 'designed-documents',
   letterhead: 'header-seal-configuration',
-  search: 'administrative-archive-search',
+  /**
+   * سجلّ التدقيق وسلامة الأرشيف (د٤ ود٥). وكان هنا «البحث والتقارير» — فصار البحث في
+   * الأرشيف نفسه (د١٠)، والبحث الشامل (Ctrl+F) يصل إليه.
+   */
+  audit: 'audit-log-integrity',
   /** الإعدادات — ما يغيّره صاحب المكتب، وسياسة الخصوصية والاختصارات. لا مقابل لها في التصميم. */
   settings: 'office-settings'
 } as const;

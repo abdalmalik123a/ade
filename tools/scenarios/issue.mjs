@@ -372,15 +372,16 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   if (shotsDir) await page.shot(join(shotsDir, 'archive.png'));
 
-  // ── البحث والتقارير ────────────────────────────────────────────────
-  await page.goto('administrative-archive-search');
-  await wait(900);
+  // ── التقارير: في الأرشيف نفسه (د١٠) — سطرُ أرقامٍ لا بطاقات ────────────
+  await page.type('input[placeholder^="ابحث برقم الصادر"]', '');
+  await wait(700);
   text = await page.text();
-  ok('فُتحت شاشة التقارير', text.includes('نتائج البحث'));
-  ok('عدّت الكتب الصادرة', text.includes('الكتب الصادرة'));
+  ok('الأرشيف والبحث شاشةٌ واحدة', text.includes('الأرشيف والبحث') && !text.includes('البحث والتقارير الدورية'));
+  ok('عدّت الكتب الصادرة', text.includes('من الكتب الصادرة'));
   ok('ظهر الكتاب في مدة اليوم', text.includes(doc?.serial ?? '—'));
   ok('ظهر توزيع أنواع الوثائق', text.includes('توزيع الكتب حسب نوع الوثيقة'));
-  ok('عُدّت النسخ المطبوعة', text.includes('النسخ المطبوعة'));
+  ok('عُدّت النسخ المطبوعة', text.includes('من النسخ المطبوعة'));
+  ok('ولا بطاقات أرقامٍ كبيرة', !(await page.eval(`return Boolean(document.querySelector('[data-archive] .font-headline-xl'));`)));
 
   await page.clickText('هذه السنة');
   await wait(800);
@@ -461,6 +462,47 @@ export default async function scenario(page, { profile, shotsDir }) {
       ok(`الدقّة مكتوبة في الصورة (${Math.round(perMetre * 0.0254)} نقطة/إنش)`, perMetre === 11811);
     }
   }
+
+  // ── البحث الشامل (د٢): الكتاب ومعه ملف المواطن ────────────────────────
+  await page.goto('service-counter');
+  await wait(500);
+  await page.type('[data-global-search]', 'الموسوي');
+  await wait(1000);
+  ok('البحث الشامل يصل إلى الأرشيف', await page.eval(`return Boolean(document.querySelector('[data-archive]'));`));
+  ok('ويجد الكتاب في الأرشيف كلّه', (await page.text()).includes(doc?.serial ?? '—'));
+  ok('ومعه ملف المواطن', await page.eval(`return [...document.querySelectorAll('[data-search-others] [data-act="open-citizen"]')].some((b) => b.innerText.includes('أحمد عادل كريم الموسوي'));`));
+  await page.eval(`document.querySelector('[data-search-others] [data-act="open-citizen"]').click(); return true;`);
+  await wait(900);
+  ok('وضغطةٌ عليه تفتح ملفّه', (await page.text()).includes('أحمد عادل كريم الموسوي') && (await page.eval(`return location.hash || document.querySelector('[aria-current="page"]')?.getAttribute('data-path') || '';`)).includes('citizens'));
+  await page.type('[data-global-search]', '');
+  await wait(300);
+
+  // ── الإبطال بسببه (د٣): يبقى برقمه ولا يُعاد طبعه ─────────────────────
+  await page.goto('transactions-archive-ledger');
+  await wait(900);
+  await page.eval(`document.querySelector('[data-inspect] [data-act="void"]').click(); return true;`);
+  await wait(300);
+  await page.type('[data-void-reason]', 'صدر باسمٍ خاطئ');
+  await page.eval(`document.querySelector('[data-act="void-confirm"]').click(); return true;`);
+  await wait(900);
+  text = await page.text();
+  ok('أُبطل الكتاب وقيل ذلك', text.includes(`أُبطل ${doc?.serial}`));
+  ok('ويبقى في الأرشيف برقمه وسببه', await page.eval(`return document.querySelector('[data-row-status="void"]')?.innerText.includes(${JSON.stringify(doc?.serial ?? '')}) ?? false;`) && text.includes('مُبطَل: صدر باسمٍ خاطئ'));
+  ok('ولا يُعاد طبعه', await page.eval(`return document.querySelector('[data-row-status="void"] button[title^="مُبطَل"]')?.disabled ?? false;`));
+  ok('وتاريخه في السجلّ: صدر ثم أُبطل', await page.eval(`const h = document.querySelector('[data-history]')?.innerText ?? ''; return h.indexOf('صدر') >= 0 && h.indexOf('أُبطل') > h.indexOf('صدر');`));
+  const voided = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const vrow = voided.prepare('SELECT status, void_reason AS reason, serial FROM documents WHERE id = ?').get(doc?.id ?? 0);
+  voided.close();
+  ok('وفي القاعدة: الحال والسبب، والرقم كما هو', vrow?.status === 'void' && vrow?.reason === 'صدر باسمٍ خاطئ' && vrow?.serial === doc?.serial);
+
+  // ── سجلّ التدقيق وسلامة الأرشيف (د٤ ود٥) ─────────────────────────────
+  await page.goto('audit-log-integrity');
+  await wait(900);
+  ok('سجلّ التدقيق: الإصدار والإبطال بمن فعلهما', await page.eval(`return Boolean(document.querySelector('[data-audit-row="document/issue"]')) && Boolean(document.querySelector('[data-audit-row="document/void"]'));`));
+  await page.eval(`document.querySelector('[data-act="verify-archive"]').click(); return true;`);
+  await wait(1200);
+  ok('والأرشيف سليم: بصمةٌ من كل متن، وسلسلةٌ متّصلة', await page.eval(`return document.querySelector('[data-check-result]')?.getAttribute('data-check-result') === 'ok';`));
+  ok('وبصمة آخر السلسلة تُعرض لتُحفظ خارج الجهاز', /^[0-9a-f]{64}$/.test(await page.eval(`return document.querySelector('[data-chain-head]')?.innerText.trim() ?? '';`)));
 
   return steps.join('\n');
 }

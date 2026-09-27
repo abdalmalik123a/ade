@@ -1,6 +1,7 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
+import { registerBackupIpc } from './backup';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
 import { registerTemplateIpc } from './templates';
@@ -10,6 +11,7 @@ import { registerOrderIpc } from './orders';
 import { registerCameraIpc } from './camera';
 import { registerQuestionIpc } from './questions';
 import { orderCounts } from '../services/orders';
+import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { archiveStats, listDocuments } from '../services/documents';
 import type {
   OfficeSettings,
@@ -30,7 +32,8 @@ const DEFAULTS: OfficeSettings = {
   uiScale: 1,
   onboarded: false,
   printOffsets: {},
-  basmala: null
+  basmala: null,
+  lastBackupAt: null
 };
 
 function readSettings(): OfficeSettings {
@@ -50,7 +53,8 @@ function readSettings(): OfficeSettings {
     uiScale: Math.min(1.5, Math.max(0.8, Number(map.get('uiScale') ?? DEFAULTS.uiScale) || 1)),
     onboarded: map.get('onboarded') === 'true',
     printOffsets: parseOffsets(map.get('printOffsets')),
-    basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala
+    basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala,
+    lastBackupAt: map.get('lastBackupAt') ?? null
   };
 }
 
@@ -109,6 +113,13 @@ export function registerIpc(): void {
   registerOrderIpc();
   registerCameraIpc();
   registerQuestionIpc();
+  registerBackupIpc();
+
+  /** ما تعلّمه المكتب من التذكير والتأنيث (ج٤): يُحمَّل مرّة، ويُضاف إليه ما يُجاب. */
+  ipcMain.handle('gender:learned', () => learnedGenders(getDb()));
+  ipcMain.handle('gender:learn', (_e, answers: { name: string; gender: 'ذكر' | 'أنثى' }[]) =>
+    learnGenders(getDb(), Array.isArray(answers) ? answers : [])
+  );
 
   // رقم الإصدار من package.json — لا نصًّا مكتوبًا في الشريط يتخلّف عن الحزمة.
   ipcMain.handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir() }));

@@ -3,6 +3,8 @@ import { app, BrowserWindow, shell, protocol, net, dialog } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
+import { prepareDocuments } from './services/documents';
+import { prepareSearch } from './services/searchIndex';
 
 // المِقْود وحده (tools/drive.mjs): كاميرا مصنوعةٌ يرسمها Chromium — فيُختبر
 // استوديو التصوير على التطبيق الحقيقي بلا كاميرا موصولة.
@@ -85,6 +87,10 @@ app.whenReady().then(() => {
   try {
     getDb();
     registerIpc();
+    // الفهارس تُطابَق جداولها (وتُبنى أوّل مرّة على قاعدة مكتبٍ قائمة). ولا تُسقط
+    // الإقلاع إن تعذّرت: البحث يعود إلى المسح (services/searchIndex.ts).
+    prepareDocuments(getDb());
+    prepareSearch(getDb());
   } catch (e) {
     dialog.showErrorBox(
       'تعذّر تشغيل ديوان',

@@ -99,6 +99,25 @@ const api: DiwanApi = {
     exportZip: (citizenId: number) => invoke('attachments:exportZip', citizenId),
     delete: (id: number) => invoke('attachments:delete', id)
   },
+  audit: {
+    list: (opts) => invoke('audit:list', opts ?? {})
+  },
+  search: {
+    others: (query) => invoke('search:others', query)
+  },
+  today: {
+    agenda: () => invoke('today:agenda')
+  },
+  gender: {
+    learned: () => invoke('gender:learned'),
+    learn: (answers) => invoke('gender:learn', answers)
+  },
+  backup: {
+    create: (password) => invoke('backup:create', password ?? null),
+    pick: () => invoke('backup:pick'),
+    inspect: (path, password) => invoke('backup:inspect', path, password ?? null),
+    restore: (path, password) => invoke('backup:restore', path, password ?? null)
+  },
   scanner: {
     list: () => invoke('scanner:list'),
     scanImage: (dpi: number) => invoke('scanner:scanImage', dpi),
@@ -118,6 +137,8 @@ const api: DiwanApi = {
     stats: (opts?: { from?: string | null; to?: string | null }) =>
       invoke('documents:stats', opts ?? {}),
     reprint: (ids: number[], copies: number) => invoke('documents:reprint', ids, copies),
+    void: (id, reason, operator) => invoke('documents:void', id, reason, operator),
+    verify: () => invoke('documents:verify'),
     exportPdf: (id: number) => invoke('documents:exportPdf', id),
     exportReport: (opts: {
       from?: string | null;
@@ -176,7 +197,10 @@ const api: DiwanApi = {
     backup: () => invoke('templates:backup')
   },
   learning: {
-    stats: () => invoke('learning:stats')
+    stats: () => invoke('learning:stats'),
+    suggest: (kind, input) => invoke('learning:suggest', kind, input),
+    record: (c) => invoke('learning:record', c),
+    category: (title) => invoke('learning:category', title)
   },
   drafts: {
     list: () => invoke('drafts:list'),

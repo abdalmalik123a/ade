@@ -60,3 +60,26 @@ export function fromIsoDate(iso: string): Date | null {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+/** كم يومًا مضى على وقتٍ (ISO) — بالتقويم المحلّي لا بالساعات: أمسِ الليلة يومٌ مضى. */
+export function daysSince(iso: string, now: Date = new Date()): number {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return Number.POSITIVE_INFINITY;
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  return Math.round((day(now) - day(then)) / 86_400_000);
+}
+
+/** «اليوم» · «أمس» · «منذ ٣ أيام» — لآخر نسخةٍ احتياطية وما شابهها. */
+export function sinceText(iso: string | null, now: Date = new Date()): string {
+  if (!iso) return 'لم يحدث بعد';
+  const n = daysSince(iso, now);
+  if (!Number.isFinite(n)) return 'لم يحدث بعد';
+  if (n <= 0) return 'اليوم';
+  if (n === 1) return 'أمس';
+  if (n === 2) return 'منذ يومين';
+  if (n <= 10) return `منذ ${n} أيام`;
+  return `منذ ${n} يومًا`;
+}
+
+/** بعدها يُذكَّر المكتب بنسخةٍ احتياطية: أسبوع — وما يضيع في أسبوعٍ يُعاد، وفي شهرٍ لا. */
+export const BACKUP_REMIND_DAYS = 7;

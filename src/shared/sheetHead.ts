@@ -7,6 +7,7 @@
  */
 import { docText, emptyDoc, reconcileFields, walkBlocks, type Block, type Doc } from './doc';
 import { emptyLayout, type LetterheadLayout } from './letterhead';
+import { normalizeFold } from './arabic';
 
 /** الرأس لا يتجاوز هذا — ما بعده متنٌ مهما شابه الرأس. */
 const HEAD_LIMIT = 12;
@@ -95,4 +96,23 @@ export function splitSheetHead(doc: Doc, count = findSheetHead(doc)): SheetHeadS
     layout: { ...emptyLayout(), margins: { ...doc.pageSetup.margins }, divider: false, font: 'plex', sheet: head },
     doc: rest
   };
+}
+
+/** أقصى ما يُفصل رأسًا — وما بعده متنٌ مهما شابه الرأس. */
+export const HEAD_MAX = HEAD_LIMIT;
+
+/**
+ * بصمة أعلى الورقة: نصّ أوّل سطرين غير فارغين، مطويًّا (ج١٣).
+ *
+ * بها يُعرف أن كتابًا جاء من الجهة نفسها («ادارة مدرسة الصحوة…») فيُقترح له حدّ
+ * الرأس الذي اختاره المكتب لكتبها من قبل — لا الحدّ الذي خمّنه الكاشف.
+ */
+export function headFingerprint(doc: Doc): string {
+  const lines: string[] = [];
+  for (const b of doc.blocks.slice(0, HEAD_LIMIT)) {
+    const text = docText({ ...emptyDoc(), blocks: [b] }).replace(/\s+/g, ' ').trim();
+    if (text) lines.push(text);
+    if (lines.length === 2) break;
+  }
+  return normalizeFold(lines.join(' | ')).slice(0, 120);
 }
