@@ -14,6 +14,7 @@ import IdDuplexDialog from './IdDuplexDialog';
 import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
+import UploadExportDialog from '../components/UploadExportDialog';
 import { readMrz } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { errorText } from '../lib/errors';
@@ -56,6 +57,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
   const [preview, setPreview] = useState<Attachment | null>(null);
   const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number } | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
+  /** «صدّر للرفع» (تعميق الموجود ٤): كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع. */
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [deskewAttachment, setDeskewAttachment] = useState<Attachment | null>(null);
   /** التقاطٌ بالكاميرا (ج١٢): الكاميرا مفتوحة، ثم اللقطة تُسوّى قبل أن تُحفظ. */
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -598,6 +601,17 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                         <span>تصدير الكل ZIP</span>
                       </button>
                       <button
+                        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+                        data-act="upload-export"
+                        title="كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع — مرقّمةٌ بترتيب الاستمارة"
+                        type="button"
+                        disabled={detail.attachments.length === 0}
+                        onClick={() => setUploadOpen(true)}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                        <span>صدّر للرفع</span>
+                      </button>
+                      <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
                         type="button"
                         title="طباعة واستنساخ مستمسكات المواطن بوجهين 1:1"
@@ -1041,6 +1055,18 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
             </div>
           </div>
         </div>
+      )}
+
+      {uploadOpen && detail && (
+        <UploadExportDialog
+          attachments={detail.attachments}
+          owner={detail.fullName}
+          onClose={() => setUploadOpen(false)}
+          onDone={(message) => {
+            setUploadOpen(false);
+            say(message);
+          }}
+        />
       )}
 
       {idDuplexOpen && (

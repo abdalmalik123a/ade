@@ -6,13 +6,15 @@
  * والتنبيه الخفيف على الرقم الوطني والهاتف؛ والعلامة المائية فوق نسخة الهوية؛
  * وبطاقة التعبئة في نافذتها فوق المتصفّح.
  */
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
 import Database from 'better-sqlite3';
 
 const DIR = join(process.env.TEMP ?? '.', `diwan-idtools-${Date.now()}`);
 const GLASS = join(DIR, 'glass.png');
+/** «صدّر للرفع» يحفظ هنا — حوار المجلّد لا يُضغط آليًّا. */
+const UPLOAD = join(DIR, 'upload');
 
 /** PNG بلا مكتبة: توقيعٌ ومقاطع IHDR وIDAT وIEND. */
 function png(w, h, pixel) {
@@ -71,7 +73,8 @@ export async function prepare() {
       return [250, 250, 248];
     })
   );
-  return { DIWAN_TEST_FAKE_CAMERA: '1', DIWAN_TEST_OPEN_FILE: GLASS };
+  mkdirSync(UPLOAD, { recursive: true });
+  return { DIWAN_TEST_FAKE_CAMERA: '1', DIWAN_TEST_OPEN_FILE: GLASS, DIWAN_TEST_SAVE_DIR: UPLOAD };
 }
 
 export default async function scenario(page, { profile, shotsDir }) {
@@ -134,6 +137,24 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(2500);
   const after = attachments(id);
   ok(`وتُحفظ كلّ بطاقةٍ بوجهها وظهرها (${after.length - before})`, after.length - before === 4 && after.includes('بطاقة 1 — الوجه') && after.includes('بطاقة 2 — الظهر'));
+
+  // ── «صدّر للرفع»: كلّ مستمسكٍ صورةٌ بحدّ الخانة (تعميق الموجود ٤) ───────
+  await click('[data-act="upload-export"]');
+  await wait(700);
+  await page.eval(`const el = document.querySelector('[data-upload-limit]');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, '100000');
+    el.dispatchEvent(new Event('change', { bubbles: true })); return true;`);
+  await click('[data-act="upload-export-go"]');
+  let exported = [];
+  for (let i = 0; i < 40 && exported.length < after.length; i++) {
+    await wait(400);
+    exported = readdirSync(UPLOAD).filter((f) => f.endsWith('.jpg')).sort();
+  }
+  const sizes = exported.map((f) => statSync(join(UPLOAD, f)).size);
+  ok(
+    `«صدّر للرفع»: ${exported.length} صورة، مرقّمةٌ ومسمّاةٌ بنوعها، كلٌّ دون ١٠٠ ك.ب (${exported[0] ?? '—'})`,
+    exported.length === after.length && exported.some((f) => f.startsWith('1 - ')) && exported.some((f) => f.includes('بطاقة 1 — الوجه')) && sizes.every((s) => s > 500 && s <= 100_000)
+  );
 
   // ── العلامة المائية فوق نسخة الهوية (هـ٣) ─────────────────────────────
   await page.eval(`[...document.querySelectorAll('button')].find((b) => b.title?.includes('بوجهين 1:1'))?.click(); return true;`);

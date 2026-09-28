@@ -39,6 +39,7 @@ import {
   type TextOverlay
 } from '@shared/pdfEdit';
 import { errorText } from '../lib/errors';
+import { fitJpeg, reencode, rememberLimit, savedLimit, toJpeg, TOP_DPI } from '../lib/fitImage';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -122,13 +123,7 @@ function shownPt(src: Src, ref: PageRef): { w: number; h: number } {
 
 type Drag = { id: string; mode: 'move' | 'resize'; x: number; y: number; box: FracBox; target: 'overlay' | 'crop' };
 
-const toJpeg = (c: HTMLCanvasElement, quality: number) =>
-  new Promise<Blob>((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error('تعذّر رسم الصفحة صورة'))), 'image/jpeg', quality));
-
-/** أجود درجات التصغير: منها تُرسم الصفحات مرّةً، وتُصغَّر منها الدرجات الأدنى بلا رسمٍ جديد. */
-const TOP_DPI = RASTER_STEPS[0]!.dpi;
-
-/** صفحات الملف المبني صورًا بأجود درجة — ومقاس كلٍّ كما تُرى بالنقاط. */
+/** صفحات الملف المبني صورًا بأجود درجة — ومنها تُصغَّر الدرجات الأدنى بلا رسمٍ جديد. ومقاس كلٍّ كما تُرى بالنقاط. */
 async function shootPages(bytes: Uint8Array): Promise<{ shot: Blob; w: number; h: number }[]> {
   const task = pdfjs.getDocument({ data: bytes.slice(), useSystemFonts: true });
   const doc = await task.promise;
@@ -153,31 +148,7 @@ async function shootPages(bytes: Uint8Array): Promise<{ shot: Blob; w: number; h
   return out;
 }
 
-/** الصورة بدرجةٍ أصغر: تُصغَّر من صورتها الجيّدة، وتُرمَّد إن طُلب «أبيض وأسود». */
-async function reencode(shot: Blob, dpi: number, quality: number, gray: boolean): Promise<Blob> {
-  const bmp = await createImageBitmap(shot);
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.round((bmp.width * dpi) / TOP_DPI));
-  c.height = Math.max(1, Math.round((bmp.height * dpi) / TOP_DPI));
-  const ctx = c.getContext('2d')!;
-  if (gray) ctx.filter = 'grayscale(1)';
-  ctx.drawImage(bmp, 0, 0, c.width, c.height);
-  bmp.close();
-  return toJpeg(c, quality);
-}
-
 type Snap = { pages: PageRef[]; overlays: Overlay[] };
-
-/** حدّ الحجم يُتذكَّر بين المرّات — المكتب يرفع إلى المنصّات نفسها غالبًا. */
-const LIMIT_KEY = 'diwan.pdf.limit';
-function savedLimit(): number {
-  try {
-    const v = Number(localStorage.getItem(LIMIT_KEY));
-    return SIZE_LIMITS.some((l) => l.bytes === v) ? v : 0;
-  } catch {
-    return 0;
-  }
-}
 
 export default function PdfScreen() {
   const [sources, setSources] = useState<Record<string, Src>>({});
@@ -194,7 +165,7 @@ export default function PdfScreen() {
   const [view, setView] = useState<{ url: string; w: number; h: number } | null>(null);
   const [logoPicker, setLogoPicker] = useState<string[] | null>(null);
   const [splitText, setSplitText] = useState<string | null>(null);
-  const [limit, setLimitState] = useState(savedLimit);
+  const [limit, setLimitState] = useState(() => savedLimit());
   const [gray, setGray] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
   const drag = useRef<Drag | null>(null);
@@ -208,11 +179,7 @@ export default function PdfScreen() {
 
   function setLimit(bytes: number) {
     setLimitState(bytes);
-    try {
-      localStorage.setItem(LIMIT_KEY, String(bytes));
-    } catch {
-      // التذكّر راحةٌ لا شرط — والحدّ يعمل في هذه المرّة.
-    }
+    rememberLimit(bytes);
   }
 
   const plan = useMemo<PdfPlan>(() => ({ pages, overlays }), [pages, overlays]);
@@ -653,12 +620,9 @@ export default function PdfScreen() {
       for (const [k, s] of shots.entries()) {
         let blob = s.shot;
         if (gray || (limit && blob.size > limit)) {
-          const fit = await fitSearch(limit, RASTER_STEPS, async (step) => {
-            const b = await reencode(s.shot, step.dpi, step.quality, gray);
-            return { size: b.size, value: b };
-          });
+          const fit = await fitJpeg(s.shot, limit, gray);
           if ('smallest' in fit) throw new Error(`الصفحة ${toIndic(k + 1)} لم تبلغ ${sizeText(limit)} — أصغر ما بلغته ${sizeText(fit.smallest)}`);
-          blob = fit.value;
+          blob = fit.blob;
         }
         images.push({ name: `${name || 'ملف'} — صفحة ${k + 1}`, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
