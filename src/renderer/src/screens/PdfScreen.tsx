@@ -17,6 +17,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PdfOpened } from '@shared/api';
 import {
   fitSearch,
+  IMAGE_STEPS,
   imagePage,
   numberingText,
   overlaysFor,
@@ -537,13 +538,22 @@ export default function PdfScreen() {
   }
 
   /**
-   * الملف كما يُحفظ: يُبنى، فإن تجاوز الحدّ (أو طُلب «أبيض وأسود») صارت صفحاته صورًا بأجود
-   * درجةٍ تبلغه. وما لم تبلغه درجةٌ يُقال بأصغر ما بلغ — ولا يُحفظ ملفٌّ يرفضه الموقع.
+   * الملف كما يُحفظ: يُبنى، فإن تجاوز الحدّ صُغّرت صوره أوّلًا **ونصّه باقٍ**؛ فإن لم يكفِ
+   * (أو طُلب «أبيض وأسود») صارت صفحاته صورًا بأجود درجةٍ تبلغه. وما لم تبلغه درجةٌ يُقال
+   * بأصغر ما بلغ — ولا يُحفظ ملفٌّ يرفضه الموقع.
    */
-  async function produce(sub: PdfPlan): Promise<{ bytes: Uint8Array; raster: boolean }> {
+  async function produce(sub: PdfPlan): Promise<{ bytes: Uint8Array; raster: boolean; shrunk?: boolean }> {
     const bytes = await window.diwan.pdf.build(sub);
     if (!gray && (!limit || bytes.length <= limit)) return { bytes, raster: false };
-    setBusy(limit ? `يُصغَّر ليبلغ ${sizeText(limit)}…` : 'يُحوَّل أبيض وأسود…');
+    if (!gray) {
+      setBusy(`تُصغَّر صوره ليبلغ ${sizeText(limit)}…`);
+      for (const step of IMAGE_STEPS) {
+        const out = await window.diwan.pdf.shrinkImages(bytes, step);
+        if (!out.images) break;
+        if (out.bytes.length <= limit) return { bytes: out.bytes, raster: false, shrunk: true };
+      }
+    }
+    setBusy(limit ? `يُصغَّر صفحاتٍ صورًا ليبلغ ${sizeText(limit)}…` : 'يُحوَّل أبيض وأسود…');
     const shots = await shootPages(bytes);
     const fit = await fitSearch(limit, RASTER_STEPS, async (step) => {
       const jpegs: Blob[] = [];
@@ -560,7 +570,8 @@ export default function PdfScreen() {
     return { bytes: fit.value, raster: true };
   }
 
-  const madeNote = (m: { bytes: Uint8Array; raster: boolean }) => `${sizeText(m.bytes.length)}${m.raster ? '، صفحاته صورٌ' : ''}`;
+  const madeNote = (m: { bytes: Uint8Array; raster: boolean; shrunk?: boolean }) =>
+    `${sizeText(m.bytes.length)}${m.raster ? '، صفحاته صورٌ' : m.shrunk ? '، صُغّرت صوره ونصّه باقٍ' : ''}`;
 
   async function saveAs(sub: PdfPlan, fileName: string) {
     return run('يُبنى الملف…', async () => {

@@ -10,7 +10,7 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
-import { buildPdf, imagesToPdf, inspectPdf, type PageInfo, type PdfSource } from '../services/pdfEdit';
+import { buildPdf, imagesToPdf, inspectPdf, shrinkPdfImages, type JpegShrink, type PageInfo, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
 import { removeStoreFile, scanPage } from '../services/scanner';
 import { imagePage, type PdfPlan } from '@shared/pdfEdit';
@@ -28,6 +28,17 @@ export type PdfOpened = {
 
 /** دقّة المسح للتقديم: تُقرأ وتُطبع، وملفّها معقول قبل التصغير. */
 const SCAN_DPI = 200;
+
+/** صورة JPEG أصغر بمحرّك الصور في التطبيق — وما لا يُقرأ (CMYK مثلًا) يُترك. */
+const nativeShrink: JpegShrink = (jpeg, scale, quality) => {
+  let img = nativeImage.createFromBuffer(Buffer.from(jpeg));
+  if (img.isEmpty()) return null;
+  const size = img.getSize();
+  const width = Math.max(1, Math.round(size.width * scale));
+  const height = Math.max(1, Math.round(size.height * scale));
+  if (width !== size.width) img = img.resize({ width, height, quality: 'good' });
+  return { jpeg: new Uint8Array(img.toJPEG(Math.round(quality * 100))), width, height };
+};
 
 const sources = new Map<string, PdfSource>();
 /** مسارات ما فُتح — فلا يُحفظ فوق أصلٍ منها. */
@@ -120,6 +131,8 @@ export function registerPdfIpc(): void {
   ipcMain.handle('pdf:build', (_e, plan: PdfPlan) => buildPdf(plan, sources, renderLayer));
 
   ipcMain.handle('pdf:assemble', (_e, pages: { jpeg: Uint8Array; width: number; height: number }[]) => imagesToPdf(pages));
+
+  ipcMain.handle('pdf:shrinkImages', (_e, bytes: Uint8Array, step: { scale: number; quality: number }) => shrinkPdfImages(bytes, step, nativeShrink));
 
   ipcMain.handle('pdf:save', async (e, bytes: Uint8Array, name: string) => {
     const win = BrowserWindow.fromWebContents(e.sender);

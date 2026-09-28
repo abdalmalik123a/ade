@@ -883,6 +883,8 @@ export type DiwanApi = {
     build(plan: PdfPlan): Promise<Uint8Array>;
     /** صورُ JPEG ملفًّا — كلٌّ صفحةٌ بمقاسها بالنقاط (التصغير لحدّ الرفع). */
     assemble(pages: { jpeg: Uint8Array; width: number; height: number }[]): Promise<Uint8Array>;
+    /** صور الملف أصغر ونصّه باقٍ — `images` كم صورةً صُغّرت (صفرٌ: لا صور تُصغَّر فيه). */
+    shrinkImages(bytes: Uint8Array, step: { scale: number; quality: number }): Promise<{ bytes: Uint8Array; images: number }>;
     save(bytes: Uint8Array, name: string): Promise<string | null>;
     saveMany(items: { bytes: Uint8Array; name: string }[]): Promise<{ folder: string; files: string[] } | null>;
     saveImages(images: { name: string; bytes: Uint8Array }[]): Promise<{ folder: string; files: string[] } | null>;

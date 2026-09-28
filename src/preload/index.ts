@@ -209,6 +209,7 @@ const api: DiwanApi = {
     scan: () => invoke('pdf:scan'),
     build: (plan: unknown) => invoke('pdf:build', plan),
     assemble: (pages: unknown) => invoke('pdf:assemble', pages),
+    shrinkImages: (bytes: Uint8Array, step: { scale: number; quality: number }) => invoke('pdf:shrinkImages', bytes, step),
     save: (bytes: Uint8Array, name: string) => invoke('pdf:save', bytes, name),
     saveMany: (items: unknown) => invoke('pdf:saveMany', items),
     saveImages: (images: unknown) => invoke('pdf:saveImages', images),

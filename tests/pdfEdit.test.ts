@@ -25,7 +25,8 @@ import {
   watermarkText,
   type PdfPlan
 } from '../src/shared/pdfEdit';
-import { buildPdf, imagesToPdf, inspectPdf, type PdfSource } from '../src/main/services/pdfEdit';
+import { buildPdf, imagesToPdf, inspectPdf, shrinkPdfImages, type PdfSource } from '../src/main/services/pdfEdit';
+import { PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { writePng } from '../src/main/services/png';
 
 const A4 = { width: 595.28, height: 841.89 };
@@ -189,6 +190,57 @@ describe('الحجم للرفع', () => {
     expect(none).toEqual({ smallest: 5000 });
     const free = await fitSearch(0, RASTER_STEPS, async () => ({ size: 9_000_000, value: 'x' }));
     expect('step' in free && free.step).toEqual(RASTER_STEPS[0]);
+  });
+
+  it('صور الملف أصغر ونصّه باقٍ: JPEG وحده يُعاد ترميزه، والرمادية تُعلَن ملوّنة، وCMYK وPNG كما هما', async () => {
+    const jpeg = new Uint8Array(readFileSync(join(__dirname, 'fixtures', 'tiny.jpg')));
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const page = doc.addPage([A4.width, A4.height]);
+    page.drawText('KEEP-TEXT', { x: 40, y: 780, size: 14, font });
+    const rgb = await doc.embedJpg(jpeg);
+    const gray = await doc.embedJpg(jpeg);
+    const cmyk = await doc.embedJpg(jpeg);
+    const png = await doc.embedPng(writePng(new Uint8Array(4 * 4 * 4).fill(90), 4, 4, 72));
+    for (const [i, img] of [rgb, gray, cmyk, png].entries()) page.drawImage(img, { x: 40 + i * 120, y: 500, width: 100, height: 75 });
+    const bytes = await doc.save();
+    // ألوان الصور تُضبط في الملف المحفوظ نفسه — كما تأتي من ماسحٍ أو برنامجٍ آخر.
+    const edit = await PDFDocument.load(bytes);
+    const imgs = edit.context.enumerateIndirectObjects().filter(([, o]) => o instanceof PDFRawStream && o.dict.get(PDFName.of('Subtype')) === PDFName.of('Image'));
+    (imgs[1]![1] as PDFRawStream).dict.set(PDFName.of('ColorSpace'), PDFName.of('DeviceGray'));
+    (imgs[2]![1] as PDFRawStream).dict.set(PDFName.of('ColorSpace'), PDFName.of('DeviceCMYK'));
+    const prepared = await edit.save();
+
+    const calls: number[] = [];
+    const out = await shrinkPdfImages(
+      prepared,
+      { scale: 0.5, quality: 0.6 },
+      (_j, scale) => {
+        calls.push(scale);
+        return { jpeg: new Uint8Array(200), width: 10, height: 8 };
+      },
+      0
+    );
+    expect(out.images).toBe(2);
+    // صورةٌ ضلعها ٤٨ بكسل لا تُصغَّر أبعادها: لا تُصغَّر صورةٌ دون ٥٠٠ بكسل.
+    expect(calls).toEqual([1, 1]);
+    const back = await PDFDocument.load(out.bytes);
+    const dicts = back.context
+      .enumerateIndirectObjects()
+      .filter(([, o]) => o instanceof PDFRawStream && o.dict.get(PDFName.of('Subtype')) === PDFName.of('Image'))
+      .map(([, o]) => (o as PDFRawStream).dict);
+    const widths = dicts.map((d) => (d.get(PDFName.of('Width')) as PDFNumber).asNumber()).sort((a, b) => a - b);
+    // PNG الشفّاف صورتان (هو وقناعه) كما هما، وCMYK كما هو (٦٤)، والملوّنة والرمادية صُغّرتا.
+    expect(widths).toEqual([4, 4, 10, 10, 64]);
+    // الرمادية JPEG صارت ملوّنة (الترميز الجديد ثلاثيّ القنوات) — وقناع PNG الرماديّ كما هو.
+    const jpegs = dicts.filter((d) => d.get(PDFName.of('Filter')) === PDFName.of('DCTDecode'));
+    expect(jpegs.filter((d) => d.get(PDFName.of('ColorSpace')) === PDFName.of('DeviceGray'))).toHaveLength(0);
+    expect(dicts.filter((d) => d.get(PDFName.of('ColorSpace')) === PDFName.of('DeviceCMYK'))).toHaveLength(1);
+    const [shown] = await shownTexts(out.bytes);
+    expect(at(shown!, 'KEEP-TEXT')).toBeTruthy();
+    // وما أكبره الترميز لا يُكتب، وملفٌّ بلا صورٍ تُصغَّر يعود كما هو.
+    const same = await shrinkPdfImages(prepared, { scale: 1, quality: 0.9 }, (j) => ({ jpeg: new Uint8Array(j.length + 10), width: 64, height: 48 }), 0);
+    expect(same).toEqual({ bytes: prepared, images: 0 });
   });
 
   it('صور JPEG ملفًّا: كلّ صورةٍ صفحةٌ بمقاسها، والحجم قرابة مجموع الصور', async () => {

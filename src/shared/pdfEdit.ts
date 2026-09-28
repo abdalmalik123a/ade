@@ -266,6 +266,20 @@ export const RASTER_STEPS: readonly RasterStep[] = [
   { dpi: 50, quality: 0.3 }
 ];
 
+/**
+ * درجات تصغير صور الملف **ونصّه باقٍ** — تُجرَّب قبل أن تصير الصفحات صورًا: كتابٌ فيه صورة
+ * مستمسكٍ كبيرة يبلغ الحدّ بتصغيرها وحدها، ونصّه يبقى يُحدَّد ويُنسخ. والنسبة من أبعاد
+ * الصورة في الملف، ولا تُصغَّر صورةٌ دون ٥٠٠ بكسل في ضلعها الأقصر.
+ */
+export const IMAGE_STEPS: readonly { scale: number; quality: number }[] = [
+  { scale: 1, quality: 0.75 },
+  { scale: 0.8, quality: 0.7 },
+  { scale: 0.65, quality: 0.65 },
+  { scale: 0.5, quality: 0.6 },
+  { scale: 0.4, quality: 0.55 },
+  { scale: 0.3, quality: 0.5 }
+];
+
 /** ما يضيفه غلاف PDF فوق صوره — تقديرًا يُتحقَّق منه بعد البناء. */
 export const pdfOverhead = (pages: number) => 1200 + 450 * pages;
 

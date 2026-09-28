@@ -306,7 +306,7 @@ export default async function scenario(page, { shotsDir }) {
     ok(`وبلا حدٍّ يبقى كبيرًا كما هو (${statSync(full).size} > ١ ميغا)`, statSync(full).size > 1_000_000);
   } else ok('حُفظ الملف الكامل', false);
 
-  // حدّ ١ ميغا: الملف يُصغَّر صورًا حتى يبلغه — ولا يتجاوزه بايتًا.
+  // حدّ ١ ميغا: تُصغَّر صور الملف ونصّه باقٍ (تعميق الموجود ٦) — ولا يتجاوزه بايتًا.
   await choose('[data-pdf-limit]', 1_000_000);
   const small = await saveNamed('مصغر');
   const toast = await page.eval(`return document.querySelector('[data-pdf-toast]')?.innerText ?? '';`);
@@ -314,8 +314,20 @@ export default async function scenario(page, { shotsDir }) {
     const out = await inspect(small);
     const size = statSync(small).size;
     ok(`«الحجم ١ ميغا»: ${size} بايت ≤ ١٬٠٠٠٬٠٠٠ بخمس صفحاتٍ بمقاساتها`, size <= 1_000_000 && out.length === 5 && out[1].w > out[1].h && Math.abs(out[4].h - 842) <= 2);
-    ok('وصفحاته صورٌ (لا نصّ فيها)، ويقول ذلك وحجمه', out.every((p) => !p.text.trim()) && toast.includes('صفحاته صور') && toast.includes('ك.ب'));
+    ok('وصُغّرت صوره ونصّه باقٍ: الترقيم والاستمارة تُقرأ، ويقول ذلك وحجمه', out.every((p, i) => p.text.includes(`P${i + 1}/5`)) && has(out[1].text, 'FORM PAGE 1') && toast.includes('صُغّرت صوره') && toast.includes('ك.ب'));
   } else ok(`حُفظ الملف المصغَّر (${toast})`, false);
+
+  // «أبيض وأسود»: الصفحات صورٌ رمادية — الطريق الذي يبقى حين لا يكفي تصغير الصور.
+  await click('[data-pdf-gray]');
+  await wait(200);
+  const grayFile = await saveNamed('رمادي');
+  const grayToast = await page.eval(`return document.querySelector('[data-pdf-toast]')?.innerText ?? '';`);
+  if (grayFile) {
+    const out = await inspect(grayFile);
+    ok(`و«أبيض وأسود» بالحدّ نفسه: صفحاته صورٌ لا نصّ فيها (${statSync(grayFile).size} بايت)`, statSync(grayFile).size <= 1_000_000 && out.length === 5 && out.every((p) => !p.text.trim()) && grayToast.includes('صفحاته صور'));
+  } else ok(`حُفظ الملف الرمادي (${grayToast})`, false);
+  await click('[data-pdf-gray]');
+  await wait(200);
 
   // والصور: كلُّ صورةٍ بحدّها، أبيض وأسود.
   await choose('[data-pdf-limit]', 100_000);
