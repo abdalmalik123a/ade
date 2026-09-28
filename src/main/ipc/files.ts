@@ -59,6 +59,41 @@ export async function pickOpenPath(
 }
 
 /**
+ * ملفّاتٌ كثيرة تُفتح معًا (محرّر PDF: ملفّات تُدمج وصورٌ تصير صفحات).
+ *
+ * وتحت المِقْود: `DIWAN_TEST_OPEN_FILES` مساراتٌ يفصلها «|»، وإلا فـ`DIWAN_TEST_OPEN_FILE` وحده.
+ */
+export async function pickOpenPaths(
+  window: BrowserWindow,
+  options: { title: string; buttonLabel: string; filterName: string; extensions: string[] }
+): Promise<string[]> {
+  const many = process.env['DIWAN_TEST_OPEN_FILES'];
+  if (many) return many.split('|').filter(Boolean);
+  const one = process.env['DIWAN_TEST_OPEN_FILE'];
+  if (one) return [one];
+
+  const result = await dialog.showOpenDialog(window, {
+    title: options.title,
+    buttonLabel: options.buttonLabel,
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: options.filterName, extensions: options.extensions }]
+  });
+  return result.canceled ? [] : result.filePaths;
+}
+
+/** مجلّدٌ تُحفظ فيه ملفّاتٌ كثيرة (أجزاء ملفٍّ مقسوم، أو صفحاتٌ صورًا) — والاستثناء نفسه تحت المِقْود. */
+export async function pickSaveFolder(window: BrowserWindow, title: string): Promise<string | null> {
+  const testDir = process.env['DIWAN_TEST_SAVE_DIR'];
+  if (testDir) return testDir;
+  const result = await dialog.showOpenDialog(window, {
+    title,
+    buttonLabel: 'احفظ هنا',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+}
+
+/**
  * أي مجلد يُفتح: حوار النظام دائمًا، والاستثناء نفسه تحت المِقْود.
  *
  * DIWAN_TEST_OPEN_DIR لا يوجد إلا حين يقود tools/drive.mjs التطبيقَ الحقيقي —

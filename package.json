@@ -72,6 +72,8 @@
     "docx": "^9.1.0",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {

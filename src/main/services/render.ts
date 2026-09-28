@@ -53,6 +53,22 @@ function printCss(page: PageMm, offset: { x: number; y: number } = { x: 0, y: 0 
 `;
 }
 
+/**
+ * أنماط الطبقة: ما يُضاف فوق صفحة PDF قائمة (نصٌّ وشعارٌ وعلامة مائية — محرّر PDF).
+ *
+ * وخلافًا للورقة: **لا خلفية** — ما لا يُرسم شفّافٌ فيبقى الأصل تحته ظاهرًا — ولا يُنزع
+ * الدوران: العلامة المائية مائلةٌ بقصد. والصفحة بمقاس الصفحة التي تُختم عليها تمامًا.
+ */
+function layerCss(page: PageMm): string {
+  return `
+  @page { size: ${page.w}mm ${page.h}mm; margin: 0; }
+  html, body { margin: 0; padding: 0; background: transparent !important; }
+  body > :not(.print-root) { display: none !important; }
+  body * { visibility: visible; }
+  .print-root { position: relative; width: ${page.w}mm; height: ${page.h}mm; overflow: hidden; background: transparent; }
+`;
+}
+
 /** مقاس الطابعة: ما كان A4 باسمه، وغيره بالميكرون كما تطلبه Chromium. */
 function pageSizeOf(page: PageMm): { landscape: boolean; pageSize: 'A4' | { width: number; height: number } } {
   const landscape = page.w > page.h;
@@ -74,6 +90,8 @@ async function withRenderWindow<T>(
     page?: PageMm;
     /** إزاحة الطابعة المُعايَرة — للطباعة الورقية وحدها. */
     offset?: { x: number; y: number };
+    /** طبقةٌ تُختم فوق صفحة PDF: شفّافة، ودورانها من التصميم لا يُنزع (`layerCss`). */
+    layer?: boolean;
   } = {}
 ): Promise<T> {
   const page = opts.page ?? A4;
@@ -102,7 +120,7 @@ async function withRenderWindow<T>(
     await win.webContents.executeJavaScript(`
       (() => {
         const style = document.createElement('style');
-        style.textContent = ${JSON.stringify(printCss(page, opts.offset))};
+        style.textContent = ${JSON.stringify(opts.layer ? layerCss(page) : printCss(page, opts.offset))};
         document.head.appendChild(style);
         const root = document.createElement('div');
         root.className = 'print-root';
@@ -235,6 +253,28 @@ export async function renderPdf(sheetHtml: string, page: PageMm = A4): Promise<B
         preferCSSPageSize: true
       }),
     { page }
+  );
+}
+
+/**
+ * طبقةٌ PDF شفّافة بمقاس صفحةٍ بعينها — تُختم فوق صفحةٍ قائمة (`pdfEdit.ts`).
+ *
+ * والنصّ العربي يُرسم هنا لا في مكتبة PDF: Chromium يصل الحروف ويرتّبها من اليمين،
+ * ويبقى النصّ نصًّا يُحدَّد ويُبحث فيه — ومكتبات PDF ترسم الحروف منفصلةً معكوسة.
+ */
+export async function renderLayerPdf(html: string, page: PageMm): Promise<Buffer> {
+  const { landscape, pageSize } = pageSizeOf(page);
+  return withRenderWindow(
+    html,
+    (win) =>
+      win.webContents.printToPDF({
+        pageSize,
+        printBackground: true,
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        landscape,
+        preferCSSPageSize: true
+      }),
+    { page, layer: true }
   );
 }
 

@@ -2,6 +2,17 @@ import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus }
 import type { Letterhead, LetterheadLayout } from './letterhead';
 import type { Doc, ListItem, Suggestion } from './doc';
 import type { OcrLine } from './paperDoc';
+import type { PdfPlan, Rotation } from './pdfEdit';
+
+/** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
+export type PdfOpened = {
+  id: string;
+  name: string;
+  kind: 'pdf' | 'image';
+  bytes: Uint8Array;
+  pages: { width: number; height: number; rotation: Rotation }[];
+  image?: { width: number; height: number };
+};
 import type { TemplateInput, TemplateVariable } from './template';
 
 /** عقد الاتصال بين الواجهة والعملية الرئيسية. مصدر الحقيقة الوحيد للأنواع. */
@@ -810,6 +821,17 @@ export type DiwanApi = {
     facets(): Promise<{ subjects: string[]; grades: string[] }>;
     used(id: number): Promise<void>;
     delete(id: number): Promise<void>;
+  };
+  /** محرّر PDF (خدمات التقديم الإلكتروني): الملفّات تُفتح مصادرَ، والخطّة تُبنى ملفًّا جديدًا. */
+  pdf: {
+    open(): Promise<{ opened: PdfOpened[]; failed: { name: string; error: string }[] } | null>;
+    build(plan: PdfPlan): Promise<Uint8Array>;
+    save(plan: PdfPlan, name: string): Promise<string | null>;
+    saveMany(items: { plan: PdfPlan; name: string }[]): Promise<{ folder: string; files: string[] } | null>;
+    saveImages(images: { name: string; bytes: Uint8Array }[]): Promise<{ folder: string; files: string[] } | null>;
+    pickLogo(): Promise<string | null>;
+    logos(): Promise<string[]>;
+    close(ids: string[]): Promise<void>;
   };
   /** استوديو التصوير: حفظ اللقطة، ومراقبة مجلّد الكاميرا الاحترافية. */
   camera: {

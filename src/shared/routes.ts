@@ -6,6 +6,8 @@ export const ROUTES = {
   orders: 'orders-board',
   /** الصور الشخصية — تُقصّ على الوجه بمقاسها وتُطبع نسخًا. */
   photos: 'passport-photos',
+  /** ملفات PDF — نصٌّ وشعارٌ وعلامة مائية، وقصٌّ وتقسيمٌ ودمج، بلا إنترنت (التقديم الإلكتروني). */
+  pdf: 'pdf-tools',
   /** الجهات — المدارس والدوائر: شعارها ولونها وترويساتها وطلباتها. */
   clients: 'clients-directory',
   editor: 'smart-editor-a4-preview',

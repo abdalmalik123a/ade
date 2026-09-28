@@ -1,0 +1,211 @@
+/**
+ * محرّر PDF (خدمات التقديم الإلكتروني — المرحلة الأولى): النموذج والحساب، خالصًا بلا Electron.
+ *
+ * الملف يُفتح صفحاتٍ مرتّبة، لكلٍّ مصدرُها ودورانها وقصّها؛ وفوقها طبقاتٌ تُضاف — نصٌّ
+ * وشعارٌ وعلامة مائية — بمواضع نسبيةٍ من الصفحة **كما تُرى** (بعد الدوران والقصّ). والحفظ
+ * يكتب ملفًّا جديدًا دائمًا: الأصل يبقى كما وصل (قرار المالك).
+ */
+
+export type Rotation = 0 | 90 | 180 | 270;
+
+/** صندوقٌ نسبيّ في الصفحة كما تُرى: من أعلاها يمينًا ويسارًا — ٠..١. */
+export type FracBox = { x: number; y: number; w: number; h: number };
+
+/** صندوقٌ بنقاط PDF في فضاء الصفحة الأصلي (الأصل أسفلها يسارًا). */
+export type PtBox = { x: number; y: number; width: number; height: number };
+
+export type PdfSourceKind = 'pdf' | 'image';
+
+/** صفحةٌ في الملف الناتج: من أيّ مصدر، وأيّ صفحةٍ منه، وكيف تُدار وتُقصّ. */
+export type PageRef = {
+  id: string;
+  source: string;
+  /** رقم الصفحة في مصدرها من ٠ — والصورة صفحةٌ واحدة. */
+  index: number;
+  /** دورانٌ يضيفه الموظف فوق دوران الصفحة في ملفّها. */
+  rotate: Rotation;
+  /** القصّ نسبيًّا من الصفحة كما تُرى قبله. */
+  crop?: FracBox;
+};
+
+type OverlayBase = {
+  id: string;
+  box: FracBox;
+  /** الصفحات التي يُختم عليها: كلّها، أو بمعرّفاتها. */
+  pages: 'all' | string[];
+  /** ٠..١ */
+  opacity: number;
+  /** ميلٌ بالدرجات — العلامة المائية مائلة. */
+  angle: number;
+};
+
+export type TextOverlay = OverlayBase & {
+  kind: 'text';
+  text: string;
+  font: string;
+  /** بالنقطة. */
+  size: number;
+  color: string;
+  bold: boolean;
+  align: 'right' | 'center' | 'left';
+};
+
+export type ImageOverlay = OverlayBase & {
+  kind: 'image';
+  /** مسارٌ في المخزن (`diwan://store/…`). */
+  src: string;
+};
+
+export type Overlay = TextOverlay | ImageOverlay;
+
+export type PdfPlan = { pages: PageRef[]; overlays: Overlay[] };
+
+/** الخطوط التي تُعرض — من خطوط ويندوز؛ وما غاب عن جهازٍ يُبدَّل بما يقاربه. */
+export const PDF_FONTS = ['Arial', 'Tahoma', 'Simplified Arabic', 'Traditional Arabic', 'Sakkal Majalla', 'Arabic Typesetting'] as const;
+
+const PT_PER_MM = 72 / 25.4;
+export const ptToMm = (pt: number) => pt / PT_PER_MM;
+export const mmToPt = (mm: number) => mm * PT_PER_MM;
+
+/**
+ * «1-3، 5، 8-» صفحاتٌ بأرقامها من ١ — كما يكتبها الموظف. والعربية والفاصلة العربية
+ * والمسافات تُقبل، وما خرج عن الملف يُترك. ويعود بفهارس من ٠ بترتيب ما كُتب بلا تكرار.
+ */
+export function parseRanges(text: string, count: number): number[] {
+  const digits = text.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660));
+  const out: number[] = [];
+  for (const part of digits.split(/[,،\s]+/).filter(Boolean)) {
+    const m = /^(\d+)?\s*-\s*(\d+)?$/.exec(part);
+    let from: number;
+    let to: number;
+    if (m) {
+      from = m[1] ? Number(m[1]) : 1;
+      to = m[2] ? Number(m[2]) : count;
+    } else if (/^\d+$/.test(part)) {
+      from = to = Number(part);
+    } else continue;
+    const step = from <= to ? 1 : -1;
+    for (let n = from; step > 0 ? n <= to : n >= to; n += step) {
+      if (n >= 1 && n <= count && !out.includes(n - 1)) out.push(n - 1);
+    }
+  }
+  return out;
+}
+
+/** الدوران الكلّي: ما في الملف وما أضافه الموظف. */
+export const totalRotation = (base: number, extra: number): Rotation => ((((base + extra) % 360) + 360) % 360) as Rotation;
+
+/** مقاس الصفحة كما تُرى: عرضها وارتفاعها بعد الدوران. */
+export function shownSize(box: { width: number; height: number }, rotation: Rotation): { w: number; h: number } {
+  return rotation % 180 ? { w: box.height, h: box.width } : { w: box.width, h: box.height };
+}
+
+/**
+ * نقطةٌ من الصفحة كما تُرى (u يمينًا، v نزولًا، ٠..١) إلى فضاء الصفحة الأصلي.
+ *
+ * و`/Rotate 90` في PDF يدير الصفحة مع عقارب الساعة عند العرض: حافّتها اليسرى تصير أعلاها،
+ * فأسفلها الأيسر يصير أعلاها الأيسر.
+ */
+export function shownToUser(box: PtBox, rotation: Rotation, u: number, v: number): { x: number; y: number } {
+  const { x, y, width: w, height: h } = box;
+  switch (rotation) {
+    case 90:
+      return { x: x + v * w, y: y + u * h };
+    case 180:
+      return { x: x + (1 - u) * w, y: y + v * h };
+    case 270:
+      return { x: x + (1 - v) * w, y: y + (1 - u) * h };
+    default:
+      return { x: x + u * w, y: y + (1 - v) * h };
+  }
+}
+
+/** القصّ النسبيّ (كما يُرى) صندوقًا بنقاط الصفحة الأصلية — ما يُكتب في CropBox. */
+export function cropToUser(box: PtBox, rotation: Rotation, crop: FracBox): PtBox {
+  const a = shownToUser(box, rotation, crop.x, crop.y);
+  const b = shownToUser(box, rotation, crop.x + crop.w, crop.y + crop.h);
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+}
+
+/**
+ * أين تُختم الطبقة: الطبقة صفحةٌ بمقاس ما يُرى، وتُرسم في فضاء الصفحة الأصلي مدارةً
+ * عكس دورانها — فتُرى مستقيمةً فوقها. والدوران في مكتبة PDF حول الزاوية التي تُرسم منها،
+ * عكس عقارب الساعة.
+ */
+export function stampPlacement(box: PtBox, rotation: Rotation): { x: number; y: number; rotate: Rotation } {
+  const { x, y, width: w, height: h } = box;
+  switch (rotation) {
+    case 90:
+      return { x: x + w, y, rotate: 90 };
+    case 180:
+      return { x: x + w, y: y + h, rotate: 180 };
+    case 270:
+      return { x, y: y + h, rotate: 270 };
+    default:
+      return { x, y, rotate: 0 };
+  }
+}
+
+/**
+ * الصورة صفحةً: A4 باتجاهها (عموديةً للطويلة وأفقيةً للعريضة)، والصورة في وسطها بهامش
+ * ١٠ ملم لا تُمطّ. ومنها تُرسم المعاينة ويُبنى الملف — فلا يختلفان.
+ */
+export function imagePage(img: { width: number; height: number }): { page: { width: number; height: number }; draw: PtBox } {
+  const landscape = img.width > img.height;
+  const page = landscape ? { width: mmToPt(297), height: mmToPt(210) } : { width: mmToPt(210), height: mmToPt(297) };
+  const m = mmToPt(10);
+  const scale = Math.min((page.width - 2 * m) / img.width, (page.height - 2 * m) / img.height);
+  const width = img.width * scale;
+  const height = img.height * scale;
+  return { page, draw: { x: (page.width - width) / 2, y: (page.height - height) / 2, width, height } };
+}
+
+/** الطبقات التي تُختم على صفحةٍ بعينها. */
+export const overlaysFor = (plan: PdfPlan, pageId: string): Overlay[] =>
+  plan.overlays.filter((o) => o.pages === 'all' || o.pages.includes(pageId));
+
+/** علامة مائية: كبيرةٌ في وسط الصفحة مائلة، على الصفحات كلّها. */
+export function watermarkText(id: string, text: string): TextOverlay {
+  return {
+    id,
+    kind: 'text',
+    text,
+    font: 'Arial',
+    size: 54,
+    color: '#b3261e',
+    bold: true,
+    align: 'center',
+    opacity: 0.16,
+    angle: -30,
+    box: { x: 0.05, y: 0.4, w: 0.9, h: 0.2 },
+    pages: 'all'
+  };
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * الطبقة ورقةَ HTML بمقاس الصفحة كما تُرى — يرسمها محرّك الطباعة PDF شفّافًا (`renderLayerPdf`).
+ * والنصّ باتجاهه (`dir="auto"`): العربيّ من اليمين، والإنكليزيّ من اليسار، والمختلط يُرتَّب.
+ */
+export function layerHtml(overlays: Overlay[], pageMm: { w: number; h: number }): string {
+  const items = overlays.map((o) => {
+    const pos =
+      `position:absolute;left:${(o.box.x * pageMm.w).toFixed(2)}mm;top:${(o.box.y * pageMm.h).toFixed(2)}mm;` +
+      `width:${(o.box.w * pageMm.w).toFixed(2)}mm;height:${(o.box.h * pageMm.h).toFixed(2)}mm;` +
+      `opacity:${Math.max(0, Math.min(1, o.opacity))};transform:rotate(${o.angle}deg);transform-origin:center`;
+    if (o.kind === 'image') {
+      return `<div style="${pos}"><img alt="" src="diwan://store/${esc(o.src)}" style="width:100%;height:100%;object-fit:contain"/></div>`;
+    }
+    const justify = o.align === 'center' ? 'center' : o.align === 'left' ? 'flex-end' : 'flex-start';
+    return (
+      `<div dir="auto" style="${pos};display:flex;align-items:center;justify-content:${justify};` +
+      `font-family:'${o.font}',Arial,sans-serif;font-size:${o.size}pt;line-height:1.3;color:${o.color};` +
+      `font-weight:${o.bold ? 700 : 400};text-align:${o.align};white-space:pre-wrap;overflow:visible">` +
+      `<span style="width:100%">${esc(o.text)}</span></div>`
+    );
+  });
+  return `<div style="position:relative;width:${pageMm.w}mm;height:${pageMm.h}mm">${items.join('')}</div>`;
+}

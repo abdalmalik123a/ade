@@ -186,6 +186,16 @@ const api: DiwanApi = {
       return () => ipcRenderer.removeListener('print:progress', handler);
     }
   },
+  pdf: {
+    open: () => invoke('pdf:open'),
+    build: (plan: unknown) => invoke('pdf:build', plan),
+    save: (plan: unknown, name: string) => invoke('pdf:save', plan, name),
+    saveMany: (items: unknown) => invoke('pdf:saveMany', items),
+    saveImages: (images: unknown) => invoke('pdf:saveImages', images),
+    pickLogo: () => invoke('pdf:pickLogo'),
+    logos: () => invoke('pdf:logos'),
+    close: (ids: string[]) => invoke('pdf:close', ids)
+  },
   templates: {
     list: (category?: string | null, issuing?: string) =>
       invoke('templates:list', category ?? null, issuing ?? 'registered'),

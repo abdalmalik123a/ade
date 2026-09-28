@@ -4,6 +4,7 @@ import { registerLetterheadIpc } from './letterheads';
 import { registerBackupIpc } from './backup';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
+import { registerPdfIpc } from './pdf';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
@@ -108,6 +109,7 @@ export function registerIpc(): void {
   registerLetterheadIpc();
   registerFileIpc();
   registerDesignIpc();
+  registerPdfIpc();
   registerTemplateIpc();
   registerCitizenIpc();
   registerDocumentIpc();

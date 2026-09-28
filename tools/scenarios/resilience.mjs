@@ -22,6 +22,7 @@ const ROUTES = [
   'service-counter',
   'orders-board',
   'passport-photos',
+  'pdf-tools',
   'clients-directory',
   'smart-editor-a4-preview',
   'templates-library-drafts',

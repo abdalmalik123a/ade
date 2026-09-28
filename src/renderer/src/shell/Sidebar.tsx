@@ -79,6 +79,7 @@ export default function Sidebar({
             : undefined
     },
     { key: 'photos', icon: 'portrait', label: 'الصور الشخصية' },
+    { key: 'pdf', icon: 'picture_as_pdf', label: 'ملفات PDF' },
     {
       key: 'archive',
       icon: 'inventory_2',

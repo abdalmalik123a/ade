@@ -14,6 +14,7 @@ import DesignsScreen, { type DesignRequest } from './screens/DesignsScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import ClientsScreen from './screens/ClientsScreen';
 import PhotosScreen from './screens/PhotosScreen';
+import PdfScreen from './screens/PdfScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import AuditScreen from './screens/AuditScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -274,6 +275,8 @@ export default function App() {
         );
       case 'photos':
         return <PhotosScreen printer={selectedPrinter} />;
+      case 'pdf':
+        return <PdfScreen />;
       case 'clients':
         return (
           <ClientsScreen
