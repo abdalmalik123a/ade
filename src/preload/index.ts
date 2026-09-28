@@ -188,8 +188,10 @@ const api: DiwanApi = {
   },
   pdf: {
     open: () => invoke('pdf:open'),
+    scan: () => invoke('pdf:scan'),
     build: (plan: unknown) => invoke('pdf:build', plan),
-    save: (plan: unknown, name: string) => invoke('pdf:save', plan, name),
+    assemble: (pages: unknown) => invoke('pdf:assemble', pages),
+    save: (bytes: Uint8Array, name: string) => invoke('pdf:save', bytes, name),
     saveMany: (items: unknown) => invoke('pdf:saveMany', items),
     saveImages: (images: unknown) => invoke('pdf:saveImages', images),
     pickLogo: () => invoke('pdf:pickLogo'),

@@ -1,15 +1,19 @@
 /**
- * سيناريو: «ملفات PDF» — محرّر PDF للتقديم الإلكتروني (المرحلة الأولى).
+ * سيناريو: «ملفات PDF» — محرّر PDF للتقديم الإلكتروني.
  *
  * ثلاثة ملفّات تُفتح معًا (فتُدمج): كتابٌ عربيّ رسمه محرّك الطباعة، واستمارةٌ بثلاث صفحات،
  * وصورة هوية. ثم ما يفعله المكتب يوميًّا: يُدير صفحةً ويحذف أخرى ويرتّب، ويضيف نصًّا عربيًّا
  * وشعارًا وعلامةً مائية، ويقصّ — ويحفظ ملفًّا جديدًا. ويُفتَّش الناتج بـpdf.js: عدد الصفحات
  * ودورانها وقصّها، والنصّ العربي المضاف نصٌّ حقيقي، والأصل كما وصل. ثم الاستخراج والتقسيم
  * والصفحاتُ صورًا.
+ *
+ * ثم التطوير الثاني: التكرار والتراجع، وصفحةٌ من الماسح بمقاسها (فيها صورةٌ لا تنضغط فتكبر
+ * كصور الهاتف)، وترقيم الصفحات — و«حدّ الحجم» لخانة الرفع: الملف يُصغَّر حتى يبلغه، والصور
+ * كلٌّ بحدّها.
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 const ROOT = join(process.env.TEMP ?? '.', `diwan-pdftools-${Date.now()}`);
@@ -18,6 +22,11 @@ const LETTER = join(ROOT, 'كتاب.pdf');
 const FORM = join(ROOT, 'استمارة.pdf');
 const ID = join(ROOT, 'هوية.png');
 const LOGO = join(ROOT, 'شعار.png');
+/**
+ * ما «يمسحه» الماسح تحت المِقْود: A4 بـ٢٠٠ نقطة، في وسطها صورةٌ لا تنضغط (ضجيج) — فالملف
+ * يتجاوز حدّ الرفع كما تفعل صور المستمسكات الملوّنة.
+ */
+const SCAN = join(ROOT, 'مسح.png');
 
 const LETTER_HTML = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>
 @page { size: 210mm 297mm; margin: 0 } body { margin: 0; font-family: Tahoma, sans-serif; font-size: 15pt }
@@ -25,8 +34,8 @@ const LETTER_HTML = `<!doctype html><html lang="ar" dir="rtl"><head><meta charse
 </style></head><body><div class="pg"><p>جمهورية العراق — وزارة التربية</p><p style="text-align:center">م / تأييد</p>
 <p>تؤيد إدارة المدرسة أن الطالب أحمد كريم جاسم مستمر بالدوام.</p></div></body></html>`;
 
-/** PNG بلا مكتبة: لونٌ واحد — يكفي لصورة هويةٍ وشعار. */
-function png(w, h, rgb) {
+/** PNG بلا مكتبة: لونٌ واحد — يكفي لصورة هويةٍ وشعار؛ و`noise` مستطيلٌ ببكسلاتٍ عشوائية لا تنضغط. */
+function png(w, h, rgb, noise = null) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -52,7 +61,14 @@ function png(w, h, rgb) {
   ihdr[9] = 2;
   const row = Buffer.alloc(1 + w * 3);
   for (let x = 0; x < w; x++) row.set(rgb, 1 + x * 3);
-  const raw = Buffer.concat(Array.from({ length: h }, () => row));
+  const raw = Buffer.concat(
+    Array.from({ length: h }, (_, y) => {
+      if (!noise || y < noise.y || y >= noise.y + noise.h) return row;
+      const r = Buffer.from(row);
+      randomBytes(noise.w * 3).copy(r, 1 + noise.x * 3);
+      return r;
+    })
+  );
   return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', require_deflate(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 import { deflateSync } from 'node:zlib';
@@ -66,7 +82,14 @@ export async function prepare() {
   writeFileSync(FORM, await doc.save());
   writeFileSync(ID, png(860, 540, [40, 90, 160]));
   writeFileSync(LOGO, png(200, 200, [200, 30, 30]));
-  return { DIWAN_TEST_OPEN_FILES: [LETTER, FORM, ID].join('|'), DIWAN_TEST_OPEN_FILE: LOGO, DIWAN_TEST_SAVE_DIR: OUT };
+  // ضجيجٌ يملأ أكثر الورقة (٢٫٨ مليون بكسل): فالملف فوق الميغا بوضوح — ومستطيلٌ أصغر كان ٧٩٠ ك.ب.
+  writeFileSync(SCAN, png(1654, 2339, [235, 235, 225], { x: 127, y: 170, w: 1400, h: 2000 }));
+  return {
+    DIWAN_TEST_OPEN_FILES: [LETTER, FORM, ID].join('|'),
+    DIWAN_TEST_OPEN_FILE: LOGO,
+    DIWAN_TEST_SAVE_DIR: OUT,
+    DIWAN_TEST_SCAN_FILE: SCAN
+  };
 }
 
 export default async function scenario(page, { shotsDir }) {
@@ -222,5 +245,90 @@ export default async function scenario(page, { shotsDir }) {
   }
   const heads = jpgs.map((f) => readFileSync(join(OUT, f)).subarray(0, 2).toString('hex'));
   ok(`«صفحاتٌ صورًا»: أربع صور JPG للرفع (${jpgs.length})`, jpgs.length === 4 && heads.every((h) => h === 'ffd8') && jpgs.every((f) => statSync(join(OUT, f)).size > 5000));
+  for (const f of fresh()) outBefore.add(f);
+
+  // ── التطوير الثاني ───────────────────────────────────────────────────
+  const pageCount = () => page.eval(`return document.querySelectorAll('[data-pdf-page]').length;`);
+  const waitCount = async (n) => {
+    for (let i = 0; i < 40 && (await pageCount()) !== n; i++) await wait(300);
+    return pageCount();
+  };
+  const choose = (sel, value) =>
+    page.eval(`const el = document.querySelector(${JSON.stringify(sel)});
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(String(value))});
+      el.dispatchEvent(new Event('change', { bubbles: true })); return true;`);
+
+  // التكرار والتراجع والإعادة — بالزرّ وبـCtrl+Z.
+  await clearSel();
+  await check(1);
+  await click('[data-act="pdf-duplicate"]');
+  const dup = await waitCount(5);
+  await click('[data-act="pdf-undo"]');
+  const undone = await waitCount(4);
+  await click('[data-act="pdf-redo"]');
+  const redone = await waitCount(5);
+  await page.key('KeyZ', { ctrl: true });
+  const keyed = await waitCount(4);
+  ok(`«كرّر» صفحةً، ثم تراجع وإعادة وCtrl+Z (${dup}←${undone}←${redone}←${keyed})`, dup === 5 && undone === 4 && redone === 5 && keyed === 4);
+  await clearSel();
+
+  // صفحةٌ من الماسح.
+  await click('[data-act="pdf-scan"]');
+  ok('«امسح»: صفحةٌ من الماسح في آخر الملف، وتُعرض', (await waitCount(5)) === 5 && (await page.eval(`return document.querySelector('[data-pdf-page="5"]').className.includes('border-secondary');`)));
+
+  // الترقيم: طبقةٌ واحدة على الكلّ، وكلُّ صفحةٍ برقمها.
+  await click('[data-act="pdf-number"]');
+  await wait(300);
+  await page.type('[data-pdf-overlay-text]', 'P{n}/{N}');
+  await wait(300);
+  ok('«رقّم»: المعاينة ترى الصفحة برقمها (P5/5)', await page.eval(`return document.querySelector('[data-pdf-view]').innerText.includes('P5/5');`));
+  if (shotsDir) await page.shot(join(shotsDir, 'pdf-numbered.png'));
+
+  const saveNamed = async (label) => {
+    await page.type('[data-pdf-name]', label);
+    const before = new Set(readdirSync(OUT));
+    await click('[data-act="pdf-save"]');
+    let file = null;
+    for (let i = 0; i < 80 && !file; i++) {
+      await wait(500);
+      file = readdirSync(OUT).find((f) => f.endsWith('.pdf') && !before.has(f));
+    }
+    for (let i = 0; i < 10 && !(await page.eval(`return !document.querySelector('[data-pdf-busy]');`)); i++) await wait(300);
+    return file ? join(OUT, file) : null;
+  };
+
+  const full = await saveNamed('كامل');
+  if (full) {
+    const out = await inspect(full);
+    steps.push(`  … ${out.map((p, i) => `${i + 1}:${p.w}×${p.h}`).join(' ')} — ${statSync(full).size} بايت`);
+    ok('خمس صفحاتٍ مرقَّمة، كلٌّ برقمها نصًّا حقيقيًّا', out.length === 5 && out.every((p, i) => p.text.includes(`P${i + 1}/5`)));
+    ok('والممسوحة A4 بمقاسها الحقيقي (٢٠٠ نقطة)، لا مصغّرةً في A4 أخرى', Math.abs(out[4].w - 595) <= 2 && Math.abs(out[4].h - 842) <= 2);
+    ok(`وبلا حدٍّ يبقى كبيرًا كما هو (${statSync(full).size} > ١ ميغا)`, statSync(full).size > 1_000_000);
+  } else ok('حُفظ الملف الكامل', false);
+
+  // حدّ ١ ميغا: الملف يُصغَّر صورًا حتى يبلغه — ولا يتجاوزه بايتًا.
+  await choose('[data-pdf-limit]', 1_000_000);
+  const small = await saveNamed('مصغر');
+  const toast = await page.eval(`return document.querySelector('[data-pdf-toast]')?.innerText ?? '';`);
+  if (small) {
+    const out = await inspect(small);
+    const size = statSync(small).size;
+    ok(`«الحجم ١ ميغا»: ${size} بايت ≤ ١٬٠٠٠٬٠٠٠ بخمس صفحاتٍ بمقاساتها`, size <= 1_000_000 && out.length === 5 && out[1].w > out[1].h && Math.abs(out[4].h - 842) <= 2);
+    ok('وصفحاته صورٌ (لا نصّ فيها)، ويقول ذلك وحجمه', out.every((p) => !p.text.trim()) && toast.includes('صفحاته صور') && toast.includes('ك.ب'));
+  } else ok(`حُفظ الملف المصغَّر (${toast})`, false);
+
+  // والصور: كلُّ صورةٍ بحدّها، أبيض وأسود.
+  await choose('[data-pdf-limit]', 100_000);
+  await click('[data-pdf-gray]');
+  await wait(200);
+  await click('[data-act="pdf-images"]');
+  let limited = [];
+  for (let i = 0; i < 60 && limited.length < 5; i++) {
+    await wait(500);
+    limited = fresh().filter((f) => f.endsWith('.jpg'));
+  }
+  const imgSizes = limited.map((f) => statSync(join(OUT, f)).size);
+  ok(`«صفحاتٌ صورًا» بحدّ ١٠٠ ك.ب: خمس صور كلٌّ دونه (${imgSizes.join('، ')})`, limited.length === 5 && imgSizes.every((s) => s <= 100_000 && s > 1000));
+  await choose('[data-pdf-limit]', 0);
   return steps.join('\n');
 }

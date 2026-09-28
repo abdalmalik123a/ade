@@ -12,6 +12,7 @@ import {
   imagePage,
   layerHtml,
   overlaysFor,
+  pageTokens,
   ptToMm,
   shownSize,
   stampPlacement,
@@ -23,7 +24,8 @@ import {
 
 export type PdfSource =
   | { kind: 'pdf'; name: string; bytes: Uint8Array }
-  | { kind: 'image'; name: string; bytes: Uint8Array; width: number; height: number };
+  /** و`dpi` لما جاء من الماسح: صفحةٌ بمقاسه الحقيقي (`imagePage`). */
+  | { kind: 'image'; name: string; bytes: Uint8Array; width: number; height: number; dpi?: number };
 
 export type LayerRenderer = (html: string, pageMm: { w: number; h: number }) => Promise<Uint8Array>;
 
@@ -68,8 +70,9 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
 
   const loaded = new Map<string, PDFDocument>();
   const layers = new Map<string, PDFEmbeddedPage>();
+  const total = plan.pages.length;
 
-  for (const ref of plan.pages) {
+  for (const [position, ref] of plan.pages.entries()) {
     const src = sources.get(ref.source);
     if (!src) throw new Error('مصدر صفحةٍ غير موجود — أعد فتح الملف');
 
@@ -88,7 +91,7 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
     } else {
       if (!isPng(src.bytes) && !isJpg(src.bytes)) throw new Error('الصورة ليست PNG ولا JPEG');
       const image = isPng(src.bytes) ? await out.embedPng(src.bytes) : await out.embedJpg(src.bytes);
-      const { page: size, draw } = imagePage({ width: src.width, height: src.height });
+      const { page: size, draw } = imagePage({ width: src.width, height: src.height, dpi: src.dpi });
       page = out.addPage([size.width, size.height]);
       page.drawImage(image, draw);
       base = 0;
@@ -105,7 +108,8 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
       page.setCropBox(box.x, box.y, box.width, box.height);
     }
 
-    const overlays = overlaysFor(plan, ref.id);
+    // الترقيم يُحلّ لكلّ صفحة؛ وما لا ترقيم فيه يبقى طبقةً واحدةً للصفحات المتماثلة.
+    const overlays = overlaysFor(plan, ref.id).map((o) => (o.kind === 'text' ? { ...o, text: pageTokens(o.text, position + 1, total) } : o));
     if (overlays.length && renderLayer) {
       const shown = shownSize(box, rotation);
       const mm = { w: Math.round(ptToMm(shown.w) * 100) / 100, h: Math.round(ptToMm(shown.h) * 100) / 100 };
@@ -121,4 +125,23 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
     }
   }
   return out.save();
+}
+
+/**
+ * الملف صورًا (تصغيره لحدّ خانة الرفع): كلّ صورة JPEG صفحةٌ بمقاس الصفحة كما كانت تُرى
+ * — بالنقاط — تملؤها كلّها.
+ */
+export async function imagesToPdf(pages: { jpeg: Uint8Array; width: number; height: number }[]): Promise<Uint8Array> {
+  if (!pages.length) throw new Error('لا صفحات في الملف');
+  const out = await PDFDocument.create();
+  out.setProducer('ديوان');
+  out.setCreator('ديوان — محرّر PDF');
+  for (const p of pages) {
+    if (!isJpg(p.jpeg)) throw new Error('صورة الصفحة ليست JPEG');
+    const image = await out.embedJpg(p.jpeg);
+    out.addPage([p.width, p.height]).drawImage(image, { x: 0, y: 0, width: p.width, height: p.height });
+  }
+  // بلا «مجاري الكائنات» (PDF 1.5): يقرؤه كلّ قارئٍ ومدقّقٍ قديم في المواقع، والفرق في
+  // الحجم زهيدٌ أمام الصور.
+  return out.save({ useObjectStreams: false });
 }

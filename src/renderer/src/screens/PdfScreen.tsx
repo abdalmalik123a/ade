@@ -1,11 +1,13 @@
 /**
- * «ملفات PDF» — محرّر PDF للتقديم الإلكتروني (المرحلة الأولى).
+ * «ملفات PDF» — محرّر PDF للتقديم الإلكتروني.
  *
- * ما يفعله المكتب يوميًّا بملفّات المنصّات (أبواب، أور، منصّتي، الجامعات): يضيف نصًّا أو
- * شعارًا أو علامةً مائية، ويقصّ ويجزّئ ويدمج ويرتّب — بلا إنترنت، فلا تُرفع مستمسكات الناس
- * إلى مواقع مجهولة. والصفحات تُرسم هنا (pdf.js)، والملف يُبنى في العملية الرئيسة من الخطّة
- * (`@shared/pdfEdit`)، والنصّ العربي يرسمه محرّك الطباعة موصولًا ويبقى نصًّا.
+ * ما يفعله المكتب يوميًّا بملفّات المنصّات (أور، مظلتي، الجامعات): يضيف نصًّا أو شعارًا أو
+ * علامةً مائية أو رقم الصفحة، ويقصّ ويجزّئ ويدمج ويرتّب، ويمسح من الماسح — بلا إنترنت، فلا
+ * تُرفع مستمسكات الناس إلى مواقع مجهولة. والصفحات تُرسم هنا (pdf.js)، والملف يُبنى في
+ * العملية الرئيسة من الخطّة (`@shared/pdfEdit`)، والنصّ العربي يرسمه محرّك الطباعة موصولًا
+ * ويبقى نصًّا.
  *
+ * و«حدّ الحجم» لخانة الرفع: ما تجاوزه تصير صفحاته صورًا بأجود درجةٍ تبلغه — الملف والصور.
  * والحفظ ملفٌّ جديد دائمًا: الأصل يبقى كما وصل (قرار المالك).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -14,11 +16,18 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PdfOpened } from '@shared/api';
 import {
+  fitSearch,
   imagePage,
+  numberingText,
   overlaysFor,
+  pageTokens,
   parseRanges,
+  pdfOverhead,
   PDF_FONTS,
+  RASTER_STEPS,
   shownSize,
+  SIZE_LIMITS,
+  sizeText,
   totalRotation,
   watermarkText,
   type FracBox,
@@ -113,6 +122,63 @@ function shownPt(src: Src, ref: PageRef): { w: number; h: number } {
 
 type Drag = { id: string; mode: 'move' | 'resize'; x: number; y: number; box: FracBox; target: 'overlay' | 'crop' };
 
+const toJpeg = (c: HTMLCanvasElement, quality: number) =>
+  new Promise<Blob>((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error('تعذّر رسم الصفحة صورة'))), 'image/jpeg', quality));
+
+/** أجود درجات التصغير: منها تُرسم الصفحات مرّةً، وتُصغَّر منها الدرجات الأدنى بلا رسمٍ جديد. */
+const TOP_DPI = RASTER_STEPS[0]!.dpi;
+
+/** صفحات الملف المبني صورًا بأجود درجة — ومقاس كلٍّ كما تُرى بالنقاط. */
+async function shootPages(bytes: Uint8Array): Promise<{ shot: Blob; w: number; h: number }[]> {
+  const task = pdfjs.getDocument({ data: bytes.slice(), useSystemFonts: true });
+  const doc = await task.promise;
+  const out: { shot: Blob; w: number; h: number }[] = [];
+  try {
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const pt = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: TOP_DPI / 72 });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvas, viewport }).promise;
+      out.push({ shot: await toJpeg(canvas, 0.92), w: pt.width, h: pt.height });
+    }
+  } finally {
+    void task.destroy();
+  }
+  return out;
+}
+
+/** الصورة بدرجةٍ أصغر: تُصغَّر من صورتها الجيّدة، وتُرمَّد إن طُلب «أبيض وأسود». */
+async function reencode(shot: Blob, dpi: number, quality: number, gray: boolean): Promise<Blob> {
+  const bmp = await createImageBitmap(shot);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round((bmp.width * dpi) / TOP_DPI));
+  c.height = Math.max(1, Math.round((bmp.height * dpi) / TOP_DPI));
+  const ctx = c.getContext('2d')!;
+  if (gray) ctx.filter = 'grayscale(1)';
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return toJpeg(c, quality);
+}
+
+type Snap = { pages: PageRef[]; overlays: Overlay[] };
+
+/** حدّ الحجم يُتذكَّر بين المرّات — المكتب يرفع إلى المنصّات نفسها غالبًا. */
+const LIMIT_KEY = 'diwan.pdf.limit';
+function savedLimit(): number {
+  try {
+    const v = Number(localStorage.getItem(LIMIT_KEY));
+    return SIZE_LIMITS.some((l) => l.bytes === v) ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default function PdfScreen() {
   const [sources, setSources] = useState<Record<string, Src>>({});
   const [pages, setPages] = useState<PageRef[]>([]);
@@ -128,6 +194,8 @@ export default function PdfScreen() {
   const [view, setView] = useState<{ url: string; w: number; h: number } | null>(null);
   const [logoPicker, setLogoPicker] = useState<string[] | null>(null);
   const [splitText, setSplitText] = useState<string | null>(null);
+  const [limit, setLimitState] = useState(savedLimit);
+  const [gray, setGray] = useState(false);
   const toastTimer = useRef<number | undefined>(undefined);
   const drag = useRef<Drag | null>(null);
   const stage = useRef<HTMLDivElement | null>(null);
@@ -138,19 +206,94 @@ export default function PdfScreen() {
     toastTimer.current = window.setTimeout(() => setToast(null), 4200);
   }, []);
 
+  function setLimit(bytes: number) {
+    setLimitState(bytes);
+    try {
+      localStorage.setItem(LIMIT_KEY, String(bytes));
+    } catch {
+      // التذكّر راحةٌ لا شرط — والحدّ يعمل في هذه المرّة.
+    }
+  }
+
   const plan = useMemo<PdfPlan>(() => ({ pages, overlays }), [pages, overlays]);
   const currentRef = pages.find((p) => p.id === current) ?? null;
+  const currentIndex = pages.findIndex((p) => p.id === current);
   const targets = selected.length ? selected : current ? [current] : [];
 
-  // ── الفتح والدمج ────────────────────────────────────────────────────
-  async function add(opened: PdfOpened[]) {
+  // ── التراجع والإعادة ────────────────────────────────────────────────
+  // لقطةٌ للصفحات والطبقات حين يهدأ التعديل: فالسحب كلّه خطوةٌ واحدة، والكتابة كلُّ وقفةٍ خطوة.
+  const latest = useRef<Snap>({ pages, overlays });
+  latest.current = { pages, overlays };
+  const committed = useRef<Snap>(latest.current);
+  const past = useRef<Snap[]>([]);
+  const future = useRef<Snap[]>([]);
+  const restoring = useRef(false);
+  const settle = useRef<number | undefined>(undefined);
+  const [, bumpHistory] = useState(0);
+
+  function flush() {
+    window.clearTimeout(settle.current);
+    const now = latest.current;
+    if (now.pages === committed.current.pages && now.overlays === committed.current.overlays) return;
+    past.current.push(committed.current);
+    if (past.current.length > 100) past.current.shift();
+    future.current = [];
+    committed.current = now;
+    bumpHistory((n) => n + 1);
+  }
+
+  useEffect(() => {
+    if (restoring.current) {
+      restoring.current = false;
+      committed.current = latest.current;
+      return;
+    }
+    window.clearTimeout(settle.current);
+    settle.current = window.setTimeout(flush, 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pages, overlays]);
+
+  function restore(s: Snap) {
+    restoring.current = true;
+    committed.current = s;
+    setPages(s.pages);
+    setOverlays(s.overlays);
+    setSelected((sel) => sel.filter((id) => s.pages.some((p) => p.id === id)));
+    setCurrent((c) => (s.pages.some((p) => p.id === c) ? c : s.pages[0]?.id ?? null));
+    setActive((a) => (s.overlays.some((o) => o.id === a) ? a : null));
+    setCrop(null);
+    bumpHistory((n) => n + 1);
+  }
+
+  function undo() {
+    flush();
+    const prev = past.current.pop();
+    if (!prev) return;
+    future.current.push(committed.current);
+    restore(prev);
+  }
+
+  function redo() {
+    flush();
+    const next = future.current.pop();
+    if (!next) return;
+    past.current.push(committed.current);
+    restore(next);
+  }
+
+  const dirty = pages !== committed.current.pages || overlays !== committed.current.overlays;
+  const canUndo = past.current.length > 0 || dirty;
+  const canRedo = future.current.length > 0 && !dirty;
+
+  // ── الفتح والدمج والمسح ─────────────────────────────────────────────
+  async function add(opened: PdfOpened[]): Promise<PageRef[]> {
     const loaded = await Promise.all(opened.map(loadSource));
     setSources((s) => ({ ...s, ...Object.fromEntries(loaded.map((l) => [l.id, l])) }));
     const added: PageRef[] = loaded.flatMap((src) => src.pages.map((_, index) => ({ id: newId('p'), source: src.id, index, rotate: 0 as Rotation })));
     setPages((p) => [...p, ...added]);
     setCurrent((c) => c ?? added[0]?.id ?? null);
-    if (!name && loaded[0]) setName(`${loaded[0].name.replace(/\.[^.]+$/, '')} — معدّل`);
-    return added.length;
+    if (!name && loaded[0]) setName(loaded[0].image?.dpi ? 'ملف ممسوح' : `${loaded[0].name.replace(/\.[^.]+$/, '')} — معدّل`);
+    return added;
   }
 
   async function open() {
@@ -158,7 +301,7 @@ export default function PdfScreen() {
     try {
       const out = await window.diwan.pdf.open();
       if (!out) return;
-      const n = await add(out.opened);
+      const n = (await add(out.opened)).length;
       if (out.failed.length) say(out.failed.map((f) => `«${f.name}»: ${f.error}`).join(' · '), 'warn');
       else if (n) say(`أُضيفت ${pagesWord(n)}`);
     } catch (e) {
@@ -168,11 +311,30 @@ export default function PdfScreen() {
     }
   }
 
+  /** صفحةٌ من الماسح تُضاف في آخر الملف وتُعرض — والتالية بضغطةٍ أخرى. */
+  async function scan() {
+    setBusy('يُمسح… ضع الورقة في الماسح');
+    try {
+      const [page] = await add([await window.diwan.pdf.scan()]);
+      if (page) setCurrent(page.id);
+      say('أُضيفت الصفحة الممسوحة — ضع التالية واضغط «امسح» مرّةً أخرى');
+    } catch (e) {
+      say(errorText(e, 'تعذّر المسح'), 'warn');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function reset() {
     void window.diwan.pdf.close(Object.keys(sources));
+    const empty: Snap = { pages: [], overlays: [] };
+    past.current = [];
+    future.current = [];
+    restoring.current = true;
+    committed.current = empty;
     setSources({});
-    setPages([]);
-    setOverlays([]);
+    setPages(empty.pages);
+    setOverlays(empty.overlays);
     setCurrent(null);
     setSelected([]);
     setActive(null);
@@ -268,6 +430,24 @@ export default function PdfScreen() {
     setPages(list);
   }
 
+  /** نسخةٌ من كلّ صفحةٍ محدَّدة بعدها مباشرة — بدورانها وقصّها وما عليها من إضافات. */
+  function duplicate() {
+    if (!targets.length) return;
+    const copies = new Map<string, string>();
+    const list: PageRef[] = [];
+    for (const p of pages) {
+      list.push(p);
+      if (targets.includes(p.id)) {
+        const id = newId('p');
+        copies.set(p.id, id);
+        list.push({ ...p, id });
+      }
+    }
+    setPages(list);
+    setOverlays((os) => os.map((o) => (o.pages === 'all' ? o : { ...o, pages: o.pages.flatMap((id) => (copies.has(id) ? [id, copies.get(id)!] : [id])) })));
+    say(`كُرّرت ${pagesWord(copies.size)}`);
+  }
+
   // ── الإضافة: نصّ، وشعار، وعلامة مائية ──────────────────────────────
   function addText() {
     if (!current) return;
@@ -293,6 +473,18 @@ export default function PdfScreen() {
   async function addWatermark() {
     const settings = await window.diwan.settings.get().catch(() => null);
     const o = watermarkText(newId('w'), settings?.officeName?.trim() || 'نسخة');
+    setOverlays((os) => [...os, o]);
+    setActive(o.id);
+  }
+
+  /** رقم الصفحة أسفل كلّ صفحة — ومرّةً واحدة: الموجود يُحدَّد ليُعدَّل. */
+  function addNumbers() {
+    const existing = overlays.find((o) => o.kind === 'text' && /\{(رقم|n)\}/.test(o.text));
+    if (existing) {
+      setActive(existing.id);
+      return;
+    }
+    const o = numberingText(newId('n'));
     setOverlays((os) => [...os, o]);
     setActive(o.id);
   }
@@ -377,9 +569,43 @@ export default function PdfScreen() {
     }
   }
 
+  /**
+   * الملف كما يُحفظ: يُبنى، فإن تجاوز الحدّ (أو طُلب «أبيض وأسود») صارت صفحاته صورًا بأجود
+   * درجةٍ تبلغه. وما لم تبلغه درجةٌ يُقال بأصغر ما بلغ — ولا يُحفظ ملفٌّ يرفضه الموقع.
+   */
+  async function produce(sub: PdfPlan): Promise<{ bytes: Uint8Array; raster: boolean }> {
+    const bytes = await window.diwan.pdf.build(sub);
+    if (!gray && (!limit || bytes.length <= limit)) return { bytes, raster: false };
+    setBusy(limit ? `يُصغَّر ليبلغ ${sizeText(limit)}…` : 'يُحوَّل أبيض وأسود…');
+    const shots = await shootPages(bytes);
+    const fit = await fitSearch(limit, RASTER_STEPS, async (step) => {
+      const jpegs: Blob[] = [];
+      for (const s of shots) jpegs.push(await reencode(s.shot, step.dpi, step.quality, gray));
+      const estimate = jpegs.reduce((n, b) => n + b.size, 0) + pdfOverhead(jpegs.length);
+      if (limit && estimate > limit) return { size: estimate, value: null };
+      const pages = await Promise.all(jpegs.map(async (b, k) => ({ jpeg: new Uint8Array(await b.arrayBuffer()), width: shots[k]!.w, height: shots[k]!.h })));
+      const pdf = await window.diwan.pdf.assemble(pages);
+      return { size: pdf.length, value: pdf };
+    });
+    if ('smallest' in fit) {
+      throw new Error(`لم يبلغ الملف ${sizeText(limit)} — أصغر ما بلغه ${sizeText(fit.smallest)}. ${gray ? '' : 'جرّب «أبيض وأسود»، أو '}قسّمه أجزاءً`);
+    }
+    return { bytes: fit.value, raster: true };
+  }
+
+  const madeNote = (m: { bytes: Uint8Array; raster: boolean }) => `${sizeText(m.bytes.length)}${m.raster ? '، صفحاته صورٌ' : ''}`;
+
+  async function saveAs(sub: PdfPlan, fileName: string) {
+    return run('يُبنى الملف…', async () => {
+      const made = await produce(sub);
+      const path = await window.diwan.pdf.save(made.bytes, fileName);
+      return path ? { path, made } : null;
+    });
+  }
+
   async function save() {
-    const path = await run('يُبنى الملف…', () => window.diwan.pdf.save(plan, name || 'ملف معدّل'));
-    if (path) say(`حُفظ ملفًّا جديدًا: ${path} — والأصل كما هو`);
+    const out = await saveAs(plan, name || 'ملف معدّل');
+    if (out) say(`حُفظ ملفًّا جديدًا (${madeNote(out.made)}): ${out.path} — والأصل كما هو`);
   }
 
   /** الصفحات المحدَّدة ملفًّا جديدًا وحدها — بطبقاتها. */
@@ -387,8 +613,8 @@ export default function PdfScreen() {
     const ids = targets;
     if (!ids.length) return;
     const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays };
-    const path = await run('يُبنى الملف…', () => window.diwan.pdf.save(sub, `${name || 'ملف'} — صفحات`));
-    if (path) say(`حُفظت ${pagesWord(ids.length)} ملفًّا جديدًا`);
+    const out = await saveAs(sub, `${name || 'ملف'} — صفحات`);
+    if (out) say(`حُفظت ${pagesWord(ids.length)} ملفًّا جديدًا (${madeNote(out.made)})`);
   }
 
   /** «1-3، 4-6»: كلُّ مجموعةٍ ملفّ؛ وفارغةً: كلُّ صفحةٍ ملفّ. */
@@ -401,46 +627,58 @@ export default function PdfScreen() {
       return;
     }
     setSplitText(null);
-    const items = groups.map((g, k) => ({
-      plan: { pages: g.map((i) => pages[i]!), overlays },
-      name: `${name || 'ملف'} — جزء ${k + 1}`
-    }));
-    const out = await run('يُقسَّم…', () => window.diwan.pdf.saveMany(items));
+    const out = await run('يُقسَّم…', async () => {
+      // كلّ جزءٍ يُبنى ويُصغَّر لحدّه وحده — فالجزء الكبير لا يُسقط الصغير.
+      const items: { bytes: Uint8Array; name: string }[] = [];
+      for (const [k, g] of groups.entries()) {
+        const made = await produce({ pages: g.map((i) => pages[i]!), overlays });
+        items.push({ bytes: made.bytes, name: `${name || 'ملف'} — جزء ${k + 1}` });
+      }
+      return window.diwan.pdf.saveMany(items);
+    });
     if (out) say(`حُفظ ${toIndic(out.files.length)} ملفًّا في ${out.folder}`);
   }
 
-  /** الصفحات صورًا JPG — من الملف كما يُبنى، فالصورة بطبقاتها وقصّها كما في PDF. */
+  /**
+   * الصفحات صورًا JPG — من الملف كما يُبنى، فالصورة بطبقاتها وقصّها كما في PDF. وحدّ الحجم
+   * لكلّ صورةٍ وحدها: فخانة «الوجه الأول» صورةٌ بحدّها.
+   */
   async function toImages() {
     // المحدَّد وحده إن حُدِّد شيء، وإلا فالملف كلّه — لا الصفحة المعروضة وحدها.
     const ids = selected.length ? selected : pages.map((p) => p.id);
     const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays };
     const out = await run('تُرسم الصفحات صورًا…', async () => {
-      const bytes = await window.diwan.pdf.build(sub);
-      const doc = await pdfjs.getDocument({ data: bytes, useSystemFonts: true }).promise;
+      const shots = await shootPages(await window.diwan.pdf.build(sub));
       const images: { name: string; bytes: Uint8Array }[] = [];
-      for (let i = 1; i <= doc.numPages; i++) {
-        const page = await doc.getPage(i);
-        const viewport = page.getViewport({ scale: 150 / 72 });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(viewport.width);
-        canvas.height = Math.round(viewport.height);
-        const ctx = canvas.getContext('2d')!;
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvas, viewport }).promise;
-        const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', 0.9));
-        if (blob) images.push({ name: `${name || 'ملف'} — صفحة ${i}`, bytes: new Uint8Array(await blob.arrayBuffer()) });
+      for (const [k, s] of shots.entries()) {
+        let blob = s.shot;
+        if (gray || (limit && blob.size > limit)) {
+          const fit = await fitSearch(limit, RASTER_STEPS, async (step) => {
+            const b = await reencode(s.shot, step.dpi, step.quality, gray);
+            return { size: b.size, value: b };
+          });
+          if ('smallest' in fit) throw new Error(`الصفحة ${toIndic(k + 1)} لم تبلغ ${sizeText(limit)} — أصغر ما بلغته ${sizeText(fit.smallest)}`);
+          blob = fit.value;
+        }
+        images.push({ name: `${name || 'ملف'} — صفحة ${k + 1}`, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
       return window.diwan.pdf.saveImages(images);
     });
     if (out) say(`حُفظت ${toIndic(out.files.length)} صورة في ${out.folder}`);
   }
 
-  // ── لوحة المفاتيح: Delete يحذف العنصر المحدَّد ─────────────────────
+  // ── لوحة المفاتيح: Delete يحذف العنصر المحدَّد، وCtrl+Z يتراجع ─────
+  // (ما في الدالّتين مراجعُ وضوابطُ حالة — فلا يضرّها أن تكون من رسمٍ سابق.)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (e.ctrlKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {
+        e.preventDefault();
+        if (e.code === 'KeyY' || e.shiftKey) redo();
+        else undo();
+        return;
+      }
       if (e.key === 'Delete' && active) {
         setOverlays((os) => os.filter((o) => o.id !== active));
         setActive(null);
@@ -452,6 +690,7 @@ export default function PdfScreen() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   const btn = 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
@@ -469,8 +708,17 @@ export default function PdfScreen() {
             <span className="material-symbols-outlined text-[18px]">{hasDoc ? 'library_add' : 'folder_open'}</span>
             {hasDoc ? 'أضف ملفّات (دمج)' : 'افتح PDF أو صورًا'}
           </button>
+          <button className={btn} data-act="pdf-scan" title="صفحةٌ من الماسح في آخر الملف" type="button" onClick={() => void scan()}>
+            <span className="material-symbols-outlined text-[18px]">scanner</span>امسح
+          </button>
           {hasDoc && (
             <>
+              <button className={btn} data-act="pdf-undo" disabled={!canUndo} title="تراجع (Ctrl+Z)" type="button" onClick={undo}>
+                <span className="material-symbols-outlined text-[18px]">undo</span>
+              </button>
+              <button className={btn} data-act="pdf-redo" disabled={!canRedo} title="أعد (Ctrl+Y)" type="button" onClick={redo}>
+                <span className="material-symbols-outlined text-[18px]">redo</span>
+              </button>
               <span className="w-px h-6 bg-outline-variant mx-1" />
               <button className={btn} data-act="pdf-text" disabled={!current} type="button" onClick={addText}>
                 <span className="material-symbols-outlined text-[18px]">title</span>نصّ
@@ -480,6 +728,9 @@ export default function PdfScreen() {
               </button>
               <button className={btn} data-act="pdf-watermark" type="button" onClick={() => void addWatermark()}>
                 <span className="material-symbols-outlined text-[18px]">branding_watermark</span>علامة مائية
+              </button>
+              <button className={btn} data-act="pdf-number" title="رقم الصفحة أسفل كلّ صفحة" type="button" onClick={addNumbers}>
+                <span className="material-symbols-outlined text-[18px]">format_list_numbered_rtl</span>رقّم
               </button>
               <button className={btn} data-act="pdf-crop" disabled={!current} type="button" onClick={startCrop}>
                 <span className="material-symbols-outlined text-[18px]">crop</span>قصّ
@@ -495,8 +746,27 @@ export default function PdfScreen() {
                 <span className="material-symbols-outlined text-[18px]">photo_library</span>صفحاتٌ صورًا
               </button>
               <div className="flex-1" />
+              <label className="flex items-center gap-1 font-label-md text-label-md" title="حدّ الحجم كما تطلبه خانة الرفع — للملف ولكلّ صورة">
+                الحجم
+                <select
+                  className="h-9 min-w-[6.5rem] px-1 rounded-lg bg-surface-container-lowest border border-outline-variant"
+                  data-pdf-limit=""
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                >
+                  {SIZE_LIMITS.map((l) => (
+                    <option key={l.bytes} value={l.bytes}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1 font-label-md text-label-md" title="يصغّر الملف كثيرًا، ويكفي أكثر المستمسكات">
+                <input checked={gray} data-pdf-gray="" type="checkbox" onChange={(e) => setGray(e.target.checked)} />
+                أبيض وأسود
+              </label>
               <input
-                className="h-9 w-64 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
+                className="h-9 w-56 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
                 data-pdf-name=""
                 title="اسم الملف الجديد"
                 value={name}
@@ -522,22 +792,31 @@ export default function PdfScreen() {
             <span className="material-symbols-outlined text-[64px] text-secondary">picture_as_pdf</span>
             <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">ملفات PDF</h1>
             <p className="font-body-md text-body-md text-on-surface-variant max-w-xl">
-              أضف نصًّا أو شعارًا أو علامةً مائية، وقصّ وقسّم وادمج ورتّب — على هذا الجهاز، فلا تُرفع مستمسكات الزبائن إلى
-              مواقع الإنترنت. والحفظ ملفٌّ جديد، والأصل يبقى كما وصل.
+              أضف نصًّا أو شعارًا أو علامةً مائية أو رقم الصفحة، وقصّ وقسّم وادمج ورتّب، وصغّر الملف لحدّ خانة الرفع — على
+              هذا الجهاز، فلا تُرفع مستمسكات الزبائن إلى مواقع الإنترنت. والحفظ ملفٌّ جديد، والأصل يبقى كما وصل.
             </p>
-            <button
-              className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-semibold flex items-center gap-2"
-              type="button"
-              onClick={() => void open()}
-            >
-              <span className="material-symbols-outlined">folder_open</span>افتح PDF أو صورًا
-            </button>
+            <div className="flex items-center gap-space-sm">
+              <button
+                className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-semibold flex items-center gap-2"
+                type="button"
+                onClick={() => void open()}
+              >
+                <span className="material-symbols-outlined">folder_open</span>افتح PDF أو صورًا
+              </button>
+              <button
+                className="h-11 px-space-lg rounded-xl bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-2"
+                type="button"
+                onClick={() => void scan()}
+              >
+                <span className="material-symbols-outlined">scanner</span>امسح من الماسح
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex">
             {/* ── الصفحات ─────────────────────────────────────────── */}
-            <aside className="w-48 shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col">
-              <div className="flex items-center justify-between gap-1 p-space-xs border-b border-outline-variant">
+            <aside className="w-52 shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col">
+              <div className="flex items-center justify-between gap-0.5 p-space-xs border-b border-outline-variant">
                 <button className="h-8 w-8 rounded hover:bg-surface-container-high" data-act="pdf-rotate-right" disabled={!targets.length} title="دوّر مع عقارب الساعة" type="button" onClick={() => rotate(90)}>
                   <span className="material-symbols-outlined text-[18px]">rotate_right</span>
                 </button>
@@ -549,6 +828,9 @@ export default function PdfScreen() {
                 </button>
                 <button className="h-8 w-8 rounded hover:bg-surface-container-high" data-act="pdf-down" disabled={!targets.length} title="أخّر" type="button" onClick={() => move(1)}>
                   <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+                </button>
+                <button className="h-8 w-8 rounded hover:bg-surface-container-high" data-act="pdf-duplicate" disabled={!targets.length} title="كرّر بعدها" type="button" onClick={duplicate}>
+                  <span className="material-symbols-outlined text-[18px]">content_copy</span>
                 </button>
                 <button className="h-8 w-8 rounded hover:bg-error-container text-error" data-act="pdf-delete" disabled={!targets.length} title="احذف من الملف الجديد" type="button" onClick={remove}>
                   <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -650,7 +932,7 @@ export default function PdfScreen() {
                                 lineHeight: 1.3
                               }}
                             >
-                              {o.text}
+                              {pageTokens(o.text, currentIndex + 1, pages.length)}
                             </span>
                           ) : (
                             <img alt="" className="w-full h-full object-contain pointer-events-none" src={`diwan://store/${o.src}`} />
@@ -715,6 +997,9 @@ export default function PdfScreen() {
                         value={activeOverlay.text}
                         onChange={(e) => patch(activeOverlay.id, { text: e.target.value })}
                       />
+                      <p className="font-label-sm text-label-sm text-on-surface-variant">
+                        للترقيم اكتب <b>{'{رقم}'}</b> و<b>{'{عدد}'}</b> (أو <b dir="ltr">{'{n}'}</b> و<b dir="ltr">{'{N}'}</b> بالأرقام الإنكليزية) — فتُرى كلّ صفحةٍ برقمها.
+                      </p>
                       <label className="flex items-center gap-2 font-label-md text-label-md">
                         الخطّ
                         <select className="flex-1 h-8 rounded bg-surface-container-low" value={activeOverlay.font} onChange={(e) => patch(activeOverlay.id, { font: e.target.value })}>
@@ -790,7 +1075,8 @@ export default function PdfScreen() {
                 <div className="font-label-md text-label-md text-on-surface-variant space-y-2">
                   <p>اختر صفحةً من اليمين، أو حدّد عدّة صفحاتٍ بمربّعاتها لتُدار أو تُحذف أو تُستخرج معًا.</p>
                   <p>«نصّ» و«شعار» يُضافان إلى الصفحة الحالية، و«علامة مائية» إلى الصفحات كلّها — واسحب أيَّ عنصرٍ إلى موضعه.</p>
-                  <p>وترتيب الصفحات بالسحب، أو بالسهمين.</p>
+                  <p>وترتيب الصفحات بالسحب، أو بالسهمين. وCtrl+Z يتراجع عن آخر تعديل.</p>
+                  <p>و«الحجم» حدُّ خانة الرفع: ما تجاوزه تصير صفحاته صورًا بأجود درجةٍ تبلغه — في الحفظ والصور.</p>
                 </div>
               )}
             </aside>

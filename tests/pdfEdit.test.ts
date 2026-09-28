@@ -5,19 +5,27 @@
  * ودورانٌ وقصٌّ وصورةٌ صفحةً وطبقةٌ تُختم — ويُقرأ الناتج بـpdf.js كما يعرضه القارئ: أين يقع
  * كلّ نصٍّ في الصفحة **كما تُرى**. فالحساب يُقاس بما يراه الموظف لا بالمصفوفات.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {
   cropToUser,
+  fitSearch,
   imagePage,
   layerHtml,
+  numberingText,
+  pageTokens,
   parseRanges,
+  RASTER_STEPS,
   shownToUser,
+  SIZE_LIMITS,
+  sizeText,
   stampPlacement,
   watermarkText,
   type PdfPlan
 } from '../src/shared/pdfEdit';
-import { buildPdf, inspectPdf, type PdfSource } from '../src/main/services/pdfEdit';
+import { buildPdf, imagesToPdf, inspectPdf, type PdfSource } from '../src/main/services/pdfEdit';
 import { writePng } from '../src/main/services/png';
 
 const A4 = { width: 595.28, height: 841.89 };
@@ -109,6 +117,94 @@ describe('من الصفحة كما تُرى إلى فضاء الملف', () => {
     const wide = imagePage({ width: 3000, height: 1000 });
     expect(wide.page.width).toBeGreaterThan(wide.page.height);
     expect(wide.draw.x).toBeCloseTo((wide.page.width - wide.draw.width) / 2);
+  });
+
+  it('وما جاء من الماسح بدقّته صفحةٌ بمقاسه الحقيقي كاملةً: A4 ممسوحة تبقى A4', () => {
+    // A4 بـ٢٠٠ نقطة: ١٦٥٤ × ٢٣٣٩ بكسل.
+    const scan = imagePage({ width: 1654, height: 2339, dpi: 200 });
+    expect(scan.page.width).toBeCloseTo(A4.width, 0);
+    expect(scan.page.height).toBeCloseTo(A4.height, 0);
+    expect(scan.draw).toEqual({ x: 0, y: 0, width: scan.page.width, height: scan.page.height });
+  });
+});
+
+describe('ترقيم الصفحات', () => {
+  it('{رقم} و{عدد} بالعربية، و{n} و{N} باللاتينية، في كلّ موضع', () => {
+    expect(pageTokens('صفحة {رقم} من {عدد}', 3, 12)).toBe('صفحة ٣ من ١٢');
+    expect(pageTokens('P{n}/{N} — {n}', 2, 4)).toBe('P2/4 — 2');
+    expect(pageTokens('بلا ترقيم', 1, 1)).toBe('بلا ترقيم');
+    expect(numberingText('n').pages).toBe('all');
+  });
+
+  it('والطبقة المرقَّمة تُرسم لكلّ صفحةٍ برقمها — وغير المرقَّمة مرّةً للكلّ', async () => {
+    const sources = new Map<string, PdfSource>([['a', { kind: 'pdf', name: 'a.pdf', bytes: await samplePdf(['1', '2', '3']) }]]);
+    const htmls: string[] = [];
+    const record = (html: string, mm: { w: number; h: number }) => {
+      htmls.push(html);
+      return fakeLayer(html, mm);
+    };
+    const pages = [0, 1, 2].map((i) => ({ id: `p${i}`, source: 'a', index: i, rotate: 0 as const }));
+    await buildPdf({ pages, overlays: [{ ...numberingText('n'), text: 'صفحة {رقم} من {عدد}' }] }, sources, record);
+    expect(htmls).toHaveLength(3);
+    expect(htmls[0]).toContain('صفحة ١ من ٣');
+    expect(htmls[2]).toContain('صفحة ٣ من ٣');
+    htmls.length = 0;
+    await buildPdf({ pages, overlays: [watermarkText('w', 'نسخة')] }, sources, record);
+    expect(htmls).toHaveLength(1);
+  });
+});
+
+describe('الحجم للرفع', () => {
+  it('الحدود بالعشري (الأصغر)، ومنها ما تطلبه خانات أور: ٥ و٣ و٢ و١ ميغا و١٠٠ ك.ب', () => {
+    const bytes = SIZE_LIMITS.map((l) => l.bytes);
+    expect(bytes).toContain(5_000_000);
+    expect(bytes).toContain(1_000_000);
+    expect(bytes).toContain(100_000);
+    expect(bytes[0]).toBe(0);
+  });
+
+  it('الحجم كما يقرؤه الموظف', () => {
+    expect(sizeText(840_000)).toBe('٨٤٠ ك.ب');
+    expect(sizeText(1_234_567)).toBe('١٫٢ ميغا');
+    expect(sizeText(5_000_000)).toBe('٥ ميغا');
+    expect(sizeText(12)).toBe('١ ك.ب');
+  });
+
+  it('البحث يقف عند أوّل درجةٍ تبلغ الحدّ — وما لم يُبنَ لا يُقبل', async () => {
+    // حجمٌ يتناسب مع مربّع الدقّة والجودة؛ والتقدير فوق الحدّ لا يُبنى.
+    const size = (s: { dpi: number; quality: number }) => Math.round(s.dpi * s.dpi * s.quality * 10);
+    const tried: number[] = [];
+    const fit = await fitSearch(100_000, RASTER_STEPS, async (s) => {
+      tried.push(s.dpi);
+      const n = size(s);
+      return { size: n, value: n <= 100_000 ? `ملف ${n}` : null };
+    });
+    expect('value' in fit && fit.size).toBeLessThanOrEqual(100_000);
+    expect('step' in fit && fit.step).toEqual(RASTER_STEPS.find((s) => size(s) <= 100_000));
+    expect(tried.length).toBe(RASTER_STEPS.findIndex((s) => size(s) <= 100_000) + 1);
+  });
+
+  it('وإن لم تبلغه درجةٌ عاد بأصغر ما بلغ؛ وبلا حدٍّ تكفي الأولى', async () => {
+    const none = await fitSearch(10, RASTER_STEPS, async (s) => ({ size: s.dpi * 100, value: 'x' }));
+    expect(none).toEqual({ smallest: 5000 });
+    const free = await fitSearch(0, RASTER_STEPS, async () => ({ size: 9_000_000, value: 'x' }));
+    expect('step' in free && free.step).toEqual(RASTER_STEPS[0]);
+  });
+
+  it('صور JPEG ملفًّا: كلّ صورةٍ صفحةٌ بمقاسها، والحجم قرابة مجموع الصور', async () => {
+    const jpeg = new Uint8Array(readFileSync(join(__dirname, 'fixtures', 'tiny.jpg')));
+    const out = await imagesToPdf([
+      { jpeg, width: A4.width, height: A4.height },
+      { jpeg, width: 842, height: 595 }
+    ]);
+    const info = await inspectPdf(out);
+    expect(info.map((p) => [Math.round(p.width), Math.round(p.height)])).toEqual([
+      [595, 842],
+      [842, 595]
+    ]);
+    // الصورة نفسها مرّتين بلا إعادة ضغط — والغلاف دون ما يقدّره `pdfOverhead`.
+    expect(out.length).toBeLessThan(2 * jpeg.length + 1200 + 450 * 2);
+    await expect(imagesToPdf([{ jpeg: writePng(new Uint8Array(4 * 4 * 4), 4, 4, 72), width: 10, height: 10 }])).rejects.toThrow('ليست JPEG');
   });
 });
 

@@ -151,8 +151,15 @@ export function stampPlacement(box: PtBox, rotation: Rotation): { x: number; y: 
 /**
  * الصورة صفحةً: A4 باتجاهها (عموديةً للطويلة وأفقيةً للعريضة)، والصورة في وسطها بهامش
  * ١٠ ملم لا تُمطّ. ومنها تُرسم المعاينة ويُبنى الملف — فلا يختلفان.
+ *
+ * وما جاء من الماسح بدقّته (`dpi`) صفحةٌ بمقاسه الحقيقي كاملةً بلا هامش: ورقة A4 ممسوحة
+ * تبقى A4، لا تُصغَّر داخل A4 أخرى.
  */
-export function imagePage(img: { width: number; height: number }): { page: { width: number; height: number }; draw: PtBox } {
+export function imagePage(img: { width: number; height: number; dpi?: number }): { page: { width: number; height: number }; draw: PtBox } {
+  if (img.dpi) {
+    const page = { width: (img.width / img.dpi) * 72, height: (img.height / img.dpi) * 72 };
+    return { page, draw: { x: 0, y: 0, ...page } };
+  }
   const landscape = img.width > img.height;
   const page = landscape ? { width: mmToPt(297), height: mmToPt(210) } : { width: mmToPt(210), height: mmToPt(297) };
   const m = mmToPt(10);
@@ -182,6 +189,102 @@ export function watermarkText(id: string, text: string): TextOverlay {
     box: { x: 0.05, y: 0.4, w: 0.9, h: 0.2 },
     pages: 'all'
   };
+}
+
+/**
+ * ترقيم الصفحات: «{رقم}» و«{عدد}» في نصّ الطبقة يصيران رقمَ الصفحة وعددَ الصفحات
+ * بالأرقام العربية (٣)، و«{n}» و«{N}» باللاتينية (3) — فالطبقة الواحدة على الصفحات كلّها
+ * تُرى في كلّ صفحةٍ برقمها.
+ */
+export function pageTokens(text: string, n: number, total: number): string {
+  const indic = (v: number) => String(v).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+  return text.replace(/\{رقم\}/g, indic(n)).replace(/\{عدد\}/g, indic(total)).replace(/\{n\}/g, String(n)).replace(/\{N\}/g, String(total));
+}
+
+/** رقم الصفحة أسفلها في الوسط، على الصفحات كلّها. */
+export function numberingText(id: string): TextOverlay {
+  return {
+    id,
+    kind: 'text',
+    text: 'صفحة {رقم} من {عدد}',
+    font: 'Arial',
+    size: 11,
+    color: '#000000',
+    bold: false,
+    align: 'center',
+    opacity: 1,
+    angle: 0,
+    box: { x: 0.3, y: 0.94, w: 0.4, h: 0.035 },
+    pages: 'all'
+  };
+}
+
+// ── الحجم للرفع ──────────────────────────────────────────────────────────
+//
+// خانات الرفع في منصّة أور (١٨٦٣ خانة في ٣٣٢ استمارة، أيلول ٢٠٢٦) لكلٍّ حدٌّ: ٥ ميغا أكثرها،
+// ثم ٢ و٣ و١، وقليلٌ دون الميغا حتى ١٠٠ ك.ب. والحدّ هنا بالعشري (الميغا مليون بايت) — أصغر
+// الحسابين، فيقبله الموقع أيًّا كان حسابه.
+
+const KB = 1000;
+const MB = 1000 * KB;
+
+export const SIZE_LIMITS: readonly { bytes: number; label: string }[] = [
+  { bytes: 0, label: 'بلا حدّ' },
+  { bytes: 5 * MB, label: '٥ ميغا' },
+  { bytes: 3 * MB, label: '٣ ميغا' },
+  { bytes: 2 * MB, label: '٢ ميغا' },
+  { bytes: 1 * MB, label: '١ ميغا' },
+  { bytes: 500 * KB, label: '٥٠٠ ك.ب' },
+  { bytes: 200 * KB, label: '٢٠٠ ك.ب' },
+  { bytes: 100 * KB, label: '١٠٠ ك.ب' }
+];
+
+/** «٨٤٠ ك.ب»، «١٫٢ ميغا» — حجمٌ يقرؤه الموظف. */
+export function sizeText(bytes: number): string {
+  const indic = (s: string) => s.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!).replace('.', '٫');
+  if (bytes >= MB) return `${indic((Math.round(bytes / (MB / 10)) / 10).toString())} ميغا`;
+  return `${indic(Math.max(1, Math.round(bytes / KB)).toString())} ك.ب`;
+}
+
+export type RasterStep = { dpi: number; quality: number };
+
+/**
+ * درجات تصغير الملف صورًا — من الأجود إلى الأصغر. ١٥٠ نقطة تُقرأ وتُطبع، و٥٠ آخر ما يُقرأ
+ * فيه نصّ مستمسك.
+ */
+export const RASTER_STEPS: readonly RasterStep[] = [
+  { dpi: 150, quality: 0.85 },
+  { dpi: 150, quality: 0.7 },
+  { dpi: 120, quality: 0.7 },
+  { dpi: 120, quality: 0.55 },
+  { dpi: 100, quality: 0.55 },
+  { dpi: 100, quality: 0.45 },
+  { dpi: 85, quality: 0.45 },
+  { dpi: 72, quality: 0.45 },
+  { dpi: 72, quality: 0.35 },
+  { dpi: 60, quality: 0.35 },
+  { dpi: 50, quality: 0.3 }
+];
+
+/** ما يضيفه غلاف PDF فوق صوره — تقديرًا يُتحقَّق منه بعد البناء. */
+export const pdfOverhead = (pages: number) => 1200 + 450 * pages;
+
+/**
+ * يجرّب الدرجات بالترتيب ويقف عند أوّل ما بلغ الحدّ. و`attempt` يعيد الحجم، ومعه الناتج إن
+ * بُني (فالتقدير الذي تجاوز الحدّ لا يُبنى). وإن لم تبلغه درجةٌ عاد بأصغر ما بلغ.
+ */
+export async function fitSearch<T>(
+  limit: number,
+  steps: readonly RasterStep[],
+  attempt: (step: RasterStep) => Promise<{ size: number; value: T | null }>
+): Promise<{ value: T; size: number; step: RasterStep } | { smallest: number }> {
+  let smallest = Infinity;
+  for (const step of steps) {
+    const { size, value } = await attempt(step);
+    smallest = Math.min(smallest, size);
+    if (value !== null && (!limit || size <= limit)) return { value, size, step };
+  }
+  return { smallest };
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

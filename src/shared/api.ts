@@ -11,7 +11,8 @@ export type PdfOpened = {
   kind: 'pdf' | 'image';
   bytes: Uint8Array;
   pages: { width: number; height: number; rotation: Rotation }[];
-  image?: { width: number; height: number };
+  /** مقاس الصورة بالبكسل، ودقّتها إن جاءت من الماسح (فصفحتها بمقاسها الحقيقي). */
+  image?: { width: number; height: number; dpi?: number };
 };
 import type { TemplateInput, TemplateVariable } from './template';
 
@@ -825,9 +826,13 @@ export type DiwanApi = {
   /** محرّر PDF (خدمات التقديم الإلكتروني): الملفّات تُفتح مصادرَ، والخطّة تُبنى ملفًّا جديدًا. */
   pdf: {
     open(): Promise<{ opened: PdfOpened[]; failed: { name: string; error: string }[] } | null>;
+    /** صفحةٌ من الماسح مصدرًا جديدًا — بمقاسها الحقيقي. */
+    scan(): Promise<PdfOpened>;
     build(plan: PdfPlan): Promise<Uint8Array>;
-    save(plan: PdfPlan, name: string): Promise<string | null>;
-    saveMany(items: { plan: PdfPlan; name: string }[]): Promise<{ folder: string; files: string[] } | null>;
+    /** صورُ JPEG ملفًّا — كلٌّ صفحةٌ بمقاسها بالنقاط (التصغير لحدّ الرفع). */
+    assemble(pages: { jpeg: Uint8Array; width: number; height: number }[]): Promise<Uint8Array>;
+    save(bytes: Uint8Array, name: string): Promise<string | null>;
+    saveMany(items: { bytes: Uint8Array; name: string }[]): Promise<{ folder: string; files: string[] } | null>;
     saveImages(images: { name: string; bytes: Uint8Array }[]): Promise<{ folder: string; files: string[] } | null>;
     pickLogo(): Promise<string | null>;
     logos(): Promise<string[]>;

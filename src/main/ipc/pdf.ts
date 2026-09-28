@@ -2,15 +2,17 @@
  * محرّر PDF — القنوات.
  *
  * الملفّات تُفتح هنا وتبقى في الذاكرة بمعرّفاتها (المصادر)، والواجهة ترسم صفحاتها وتبني
- * الخطّة، ثم تُرسل الخطّة وحدها ليُبنى منها ملفٌّ جديد. **والأصل لا يُكتب فوقه** (قرار
- * المالك): الحفظ باسمٍ جديد، ومسارُ ملفٍّ مفتوح يُرفض.
+ * الخطّة، ثم تُرسل الخطّة ليُبنى منها ملفٌّ جديد — يعود إليها لتقيس حجمه وتصغّره لحدّ الرفع
+ * إن لزم، ثم يُحفظ. **والأصل لا يُكتب فوقه** (قرار المالك): الحفظ باسمٍ جديد، ومسارُ ملفٍّ
+ * مفتوح يُرفض.
  */
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
-import { buildPdf, inspectPdf, type PageInfo, type PdfSource } from '../services/pdfEdit';
+import { buildPdf, imagesToPdf, inspectPdf, type PageInfo, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
+import { removeStoreFile, scanPage } from '../services/scanner';
 import { imagePage, type PdfPlan } from '@shared/pdfEdit';
 import { importFile, pickOpenPath, pickOpenPaths, pickSavePath, pickSaveFolder } from './files';
 
@@ -20,9 +22,12 @@ export type PdfOpened = {
   kind: 'pdf' | 'image';
   bytes: Uint8Array;
   pages: PageInfo[];
-  /** مقاس الصورة الأصلي بالبكسل — لتُرسم في صفحتها كما تُبنى. */
-  image?: { width: number; height: number };
+  /** مقاس الصورة الأصلي بالبكسل — لتُرسم في صفحتها كما تُبنى — ودقّتها إن مُسحت. */
+  image?: { width: number; height: number; dpi?: number };
 };
+
+/** دقّة المسح للتقديم: تُقرأ وتُطبع، وملفّها معقول قبل التصغير. */
+const SCAN_DPI = 200;
 
 const sources = new Map<string, PdfSource>();
 /** مسارات ما فُتح — فلا يُحفظ فوق أصلٍ منها. */
@@ -57,6 +62,27 @@ async function openOne(path: string): Promise<PdfOpened> {
   return { id, name, kind: 'image', bytes: data, pages: [{ width: page.width, height: page.height, rotation: 0 }], image: size };
 }
 
+/**
+ * صفحةٌ من الماسح: تُقرأ JPEG (فالمسح PNG كبيرٌ بلا داعٍ) وتُحذف من المخزن — فمستمسك
+ * الزبون لا يبقى نسخةً منسيّة، والمحرّر يحمله في الذاكرة.
+ */
+async function openScan(): Promise<PdfOpened> {
+  const { relativePath, dpi } = await scanPage({ dpi: SCAN_DPI });
+  try {
+    const img = nativeImage.createFromPath(join(storeDir(), relativePath));
+    if (img.isEmpty()) throw new Error('لم يُقرأ ما مسحه الماسح — أعد المسح');
+    const size = { ...img.getSize(), dpi };
+    const bytes = new Uint8Array(img.toJPEG(90));
+    const id = `s${++seq}`;
+    const name = 'صفحة ممسوحة';
+    sources.set(id, { kind: 'image', name, bytes, ...size });
+    const { page } = imagePage(size);
+    return { id, name, kind: 'image', bytes, pages: [{ width: page.width, height: page.height, rotation: 0 }], image: size };
+  } finally {
+    await removeStoreFile(relativePath);
+  }
+}
+
 async function writeUnique(folder: string, name: string, ext: string, bytes: Uint8Array): Promise<string> {
   let path = join(folder, `${name}.${ext}`);
   for (let n = 2; await stat(path).then(() => true, () => false); n++) path = join(folder, `${name} (${n}).${ext}`);
@@ -89,12 +115,15 @@ export function registerPdfIpc(): void {
     return { opened, failed };
   });
 
+  ipcMain.handle('pdf:scan', () => openScan());
+
   ipcMain.handle('pdf:build', (_e, plan: PdfPlan) => buildPdf(plan, sources, renderLayer));
 
-  ipcMain.handle('pdf:save', async (e, plan: PdfPlan, name: string) => {
+  ipcMain.handle('pdf:assemble', (_e, pages: { jpeg: Uint8Array; width: number; height: number }[]) => imagesToPdf(pages));
+
+  ipcMain.handle('pdf:save', async (e, bytes: Uint8Array, name: string) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
-    const bytes = await buildPdf(plan, sources, renderLayer);
     const path = await pickSavePath(win, { title: 'احفظ الملف', defaultName: `${safeName(name)}.pdf`, filterName: 'PDF', ext: 'pdf' });
     if (!path) return null;
     if (openedPaths.has(resolve(path).toLowerCase())) throw new Error('لا يُكتب فوق الملف الأصلي — احفظه باسمٍ آخر');
@@ -103,13 +132,13 @@ export function registerPdfIpc(): void {
   });
 
   /** أجزاءٌ كثيرة من ملف (التقسيم) — كلٌّ ملفٌّ في المجلد نفسه. */
-  ipcMain.handle('pdf:saveMany', async (e, items: { plan: PdfPlan; name: string }[]) => {
+  ipcMain.handle('pdf:saveMany', async (e, items: { bytes: Uint8Array; name: string }[]) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win || !items.length) return null;
     const folder = await pickSaveFolder(win, 'اختر مجلّدًا للأجزاء');
     if (!folder) return null;
     const files: string[] = [];
-    for (const it of items) files.push(await writeUnique(folder, safeName(it.name), 'pdf', await buildPdf(it.plan, sources, renderLayer)));
+    for (const it of items) files.push(await writeUnique(folder, safeName(it.name), 'pdf', it.bytes));
     return { folder, files };
   });
 

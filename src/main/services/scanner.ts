@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
-import { unlink } from 'node:fs/promises';
+import { copyFile, unlink } from 'node:fs/promises';
 import { storeDir } from '../db';
 
 /**
@@ -80,6 +80,12 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   const intent = options.color === false ? 4 : 1; // 1 = ملوّن، 4 = تدرّج رمادي
   const name = `scan-${Date.now()}.png`;
   const target = join(storeDir('attachments'), name);
+
+  // للسيناريوهات وحدها: صورةٌ جاهزة بدل ماسحٍ لا يوجد على جهاز الاختبار.
+  if (process.env.DIWAN_TEST_SCAN_FILE) {
+    await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
+    return { relativePath: `attachments/${name}`, dpi, format: 'PNG' };
+  }
 
   const script = `
     $ErrorActionPreference = 'Stop'
