@@ -2,6 +2,7 @@ import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus }
 import type { Letterhead, LetterheadLayout } from './letterhead';
 import type { Doc, ListItem, Suggestion } from './doc';
 import type { OcrLine } from './paperDoc';
+import type { MrzResult } from './mrz';
 import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
@@ -664,6 +665,8 @@ export type DiwanApi = {
     addFromDataUrl(citizenId: number, docType: string, dataUrl: string): Promise<Attachment>;
     rename(id: number, docType: string): Promise<void>;
     ocr(id: number): Promise<{ text: string; confidence: number }>;
+    /** ظهر البطاقة بقارئه الخاصّ: السطور الثلاثة كما قُرئت، والحقول بتحقّقها (أو عدمٌ إن لم تُوجد). */
+    readMrz(id: number): Promise<{ result: MrzResult | null; lines: string[] }>;
     print(id: number): Promise<boolean>;
     copyToClipboard(id: number): Promise<boolean>;
     exportZip(citizenId: number): Promise<{ path: string; count: number } | null>;

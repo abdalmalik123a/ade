@@ -108,6 +108,7 @@ const api: DiwanApi = {
       invoke('attachments:addFromDataUrl', citizenId, docType, dataUrl),
     rename: (id: number, docType: string) => invoke('attachments:rename', id, docType),
     ocr: (id: number) => invoke('attachments:ocr', id),
+    readMrz: (id: number) => invoke('attachments:readMrz', id),
     print: (id: number) => invoke('attachments:print', id),
     copyToClipboard: (id: number) => invoke('attachments:copy', id),
     exportZip: (citizenId: number) => invoke('attachments:exportZip', citizenId),

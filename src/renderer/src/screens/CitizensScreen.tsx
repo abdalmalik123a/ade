@@ -15,7 +15,7 @@ import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
 import UploadExportDialog from '../components/UploadExportDialog';
-import { readMrz } from '@shared/mrz';
+import { readMrz, type MrzResult } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { errorText } from '../lib/errors';
 import { isCombo, shortcut } from '@shared/shortcuts';
@@ -55,7 +55,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ usage: number } | null>(null);
   const [preview, setPreview] = useState<Attachment | null>(null);
-  const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number } | null>(null);
+  /** النصّ المستخرَج — أو ظهر البطاقة بقارئه الخاصّ (`mrz`، ولا دقّة له: أرقام التحقّق حَكَمُه). */
+  const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number | null; mrz?: MrzResult | null } | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   /** «صدّر للرفع» (تعميق الموجود ٤): كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع. */
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -224,6 +225,18 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
       setOcrPanel({ attachment: a, text: result.text, confidence: result.confidence });
       say(`استُخرج النصّ بدقة ${Math.round(result.confidence * 100)}%`);
     }
+  }
+
+  /** ظهر البطاقة بقارئه الخاصّ (تعميق الموجود ٨): يجد سطورها في الصورة ويقرؤها ويتحقّق. */
+  async function readBack(a: Attachment) {
+    const read = await withBusy(`mrz-${a.id}`, () => window.diwan.attachments.readMrz(a.id));
+    if (!read) return;
+    if (!read.result) {
+      say('لم تُوجد سطور ظهر البطاقة في الصورة — امسح الظهر وفيه السطور الثلاثة', 'warn');
+      return;
+    }
+    setOcrPanel({ attachment: a, text: read.lines.join('\n'), confidence: null, mrz: read.result });
+    say(read.result.valid ? 'قُرئ ظهر البطاقة وتحقّقت أرقامه' : 'قُرئ ظهر البطاقة، وفي بعض أرقامه خطأ قراءة', read.result.valid ? 'ok' : 'warn');
   }
 
   const field = (v: string | null) => v || '—';
@@ -717,6 +730,12 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                                 onClick={() => void runOcr(a)}
                               />
                               <IconBtn
+                                icon={busy === `mrz-${a.id}` ? 'hourglass_top' : 'id_card'}
+                                title={ocrReady ? 'اقرأ ظهر البطاقة (السطور الثلاثة)' : 'بيانات التعرّف غير مثبّتة'}
+                                disabled={!ocrReady || busy === `mrz-${a.id}`}
+                                onClick={() => void readBack(a)}
+                              />
+                              <IconBtn
                                 icon="print"
                                 title="طباعة فورية ملونة"
                                 onClick={() =>
@@ -959,9 +978,10 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
           >
             <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
               <span className="font-headline-sm text-headline-sm text-on-surface">
-                النصّ المستخرَج — {ocrPanel.attachment.docType}
+                {ocrPanel.mrz ? 'ظهر البطاقة' : 'النصّ المستخرَج'} — {ocrPanel.attachment.docType}
               </span>
               <div className="flex items-center gap-space-sm">
+                {ocrPanel.confidence !== null && (
                 <span
                   className={
                     ocrPanel.confidence >= 0.9
@@ -971,6 +991,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                 >
                   دقة {Math.round(ocrPanel.confidence * 100)}%
                 </span>
+                )}
                 <button
                   className="w-8 h-8 rounded text-on-surface-variant hover:bg-surface-container-high flex items-center justify-center"
                   type="button"
@@ -983,7 +1004,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
             <div className="p-space-md overflow-y-auto">
               {/* ظهر البطاقة (هـ٧): سطور MRZ تُقرأ حقولًا — ولكلٍّ رقم تحقّقه */}
               {(() => {
-                const mrz = readMrz(ocrPanel.text);
+                const mrz = ocrPanel.mrz ?? readMrz(ocrPanel.text);
                 if (!mrz || !detail) return null;
                 const row = (label: string, value: string | null, good?: boolean) =>
                   value ? (
@@ -1001,7 +1022,9 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                     <span className="font-semibold text-on-surface">
                       ظهر البطاقة (MRZ) — {mrz.valid ? 'قُرئ وتحقّقت أرقامه' : 'قُرئ، وفي بعض أرقامه خطأ قراءة — راجِعه'}
                     </span>
-                    <span className="font-label-sm text-label-sm text-tertiary">تجريبي: يُعتمد بعد التحقّق ببطاقةٍ عراقية حقيقية.</span>
+                    {!ocrPanel.mrz && (
+                      <span className="font-label-sm text-label-sm text-tertiary">من القارئ العامّ — والأدقّ زرّ «اقرأ ظهر البطاقة» على المستمسك.</span>
+                    )}
                     {row('رقم الوثيقة', mrz.documentNumber, mrz.checks.documentNumber)}
                     {row('الرقم الشخصي', personal)}
                     {row('الولادة', mrz.birthDate, mrz.checks.birthDate)}
@@ -1032,12 +1055,20 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                   </div>
                 );
               })()}
-              {ocrPanel.confidence < 0.9 && (
+              {ocrPanel.confidence !== null && ocrPanel.confidence < 0.9 && (
                 <p className="font-label-sm text-label-sm text-error mb-space-sm">
                   الدقة دون 90% — راجع النصّ قبل اعتماده في كتاب رسمي.
                 </p>
               )}
-              <pre className="font-body-md text-body-md text-on-surface whitespace-pre-wrap leading-loose">
+              {/* سطور ظهر البطاقة لاتينيةٌ من اليسار — ومن اليمين تنقلب «<» إلى «>» ويتقدّم آخرها. */}
+              <pre
+                dir={ocrPanel.mrz ? 'ltr' : undefined}
+                className={
+                  ocrPanel.mrz
+                    ? 'font-mono text-body-md text-on-surface whitespace-pre leading-loose text-left'
+                    : 'font-body-md text-body-md text-on-surface whitespace-pre-wrap leading-loose'
+                }
+              >
                 {ocrPanel.text || 'لم يُستخرج نصّ من هذه الصورة'}
               </pre>
             </div>

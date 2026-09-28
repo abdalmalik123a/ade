@@ -7,7 +7,9 @@ import ExcelJS from 'exceljs';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/citizens';
 import { listScanners, removeStoreFile, scanPage } from '../services/scanner';
-import { ocrAvailable, recognize } from '../services/ocr';
+import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
+import { readCardBack } from '../services/mrzRead';
+import { grayOf } from '@shared/mrzImage';
 import { importFile } from './files';
 import type { CitizenInput } from '@shared/api';
 import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
@@ -194,6 +196,16 @@ export function registerCitizenIpc(): void {
     const result = await recognize(absolute(row.p));
     svc.setAttachmentOcr(db, id, result.text, result.confidence);
     return result;
+  });
+
+  /** ظهر البطاقة بقارئه الخاصّ (تعميق الموجود ٨): السطور الثلاثة وحقولها بتحقّقها. */
+  ipcMain.handle('attachments:readMrz', async (_e, id: number) => {
+    const row = getDb().prepare('SELECT file_path AS p FROM attachments WHERE id = ?').get(id) as { p: string } | undefined;
+    if (!row) throw new Error('المستمسك غير موجود');
+    const img = nativeImage.createFromPath(absolute(row.p));
+    if (img.isEmpty()) throw new Error('المستمسك ليس صورةً تُقرأ');
+    const { width, height } = img.getSize();
+    return readCardBack({ gray: grayOf(new Uint8Array(img.toBitmap()), width, height, 'bgra'), width, height }, recognizeLines);
   });
 
   /** الطباعة من داخل التطبيق: نافذة إخراج مخفية تحمل الصورة بمقاس الورقة. */

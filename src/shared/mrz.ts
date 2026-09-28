@@ -118,9 +118,84 @@ export function findTD1(text: string): string[] | null {
 }
 
 const toDigit = (c: string) => ({ O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', B: '8', G: '6' })[c] ?? c;
+const toLetter = (c: string) => ({ '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '6': 'G', '8': 'B' })[c] ?? c;
 
 /** من نصّ القارئ إلى الحقول — أو عدم إن لم تُوجد سطورٌ ثلاث. */
 export function readMrz(text: string): MrzResult | null {
   const lines = findTD1(text);
+  return lines ? parseTD1(lines) : null;
+}
+
+// ── القارئ الخاصّ (تعميق الموجود ٨) ──────────────────────────────────────
+//
+// جُرِّب القارئ العامّ على نسخةٍ حقيقية فلم يقرأ السطور: العربيّ على الصفحة كلّها يخلطها،
+// والإنكليزيّ يرى «<» حرفَ C أو L أو K ويُسقط بعضها. فالقارئ الخاصّ (`main/services/mrzRead`)
+// يجد السطور من الصورة، ويقرؤها رموزًا بمواضعها، ثم هنا: كلّ رمزٍ في خانته من موضعه (الخطّ
+// متساوي العرض)، و«<» من شكله، والملتبس (O و0، S و5…) تحسمه أرقام التحقّق.
+
+/** رمزٌ من القارئ بموضعه — و`chevron` إن رآه فحصُ الشكل «<» (بلا ساقٍ يسرى). */
+export type MrzSymbol = { text: string; x0: number; x1: number; chevron?: boolean };
+
+/**
+ * السطر بخاناته الثلاثين: خانة كلّ رمزٍ من موضعه لا من ترتيبه — فما أسقطه القارئ (وأكثره
+ * «<») يبقى «<»، ولا ينزاح ما بعده.
+ */
+export function slotLine(symbols: MrzSymbol[], left: number, right: number, n = 30): string {
+  const pitch = (right - left) / n;
+  const slots: string[] = Array(n).fill('<');
+  const taken: boolean[] = Array(n).fill(false);
+  for (const s of symbols) {
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((s.x0 + s.x1) / 2 - left) / pitch)));
+    if (taken[i]) continue;
+    taken[i] = true;
+    const ch = (s.text[0] ?? '<').toUpperCase();
+    slots[i] = s.chevron ? '<' : /[A-Z0-9<]/.test(ch) ? ch : '<';
+  }
+  return slots.join('');
+}
+
+/**
+ * يحسم الملتبس في الحقلين اللذين يقبلان حرفًا أو رقمًا: رقم الوثيقة والحقل الاختياري.
+ *
+ * كان بحثًا في صور الحقل كلّها بتبديل الملتبس (O و0، I و1…) حتى يطابق رقم التحقّق — فوجد
+ * لرمزٍ أسقطه القارئ صورةً تطابق مصادفةً في كلّ مرّة تقريبًا (رقم التحقّق عُشريّ، والصور مئات)
+ * فقال عن قراءةٍ خاطئة إنّها «تحقّقت». فالآن صورةٌ واحدة من شكل البطاقة العراقية كما قُرئت
+ * حقيقيةً (٢٨ أيلول ٢٠٢٦): رقم الوثيقة حرفٌ وثمانية أرقام، والحقل الاختياري الرقم الشخصي
+ * (١٢ رقمًا) ثمّ «<». تُعتمد إن طابقت هي ولم تطابق القراءة — وغيرها يبقى كما قُرئ.
+ */
+export function solveTD1(lines: string[]): string[] {
+  const [l1, l2, l3] = lines as [string, string, string];
+  const iraqi = l1.slice(2, 5) === 'IRQ';
+  const docCheck = toDigit(l1[14]!);
+  const pick = (read: string, shaped: string, good: (v: string) => boolean) => (!good(read) && iraqi && good(shaped) ? shaped : read);
+  const docRead = l1.slice(5, 14);
+  const doc = pick(docRead, toLetter(docRead[0]!) + [...docRead.slice(1)].map(toDigit).join(''), (v) => ok(v, docCheck));
+  const rest = l2.slice(0, 7) + l2.slice(8, 15) + l2.slice(18, 29);
+  const optRead = l1.slice(15, 30);
+  const opt = pick(optRead, [...optRead].map((c, i) => (i < 12 ? toDigit(c) : c)).join(''), (v) => ok(doc + docCheck + v + rest, l2[29]!));
+  return [l1.slice(0, 5) + doc + docCheck + opt, l2, l3];
+}
+
+/**
+ * سطورٌ ثلاث من رموز القارئ ← السطور بخاناتها، مصحَّحةً بما يعرفه المعيار: خاناتٌ لا تكون
+ * إلّا أرقامًا (التواريخ وأرقام التحقّق)، وأخرى لا تكون إلّا حروفًا (نوع الوثيقة والدولة
+ * والجنس والجنسية والأسماء)، والملتبس في غيرها تحسمه أرقام التحقّق.
+ */
+export function settleTD1(raw: { symbols: MrzSymbol[]; left: number; right: number }[]): string[] | null {
+  if (raw.length < 3) return null;
+  const lines = raw.slice(0, 3).map((r) => slotLine(r.symbols, r.left, r.right));
+  lines[0] = [...lines[0]!].map((c, p) => (p < 5 ? toLetter(c) : c)).join('');
+  if (!/^[AIC][A-Z<]/.test(lines[0]!)) return null;
+  const l2 = lines[1]!.split('');
+  for (const p of [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 29]) l2[p] = toDigit(l2[p]!);
+  for (const p of [7, 15, 16, 17]) l2[p] = toLetter(l2[p]!);
+  lines[1] = l2.join('');
+  lines[2] = [...lines[2]!].map(toLetter).join('');
+  return solveTD1(lines);
+}
+
+/** سطورٌ ثلاث من رموز القارئ ← الحقول بتحقّقها. */
+export function readMrzSymbols(raw: { symbols: MrzSymbol[]; left: number; right: number }[]): MrzResult | null {
+  const lines = settleTD1(raw);
   return lines ? parseTD1(lines) : null;
 }

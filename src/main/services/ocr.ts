@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app } from 'electron';
-import { createWorker, type Worker } from 'tesseract.js';
-import type { OcrLine } from '@shared/paperDoc';
+import { createWorker, PSM, type Worker } from 'tesseract.js';
+import type { OcrLine as PaperLine } from '@shared/paperDoc';
+import type { LinesOcr, OcrLine } from './mrzRead';
 
 /**
  * استخراج النصوص من المستمسكات الممسوحة.
@@ -78,7 +79,7 @@ async function getPageWorker(): Promise<Worker> {
  *
  * `dpi` دقّة الصورة إن عُرفت (الماسح يكتبها، وصورة الهاتف تُقدَّر من عرض A4).
  */
-export async function recognizeLayout(png: Uint8Array, dpi: number | null): Promise<OcrLine[]> {
+export async function recognizeLayout(png: Uint8Array, dpi: number | null): Promise<PaperLine[]> {
   if (!ocrAvailable()) {
     throw new Error('بيانات التعرّف على النصوص غير مثبّتة مع التطبيق');
   }
@@ -86,7 +87,7 @@ export async function recognizeLayout(png: Uint8Array, dpi: number | null): Prom
   await w.setParameters({ user_defined_dpi: String(Math.round(dpi && dpi >= 70 ? dpi : 300)) });
   const { data } = await w.recognize(Buffer.from(png), {}, { blocks: true });
   const box = (b: { x0: number; y0: number; x1: number; y1: number }) => ({ x0: b.x0, y0: b.y0, x1: b.x1, y1: b.y1 });
-  const lines: OcrLine[] = [];
+  const lines: PaperLine[] = [];
   for (const block of data.blocks ?? []) {
     for (const para of block.paragraphs) {
       for (const line of para.lines) {
@@ -101,7 +102,45 @@ export async function recognizeLayout(png: Uint8Array, dpi: number | null): Prom
   return lines;
 }
 
+// ── ظهر البطاقة (تعميق الموجود ٨): الإنكليزيّ وحده، أسطرًا برموزها ومواضعها ─────
+let mrzWorker: Worker | null = null;
+
+async function getMrzWorker(): Promise<Worker> {
+  if (mrzWorker) return mrzWorker;
+  mrzWorker = await createWorker(['eng'], 1, { langPath: tessdataDir(), gzip: true, cacheMethod: 'none' });
+  return mrzWorker;
+}
+
+/** أسطر صورةٍ برموزها — للقارئ الخاصّ (`mrzRead.ts`). */
+export const recognizeLines: LinesOcr = async (png, opts) => {
+  if (!ocrAvailable()) throw new Error('بيانات التعرّف على النصوص غير مثبّتة مع التطبيق');
+  const w = await getMrzWorker();
+  await w.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+    tessedit_char_whitelist: opts.whitelist ?? '',
+    user_defined_dpi: '300'
+  });
+  const { data } = await w.recognize(Buffer.from(png), {}, { blocks: true });
+  const lines: OcrLine[] = [];
+  for (const block of data.blocks ?? []) {
+    for (const para of block.paragraphs) {
+      for (const line of para.lines) {
+        lines.push({
+          text: line.text,
+          box: line.bbox,
+          symbols: line.words.flatMap((word) => word.symbols.map((s) => ({ text: s.text, box: s.bbox })))
+        });
+      }
+    }
+  }
+  return lines;
+};
+
 export async function shutdownOcr(): Promise<void> {
+  if (mrzWorker) {
+    await mrzWorker.terminate();
+    mrzWorker = null;
+  }
   if (worker) {
     await worker.terminate();
     worker = null;
