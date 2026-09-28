@@ -187,13 +187,14 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
 
   async function scan(docType: string) {
     if (!detail) return;
+    // ٣٠٠ نقطة: تكفي الاستنساخ ١:١ والقراءة. و٦٠٠ على ماسحٍ حقيقي ٤٣ ثانية و٤٣ ميغا للمستمسك.
     const created = await withBusy('scan', () =>
-      window.diwan.attachments.scan(detail.id, docType, 600)
+      window.diwan.attachments.scan(detail.id, docType, 300)
     );
     if (created) {
       await reloadDetail(detail.id);
       await reloadList();
-      say('اكتمل المسح الضوئي بدقة 600');
+      say(`اكتمل المسح الضوئي بدقة ${created.dpi ?? 300}`);
     }
   }
 

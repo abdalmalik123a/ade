@@ -50,7 +50,8 @@ export async function listScanners(): Promise<ScannerDevice[]> {
           $out += [pscustomobject]@{ id = $d.DeviceID; name = $name }
         }
       }
-      if ($out.Count -eq 0) { '[]' } else { $out | ConvertTo-Json -Compress -AsArray }
+      # بلا AsArray: ليس في PowerShell 5.1 الذي في ويندوز — فكانت القائمة فارغةً دائمًا.
+      ConvertTo-Json -Compress -InputObject @($out)
     } catch { '[]' }
   `;
   try {
@@ -64,7 +65,7 @@ export async function listScanners(): Promise<ScannerDevice[]> {
 
 export type ScanOptions = {
   deviceId?: string;
-  /** التصميم يعلن 600 نقطة/إنش للمستمسكات. */
+  /** المطلوب — والماسح قد يقرّبه، فيعود في `ScanResult` ما طُبِّق. */
   dpi?: number;
   color?: boolean;
 };
@@ -74,12 +75,23 @@ export type ScanResult = { relativePath: string; dpi: number; format: string };
 /**
  * يمسح ورقة واحدة ويحفظها في مخزن التطبيق.
  * يعيد المسار النسبي ليُعرض عبر مخطط diwan:// لا عبر file://.
+ *
+ * وما تعلّمناه من ماسحٍ حقيقي (كانون MF3010، أيلول ٢٠٢٦):
+ * - **نوع المسح (ملوّن/رمادي) يُضبط قبل الدقّة**: ضبطه يعيدها إلى افتراضيّها — فكان كلّ مسحٍ
+ *   بـ١٥٠ نقطة ولو طُلبت ٦٠٠. والدقّة تُقرأ بعد ضبطها ويُعاد ما طُبِّق فعلًا، فإن قرّبها ماسحٌ
+ *   إلى ما يدعمه لم يُحسب مقاس الورقة خطأً.
+ * - **المساحة لا تتبع الدقّة**: تبقى ٨٥٠×١١٦٩ نقطة فيُمسح ثلث الزجاج بدقّة ٣٠٠. فتُضبط على
+ *   الزجاج كلّه (مقاسه من الجهاز بأجزاء الألف من الإنش).
+ * - **لا PNG فيه**: BMP وحده. فيُطلب ما يدعمه ويُحوَّل PNG.
  */
 export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
-  const dpi = options.dpi ?? 600;
-  const intent = options.color === false ? 4 : 1; // 1 = ملوّن، 4 = تدرّج رمادي
+  const dpi = options.dpi ?? 300;
+  const intent = options.color === false ? 2 : 1; // 1 = ملوّن، 2 = تدرّج رمادي
   const name = `scan-${Date.now()}.png`;
   const target = join(storeDir('attachments'), name);
+  const transfer = `${target}.part`;
+  // مسارٌ في نصٍّ بين علامتين مفردتين في PowerShell: لا يُهرَّب فيه إلا العلامة نفسها.
+  const lit = (p: string) => p.replace(/'/g, "''");
 
   // للسيناريوهات وحدها: صورةٌ جاهزة بدل ماسحٍ لا يوجد على جهاز الاختبار.
   if (process.env.DIWAN_TEST_SCAN_FILE) {
@@ -99,19 +111,44 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
         : '$info = $devices[0]'
     }
     $device = $info.Connect()
-    $item = $device.Items.Item(1)
-    function Set-WiaProp($item, $id, $value) {
-      foreach ($p in $item.Properties) { if ($p.PropertyID -eq $id) { $p.Value = $value } }
+    $bedW = 0; $bedH = 0
+    foreach ($p in $device.Properties) {
+      if ($p.PropertyID -eq 3074) { $bedW = $p.Value }   # عرض الزجاج بأجزاء الألف من الإنش
+      if ($p.PropertyID -eq 3075) { $bedH = $p.Value }   # طوله
     }
+    $item = $device.Items.Item(1)
+    function Get-WiaProp($item, $id) {
+      foreach ($p in $item.Properties) { if ($p.PropertyID -eq $id) { return $p } }
+    }
+    function Set-WiaProp($item, $id, $value) {
+      $p = Get-WiaProp $item $id
+      if (-not $p) { return }
+      if ($p.SubType -eq 1 -and $value -gt $p.SubTypeMax) { $value = $p.SubTypeMax }
+      $p.Value = $value
+    }
+    # النوع أوّلًا: ضبطه يعيد الدقّة إلى افتراضيّها (١٥٠) — فكان كلّ مسحٍ بـ١٥٠ أيًّا كان المطلوب.
+    Set-WiaProp $item 6146 ${intent}
     Set-WiaProp $item 6147 ${dpi}   # أفقي
     Set-WiaProp $item 6148 ${dpi}   # عمودي
-    Set-WiaProp $item 6146 ${intent}
-    $image = $item.Transfer('{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}')  # PNG
-    if (Test-Path '${target.replace(/\\/g, '\\\\').replace(/'/g, "''")}') {
-      Remove-Item -LiteralPath '${target.replace(/\\/g, '\\\\').replace(/'/g, "''")}' -Force
+    $real = (Get-WiaProp $item 6147).Value
+    Set-WiaProp $item 6149 0
+    Set-WiaProp $item 6150 0
+    if ($bedW -gt 0) { Set-WiaProp $item 6151 ([int]($bedW / 1000 * $real)) }
+    if ($bedH -gt 0) { Set-WiaProp $item 6152 ([int]($bedH / 1000 * $real)) }
+    $png = '{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}'
+    $format = $png
+    if (-not (@($item.Formats) -contains $png)) { $format = @($item.Formats)[0] }
+    $image = $item.Transfer($format)
+    $image.SaveFile('${lit(transfer)}')
+    if ($image.FormatID -eq $png) {
+      Move-Item -LiteralPath '${lit(transfer)}' -Destination '${lit(target)}' -Force
+    } else {
+      Add-Type -AssemblyName System.Drawing
+      $bitmap = [System.Drawing.Image]::FromFile('${lit(transfer)}')
+      try { $bitmap.Save('${lit(target)}', [System.Drawing.Imaging.ImageFormat]::Png) } finally { $bitmap.Dispose() }
+      Remove-Item -LiteralPath '${lit(transfer)}' -Force
     }
-    $image.SaveFile('${target.replace(/\\/g, '\\\\').replace(/'/g, "''")}')
-    Write-Output 'OK'
+    Write-Output "OK $real"
   `;
 
   let output: string;
@@ -131,11 +168,12 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   if (output.includes('NO_DEVICE')) {
     throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
   }
-  if (!output.includes('OK')) {
+  const done = /OK\s+(\d+)/.exec(output);
+  if (!done) {
     throw new Error('لم يكتمل المسح الضوئي');
   }
 
-  return { relativePath: `attachments/${name}`, dpi, format: 'PNG' };
+  return { relativePath: `attachments/${name}`, dpi: Number(done[1]) || dpi, format: 'PNG' };
 }
 
 /** يحذف ملفًا من المخزن — يُستدعى عند حذف مستمسك. */
