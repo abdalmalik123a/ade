@@ -21,7 +21,7 @@ import { CALENDAR_LABEL, formatGregorian, formatHijri, type Calendar } from '@sh
 import { patchField } from '@shared/docEdit';
 import { normalizeFold } from '@shared/arabic';
 import { docText, emptyDoc, isDateField, makeField, pageMm, paragraph, type Doc, type DocField } from '@shared/doc';
-import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, resolveLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import { CORE_FIELDS, FIELD_GROUPS, type CatalogField } from '@shared/letterFields';
 import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, type Gender } from '@shared/gender';
@@ -340,6 +340,15 @@ function EditorScreen(
       if (key === 'التاريخ_الهجري') return registry.dateHijri;
       return shown[key] ?? shown[key.replace(/_/g, ' ')] ?? '';
     });
+  /** وحقولها في الورقة التي تُطبع وتُصدَّر — بالقيم الحقيقية لا بما تعرضه المعاينة. */
+  const resolvePrinted = (text: string): string =>
+    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
+      const key = raw.trim();
+      if (key === 'رقم_الصادر') return registry.number;
+      if (key === 'التاريخ_الميلادي') return registry.dateGreg;
+      if (key === 'التاريخ_الهجري') return registry.dateHijri;
+      return effective[key] ?? effective[key.replace(/_/g, ' ')] ?? '';
+    });
   const headLayout = isLayoutEmpty(layout) ? null : layout;
   const regValues = { number: registry.number, date: registry.dateGreg };
 
@@ -440,8 +449,17 @@ function EditorScreen(
     }
   }
   const exportPdf = () => run('حُفظ PDF', () => window.diwan.output.savePdf({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
+  // من الوثيقة وقيمها وترويستها — فيخرج Word بجداوله وأعمدته ومحاذاته (تعميق الموجود ٩).
   const exportWord = () =>
-    run('حُفظ مستند Word', () => window.diwan.output.saveDocx({ sheetHtml: sheetHtml(), suggestedName: sheetName, title: docType || 'كتاب رسمي' }));
+    run('حُفظ مستند Word', () =>
+      window.diwan.output.saveDocx({
+        doc,
+        values: effective,
+        head: headLayout ? { layout: resolveLayout(headLayout, resolvePrinted), registry: regValues } : null,
+        suggestedName: sheetName,
+        title: docType || 'كتاب رسمي'
+      })
+    );
   const exportPng = () =>
     run('حُفظت صورة بدقة 300 نقطة/إنش', () => window.diwan.output.savePng300({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
 
@@ -1026,15 +1044,7 @@ function EditorScreen(
           layout={headLayout}
           values={effective}
           registry={regValues}
-          resolve={(t) =>
-            t.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
-              const key = raw.trim();
-              if (key === 'رقم_الصادر') return registry.number;
-              if (key === 'التاريخ_الميلادي') return registry.dateGreg;
-              if (key === 'التاريخ_الهجري') return registry.dateHijri;
-              return effective[key] ?? effective[key.replace(/_/g, ' ')] ?? '';
-            })
-          }
+          resolve={resolvePrinted}
           sheetRef={(el) => {
             printRef.current = el;
           }}

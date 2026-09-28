@@ -17,6 +17,7 @@
 import { join } from 'node:path';
 import { existsSync, statSync, readFileSync, mkdirSync, readdirSync } from 'node:fs';
 import Database from 'better-sqlite3';
+import { strFromU8, unzipSync } from 'fflate';
 
 export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
@@ -438,6 +439,11 @@ export default async function scenario(page, { profile, shotsDir }) {
     await typeAtEnd('نؤيد لكم أن السيد أحمد عادل كريم الموسوي مستمر بالخدمة الفعلية.');
     await wait(400);
 
+    // أوّل سطرٍ في ترويسة الورقة المطبوعة — ليُبحث عنه في Word.
+    const headLine = await page.eval(`
+      const h = document.querySelector('[data-letter-sheet] [data-letterhead]');
+      return h ? h.innerText.split(String.fromCharCode(10)).map((s) => s.trim()).find((s) => s.length > 3) ?? null : null;
+    `);
     await page.eval(`document.querySelector('[data-act="export-word"]').click(); return true;`);
     await wait(4000);
     const docx = saved('.docx');
@@ -446,6 +452,14 @@ export default async function scenario(page, { profile, shotsDir }) {
       'ملف Word حزمة صالحة',
       docx.length === 1 && headerOf(docx[0], 2) === 'PK' && bytesOf(docx[0]) > 2000
     );
+    if (docx.length === 1) {
+      // تعميق الموجود ٩: من الوثيقة بتنسيقها لا من علامات الورقة نصًّا مسطَّحًا.
+      const files = unzipSync(new Uint8Array(readFileSync(join(saveDir, docx[0]))));
+      const x = strFromU8(files['word/document.xml']) + Object.keys(files).filter((k) => /^word\/header\d*\.xml$/.test(k)).map((k) => strFromU8(files[k])).join('');
+      ok('في Word نصّ الكتاب', x.includes('مستمر بالخدمة الفعلية'));
+      ok(`وترويسته كما في الورقة (${headLine ?? 'بلا ترويسة'})`, !headLine || x.includes(headLine));
+      ok('والفقرات عربيّةٌ من اليمين، بلا علامات HTML', x.includes('<w:bidi/>') && !/&lt;(p|div|span|strong)/.test(x));
+    }
 
     await page.eval(`document.querySelector('[data-act="export-png"]').click(); return true;`);
     await wait(9000);

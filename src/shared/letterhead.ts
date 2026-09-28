@@ -260,6 +260,18 @@ export function isLayoutEmpty(layout: LetterheadLayout): boolean {
   );
 }
 
+/**
+ * الترويسة بحقولها التلقائية ({رقم_الصادر}، {التاريخ_الميلادي}…) محلولةً نصوصًا — لما يُرسم
+ * خارج الواجهة (Word) بالدالّة نفسها التي ترسم بها الورقة.
+ */
+export function resolveLayout(layout: LetterheadLayout, resolve: (value: string) => string): LetterheadLayout {
+  const sections = layout.sections.map((s) => ({
+    ...s,
+    blocks: s.blocks.map((b) => (b.kind === 'field' ? { ...b, kind: 'text' as const, value: resolve(b.value) } : b))
+  })) as LetterheadLayout['sections'];
+  return { ...layout, sections };
+}
+
 /** كل نصّ في الترويسة — للبحث عنها بما كُتب فيها لا باسمها وحده. */
 export function layoutText(layout: LetterheadLayout): string {
   if (layout.sheet?.length) return docText({ ...emptyDoc(), blocks: layout.sheet });

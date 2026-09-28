@@ -1,8 +1,7 @@
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
+import { AlignmentType, HeadingLevel, Paragraph, TextRun } from 'docx';
 import ExcelJS from 'exceljs';
 import type { DocumentRow, PeriodStats, TemplateDetail } from '@shared/api';
 import { layoutText, normalizeLayout, visibleSections, type Letterhead } from '@shared/letterhead';
-import { htmlToText } from './documents';
 import { docToDocx } from './docDocx';
 import { templateDoc } from './templates';
 
@@ -137,50 +136,6 @@ export async function templateToDocx(
   // المتن من الوثيقة نفسها بتنسيقها — لا ظلّها النصّي (التدقيق المستقل): كانت الجداول
   // والأعمدة والمحاذاة تضيع، ويخرج نموذجٌ لا يشبه ما في المكتبة.
   return docToDocx(templateDoc(t), { title: t.title, before: children, image });
-}
-
-/**
- * الكتاب الصادر إلى Word.
- *
- * ما يُصدَّر هو نصّ الورقة كما خرجت من المحرر — الترويسة والمتن والتوقيع — لا
- * النموذج الفارغ. والتوليد برمجيّ وصامت: لا يُفتح Word ولا أداة خارجية.
- */
-export async function sheetToDocx(sheetHtml: string, title: string): Promise<Buffer> {
-  const lines = htmlToText(sheetHtml).split('\n');
-  const children: Paragraph[] = [];
-
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) {
-      children.push(new Paragraph({ text: '' }));
-      continue;
-    }
-    // سطر الموضوع يتوسّط ويُسطَّر، كما في الورقة.
-    const isSubject = line.startsWith('م /');
-    children.push(
-      new Paragraph({
-        alignment: isSubject ? AlignmentType.CENTER : AlignmentType.JUSTIFIED,
-        bidirectional: true,
-        spacing: { line: 360 },
-        children: [
-          new TextRun({
-            text: line,
-            bold: isSubject,
-            underline: isSubject ? {} : undefined,
-            rightToLeft: true
-          })
-        ]
-      })
-    );
-  }
-
-  const doc = new Document({
-    creator: 'ديوان',
-    title,
-    styles: { default: { document: { run: { font: 'Amiri', size: 26 } } } },
-    sections: [{ properties: {}, children }]
-  });
-  return Packer.toBuffer(doc);
 }
 
 /** تقرير المدة: صفحة مؤشرات، وجدول الكتب، وتوزيع حسب نوع الوثيقة وحسب اليوم. */

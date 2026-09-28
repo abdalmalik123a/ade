@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { printJournal, runJob, type PrintJob } from '../services/printJobs';
@@ -8,7 +9,11 @@ import { searchOthers } from '../services/search';
 import { todayAgenda } from '../services/today';
 import { createBackup } from './backup';
 import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
-import { reportToExcel, sheetToDocx } from '../services/export';
+import { reportToExcel } from '../services/export';
+import { docToDocx } from '../services/docDocx';
+import { fillDoc } from '@shared/docFill';
+import type { Doc } from '@shared/doc';
+import type { LetterheadLayout } from '@shared/letterhead';
 import { pickSavePath } from './files';
 import { autoBackupState } from './backup';
 import { valuesOnlySheet } from '@shared/docHtml';
@@ -413,15 +418,39 @@ export function registerDocumentIpc(): void {
     }
   );
 
+  /**
+   * الكتاب إلى Word بتنسيقه (تعميق الموجود ٩): من وثيقته وقيمه وترويسته — لا من علامات ورقته
+   * نصًّا مسطَّحًا كما كان، فتبقى الجداول والأعمدة والمحاذاة والعريض والصور.
+   */
   ipcMain.handle(
     'output:saveDocx',
     async (
       e,
-      payload: { sheetHtml: string; suggestedName: string; title: string }
+      payload: {
+        doc: Doc;
+        values: Record<string, string>;
+        head: { layout: LetterheadLayout; registry?: { number: string; date: string } } | null;
+        suggestedName: string;
+        title: string;
+      }
     ): Promise<string | null> => {
       const w = win(e);
       if (!w) return null;
-      const docx = await sheetToDocx(payload.sheetHtml, payload.title);
+      // صور الوثيقة والترويسة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
+      const image = (src: string) => {
+        if (src.includes('..')) return null;
+        try {
+          return readFileSync(join(storeDir(), src));
+        } catch {
+          return null;
+        }
+      };
+      const docx = await docToDocx(fillDoc(payload.doc, payload.values), {
+        title: payload.title,
+        blanks: true,
+        head: payload.head ?? undefined,
+        image
+      });
       return saveAs(w, docx, `${safeName(payload.suggestedName)}.docx`, 'مستند Word', 'docx');
     }
   );

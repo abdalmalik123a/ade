@@ -849,8 +849,11 @@ export type DiwanApi = {
       suggestedName: string;
       page?: { w: number; h: number };
     }): Promise<string | null>;
+    /** الكتاب إلى Word بتنسيقه: وثيقته وقيمه وترويسته (حقولها محلولة — `resolveLayout`). */
     saveDocx(payload: {
-      sheetHtml: string;
+      doc: Doc;
+      values: Record<string, string>;
+      head: { layout: LetterheadLayout; registry?: { number: string; date: string } } | null;
       suggestedName: string;
       title: string;
     }): Promise<string | null>;
