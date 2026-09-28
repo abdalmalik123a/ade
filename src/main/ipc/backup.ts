@@ -11,19 +11,20 @@
  * ٤. إن تعثّر شيءٌ في ٣ عاد ما نُقل جانبًا إلى مكانه.
  * ثم تُعاد الواجهة فتقرأ البيانات الجديدة من أوّلها.
  */
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { closeDb, dataDir, getDb } from '../db';
 import { inspectBackup, isEncrypted, packBackup, unpackBackup } from '../services/backup';
+import { mirrorInfo, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { logAudit, prepareDocuments } from '../services/documents';
 import { ensureSearchColumn } from '../services/citizens';
 import { prepareLetterheads } from '../services/letterheads';
 import { prepareTemplates } from '../services/templates';
 import { prepareSearch } from '../services/searchIndex';
-import type { BackupSummary } from '@shared/api';
-import { pickOpenPath, pickSavePath } from './files';
+import type { AutoBackupStatus, BackupSummary } from '@shared/api';
+import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
@@ -98,8 +99,11 @@ export async function createBackup(
 /**
  * يستبدل بيانات المكتب بالنسخة — وما كان يُنقل جانبًا لا يُحذف.
  * يعيد مجلّد ما نُقل جانبًا، ليُقال للمكتب أين هو.
+ *
+ * و`writeStore` يكتب مخزن النسخة في مجلّده: من الحزمة المفكوكة في الذاكرة، أو من مجلّد
+ * النسخة التلقائية ملفًّا ملفًّا.
  */
-function applyRestore(unpacked: ReturnType<typeof unpackBackup>): string {
+function applyRestore(dbBytes: Uint8Array, writeStore: (store: string) => void): string {
   const dir = dataDir();
   const aside = join(dir, `before-restore-${stamp()}`);
   mkdirSync(aside, { recursive: true });
@@ -119,12 +123,9 @@ function applyRestore(unpacked: ReturnType<typeof unpackBackup>): string {
   move(store, join(aside, 'store'));
 
   try {
-    writeFileSync(dbFile, unpacked.db);
-    for (const [rel, bytes] of Object.entries(unpacked.store)) {
-      const file = join(store, rel);
-      mkdirSync(dirname(file), { recursive: true });
-      writeFileSync(file, bytes);
-    }
+    writeFileSync(dbFile, dbBytes);
+    mkdirSync(store, { recursive: true });
+    writeStore(store);
     reopen();
   } catch (e) {
     // تعثّر: يُمحى ما كُتب، ويعود ما نُقل جانبًا إلى مكانه — فالجهاز كما كان.
@@ -138,8 +139,130 @@ function applyRestore(unpacked: ReturnType<typeof unpackBackup>): string {
   return aside;
 }
 
+// ── النسخة التلقائية عند الإغلاق (تعميق الموجود ٢) ───────────────────────
+//
+// إعدادها في القاعدة (المجلّد، وكم يُبقى، والكلمة مشفّرةً بحساب ويندوز)؛ وحالها (متى
+// أُخذت آخر مرّة، ولماذا لم تُؤخذ) في ملفٍّ بجانبها لا فيها: فلو كُتب في القاعدة لتغيّرت
+// كلّ مرّة، فصارت كلّ نسخةٍ «جديدة» ولو لم يُعمل شيء.
+
+type AutoState = { lastAt: string | null; lastError: string | null };
+const stateFile = () => join(dataDir(), 'auto-backup.json');
+
+export function autoBackupState(): AutoState {
+  try {
+    const s = JSON.parse(readFileSync(stateFile(), 'utf8')) as Partial<AutoState>;
+    return { lastAt: s.lastAt ?? null, lastError: s.lastError ?? null };
+  } catch {
+    return { lastAt: null, lastError: null };
+  }
+}
+
+function saveAutoState(s: AutoState): void {
+  writeFileSync(stateFile(), JSON.stringify(s));
+}
+
+function readSetting(key: string): string | null {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+function unsetSetting(key: string): void {
+  getDb().prepare('DELETE FROM settings WHERE key = ?').run(key);
+}
+
+function autoStatus(): AutoBackupStatus {
+  return {
+    dir: readSetting('autoBackupDir'),
+    keep: Number(readSetting('autoBackupKeep')) || 10,
+    encrypted: Boolean(readSetting('autoBackupSecret')),
+    canEncrypt: safeStorage.isEncryptionAvailable(),
+    ...autoBackupState()
+  };
+}
+
+/** كلمة النسخة التلقائية: محفوظةٌ مشفّرةً بحساب ويندوز (DPAPI)، فلا تُقرأ من القاعدة وحدها. */
+function autoPassword(): string | null {
+  const secret = readSetting('autoBackupSecret');
+  return secret ? safeStorage.decryptString(Buffer.from(secret, 'base64')) : null;
+}
+
+export const autoBackupConfigured = () => Boolean(readSetting('autoBackupDir'));
+
+/** تُؤخذ النسخة إلى مجلّدها — ويُحفظ حالها نجحت أو لم تنجح. */
+export function runConfiguredAutoBackup(): AutoBackupResult | null {
+  const status = autoStatus();
+  if (!status.dir) return null;
+  try {
+    const r = runAutoBackup({ target: status.dir, storeRoot: join(dataDir(), 'store'), snapshotDb, password: autoPassword(), keep: status.keep });
+    saveAutoState({ lastAt: new Date().toISOString(), lastError: null });
+    return r;
+  } catch (e) {
+    saveAutoState({ lastAt: status.lastAt, lastError: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
+}
+
+/** آخر نسخةٍ أيًّا كانت — يدويّةً (في القاعدة) أو تلقائيّة (بجانبها). */
+export function lastAnyBackup(manual: string | null): string | null {
+  const auto = autoBackupState().lastAt;
+  if (!auto) return manual;
+  return !manual || auto > manual ? auto : manual;
+}
+
 export function registerBackupIpc(): void {
   const win = (e: Electron.IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender);
+
+  ipcMain.handle('backup:autoGet', () => autoStatus());
+
+  ipcMain.handle('backup:autoPickDir', async (e) => {
+    const w = win(e);
+    return w ? pickFolderPath(w, { title: 'مجلّد النسخة التلقائية — فلاشةٌ أو قرصٌ آخر', buttonLabel: 'اختره' }) : null;
+  });
+
+  ipcMain.handle('backup:autoSet', (_e, config: { dir: string | null; keep?: number; password?: string | null }) => {
+    if (!config.dir) {
+      for (const k of ['autoBackupDir', 'autoBackupSecret', 'autoBackupKeep']) unsetSetting(k);
+      return autoStatus();
+    }
+    if (!existsSync(config.dir)) throw new Error('المجلّد غير موجود — أهي فلاشةٌ غير موصولة؟');
+    setting('autoBackupDir', config.dir);
+    if (config.keep) setting('autoBackupKeep', String(Math.max(1, Math.min(60, Math.round(config.keep)))));
+    if (config.password === null) unsetSetting('autoBackupSecret');
+    else if (typeof config.password === 'string') {
+      if (config.password.length < 4) throw new Error('كلمة النسخة التلقائية أربعة أحرفٍ أقلّها');
+      if (!safeStorage.isEncryptionAvailable()) throw new Error('حفظ الكلمة مشفّرةً غير متاحٍ على هذا الجهاز');
+      setting('autoBackupSecret', safeStorage.encryptString(config.password).toString('base64'));
+    }
+    return autoStatus();
+  });
+
+  ipcMain.handle('backup:autoRun', () => runConfiguredAutoBackup());
+
+  ipcMain.handle('backup:mirrorPick', async (e) => {
+    const w = win(e);
+    if (!w) return null;
+    const path = await pickFolderPath(w, { title: 'مجلّد النسخة التلقائية', buttonLabel: 'افحصه' });
+    if (!path) return null;
+    const info = mirrorInfo(path);
+    return { path, encrypted: info.encrypted, lastAt: info.lastAt };
+  });
+
+  ipcMain.handle('backup:mirrorInspect', (_e, path: string, password?: string | null): BackupSummary => {
+    const mirror = readMirror(path, password ?? null);
+    return { ...inspectBackup({ db: mirror.db, store: {} }), files: mirror.files };
+  });
+
+  ipcMain.handle('backup:mirrorRestore', (_e, path: string, password?: string | null): { summary: BackupSummary; aside: string } => {
+    const mirror = readMirror(path, password ?? null);
+    const summary = { ...inspectBackup({ db: mirror.db, store: {} }), files: mirror.files };
+    if (!summary.ok) throw new Error(`القاعدة في النسخة لا تجتاز الفحص (${summary.integrity}) — لا تُسترجع`);
+    const aside = applyRestore(mirror.db, mirror.writeStore);
+    logAudit(getDb(), 'backup', 'restore', `من النسخة التلقائية (${mirror.snapshot}): ${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
+    setTimeout(() => {
+      for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
+    }, 400);
+    return { summary, aside };
+  });
 
   ipcMain.handle('backup:create', async (e, password?: string | null) => {
     const w = win(e);
@@ -171,7 +294,13 @@ export function registerBackupIpc(): void {
       const unpacked = unpackBackup(new Uint8Array(await readFile(path)), password ?? null);
       const summary = inspectBackup(unpacked);
       if (!summary.ok) throw new Error(`القاعدة في النسخة لا تجتاز الفحص (${summary.integrity}) — لا تُسترجع`);
-      const aside = applyRestore(unpacked);
+      const aside = applyRestore(unpacked.db, (store) => {
+        for (const [rel, bytes] of Object.entries(unpacked.store)) {
+          const file = join(store, rel);
+          mkdirSync(dirname(file), { recursive: true });
+          writeFileSync(file, bytes);
+        }
+      });
       logAudit(getDb(), 'backup', 'restore', `${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
       // الواجهة تُعاد لتقرأ البيانات الجديدة من أوّلها — بعد أن يصلها الجواب.
       setTimeout(() => {

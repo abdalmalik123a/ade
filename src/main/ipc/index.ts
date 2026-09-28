@@ -1,7 +1,7 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
-import { registerBackupIpc } from './backup';
+import { lastAnyBackup, registerBackupIpc } from './backup';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
 import { registerPdfIpc } from './pdf';
@@ -56,7 +56,8 @@ function readSettings(): OfficeSettings {
     onboarded: map.get('onboarded') === 'true',
     printOffsets: parseOffsets(map.get('printOffsets')),
     basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala,
-    lastBackupAt: map.get('lastBackupAt') ?? null
+    // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
+    lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null)
   };
 }
 

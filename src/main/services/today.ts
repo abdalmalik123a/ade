@@ -18,7 +18,9 @@ const localToday = (d = new Date()) =>
 export function todayAgenda(
   db: Database,
   pendingPrints: { id: string; label: string; sent: number; total: number }[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  /** النسخة التلقائية: حالها في ملفٍّ بجانب القاعدة لا فيها (ipc/backup.ts). */
+  auto: { lastAt: string | null; lastError: string | null } = { lastAt: null, lastError: null }
 ): TodayAgenda {
   const today = localToday(now);
   const open = listOrders(db, { status: 'open' });
@@ -29,7 +31,8 @@ export function todayAgenda(
 
   const documents = (db.prepare('SELECT COUNT(*) AS n FROM documents').get() as { n: number }).n;
   const last = db.prepare("SELECT value FROM settings WHERE key = 'lastBackupAt'").get() as { value: string } | undefined;
-  const lastBackupAt = last?.value ?? null;
+  const manual = last?.value ?? null;
+  const lastBackupAt = auto.lastAt && (!manual || auto.lastAt > manual) ? auto.lastAt : manual;
   // لا يُذكَّر بنسخةٍ مكتبٌ لا شيء فيه بعد — ولا من أخذ نسخته هذا الأسبوع.
   const backupDue = documents > 0 && (!lastBackupAt || daysSince(lastBackupAt, now) >= BACKUP_REMIND_DAYS);
 
@@ -41,6 +44,7 @@ export function todayAgenda(
     drafts: listDrafts(db).length,
     pendingPrints: pendingPrints.map((p) => ({ id: p.id, label: p.label, sent: p.sent, total: p.total })),
     lastBackupAt,
-    backupDue
+    backupDue,
+    autoBackupError: auto.lastError
   };
 }

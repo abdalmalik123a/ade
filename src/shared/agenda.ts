@@ -6,7 +6,7 @@
 import type { TodayAgenda } from './api';
 
 export function agendaHasItems(a: TodayAgenda): boolean {
-  return a.overdue.length + a.dueToday.length + a.ready.length + a.drafts > 0 || a.backupDue;
+  return a.overdue.length + a.dueToday.length + a.ready.length + a.drafts > 0 || a.backupDue || Boolean(a.autoBackupError);
 }
 
 /**

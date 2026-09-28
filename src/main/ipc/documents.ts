@@ -10,6 +10,7 @@ import { createBackup } from './backup';
 import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
 import { reportToExcel, sheetToDocx } from '../services/export';
 import { pickSavePath } from './files';
+import { autoBackupState } from './backup';
 import { valuesOnlySheet } from '@shared/docHtml';
 
 /** `full` الورقة كما رُئيت، و`values` القيم وحدها على استمارةٍ مطبوعةٍ مسبقًا. */
@@ -373,7 +374,7 @@ export function registerDocumentIpc(): void {
   );
   ipcMain.handle('output:pendingJobs', () => journal().pending());
   /** «ما ينتظرك اليوم» (د٧): من القاعدة، ومعها ما انقطع من الطباعة. */
-  ipcMain.handle('today:agenda', () => todayAgenda(getDb(), journal().pending()));
+  ipcMain.handle('today:agenda', () => todayAgenda(getDb(), journal().pending(), new Date(), autoBackupState()));
   ipcMain.handle('output:resumeJob', async (e, id: string, from: number) => ({
     ...(await runJob(journal(), id, Math.max(0, from), sendSheet(e), progress(e, id))),
     journaled: true,

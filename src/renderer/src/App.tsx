@@ -62,6 +62,10 @@ export default function App() {
   useEffect(() => {
     void window.diwan.ui.info().then((i) => setVersion(i.version));
   }, []);
+
+  /** البرنامج يُغلق ويأخذ نسخته التلقائية أوّلًا — فيُقال ذلك لا يُترك نافذةً لا تستجيب. */
+  const [closing, setClosing] = useState(false);
+  useEffect(() => window.diwan.ui.onClosing(() => setClosing(true)), []);
   const [search, setSearch] = useState('');
   /** ملفّ مواطنٍ يُفتح من البحث الشامل. */
   const [citizenFocus, setCitizenFocus] = useState<{ key: number; citizenId: number } | null>(null);
@@ -379,6 +383,15 @@ export default function App() {
       </div>
 
       <ErrorBar />
+
+      {closing && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50" data-closing="">
+          <div className="rounded-2xl bg-surface-container-lowest px-space-lg py-space-md shadow-2xl flex items-center gap-space-sm font-label-lg text-label-lg text-on-surface">
+            <span className="material-symbols-outlined animate-spin text-secondary">progress_activity</span>
+            تُؤخذ النسخة التلقائية قبل الإغلاق…
+          </div>
+        </div>
+      )}
 
       <CommandPalette
         isOpen={commandPaletteOpen}

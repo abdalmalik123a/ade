@@ -19,6 +19,11 @@ const api: DiwanApi = {
       const handler = (_e: unknown, message: string) => listener(message);
       ipcRenderer.on('app:error', handler);
       return () => ipcRenderer.removeListener('app:error', handler);
+    },
+    onClosing: (listener: () => void) => {
+      const handler = () => listener();
+      ipcRenderer.on('app:closing', handler);
+      return () => ipcRenderer.removeListener('app:closing', handler);
     }
   },
   counts: {
@@ -126,7 +131,14 @@ const api: DiwanApi = {
     create: (password) => invoke('backup:create', password ?? null),
     pick: () => invoke('backup:pick'),
     inspect: (path, password) => invoke('backup:inspect', path, password ?? null),
-    restore: (path, password) => invoke('backup:restore', path, password ?? null)
+    restore: (path, password) => invoke('backup:restore', path, password ?? null),
+    autoGet: () => invoke('backup:autoGet'),
+    autoPickDir: () => invoke('backup:autoPickDir'),
+    autoSet: (config) => invoke('backup:autoSet', config),
+    autoRun: () => invoke('backup:autoRun'),
+    mirrorPick: () => invoke('backup:mirrorPick'),
+    mirrorInspect: (path, password) => invoke('backup:mirrorInspect', path, password ?? null),
+    mirrorRestore: (path, password) => invoke('backup:mirrorRestore', path, password ?? null)
   },
   scanner: {
     list: () => invoke('scanner:list'),

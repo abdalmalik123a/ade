@@ -3,6 +3,7 @@ import { app, BrowserWindow, shell, protocol, net, dialog } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
+import { autoBackupConfigured, runConfiguredAutoBackup } from './ipc/backup';
 import { prepareDocuments } from './services/documents';
 import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
@@ -52,6 +53,29 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', bringToFront);
   bringToFront();
+
+  // النسخة التلقائية عند الإغلاق (تعميق الموجود ٢): تُؤخذ قبل أن تُغلق النافذة، وتقول
+  // الواجهةُ ذلك فلا يظنّ الموظف أنّ البرنامج علق. وما تعثّر يُسجَّل ويُقال عند الفتح التالي
+  // — ولا يمنع الإغلاق.
+  let backingUp = false;
+  let backedUp = false;
+  mainWindow.on('close', (e) => {
+    if (backedUp || !autoBackupConfigured()) return;
+    e.preventDefault();
+    if (backingUp) return;
+    backingUp = true;
+    mainWindow?.webContents.send('app:closing');
+    // مهلةٌ لتصل الرسالة وتُرسم قبل أن تشغل النسخة العملية الرئيسة.
+    setTimeout(() => {
+      try {
+        runConfiguredAutoBackup();
+      } catch (err) {
+        logError('autoBackup', err);
+      }
+      backedUp = true;
+      mainWindow?.close();
+    }, 250);
+  });
 
   // تسجيل أخطاء الواجهة لسرعة التشخيص
   mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {

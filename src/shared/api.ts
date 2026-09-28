@@ -158,6 +158,18 @@ export type TodayAgenda = {
   lastBackupAt: string | null;
   /** مضى أسبوعٌ بلا نسخة (أو لم تُؤخذ قطّ) وفي الأرشيف كتب. */
   backupDue: boolean;
+  /** النسخة التلقائية الأخيرة لم تُؤخذ — ولماذا (فلاشةٌ غير موصولة…). */
+  autoBackupError?: string | null;
+};
+
+export type AutoBackupStatus = {
+  dir: string | null;
+  keep: number;
+  encrypted: boolean;
+  /** التشفير يحفظ الكلمة مشفّرةً بحساب ويندوز — فإن لم يتح لم يُعرض. */
+  canEncrypt: boolean;
+  lastAt: string | null;
+  lastError: string | null;
 };
 
 /** ما في النسخة الاحتياطية — يُعرض قبل أن يوافق المكتب على استرجاعها. */
@@ -550,6 +562,8 @@ export type DiwanApi = {
     info(): Promise<{ version: string; dataDir: string }>;
     /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
     onError(listener: (message: string) => void): () => void;
+    /** البرنامج يُغلق ويأخذ نسخته التلقائية أوّلًا — تُقال في الواجهة لا تُترك نافذةً معلّقة. */
+    onClosing(listener: () => void): () => void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;
@@ -723,6 +737,16 @@ export type DiwanApi = {
     inspect(path: string, password?: string | null): Promise<BackupSummary>;
     /** يستبدل بيانات المكتب بالنسخة؛ وما كان يُنقل جانبًا إلى `aside`. ثم تُعاد الواجهة. */
     restore(path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+    /** النسخة التلقائية عند الإغلاق: مجلّدها وما بقي منها، وحالها آخر مرّة. */
+    autoGet(): Promise<AutoBackupStatus>;
+    autoPickDir(): Promise<string | null>;
+    /** `password`: نصٌّ كلمةٌ جديدة، و`null` بلا تشفير، وغيابه يُبقي ما كان. و`dir: null` يوقفها. */
+    autoSet(config: { dir: string | null; keep?: number; password?: string | null }): Promise<AutoBackupStatus>;
+    autoRun(): Promise<{ dbChanged: boolean; filesCopied: number; bytesCopied: number; snapshots: number; root: string } | null>;
+    /** الاسترجاع من مجلّد النسخة التلقائية — كالحزمة: يُفحص، ثم يُرى، ثم يُوافق عليه. */
+    mirrorPick(): Promise<{ path: string; encrypted: boolean; lastAt: string | null } | null>;
+    mirrorInspect(path: string, password?: string | null): Promise<BackupSummary>;
+    mirrorRestore(path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
   };
   templates: {
     /** `issuing` يفصل مكتبة الكتب عن أوراق الأسئلة — والأصل الكتب. */

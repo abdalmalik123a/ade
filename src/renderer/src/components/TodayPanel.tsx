@@ -126,6 +126,18 @@ export default function TodayPanel({
               آخر نسخة احتياطية: {sinceText(agenda.lastBackupAt)} — خذ نسخةً واحفظها خارج الجهاز
             </button>
           )}
+
+          {agenda.autoBackupError && (
+            <button
+              className="flex items-start gap-space-xs text-right font-label-lg text-label-lg text-error hover:underline"
+              data-today-auto-backup=""
+              type="button"
+              onClick={() => go('settings')}
+            >
+              <span className="material-symbols-outlined text-[20px]">sync_problem</span>
+              لم تُؤخذ النسخة التلقائية عند الإغلاق الأخير: {agenda.autoBackupError}
+            </button>
+          )}
         </div>
 
         <div className="p-space-md bg-surface-container-low flex justify-end">
