@@ -91,7 +91,7 @@ export default function TodayPanel({
                       data-act="copy-ready"
                       type="button"
                       onClick={() => {
-                        void navigator.clipboard.writeText(readyMessage(o, officeName));
+                        void window.diwan.ui.copyText(readyMessage(o, officeName));
                         setCopied(o.id);
                       }}
                     >

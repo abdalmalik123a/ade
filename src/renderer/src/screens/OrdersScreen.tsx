@@ -169,7 +169,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
                         onMove={(s) => void move(o, s)}
                         onOpenDesign={() => onOpenDesign(o)}
                         onCopyReady={() => {
-                          void navigator.clipboard.writeText(readyMessage(o, officeName));
+                          void window.diwan.ui.copyText(readyMessage(o, officeName));
                           say(`نُسخت رسالة «طلبكم جاهز» لـ${o.customer} — الصقها في محادثته`);
                         }}
                       />

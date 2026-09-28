@@ -123,7 +123,7 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
                     className="underline"
                     type="button"
                     onClick={() => {
-                      void navigator.clipboard.writeText(check.head ?? '');
+                      void window.diwan.ui.copyText(check.head ?? '');
                       setCopied(true);
                       setTimeout(() => setCopied(false), 2000);
                     }}

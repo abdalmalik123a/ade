@@ -560,6 +560,9 @@ export type DiwanApi = {
     setZoom(factor: number): void;
     /** رقم الإصدار من الحزمة، ومجلّد بيانات المكتب — لـ«الإعدادات» وحول البرنامج. */
     info(): Promise<{ version: string; dataDir: string }>;
+    /** النسخ واللصق بحافظة النظام — تعمل والنافذة في الخلف (بطاقة التعبئة فوق المتصفّح). */
+    copyText(text: string): Promise<void>;
+    pasteText(): Promise<string>;
     /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
     onError(listener: (message: string) => void): () => void;
     /** البرنامج يُغلق ويأخذ نسخته التلقائية أوّلًا — تُقال في الواجهة لا تُترك نافذةً معلّقة. */

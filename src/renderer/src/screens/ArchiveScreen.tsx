@@ -544,7 +544,7 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void navigator.clipboard.writeText(row.serial);
+                              void window.diwan.ui.copyText(row.serial);
                               setToast(`نُسخ ${row.serial} إلى الحافظة`);
                             }}
                           >

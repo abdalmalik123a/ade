@@ -306,7 +306,7 @@ function EditorScreen(
       setValue(partner.id, words);
       setToast(`كُتب «${words}» في «${partner.label}»`);
     } else {
-      void navigator.clipboard?.writeText(words);
+      void window.diwan.ui.copyText(words);
       setToast('لا حقلَ «كتابة» لهذا الرقم — نُسخت كلماته، فالصقها حيث تريد');
     }
   }

@@ -529,7 +529,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                           title="نسخ"
                           type="button"
                           onClick={() => {
-                            void navigator.clipboard.writeText(value);
+                            void window.diwan.ui.copyText(value);
                             say('نُسخ إلى الحافظة');
                           }}
                         >
@@ -1032,7 +1032,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                 className="px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
                 type="button"
                 onClick={() => {
-                  void navigator.clipboard.writeText(ocrPanel.text);
+                  void window.diwan.ui.copyText(ocrPanel.text);
                   say('نُسخ النصّ');
                 }}
               >

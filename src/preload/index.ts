@@ -15,6 +15,8 @@ const api: DiwanApi = {
   ui: {
     setZoom: (factor: number) => webFrame.setZoomFactor(Math.min(1.5, Math.max(0.8, factor || 1))),
     info: () => invoke('app:info'),
+    copyText: (text: string) => invoke('app:copyText', text),
+    pasteText: () => invoke('app:pasteText'),
     onError: (listener: (message: string) => void) => {
       const handler = (_e: unknown, message: string) => listener(message);
       ipcRenderer.on('app:error', handler);

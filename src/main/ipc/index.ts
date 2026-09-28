@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { app, clipboard, ipcMain, BrowserWindow } from 'electron';
 import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
@@ -130,6 +130,11 @@ export function registerIpc(): void {
 
   // رقم الإصدار من package.json — لا نصًّا مكتوبًا في الشريط يتخلّف عن الحزمة.
   ipcMain.handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir() }));
+
+  // الحافظة من النظام لا من واجهة المتصفّح: تلك ترفض الكتابة إن لم تكن النافذة في الأمام
+  // («Document is not focused») — فبطاقة التعبئة فوق المتصفّح، والنسخ بعد حوار، يفشلان.
+  ipcMain.handle('app:copyText', (_e, text: unknown) => clipboard.writeText(String(text ?? '')));
+  ipcMain.handle('app:pasteText', () => clipboard.readText());
 
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 

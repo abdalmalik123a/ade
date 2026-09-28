@@ -27,7 +27,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
 
   const handlePasteClipboard = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await window.diwan.ui.pasteText();
       if (text) setRawText(text);
       else setClipNote('الحافظة فارغة — انسخ رسالة الزبون أولًا');
     } catch {

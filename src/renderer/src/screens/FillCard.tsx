@@ -24,7 +24,7 @@ export default function FillCard({ citizenId }: { citizenId: number }) {
   if (!citizen) return <main className="p-space-md font-label-md text-label-md text-error">لم يُعثر على ملف المواطن</main>;
 
   const copy = (key: string, value: string) => {
-    void navigator.clipboard.writeText(value);
+    void window.diwan.ui.copyText(value);
     setCopied(key);
     window.setTimeout(() => setCopied((k) => (k === key ? null : k)), 1500);
   };

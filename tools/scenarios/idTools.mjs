@@ -203,7 +203,15 @@ export default async function scenario(page, { profile, shotsDir }) {
         ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
       })
     );
+    // النقر ينسخ بحافظة النظام — والبطاقة ليست النافذة الأمامية (تحت المِقْود)، فكانت
+    // حافظة المتصفّح ترفض: «Document is not focused».
+    await new Promise((resolve) => {
+      ws.addEventListener('message', resolve, { once: true });
+      ws.send(JSON.stringify({ id: 2, method: 'Runtime.evaluate', params: { expression: `document.querySelector('[data-fill-line="اللقب"]').click()` } }));
+    });
+    await wait(500);
     ws.close();
+    ok('ونقرة سطرٍ فيها تنسخه إلى حافظة النظام ولو لم تكن في الأمام', (await page.eval(`return window.diwan.ui.pasteText();`)) === 'الموسوي');
     const line = (label) => lines?.[label];
     ok(
       `وفيها ما تسأله استمارات أور: اسم الأم مفرَّقًا واللقب والمحلة والزقاق والدار (${line('اسم أب الأم')} · ${line('اللقب')} · ${line('المحلة')}/${line('الزقاق')}/${line('الدار')})`,
