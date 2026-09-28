@@ -136,6 +136,25 @@ export function registerIpc(): void {
   ipcMain.handle('app:copyText', (_e, text: unknown) => clipboard.writeText(String(text ?? '')));
   ipcMain.handle('app:pasteText', () => clipboard.readText());
 
+  // المعاملات المعلّقة في الشبّاك (تعميق الموجود ٥): في القاعدة، فتبقى بعد الإغلاق.
+  ipcMain.handle('service:parked', (): unknown[] => {
+    const row = getDb().prepare("SELECT value FROM settings WHERE key = 'parkedTransactions'").get() as { value: string } | undefined;
+    try {
+      const list = JSON.parse(row?.value ?? '[]') as unknown;
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  });
+  ipcMain.handle('service:setParked', (_e, list: unknown) => {
+    getDb()
+      .prepare(
+        `INSERT INTO settings (key, value, updated_at) VALUES ('parkedTransactions', ?, datetime('now'))
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+      )
+      .run(JSON.stringify(Array.isArray(list) ? list.slice(0, 50) : []));
+  });
+
   ipcMain.handle('settings:get', (): OfficeSettings => readSettings());
 
   ipcMain.handle(

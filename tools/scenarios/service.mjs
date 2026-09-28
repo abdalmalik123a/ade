@@ -253,9 +253,16 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(600);
   ok('«علّق المعاملة» تفتح الشبّاك لزبونٍ آخر', (await page.text()).includes('ماذا يطلب الزبون'));
   ok('والمعلّقة ظاهرةٌ باسم صاحبها', (await page.eval(`return document.querySelector('[data-parked]')?.innerText ?? '';`)).includes('كريم حسن علي'));
+  // وتبقى بعد إغلاق البرنامج (تعميق الموجود ٥): الواجهة تُعاد من أوّلها، والمعلّقة من القاعدة.
+  await page.eval(`setTimeout(() => location.reload(), 50); return true;`);
+  await wait(3000);
+  await page.goto('service-counter');
+  await wait(1200);
+  ok('وتبقى المعلّقة بعد إعادة البرنامج — من القاعدة لا من الذاكرة', (await page.eval(`return document.querySelector('[data-parked]')?.innerText ?? '';`)).includes('كريم حسن علي'));
   await page.eval(`document.querySelector('[data-act="resume"]').click(); return true;`);
-  await wait(900);
-  ok('وتُستأنف من حيث تُركت', (await firstValue()) === 'كريم حسن علي');
+  await wait(1500);
+  ok('وتُستأنف من حيث تُركت — ونماذجها تُحمَّل من المكتبة', (await firstValue()) === 'كريم حسن علي');
+  ok('والمستأنفة تخرج من المعلّقة المحفوظة', (await page.eval(`return (await window.diwan.service.parked()).length;`)) === 0);
 
   // ── زبونٌ جديد: يُعرض حفظه في السجل، وتُربط به كتبه ──────────────────
   await page.clickText('راجع الأوراق');

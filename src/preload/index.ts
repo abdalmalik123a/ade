@@ -122,6 +122,10 @@ const api: DiwanApi = {
   today: {
     agenda: () => invoke('today:agenda')
   },
+  service: {
+    parked: () => invoke('service:parked'),
+    setParked: (list: unknown[]) => invoke('service:setParked', list)
+  },
   fillCard: {
     open: (citizenId) => invoke('fillcard:open', citizenId)
   },

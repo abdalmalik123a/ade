@@ -728,6 +728,11 @@ export type DiwanApi = {
   today: {
     agenda(): Promise<TodayAgenda>;
   };
+  /** الشبّاك: المعاملات المعلّقة محفوظةً في القاعدة — شكلها في `ServiceScreen` (`Parked`). */
+  service: {
+    parked(): Promise<unknown[]>;
+    setParked(list: unknown[]): Promise<void>;
+  };
   /** التذكير والتأنيث: ما أجاب عنه المكتب لأسماءٍ لم يُعرف جنسها (ج٤). */
   gender: {
     learned(): Promise<Record<string, 'ذكر' | 'أنثى'>>;

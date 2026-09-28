@@ -63,13 +63,16 @@ export type ServiceScreenProps = {
 
 export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
 
-/** معاملةٌ معلّقة: زبونٌ ذهب ليجلب مستمسكًا، والمكتب يخدم غيره حتى يعود. */
-type Parked = {
+/**
+ * معاملةٌ معلّقة: زبونٌ ذهب ليجلب مستمسكًا، والمكتب يخدم غيره حتى يعود — ولو عاد غدًا:
+ * تُحفظ في القاعدة فتبقى بعد إغلاق البرنامج (تعميق الموجود ٥). والنماذج بمعرّفاتها لا
+ * بنسخها: تُحمَّل عند الاستئناف بآخر ما عُدّلت عليه.
+ */
+export type Parked = {
   key: number;
   label: string;
   step: Step;
   picked: number[];
-  loaded: Loaded[];
   values: Record<string, string>;
   letterNo: string;
   citizenId: number | null;
@@ -489,14 +492,26 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
   }, [repeat?.key]);
 
   // ── المعاملات المعلّقة ─────────────────────────────────────────────
-  const [parked, setParked] = useState<Parked[]>([]);
+  const [parked, setParkedState] = useState<Parked[]>([]);
+  useEffect(() => {
+    void window.diwan.service
+      .parked()
+      .then((list) => setParkedState(list as Parked[]))
+      .catch(() => undefined);
+  }, []);
+  /** كلّ تغييرٍ يُحفظ في القاعدة — فالمعلّقة لا تضيع بإغلاق البرنامج ولا بانقطاع الكهرباء. */
+  const setParked = (update: (list: Parked[]) => Parked[]) =>
+    setParkedState((list) => {
+      const next = update(list);
+      void window.diwan.service.setParked(next).catch(() => say('تعذّر حفظ المعاملات المعلّقة', 'warn'));
+      return next;
+    });
 
   const snapshot = (): Parked => ({
     key: Date.now(),
     label: citizenName || loaded.map((l) => l.summary.title).join('، ') || 'معاملة',
     step,
-    picked,
-    loaded,
+    picked: loaded.map((l) => l.detail.id),
     values,
     letterNo,
     citizenId,
@@ -513,15 +528,23 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
     say('عُلّقت المعاملة — تُستأنف من «معاملات معلّقة» حين يعود صاحبها');
   }
 
-  /** تُستأنف معلّقةٌ من حيث تُركت — والجارية إن كان فيها شيء تُعلَّق مكانها. */
-  function resume(key: number) {
+  /**
+   * تُستأنف معلّقةٌ من حيث تُركت — والجارية إن كان فيها شيء تُعلَّق مكانها. والنماذج تُحمَّل
+   * من جديد: ما حُذف منها منذ التعليق يُقال.
+   */
+  async function resume(key: number) {
     const p = parked.find((x) => x.key === key);
     if (!p) return;
     const current = loaded.length > 0 ? snapshot() : null;
+    const found = (await Promise.all(p.picked.map((id) => window.diwan.templates.get(id).catch(() => null)))).filter(Boolean).length;
+    if (!found) {
+      say(`نماذج معاملة ${p.label} حُذفت منذ عُلّقت — لا تُستأنف`, 'warn');
+      return;
+    }
     setParked((list) => [...list.filter((x) => x.key !== key), ...(current ? [current] : [])]);
+    await goFill(p.picked);
     setStep(p.step);
     setPicked(p.picked);
-    setLoaded(p.loaded);
     setValues(p.values);
     setLetterNo(p.letterNo);
     setCitizenId(p.citizenId);
@@ -530,7 +553,7 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
     setValuesOnly(p.valuesOnly);
     setGenderByHand(p.genderByHand);
     setAt(0);
-    say(`استُؤنفت معاملة ${p.label}`);
+    say(found < p.picked.length ? `استُؤنفت معاملة ${p.label} — وحُذف من نماذجها ما لم يعد في المكتبة` : `استُؤنفت معاملة ${p.label}`);
   }
 
   /**
@@ -698,7 +721,7 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                         className="h-9 px-3 font-label-md text-label-md text-on-surface hover:bg-surface-container-high"
                         data-act="resume"
                         type="button"
-                        onClick={() => resume(p.key)}
+                        onClick={() => void resume(p.key)}
                       >
                         {p.label} — استأنف
                       </button>
