@@ -870,7 +870,7 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
                   type="button"
                   onClick={() => setPasteOpen(true)}
                 >
-                  <span className="material-symbols-outlined text-[18px] text-secondary">chat_paste</span>
+                  <span className="material-symbols-outlined text-[18px] text-secondary">content_paste_go</span>
                   لصق من واتساب
                 </button>
               </div>

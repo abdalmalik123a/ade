@@ -1,7 +1,8 @@
 /**
  * نموذج إضافة/تعديل ملف مواطن.
  *
- * الحقول هي عين ما يعرضه التصميم في بطاقة ملف الشخص — لا حقل زائد ولا ناقص.
+ * الخانات من تعريفٍ واحد (`citizenSchema.ts`) بأبوابها الأربعة: الهوية، والبطاقات
+ * والأرقام، والسكن والاتصال، والعمل والدراسة — وما تسأل عنه الاستمارات الحكومية فيها.
  */
 import { useEffect, useState } from 'react';
 import type { CitizenDetail, CitizenInput } from '@shared/api';
@@ -9,28 +10,14 @@ import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { errorText } from '../lib/errors';
 import CameraCapture from '../components/CameraCapture';
 import { nationalIdHint, phoneHint } from '@shared/idChecks';
+import { CITIZEN_FIELDS, CITIZEN_GROUPS } from '@shared/citizenSchema';
 
 const inputCls =
   'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
 
-const FIELDS: { key: keyof CitizenInput; label: string; required?: boolean; mono?: boolean }[] = [
-  { key: 'fullName', label: 'الاسم الرباعي واللقب', required: true },
-  { key: 'nationalId', label: 'الرقم الوطني الموحد', mono: true },
-  { key: 'jobTitle', label: 'العنوان الوظيفي والدرجة' },
-  { key: 'workplace', label: 'مكان العمل' },
-  { key: 'employeeCode', label: 'رمز الموظف', mono: true },
-  { key: 'serviceStatus', label: 'الحالة الوظيفية والخدمة' },
-  { key: 'enrollmentDept', label: 'دائرة الانتساب الرسمية' },
-  { key: 'birthDate', label: 'تاريخ الولادة' },
-  { key: 'birthPlace', label: 'محل الولادة' },
-  { key: 'housingCardNo', label: 'رقم بطاقة السكن', mono: true },
-  { key: 'address', label: 'المحلة والزقاق والدار' },
-  { key: 'landmark', label: 'أقرب نقطة دالة' },
-  { key: 'phone', label: 'رقم هاتف الاتصال', mono: true }
-];
-
 function emptyInput(): CitizenInput {
   return {
+    ...(Object.fromEntries(CITIZEN_FIELDS.map((f) => [f.key, null])) as Partial<CitizenInput>),
     id: null,
     fullName: '',
     nationalId: null,
@@ -63,30 +50,13 @@ export default function CitizenForm({
   onClose: () => void;
   onSaved: (id: number) => void;
 }) {
-  const [form, setForm] = useState<CitizenInput>(() =>
-    initial
-      ? {
-          id: initial.id,
-          fullName: initial.fullName,
-          nationalId: initial.nationalId,
-          jobTitle: initial.jobTitle,
-          workplace: initial.workplace,
-          employeeCode: initial.employeeCode,
-          serviceStatus: initial.serviceStatus,
-          birthDate: initial.birthDate,
-          birthPlace: initial.birthPlace,
-          enrollmentDept: initial.enrollmentDept,
-          address: initial.address,
-          housingCardNo: initial.housingCardNo,
-          landmark: initial.landmark,
-          phone: initial.phone,
-          photoPath: initial.photoPath,
-          category: initial.category,
-          notes: initial.notes,
-          verified: initial.verified
-        }
-      : emptyInput()
-  );
+  const [form, setForm] = useState<CitizenInput>(() => {
+    if (!initial) return emptyInput();
+    const { attachments: _a, documents: _d, ...rest } = initial;
+    void _a;
+    void _d;
+    return { ...emptyInput(), ...rest };
+  });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
@@ -147,7 +117,7 @@ export default function CitizenForm({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-semibold hover:bg-secondary-fixed-dim transition-colors shadow-sm"
               onClick={() => setWhatsappOpen(true)}
             >
-              <span className="material-symbols-outlined text-[18px]">chat_paste</span>
+              <span className="material-symbols-outlined text-[18px]">content_paste_go</span>
               <span>لصق ذكي من واتساب</span>
             </button>
             <button
@@ -178,9 +148,8 @@ export default function CitizenForm({
               jobTitle: extracted.jobTitle ?? prev.jobTitle,
               workplace: extracted.workplace ?? prev.workplace,
               employeeCode: extracted.employeeCode ?? prev.employeeCode,
-              notes:
-                extracted.notes ??
-                (extracted.motherName ? `اسم الأم: ${extracted.motherName}` : prev.notes)
+              motherName: extracted.motherName ?? prev.motherName,
+              notes: extracted.notes ?? prev.notes
             }));
           }}
         />
@@ -240,33 +209,49 @@ export default function CitizenForm({
               )}
             </div>
 
-            <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-space-sm">
-              {FIELDS.map((f) => (
-                <div key={f.key} className="flex flex-col gap-1">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    {f.label} {f.required && <span className="text-error">*</span>}
-                  </label>
-                  <input
-                    className={f.mono ? `${inputCls} font-mono` : inputCls}
-                    data-citizen-field={f.key}
-                    type="text"
-                    value={(form[f.key] as string | null) ?? ''}
-                    onChange={(e) => set(f.key, e.target.value || null)}
-                  />
-                  {/* تنبيهٌ خفيف لا منع (د١٣) — والرقم الوطني يُحفظ أرقامًا لاتينية بلا شوائب (التدقيق المستقل). */}
-                  {(() => {
-                    const v = (form[f.key] as string | null) ?? '';
-                    const hint = f.key === 'nationalId' ? nationalIdHint(v) : f.key === 'phone' ? phoneHint(v) : null;
-                    return hint ? (
-                      <span className="font-label-sm text-label-sm text-tertiary" data-field-hint={f.key}>
-                        {hint}
-                      </span>
-                    ) : null;
-                  })()}
-                </div>
+            <div className="flex-1 flex flex-col gap-space-md">
+              {CITIZEN_GROUPS.map((group) => (
+                <section key={group} className="flex flex-col gap-space-xs" data-citizen-group={group}>
+                  <h3 className="font-label-md text-label-md text-secondary font-semibold border-b border-outline-variant pb-1">{group}</h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-space-sm">
+                    {CITIZEN_FIELDS.filter((f) => f.group === group).map((f) => (
+                      <div key={f.key} className="flex flex-col gap-1">
+                        <label className="font-label-sm text-label-sm text-on-surface-variant">
+                          {f.label} {f.required && <span className="text-error">*</span>}
+                        </label>
+                        <input
+                          className={f.mono ? `${inputCls} font-mono` : inputCls}
+                          data-citizen-field={f.key}
+                          list={f.options ? `citizen-${f.key}-options` : undefined}
+                          placeholder={f.placeholder}
+                          type="text"
+                          value={(form[f.key] as string | null | undefined) ?? ''}
+                          onChange={(e) => set(f.key, e.target.value || null)}
+                        />
+                        {f.options && (
+                          <datalist id={`citizen-${f.key}-options`}>
+                            {f.options.map((o) => (
+                              <option key={o} value={o} />
+                            ))}
+                          </datalist>
+                        )}
+                        {/* تنبيهٌ خفيف لا منع (د١٣) — والرقم الوطني يُحفظ أرقامًا لاتينية بلا شوائب (التدقيق المستقل). */}
+                        {(() => {
+                          const v = (form[f.key] as string | null | undefined) ?? '';
+                          const hint = f.key === 'nationalId' ? nationalIdHint(v) : f.key === 'phone' ? phoneHint(v) : null;
+                          return hint ? (
+                            <span className="font-label-sm text-label-sm text-tertiary" data-field-hint={f.key}>
+                              {hint}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-1/3">
                 <label className="font-label-sm text-label-sm text-on-surface-variant">
                   التصنيف
                 </label>

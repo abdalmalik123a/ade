@@ -10,6 +10,10 @@ import { listScanners, removeStoreFile, scanPage } from '../services/scanner';
 import { ocrAvailable, recognize } from '../services/ocr';
 import { importFile } from './files';
 import type { CitizenInput } from '@shared/api';
+import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
+
+/** خانات الاستمارات الحكومية — تُصدَّر إن مُلئت، والأصلية ولو فارغة. */
+const ADDED_LABELS = new Set(CITIZEN_FIELDS.filter((f) => (ADDED_COLUMNS as readonly string[]).includes(f.column)).map((f) => f.label));
 
 const IMAGE_FILTERS = [
   { name: 'مستمسكات', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'pdf', 'tif', 'tiff'] }
@@ -57,19 +61,10 @@ export function registerCitizenIpc(): void {
       { header: 'القيمة', key: 'v', width: 46 }
     ];
     const rows: [string, string | null][] = [
-      ['الاسم الرباعي واللقب', c.fullName],
-      ['الرقم الوطني الموحد', c.nationalId],
-      ['العنوان الوظيفي والدرجة', c.jobTitle],
-      ['مكان العمل', c.workplace],
-      ['رمز الموظف', c.employeeCode],
-      ['الحالة الوظيفية والخدمة', c.serviceStatus],
-      ['تاريخ الولادة', c.birthDate],
-      ['محل الولادة', c.birthPlace],
-      ['دائرة الانتساب الرسمية', c.enrollmentDept],
-      ['المحلة والزقاق والدار', c.address],
-      ['رقم بطاقة السكن', c.housingCardNo],
-      ['أقرب نقطة دالة', c.landmark],
-      ['رقم هاتف الاتصال', c.phone],
+      // الخانات كلّها بأبوابها — والفارغة من خانات الاستمارات الحكومية تُترك.
+      ...CITIZEN_FIELDS.map((f) => [f.label, (c[f.key] as string | null | undefined) ?? null] as [string, string | null]).filter(
+        ([label, v]) => v || !ADDED_LABELS.has(label)
+      ),
       ['التصنيف', c.category],
       ['موثّق رسميًا', c.verified ? 'نعم' : 'لا']
     ];

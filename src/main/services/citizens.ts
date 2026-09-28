@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
+import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
 import { canonicalNationalId } from '@shared/idChecks';
 import { digitsOf, indexRow, matchIds, unindexRow } from './searchIndex';
 import type {
@@ -24,8 +25,17 @@ const SUMMARY = `c.id, c.full_name AS fullName, c.national_id AS nationalId,
   (SELECT COUNT(*) FROM attachments a WHERE a.citizen_id = c.id) AS attachmentCount,
   (SELECT MAX(d.issued_at) FROM documents d WHERE d.citizen_id = c.id) AS lastIssuedAt`;
 
+/** خانات الاستمارات الحكومية (أيلول ٢٠٢٦) تُضاف إلى قاعدة المكتب القائمة — فارغةً. */
+export function ensureCitizenColumns(db: Database): void {
+  const cols = (db.prepare('PRAGMA table_info(citizens)').all() as { name: string }[]).map((c) => c.name);
+  for (const name of ADDED_COLUMNS) {
+    if (!cols.includes(name)) db.exec(`ALTER TABLE citizens ADD COLUMN ${name} TEXT`);
+  }
+}
+
 /** عمود التطبيع يُضاف عند الحاجة — الترحيل هنا ليعمل على قواعد قائمة. */
 export function ensureSearchColumn(db: Database): void {
+  ensureCitizenColumns(db);
   const cols = db.prepare('PRAGMA table_info(citizens)').all() as { name: string }[];
   if (!cols.some((c) => c.name === 'name_fold')) {
     db.exec('ALTER TABLE citizens ADD COLUMN name_fold TEXT');
@@ -151,24 +161,7 @@ export function citizenStats(db: Database): CitizenStats {
   };
 }
 
-const FIELDS = [
-  'full_name',
-  'national_id',
-  'job_title',
-  'workplace',
-  'employee_code',
-  'service_status',
-  'birth_date',
-  'birth_place',
-  'enrollment_dept',
-  'address',
-  'housing_card_no',
-  'landmark',
-  'phone',
-  'photo_path',
-  'category',
-  'notes'
-] as const;
+const FIELDS = [...CITIZEN_FIELDS.map((f) => f.column), 'photo_path', 'category', 'notes'];
 
 /**
  * ملفّات عدّة مواطنين بخاناتها كلّها — بلا مستمسكاتهم (د١٥): هويّات الموظفين من السجل،
@@ -191,21 +184,14 @@ export function getCitizen(db: Database, id: number): CitizenDetail | null {
     | Record<string, unknown>
     | undefined;
   if (!row) return null;
+  const text = Object.fromEntries(CITIZEN_FIELDS.map((f) => [f.key, (row[f.column] as string | null | undefined) ?? null])) as Record<
+    (typeof CITIZEN_FIELDS)[number]['key'],
+    string | null
+  >;
   return {
+    ...text,
     id: row.id as number,
     fullName: (row.full_name as string) ?? '',
-    nationalId: (row.national_id as string) ?? null,
-    jobTitle: (row.job_title as string) ?? null,
-    workplace: (row.workplace as string) ?? null,
-    employeeCode: (row.employee_code as string) ?? null,
-    serviceStatus: (row.service_status as string) ?? null,
-    birthDate: (row.birth_date as string) ?? null,
-    birthPlace: (row.birth_place as string) ?? null,
-    enrollmentDept: (row.enrollment_dept as string) ?? null,
-    address: (row.address as string) ?? null,
-    housingCardNo: (row.housing_card_no as string) ?? null,
-    landmark: (row.landmark as string) ?? null,
-    phone: (row.phone as string) ?? null,
     photoPath: (row.photo_path as string) ?? null,
     category: (row.category as string) ?? null,
     notes: (row.notes as string) ?? null,
@@ -239,20 +225,18 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
     throw new Error(`الرقم الوطني «${nationalId}» مسجَّل لمواطن آخر`);
   }
 
+  // الخانة الغائبة عن الطلب تبقى كما هي، والفارغة تُمحى: فما يحفظ الملف بخاناته القديمة
+  // وحدها (من قبل أيلول ٢٠٢٦) لا يمحو ما لا يعرفه.
+  const current =
+    input.id === null ? undefined : (db.prepare('SELECT * FROM citizens WHERE id = ?').get(input.id) as Record<string, unknown> | undefined);
+  const text = (f: (typeof CITIZEN_FIELDS)[number]) => {
+    const v = input[f.key] as string | null | undefined;
+    return v === undefined && current ? (current[f.column] ?? null) : v?.trim() || null;
+  };
   const values: Record<string, unknown> = {
+    ...Object.fromEntries(CITIZEN_FIELDS.map((f) => [f.column, text(f)])),
     full_name: fullName,
     national_id: nationalId,
-    job_title: input.jobTitle?.trim() || null,
-    workplace: input.workplace?.trim() || null,
-    employee_code: input.employeeCode?.trim() || null,
-    service_status: input.serviceStatus?.trim() || null,
-    birth_date: input.birthDate?.trim() || null,
-    birth_place: input.birthPlace?.trim() || null,
-    enrollment_dept: input.enrollmentDept?.trim() || null,
-    address: input.address?.trim() || null,
-    housing_card_no: input.housingCardNo?.trim() || null,
-    landmark: input.landmark?.trim() || null,
-    phone: input.phone?.trim() || null,
     photo_path: input.photoPath ?? null,
     category: input.category?.trim() || null,
     notes: input.notes?.trim() || null

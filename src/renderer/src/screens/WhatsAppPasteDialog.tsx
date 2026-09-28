@@ -49,7 +49,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
         {/* الترويسة */}
         <header className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-2 text-primary">
-            <span className="material-symbols-outlined text-[24px]">chat_paste</span>
+            <span className="material-symbols-outlined text-[24px]">content_paste_go</span>
             <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
               لصق ذكي من رسائل الواتساب (WhatsApp Smart Parse)
             </h3>

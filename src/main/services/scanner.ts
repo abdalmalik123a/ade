@@ -93,7 +93,9 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   // مسارٌ في نصٍّ بين علامتين مفردتين في PowerShell: لا يُهرَّب فيه إلا العلامة نفسها.
   const lit = (p: string) => p.replace(/'/g, "''");
 
-  // للسيناريوهات وحدها: صورةٌ جاهزة بدل ماسحٍ لا يوجد على جهاز الاختبار.
+  // للسيناريوهات وحدها: صورةٌ جاهزة بدل الماسح، أو «none» ماسحٌ غائب — فالسيناريو لا يتبع
+  // ما وُصل بجهاز الاختبار (ماسحٌ موصول مسح بطاقةً حقيقية في سيناريو «بلا ماسح»).
+  if (process.env.DIWAN_TEST_SCAN_FILE === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
   if (process.env.DIWAN_TEST_SCAN_FILE) {
     await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
     return { relativePath: `attachments/${name}`, dpi, format: 'PNG' };

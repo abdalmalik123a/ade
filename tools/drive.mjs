@@ -193,7 +193,9 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
   const args = [`--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`];
   const child = spawn(EXE ?? ELECTRON, EXE ? args : ['.', ...args], {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ...(env ?? {}) }
+    // «none»: لا ماسح تحت المِقْود إلا ما يعطيه السيناريو صورةً — فماسحٌ موصولٌ بجهاز
+    // الاختبار لا يمسح ما على زجاجه (مسح بطاقةً حقيقية مرّة) ولا يغيّر النتيجة.
+    env: { ...process.env, DIWAN_TEST_SCAN_FILE: 'none', ...(env ?? {}) }
   });
   const logs = [];
   child.stdout.on('data', (d) => logs.push(String(d)));

@@ -9,6 +9,7 @@ import {
   FIELD_GROUPS,
   type LetterField
 } from '../src/shared/letterFields';
+import { CITIZEN_FIELDS } from '../src/shared/citizenSchema';
 
 /**
  * حقول صاحب العلاقة كتالوجٌ يُختار منه، لا قائمة مفروضة. وما يهمّ في اختباره:
@@ -45,21 +46,8 @@ describe('كتالوج حقول المعاملات', () => {
   });
 
   it('مصادر الملء التلقائي تطابق أعمدة ملف المواطن', () => {
-    const citizenColumns = [
-      'fullName',
-      'nationalId',
-      'jobTitle',
-      'workplace',
-      'employeeCode',
-      'serviceStatus',
-      'birthDate',
-      'birthPlace',
-      'enrollmentDept',
-      'address',
-      'housingCardNo',
-      'landmark',
-      'phone'
-    ];
+    // الخانات من تعريفها الواحد — فمصدرٌ لا خانة له في الملف يُكشف هنا.
+    const citizenColumns = CITIZEN_FIELDS.map((f) => f.key as string);
     const sources = [...CORE_FIELDS, ...FIELD_GROUPS.flatMap((g) => g.fields)]
       .map((f) => f.source)
       .filter(Boolean) as string[];

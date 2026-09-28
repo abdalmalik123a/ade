@@ -15,11 +15,15 @@ import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
 import { readMrz } from '@shared/mrz';
+import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { errorText } from '../lib/errors';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
 const nf = new Intl.NumberFormat('en-US');
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
+
+/** خانات الملف التي تُعرض ولو فارغة — وما سواها يُعرض إن مُلئ. */
+const ALWAYS_SHOWN = new Set<CitizenTextKey>(['nationalId', 'jobTitle', 'enrollmentDept', 'birthDate', 'birthPlace', 'housingCardNo', 'address', 'landmark', 'phone']);
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -502,18 +506,11 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
 
                 {/* الحقول */}
                 <div className="grid grid-cols-2 xl:grid-cols-4 gap-space-sm">
-                  {(
-                    [
-                      ['الرقم الوطني الموحد', detail.nationalId],
-                      ['العنوان الوظيفي والدرجة', detail.jobTitle],
-                      ['دائرة الانتساب الرسمية', detail.enrollmentDept],
-                      ['تاريخ ومحل الولادة', [detail.birthDate, detail.birthPlace].filter(Boolean).join(' - ') || null],
-                      ['رقم بطاقة السكن', detail.housingCardNo],
-                      ['المحلة والزقاق والدار', detail.address],
-                      ['أقرب نقطة دالة', detail.landmark],
-                      ['رقم هاتف الاتصال', detail.phone]
-                    ] as [string, string | null][]
-                  ).map(([label, value]) => (
+                  {/* الخانات الأساسية دائمًا، وخانات الاستمارات الحكومية حين تُملأ — فلا يمتلئ الملف فراغًا. */}
+                  {CITIZEN_FIELDS.filter((f) => f.key !== 'fullName')
+                    .map((f) => [f.label, (detail[f.key] as string | null | undefined) ?? null, f.key] as const)
+                    .filter(([, value, key]) => value || ALWAYS_SHOWN.has(key))
+                    .map(([label, value]) => (
                     <div
                       key={label}
                       className="rounded-lg bg-surface-container-low p-space-sm flex items-start justify-between gap-space-xs group"
@@ -1010,7 +1007,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                           initial: {
                             ...detail,
                             birthDate: detail.birthDate || mrz.birthDate,
-                            nationalId: detail.nationalId || personal
+                            nationalId: detail.nationalId || personal,
+                            gender: detail.gender || mrz.sex
                           }
                         });
                       }}

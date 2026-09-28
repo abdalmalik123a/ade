@@ -25,16 +25,39 @@ function joinCompounds(words: string[]): string[] {
   return out;
 }
 
-export type NameParts = { first: string; father: string; grandfather: string; surname: string };
+export type NameParts = { first: string; father: string; grandfather: string; surname: string; fourth?: string };
 
-/** الاسم الرباعي واللقب مفرَّقًا — والرابع وما بعده لقبٌ (أو جدٌّ ثانٍ ولقب). */
-export function splitArabicName(full: string): NameParts {
-  const words = joinCompounds(full.replace(/[،,]/g, ' ').trim().split(/\s+/).filter(Boolean));
+const words = (s: string) => joinCompounds(s.replace(/[،,]/g, ' ').trim().split(/\s+/).filter(Boolean));
+
+/**
+ * الاسم الرباعي واللقب مفرَّقًا — والرابع وما بعده لقبٌ (أو جدٌّ ثانٍ ولقب).
+ *
+ * فإن حُفظ اللقب في خانته عُرف موضعه: يُحذف من آخر الاسم إن كُتب فيه، والرابع اسمُ أب
+ * الجد (الخانة الرابعة في استمارات أور) — لا جزءٌ من اللقب.
+ */
+export function splitArabicName(full: string, surname?: string | null): NameParts {
+  const w = words(full);
+  const known = words(surname ?? '');
+  if (!known.length) {
+    return { first: w[0] ?? '', father: w[1] ?? '', grandfather: w[2] ?? '', surname: w.slice(3).join(' ') };
+  }
+  const fold = (s: string) => normalizeFold(s);
+  const tail = w.slice(-known.length);
+  const own = tail.length === known.length && tail.every((x, i) => fold(x) === fold(known[i]!)) ? w.slice(0, -known.length) : w;
+  return { first: own[0] ?? '', father: own[1] ?? '', grandfather: own[2] ?? '', fourth: own.slice(3).join(' '), surname: known.join(' ') };
+}
+
+/**
+ * «محلة ٦١٢ زقاق ١٤ دار ٧» ← أجزاؤها، كما تسأل الاستمارات كلًّا في خانة. والأرقام الهندية
+ * تُكتب لاتينية (خانات المواقع أرقام). وما لا يُعرف يبقى فارغًا — والعنوان كاملًا سطرٌ معه.
+ */
+export function addressParts(address: string): { mahalla: string; alley: string; house: string } {
+  const t = normalizeFold(address).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660));
+  const part = (re: RegExp) => re.exec(t)?.[1] ?? '';
   return {
-    first: words[0] ?? '',
-    father: words[1] ?? '',
-    grandfather: words[2] ?? '',
-    surname: words.slice(3).join(' ')
+    mahalla: part(/(?:^|\s)(?:م|محله|محلة)\s*[:/]?\s*(\d+[\w/-]*)/),
+    alley: part(/(?:^|\s)(?:ز|زقاق|زقاق رقم)\s*[:/]?\s*(\d+[\w/-]*)/),
+    house: part(/(?:^|\s)(?:د|دار|دار رقم)\s*[:/]?\s*(\d+[\w/-]*)/)
   };
 }
 
@@ -69,13 +92,48 @@ export type FillSource = {
   jobTitle?: string | null;
   workplace?: string | null;
   employeeCode?: string | null;
+  surname?: string | null;
+  motherName?: string | null;
+  gender?: string | null;
+  maritalStatus?: string | null;
+  education?: string | null;
+  email?: string | null;
+  governorate?: string | null;
+  district?: string | null;
+  subdistrict?: string | null;
+  nidIssueDate?: string | null;
+  nidIssuer?: string | null;
+  familyNumber?: string | null;
+  civilIdNo?: string | null;
+  civilRecord?: string | null;
+  civilPage?: string | null;
+  passportNo?: string | null;
+  rationCardNo?: string | null;
+  housingIssuer?: string | null;
 };
 
-/** البطاقة بأبوابها — وما لا قيمة له لا يُعرض. */
+/** تاريخٌ بالصيغتين اللتين تسأل بهما المواقع — وما لم يُفهم يبقى كما كُتب. */
+function dateLines(label: string, text: string | null | undefined): [string, string | null | undefined][] {
+  const d = text ? parseLooseDate(text) : null;
+  return [
+    [label, d ? `${pad(d.d)}/${pad(d.m)}/${d.y}` : text],
+    [`${label} (السنة أولًا)`, d ? `${d.y}-${pad(d.m)}-${pad(d.d)}` : null]
+  ];
+}
+
+/** الأرقام في خانات المواقع لاتينية: «١٢٣» و«۱۲۳» ← «123» — والحروف كما هي (الرقم العائلي فيه حروف). */
+const latinDigits = (v: string | null | undefined) =>
+  v ? v.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x660)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x6f0)) : v;
+
+/**
+ * البطاقة بأبوابها — بترتيب استمارات أور: الاسم واسم الأم، ثم الولادة والجنس، ثم السكن،
+ * ثم الاتصال، ثم البطاقات والأرقام. وما لا قيمة له لا يُعرض.
+ */
 export function fillGroups(c: FillSource): FillGroup[] {
   const lines = (list: [string, string | null | undefined][]): FillLine[] =>
     list.filter(([, v]) => v && v.trim()).map(([label, value]) => ({ label, value: value!.trim() }));
-  const name = splitArabicName(c.fullName);
+  const name = splitArabicName(c.fullName, c.surname);
+  const mother = splitArabicName(c.motherName ?? '');
   const groups: FillGroup[] = [
     {
       title: 'الاسم',
@@ -84,43 +142,79 @@ export function fillGroups(c: FillSource): FillGroup[] {
         ['الاسم', name.first],
         ['اسم الأب', name.father],
         ['اسم الجد', name.grandfather],
+        ['الاسم الرابع', name.fourth],
         ['اللقب', name.surname],
-        ['الاسم الثلاثي', [name.first, name.father, name.grandfather].filter(Boolean).join(' ')]
+        ['الاسم الثلاثي', [name.first, name.father, name.grandfather].filter(Boolean).join(' ')],
+        ['الاسم الرباعي', name.fourth ? [name.first, name.father, name.grandfather, name.fourth].join(' ') : null],
+        ['اسم الأم الثلاثي', c.motherName],
+        ['اسم الأم', c.motherName ? mother.first : null],
+        ['اسم أب الأم', c.motherName ? mother.father : null],
+        ['اسم جد الأم', c.motherName ? mother.grandfather : null]
       ])
     }
   ];
 
-  const id = (c.nationalId ?? '').trim();
+  groups.push({
+    title: 'الولادة والحالة',
+    lines: lines([
+      ...dateLines('تاريخ الولادة', c.birthDate),
+      ['سنة الولادة', c.birthDate ? String(parseLooseDate(c.birthDate)?.y ?? '') : null],
+      ['محل الولادة', c.birthPlace],
+      ['الجنس', c.gender],
+      ['الحالة الاجتماعية', c.maritalStatus],
+      ['التحصيل الدراسي', c.education]
+    ])
+  });
+
+  const parts = addressParts(c.address ?? '');
+  groups.push({
+    title: 'السكن',
+    lines: lines([
+      ['المحافظة', c.governorate],
+      ['القضاء', c.district],
+      ['الناحية', c.subdistrict],
+      ['المحلة', parts.mahalla],
+      ['الزقاق', parts.alley],
+      ['الدار', parts.house],
+      ['العنوان', c.address],
+      ['أقرب نقطة دالة', c.landmark]
+    ])
+  });
+
   const phone = (c.phone ?? '').trim();
   const local = phone ? normalizePhone(phone) : null;
   groups.push({
-    title: 'الأرقام',
+    title: 'الاتصال',
     lines: lines([
-      ['الرقم الوطني', id ? normalizeFold(id).replace(/\D/g, '') || id : null],
       ['الهاتف', local ?? phone],
       ['الهاتف بلا صفر', local ? local.slice(1) : null],
       ['الهاتف الدولي', local ? internationalPhone(local) : null],
-      ['رقم بطاقة السكن', c.housingCardNo],
+      ['البريد الإلكتروني', c.email]
+    ])
+  });
+
+  const id = (c.nationalId ?? '').trim();
+  groups.push({
+    title: 'البطاقات والأرقام',
+    lines: lines([
+      ['الرقم الوطني', id ? normalizeFold(id).replace(/\D/g, '') || id : null],
+      ...dateLines('تاريخ إصدار البطاقة', c.nidIssueDate),
+      ['جهة إصدار البطاقة', c.nidIssuer],
+      ['الرقم العائلي', latinDigits(c.familyNumber)],
+      ['رقم هوية الأحوال', latinDigits(c.civilIdNo)],
+      ['رقم السجل', latinDigits(c.civilRecord)],
+      ['رقم الصحيفة', latinDigits(c.civilPage)],
+      ['رقم الجواز', latinDigits(c.passportNo)],
+      ['رقم البطاقة التموينية', latinDigits(c.rationCardNo)],
+      ['رقم بطاقة السكن', latinDigits(c.housingCardNo)],
+      ['جهة إصدار بطاقة السكن', c.housingIssuer],
       ['رمز الموظف', c.employeeCode]
     ])
   });
 
-  const birth = c.birthDate ? parseLooseDate(c.birthDate) : null;
   groups.push({
-    title: 'الولادة',
+    title: 'العمل',
     lines: lines([
-      ['تاريخ الولادة', birth ? `${pad(birth.d)}/${pad(birth.m)}/${birth.y}` : c.birthDate],
-      ['بصيغة السنة أولًا', birth ? `${birth.y}-${pad(birth.m)}-${pad(birth.d)}` : null],
-      ['سنة الولادة', birth ? String(birth.y) : null],
-      ['محل الولادة', c.birthPlace]
-    ])
-  });
-
-  groups.push({
-    title: 'السكن والعمل',
-    lines: lines([
-      ['العنوان', c.address],
-      ['أقرب نقطة دالة', c.landmark],
       ['العنوان الوظيفي', c.jobTitle],
       ['مكان العمل', c.workplace]
     ])

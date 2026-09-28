@@ -46,6 +46,40 @@ function person(over: Partial<CitizenInput> = {}): CitizenInput {
   };
 }
 
+describe('خانات الاستمارات الحكومية (أيلول ٢٠٢٦)', () => {
+  it('تُحفظ وتُقرأ، وتُقصّ فراغاتها، والفارغة عدمٌ لا نصّ', () => {
+    const d = db();
+    const saved = saveCitizen(
+      d,
+      person({ motherName: '  فاطمة كاظم جواد ', surname: 'الموسوي', gender: 'ذكر', familyNumber: '1108L0M15600010101', governorate: 'بغداد', rationCardNo: '' })
+    );
+    const got = getCitizen(d, saved.id)!;
+    expect(got).toMatchObject({ motherName: 'فاطمة كاظم جواد', surname: 'الموسوي', gender: 'ذكر', familyNumber: '1108L0M15600010101', governorate: 'بغداد' });
+    expect(got.rationCardNo).toBeNull();
+    expect(got.civilRecord).toBeNull();
+    const again = saveCitizen(d, { ...got, motherName: 'زينب علي حسن' });
+    expect(getCitizen(d, again.id)!.motherName).toBe('زينب علي حسن');
+    // والحفظ بالخانات القديمة وحدها لا يمحو الجديدة؛ والفارغة صراحةً تُمحى.
+    const { motherName: _m, surname: _s, familyNumber: _f, ...oldShape } = got;
+    void _m;
+    void _s;
+    void _f;
+    saveCitizen(d, { ...oldShape, phone: '07811112222', governorate: '' });
+    expect(getCitizen(d, saved.id)).toMatchObject({ phone: '07811112222', motherName: 'زينب علي حسن', surname: 'الموسوي', governorate: null });
+  });
+
+  it('وقاعدة المكتب القائمة (بلا أعمدتها) تُعطاها عند الإقلاع — وملفّاتها كما هي', () => {
+    const d = freshDb();
+    for (const col of ['surname', 'mother_name', 'family_number']) d.exec(`ALTER TABLE citizens DROP COLUMN ${col}`);
+    d.prepare("INSERT INTO citizens (full_name, national_id) VALUES ('علي حسين', '199012345678')").run();
+    ensureSearchColumn(d);
+    const cols = (d.prepare('PRAGMA table_info(citizens)').all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toEqual(expect.arrayContaining(['surname', 'mother_name', 'family_number', 'ration_card_no']));
+    const [row] = listCitizens(d);
+    expect(getCitizen(d, row!.id)).toMatchObject({ fullName: 'علي حسين', nationalId: '199012345678', motherName: null });
+  });
+});
+
 describe('ملف المواطن', () => {
   it('يبدأ السجل فارغًا', () => {
     const d = db();

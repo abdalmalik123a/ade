@@ -70,7 +70,27 @@ CREATE TABLE IF NOT EXISTS citizens (
   verified        INTEGER NOT NULL DEFAULT 0,
   notes           TEXT,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  -- ما تسأل عنه الاستمارات الحكومية (أيلول ٢٠٢٦ — citizenSchema.ts). وفي القاعدة القائمة
+  -- تُضاف بـ ensureCitizenColumns.
+  surname         TEXT,
+  mother_name     TEXT,                   -- اسم الأم الثلاثي
+  gender          TEXT,
+  marital_status  TEXT,
+  education       TEXT,                   -- التحصيل الدراسي
+  email           TEXT,
+  governorate     TEXT,
+  district        TEXT,                   -- القضاء
+  subdistrict     TEXT,                   -- الناحية
+  nid_issue_date  TEXT,                   -- تاريخ إصدار البطاقة الموحدة
+  nid_issuer      TEXT,
+  family_number   TEXT,                   -- الرقم العائلي
+  civil_id_no     TEXT,                   -- هوية الأحوال القديمة
+  civil_record    TEXT,                   -- رقم السجل
+  civil_page      TEXT,                   -- رقم الصحيفة
+  passport_no     TEXT,
+  ration_card_no  TEXT,
+  housing_issuer  TEXT                    -- جهة إصدار بطاقة السكن
 );
 CREATE INDEX IF NOT EXISTS ix_citizens_nid ON citizens(national_id);
 CREATE INDEX IF NOT EXISTS ix_citizens_cat ON citizens(category);

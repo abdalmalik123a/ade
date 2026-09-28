@@ -338,6 +338,26 @@ export type CitizenInput = {
   category: string | null;
   notes: string | null;
   verified: boolean;
+  // ما تسأل عنه الاستمارات الحكومية (أيلول ٢٠٢٦) — اختياريّةٌ فلا يتغيّر ما يبني الملف بدونها.
+  // وتعريفها وعناوينها في `citizenSchema.ts`.
+  surname?: string | null;
+  motherName?: string | null;
+  gender?: string | null;
+  maritalStatus?: string | null;
+  education?: string | null;
+  email?: string | null;
+  governorate?: string | null;
+  district?: string | null;
+  subdistrict?: string | null;
+  nidIssueDate?: string | null;
+  nidIssuer?: string | null;
+  familyNumber?: string | null;
+  civilIdNo?: string | null;
+  civilRecord?: string | null;
+  civilPage?: string | null;
+  passportNo?: string | null;
+  rationCardNo?: string | null;
+  housingIssuer?: string | null;
 };
 
 export type CitizenDetail = Omit<CitizenInput, 'verified'> & {

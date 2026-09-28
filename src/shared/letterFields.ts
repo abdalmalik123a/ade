@@ -29,6 +29,20 @@ export type FieldSource =
   | 'housingCardNo'
   | 'landmark'
   | 'phone'
+  // خانات الاستمارات الحكومية في ملف المواطن (أيلول ٢٠٢٦).
+  | 'surname'
+  | 'motherName'
+  | 'gender'
+  | 'maritalStatus'
+  | 'education'
+  | 'governorate'
+  | 'district'
+  | 'familyNumber'
+  | 'nidIssueDate'
+  | 'civilRecord'
+  | 'civilPage'
+  | 'passportNo'
+  | 'rationCardNo'
   | null;
 
 export type CatalogField = {
@@ -75,6 +89,7 @@ export const FIELD_GROUPS: FieldGroup[] = [
       { label: 'تاريخ المباشرة', token: 'تاريخ_المباشرة', date: true },
       { label: 'مدة الخدمة', token: 'مدة_الخدمة' },
       { label: 'الشهادة والتخصص', token: 'الشهادة_والتخصص' },
+      { label: 'التحصيل الدراسي', token: 'التحصيل_الدراسي', source: 'education' },
       { label: 'الراتب الاسمي', token: 'الراتب_الاسمي' }
     ]
   },
@@ -82,23 +97,27 @@ export const FIELD_GROUPS: FieldGroup[] = [
     name: 'الأحوال المدنية والجنسية',
     hint: 'البطاقة الوطنية الموحّدة وشهادة الجنسية',
     fields: [
-      { label: 'اسم الأم الثلاثي', token: 'اسم_الأم' },
-      { label: 'الجنس', token: 'الجنس' },
+      { label: 'اسم الأم الثلاثي', token: 'اسم_الأم', source: 'motherName' },
+      { label: 'اللقب', token: 'اللقب', source: 'surname' },
+      { label: 'الجنس', token: 'الجنس', source: 'gender' },
+      { label: 'الحالة الاجتماعية', token: 'الحالة_الاجتماعية', source: 'maritalStatus' },
       { label: 'تاريخ الولادة', token: 'تاريخ_الولادة', source: 'birthDate', date: true },
       { label: 'محل الولادة', token: 'محل_الولادة', source: 'birthPlace' },
-      { label: 'رقم السجل', token: 'رقم_السجل' },
-      { label: 'رقم الصحيفة', token: 'رقم_الصحيفة' },
+      { label: 'الرقم العائلي', token: 'الرقم_العائلي', source: 'familyNumber' },
+      { label: 'تاريخ إصدار البطاقة الوطنية', token: 'تاريخ_إصدار_البطاقة', source: 'nidIssueDate', date: true },
+      { label: 'رقم السجل', token: 'رقم_السجل', source: 'civilRecord' },
+      { label: 'رقم الصحيفة', token: 'رقم_الصحيفة', source: 'civilPage' },
       { label: 'مركز التسجيل / الدائرة المصدرة', token: 'مركز_التسجيل' },
       { label: 'رقم شهادة الجنسية', token: 'رقم_شهادة_الجنسية' },
       { label: 'المادة القانونية', token: 'المادة_القانونية' },
-      { label: 'رقم البطاقة التموينية', token: 'رقم_البطاقة_التموينية' }
+      { label: 'رقم البطاقة التموينية', token: 'رقم_البطاقة_التموينية', source: 'rationCardNo' }
     ]
   },
   {
     name: 'الجوازات والسفر',
     hint: 'كتب عدم الممانعة والموافقة على السفر',
     fields: [
-      { label: 'رقم الجواز', token: 'رقم_الجواز' },
+      { label: 'رقم الجواز', token: 'رقم_الجواز', source: 'passportNo' },
       { label: 'نوع الجواز', token: 'نوع_الجواز' },
       { label: 'تاريخ إصدار الجواز', token: 'تاريخ_إصدار_الجواز', date: true },
       { label: 'تاريخ انتهاء الجواز', token: 'تاريخ_انتهاء_الجواز', date: true },
@@ -129,7 +148,8 @@ export const FIELD_GROUPS: FieldGroup[] = [
       { label: 'المحلة والزقاق والدار', token: 'العنوان', source: 'address' },
       { label: 'أقرب نقطة دالة', token: 'أقرب_نقطة_دالة', source: 'landmark' },
       { label: 'رقم العقار', token: 'رقم_العقار' },
-      { label: 'المحافظة', token: 'المحافظة' },
+      { label: 'المحافظة', token: 'المحافظة', source: 'governorate' },
+      { label: 'القضاء', token: 'القضاء', source: 'district' },
       { label: 'رقم الهاتف', token: 'رقم_الهاتف', source: 'phone' }
     ]
   },

@@ -74,7 +74,7 @@ export async function prepare() {
   return { DIWAN_TEST_FAKE_CAMERA: '1', DIWAN_TEST_OPEN_FILE: GLASS };
 }
 
-export default async function scenario(page, { profile }) {
+export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -159,6 +159,16 @@ export default async function scenario(page, { profile }) {
   // ── الصورة الشخصية بالكاميرا (ج١٢) ────────────────────────────────────
   await page.type('[data-citizen-field="nationalId"]', '199912345678');
   await page.type('[data-citizen-field="phone"]', '07701234567');
+
+  // ── خانات الاستمارات الحكومية (أيلول ٢٠٢٦) بأبوابها الأربعة ──────────────
+  const groups = await page.eval(`return [...document.querySelectorAll('[data-citizen-group]')].map((g) => g.getAttribute('data-citizen-group'));`);
+  ok(`نموذج الملف بأبوابه: ${groups.join('، ')}`, groups.length === 4 && groups[0] === 'الهوية');
+  await page.type('[data-citizen-field="surname"]', 'الموسوي');
+  await page.type('[data-citizen-field="motherName"]', 'فاطمة كاظم جواد');
+  await page.type('[data-citizen-field="governorate"]', 'بغداد');
+  await page.type('[data-citizen-field="address"]', 'محلة ٦١٢ زقاق ١٤ دار ٧');
+  await page.type('[data-citizen-field="familyNumber"]', '1108L0M15600010101');
+  if (shotsDir) await page.shot(join(shotsDir, 'citizen-form-groups.png'));
   await click('[data-act="camera-photo"]');
   await wait(2500);
   await click('[data-act="camera-take"]');
@@ -168,15 +178,39 @@ export default async function scenario(page, { profile }) {
   await page.clickText('حفظ الملف', 'button');
   await wait(1200);
   const d = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
-  const photo = d.prepare('SELECT photo_path AS p FROM citizens WHERE id = ?').get(id)?.p;
+  const saved = d.prepare('SELECT photo_path AS p, mother_name AS m, surname AS s, family_number AS f FROM citizens WHERE id = ?').get(id);
   d.close();
-  ok(`والصورة الشخصية بالكاميرا تُحفظ في ملفّه (${photo ?? '—'})`, Boolean(photo));
+  ok(`والصورة الشخصية بالكاميرا تُحفظ في ملفّه (${saved?.p ?? '—'})`, Boolean(saved?.p));
+  ok('واسم الأم واللقب والرقم العائلي في أعمدتها', saved?.m === 'فاطمة كاظم جواد' && saved?.s === 'الموسوي' && saved?.f === '1108L0M15600010101');
+  const tiles = await page.eval(`return document.body.innerText;`);
+  ok('والملف يعرض الخانات المملوءة وحدها من الجديدة', tiles.includes('اسم الأم الثلاثي') && tiles.includes('الرقم العائلي') && !tiles.includes('رقم الصحيفة'));
 
   // ── بطاقة التعبئة في نافذتها (هـ٦) ─────────────────────────────────────
   await click('[data-act="fill-card"]');
   await wait(2500);
   const targets = await (await fetch('http://127.0.0.1:9223/json/list')).json();
-  ok('بطاقة التعبئة تُفتح في نافذتها', targets.some((t) => t.type === 'page' && String(t.url).includes('mode=fillcard') && String(t.url).includes(`citizen=${id}`)));
+  const card = targets.find((t) => t.type === 'page' && String(t.url).includes('mode=fillcard') && String(t.url).includes(`citizen=${id}`));
+  ok('بطاقة التعبئة تُفتح في نافذتها', Boolean(card));
+
+  // ما في نافذة البطاقة: تُقرأ من بروتوكولها هي — فهي نافذةٌ غير نافذة البرنامج.
+  if (card) {
+    const ws = new WebSocket(card.webSocketDebuggerUrl);
+    await new Promise((r) => ws.addEventListener('open', r, { once: true }));
+    const expression = `JSON.stringify({ text: document.body.innerText, lines: Object.fromEntries([...document.querySelectorAll('[data-fill-line]')].map((b) => [b.dataset.fillLine, b.querySelector('span:nth-child(2)').innerText.trim()])) })`;
+    const { text, lines } = JSON.parse(
+      await new Promise((resolve) => {
+        ws.addEventListener('message', (m) => resolve(JSON.parse(String(m.data)).result?.result?.value ?? '{}'), { once: true });
+        ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+      })
+    );
+    ws.close();
+    const line = (label) => lines?.[label];
+    ok(
+      `وفيها ما تسأله استمارات أور: اسم الأم مفرَّقًا واللقب والمحلة والزقاق والدار (${line('اسم أب الأم')} · ${line('اللقب')} · ${line('المحلة')}/${line('الزقاق')}/${line('الدار')})`,
+      line('اسم أب الأم') === 'كاظم' && line('اللقب') === 'الموسوي' && line('المحلة') === '612' && line('الزقاق') === '14' && line('الدار') === '7'
+    );
+    ok('وتنبيه «امحُ اسم صاحب الحساب» أعلاها', text.includes('تملأ اسم صاحبه'));
+  }
 
   return steps.join('\n');
 }
