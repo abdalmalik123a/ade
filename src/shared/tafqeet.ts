@@ -210,14 +210,21 @@ export function tafqeet(
   if (value === null || !Number.isFinite(value) || value < 0) return '';
   if (value > 999_999_999_999) return 'المبلغ خارج النطاق المدعوم';
 
-  const whole = Math.floor(value);
+  let whole = Math.floor(value);
   let result: string;
   if (currency === 'NONE') {
     if (whole === 0) return 'صفر';
     result = numberWords(whole, false);
   } else {
     const money = MONEY[currency];
-    const part = Math.round((value - whole) * money.parts);
+    let part = Math.round((value - whole) * money.parts);
+    // الكسر الذي يُدوَّر إلى وحدةٍ كاملة وحدةٌ تُضاف لا «ألف فلس»: ١٫٩٩٩٩ ديناران،
+    // و٥٫٩٩٩ دولارًا ستّة (التدقيق المستقل).
+    if (part >= money.parts) {
+      whole += 1;
+      part = 0;
+      if (whole > 999_999_999_999) return 'المبلغ خارج النطاق المدعوم';
+    }
     const unitWords = whole ? say(whole, money.unit) : '';
     const partWords = part ? say(part, money.part) : '';
     if (!unitWords && !partWords) return 'صفر';

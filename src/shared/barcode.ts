@@ -49,12 +49,37 @@ const digits = (s: string, at: number, count: number): boolean =>
   /^\d+$/.test(s.slice(at, at + count)) && s.slice(at, at + count).length === count;
 
 /**
+ * نصُّ الرمز كما يُرمَّز: الأرقام الهندية (٠–٩) والفارسية (۰–۹) أرقامٌ لاتينية.
+ *
+ * قوائم الهويات تُكتب بها أحيانًا، وCode128 لا يرمزها — فكانت البطاقة تخرج بلا باركودٍ
+ * صامتةً. والرقم هو الرقم: الهاتف يقرؤه لاتينيًّا، والنصّ المطبوع بجانبه يبقى كما كُتب.
+ */
+export function code128Text(text: string): string {
+  return text.replace(/[٠-٩۰-۹]/g, (d) => {
+    const code = d.charCodeAt(0);
+    return String(code - (code >= 0x6f0 ? 0x6f0 : 0x660));
+  });
+}
+
+/** أيحمله Code128؟ — حروف ASCII المطبوعة وحدها بعد تحويل الأرقام؛ والحروف العربية لا. */
+export function encodes128(text: string): boolean {
+  return [...code128Text(text)].every((ch) => {
+    const code = ch.charCodeAt(0);
+    return code >= 32 && code <= 126;
+  });
+}
+
+/** ما يُقال حين لا يُرمَّز — في المحرّر وفي فاحص ما قبل الطباعة معًا. */
+export const NOT_128 = 'الباركود لا يحمل الحروف العربية — صحّح القيمة، أو اجعله رمز QR إن كان فيه نصّ';
+
+/**
  * يرمّز نصًّا رموزَ Code128، مبدّلًا بين الوضعين B وC.
  *
  * والتبديل إلى C لا يكون إلا لأربعة أرقامٍ فأكثر (أو ستّة في وسط النصّ): فدونها
  * يكلّف رمزَ تبديلٍ أكثر ممّا يوفّر.
  */
-export function encode128(text: string): number[] {
+export function encode128(raw: string): number[] {
+  const text = code128Text(raw);
   const out: number[] = [];
   let mode: 'B' | 'C' | null = null;
   let at = 0;
@@ -82,7 +107,7 @@ export function encode128(text: string): number[] {
 
     // في الوضع B قيمةُ الرمز هي الحرف ناقص ٣٢ — لكل ASCII المطبوع.
     const code = text.charCodeAt(at);
-    if (code < 32 || code > 126) throw new Error('Code128 يرمز ASCII المطبوع وحده');
+    if (code < 32 || code > 126) throw new Error(NOT_128);
     out.push(code - 32);
     at++;
   }

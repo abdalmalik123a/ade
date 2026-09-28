@@ -50,6 +50,17 @@ export function printJournal(dir: string): PrintJournal {
     }
   };
   const write = (job: PrintJob) => writeFileSync(state(job.id), JSON.stringify(job));
+  // ملفّ الأوراق لا يتغيّر بعد إنشائه: يُقرأ مرّةً للدفعة لا مرّةً لكلّ ورقة — كان يُقرأ
+  // ويُفكّ كاملًا مع كلّ ورقةٍ تُطبع (التدقيق المستقل). والقرص يبقى مرجع الاستئناف.
+  const pagesCache = new Map<string, string[]>();
+  const pagesOf = (id: string): string[] => {
+    let pages = pagesCache.get(id);
+    if (!pages) {
+      pages = JSON.parse(readFileSync(pagesFile(id), 'utf8')) as string[];
+      pagesCache.set(id, pages);
+    }
+    return pages;
+  };
 
   return {
     create({ pages, ...input }) {
@@ -70,14 +81,14 @@ export function printJournal(dir: string): PrintJournal {
     sheetPages(id, sheet) {
       const job = read(id);
       if (!job) return [];
-      const pages = JSON.parse(readFileSync(pagesFile(id), 'utf8')) as string[];
-      return pages.slice(sheet * job.perSheet, (sheet + 1) * job.perSheet);
+      return pagesOf(id).slice(sheet * job.perSheet, (sheet + 1) * job.perSheet);
     },
     markSent(id, sent) {
       const job = read(id);
       if (job) write({ ...job, sent });
     },
     finish(id) {
+      pagesCache.delete(id);
       rmSync(state(id), { force: true });
       rmSync(pagesFile(id), { force: true });
     },

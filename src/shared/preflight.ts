@@ -9,6 +9,7 @@
  * والفاحص **يُنبّه ولا يمنع**: المكتب أعلم بورقه، والطباعة قراره.
  */
 import type { Canvas, CanvasElement } from './canvas';
+import { encodes128, NOT_128 } from './barcode';
 
 export type PreflightIssue = {
   /** `warn` يُفسد الورقة غالبًا، و`info` يُحسن أن يُعرف. */
@@ -88,6 +89,17 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
       const empty = cards.filter((c) => !c[ref]?.trim()).length;
       if (empty) issues.push({ level: 'warn', text: `${toIndic(empty)} بطاقة بلا صورة في «${ref}»` });
     }
+  }
+
+  // الباركود: قيمةٌ لا يحملها Code128 (حروفٌ عربية) كانت تخرج بطاقةً بلا باركودٍ صامتةً.
+  // والأرقام الهندية ليست منها: تُرمَّز لاتينيةً (`code128Text`).
+  for (const el of canvas.elements) {
+    if (el.kind !== 'barcode' || el.symbology !== 'code128') continue;
+    const values = el.ref ? cards.map((c) => (c[el.ref!] ?? '').trim()) : [el.value.trim()];
+    const bad = values.filter((v) => v && !encodes128(v));
+    if (!bad.length) continue;
+    const where = el.ref ? ` في ${toIndic(bad.length)} ${bad.length === 1 ? 'بطاقة' : 'بطاقات'}` : '';
+    issues.push({ level: 'warn', text: `«${labelOf(el)}» لا يُطبع${where} (مثل «${bad[0]}»): ${NOT_128}` });
   }
   return issues;
 }

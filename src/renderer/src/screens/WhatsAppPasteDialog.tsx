@@ -16,6 +16,7 @@ type Props = {
 
 export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props) {
   const [rawText, setRawText] = useState('');
+  const [clipNote, setClipNote] = useState<string | null>(null);
 
   const extracted = useMemo(() => {
     if (!rawText.trim()) return null;
@@ -28,8 +29,10 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
     try {
       const text = await navigator.clipboard.readText();
       if (text) setRawText(text);
+      else setClipNote('الحافظة فارغة — انسخ رسالة الزبون أولًا');
     } catch {
-      // ignore
+      // الزرّ لا يفعل شيئًا بلا خبر حين لا يُؤذن بقراءة الحافظة — والبديل في اليد.
+      setClipNote('لم يُسمح بقراءة الحافظة — الصق الرسالة في الخانة بـCtrl+V');
     }
   };
 
@@ -81,9 +84,17 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
               className="w-full h-32 p-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm leading-relaxed resize-none"
               placeholder={`مثال:\nالسلام عليكم\nالاسم: حيدر كريم جاسم العبيدي\nالرقم الوطني: 199512345678\nالتولد: 1995/07/21\nرقم الهاتف: 07701234567\nالسكن: بغداد - الكرخ محلة 612 زقاق 14 دار 8`}
               value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
+              onChange={(e) => {
+                setRawText(e.target.value);
+                setClipNote(null);
+              }}
               autoFocus
             />
+            {clipNote && (
+              <p className="mt-1 text-sm text-error" data-clip-note="">
+                {clipNote}
+              </p>
+            )}
           </div>
 
           {/* الحقول المستخرجة */}

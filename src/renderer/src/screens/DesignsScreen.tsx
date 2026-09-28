@@ -56,6 +56,7 @@ import { renderCanvasHtml } from '@shared/canvasHtml';
 import { fitCanvasText } from '@shared/canvasFit';
 import { buildDesign } from '@shared/designKit';
 import { drawCode, impose, parseCardList, planSheets, renderPlan } from '@shared/imposition';
+import { NOT_128 } from '@shared/barcode';
 import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
 import { derivedWords } from '@shared/tafqeet';
 import { nameKeyOf } from '@shared/batch';
@@ -218,10 +219,12 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   const loadDesigns = useCallback(async () => {
     try {
       setDesigns(await window.diwan.templates.list(DESIGN_CATEGORY, 'print-only'));
-    } catch {
+    } catch (e) {
+      // قائمةٌ فارغةٌ بلا خبر تُقرأ «لا تصاميم محفوظة» — والقاعدة هي التي تعذّرت.
       setDesigns([]);
+      say(errorText(e, 'تعذّر تحميل التصاميم المحفوظة'), 'warn');
     }
-  }, []);
+  }, [say]);
 
   useEffect(() => {
     void loadDesigns();
@@ -267,8 +270,12 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       try {
         node.innerHTML = drawCode(kind, value);
       } catch {
-        // قيمةٌ لا تُرمَّز (حروفٌ عربية في Code128) — تُترك فارغة ولا تُسقط الشاشة.
-        node.innerHTML = '';
+        // قيمةٌ لا تُرمَّز (حروفٌ عربية في Code128): كانت تُترك فارغةً فيُظنّ الباركود
+        // مطبوعًا — فتُقال في موضعه، وفاحص ما قبل الطباعة يعدّ بطاقاتها.
+        node.innerHTML =
+          '<div data-barcode-error="" style="width:100%;height:100%;box-sizing:border-box;border:1.5px dashed #b3261e;color:#b3261e;' +
+          'display:flex;align-items:center;justify-content:center;text-align:center;font:600 7pt/1.2 sans-serif;padding:1mm">' +
+          `${NOT_128}</div>`;
       }
     }
     // الأسماء الطويلة تصغر لتسع — بعد الرسم وبعد تحميل الخطوط.

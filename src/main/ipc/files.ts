@@ -80,7 +80,15 @@ export async function pickFolderPath(
 }
 
 /** ينسخ ملفًا إلى المخزن باسم مشتقّ من محتواه — فلا تتكرّر نسخة ولا يتصادم اسم. */
+/**
+ * مجلّد المخزن اسمٌ قصيرٌ بحروفٍ لاتينية صغيرة (`photos`، `letterheads`…) — لا مسار.
+ * فالقراءة (`diwan://store/`) ترفض «..» منذ البدء، والكتابة لم تكن ترفضه: `bucket` يأتي من
+ * الواجهة فيُضمّ إلى مسار المخزن كما هو (التدقيق المستقل). دفاعٌ لا ثقةٌ بالواجهة.
+ */
+const BUCKET = /^[a-z][a-z0-9-]{0,31}$/;
+
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
+  if (!BUCKET.test(bucket)) throw new Error('مجلّد تخزينٍ غير معروف');
   const bytes = await readFile(sourcePath);
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
   const name = `${hash}${extname(sourcePath).toLowerCase()}`;

@@ -17,6 +17,7 @@ import {
   newUuid,
   paragraph,
   reconcileFields,
+  tokenInlines,
   type Align,
   type Block,
   type ColumnsBlock,
@@ -548,6 +549,23 @@ function toInlines(pieces: Piece[], basePx: number): Inline[] {
   if (tail?.kind === 'run') {
     tail.text = tail.text.replace(/[ \t ]+$/, '');
     if (!tail.text) out.pop();
+  }
+  return withTokens(out);
+}
+
+/**
+ * «{الاسم}» في ملف Word حقلٌ — كما يكتبه تصدير النموذج إلى Word، وكما يكتبه المكتب
+ * بيده في مربّع نصّ اللوحة وفي النموذج القديم (`tokenInlines` واحدٌ لها كلّها). فيعود
+ * الملف المصدَّر نموذجًا بحقوله إن عُدّل في Word واستُورد. والتنسيق يبقى على ما حوله.
+ */
+function withTokens(list: Inline[]): Inline[] {
+  const out: Inline[] = [];
+  for (const n of list) {
+    if (n.kind !== 'run' || !n.text.includes('{')) {
+      out.push(n);
+      continue;
+    }
+    for (const part of tokenInlines(n.text)) out.push(part.kind === 'run' && n.marks ? { ...part, marks: n.marks } : part);
   }
   return out;
 }

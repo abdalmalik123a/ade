@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { normalizeFold } from '@shared/arabic';
+import { canonicalNationalId } from '@shared/idChecks';
 import { touchLetterhead } from './letterheads';
 import { digitsOf, indexRow, matchIds } from './searchIndex';
 import type {
@@ -270,7 +271,7 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         input.citizenId,
         input.authorityId,
         name,
-        input.nationalId,
+        nidOf(input.nationalId),
         input.docType,
         input.destination,
         input.purpose,
@@ -283,7 +284,7 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         input.hijriDate,
         input.operator,
         sha256,
-        searchFold([serial, name, input.nationalId, input.docType, input.destination, input.purpose, bodyText]),
+        searchFold([serial, name, nidOf(input.nationalId), input.docType, input.destination, input.purpose, bodyText]),
         input.letterheadId ?? null,
         input.transactionId ?? null,
         chain
@@ -331,8 +332,12 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
  * ملفُّه «لم يصدر أي كتاب» والأرشيف فيه كتبه. والرقم الوطني يعيّن صاحبه يقينًا؛
  * أمّا الاسم فيتشابه، والربط به تخمين (المبدأ ٥).
  */
+/** الرقم الوطني كما يُقيَّد مع الكتاب: بصورته الموحّدة إن كانت له — والورقة تبقى كما طُبعت. */
+const nidOf = (nid: string | null | undefined): string | null => canonicalNationalId(nid) ?? (nid?.trim() || null);
+
 export function citizenByNationalId(db: Database, nationalId: string | null | undefined): number | null {
-  const nid = nationalId?.trim();
+  // بالصورة الموحّدة: «١٩٩٩…» المكتوب في الشبّاك يجد «1999…» المحفوظ في السجلّ.
+  const nid = canonicalNationalId(nationalId) ?? nationalId?.trim();
   if (!nid) return null;
   const row = db.prepare('SELECT id FROM citizens WHERE national_id = ? LIMIT 1').get(nid) as { id: number } | undefined;
   return row?.id ?? null;
@@ -370,7 +375,7 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
         `INSERT INTO transactions (citizen_id, citizen_name, citizen_nid, sheets, fee, operator)
          VALUES (?, ?, ?, ?, ?, ?)`
       )
-      .run(citizenId, name, input.nationalId, input.sheets.length, fee, input.operator);
+      .run(citizenId, name, nidOf(input.nationalId), input.sheets.length, fee, input.operator);
     const transactionId = Number(tx.lastInsertRowid);
 
     const documents = input.sheets.map((sheet) =>
@@ -595,7 +600,10 @@ export function verifyArchive(db: Database): ArchiveCheck {
   }
   const prefix = (year: number) => rows.find((r) => r.year === year)?.serial.split('/')[0] ?? '';
   for (const [year, seqs] of years) {
-    const top = Math.max(...seqs);
+    // بحلقةٍ لا بـ`Math.max(...)`: النشر يضع كلّ رقمٍ وسيطًا على المكدّس، فيفيض فوق
+    // نحو ١٢٥ ألف كتابٍ في السنة (التدقيق المستقل).
+    let top = 0;
+    for (const n of seqs) if (n > top) top = n;
     for (let n = 1; n <= top; n++) {
       if (!seqs.has(n)) {
         problems.push({ id: null, serial: `${prefix(year)}/${year}/${n}`, kind: 'gap', text: 'رقمٌ غائب من سجلّ الصادر' });

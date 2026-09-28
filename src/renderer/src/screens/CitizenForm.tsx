@@ -253,7 +253,7 @@ export default function CitizenForm({
                     value={(form[f.key] as string | null) ?? ''}
                     onChange={(e) => set(f.key, e.target.value || null)}
                   />
-                  {/* تنبيهٌ خفيف لا منع (د١٣): يُحفظ ما كُتب كما كُتب. */}
+                  {/* تنبيهٌ خفيف لا منع (د١٣) — والرقم الوطني يُحفظ أرقامًا لاتينية بلا شوائب (التدقيق المستقل). */}
                   {(() => {
                     const v = (form[f.key] as string | null) ?? '';
                     const hint = f.key === 'nationalId' ? nationalIdHint(v) : f.key === 'phone' ? phoneHint(v) : null;

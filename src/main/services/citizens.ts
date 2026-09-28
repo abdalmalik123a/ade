@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
+import { canonicalNationalId } from '@shared/idChecks';
 import { digitsOf, indexRow, matchIds, unindexRow } from './searchIndex';
 import type {
   Attachment,
@@ -38,6 +39,36 @@ export function ensureSearchColumn(db: Database): void {
       for (const r of rows) update.run(normalizeFold(r.full_name), r.id);
     })();
   }
+  canonicalizeNationalIds(db);
+}
+
+/**
+ * الأرقام الوطنية المحفوظة قبل التوحيد تُوحَّد مرّةً (أرقامٌ لاتينية بلا شوائب) — وما فيه
+ * غير الأرقام وحدها يُمرّ عليه، فالإقلاع لا يمسح السجلّ كلّه كلّ مرّة.
+ *
+ * وما صار بعد توحيده رقمَ مواطنٍ آخر يُترك كما هو: مكرّرٌ كان مخفيًّا، يدمجه المكتب
+ * بيده — لا يُدمج صامتًا، ولا يُقفل تعديله بخطأ «مسجَّل لمواطن آخر».
+ */
+export function canonicalizeNationalIds(db: Database): { changed: number; clashes: number } {
+  const rows = db
+    .prepare("SELECT id, national_id AS nid FROM citizens WHERE national_id IS NOT NULL AND national_id GLOB '*[^0-9]*'")
+    .all() as { id: number; nid: string }[];
+  let changed = 0;
+  let clashes = 0;
+  const update = db.prepare('UPDATE citizens SET national_id = ? WHERE id = ?');
+  db.transaction(() => {
+    for (const r of rows) {
+      const canon = canonicalNationalId(r.nid);
+      if (!canon || canon === r.nid) continue;
+      if (isNationalIdTaken(db, canon, r.id)) {
+        clashes++;
+        continue;
+      }
+      update.run(canon, r.id);
+      changed++;
+    }
+  })();
+  return { changed, clashes };
 }
 
 export function listCitizens(
@@ -202,7 +233,8 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
   const fullName = input.fullName.trim();
   if (!fullName) throw new Error('اسم المواطن مطلوب');
 
-  const nationalId = input.nationalId?.trim() || null;
+  // أرقامٌ لاتينية بلا شوائب — وما فيه حرفٌ يُحفظ كما كُتب (وتنبيهه في الخانة).
+  const nationalId = canonicalNationalId(input.nationalId) ?? (input.nationalId?.trim() || null);
   if (nationalId && isNationalIdTaken(db, nationalId, input.id)) {
     throw new Error(`الرقم الوطني «${nationalId}» مسجَّل لمواطن آخر`);
   }

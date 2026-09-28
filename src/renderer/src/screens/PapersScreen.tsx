@@ -348,10 +348,12 @@ function PapersScreenInner(
   const loadPapers = useCallback(async () => {
     try {
       setPapers(await window.diwan.templates.list(null, 'print-only'));
-    } catch {
+    } catch (e) {
+      // قائمةٌ فارغةٌ بلا خبر تُقرأ «لا أوراق محفوظة» — والقاعدة هي التي تعذّرت.
       setPapers([]);
+      say(errorText(e, 'تعذّر تحميل الأوراق المحفوظة'), 'warn');
     }
-  }, []);
+  }, [say]);
 
   useEffect(() => {
     void loadPapers();

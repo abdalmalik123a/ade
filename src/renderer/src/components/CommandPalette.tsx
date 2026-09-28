@@ -10,6 +10,7 @@
  * يُفتح بالضغط على Ctrl+K أو بالضغط على زر البحث السريع في الشريط العلوي.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { errorText } from '../lib/errors';
 import type { RouteKey } from '@shared/routes';
 import type { CitizenSummary, TemplateSummary } from '@shared/api';
 
@@ -43,6 +44,7 @@ export default function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [citizens, setCitizens] = useState<CitizenSummary[]>([]);
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // إعادة ضبط الحالة وتوجيه المؤشر عند الفتح
@@ -70,8 +72,12 @@ export default function CommandPalette({
         ]);
         setCitizens(cList.slice(0, 5));
         setTemplates(tList.slice(0, 5));
-      } catch {
-        // ignore
+        setSearchError(null);
+      } catch (e) {
+        // «لا نتائج» غير «تعذّر البحث» — فلا يُظنّ المواطن غير مسجَّل.
+        setCitizens([]);
+        setTemplates([]);
+        setSearchError(errorText(e, 'تعذّر البحث'));
       }
     }, 150);
 
@@ -304,6 +310,11 @@ export default function CommandPalette({
 
         {/* قائمة النتائج */}
         <div className="flex-1 overflow-y-auto p-2 divide-y divide-outline-variant/10">
+          {searchError && (
+            <p className="px-3 py-2 text-sm text-error" data-palette-error="">
+              {searchError} — ما يظهر أدناه أوامرُ البرنامج وحدها
+            </p>
+          )}
           {allItems.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center text-on-surface-variant gap-2 text-sm">
               <span className="material-symbols-outlined text-[36px] opacity-40">search_off</span>

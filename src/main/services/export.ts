@@ -3,6 +3,8 @@ import ExcelJS from 'exceljs';
 import type { DocumentRow, PeriodStats, TemplateDetail } from '@shared/api';
 import { layoutText, normalizeLayout, visibleSections, type Letterhead } from '@shared/letterhead';
 import { htmlToText } from './documents';
+import { docToDocx } from './docDocx';
+import { templateDoc } from './templates';
 
 /**
  * تصدير النموذج إلى ملف يعيش خارج التطبيق.
@@ -71,7 +73,8 @@ export function splitLibraryXml(xml: string): string[] {
 
 export async function templateToDocx(
   t: TemplateDetail,
-  letterhead: Letterhead | null
+  letterhead: Letterhead | null,
+  image?: (src: string) => Uint8Array | null
 ): Promise<Buffer> {
   const children: Paragraph[] = [];
 
@@ -131,25 +134,9 @@ export async function templateToDocx(
     children.push(new Paragraph({ text: '' }));
   }
 
-  for (const line of t.bodyHtml.split('\n')) {
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.JUSTIFIED,
-        bidirectional: true,
-        spacing: { line: 400 },
-        children: [new TextRun({ text: line, rightToLeft: true })]
-      })
-    );
-  }
-
-  const doc = new Document({
-    creator: 'ديوان',
-    title: t.title,
-    styles: { default: { document: { run: { font: 'Amiri', size: 26 } } } },
-    sections: [{ properties: {}, children }]
-  });
-
-  return Packer.toBuffer(doc);
+  // المتن من الوثيقة نفسها بتنسيقها — لا ظلّها النصّي (التدقيق المستقل): كانت الجداول
+  // والأعمدة والمحاذاة تضيع، ويخرج نموذجٌ لا يشبه ما في المكتبة.
+  return docToDocx(templateDoc(t), { title: t.title, before: children, image });
 }
 
 /**

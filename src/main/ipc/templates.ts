@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
@@ -205,7 +205,16 @@ export function registerTemplateIpc(): void {
       const letterhead = t.letterheadId
         ? getLetterhead(db, t.letterheadId)
         : getDefaultLetterhead(db);
-      await writeFile(result.filePath, await templateToDocx(t, letterhead));
+      // صور الوثيقة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
+      const image = (src: string) => {
+        if (src.includes('..')) return null;
+        try {
+          return readFileSync(join(storeDir(), src));
+        } catch {
+          return null;
+        }
+      };
+      await writeFile(result.filePath, await templateToDocx(t, letterhead, image));
     } else {
       await writeFile(result.filePath, templateToXml(t), 'utf8');
     }
