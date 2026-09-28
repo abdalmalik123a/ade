@@ -25,7 +25,8 @@ import {
   watermarkText,
   type PdfPlan
 } from '../src/shared/pdfEdit';
-import { buildPdf, imagesToPdf, inspectPdf, shrinkPdfImages, type PdfSource } from '../src/main/services/pdfEdit';
+import { buildPdf, formFields, imagesToPdf, inspectPdf, shrinkPdfImages, type PdfSource } from '../src/main/services/pdfEdit';
+import { fieldBox, userToShown } from '../src/shared/pdfEdit';
 import { PDFName, PDFNumber, PDFRawStream } from 'pdf-lib';
 import { writePng } from '../src/main/services/png';
 
@@ -343,6 +344,68 @@ describe('البناء كما يُرى', () => {
         'trailer << /Root 1 0 R /Encrypt << /Filter /Standard /V 1 /R 2 >> >>\n%%EOF'
     );
     await expect(inspectPdf(encrypted)).rejects.toThrow('محميٌّ بكلمة مرور');
+  });
+});
+
+describe('الاستمارة القابلة للتعبئة (تعميق الموجود ٧)', () => {
+  async function formPdf(): Promise<Uint8Array> {
+    const doc = await PDFDocument.create();
+    const p1 = doc.addPage([A4.width, A4.height]);
+    const p2 = doc.addPage([A4.width, A4.height]);
+    const form = doc.getForm();
+    form.createTextField('full_name').addToPage(p1, { x: 100, y: 700, width: 200, height: 20 });
+    const office = form.createTextField('Office');
+    office.setText('VALUE-1');
+    office.addToPage(p1, { x: 100, y: 650, width: 200, height: 20 });
+    const sex = form.createDropdown('Sex');
+    sex.addOptions(['M', 'F']);
+    sex.addToPage(p1, { x: 100, y: 600, width: 80, height: 18 });
+    form.createCheckBox('agree').addToPage(p2, { x: 60, y: 100, width: 12, height: 12 });
+    return doc.save();
+  }
+
+  it('من فضاء الصفحة إلى ما يُرى وعودًا — في الدورانات الأربعة', () => {
+    const box = { x: 10, y: 20, width: 600, height: 800 };
+    for (const r of [0, 90, 180, 270] as const) {
+      const p = shownToUser(box, r, 0.25, 0.75);
+      const back = userToShown(box, r, p.x, p.y);
+      expect(back.u).toBeCloseTo(0.25);
+      expect(back.v).toBeCloseTo(0.75);
+    }
+    // حقلٌ أعلى الصفحة يسارًا صندوقٌ أعلاها يسارًا كما يُرى.
+    const b = fieldBox(box, 0, { x: 10, y: 760, width: 300, height: 60 });
+    expect(b.x).toBeCloseTo(0);
+    expect(b.y).toBeCloseTo(0);
+    expect(b.w).toBeCloseTo(0.5);
+    expect(b.h).toBeCloseTo(0.075);
+  });
+
+  it('الحقول بأنواعها ومواضعها وصفحاتها وقيمها', async () => {
+    const fields = formFields(await PDFDocument.load(await formPdf()));
+    const by = Object.fromEntries(fields.map((f) => [f.name, f]));
+    expect(by['full_name']).toMatchObject({ kind: 'text', page: 0, value: '' });
+    // الصندوق بحدوده: المكتبة تكتبه أوسع بنصف سُمك الإطار من كلّ جهة.
+    const r = by['full_name']!.rect;
+    expect([r.x, r.y, r.width, r.height].map((v) => Math.round(v))).toEqual([100, 700, 201, 21]);
+    expect(by['Office']).toMatchObject({ kind: 'text', value: 'VALUE-1' });
+    expect(by['Sex']).toMatchObject({ kind: 'choice', page: 0 });
+    expect(by['agree']).toMatchObject({ kind: 'check', page: 1, value: '' });
+    expect(formFields(await PDFDocument.load(await samplePdf(['1'])))).toEqual([]);
+  });
+
+  it('والبناء: الفارغ يُحذف، وما فيه قيمةٌ يبقى مرسومًا — ولا استمارة في الناتج', async () => {
+    const sources = new Map<string, PdfSource>([['f', { kind: 'pdf', name: 'f.pdf', bytes: await formPdf() }]]);
+    const plan: PdfPlan = {
+      pages: [
+        { id: 'a', source: 'f', index: 0, rotate: 0 },
+        { id: 'b', source: 'f', index: 1, rotate: 0 }
+      ],
+      overlays: []
+    };
+    const out = await buildPdf(plan, sources, null);
+    const [first] = await shownTexts(out);
+    expect(first!.items.some((i) => i.text.includes('VALUE-1'))).toBe(true);
+    expect(formFields(await PDFDocument.load(out))).toEqual([]);
   });
 });
 

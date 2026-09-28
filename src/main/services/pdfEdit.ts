@@ -6,7 +6,22 @@
  * — وتُمرَّر من الخارج ليُختبر البناء بلا Electron. والطبقة الواحدة لصفحاتٍ كثيرة (العلامة
  * المائية على الكلّ) تُرسم مرّةً وتُختم على كلّها.
  */
-import { PDFArray, PDFDocument, PDFName, PDFNumber, PDFRawStream, degrees, type PDFEmbeddedPage, type PDFPage } from 'pdf-lib';
+import {
+  PDFArray,
+  PDFCheckBox,
+  PDFDict,
+  PDFDocument,
+  PDFDropdown,
+  PDFName,
+  PDFNumber,
+  PDFOptionList,
+  PDFRadioGroup,
+  PDFRawStream,
+  PDFTextField,
+  degrees,
+  type PDFEmbeddedPage,
+  type PDFPage
+} from 'pdf-lib';
 import {
   cropToUser,
   imagePage,
@@ -17,6 +32,7 @@ import {
   shownSize,
   stampPlacement,
   totalRotation,
+  type FormFieldInfo,
   type PdfPlan,
   type PtBox,
   type Rotation
@@ -29,7 +45,8 @@ export type PdfSource =
 
 export type LayerRenderer = (html: string, pageMm: { w: number; h: number }) => Promise<Uint8Array>;
 
-export type PageInfo = { width: number; height: number; rotation: Rotation };
+/** والأصل (`x`، `y`) لصندوق القصّ: به تُحسب مواضع حقول الاستمارة من الصفحة. */
+export type PageInfo = { width: number; height: number; rotation: Rotation; x?: number; y?: number };
 
 /** رسالةٌ يفهمها الموظف لملفٍّ لا يُفتح — محميٌّ أو تالف. */
 function openError(e: unknown): Error {
@@ -55,8 +72,89 @@ export async function inspectPdf(bytes: Uint8Array): Promise<PageInfo[]> {
   if (!doc.getPageCount()) throw new Error('الملف بلا صفحات');
   return doc.getPages().map((p) => {
     const box = p.getCropBox();
-    return { width: box.width, height: box.height, rotation: totalRotation(p.getRotation().angle, 0) };
+    return { width: box.width, height: box.height, rotation: totalRotation(p.getRotation().angle, 0), x: box.x, y: box.y };
   });
+}
+
+/**
+ * الاستمارة القابلة للتعبئة قبل نسخ صفحاتها: الحقل الفارغ يُحذف (يُكتب في موضعه طبقةً بعربيّةٍ
+ * موصولة)، وما فيه قيمةٌ يُسطَّح بما رسمه برنامجه — لا يُعاد رسمه بخطّ المكتبة فتتقطّع عربيّته.
+ * ومن الاستمارات ما لا يُسطَّح (حقلٌ بلا رسم): فيبقى حقلًا بقيمته، وتُرى في كلّ قارئ.
+ */
+function flattenForm(doc: PDFDocument): void {
+  let form;
+  try {
+    form = doc.getForm();
+  } catch {
+    return;
+  }
+  const empty = (f: unknown) =>
+    f instanceof PDFTextField
+      ? !(f.getText() ?? '').trim()
+      : f instanceof PDFDropdown || f instanceof PDFOptionList
+        ? !f.getSelected().length
+        : f instanceof PDFRadioGroup
+          ? !f.getSelected()
+          : f instanceof PDFCheckBox
+            ? !f.isChecked()
+            : false;
+  for (const f of form.getFields()) {
+    try {
+      if (empty(f)) form.removeField(f);
+    } catch {
+      // حقلٌ لا يُحذف: يبقى كما هو.
+    }
+  }
+  try {
+    if (form.getFields().length) form.flatten({ updateFieldAppearances: false });
+  } catch {
+    // ما لا يُسطَّح يبقى حقلًا بقيمته.
+  }
+}
+
+/**
+ * حقول الاستمارة القابلة للتعبئة بمواضعها — كلّ «ودجة» حقلٌ في صفحته (والحقل الواحد قد يُرى
+ * في صفحتين). والتواقيع والأزرار لا تُملأ فتُترك. وملفٌّ بلا استمارةٍ يعود فارغًا.
+ */
+export function formFields(doc: PDFDocument): FormFieldInfo[] {
+  let fields;
+  try {
+    fields = doc.getForm().getFields();
+  } catch {
+    return [];
+  }
+  if (!fields.length) return [];
+  const pageOf = new Map<PDFDict, number>();
+  doc.getPages().forEach((p, i) => {
+    const annots = p.node.Annots();
+    for (let k = 0; annots && k < annots.size(); k++) {
+      const a = doc.context.lookup(annots.get(k));
+      if (a instanceof PDFDict) pageOf.set(a, i);
+    }
+  });
+  const out: FormFieldInfo[] = [];
+  for (const f of fields) {
+    const kind =
+      f instanceof PDFTextField ? 'text' : f instanceof PDFDropdown || f instanceof PDFOptionList || f instanceof PDFRadioGroup ? 'choice' : f instanceof PDFCheckBox ? 'check' : null;
+    if (!kind) continue;
+    const value =
+      f instanceof PDFTextField
+        ? (f.getText() ?? '')
+        : f instanceof PDFDropdown || f instanceof PDFOptionList
+          ? f.getSelected().join('، ')
+          : f instanceof PDFRadioGroup
+            ? (f.getSelected() ?? '')
+            : (f as PDFCheckBox).isChecked()
+              ? '✓'
+              : '';
+    for (const w of f.acroField.getWidgets()) {
+      const page = pageOf.get(w.dict);
+      if (page === undefined) continue;
+      const r = w.getRectangle();
+      out.push({ name: f.getName(), kind, page, rect: { x: r.x, y: r.y, width: r.width, height: r.height }, value });
+    }
+  }
+  return out;
 }
 
 const isPng = (b: Uint8Array) => b[0] === 0x89 && b[1] === 0x50;
@@ -82,6 +180,7 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
       let doc = loaded.get(ref.source);
       if (!doc) {
         doc = await loadPdf(src.bytes);
+        flattenForm(doc);
         loaded.set(ref.source, doc);
       }
       if (ref.index < 0 || ref.index >= doc.getPageCount()) throw new Error('صفحةٌ خارج الملف');

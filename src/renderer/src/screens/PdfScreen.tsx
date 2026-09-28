@@ -15,7 +15,9 @@ import * as pdfjs from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import type { PdfOpened } from '@shared/api';
+import { citizenSourceOf } from '@shared/citizenFields';
 import {
+  fieldBox,
   fitSearch,
   IMAGE_STEPS,
   imagePage,
@@ -52,6 +54,12 @@ function pagesWord(n: number): string {
   if (n === 1) return 'صفحةٌ واحدة';
   if (n === 2) return 'صفحتان';
   return `${toIndic(n)} ${n % 100 >= 3 && n % 100 <= 10 ? 'صفحات' : 'صفحة'}`;
+}
+/** «حقلٌ واحد، حقلان، ٣ حقول، ١١ حقلًا». */
+function fieldsWord(n: number): string {
+  if (n === 1) return 'حقلٌ واحد';
+  if (n === 2) return 'حقلان';
+  return `${toIndic(n)} ${n % 100 >= 3 && n % 100 <= 10 ? 'حقول' : 'حقلًا'}`;
 }
 let uid = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(++uid).toString(36)}`;
@@ -443,6 +451,67 @@ export default function PdfScreen() {
     const o = watermarkText(newId('w'), settings?.officeName?.trim() || 'نسخة');
     setOverlays((os) => [...os, o]);
     setActive(o.id);
+  }
+
+  // ── الاستمارة القابلة للتعبئة (تعميق الموجود ٧) ─────────────────────
+  // حقولها طبقات نصٍّ في مواضعها، تُملأ من ملف مواطنٍ بمعنى كلّ حقلٍ من اسمه — ويرسمها
+  // محرّك الطباعة فتخرج العربية موصولة (مكتبة PDF تقطّعها في الحقل نفسه).
+  const [formQuery, setFormQuery] = useState('');
+  const [formHits, setFormHits] = useState<{ id: number; fullName: string }[]>([]);
+  const [formCitizen, setFormCitizen] = useState<{ id: number; fullName: string } | null>(null);
+  const [formFilled, setFormFilled] = useState<string[]>([]);
+
+  useEffect(() => {
+    const q = formQuery.trim();
+    if (!q) {
+      setFormHits([]);
+      return;
+    }
+    let live = true;
+    void window.diwan.citizens
+      .list({ query: q, limit: 6 })
+      .then((list) => live && setFormHits(list.map((c) => ({ id: c.id, fullName: c.fullName }))))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [formQuery]);
+
+  /** حقول الملف الفارغة طبقاتٌ في مواضعها — والمعروفة معانيها من ملف المواطن. */
+  async function fillForm(sourceId: string) {
+    const src = sources[sourceId];
+    const fields = (src?.fields ?? []).filter((f) => f.kind !== 'check' && !f.value.trim());
+    if (!src || !fields.length) return;
+    const citizen = formCitizen ? ((await window.diwan.citizens.get(formCitizen.id)) as Record<string, unknown> | null) : null;
+    const made: TextOverlay[] = [];
+    for (const ref of pages.filter((p) => p.source === sourceId)) {
+      const info = src.pages[ref.index]!;
+      const pageBox = { x: info.x ?? 0, y: info.y ?? 0, width: info.width, height: info.height };
+      for (const f of fields.filter((x) => x.page === ref.index)) {
+        let box = fieldBox(pageBox, totalRotation(info.rotation, ref.rotate), f.rect);
+        if (ref.crop) box = { x: (box.x - ref.crop.x) / ref.crop.w, y: (box.y - ref.crop.y) / ref.crop.h, w: box.w / ref.crop.w, h: box.h / ref.crop.h };
+        const key = citizenSourceOf(f.name);
+        const value = citizen && key ? citizen[key] : null;
+        made.push({
+          id: newId('f'),
+          kind: 'text',
+          text: typeof value === 'string' ? value : '',
+          font: 'Arial',
+          size: Math.round(Math.max(7, Math.min(12, f.rect.height * 0.62)) * 2) / 2,
+          color: '#000000',
+          bold: false,
+          align: 'right',
+          opacity: 1,
+          angle: 0,
+          box,
+          pages: [ref.id]
+        });
+      }
+    }
+    setOverlays((os) => [...os, ...made]);
+    setFormFilled((s) => [...s, sourceId]);
+    const known = made.filter((o) => o.text).length;
+    say(`صارت الحقول الفارغة (${fieldsWord(made.length)}) نصوصًا في مواضعها${citizen ? ` — ومُلئ منها ${toIndic(known)} من ملف ${formCitizen?.fullName}` : ''}. انقر أيّ حقلٍ لتكتبه`);
   }
 
   /** رقم الصفحة أسفل كلّ صفحة — ومرّةً واحدة: الموجود يُحدَّد ليُعدَّل. */
@@ -880,7 +949,13 @@ export default function PdfScreen() {
                     pageOverlays.map((o) => (
                       <div
                         key={o.id}
-                        className={`absolute cursor-move ${o.id === active ? 'outline outline-2 outline-secondary' : 'hover:outline hover:outline-1 hover:outline-secondary/60'}`}
+                        className={`absolute cursor-move ${
+                          o.id === active
+                            ? 'outline outline-2 outline-secondary'
+                            : o.kind === 'text' && !o.text.trim()
+                              ? 'outline outline-1 outline-dashed outline-secondary/60 bg-secondary/5'
+                              : 'hover:outline hover:outline-1 hover:outline-secondary/60'
+                        }`}
                         data-pdf-overlay={o.kind}
                         style={{ left: `${o.box.x * 100}%`, top: `${o.box.y * 100}%`, width: `${o.box.w * 100}%`, height: `${o.box.h * 100}%` }}
                         onPointerDown={(e) => startDrag(e, 'overlay', o.id, 'move', o.box)}
@@ -1048,6 +1123,60 @@ export default function PdfScreen() {
                 </div>
               ) : (
                 <div className="font-label-md text-label-md text-on-surface-variant space-y-2">
+                  {(() => {
+                    const src = currentRef ? sources[currentRef.source] : undefined;
+                    const empty = (src?.fields ?? []).filter((f) => f.kind !== 'check' && !f.value.trim());
+                    if (!src || !src.fields?.length) return null;
+                    const done = formFilled.includes(src.id);
+                    return (
+                      <div className="rounded-lg bg-secondary-container/40 p-space-sm space-y-space-xs text-on-surface" data-pdf-form={src.fields.length}>
+                        <p className="font-semibold">
+                          استمارةٌ قابلة للتعبئة: {fieldsWord(new Set(src.fields.map((f) => f.name)).size)}، الفارغ منها {toIndic(empty.length)}
+                        </p>
+                        {done ? (
+                          <p>صارت حقولها طبقاتٍ في مواضعها — انقر أيّ حقلٍ لتكتبه. وما كان فيه قيمةٌ يبقى كما كُتب.</p>
+                        ) : (
+                          <>
+                            <p>تصير حقولها الفارغة نصوصًا في مواضعها، تُملأ من ملف مواطنٍ بمعنى كلّ حقلٍ من اسمه — والعربية موصولة.</p>
+                            <input
+                              className="w-full h-8 px-2 rounded bg-surface-container-lowest border border-outline-variant"
+                              data-form-citizen=""
+                              placeholder="ابحث عن مواطن (اختياري)"
+                              value={formCitizen ? formCitizen.fullName : formQuery}
+                              onChange={(e) => {
+                                setFormCitizen(null);
+                                setFormQuery(e.target.value);
+                              }}
+                            />
+                            {!formCitizen &&
+                              formHits.map((c) => (
+                                <button
+                                  key={c.id}
+                                  className="block w-full text-right px-2 py-1 rounded hover:bg-surface-container-high"
+                                  data-form-citizen-pick={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormCitizen(c);
+                                    setFormHits([]);
+                                  }}
+                                >
+                                  {c.fullName}
+                                </button>
+                              ))}
+                            <button
+                              className="w-full h-9 rounded-lg bg-primary-container text-on-primary font-semibold disabled:opacity-40"
+                              data-act="form-fill"
+                              disabled={!empty.length}
+                              type="button"
+                              onClick={() => void fillForm(src.id)}
+                            >
+                              {formCitizen ? `املأها من ملف ${formCitizen.fullName}` : 'اجعل حقولها نصوصًا تُكتب'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <p>اختر صفحةً من اليمين، أو حدّد عدّة صفحاتٍ بمربّعاتها لتُدار أو تُحذف أو تُستخرج معًا.</p>
                   <p>«نصّ» و«شعار» يُضافان إلى الصفحة الحالية، و«علامة مائية» إلى الصفحات كلّها — واسحب أيَّ عنصرٍ إلى موضعه.</p>
                   <p>وترتيب الصفحات بالسحب، أو بالسهمين. وCtrl+Z يتراجع عن آخر تعديل.</p>

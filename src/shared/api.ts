@@ -2,7 +2,7 @@ import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus }
 import type { Letterhead, LetterheadLayout } from './letterhead';
 import type { Doc, ListItem, Suggestion } from './doc';
 import type { OcrLine } from './paperDoc';
-import type { PdfPlan, Rotation } from './pdfEdit';
+import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -10,9 +10,12 @@ export type PdfOpened = {
   name: string;
   kind: 'pdf' | 'image';
   bytes: Uint8Array;
-  pages: { width: number; height: number; rotation: Rotation }[];
+  /** وأصل صندوق القصّ (`x`، `y`) — به تُحسب مواضع حقول الاستمارة. */
+  pages: { width: number; height: number; rotation: Rotation; x?: number; y?: number }[];
   /** مقاس الصورة بالبكسل، ودقّتها إن جاءت من الماسح (فصفحتها بمقاسها الحقيقي). */
   image?: { width: number; height: number; dpi?: number };
+  /** حقول الاستمارة إن كان الملف قابلًا للتعبئة — تصير طبقات نصٍّ في مواضعها. */
+  fields?: FormFieldInfo[];
 };
 import type { TemplateInput, TemplateVariable } from './template';
 

@@ -120,6 +120,42 @@ export function shownToUser(box: PtBox, rotation: Rotation, u: number, v: number
   }
 }
 
+/** عكس `shownToUser`: نقطةٌ من فضاء الصفحة الأصلي إلى الصفحة كما تُرى (u يمينًا، v نزولًا). */
+export function userToShown(box: PtBox, rotation: Rotation, x: number, y: number): { u: number; v: number } {
+  const a = (x - box.x) / box.width;
+  const b = (y - box.y) / box.height;
+  switch (rotation) {
+    case 90:
+      return { u: b, v: a };
+    case 180:
+      return { u: 1 - a, v: b };
+    case 270:
+      return { u: 1 - b, v: 1 - a };
+    default:
+      return { u: a, v: 1 - b };
+  }
+}
+
+/** حقلٌ في استمارة PDF قابلةٍ للتعبئة — بموضعه في صفحته (فضاء الصفحة الأصلي). */
+export type FormFieldInfo = {
+  name: string;
+  kind: 'text' | 'choice' | 'check';
+  /** رقم الصفحة في ملفّها من ٠. */
+  page: number;
+  rect: PtBox;
+  /** ما فيه من قبل — يبقى كما هو في الملف الناتج. */
+  value: string;
+};
+
+/** صندوق الحقل نسبيًّا من الصفحة كما تُرى — فيصير طبقة نصٍّ في موضعه. */
+export function fieldBox(pageBox: PtBox, rotation: Rotation, rect: PtBox): FracBox {
+  const a = userToShown(pageBox, rotation, rect.x, rect.y);
+  const b = userToShown(pageBox, rotation, rect.x + rect.width, rect.y + rect.height);
+  const x = Math.min(a.u, b.u);
+  const y = Math.min(a.v, b.v);
+  return { x, y, w: Math.abs(a.u - b.u), h: Math.abs(a.v - b.v) };
+}
+
 /** القصّ النسبيّ (كما يُرى) صندوقًا بنقاط الصفحة الأصلية — ما يُكتب في CropBox. */
 export function cropToUser(box: PtBox, rotation: Rotation, crop: FracBox): PtBox {
   const a = shownToUser(box, rotation, crop.x, crop.y);

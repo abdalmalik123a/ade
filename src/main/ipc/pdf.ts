@@ -10,10 +10,10 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
-import { buildPdf, imagesToPdf, inspectPdf, shrinkPdfImages, type JpegShrink, type PageInfo, type PdfSource } from '../services/pdfEdit';
+import { buildPdf, formFields, imagesToPdf, inspectPdf, loadPdf, shrinkPdfImages, type JpegShrink, type PageInfo, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
 import { removeStoreFile, scanPage } from '../services/scanner';
-import { imagePage, type PdfPlan } from '@shared/pdfEdit';
+import { imagePage, type FormFieldInfo, type PdfPlan } from '@shared/pdfEdit';
 import { importFile, pickOpenPath, pickOpenPaths, pickSavePath, pickSaveFolder } from './files';
 
 export type PdfOpened = {
@@ -24,6 +24,8 @@ export type PdfOpened = {
   pages: PageInfo[];
   /** مقاس الصورة الأصلي بالبكسل — لتُرسم في صفحتها كما تُبنى — ودقّتها إن مُسحت. */
   image?: { width: number; height: number; dpi?: number };
+  /** حقول الاستمارة إن كان الملف قابلًا للتعبئة. */
+  fields?: FormFieldInfo[];
 };
 
 /** دقّة المسح للتقديم: تُقرأ وتُطبع، وملفّها معقول قبل التصغير. */
@@ -59,7 +61,8 @@ async function openOne(path: string): Promise<PdfOpened> {
   if (extname(path).toLowerCase() === '.pdf') {
     const pages = await inspectPdf(bytes);
     sources.set(id, { kind: 'pdf', name, bytes });
-    return { id, name, kind: 'pdf', bytes, pages };
+    const fields = formFields(await loadPdf(bytes));
+    return { id, name, kind: 'pdf', bytes, pages, ...(fields.length ? { fields } : {}) };
   }
   // PNG وJPEG كما هما؛ وما سواهما (WebP وBMP) يُحوَّل PNG — فمكتبة PDF لا تقرأ غيرهما.
   const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
