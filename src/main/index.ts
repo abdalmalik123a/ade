@@ -8,6 +8,7 @@ import { prepareDocuments } from './services/documents';
 import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
+import { closePortrait } from './services/portrait';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
 installMainErrorHandlers();
@@ -146,6 +147,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   closeDb();
-  // عمّال القارئ الضوئي يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية.
+  // عمّال القارئ الضوئي ونموذج الصور يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية.
   void shutdownOcr();
+  void closePortrait();
 });

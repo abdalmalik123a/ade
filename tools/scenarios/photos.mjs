@@ -81,7 +81,7 @@ export default async function scenario(page, { shotsDir }) {
   ok('للصور الشخصية شاشةٌ في الشريط', (await page.text()).includes('تُقصّ على الوجه بمقاسها'));
   await click('[data-act="open-photo"]');
   await wait(1200);
-  ok('فُتحت الصورة في إطارها', await page.eval(`return Boolean(document.querySelector('[data-photo-frame] img'));`));
+  ok('فُتحت الصورة في إطارها', await page.eval(`return Boolean(document.querySelector('[data-photo-frame] canvas'));`));
 
   await click('[data-size-key="35x45"]');
   await click('[data-paper="photo"]');
@@ -96,10 +96,12 @@ export default async function scenario(page, { shotsDir }) {
     s.dispatchEvent(new Event('input', { bubbles: true }));
   `);
   await wait(300);
+  // الصورة تُرسم في لوحةٍ داخل الإطار — وموضعها المحسوب (cropBox) على اللوحة نفسها.
   const covered = await page.eval(`
-    const f = document.querySelector('[data-photo-frame]').getBoundingClientRect();
-    const i = document.querySelector('[data-photo-frame] img').getBoundingClientRect();
-    return i.left <= f.left + 0.5 && i.top <= f.top + 0.5 && i.right >= f.right - 0.5 && i.bottom >= f.bottom - 0.5 && i.width > f.width * 1.9;
+    const f = document.querySelector('[data-photo-frame]');
+    const i = JSON.parse(f.querySelector('canvas').dataset.box);
+    const w = f.offsetWidth, h = f.offsetHeight;
+    return i.left <= 0.5 && i.top <= 0.5 && i.left + i.width >= w - 0.5 && i.top + i.height >= h - 0.5 && i.width > w * 1.9;
   `);
   ok('والتكبير يكبّرها ولا يظهر في الإطار بياض', covered);
   if (shotsDir) await page.shot(join(shotsDir, 'photos-crop.png'));

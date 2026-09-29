@@ -4,6 +4,8 @@ import type { Doc, ListItem, Suggestion } from './doc';
 import type { OcrLine } from './paperDoc';
 import type { MrzResult } from './mrz';
 import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
+import type { PhotoPreset } from './photoPresets';
+import type { CustomSuit } from './suits';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -896,6 +898,21 @@ export type DiwanApi = {
     close(ids: string[]): Promise<void>;
   };
   /** استوديو التصوير: حفظ اللقطة، ومراقبة مجلّد الكاميرا الاحترافية. */
+  /** صورة المعاملة: فصل الشخص عن خلفيّته على الجهاز، وقوالب المكتب، وقاطه. */
+  photos: {
+    modelReady(): Promise<boolean>;
+    /** صورة الحافظة محفوظةً في المخزن — ومسارها، أو `null` إن لم تكن فيها صورة. */
+    clipboardImage(): Promise<string | null>;
+    /** الشخص مفصولًا: قناعه (بايتٌ لكلّ بكسل) وألوانه بلا هالة الخلفية — بمقاس ما أُرسل. */
+    cutout(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number }>;
+    presets(): Promise<PhotoPreset[]>;
+    savePreset(preset: PhotoPreset): Promise<PhotoPreset[]>;
+    deletePreset(id: string): Promise<PhotoPreset[]>;
+    suits(): Promise<CustomSuit[]>;
+    /** «استورد قاطًا»: PNG شفّافة — ويُقال سبب الرفض. `null` إن أُلغي الاختيار. */
+    importSuit(): Promise<CustomSuit | null>;
+    deleteSuit(id: string): Promise<CustomSuit[]>;
+  };
   camera: {
     /** لقطةٌ مقصوصة (dataURL) تُحفظ في المخزن — ويعود مسارها. */
     store(dataUrl: string): Promise<string>;

@@ -3,6 +3,7 @@
  *
  * هويّات موظفي دائرةٍ كلّها، أو قائمة دمجٍ لتأييدات صفٍّ مسجَّل: بحثٌ، وتصنيفٌ يُختار
  * كلّه بضغطة، وعلامةٌ لكلّ اسم. والنتيجة معرّفاتٌ بترتيب اختيارها.
+ * و`single`: اسمٌ واحد (صورة المعاملة تُحفظ في ملف صاحبها).
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { CitizenSummary } from '@shared/api';
@@ -11,10 +12,12 @@ export default function CitizenMultiPicker({
   title,
   confirmLabel,
   onPick,
-  onClose
+  onClose,
+  single = false
 }: {
   title: string;
   confirmLabel: string;
+  single?: boolean;
   onPick: (ids: number[]) => void;
   onClose: () => void;
 }) {
@@ -37,7 +40,7 @@ export default function CitizenMultiPicker({
 
   const shownIds = useMemo(() => list.map((c) => c.id), [list]);
   const allShown = shownIds.length > 0 && shownIds.every((id) => picked.includes(id));
-  const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : single ? [id] : [...p, id]));
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-citizen-picker="">
@@ -70,7 +73,7 @@ export default function CitizenMultiPicker({
             </div>
           )}
         </div>
-        <div className="px-space-md py-space-xs flex items-center justify-between font-label-md text-label-md">
+        <div className={`px-space-md py-space-xs items-center justify-between font-label-md text-label-md ${single ? 'hidden' : 'flex'}`}>
           <label className="flex items-center gap-space-xs cursor-pointer text-on-surface">
             <input
               checked={allShown}
@@ -117,7 +120,8 @@ export default function CitizenMultiPicker({
             disabled={picked.length === 0}
             onClick={() => onPick(picked)}
           >
-            {confirmLabel} ({picked.length})
+            {confirmLabel}
+            {single ? '' : ` (${picked.length})`}
           </button>
         </div>
       </div>

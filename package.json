@@ -32,16 +32,26 @@
       "src/main/db/*.sql",
       "!node_modules/better-sqlite3/{deps,src,build}/**",
       "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node",
-      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node"
+      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node",
+      "!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll",
+      "!node_modules/onnxruntime-node/{script,node_modules}/**",
+      "!node_modules/{global-agent,adm-zip}/**"
     ],
     "extraResources": [
       {
         "from": "resources/tessdata",
         "to": "tessdata"
+      },
+      {
+        "from": "resources/models",
+        "to": "models"
       }
     ],
     "asarUnpack": [
-      "**/*.node"
+      "**/*.node",
+      "**/onnxruntime-node/bin/**/*.dll"
     ],
     "win": {
       "target": [
@@ -69,6 +79,7 @@
     "docx": "^9.1.0",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
+    "onnxruntime-node": "^1.30.0",
     "pdf-lib": "^1.17.1",
     "tesseract.js": "^7.0.0"
   },

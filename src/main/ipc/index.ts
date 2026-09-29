@@ -11,6 +11,7 @@ import { registerDocumentIpc } from './documents';
 import { registerOrderIpc } from './orders';
 import { registerCameraIpc } from './camera';
 import { registerQuestionIpc } from './questions';
+import { registerPhotoIpc } from './photos';
 import { orderCounts } from '../services/orders';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
@@ -115,6 +116,7 @@ export function registerIpc(): void {
   registerDocumentIpc();
   registerOrderIpc();
   registerCameraIpc();
+  registerPhotoIpc();
   registerQuestionIpc();
   registerBackupIpc();
 

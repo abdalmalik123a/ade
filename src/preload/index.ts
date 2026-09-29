@@ -261,6 +261,17 @@ const api: DiwanApi = {
     used: (id: number) => invoke('bank:used', id),
     delete: (id: number) => invoke('bank:delete', id)
   },
+  photos: {
+    modelReady: () => invoke('photos:modelReady'),
+    clipboardImage: () => invoke('photos:clipboardImage'),
+    cutout: (input: { pixels: Uint8Array; width: number; height: number }) => invoke('photos:cutout', input),
+    presets: () => invoke('photos:presets'),
+    savePreset: (preset: unknown) => invoke('photos:savePreset', preset),
+    deletePreset: (id: string) => invoke('photos:deletePreset', id),
+    suits: () => invoke('photos:suits'),
+    importSuit: () => invoke('photos:importSuit'),
+    deleteSuit: (id: string) => invoke('photos:deleteSuit', id)
+  },
   camera: {
     store: (dataUrl: string) => invoke('camera:store', dataUrl),
     watchFolder: () => invoke('camera:watchFolder'),
