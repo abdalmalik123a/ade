@@ -73,37 +73,59 @@ module.exports = {
           },
           "fontFamily": {
                 "headline-sm": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "label-md": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "headline-xl": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "headline-md": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "label-sm": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "body-md": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "label-lg": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "code-sm": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "body-sm": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "headline-lg": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ],
                 "body-lg": [
-                      "IBM Plex Sans"
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
                 ]
           },
           "fontSize": {
