@@ -3,12 +3,12 @@
  *
  * يُحمَّل النموذج مرّةً عند أوّل صورة ويبقى، ويُقرأ مساره من الخارج (العملية الرئيسة تعرف
  * مكانه في المثبّت) — فيُختبر هنا بلا Electron بالنموذج الحقيقي. وما بعد النموذج حسابٌ خالص
- * في `@shared/portraitMask`: القناع يُكبَّر ويُشدّ إلى حوافّ الصورة، وتُزال هالة الخلفية.
+ * في `@shared/portraitMask`: القناع يُكبَّر وتُشدّ حافّته فلا غواش حولها، وتُزال هالة الخلفية.
  *
  * وصورة الزبون لا تغادر هذه العملية إلى أيّ مكان: تدخل بكسلاتٍ وتخرج قناعًا.
  */
 import { InferenceSession, Tensor } from 'onnxruntime-node';
-import { decontaminate, modelInput, modelSize, refineAlpha, upsampleAlpha } from '@shared/portraitMask';
+import { decontaminate, modelInput, modelSize, sharpenAlpha, upsampleAlpha } from '@shared/portraitMask';
 
 let cached: { path: string; session: Promise<InferenceSession> } | null = null;
 
@@ -35,13 +35,13 @@ export async function matte(modelPath: string, pixels: Uint8Array | Uint8Clamped
 export type Cutout = { alpha: Uint8Array; pixels: Uint8ClampedArray; ms: number };
 
 /**
- * الشخص مفصولًا: القناع مشدودًا إلى حوافّ الصورة، وألوان الحافّة بلا هالة الخلفية القديمة.
+ * الشخص مفصولًا: القناع بحافّةٍ حادّة لا غواش حولها، وألوان الحافّة بلا هالة الخلفية القديمة.
  * والألوان خارج الحافّة كما هي — فما تعيده فرشاة «أبقِ» يعود بلونه الأصلي.
  */
 export async function cutout(modelPath: string, pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): Promise<Cutout> {
   const t0 = Date.now();
   const raw = await matte(modelPath, pixels, width, height);
-  const alpha = refineAlpha(raw, pixels, width, height);
+  const alpha = sharpenAlpha(raw);
   return { alpha, pixels: decontaminate(pixels, alpha, width, height), ms: Date.now() - t0 };
 }
 

@@ -117,6 +117,31 @@ export default async function scenario(page, { shotsDir }) {
       return [r / n, g / n, b / n];
     `);
   const near = (c, rgb, tol = 6) => c.every((v, i) => Math.abs(v - rgb[i]) <= tol);
+  /** عيّنةٌ من بكسلات شريطٍ في أسفل الإطار — ليُقاس الفرق بكسلًا ببكسل لا بمتوسّط اللون. */
+  const band = () =>
+    page.eval(`
+      const c = document.querySelector('[data-photo-canvas]');
+      const y0 = Math.round(c.height * 0.8), h = c.height - y0;
+      const d = c.getContext('2d').getImageData(0, y0, c.width, h).data;
+      const out = [];
+      for (let y = 0; y < h; y += 4) for (let x = 0; x < c.width; x += 4) { const i = (y * c.width + x) * 4; out.push(d[i], d[i + 1], d[i + 2]); }
+      return out;
+    `);
+  const diff = (a, b) => a.reduce((s, v, i) => s + Math.abs(v - b[i]), 0) / a.length;
+  /**
+   * قراءةٌ بعد أن يستقرّ الرسم (قراءتان متتاليتان متطابقتان): نافذة الفحص إن غطّتها نافذةٌ أخرى
+   * أبطأ Chromium مؤقّتاتها إلى نحو ثانية — فالوقت الثابت يقرأ الإطار قبل أن يُعاد رسمه.
+   */
+  const settled = async (read) => {
+    let a = await read();
+    for (let t = 0; t < 24; t++) {
+      await wait(250);
+      const b = await read();
+      if (JSON.stringify(b) === JSON.stringify(a)) return b;
+      a = b;
+    }
+    return a;
+  };
   const setValue = (sel, value) =>
     page.eval(`
       const el = document.querySelector(${JSON.stringify(sel)});
@@ -156,25 +181,42 @@ export default async function scenario(page, { shotsDir }) {
   await wait(300);
 
   // ٣. الإضاءة: المنزلق يغيّر الصورة، و«الأصل» يعيدها.
-  const faceBefore = await color(0.4, 0.3, 0.6, 0.4);
+  const faceBefore = await settled(() => color(0.4, 0.3, 0.6, 0.4));
   await setValue('input[data-act="exposure"]', 0.8);
-  await wait(700);
-  const faceBright = await color(0.4, 0.3, 0.6, 0.4);
-  ok('ومنزلق الإضاءة يفتّح الوجه', faceBright[0] + faceBright[1] + faceBright[2] > faceBefore[0] + faceBefore[1] + faceBefore[2] + 15);
+  // يُعاد التحسين بعد توقّف المنزلق ويُرسم — يُنتظر الرسم لا وقتٌ ثابت (المثبّت أبطأ أحيانًا).
+  const lum = (c) => c[0] + c[1] + c[2];
+  let faceBright = await color(0.4, 0.3, 0.6, 0.4);
+  for (let t = 0; t < 20 && lum(faceBright) <= lum(faceBefore) + 15; t++) {
+    await wait(200);
+    faceBright = await color(0.4, 0.3, 0.6, 0.4);
+  }
+  const brighter = lum(faceBright) > lum(faceBefore) + 15;
+  ok(`ومنزلق الإضاءة يفتّح الوجه${brighter ? '' : ` (${lum(faceBefore).toFixed(0)} ← ${lum(faceBright).toFixed(0)})`}`, brighter);
   await click('[data-act="auto-enhance"]');
-  await wait(700);
-  const face = await color(0.4, 0.3, 0.6, 0.4);
+  await wait(300);
+  const face = await settled(() => color(0.4, 0.3, 0.6, 0.4));
 
   // ٤. القاط: يُلبَس تحت الرقبة، ويُكبَّر.
-  const chestBefore = await color(0.3, 0.85, 0.7, 1);
-  await click('[data-suit="suit-navy-tie"]');
+  const chestBefore = await settled(band);
+  await click('[data-suit="suit-brown-gold-tie"]');
   ok('ويُلبَس القاط', await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000));
-  await wait(500);
-  const chestSuit = await color(0.3, 0.85, 0.7, 1);
-  ok('فيتغيّر الصدر ولا يتغيّر الوجه', Math.abs(chestSuit[2] - chestBefore[2]) + Math.abs(chestSuit[0] - chestBefore[0]) > 8 && near(await color(0.4, 0.3, 0.6, 0.4), face, 1));
+  // يُنتظر رسم القاط لا وقتٌ ثابت: أوّل قاطٍ يُفكّ من حزمته، والجهاز قد يكون مشغولًا.
+  let chestSuit = await band();
+  for (let t = 0; t < 20 && diff(chestSuit, chestBefore) <= 10; t++) {
+    await wait(200);
+    chestSuit = await band();
+  }
+  const faceSuit = await settled(() => color(0.4, 0.3, 0.6, 0.4));
+  const chestMoved = diff(chestSuit, chestBefore);
+  const faceSame = near(faceSuit, face, 1);
+  ok(`فيتغيّر الصدر ولا يتغيّر الوجه${chestMoved > 10 && faceSame ? '' : ` (الصدر ${chestMoved.toFixed(1)}، الوجه ${face.map((v) => v.toFixed(1))} ← ${faceSuit.map((v) => v.toFixed(1))})`}`, chestMoved > 10 && faceSame);
   await setValue('input[data-act="suit-scale"]', 1.3);
-  await wait(400);
-  ok('ومنزلق الحجم يغيّره', !near(await color(0.3, 0.85, 0.7, 1), chestSuit, 1));
+  let chestBig = await band();
+  for (let t = 0; t < 20 && diff(chestBig, chestSuit) <= 3; t++) {
+    await wait(200);
+    chestBig = await band();
+  }
+  ok('ومنزلق الحجم يغيّره', diff(chestBig, chestSuit) > 3);
   await click('[data-act="suit-reset"]');
   await wait(300);
   if (shotsDir) await page.shot(join(shotsDir, 'portrait-suit.png'));

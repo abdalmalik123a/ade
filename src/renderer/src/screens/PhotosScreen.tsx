@@ -25,7 +25,7 @@ import {
 } from '@shared/photoPresets';
 import { autoCrop, fitSuit, keepAbove, landmarks, neckLine, rowWidths, strokeAlpha, type BrushMode, type Landmarks, type SuitTransform } from '@shared/portraitMask';
 import { NEUTRAL, applyEnhance, autoEnhance, type Enhance } from '@shared/portraitEnhance';
-import { BUILTIN_SUITS, SUIT_CATEGORIES, type CustomSuit } from '@shared/suits';
+import { BUILTIN_SUITS, SUIT_CATEGORIES, type CustomSuit, type SuitCategory } from '@shared/suits';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import SheetsPreview from '../designs/SheetsPreview';
 import { errorText } from '../lib/errors';
@@ -72,6 +72,7 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
   const [customSuits, setCustomSuits] = useState<CustomSuit[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [worn, setWorn] = useState<Worn | null>(null);
+  const [suitTab, setSuitTab] = useState<SuitCategory>('suit');
   const [tool, setTool] = useState<Tool>('move');
   const [brush, setBrush] = useState(16);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
@@ -214,7 +215,9 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
     maskOn.current = useMask;
     feather.current = Math.max(3, Math.round(w.height / 500));
     if (useMask && worn) {
-      const l = neckLine(worn.suit.tops, worn.suit.anchor, worn.at, w.width, feather.current + 1);
+      // الرقبة بعرضها المقيس (أضيقها) — وما جاوزها ولو قليلًا ياقة الزبون ولباسه.
+      const neck = lm ? { x: lm.neckCenterX, half: lm.neckWidth * 0.5 + 1, from: lm.chin } : undefined;
+      const l = neckLine(worn.suit.tops, worn.suit.anchor, worn.at, w.width, feather.current + 1, neck);
       let lo = Infinity;
       let hi = -Infinity;
       for (const v of l) {
@@ -231,7 +234,7 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
       rebuildSubject({ x: 0, y: top, w: w.width, h: bottom - top });
     }
     draw();
-  }, [useMask, worn, cutVersion, rebuildSubject, draw]);
+  }, [useMask, worn, lm, cutVersion, rebuildSubject, draw]);
 
   // حصر المركز يثبت في الحالة لا في الرسم وحده — وإلا بقي السحب «يدفع» حافّةً لا تتحرّك.
   useEffect(() => {
@@ -367,7 +370,7 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
         suitCache.current.set(key, s);
       }
       const alpha = cut.current?.alpha;
-      const base = l && alpha ? fitSuit(s.anchor, s.rows, rowWidths(alpha, w.width, w.height), l) : fallbackPlace(s, { w: w.width, h: w.height });
+      const base = l && alpha ? fitSuit(s.anchor, s.rows, rowWidths(alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
       setWorn({ suit: s, at: base, base });
       setTool('suit');
       if (bg.kind === 'original') setBg({ kind: 'white' });
@@ -383,6 +386,7 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
       const s = await window.diwan.photos.importSuit();
       if (!s) return;
       setCustomSuits((list) => [...list, s]);
+      setSuitTab('custom');
       say(`أُضيف «${s.name}» إلى القاط`);
       await chooseSuit(s.id, `diwan://store/${s.path}`);
     } catch (e) {
@@ -737,6 +741,19 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
                   استيراد بدلة خاصة
                 </button>
               )}
+              <div className="flex flex-wrap gap-1" data-suit-tabs="">
+                {SUIT_CATEGORIES.map((c) => (
+                  <button
+                    key={c.key}
+                    className={`h-7 px-2.5 rounded-full font-label-sm text-label-sm ${suitTab === c.key ? 'bg-secondary-container text-on-secondary-container font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`}
+                    data-suit-tab={c.key}
+                    type="button"
+                    onClick={() => setSuitTab(c.key)}
+                  >
+                    {c.label} {toIndic(c.key === 'custom' ? customSuits.length : BUILTIN_SUITS.filter((b) => b.category === c.key).length)}
+                  </button>
+                ))}
+              </div>
               <div className="grid grid-cols-4 gap-1">
                 <button
                   className={`aspect-square rounded-lg border-2 flex items-center justify-center font-label-sm text-label-sm ${!worn ? 'border-secondary' : 'border-transparent bg-surface-container-lowest'}`}
@@ -746,16 +763,16 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
                 >
                   بلا قاط
                 </button>
-                {[
-                  ...BUILTIN_SUITS.map((s) => ({ id: s.id, name: s.name, group: SUIT_CATEGORIES.find((c) => c.key === s.category)!.label, url: thumbs[s.id], custom: false })),
-                  ...customSuits.map((s) => ({ id: s.id, name: s.name, group: 'قاط المكتب', url: `diwan://store/${s.path}`, custom: true }))
-                ].map((s) => (
+                {(suitTab === 'custom'
+                  ? customSuits.map((s) => ({ id: s.id, name: s.name, url: `diwan://store/${s.path}` as string | undefined, custom: true }))
+                  : BUILTIN_SUITS.filter((s) => s.category === suitTab).map((s) => ({ id: s.id, name: s.name, url: thumbs[s.id], custom: false }))
+                ).map((s) => (
                   <div key={s.id} className="relative group">
                     <button
                       className={`w-full aspect-square rounded-lg border-2 bg-white overflow-hidden ${worn?.suit.key === s.id ? 'border-secondary' : 'border-transparent'}`}
                       data-suit={s.id}
                       disabled={!s.url}
-                      title={`${s.name} — ${s.group}`}
+                      title={s.name}
                       type="button"
                       onClick={() => void chooseSuit(s.id, s.url)}
                     >
@@ -774,6 +791,9 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
                   </div>
                 ))}
               </div>
+              {suitTab === 'custom' && !customSuits.length && (
+                <p className="font-label-sm text-label-sm text-on-surface-variant">لا قاط للمكتب بعد — «استيراد بدلة خاصة» يضيف صورة PNG شفّافة الخلفية والعنق</p>
+              )}
               {worn && (
                 <div className="space-y-space-xs">
                   {slider('الحجم', worn.at.scale / worn.base.scale, (v) => setWorn({ ...worn, at: { ...worn.at, scale: worn.base.scale * v } }), 0.5, 2, 0.01, 'suit-scale')}

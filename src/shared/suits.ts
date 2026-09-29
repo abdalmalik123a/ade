@@ -1,20 +1,19 @@
 /**
  * مكتبة القاط لصورة المعاملة — المدمج منها، وما يستورده المكتب.
  *
- * المدمج صورٌ مولَّدة (لا أشخاص حقيقيّون) جُهّزت بـ`tools/prepare-suits.py`: مقصوصة الرأس
- * والخلفية، ومرمَّمة الياقة، ومقصوصةٌ إلى الصدر. **والبدلات النظامية بلا رتبةٍ ولا شارةٍ ولا
- * وسامٍ ولا أجنحة** (قرار المالك) — ولا تُسمّى باسم جهةٍ بعينها.
+ * المدمج من مكتبة المالك (قوالب القاط التي يستعملها المكتب: طبقات ملف Photoshop، وصورٌ على خلفيةٍ
+ * بيضاء) جُهّز بـ`tools/prepare-suits.py`: شفّاف الخلفية والعنق، ومقصوصٌ إلى الصدر. **والنظاميّ بلا
+ * رتبةٍ ولا شارةٍ ولا علمٍ ولا اسم جهة** (قرار المالك) — وما فيه شيءٌ من ذلك تُرك، ولا يُسمّى باسم جهة.
  *
  * والمستورد PNG شفّاف يضيفه صاحب المكتب؛ ومكان العنق في كليهما يُقرأ من شفافيّة الصورة
  * نفسها (`suitAnchor` في `portraitMask.ts`) — فلا يُضبط يدويًّا لكلّ قاط.
  */
 
-export type SuitCategory = 'tie' | 'open' | 'women' | 'uniform' | 'custom';
+export type SuitCategory = 'suit' | 'shirt' | 'uniform' | 'custom';
 
 export const SUIT_CATEGORIES: { key: SuitCategory; label: string }[] = [
-  { key: 'tie', label: 'قاطٌ بربطة' },
-  { key: 'open', label: 'بلا ربطة' },
-  { key: 'women', label: 'نسائي' },
+  { key: 'suit', label: 'قاط' },
+  { key: 'shirt', label: 'قميص' },
   { key: 'uniform', label: 'نظامي بلا شارات' },
   { key: 'custom', label: 'قاط المكتب' }
 ];
@@ -22,13 +21,37 @@ export const SUIT_CATEGORIES: { key: SuitCategory; label: string }[] = [
 export type BuiltinSuit = { id: string; name: string; category: Exclude<SuitCategory, 'custom'>; file: string };
 
 export const BUILTIN_SUITS: BuiltinSuit[] = [
-  { id: 'suit-black-tie', name: 'قاطٌ أسود بربطةٍ عنابية', category: 'tie', file: 'suit-black-tie.webp' },
-  { id: 'suit-navy-tie', name: 'قاطٌ كحلي بربطةٍ زرقاء', category: 'tie', file: 'suit-navy-tie.webp' },
-  { id: 'suit-gray-tie', name: 'قاطٌ رصاصي بربطةٍ كحلية', category: 'tie', file: 'suit-gray-tie.webp' },
-  { id: 'suit-black-open', name: 'قاطٌ أسود بلا ربطة', category: 'open', file: 'suit-black-open.webp' },
-  { id: 'women-black-jacket', name: 'سترةٌ سوداء بقميصٍ أبيض', category: 'women', file: 'women-black-jacket.webp' },
-  { id: 'uniform-mandarin-dark', name: 'سترةٌ داكنة بياقةٍ صينية', category: 'uniform', file: 'uniform-mandarin-dark.webp' },
-  { id: 'uniform-black-shirt', name: 'قميصٌ أسود بكتّافاتٍ بلا شارات', category: 'uniform', file: 'uniform-black-shirt.webp' }
+  { id: 'suit-gray-bowtie', name: 'قاطٌ رمادي بربطة فراشة', category: 'suit', file: 'suit-gray-bowtie.webp' },
+  { id: 'suit-navy-dark-tie', name: 'قاطٌ كحلي بربطةٍ داكنة', category: 'suit', file: 'suit-navy-dark-tie.webp' },
+  { id: 'suit-black-pink-tie', name: 'قاطٌ أسود بربطةٍ مخطّطة ومنديل', category: 'suit', file: 'suit-black-pink-tie.webp' },
+  { id: 'suit-brown-gold-tie', name: 'سترةٌ بنّية بربطةٍ ذهبية', category: 'suit', file: 'suit-brown-gold-tie.webp' },
+  { id: 'suit-black-red-stripe', name: 'قاطٌ أسود بربطةٍ حمراء مخطّطة', category: 'suit', file: 'suit-black-red-stripe.webp' },
+  { id: 'suit-black-bw-stripe', name: 'قاطٌ أسود بربطةٍ مخطّطة بالأبيض', category: 'suit', file: 'suit-black-bw-stripe.webp' },
+  { id: 'suit-navy', name: 'قاطٌ كحلي', category: 'suit', file: 'suit-navy.webp' },
+  { id: 'suit-vest-brown-tie', name: 'قاطٌ مقلّم بصديريٍّ وربطةٍ بنّية', category: 'suit', file: 'suit-vest-brown-tie.webp' },
+  { id: 'suit-vest-red-tie', name: 'قاطٌ مقلّم بصديريٍّ وربطةٍ حمراء', category: 'suit', file: 'suit-vest-red-tie.webp' },
+  { id: 'suit-charcoal-silver-tie', name: 'قاطٌ فحمي بربطةٍ فضّية', category: 'suit', file: 'suit-charcoal-silver-tie.webp' },
+  { id: 'suit-pinstripe-red-tie', name: 'قاطٌ مقلّم بربطةٍ حمراء', category: 'suit', file: 'suit-pinstripe-red-tie.webp' },
+  { id: 'suit-pinstripe-gold-tie', name: 'قاطٌ مقلّم بربطةٍ صفراء', category: 'suit', file: 'suit-pinstripe-gold-tie.webp' },
+  { id: 'suit-black-blue-shirt', name: 'قاطٌ أسود بقميصٍ أزرق', category: 'suit', file: 'suit-black-blue-shirt.webp' },
+  { id: 'suit-navy-gray-tie', name: 'قاطٌ كحلي بربطةٍ رمادية', category: 'suit', file: 'suit-navy-gray-tie.webp' },
+  { id: 'shirt-white', name: 'قميصٌ أبيض', category: 'shirt', file: 'shirt-white.webp' },
+  { id: 'shirt-black', name: 'قميصٌ أسود', category: 'shirt', file: 'shirt-black.webp' },
+  { id: 'uniform-desert-collar', name: 'مرقّطٌ صحراويّ بياقة', category: 'uniform', file: 'uniform-desert-collar.webp' },
+  { id: 'uniform-dark-camo', name: 'مرقّطٌ رماديّ داكن', category: 'uniform', file: 'uniform-dark-camo.webp' },
+  { id: 'uniform-desert-stand', name: 'مرقّطٌ صحراويّ بياقةٍ واقفة', category: 'uniform', file: 'uniform-desert-stand.webp' },
+  { id: 'uniform-urban-camo', name: 'مرقّطٌ أزرق رماديّ', category: 'uniform', file: 'uniform-urban-camo.webp' },
+  { id: 'uniform-navy-camo', name: 'مرقّطٌ كحليّ', category: 'uniform', file: 'uniform-navy-camo.webp' },
+  { id: 'uniform-multicam-dark', name: 'مرقّطٌ متعدّد داكن', category: 'uniform', file: 'uniform-multicam-dark.webp' },
+  { id: 'uniform-black-tactical', name: 'تكتيكيٌّ أسود', category: 'uniform', file: 'uniform-black-tactical.webp' },
+  { id: 'uniform-black-stand', name: 'تكتيكيٌّ أسود بياقةٍ واقفة', category: 'uniform', file: 'uniform-black-stand.webp' },
+  { id: 'uniform-woodland-shirt', name: 'مرقّطٌ غابيّ بياقة', category: 'uniform', file: 'uniform-woodland-shirt.webp' },
+  { id: 'uniform-multicam', name: 'مرقّطٌ متعدّد', category: 'uniform', file: 'uniform-multicam.webp' },
+  { id: 'uniform-digital-woodland', name: 'مرقّطٌ رقميّ غابيّ', category: 'uniform', file: 'uniform-digital-woodland.webp' },
+  { id: 'uniform-desert-three', name: 'صحراويٌّ ثلاثيّ', category: 'uniform', file: 'uniform-desert-three.webp' },
+  { id: 'uniform-woodland-open', name: 'مرقّطٌ غابيّ مفتوح', category: 'uniform', file: 'uniform-woodland-open.webp' },
+  { id: 'uniform-sand-stand', name: 'مرقّطٌ رمليّ بياقةٍ واقفة', category: 'uniform', file: 'uniform-sand-stand.webp' },
+  { id: 'uniform-woodland-green', name: 'مرقّطٌ غابيّ أخضر', category: 'uniform', file: 'uniform-woodland-green.webp' }
 ];
 
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */

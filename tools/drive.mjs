@@ -190,7 +190,15 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
   mkdirSync(profile, { recursive: true });
   if (shotsDir) mkdirSync(shotsDir, { recursive: true });
 
-  const args = [`--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`];
+  // نافذة الفحص تعمل كأنها ظاهرة ولو غطّتها نافذةٌ أخرى: Chromium يُبطئ مؤقّتات النافذة المحجوبة إلى
+  // نحو ثانية، فيقرأ السيناريو الإطار قبل أن يُعاد رسمه (تقلّب فحص صورة المعاملة بها).
+  const args = [
+    `--remote-debugging-port=${PORT}`,
+    `--user-data-dir=${profile}`,
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding'
+  ];
   const child = spawn(EXE ?? ELECTRON, EXE ? args : ['.', ...args], {
     stdio: ['ignore', 'pipe', 'pipe'],
     // «none»: لا ماسح تحت المِقْود إلا ما يعطيه السيناريو صورةً — فماسحٌ موصولٌ بجهاز

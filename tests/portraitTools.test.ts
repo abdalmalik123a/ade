@@ -4,12 +4,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_PRESETS, backgroundColor, effectiveDpi, parsePresets, pixelSize, setJpegDpi, validatePreset, type PhotoPreset } from '../src/shared/photoPresets';
-import { autoCrop, fitSuit, landmarks, modelInput, modelSize, neckLine, paintAlpha, placeSuit, rowWidths, strokeAlpha, suitAnchor, suitTops, underSuit, upsampleAlpha } from '../src/shared/portraitMask';
+import { autoCrop, collarWidth, fitSuit, landmarks, modelInput, modelSize, neckLine, paintAlpha, placeSuit, rowWidths, strokeAlpha, suitAnchor, suitTops, underSuit, upsampleAlpha } from '../src/shared/portraitMask';
 import { NEUTRAL, applyEnhance, autoEnhance, denoiseChroma, toneCurve } from '../src/shared/portraitEnhance';
 import { BUILTIN_SUITS, parseCustomSuits, pngTransparency } from '../src/shared/suits';
 import { cropBox } from '../src/shared/photoSheet';
 import { imageMeta } from '../src/main/services/imageSize';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 
@@ -224,6 +224,31 @@ describe('القناع وما يُبنى عليه', () => {
     for (const y of [330, 360, 400]) expect(rows[Math.min(239, Math.round(anchor.cy + (y - t.y) / t.scale))]! * t.scale).toBeGreaterThan(person[y]! * 0.9);
   });
 
+  it('والياقة تلتفّ على الرقبة: تُقاس حيث تلتفّ لا عند أعلاها، ولا تظهر ملابس الزبون في الفتحة', () => {
+    const sil = silhouette(400, 500);
+    const lm = landmarks(sil, 400, 500)!;
+    const suit = suitShape();
+    const anchor = suitAnchor(suit, 300, 240)!;
+    const tops = suitTops(suit, 300, 240, anchor);
+    // الفتحة ٦٠ في أعلاها، وتنغلق عند الصفّ ٤٠ — وعند ثلث عمقها (الصفّ ١٢) نحو ٤٢.
+    expect(anchor.neckWidth).toBeGreaterThan(55);
+    expect(Math.abs(collarWidth(tops, anchor) - 42)).toBeLessThan(3);
+    const t = fitSuit(anchor, rowWidths(suit, 300, 240), rowWidths(sil, 400, 500), lm, tops);
+    const hug = (collarWidth(tops, anchor) * t.scale) / lm.neckWidth;
+    expect(hug).toBeGreaterThanOrEqual(0.9);
+    expect(hug).toBeLessThanOrEqual(1.31);
+    // قاطٌ كُبّر باليد حتى اتّسعت فتحته: ما جاور الرقبة فيها يُقصّ عند أعلى الياقة، والرقبة تبقى.
+    const big = { ...t, scale: t.scale * 2 };
+    const neck = { x: lm.neckCenterX, half: lm.neckWidth * 0.625, from: lm.chin };
+    const line = neckLine(tops, anchor, big, 400, 4, neck);
+    const bottom = big.y + 20 * big.scale; // داخل الفتحة، أعلى من أسفلها
+    expect(line[Math.round(lm.neckCenterX)]!).toBeGreaterThan(bottom);
+    expect(line[Math.round(lm.neckCenterX + lm.neckWidth * 0.9)]!).toBeLessThan(big.y + 6);
+    // وتحت الذقن لا يبقى إلا الرقبة: كتف الشخص بعيدًا عن القاط يُقصّ عند ذقنه.
+    expect(line[20]!).toBeLessThanOrEqual(lm.chin);
+    expect(line[Math.round(lm.neckCenterX)]!).toBeGreaterThan(lm.chin);
+  });
+
   it('ويُقصّ الشخص على حدّ القاط: الرقبة إلى أسفل فتحته، ولباسه حولها يزول — والرأس لا يُمسّ', () => {
     const sil = silhouette(400, 500);
     const lm = landmarks(sil, 400, 500)!;
@@ -374,6 +399,10 @@ describe('مكتبة القاط', () => {
       expect(existsSync(file), s.file).toBe(true);
       expect(readFileSync(file).subarray(8, 12).toString('ascii')).toBe('WEBP');
     }
+    // كلّ ملفٍّ في المجلّد في الفهرس وكلّ ما في الفهرس ملفّ — فلا يُحزم قاطٌ لا يُرى، ولا يُرى ما لم يُحزم.
+    const dir = join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'suits');
+    expect(readdirSync(dir).filter((f) => f.endsWith('.webp')).sort()).toEqual(BUILTIN_SUITS.map((s) => s.file).sort());
+    expect(new Set(BUILTIN_SUITS.map((s) => s.id)).size).toBe(BUILTIN_SUITS.length);
     const uniforms = BUILTIN_SUITS.filter((s) => s.category === 'uniform').map((s) => s.name).join(' ');
     expect(uniforms).not.toMatch(/ضابط|شرطة|جيش|رتبة|مكافحة|اتحادية/);
   });

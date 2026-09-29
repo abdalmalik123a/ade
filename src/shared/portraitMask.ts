@@ -3,8 +3,8 @@
  *
  * - **مدخل النموذج** (`modelInput`): الصورة مصغَّرةً بالمتوسّط حتى يصير ضلعها الأقصر ٥١٢
  *   (وكلا ضلعيها من مضاعفات ٣٢)، وقيمها بين −١ و١ — كما صُدِّر MODNet.
- * - **الحوافّ**: القناع يُكبَّر إلى الصورة (`upsampleAlpha`)، ثم يُشدّ إلى حوافّها الحقيقية بمرشّح
- *   الدليل (`refineAlpha` — He وزملاؤه ٢٠١٠) فيتبع الشعرَ لا بكسلات النموذج المكبَّرة.
+ * - **الحوافّ**: القناع يُكبَّر إلى الصورة (`upsampleAlpha`)، ثم تُشدّ حافّته حول خطّ نصفه
+ *   (`sharpenAlpha`) — فلا يبقى حول الشعر والكتفين شريطٌ نصف شفّاف يُطبع غواشًا.
  * - **هالة الخلفية** (`decontaminate`): البكسل نصف الشفّاف فيه لون الخلفية القديمة، فيظهر
  *   حول الرأس هالةً بيضاء على الخلفية الجديدة. فيُقدَّر لون المقدّمة وحده من جواره.
  * - **الفرشاة** (`paintAlpha`): «أبقِ» و«احذف» بحافّةٍ ناعمة — والألوان الأصلية باقية تحت
@@ -134,49 +134,23 @@ function boxMean(src: Float64Array, width: number, height: number, r: number): F
   return out;
 }
 
-const luminance = (pixels: Uint8Array | Uint8ClampedArray, n: number): Float64Array => {
-  const out = new Float64Array(n);
-  for (let i = 0; i < n; i++) out[i] = (0.299 * pixels[i * 4]! + 0.587 * pixels[i * 4 + 1]! + 0.114 * pixels[i * 4 + 2]!) / 255;
-  return out;
-};
-
 /**
- * مرشّح الدليل: القناع يأخذ حوافّه من إضاءة الصورة نفسها — فيتبع خصلة الشعر وحافّة الكتف
- * لا مربّعات النموذج المكبَّرة. وما كان حبرًا تامًّا أو خلفيةً تامّة بعيدًا عن الحافّة يبقى.
+ * حدّة الحافّة: قناع النموذج ليّنٌ بطبعه — حافّته شريطٌ نصف شفّاف بعرض ١١–١٩ بكسلًا في صورةٍ
+ * بألف بكسل، يُطبع على الخلفية البيضاء «غواشًا» حول الشعر والكتفين. وخطّ نصفه (٠٫٥) يقع على
+ * الحافّة الحقيقية (تطابقٌ ٩٩٫٧٪)، فيُشدّ حوله بمنحنًى ناعم: ما دون `lo` خلفيةٌ تامّة، وما فوق
+ * `hi` شخصٌ تامّ، وبينهما انتقالٌ قصير بلا درجات.
+ *
+ * وجُرّب مرشّح الدليل (He ٢٠١٠) بإضاءة الصورة دليلًا قبل هذا وبعده: وسّع الشريط وزاد الغواش على
+ * الخلفية المعتمة (الشعر الأسود عليها بلا فرقٍ في الإضاءة)، ومع المنحنى أعاد هدبًا على الخلفية
+ * المشوّشة — فأُسقط.
  */
-export function refineAlpha(alpha: Uint8Array, pixels: Uint8Array | Uint8ClampedArray, width: number, height: number, r = Math.max(2, Math.round(Math.min(width, height) / 300)), eps = 1e-3): Uint8Array {
-  const n = width * height;
-  const I = luminance(pixels, n);
-  const p = new Float64Array(n);
-  for (let i = 0; i < n; i++) p[i] = alpha[i]! / 255;
-  const mI = boxMean(I, width, height, r);
-  const mP = boxMean(p, width, height, r);
-  const IP = new Float64Array(n);
-  const II = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    IP[i] = I[i]! * p[i]!;
-    II[i] = I[i]! * I[i]!;
+export function sharpenAlpha(alpha: Uint8Array, lo = 0.3, hi = 0.7): Uint8Array {
+  const lut = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) {
+    const t = Math.max(0, Math.min(1, (v / 255 - lo) / (hi - lo)));
+    lut[v] = Math.round(t * t * (3 - 2 * t) * 255);
   }
-  const mIP = boxMean(IP, width, height, r);
-  const mII = boxMean(II, width, height, r);
-  const a = new Float64Array(n);
-  const b = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    const cov = mIP[i]! - mI[i]! * mP[i]!;
-    const v = mII[i]! - mI[i]! * mI[i]!;
-    a[i] = cov / (v + eps);
-    b[i] = mP[i]! - a[i]! * mI[i]!;
-  }
-  const ma = boxMean(a, width, height, r);
-  const mb = boxMean(b, width, height, r);
-  const out = new Uint8Array(n);
-  for (let i = 0; i < n; i++) {
-    const q = ma[i]! * I[i]! + mb[i]!;
-    // بعيدًا عن الحافّة يبقى القناع كما هو: المرشّح لا يُحدث ثقبًا في الوجه ولا بقعةً في الخلفية.
-    const flat = mP[i]! < 0.004 || mP[i]! > 0.996;
-    out[i] = flat ? alpha[i]! : Math.round(Math.max(0, Math.min(1, q)) * 255);
-  }
-  return out;
+  return Uint8Array.from(alpha, (v) => lut[v]!);
 }
 
 /**
@@ -422,6 +396,22 @@ export function suitTops(alpha: Uint8Array, width: number, height: number, ancho
   return out;
 }
 
+/**
+ * عرض فتحة العنق حيث تلتفّ الياقة على الرقبة — عند ثلث عمق الفتحة، لا عند أعلاها المنفرج بين
+ * طرفَي الياقة (أوسعها، وبه كان القاط يُكبَّر حتى تظهر ملابس الزبون في الفتحة).
+ */
+export function collarWidth(tops: Float32Array, anchor: SuitAnchor): number {
+  const cx = Math.max(0, Math.min(tops.length - 1, Math.round(anchor.cx)));
+  const depth = tops[cx]! - anchor.cy;
+  if (!(depth > 2)) return anchor.neckWidth;
+  const row = anchor.cy + depth * 0.3;
+  let l = cx;
+  let r = cx;
+  while (l > 0 && tops[l - 1]! > row) l--;
+  while (r < tops.length - 1 && tops[r + 1]! > row) r++;
+  return Math.max(1, r - l + 1);
+}
+
 /** موضع القاط: فتحة عنقه تحت رقبة الشخص، بعرضٍ يلائمها — ومنها يُدار ويُكبَّر. */
 export type SuitTransform = { x: number; y: number; scale: number; angle: number };
 
@@ -436,16 +426,18 @@ export function placeSuit(anchor: SuitAnchor, lm: Landmarks): SuitTransform {
 }
 
 /**
- * يُلبس القاط على جسد الشخص: يُجرَّب حجمه وارتفاعه حول موضع الرقبة (`placeSuit`)، ويُختار ما
- * يطابق فيه عرضُ القاط عرضَ الشخص صفًّا صفًّا من الذقن إلى أسفل الصدر — فيقع كتفا القاط على
- * كتفيه ولا يظهر لباسه على جانبيه. وشرطه ألّا تضيق فتحة الياقة عن الرقبة كثيرًا (تلتفّ عليها). وبلا كتفين في الصورة
- * يبقى موضع الرقبة.
+ * يُلبس القاط على جسد الشخص كما يُلبسه الخيّاط: **الياقة تلتفّ على الرقبة** — فحجمه ما تكون به
+ * فتحة العنق (`collarWidth`) بين ٠٫٩ و١٫٣ من عرض الرقبة، وإلا ظهرت ملابس الزبون في الفتحة —
+ * ثم يُختار من ذلك الحجمُ والارتفاعُ اللذان يطابق فيهما عرضُ القاط عرضَ الشخص صفًّا صفًّا من الذقن
+ * إلى أسفل الصدر، فيقع كتفاه على كتفيه. وبلا كتفين في الصورة يبقى موضع الرقبة.
  *
- * `suitRows` عرض القاط صفًّا صفًّا بكسلاتِه، و`personRows` عرض الشخص بكسلاتِ صورته (`rowWidths`).
+ * `suitRows` عرض القاط صفًّا صفًّا بكسلاتِه، و`personRows` عرض الشخص بكسلاتِ صورته (`rowWidths`)،
+ * و`tops` أعلى القاط عمودًا عمودًا (`suitTops`) — ومنه عرض الياقة.
  */
-export function fitSuit(anchor: SuitAnchor, suitRows: Float32Array, personRows: Float32Array, lm: Landmarks): SuitTransform {
+export function fitSuit(anchor: SuitAnchor, suitRows: Float32Array, personRows: Float32Array, lm: Landmarks, tops?: Float32Array): SuitTransform {
   const seed = placeSuit(anchor, lm);
   if (lm.shoulderY === null || !suitRows.length) return seed;
+  const collar = tops ? collarWidth(tops, anchor) : anchor.neckWidth;
   const height = personRows.length;
   const head = Math.max(1, lm.chin - lm.top);
   // ما يظهر في صور المعاملات تحت الذقن: الرقبة وأعلى الكتفين — فيه تُقاس المطابقة.
@@ -453,9 +445,8 @@ export function fitSuit(anchor: SuitAnchor, suitRows: Float32Array, personRows: 
   const step = Math.max(1, Math.round(height / 600));
   const exposed = lm.neckWidth * 1.3;
   let best = { cost: Infinity, scale: seed.scale, y: seed.y };
-  for (let ks = 0.6; ks <= 1.6001; ks += 0.025) {
-    const scale = seed.scale * ks;
-    if (anchor.neckWidth * scale < lm.neckWidth * 0.85) continue;
+  for (let hug = 0.9; hug <= 1.3001; hug += 0.02) {
+    const scale = (hug * lm.neckWidth) / collar;
     for (let y0 = lm.chin; y0 <= lm.shoulderY + lm.neckWidth * 0.5; y0 += step) {
       let cost = 0;
       for (let y = lm.chin; y <= y1; y += step) {
@@ -476,19 +467,29 @@ export function fitSuit(anchor: SuitAnchor, suitRows: Float32Array, personRows: 
 }
 
 /**
- * حدّ الشخص تحت القاط لكلّ عمودٍ من الصورة: آخر صفٍّ يبقى منه. في فتحة العنق الرقبة إلى أسفل
- * الفتحة، وفي غيرها إلى أعلى الياقة — وما دون ذلك يغطّيه القاط، أو يصير خلفيةً حول كتفيه.
+ * حدّ الشخص تحت القاط لكلّ عمودٍ من الصورة: آخر صفٍّ يبقى منه. في فتحة العنق الرقبة (`neck`:
+ * موضعها ونصف عرضها) إلى أسفل الفتحة، وفي غيرها إلى أعلى الياقة. **وتحت الذقن (`neck.from`) لا
+ * يبقى من الشخص إلا رقبته**: ياقته وكتفاه بلباسهما بين ذقنه وياقة القاط ملابس الزبون لا القاط — وما دون ذلك يغطّيه القاط، أو يصير خلفيةً حول كتفيه.
  * ويُحسب من نقاط أعلى القاط مُدارةً بزاويته، فيتبعه إن مال. و`overlap` يُدخل الحدّ تحت القاط قليلًا
  * فلا يظهر بينهما خيط.
  */
-export function neckLine(tops: Float32Array, anchor: SuitAnchor, at: SuitTransform, width: number, overlap = 4): Float32Array {
+export function neckLine(
+  tops: Float32Array,
+  anchor: SuitAnchor,
+  at: SuitTransform,
+  width: number,
+  overlap = 4,
+  neck?: { x: number; half: number; from: number }
+): Float32Array {
   const line = new Float32Array(width).fill(NaN);
   const cos = Math.cos((at.angle * Math.PI) / 180);
   const sin = Math.sin((at.angle * Math.PI) / 180);
   const half = anchor.neckWidth / 2;
   for (let c = 0; c < tops.length; c++) {
     const dx = c - anchor.cx;
-    const dy = (Math.abs(dx) < half ? tops[c]! : anchor.cy) - anchor.cy;
+    // في الفتحة الرقبةُ وحدها (`neck`): ما جاورها فيها ملابس الزبون، تُقصّ عند أعلى الياقة.
+    const inNeck = !neck || Math.abs(at.x + dx * cos * at.scale - neck.x) <= neck.half;
+    const dy = (Math.abs(dx) < half && inNeck ? tops[c]! : anchor.cy) - anchor.cy;
     const X = at.x + (dx * cos - dy * sin) * at.scale;
     const Y = at.y + (dx * sin + dy * cos) * at.scale + overlap;
     const x = Math.round(X);
@@ -505,6 +506,7 @@ export function neckLine(tops: Float32Array, anchor: SuitAnchor, at: SuitTransfo
     if (Number.isNaN(line[x]!)) line[x] = last;
     else last = line[x]!;
   }
+  if (neck) for (let x = 0; x < width; x++) if (Math.abs(x - neck.x) > neck.half) line[x] = Math.min(line[x]!, neck.from);
   return line;
 }
 

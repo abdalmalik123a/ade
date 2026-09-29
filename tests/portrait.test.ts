@@ -60,6 +60,49 @@ describe('فصل الشخص عن خلفيّته — على الجهاز', () => 
     expect(after / count).toBeLessThan(before / count);
   }, 60_000);
 
+  it('وحافّته حادّة لا غواش حولها — بمقاس صورة هاتف لا بمقاس النموذج', async () => {
+    // «الغواش» الذي يُطبع حول الشعر والكتفين شريطٌ نصف شفّاف يتّسع بقدر تكبير القناع من النموذج
+    // (٥١٢) إلى الصورة — فيُقاس على الصورة مكبَّرةً أربعًا (١٥٣٦) كما تأتي صور الهواتف.
+    const k = 4;
+    const w = img.width * k;
+    const h = img.height * k;
+    const big = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const sx = Math.min(img.width - 1.001, Math.max(0, (x + 0.5) / k - 0.5));
+        const sy = Math.min(img.height - 1.001, Math.max(0, (y + 0.5) / k - 0.5));
+        const x0 = Math.floor(sx);
+        const y0 = Math.floor(sy);
+        const fx = sx - x0;
+        const fy = sy - y0;
+        for (let c = 0; c < 4; c++) {
+          const at = (xx: number, yy: number) => img.rgba[(yy * img.width + xx) * 4 + c]!;
+          big[(y * w + x) * 4 + c] = Math.round(
+            at(x0, y0) * (1 - fx) * (1 - fy) + at(x0 + 1, y0) * fx * (1 - fy) + at(x0, y0 + 1) * (1 - fx) * fy + at(x0 + 1, y0 + 1) * fx * fy
+          );
+        }
+      }
+    }
+    const out = await cutout(MODEL, big, w, h);
+    const inTruth = (x: number, y: number) =>
+      x >= 0 && y >= 0 && x < w && y < h && truth.rgba[(Math.floor(y / k) * img.width + Math.floor(x / k)) * 4]! >= 128;
+    let edge = 0;
+    let haze = 0;
+    let band = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const a = out.alpha[y * w + x]! / 255;
+        const fg = inTruth(x, y);
+        if (fg && (!inTruth(x - 1, y) || !inTruth(x + 1, y) || !inTruth(x, y - 1) || !inTruth(x, y + 1))) edge++;
+        // خارج الشخص بأكثر من ثمانية بكسلات (بكسلا الصورة الأصلية): ما بقي فيه شفافيةٌ غواش.
+        if (!fg && !inTruth(x - 8, y) && !inTruth(x + 8, y) && !inTruth(x, y - 8) && !inTruth(x, y + 8)) haze += a;
+        if (a > 0.04 && a < 0.96) band++;
+      }
+    }
+    expect(haze / edge).toBeLessThan(0.1);
+    expect(band / edge).toBeLessThan(6);
+  }, 120_000);
+
   it('ولا يُمسّ بكسلٌ معتمٌ تمامًا: الوجه كما هو', async () => {
     const out = await cutout(MODEL, img.rgba, img.width, img.height);
     let changed = 0;
