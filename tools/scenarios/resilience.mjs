@@ -108,19 +108,29 @@ export default async function scenario(page, { profile, kill }) {
   const rounds = Number(process.env.SOAK_ROUNDS ?? 15);
   for (const r of ROUTES) await page.goto(r); // جولةٌ للإحماء: ما يُحمَّل مرّةً لا يُحسب انتفاخًا
   await page.goto('service-counter');
-  const before = await measure();
+  // قياسٌ بعد كلّ جولة، ويُقارَن أعلى الجولات الأولى بأعلى الأخيرة. كان قياسين لحظتين: وReact
+  // يُفلت شجرة الشاشة الكبيرة المغادَرة (التصاميم ~٩٠٠ عقدة) في تصييرٍ لاحقٍ لا فورًا — فإن وقع
+  // «قبل» بعد الإفلات و«بعد» قبله فشل الفحص بلا تسرّب (تنظيف ٢٩ أيلول: ٥١٨ ← ١٨٨٧، ثم أُعيد
+  // مرّتين فثبت ١٨٣٥ ← ١٨٣٥). والتسرّب الحقيقي يزيد مع كلّ جولة، فيبقى مكشوفًا هنا.
+  const samples = [await measure()];
   const t0 = Date.now();
-  for (let i = 0; i < rounds; i++) for (const r of ROUTES) await page.goto(r);
-  await page.goto('service-counter');
-  const after = await measure();
+  for (let i = 0; i < rounds; i++) {
+    for (const r of ROUTES) await page.goto(r);
+    await page.goto('service-counter');
+    samples.push(await measure());
+  }
   const navs = rounds * ROUTES.length;
+  const k = Math.max(1, Math.floor(samples.length / 3));
+  const peak = (list, key) => Math.max(...list.map((x) => x[key]));
+  const early = { heap: peak(samples.slice(0, k), 'heap'), nodes: peak(samples.slice(0, k), 'nodes'), listeners: peak(samples.slice(0, k), 'listeners') };
+  const late = { heap: peak(samples.slice(-k), 'heap'), nodes: peak(samples.slice(-k), 'nodes'), listeners: peak(samples.slice(-k), 'listeners') };
   steps.push(
-    `  … ${navs} تنقّلًا في ${Math.round((Date.now() - t0) / 1000)} ث: الذاكرة ${(before.heap / MIB).toFixed(1)} ← ${(after.heap / MIB).toFixed(1)} م.ب، ` +
-      `العُقد ${before.nodes} ← ${after.nodes}، المُنصتات ${before.listeners} ← ${after.listeners}`
+    `  … ${navs} تنقّلًا في ${Math.round((Date.now() - t0) / 1000)} ث (أعلى الجولات الأولى ← أعلى الأخيرة): الذاكرة ` +
+      `${(early.heap / MIB).toFixed(1)} ← ${(late.heap / MIB).toFixed(1)} م.ب، العُقد ${early.nodes} ← ${late.nodes}، المُنصتات ${early.listeners} ← ${late.listeners}`
   );
-  ok(`${navs} تنقّلًا والذاكرة لا تنتفخ`, after.heap <= before.heap * 1.3 + 5 * MIB);
-  ok('ولا العُقد', after.nodes <= before.nodes * 1.5 + 500);
-  ok('ولا المُنصتات', after.listeners <= before.listeners * 1.5 + 50);
+  ok(`${navs} تنقّلًا والذاكرة لا تنتفخ`, late.heap <= early.heap * 1.3 + 5 * MIB);
+  ok('ولا العُقد', late.nodes <= early.nodes * 1.2 + 200);
+  ok('ولا المُنصتات', late.listeners <= early.listeners * 1.2 + 30);
   ok(`ولا خطأ في التنقّل كلّه (${page.exceptions.length})`, page.exceptions.length === 0);
 
   // ── قبل الانقطاع: مسودةٌ محفوظة، ودفعةٌ في منتصف قيدها ───────────────
