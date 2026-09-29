@@ -14,3 +14,6 @@ Thumbs.db
 *.db-wal
 
 *.tsbuildinfo
+
+# نسخ العمل التي تفتحها جلسات Claude — لا تُحفظ في المستودع
+.claude/worktrees/

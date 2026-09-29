@@ -219,7 +219,7 @@ describe('الدمج: كتاب لكل اسم', () => {
       ])
     ).toThrow(/اسم صاحب العلاقة/);
 
-    const count = (sql) => (db.prepare(sql).get()).n;
+    const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;
     expect(count('SELECT COUNT(*) AS n FROM documents')).toBe(0);
     expect(count('SELECT COUNT(*) AS n FROM transactions')).toBe(0);
     expect(count('SELECT COALESCE(MAX(last_value),0) AS n FROM counters')).toBe(0);

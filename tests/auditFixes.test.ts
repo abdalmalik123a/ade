@@ -142,7 +142,7 @@ describe('مواضع دون الأخطاء', () => {
   it('ملفّ أوراق الطباعة يُقرأ مرّةً للدفعة لا مع كلّ ورقة', () => {
     const dir = mkdtempSync(join(tmpdir(), 'diwan-jobs-'));
     const journal = printJournal(dir);
-    const job = journal.create({ label: 'دفعة', pages: ['<p>1</p>', '<p>2</p>', '<p>3</p>'], printer: null, page: { w: 210, h: 297 }, duplex: false });
+    const job = journal.create({ label: 'دفعة', pages: ['<p>1</p>', '<p>2</p>', '<p>3</p>'], printer: 'Canon MF3010', page: { w: 210, h: 297 }, duplex: false });
     expect(journal.sheetPages(job.id, 0)).toEqual(['<p>1</p>']);
     // لو قُرئ من القرص ثانيةً لفشل: الملف صار تالفًا.
     writeFileSync(join(dir, `${job.id}.pages.json`), 'تالف');

@@ -39,7 +39,7 @@ describe('مسحٌ نظيف يحفظ ألوان الأختام', () => {
     paint(px, 20, 20, 120, 30, [60, 60, 60]); // سطر كتابة
     paint(px, 140, 60, 180, 100, [40, 70, 190]); // ختمٌ أزرق
     const out = cleanScan(px);
-    const [r, g, b] = at(out, 160, 80);
+    const [r, , b] = at(out, 160, 80);
     expect(b).toBeGreaterThan(r + 60); // أزرق
     const [tr, tg, tb] = at(out, 60, 25);
     expect(tr).toBe(tg);

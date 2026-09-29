@@ -8,13 +8,12 @@
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && electron-vite build",
+    "build": "npm run typecheck && electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
     "pack": "npm run icon && npm run build && electron-builder --dir",
     "dist": "npm run icon && npm run build && electron-builder --win",
     "postinstall": "electron-builder install-app-deps",
-    "design": "node tools/extract-tokens.mjs && node tools/html-to-tsx.mjs",
     "tokens": "node tools/extract-tokens.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -30,7 +29,10 @@
     "files": [
       "out/**/*",
       "package.json",
-      "src/main/db/*.sql"
+      "src/main/db/*.sql",
+      "!node_modules/better-sqlite3/{deps,src,build}/**",
+      "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node",
+      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node"
     ],
     "extraResources": [
       {
@@ -63,25 +65,24 @@
     }
   },
   "dependencies": {
-    "@fontsource/aref-ruqaa": "^5.3.0",
-    "@fontsource/el-messiri": "^5.3.0",
-    "@fontsource/lalezar": "^5.3.0",
-    "@fontsource/noto-kufi-arabic": "^5.3.0",
-    "@fontsource/reem-kufi": "^5.3.0",
     "better-sqlite3": "^13.0.3",
     "docx": "^9.1.0",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.3.289",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@fontsource/amiri": "^5.3.0",
+    "@fontsource/aref-ruqaa": "^5.3.0",
     "@fontsource/cairo": "^5.3.0",
+    "@fontsource/el-messiri": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.1.0",
     "@fontsource/ibm-plex-sans-arabic": "^5.1.0",
+    "@fontsource/lalezar": "^5.3.0",
+    "@fontsource/noto-kufi-arabic": "^5.3.0",
     "@fontsource/noto-naskh-arabic": "^5.3.0",
+    "@fontsource/reem-kufi": "^5.3.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.0",
@@ -91,8 +92,9 @@
     "electron": "^44.3.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "esbuild": "^0.28.2",
     "material-symbols": "^0.27.0",
-    "parse5": "^8.0.1",
+    "pdfjs-dist": "^6.3.289",
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

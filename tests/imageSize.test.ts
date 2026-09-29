@@ -40,7 +40,7 @@ function segment(marker: number, body: Buffer): Buffer {
 }
 
 function jpeg(width: number, height: number, density?: { x: number; units: 0 | 1 | 2 }): Uint8Array {
-  const parts = [Buffer.from([0xff, 0xd8])];
+  const parts: Buffer[] = [Buffer.from([0xff, 0xd8])];
 
   if (density) {
     const jfif = Buffer.alloc(14);

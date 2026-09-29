@@ -1,21 +1,22 @@
 import { resolve } from 'node:path';
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  // الحزم تبقى خارج حزمة العملية الرئيسية وتُحمَّل من node_modules (`externalizeDeps` —
+  // وكان إضافةً مهجورةً في electron-vite 5).
   main: {
-    plugins: [externalizeDepsPlugin()],
+    build: { externalizeDeps: true },
     resolve: { alias: { '@shared': resolve('src/shared') } }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    build: { externalizeDeps: true },
     resolve: { alias: { '@shared': resolve('src/shared') } }
   },
   renderer: {
     root: resolve('src/renderer'),
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src'),
         '@shared': resolve('src/shared')
       }
     },
