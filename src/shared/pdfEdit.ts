@@ -14,8 +14,6 @@ export type FracBox = { x: number; y: number; w: number; h: number };
 /** صندوقٌ بنقاط PDF في فضاء الصفحة الأصلي (الأصل أسفلها يسارًا). */
 export type PtBox = { x: number; y: number; width: number; height: number };
 
-export type PdfSourceKind = 'pdf' | 'image';
-
 /** صفحةٌ في الملف الناتج: من أيّ مصدر، وأيّ صفحةٍ منه، وكيف تُدار وتُقصّ. */
 export type PageRef = {
   id: string;

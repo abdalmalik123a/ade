@@ -5,7 +5,7 @@
  * ١. كافة شاشات البرنامج وأقسامه بنقرة زر أو كتابة حرفين.
  * ٢. البحث المباشر في سجل المواطنين وفتح الملف فوراً.
  * ٣. البحث في مكتبة نماذج الكتب وفتح النموذج في المحرر مباشرة.
- * ٤. أدوات الاستنساخ السريع: صانع الهويات 1:1، وتصميم الذكاء الاصطناعي.
+ * ٤. أدوات الاستنساخ السريع: صانع الهويات 1:1.
  *
  * يُفتح بالضغط على Ctrl+K أو بالضغط على زر البحث السريع في الشريط العلوي.
  */
@@ -87,6 +87,17 @@ export default function CommandPalette({
   // قائمة الأوامر الثابتة
   const baseCommands: CommandItem[] = useMemo(() => {
     return [
+      {
+        id: 'service',
+        title: 'الشبّاك — اختر واملأ واطبع',
+        subtitle: 'المعاملة كاملة للزبون: النماذج والمستمسكات والطباعة',
+        category: 'شاشات رئيسية',
+        icon: 'point_of_sale',
+        action: () => {
+          onNavigate('service');
+          onClose();
+        }
+      },
       {
         id: 'editor',
         title: 'محرر الكتب الرسمية',
@@ -199,12 +210,45 @@ export default function CommandPalette({
       },
       {
         id: 'letterhead',
-        title: 'الترويسات والأختام الرسمية',
-        subtitle: 'إعداد كليشة الكتب وتخصيص هوية المكتب',
+        title: 'الترويسات والشعارات',
+        subtitle: 'ترويسات الكتب ومكتبة الكليشات',
         category: 'شاشات رئيسية',
-        icon: 'border_color',
+        icon: 'verified',
         action: () => {
           onNavigate('letterhead');
+          onClose();
+        }
+      },
+      {
+        id: 'pdf',
+        title: 'ملفات PDF',
+        subtitle: 'دمجٌ وتقسيمٌ وتدويرٌ وتصغيرٌ بحدّ خانة الرفع، والاستمارات القابلة للتعبئة',
+        category: 'أدوات سريعة',
+        icon: 'picture_as_pdf',
+        action: () => {
+          onNavigate('pdf');
+          onClose();
+        }
+      },
+      {
+        id: 'audit',
+        title: 'سجلّ التدقيق وسلامة الأرشيف',
+        subtitle: 'من فعل ماذا ومتى، و«الأرشيف سليم»',
+        category: 'شاشات رئيسية',
+        icon: 'verified_user',
+        action: () => {
+          onNavigate('audit');
+          onClose();
+        }
+      },
+      {
+        id: 'settings',
+        title: 'الإعدادات',
+        subtitle: 'المكتب والطابعة والنسخ الاحتياطي والاختصارات',
+        category: 'شاشات رئيسية',
+        icon: 'settings',
+        action: () => {
+          onNavigate('settings');
           onClose();
         }
       }

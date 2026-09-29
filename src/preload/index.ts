@@ -33,7 +33,6 @@ const api: DiwanApi = {
   },
   clients: {
     list: (query?: string) => invoke('clients:list', query ?? ''),
-    get: (id: number) => invoke('clients:get', id),
     save: (input: unknown) => invoke('clients:save', input),
     setLogo: (id: number, imagePath: string) => invoke('clients:setLogo', id, imagePath),
     delete: (id: number) => invoke('clients:delete', id)
@@ -49,13 +48,11 @@ const api: DiwanApi = {
     list: () => invoke('printers:list')
   },
   archive: {
-    stats: () => invoke('archive:stats'),
-    today: () => invoke('archive:today')
+    stats: () => invoke('archive:stats')
   },
   letterheads: {
     list: (opts?: { query?: string; category?: string | null; favoritesOnly?: boolean }) =>
       invoke('letterheads:list', opts ?? {}),
-    get: (id: number) => invoke('letterheads:get', id),
     categories: (): Promise<string[]> => invoke('letterheads:categories'),
     save: (input: {
       id: number | null;
@@ -261,7 +258,6 @@ const api: DiwanApi = {
   bank: {
     save: (input: unknown) => invoke('bank:save', input),
     list: (filter?: unknown) => invoke('bank:list', filter ?? {}),
-    facets: () => invoke('bank:facets'),
     used: (id: number) => invoke('bank:used', id),
     delete: (id: number) => invoke('bank:delete', id)
   },

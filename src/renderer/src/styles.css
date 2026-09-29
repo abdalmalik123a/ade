@@ -8,13 +8,12 @@
 @import '@fontsource/ibm-plex-sans/600.css';
 @import '@fontsource/ibm-plex-sans/700.css';
 
-/* خطوط الترويسة: النسخ خطّ الكتاب الرسمي، والقاهرة للحديث. تُختار للترويسة لا للسطر. */
+/* خطوط الترويسة: النسخ خطّ الكتاب الرسمي، والقاهرة للحديث (ملفّها الكامل مع خطوط التصاميم
+   أدناه — فيه المقطع العربي). تُختار للترويسة لا للسطر. */
 @import '@fontsource/noto-naskh-arabic/arabic-400.css';
 @import '@fontsource/noto-naskh-arabic/arabic-700.css';
 @import '@fontsource/amiri/arabic-400.css';
 @import '@fontsource/amiri/arabic-700.css';
-@import '@fontsource/cairo/arabic-400.css';
-@import '@fontsource/cairo/arabic-700.css';
 
 /* خطوط التصاميم: رقعةٌ للعنوان الاحتفالي، وكوفيٌّ للرسمي والحديث، ولالي زار للأطفال،
    والمسيري للدعوات. كلّها OFL محزومة — فالشهادة تخرج بخطّها على كل جهاز. */
@@ -88,7 +87,7 @@ body {
   color: #18211d;
 }
 
-/* الأرقام في المبالغ وأرقام الصادر والتواريخ: أعمدة مستقيمة إلزاميًا. */
+/* الأرقام في الجداول وأرقام الصادر والتواريخ: أعمدة مستقيمة إلزاميًا. */
 .tabular,
 table td,
 table th {
@@ -104,33 +103,9 @@ table th {
   user-select: none;
 }
 
-/* ── المؤثرات البصرية الفاخرة (Glassmorphism & Elevating Utility) ── */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(224, 227, 221, 0.8);
-}
-
-.card-elevated {
-  background: #ffffff;
-  border: 1px solid rgba(207, 212, 204, 0.5);
-  box-shadow: 0 4px 20px -2px rgba(24, 33, 29, 0.05), 0 2px 6px -1px rgba(24, 33, 29, 0.03);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.card-elevated:hover {
-  border-color: rgba(14, 122, 99, 0.3);
-  box-shadow: 0 10px 30px -4px rgba(24, 33, 29, 0.08), 0 4px 12px -2px rgba(14, 122, 99, 0.08);
-}
-
+/* العنصر النشط في الشريط. */
 .active-nav-glow {
   box-shadow: 0 4px 14px rgba(14, 122, 99, 0.28);
-}
-
-.badge-vibrant {
-  background: linear-gradient(135deg, #0e7a63 0%, #0b6252 100%);
-  color: #ffffff;
 }
 
 /* ── ورقة A4 الافتراضية ──────────────────────────────────────────────
@@ -170,12 +145,6 @@ table th {
   content: attr(data-placeholder);
   color: #93a099;
   pointer-events: none;
-}
-
-/* مواضع الصور التي يملؤها المكتب (صورة المواطن، المستمسك الممسوح). */
-img[data-placeholder='image'] {
-  background: theme('colors.surface-container-high');
-  object-fit: cover;
 }
 
 

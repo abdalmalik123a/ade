@@ -10,23 +10,12 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
-import { buildPdf, formFields, imagesToPdf, inspectPdf, loadPdf, shrinkPdfImages, type JpegShrink, type PageInfo, type PdfSource } from '../services/pdfEdit';
+import { buildPdf, formFields, imagesToPdf, inspectPdf, loadPdf, shrinkPdfImages, type JpegShrink, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
 import { removeStoreFile, scanPage } from '../services/scanner';
-import { imagePage, type FormFieldInfo, type PdfPlan } from '@shared/pdfEdit';
+import { imagePage, type PdfPlan } from '@shared/pdfEdit';
 import { importFile, pickOpenPath, pickOpenPaths, pickSavePath, pickSaveFolder } from './files';
-
-export type PdfOpened = {
-  id: string;
-  name: string;
-  kind: 'pdf' | 'image';
-  bytes: Uint8Array;
-  pages: PageInfo[];
-  /** مقاس الصورة الأصلي بالبكسل — لتُرسم في صفحتها كما تُبنى — ودقّتها إن مُسحت. */
-  image?: { width: number; height: number; dpi?: number };
-  /** حقول الاستمارة إن كان الملف قابلًا للتعبئة. */
-  fields?: FormFieldInfo[];
-};
+import type { PdfOpened } from '@shared/api';
 
 /** دقّة المسح للتقديم: تُقرأ وتُطبع، وملفّها معقول قبل التصغير. */
 const SCAN_DPI = 200;

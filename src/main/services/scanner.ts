@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { copyFile, unlink } from 'node:fs/promises';
 import { storeDir } from '../db';
+import type { ScannerDevice } from '@shared/api';
 
 /**
  * المسح الضوئي عبر WIA — من داخل التطبيق، بلا واجهة الشركة المصنّعة.
@@ -25,7 +26,6 @@ const PS = [
   '-Command'
 ] as const;
 
-export type ScannerDevice = { id: string; name: string };
 
 async function ps(script: string): Promise<string> {
   const { stdout } = await run(PS[0], [...PS.slice(1), script], {

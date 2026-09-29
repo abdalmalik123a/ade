@@ -468,16 +468,6 @@ function reconciled(doc: Doc): Doc {
 
 // ── القوائم: الأسئلة وفروعها ────────────────────────────────────────
 
-/** قائمة أسئلة جاهزة: س١ ثم أ ثم ١ — وهي صورة ورقة المدرسة. */
-export function makeQuestionList(): ListBlock {
-  return {
-    id: newUuid(),
-    kind: 'list',
-    styles: ['question', 'arabicLetter', 'number'],
-    items: [{ id: newUuid(), inlines: [] }]
-  };
-}
-
 /** يمشي على شجرة العناصر ويطبّق تحويلًا على واحدٍ بمعرّفه. */
 function mapItems(items: ListItem[], id: string, fn: (i: ListItem) => ListItem | null): ListItem[] {
   return items.flatMap((it) => {

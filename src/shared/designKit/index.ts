@@ -15,8 +15,7 @@ import {
   imageElement,
   textElement,
   type Canvas,
-  type CanvasElement,
-  type CanvasSize
+  type CanvasElement
 } from '../canvas';
 import { reconcileFields, tokenInlines, type Doc } from '../doc';
 import { PALETTES, paletteFrom, type Palette } from './color';
@@ -164,4 +163,3 @@ export function sampleValues(brand?: Brand): Record<string, string> {
   return name ? { ...SAMPLE, الجهة: name, المدرسة: name } : { ...SAMPLE };
 }
 
-export const sizeLabel = (s: CanvasSize): string => `${s.w} × ${s.h} ملم`;

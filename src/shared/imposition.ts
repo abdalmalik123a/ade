@@ -263,16 +263,6 @@ export function renderPlan(
   });
 }
 
-/** كلّ البطاقات بالترتيب من أوّل خانة — الطريق القديم، وهو خطّةٌ بلا خيارات. */
-export function sheetsHtml(
-  imp: Imposition,
-  count: number,
-  card: (i: number) => string,
-  opts: { mirror?: boolean } = {}
-): string[] {
-  return renderPlan(imp, planSheets(imp, Array.from({ length: count }, (_, i) => i)), card, opts);
-}
-
 /**
  * يقرأ «٥، ١٢-١٤» أرقامَ بطاقاتٍ (من ١) — لإعادة ما تلف وحده. وما خرج عن
  * القائمة يُهمل، والمكرّر يُطبع مرّة. ويعود `null` لنصٍّ لا يُفهم.

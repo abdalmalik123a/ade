@@ -132,11 +132,6 @@ export async function importFile(sourcePath: string, bucket: string): Promise<st
   return `${bucket}/${name}`;
 }
 
-/** عنوان العرض داخل الواجهة. */
-export function storeUrl(relative: string | null): string | null {
-  return relative ? `diwan://store/${relative}` : null;
-}
-
 export function registerFileIpc(): void {
   ipcMain.handle('files:pickImage', async (e, bucket: string): Promise<string | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);

@@ -1,8 +1,8 @@
 import { ROUTES, type RouteKey } from '@shared/routes';
+import type { SidebarCounts } from '@shared/api';
 
-/* أصناف التصميم منقولة حرفيًا من ملفات code.html في stitch_.
-   الفرق الوحيد بين الشاشات الأربع في التصميم هو انتقال aria-current وأصناف «النشط»،
-   لذلك بُني التنقّل من بيانات بدل تكرار العلامات. */
+/* أصناف الشريط من توكنات التصميم (stitch_). والعنصر النشط يختلف بـaria-current وأصنافه
+   وحدها — فالتنقّل يُبنى من بيانات لا بتكرار العلامات. */
 
 const NAV_BASE =
   'flex items-center justify-between px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150';
@@ -20,13 +20,7 @@ type NavItem = {
   key: RouteKey;
   icon: string;
   label: string;
-  badge?: { text: string; bold?: boolean; alert?: boolean };
-};
-
-export type SidebarCounts = {
-  templates: number;
-  issuedToday: number;
-  orders: { open: number; dueToday: number; overdue: number };
+  badge?: { text: string; alert?: boolean };
 };
 
 export type SidebarProps = {
@@ -35,7 +29,6 @@ export type SidebarProps = {
   counts: SidebarCounts;
   printerName: string | null;
   printerReady: boolean;
-  supplyPercent: number | null;
   operatorName: string;
   officeName: string;
   /** رقم الإصدار من الحزمة — لا نصًّا مكتوبًا يتخلّف عنها. */
@@ -48,7 +41,6 @@ export default function Sidebar({
   counts,
   printerName,
   printerReady,
-  supplyPercent,
   operatorName,
   officeName,
   version
@@ -158,7 +150,7 @@ export default function Sidebar({
                     <span className="font-label-lg text-label-lg">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
+                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} font-semibold`}>
                       {item.badge.text}
                     </span>
                   )}
@@ -192,7 +184,7 @@ export default function Sidebar({
                     <span className="font-label-lg text-label-lg">{item.label}</span>
                   </div>
                   {item.badge && (
-                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} ${item.badge.bold ? 'font-bold' : 'font-semibold'}`}>
+                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} font-semibold`}>
                       {item.badge.text}
                     </span>
                   )}
@@ -247,16 +239,6 @@ export default function Sidebar({
               </span>
             </div>
           </div>
-          {supplyPercent !== null && (
-            <div className="flex flex-col items-end">
-              <span className="font-label-sm text-label-sm text-secondary font-bold">
-                {supplyPercent}%
-              </span>
-              <div className="w-10 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-                <div className="h-full bg-secondary" style={{ width: `${supplyPercent}%` }} />
-              </div>
-            </div>
-          )}
         </div>
         <div className="flex items-center justify-between pt-space-xs">
           <div className="flex items-center gap-space-sm">

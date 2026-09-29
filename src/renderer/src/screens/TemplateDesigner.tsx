@@ -602,8 +602,7 @@ export default function TemplateDesigner({
                             text: watermark?.kind === 'text' ? watermark.text : 'مسودة'
                           });
                         else {
-                          const first =
-                            sealImages.find((s) => s.kind === 'شعار') ?? sealImages[0] ?? null;
+                          const first = sealImages[0] ?? null;
                           setWatermark(first ? { kind: 'image', src: first.imagePath! } : null);
                         }
                       }}

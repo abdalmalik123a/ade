@@ -1,20 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import {
-  defaultFields,
-  fieldByRole,
-  toField,
-  tokenFromLabel,
-  uniqueToken,
-  CORE_FIELDS,
-  FIELD_GROUPS,
-  type LetterField
-} from '../src/shared/letterFields';
+import { CORE_FIELDS, FIELD_GROUPS } from '../src/shared/letterFields';
 import { CITIZEN_FIELDS } from '../src/shared/citizenSchema';
 
 /**
- * حقول صاحب العلاقة كتالوجٌ يُختار منه، لا قائمة مفروضة. وما يهمّ في اختباره:
- * أن الأدوار تصل إلى السجل، وأن الوسوم لا تتصادم، وأن ما يسمّيه المكتب بيده
- * يصير وسمًا صالحًا في المتن.
+ * حقول صاحب العلاقة كتالوجٌ يُختار منه، لا قائمة مفروضة. وما يهمّ في اختباره: أن الوسوم
+ * لا تتصادم، وأنه يغطّي المعاملات، وأن مصادر ملئه أعمدةٌ في ملف المواطن.
+ * (والحقل في الكتاب نفسه `DocField` في الوثيقة — تختبره `doc` و`docEdit`.)
  */
 
 describe('كتالوج حقول المعاملات', () => {
@@ -52,49 +43,5 @@ describe('كتالوج حقول المعاملات', () => {
       .map((f) => f.source)
       .filter(Boolean) as string[];
     for (const source of sources) expect(citizenColumns).toContain(source);
-  });
-});
-
-describe('حقول الكتاب', () => {
-  it('الكتاب يبدأ بالحقول التي لا يخلو منها كتاب', () => {
-    const fields = defaultFields();
-    expect(fields.map((f) => f.role)).toEqual(['name', 'nationalId', 'destination', 'purpose']);
-    expect(fields.every((f) => f.value === '')).toBe(true);
-    // لكل حقل معرّف مستقلّ، وإلا تعارضت البطاقات في الواجهة.
-    expect(new Set(fields.map((f) => f.id)).size).toBe(fields.length);
-  });
-
-  it('الأدوار تصل إلى السجل بقيمها مشذّبة', () => {
-    const fields = defaultFields();
-    fields[0]!.value = '  أحمد عبد الله  ';
-    fields[2]!.value = 'مصرف الرشيد';
-    expect(fieldByRole(fields, 'name')).toBe('أحمد عبد الله');
-    expect(fieldByRole(fields, 'destination')).toBe('مصرف الرشيد');
-    expect(fieldByRole(fields, 'purpose')).toBe('');
-  });
-
-  it('حذف حقل لا يمسّ غيره', () => {
-    const fields = defaultFields();
-    const rest = fields.filter((f) => f.role !== 'purpose');
-    expect(rest).toHaveLength(3);
-    expect(fieldByRole(rest, 'name')).toBe('');
-  });
-});
-
-describe('الحقل الذي يسمّيه المكتب', () => {
-  it('الاسم يصير وسمًا صالحًا في المتن', () => {
-    expect(tokenFromLabel('رقم الإضبارة')).toBe('رقم_الإضبارة');
-    expect(tokenFromLabel('  تاريخ   المباشرة ')).toBe('تاريخ_المباشرة');
-    expect(tokenFromLabel('{اسم}')).toBe('اسم');
-    expect(tokenFromLabel('   ')).toBe('حقل');
-  });
-
-  it('الوسم المكرّر يُميَّز فلا يفسد الحقن', () => {
-    const fields: LetterField[] = [toField({ label: 'الاسم', token: 'الاسم' })];
-    expect(uniqueToken('الاسم', fields)).toBe('الاسم_2');
-
-    const more = [...fields, toField({ label: 'الاسم', token: 'الاسم_2' })];
-    expect(uniqueToken('الاسم', more)).toBe('الاسم_3');
-    expect(uniqueToken('اللقب', more)).toBe('اللقب');
   });
 });

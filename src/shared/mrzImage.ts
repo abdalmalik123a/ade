@@ -1,8 +1,8 @@
 /**
  * صورة سطور MRZ قبل قراءتها (تعميق الموجود ٨) — حسابٌ خالص على البكسلات.
  *
- * - **الأبيض والأسود بشرائح**: عتبة Otsu لكلّ شريحةٍ عمودية وحدها — فالنسخة المصوّرة يبهت
- *   طرفها (بهت يسارها في نسخةٍ حقيقية فمحته عتبةٌ واحدة).
+ * - **الأبيض والأسود محليًّا**: عتبةٌ من جوار كلّ بكسل للإيجاد (`binarizeLocal`)، ولكلّ رمزٍ
+ *   عتبته (Otsu) للقراءة — فالبطاقة الرماديّة لا تصير كتلةً والطرف الباهت لا يُمحى.
  * - **«<» من شكله**: القارئ يراه C أو L أو K. والفرق في يسار الرمز: لتلك ساقٌ أو قوسٌ يملأ
  *   أكثر ارتفاعه، و«<» نقطةٌ واحدة في وسطه.
  */
@@ -42,34 +42,6 @@ export function grayOf(pixels: Uint8Array, width: number, height: number, order:
   for (let i = 0; i < out.length; i++) {
     const p = i * 4;
     out[i] = Math.round(0.299 * pixels[p + r]! + 0.587 * pixels[p + 1]! + 0.114 * pixels[p + b]!);
-  }
-  return out;
-}
-
-/** حبرٌ (١) وورق (٠) — بعتبةٍ لكلّ شريحةٍ عمودية. */
-export function binarize(gray: Uint8Array, width: number, height: number, strips = 8): Uint8Array {
-  const out = new Uint8Array(width * height);
-  const step = Math.ceil(width / strips);
-  for (let s = 0; s < strips; s++) {
-    const x0 = s * step;
-    const x1 = Math.min(width, x0 + step);
-    if (x0 >= x1) break;
-    const col = new Uint8Array((x1 - x0) * height);
-    let n = 0;
-    let min = 255;
-    let max = 0;
-    for (let y = 0; y < height; y++) {
-      for (let x = x0; x < x1; x++) {
-        const v = gray[y * width + x]!;
-        col[n++] = v;
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }
-    }
-    const t = otsu(col);
-    // شريحةٌ بلا حبرٍ (هامشٌ أبيض): عتبتها تجعل ظلالها حبرًا — فتُقاس بتباينها أوّلًا.
-    const blank = max - min < 40;
-    for (let y = 0; y < height; y++) for (let x = x0; x < x1; x++) out[y * width + x] = !blank && gray[y * width + x]! <= t ? 1 : 0;
   }
   return out;
 }

@@ -273,7 +273,6 @@ function QuestionNode(props: NodeProps) {
   );
 }
 
-/** نسخةٌ من سؤال البنك بمعرّفاتٍ جديدة — فلا تشترك ورقتان في عقدةٍ واحدة. */
 /**
  * «الدور الثاني» من البنك (د٩): الأسئلة نفسها عددًا ودرجاتٍ، من البنك في مادّتها وصفّها،
  * لا من الدور الأول. وتُفتح ورقةً جديدة غير محفوظة — فلا تُكتب فوق ورقة الدور الأول.
@@ -282,6 +281,7 @@ export function roundTwoHead(head: Record<string, string>): Record<string, strin
   return { ...head, الدور: 'الثاني' };
 }
 
+/** نسخةٌ من سؤال البنك بمعرّفاتٍ جديدة — فلا تشترك ورقتان في عقدةٍ واحدة. */
 function freshCopy(item: ListItem): ListItem {
   return {
     ...item,

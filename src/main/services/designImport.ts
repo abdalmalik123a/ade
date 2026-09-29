@@ -15,7 +15,6 @@
  * **ولا يُبنى تصميمٌ بمقاسٍ مخمَّن**: ما سكت ملفُّه عن مقاسه يعود بـ`size: null`
  * فيُسأل المكتب.
  */
-import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { unzipSync, strFromU8 } from 'fflate';
 import {
@@ -437,16 +436,6 @@ export function readDesign(bytes: Uint8Array, name: string): DesignImport {
   }
 }
 
-export async function readDesignFile(path: string): Promise<DesignImport> {
-  return readDesign(await readFile(path), basename(path));
-}
-
-/**
- * يبني لوحةً ممّا استُورد.
- *
- * والخلفيةُ أولُ صورةٍ إن ملأت الورقة، والباقي عناصرُ صور. و`fallback` مقاسٌ
- * يختاره المكتب حين يسكت الملف — فلا يُخمَّن هنا.
- */
 /**
  * الحقول المقترحة من أسماء الطبقات، بمعرّفات عناصرها في اللوحة (هـ٤) — تُعرض ليقبلها
  * المكتب أو يرفضها. وكلّ عنصرٍ مستورد صار عنصرًا واحدًا في اللوحة بترتيبه.

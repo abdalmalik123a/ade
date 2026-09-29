@@ -7,6 +7,7 @@ import { autoBackupConfigured, runConfiguredAutoBackup } from './ipc/backup';
 import { prepareDocuments } from './services/documents';
 import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
+import { shutdownOcr } from './services/ocr';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
 installMainErrorHandlers();
@@ -143,4 +144,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', closeDb);
+app.on('before-quit', () => {
+  closeDb();
+  // عمّال القارئ الضوئي يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية.
+  void shutdownOcr();
+});

@@ -7,7 +7,6 @@ import type { ClientInput, OrderInput, OrderStatus } from '@shared/orders';
 /** الجهات والطلبات — قنواتٌ رقيقة فوق خدماتٍ مختبرة بقاعدةٍ في الذاكرة. */
 export function registerOrderIpc(): void {
   ipcMain.handle('clients:list', (_e, query?: string) => clients.listClients(getDb(), query ?? ''));
-  ipcMain.handle('clients:get', (_e, id: number) => clients.getClient(getDb(), id));
   ipcMain.handle('clients:save', (_e, input: ClientInput) => clients.saveClient(getDb(), input));
   ipcMain.handle('clients:setLogo', (_e, id: number, imagePath: string) => clients.setClientLogo(getDb(), id, imagePath));
   ipcMain.handle('clients:delete', (_e, id: number) => clients.deleteClient(getDb(), id));

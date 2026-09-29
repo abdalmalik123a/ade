@@ -10,8 +10,8 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createWorker, PSM, type Worker } from 'tesseract.js';
 import { readCardBack, locateMrz, voteLines, type LinesOcr, type OcrLine } from '../src/main/services/mrzRead';
-import { readMrzSymbols, type MrzSymbol } from '../src/shared/mrz';
-import { binarize, chevronShape, resizeGray, rotate180 } from '../src/shared/mrzImage';
+import { parseTD1, settleTD1, type MrzSymbol } from '../src/shared/mrz';
+import { chevronShape, resizeGray, rotate180 } from '../src/shared/mrzImage';
 import { readGrayPng } from './helpers';
 
 const card = readGrayPng(readFileSync(join(__dirname, 'fixtures', 'card-back-fake.png')));
@@ -86,14 +86,18 @@ describe('الصورة قبل القارئ', () => {
     expect(new Set(half.gray)).toEqual(new Set([128]));
   });
 
-  it('صفحةٌ كاملة بدقّة ٣٠٠ نقطة لا تُسقط العتبة (كانت تجاوز حدّ المكدّس)', () => {
+  it('صفحةٌ كاملة بدقّة ٣٠٠ نقطة بلا سطور: لا شيء، ولا سقوط (عتبة الصفحة كانت تجاوز حدّ المكدّس)', () => {
     const w = 2550;
     const h = 3508;
-    expect(() => binarize(new Uint8Array(w * h).fill(200), w, h)).not.toThrow();
+    expect(locateMrz({ gray: new Uint8Array(w * h).fill(200), width: w, height: h })).toBeNull();
   });
 });
 
 describe('من الرموز إلى الحقول', () => {
+  const readMrzSymbols = (raw: { symbols: MrzSymbol[]; left: number; right: number }[]) => {
+    const lines = settleTD1(raw);
+    return lines ? parseTD1(lines) : null;
+  };
   /** سطرٌ رموزًا بمواضعها — كلّ رمزٍ في خانته. */
   const symbols = (line: string, chevrons: number[] = []): { symbols: MrzSymbol[]; left: number; right: number } => ({
     left: 0,

@@ -14,13 +14,12 @@ import { registerQuestionIpc } from './questions';
 import { orderCounts } from '../services/orders';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
-import { archiveStats, listDocuments } from '../services/documents';
+import { archiveStats } from '../services/documents';
 import type {
   OfficeSettings,
   SidebarCounts,
   PrinterInfo,
-  ArchiveStats,
-  DocumentRow
+  ArchiveStats
 } from '@shared/api';
 
 /** الافتراضات الوحيدة المسموح بها: تسميات محايدة يغيّرها صاحب المكتب.
@@ -174,13 +173,6 @@ export function registerIpc(): void {
   });
 
   ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));
-
-  ipcMain.handle('archive:today', (): DocumentRow[] => {
-    const today = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const day = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-    return listDocuments(getDb(), { from: day, to: day });
-  });
 
   ipcMain.handle('printers:list', async (e): Promise<PrinterInfo[]> => {
     const win = BrowserWindow.fromWebContents(e.sender);

@@ -391,20 +391,6 @@ export const BUILTIN_CLIPARTS: ClipartItem[] = [
   }
 ];
 
-export function normalizeClipartKey(s: string): string {
-  return s.trim().toLowerCase().replace(/[\s_-]+/g, '');
-}
-
-export const CLIPART_MAP = new Map<string, ClipartItem>();
-for (const item of BUILTIN_CLIPARTS) {
-  CLIPART_MAP.set(normalizeClipartKey(item.id), item);
-  CLIPART_MAP.set(item.id.toLowerCase(), item);
-  for (const tag of item.tags) {
-    CLIPART_MAP.set(normalizeClipartKey(tag), item);
-    CLIPART_MAP.set(tag.toLowerCase(), item);
-  }
-}
-
 /** تحويل كود SVG إلى Data URL صالح للعرض كصورة في أي متصفح */
 export function svgToDataUrl(svg: string): string {
   const cleanSvg = svg.trim();
@@ -413,30 +399,4 @@ export function svgToDataUrl(svg: string): string {
     ? cleanSvg
     : cleanSvg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
   return `data:image/svg+xml;utf8,${encodeURIComponent(withXmlns)}`;
-}
-
-/** العثور على رسمة مناسبة بالاسم أو الوسم أو الكلمة الدلالية */
-export function findClipart(query: string): ClipartItem | null {
-  const raw = query.trim().toLowerCase();
-  const q = normalizeClipartKey(query);
-  if (CLIPART_MAP.has(q)) return CLIPART_MAP.get(q)!;
-  if (CLIPART_MAP.has(raw)) return CLIPART_MAP.get(raw)!;
-
-  for (const item of BUILTIN_CLIPARTS) {
-    if (
-      normalizeClipartKey(item.id) === q ||
-      item.id.toLowerCase() === raw ||
-      item.name.includes(query)
-    ) {
-      return item;
-    }
-    if (
-      item.tags.some(
-        (t) => normalizeClipartKey(t).includes(q) || q.includes(normalizeClipartKey(t))
-      )
-    ) {
-      return item;
-    }
-  }
-  return null;
 }

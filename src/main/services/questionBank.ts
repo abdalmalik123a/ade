@@ -10,17 +10,7 @@
 import type Database from 'better-sqlite3';
 import type { Inline, ListItem } from '@shared/doc';
 import { normalizeFold } from '@shared/arabic';
-
-export type BankQuestion = {
-  id: number;
-  subject: string | null;
-  grade: string | null;
-  item: ListItem;
-  text: string;
-  score: number | null;
-  useCount: number;
-  createdAt: string;
-};
+import type { BankQuestion } from '@shared/api';
 
 const inlineText = (list: Inline[] | undefined) =>
   (list ?? []).map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? `{${n.ref}}` : ' ')).join('');
@@ -130,15 +120,6 @@ export function listQuestions(
     )
     .all(...args, filter.limit ?? 200) as Row[];
   return rows.map(toQuestion);
-}
-
-/** المواد والصفوف في البنك — لقوائم التصفية. */
-export function bankFacets(db: Database.Database): { subjects: string[]; grades: string[] } {
-  const col = (c: 'subject' | 'grade') =>
-    (db.prepare(`SELECT DISTINCT ${c} AS v FROM question_bank WHERE ${c} IS NOT NULL ORDER BY ${c}`).all() as { v: string }[]).map(
-      (r) => r.v
-    );
-  return { subjects: col('subject'), grades: col('grade') };
 }
 
 export function markQuestionUsed(db: Database.Database, id: number): void {

@@ -44,6 +44,18 @@ export default async function scenario(page, { profile }) {
   ok(`كتابٌ إلى جهةٍ أدنى: «تنسب» أولًا (${before.join(',')} ← ${after.join(',')})`, after[0] === 'down' && after.length === 3);
   ok('ثم ما يصلح لكلّ جهة، ثم الصاعدة — ولا يُخفى شيء', after[1] === '' && after[2] === 'up');
 
+  // ── إدراج كليشةٍ يُسجِّل استعمالها: فتتصدّر المكتبة أقدمُها بعد أن تُدرج (كان لا يُسجَّل — تنظيف ٢٩ أيلول) ──
+  const firstBefore = await page.eval(`return (await window.diwan.clips.list())[0]?.title ?? null;`);
+  await page.eval(`
+    document.querySelector('[data-screen="editor"] [data-act="insert"]').click();
+    await new Promise((r) => setTimeout(r, 300));
+    [...document.querySelectorAll('[data-clip-direction]')].find((b) => b.textContent.includes('طلب إلى المديرية')).click();
+    return true;`);
+  await wait(500);
+  ok('أُدرجت الكليشة في الكتاب', await page.eval(`return document.querySelector('[data-screen="editor"] .a4-sheet')?.innerText.includes('يرجى التفضل بالموافقة') ?? false;`));
+  const firstAfter = await page.eval(`return (await window.diwan.clips.list())[0]?.title ?? null;`);
+  ok(`وتصدّرت المكتبة بآخر استعمالها (${firstBefore} ← ${firstAfter})`, firstAfter === 'طلب إلى المديرية' && firstBefore !== 'طلب إلى المديرية');
+
   // ── حقل التاريخ بتقويمه ───────────────────────────────────────────────
   await page.eval(`document.querySelector('[data-screen="editor"] [data-act="add-field"]').click(); return true;`);
   await wait(500);

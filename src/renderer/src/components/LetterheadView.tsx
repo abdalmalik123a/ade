@@ -23,9 +23,6 @@ export type LetterheadViewProps = {
   registryValues?: { number: string; date: string };
   /** يملأ الحقول التلقائية مثل {رقم_الصادر} (العدد على الكتاب)؛ بلا دالّة يبقى الوسم كما هو. */
   resolve?: (value: string) => string;
-  /** يُنادى عند النقر على كتلة — للتحديد في المصمّم. */
-  onPickBlock?: (sectionIndex: number, blockId: string) => void;
-  selectedBlock?: string | null;
   /** رسالة الفراغ تُعرض في المصمّم فقط، لا على ورقة الكتاب. */
   emptyHint?: string;
 };
@@ -33,36 +30,26 @@ export type LetterheadViewProps = {
 function Block({
   block,
   fallbackAlign,
-  resolve,
-  onClick,
-  selected
+  resolve
 }: {
   block: LetterheadBlock;
   fallbackAlign: LetterheadBlock['align'];
   resolve?: (value: string) => string;
-  onClick?: () => void;
-  selected?: boolean;
 }) {
-  const ring = selected ? 'outline outline-1 outline-secondary outline-offset-2' : '';
   const align = block.align ?? fallbackAlign;
 
   if (block.kind === 'spacer') {
-    return <div className={ring} style={{ height: block.gap ?? 12 }} onClick={onClick} />;
+    return <div style={{ height: block.gap ?? 12 }} />;
   }
 
   if (block.kind === 'divider') {
-    return (
-      <hr
-        className={`border-t border-on-surface my-1 ${ring}`}
-        onClick={onClick}
-      />
-    );
+    return <hr className="border-t border-on-surface my-1" />;
   }
 
   if (block.kind === 'image') {
     const justify = align === 'center' ? 'center' : align === 'left' ? 'flex-start' : 'flex-end';
     return (
-      <div className={`flex ${ring}`} style={{ justifyContent: justify }} onClick={onClick}>
+      <div className="flex" style={{ justifyContent: justify }}>
         {block.value ? (
           <img alt="" src={storeUrl(block.value)} style={{ width: block.width ?? 90 }} />
         ) : (
@@ -76,11 +63,7 @@ function Block({
 
   const text = block.kind === 'field' && resolve ? resolve(block.value) : block.value;
   return (
-    <div
-      className={`${block.bold ? 'font-bold' : ''} ${ring}`}
-      style={{ textAlign: align, fontSize: `${block.size}px`, lineHeight: 1.7 }}
-      onClick={onClick}
-    >
+    <div className={block.bold ? 'font-bold' : ''} style={{ textAlign: align, fontSize: `${block.size}px`, lineHeight: 1.7 }}>
       {text || ' '}
     </div>
   );
@@ -123,8 +106,6 @@ export default function LetterheadView({
   layout,
   registryValues,
   resolve,
-  onPickBlock,
-  selectedBlock,
   emptyHint
 }: LetterheadViewProps) {
   const sections = visibleSections(layout);
@@ -184,8 +165,6 @@ export default function LetterheadView({
                 block={block}
                 fallbackAlign={defaultAlign(i, layout.columns)}
                 resolve={resolve}
-                selected={selectedBlock === block.id}
-                onClick={onPickBlock ? () => onPickBlock(i, block.id) : undefined}
               />
             ))}
           </div>

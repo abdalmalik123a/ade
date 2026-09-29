@@ -266,7 +266,7 @@ describe('البحث في السجل', () => {
 });
 
 describe('المؤشرات والتقارير', () => {
-  it('تعدّ الكتب والإيراد والمخدومين والنسخ المطبوعة فعلًا', () => {
+  it('تعدّ الكتب والمخدومين والنسخ المطبوعة فعلًا — ولا مال فيها (المال صامت)', () => {
     const db = freshDb();
     const a = issueDocument(db, input({ citizenName: 'أحمد', fee: 1000, copies: 2 }));
     issueDocument(db, input({ citizenName: 'أحمد', fee: 500 }));
@@ -275,14 +275,10 @@ describe('المؤشرات والتقارير', () => {
 
     const stats = periodStats(db);
     expect(stats.issued).toBe(3);
-    expect(stats.revenue).toBe(1750);
+    expect(stats).not.toHaveProperty('revenue');
     expect(stats.citizens).toBe(2); // أحمد مرّتان يُعدّ مرّة
     expect(stats.printedCopies).toBe(2 + 1 + 1 + 4);
-    expect(stats.byType[0]).toEqual({
-      name: 'تأييد استمرار بالخدمة',
-      count: 3,
-      revenue: 1750
-    });
+    expect(stats.byType[0]).toEqual({ name: 'تأييد استمرار بالخدمة', count: 3 });
     expect(stats.byDay).toHaveLength(1);
   });
 
@@ -292,7 +288,6 @@ describe('المؤشرات والتقارير', () => {
     expect(archiveStats(db)).toEqual({
       issuedToday: 0,
       issuedYesterday: 0,
-      revenueToday: 0,
       topTemplate: null
     });
 
@@ -301,7 +296,7 @@ describe('المؤشرات والتقارير', () => {
 
     const stats = archiveStats(db);
     expect(stats.issuedToday).toBe(1);
-    expect(stats.revenueToday).toBe(750);
+    expect(stats).not.toHaveProperty('revenueToday');
     expect(stats.topTemplate).toEqual({ title: 'تأييد سكن', count: 1, share: 1 });
   });
 
@@ -313,7 +308,6 @@ describe('المؤشرات والتقارير', () => {
 
     const stats = periodStats(db, { from: '2026-01-01' });
     expect(stats.issued).toBe(1);
-    expect(stats.revenue).toBe(1000);
     expect(stats.printedCopies).toBe(1);
   });
 });

@@ -4,7 +4,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { reconcileVariables, type TemplateVariable } from '@shared/template';
 import { stripTatweel, cleanLine } from './blanks';
 import { docxToDoc } from './docxDoc';
-import type { Doc } from '@shared/doc';
+import type { ImportedTemplate } from '@shared/api';
 import {
   emptyLayout,
   newId,
@@ -13,32 +13,6 @@ import {
   type LetterheadBlock,
   type LetterheadLayout
 } from '@shared/letterhead';
-
-/**
- * استيراد نموذج من ملف — داخل التطبيق، بلا Word ولا أداة خارجية.
- *
- * .docx حزمة مضغوطة فيها word/document.xml؛ نفكّها ونقرأ الفقرات.
- * .xml نتعامل معه بصيغتنا إن وُجدت وسومها، وإلا نستخرج نصّه.
- *
- * والترويسة تُستخرج أيضًا. أكثر الكتب التي تُكتب في Word تحمل ترويسة، لكنها
- * نادرًا ما تكون «ترويسة صفحة» بالمعنى التقني: الموظف يكتبها نصًّا في أول
- * المستند، أو يضعها في جدول من خليتين أو ثلاث. فلو قرأنا رأس الصفحة وحده
- * لضاعت ترويسة أكثر الملفات — ولذلك نقرأ الاثنين.
- */
-
-export type ImportedTemplate = {
-  title: string;
-  subtitle: string | null;
-  category: string | null;
-  code: string | null;
-  subjectLine: string | null;
-  body: string;
-  warnings: string[];
-  /** ترويسة استُخرجت من الملف — يقرّر المكتب حفظها أو تركها. */
-  letterhead: LetterheadLayout | null;
-  /** الملف ورقةً واحدة بتنسيقه كما رسمه Word (`docxDoc.ts`). */
-  doc?: Doc | null;
-};
 
 const decodeEntities = (s: string) =>
   s

@@ -3,7 +3,6 @@ import { freshDb } from './helpers';
 import { run } from '../src/shared/doc';
 import type { ListItem } from '../src/shared/doc';
 import {
-  bankFacets,
   deleteQuestion,
   listQuestions,
   markQuestionUsed,
@@ -46,7 +45,6 @@ describe('بنك الأسئلة', () => {
     saveQuestion(db, { item: q('اشرح قانون نيوتن'), subject: 'الفيزياء', grade: 'الخامس' });
     expect(listQuestions(db, { query: 'اجب' })).toHaveLength(1);
     expect(listQuestions(db, { grade: 'الخامس' })).toHaveLength(2);
-    expect(bankFacets(db)).toEqual({ subjects: ['العربية', 'الفيزياء'], grades: ['الخامس'] });
   });
 
   it('والأكثر استعمالًا أوّلًا، والحذف يمحوه', () => {

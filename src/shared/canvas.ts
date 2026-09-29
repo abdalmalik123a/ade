@@ -158,7 +158,6 @@ export type Canvas = {
 // ── الحساب ───────────────────────────────────────────────────────────
 
 export const mmToPx = (mm: Mm, dpi: number): number => (mm / 25.4) * dpi;
-export const pxToMm = (px: number, dpi: number): Mm => (px / dpi) * 25.4;
 /** النقطة الطباعية ١/٧٢ إنش — وهي وحدة حجم الخط في كل مكان. */
 export const ptToPx = (pt: number, dpi: number): number => (pt / 72) * dpi;
 

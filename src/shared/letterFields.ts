@@ -11,8 +11,7 @@
  * وهو اقتراح يُعرض على الموظف، لا محتوى يُفرض عليه.
  */
 
-/** دور الحقل في السجل: ما يُقيَّد في الأرشيف ولا يجوز أن يبقى مجهولًا. */
-export type FieldRole = 'name' | 'nationalId' | 'destination' | 'purpose' | null;
+import type { FieldRole } from './doc';
 
 /** مصدر الملء التلقائي من ملف المواطن (F2). */
 export type FieldSource =
@@ -53,11 +52,6 @@ export type CatalogField = {
   role?: FieldRole;
   /** إشارة إلى أن الحقل تاريخ — لتسهيل ختم تاريخ اليوم فيه. */
   date?: boolean;
-};
-
-export type LetterField = CatalogField & {
-  id: string;
-  value: string;
 };
 
 export type FieldGroup = { name: string; hint: string; fields: CatalogField[] };
@@ -181,36 +175,3 @@ export const FIELD_GROUPS: FieldGroup[] = [
     ]
   }
 ];
-
-let seq = 0;
-function fieldId(): string {
-  seq += 1;
-  return `f${Date.now().toString(36)}${seq.toString(36)}`;
-}
-
-export function toField(catalog: CatalogField, value = ''): LetterField {
-  return { ...catalog, id: fieldId(), value };
-}
-
-export function defaultFields(): LetterField[] {
-  return CORE_FIELDS.map((f) => toField(f));
-}
-
-/** اسم يكتبه الموظف يصير وسمًا صالحًا في المتن. */
-export function tokenFromLabel(label: string): string {
-  return label.trim().replace(/\s+/g, '_').replace(/[{}]/g, '') || 'حقل';
-}
-
-/** يمنع تكرار الوسم في الكتاب الواحد — وسمان متشابهان يفسدان الحقن. */
-export function uniqueToken(token: string, existing: LetterField[]): string {
-  if (!existing.some((f) => f.token === token)) return token;
-  for (let i = 2; i < 100; i++) {
-    const candidate = `${token}_${i}`;
-    if (!existing.some((f) => f.token === candidate)) return candidate;
-  }
-  return `${token}_${Date.now().toString(36)}`;
-}
-
-export function fieldByRole(fields: LetterField[], role: Exclude<FieldRole, null>): string {
-  return fields.find((f) => f.role === role)?.value.trim() ?? '';
-}

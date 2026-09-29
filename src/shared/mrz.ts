@@ -193,9 +193,3 @@ export function settleTD1(raw: { symbols: MrzSymbol[]; left: number; right: numb
   lines[2] = [...lines[2]!].map(toLetter).join('');
   return solveTD1(lines);
 }
-
-/** سطورٌ ثلاث من رموز القارئ ← الحقول بتحقّقها. */
-export function readMrzSymbols(raw: { symbols: MrzSymbol[]; left: number; right: number }[]): MrzResult | null {
-  const lines = settleTD1(raw);
-  return lines ? parseTD1(lines) : null;
-}

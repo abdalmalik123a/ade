@@ -176,9 +176,6 @@ export function learningStats(db: Database): LearningStats {
   return { total, byKind, habits };
 }
 
-/** عتبةُ التطبيق نفسها التي في النواة — فلا عتبتان تختلفان. */
-export const APPLY = APPLY_THRESHOLD;
-
 /** كلماتٌ لا تدلّ على تصنيف — تتكرّر في عناوين كل الأبواب. */
 const STOP = new Set(['من', 'الى', 'الي', 'في', 'على', 'علي', 'عن', 'مع', 'او', 'و', 'ال', 'بال', 'لل', 'كتاب', 'طلب', 'نموذج']);
 

@@ -29,7 +29,7 @@ import {
   type IBorderOptions,
   type ParagraphChild
 } from 'docx';
-import type { Align, Block, Doc, DocField, Inline, ListItem, ListStyle, ParagraphBlock } from '@shared/doc';
+import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock } from '@shared/doc';
 import { marker } from '@shared/docHtml';
 import { defaultAlign, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
 import { imageMeta } from './imageSize';
@@ -39,7 +39,6 @@ const halfPoints = (px: number) => Math.round(px * 1.5);
 const twipsFromPx = (px: number) => Math.round(px * 15);
 const twipsFromMm = (mm: number) => Math.round(mm * 56.7);
 
-const PAGE_MM = { A4: { w: 210, h: 297 }, A5: { w: 148, h: 210 } } as const;
 /** متن الكتاب ١٦ بكسلًا (`text-body-md`) = ١٢ نقطة. */
 const BODY_PX = 16;
 

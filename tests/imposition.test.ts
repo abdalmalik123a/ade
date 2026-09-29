@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellAt, impose, inlineBarcodes, parseCardList, planSheets, renderPlan, sheetCount, sheetsHtml } from '../src/shared/imposition';
+import { cellAt, impose, inlineBarcodes, parseCardList, planSheets, renderPlan, sheetCount } from '../src/shared/imposition';
 import { matchPhotos, parseRows } from '../src/shared/batch';
 
 describe('الترتيب على الورق', () => {
@@ -32,7 +32,7 @@ describe('الترتيب على الورق', () => {
   it('أربعمئة هوية خمسٌ وأربعون ورقة، والأخيرة لا تُكرّر', () => {
     const imp = impose({ w: 85.6, h: 54 }, 3);
     expect(sheetCount(imp, 400)).toBe(45);
-    const pages = sheetsHtml(imp, 11, (i) => `<b>${i}</b>`);
+    const pages = renderPlan(imp, planSheets(imp, Array.from({ length: 11 }, (_, i) => i)), (i) => `<b>${i}</b>`);
     expect(pages).toHaveLength(2);
     expect((pages[1]!.match(/<b>/g) ?? []).length).toBe(2);
     // علامات القصّ: حافّتا كل عمودٍ فوقًا وتحتًا، وحافّتا كل صفٍّ يمينًا ويسارًا.

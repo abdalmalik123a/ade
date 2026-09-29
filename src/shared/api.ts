@@ -281,18 +281,16 @@ export type IssueOutcome = {
 /** مؤشرات مدة زمنية — سطر أرقام المدّة في الأرشيف، وتقرير Excel. */
 export type PeriodStats = {
   issued: number;
-  revenue: number;
   citizens: number;
   printedCopies: number;
-  byType: { name: string; count: number; revenue: number }[];
-  byDay: { day: string; count: number; revenue: number }[];
+  byType: { name: string; count: number }[];
+  byDay: { day: string; count: number }[];
 };
 
 /** مؤشرات اليوم في أعلى شاشة الأرشيف. */
 export type ArchiveStats = {
   issuedToday: number;
   issuedYesterday: number;
-  revenueToday: number;
   topTemplate: { title: string; count: number; share: number } | null;
 };
 
@@ -577,7 +575,6 @@ export type DiwanApi = {
   };
   clients: {
     list(query?: string): Promise<Client[]>;
-    get(id: number): Promise<Client | null>;
     save(input: ClientInput): Promise<Client>;
     setLogo(id: number, imagePath: string): Promise<Client>;
     delete(id: number): Promise<void>;
@@ -594,7 +591,6 @@ export type DiwanApi = {
   };
   archive: {
     stats(): Promise<ArchiveStats>;
-    today(): Promise<DocumentRow[]>;
   };
   letterheads: {
     list(opts?: {
@@ -602,7 +598,6 @@ export type DiwanApi = {
       category?: string | null;
       favoritesOnly?: boolean;
     }): Promise<Letterhead[]>;
-    get(id: number): Promise<Letterhead | null>;
     categories(): Promise<string[]>;
     save(input: {
       id: number | null;
@@ -880,7 +875,6 @@ export type DiwanApi = {
   bank: {
     save(input: { item: ListItem; subject?: string | null; grade?: string | null }): Promise<BankQuestion>;
     list(filter?: { query?: string; subject?: string | null; grade?: string | null }): Promise<BankQuestion[]>;
-    facets(): Promise<{ subjects: string[]; grades: string[] }>;
     used(id: number): Promise<void>;
     delete(id: number): Promise<void>;
   };

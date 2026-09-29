@@ -74,10 +74,6 @@ export function fingerprint(input: {
     .digest('hex');
 }
 
-export function shortFingerprint(hex: string): string {
-  return `${hex.slice(0, 6)}...${hex.slice(-4)}`;
-}
-
 /** نصّ الورقة بلا علامات — للبحث ولحساب حجم الوثيقة. */
 export function htmlToText(html: string): string {
   return html
@@ -97,7 +93,7 @@ export function htmlToText(html: string): string {
 }
 
 /** عمود التطبيع يُضاف عند الحاجة — الترحيل هنا ليعمل على قواعد قائمة. */
-export function ensureSearchColumn(db: Database): void {
+function ensureDocumentSearchColumn(db: Database): void {
   const cols = db.prepare('PRAGMA table_info(documents)').all() as { name: string }[];
   if (!cols.some((c) => c.name === 'search_fold')) {
     db.exec('ALTER TABLE documents ADD COLUMN search_fold TEXT');
@@ -208,7 +204,7 @@ export function ensureChain(db: Database): void {
 }
 
 export function prepareDocuments(db: Database): void {
-  ensureSearchColumn(db);
+  ensureDocumentSearchColumn(db);
   ensureCitizenSnapshot(db);
   ensureLetterheadLink(db);
   ensureTransactionLink(db);
@@ -764,13 +760,6 @@ export function archiveStats(db: Database): ArchiveStats {
 
   const issuedToday = count("date(issued_at,'localtime') = date('now','localtime')");
   const issuedYesterday = count("date(issued_at,'localtime') = date('now','localtime','-1 day')");
-  const revenue = db
-    .prepare(
-      `SELECT COALESCE(SUM(fee), 0) AS total FROM documents
-       WHERE date(issued_at,'localtime') = date('now','localtime')`
-    )
-    .get() as { total: number };
-
   const top = db
     .prepare(
       `SELECT t.title AS title, COUNT(*) AS n
@@ -783,14 +772,13 @@ export function archiveStats(db: Database): ArchiveStats {
   return {
     issuedToday,
     issuedYesterday,
-    revenueToday: revenue.total,
     topTemplate: top
       ? { title: top.title, count: top.n, share: issuedToday ? top.n / issuedToday : 0 }
       : null
   };
 }
 
-/** مؤشرات مدة: الكتب والإيراد والمخدومون والنسخ المطبوعة فعلًا. */
+/** مؤشرات مدة: الكتب والمخدومون والنسخ المطبوعة فعلًا — والمال صامت (قرار المالك). */
 export function periodStats(db: Database, opts: ListOptions = {}): PeriodStats {
   prepareDocuments(db);
   const from = opts.from ?? null;
@@ -801,11 +789,11 @@ export function periodStats(db: Database, opts: ListOptions = {}): PeriodStats {
 
   const head = db
     .prepare(
-      `SELECT COUNT(*) AS issued, COALESCE(SUM(d.fee),0) AS revenue,
+      `SELECT COUNT(*) AS issued,
               COUNT(DISTINCT COALESCE(CAST(d.citizen_id AS TEXT), d.citizen_name)) AS citizens
        FROM documents d WHERE ${window}`
     )
-    .get(...range) as { issued: number; revenue: number; citizens: number };
+    .get(...range) as { issued: number; citizens: number };
 
   const printed = db
     .prepare(
@@ -817,25 +805,22 @@ export function periodStats(db: Database, opts: ListOptions = {}): PeriodStats {
 
   const byType = db
     .prepare(
-      `SELECT COALESCE(NULLIF(d.doc_type,''), 'بلا تصنيف') AS name, COUNT(*) AS count,
-              COALESCE(SUM(d.fee),0) AS revenue
+      `SELECT COALESCE(NULLIF(d.doc_type,''), 'بلا تصنيف') AS name, COUNT(*) AS count
        FROM documents d WHERE ${window}
        GROUP BY name ORDER BY count DESC, name LIMIT 12`
     )
-    .all(...range) as { name: string; count: number; revenue: number }[];
+    .all(...range) as { name: string; count: number }[];
 
   const byDay = db
     .prepare(
-      `SELECT date(d.issued_at,'localtime') AS day, COUNT(*) AS count,
-              COALESCE(SUM(d.fee),0) AS revenue
+      `SELECT date(d.issued_at,'localtime') AS day, COUNT(*) AS count
        FROM documents d WHERE ${window}
        GROUP BY day ORDER BY day DESC LIMIT 31`
     )
-    .all(...range) as { day: string; count: number; revenue: number }[];
+    .all(...range) as { day: string; count: number }[];
 
   return {
     issued: head.issued,
-    revenue: head.revenue,
     citizens: head.citizens,
     printedCopies: printed.copies,
     byType,

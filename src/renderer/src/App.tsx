@@ -332,7 +332,6 @@ export default function App() {
         counts={counts}
         printerName={selectedPrinter?.displayName ?? null}
         printerReady={selectedPrinter?.ready ?? false}
-        supplyPercent={null}
         operatorName={settings?.operatorName || 'لم يُسجّل مشغّل'}
         officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
         version={version}

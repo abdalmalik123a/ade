@@ -590,8 +590,13 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
     setMenu(false);
   }
 
-  function insertClip(body: string) {
-    insertBlocks(body.split('\n').map((line) => paragraph(line ? [run(line)] : [])));
+  /**
+   * الكليشة في موضع المؤشّر — ويُسجَّل استعمالها: عليه يقوم ترتيب المكتبة (الأحدث استعمالًا
+   * أوّلًا). وكان لا يُسجَّل، فبقيت المكتبة بترتيب الإنشاء (تنظيف ٢٩ أيلول ٢٠٢٦).
+   */
+  function insertClip(clip: MenuClip) {
+    insertBlocks(clip.body.split('\n').map((line) => paragraph(line ? [run(line)] : [])));
+    void window.diwan.clips.touch(clip.id);
   }
 
   /** نصٌّ حيث وقف المؤشّر — رمزٌ من لوحة الرموز، أو كلمةٌ من لوح جانبي. */
@@ -1089,7 +1094,7 @@ function InsertMenu({
   onPick: (what: Preset) => void;
   onTable: (rows: number, cols: number) => void;
   onImage: (src: string, align: Align) => void;
-  onClip: (body: string) => void;
+  onClip: (clip: MenuClip) => void;
   onClose: () => void;
 }) {
   const [view, setView] = useState<'main' | 'table' | 'image'>('main');
@@ -1166,7 +1171,7 @@ function InsertMenu({
                       className="text-right p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high flex flex-col gap-0.5"
                       data-clip-direction={c.direction ?? ''}
                       type="button"
-                      onClick={() => onClip(c.body)}
+                      onClick={() => onClip(c)}
                     >
                       <span className="font-label-md text-label-md text-on-surface flex items-center gap-1">
                         {c.title}

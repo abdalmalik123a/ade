@@ -11,7 +11,6 @@ export function registerLetterheadIpc(): void {
   ipcMain.handle('letterheads:list', (_e, opts: svc.LetterheadQuery = {}) =>
     svc.listLetterheads(getDb(), opts)
   );
-  ipcMain.handle('letterheads:get', (_e, id: number) => svc.getLetterhead(getDb(), id));
   ipcMain.handle('letterheads:categories', () => svc.listCategories(getDb()));
   ipcMain.handle(
     'letterheads:save',

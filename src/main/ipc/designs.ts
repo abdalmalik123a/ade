@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
-import type { Canvas, CanvasSize } from '@shared/canvas';
+import { PRINT_DPI, type Canvas, type CanvasSize } from '@shared/canvas';
 import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } from '../services/designImport';
 import type { FieldSuggestion } from '@shared/api';
 import { readPsd } from '../services/psd';
@@ -22,8 +22,6 @@ import { pickOpenPath } from './files';
 
 const DESIGN_FILTERS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'docx', 'psd', 'pdf'];
 
-/** ما تطلبه المطابع — وما دونه يُطبع ضبابيًّا، فيُنبَّه عليه. */
-const PRINT_DPI = 300;
 /** دونها لا تصلح خلفيةٌ للطباعة، فيُقال ذلك صراحةً. */
 const SHARP_ENOUGH = 200;
 
