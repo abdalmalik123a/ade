@@ -9,7 +9,6 @@
  * ببكسلات الدقّة الحقيقية (`pixelSize`).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PrinterInfo } from '@shared/api';
 import { SIZE_LIMITS, sizeText } from '@shared/pdfEdit';
 import { CENTER, PAPERS, cropBox, photoLayout, photoSheetsHtml, sourceRect, type Crop, type Size } from '@shared/photoSheet';
 import {
@@ -29,6 +28,7 @@ import { BUILTIN_SUITS, SUIT_CATEGORIES, type CustomSuit, type SuitCategory } fr
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import SheetsPreview from '../designs/SheetsPreview';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 import { fitJpeg, rememberLimit, savedLimit } from '../lib/fitImage';
 import { dataUrlOf, drawScene, fallbackPlace, loadImage, loadSuit, renderJpeg, workPixels, type Scene, type Suit, type Work } from '../lib/portraitCanvas';
 
@@ -52,7 +52,7 @@ function frameFor(photo: Size): Size {
   return w <= 600 ? { w, h: FRAME_H } : { w: 600, h: (600 * photo.h) / photo.w };
 }
 
-export default function PhotosScreen({ printer }: { printer: PrinterInfo | null }) {
+export default function PhotosScreen() {
   const [src, setSrc] = useState<string | null>(null);
   const [natural, setNatural] = useState<Size | null>(null);
   const [modelReady, setModelReady] = useState(false);
@@ -543,9 +543,11 @@ export default function PhotosScreen({ printer }: { printer: PrinterInfo | null 
     : [];
 
   async function print() {
+    const pick = await choosePrinter('photos', { allowSystem: true });
+    if (!pick) return;
     setPrinting(true);
     try {
-      const out = await window.diwan.output.print({ sheetHtml: pages.join(''), printer: printer?.name ?? null, copies: 1, silent: false, page: paper });
+      const out = await window.diwan.output.print({ sheetHtml: pages.join(''), printer: pick.printer, copies: 1, silent: !pick.system, page: paper });
       say(out.ok ? `أُرسلت ${toIndic(pages.length)} ورقة` : out.reason || 'لم تتم الطباعة', !out.ok);
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), true);

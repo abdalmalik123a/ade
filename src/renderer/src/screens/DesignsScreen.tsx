@@ -12,7 +12,7 @@
  * قواعدُ هندسية تُختبر بالأرقام، وهذه الشاشة تناديها ولا تحسب بنفسها.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { PrinterInfo, TemplateSummary } from '@shared/api';
+import type { TemplateSummary } from '@shared/api';
 import { fieldRef, newUuid, reconcileFields, tokenInlines, type Doc, type Inline } from '@shared/doc';
 import {
   BLEED_MM,
@@ -70,6 +70,7 @@ import type { Photo } from '@shared/batch';
 import type { FieldSuggestion } from '@shared/api';
 import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
 import SheetsPreview from '../designs/SheetsPreview';
@@ -141,12 +142,11 @@ export type DesignRequest = {
 };
 
 export type DesignsScreenProps = {
-  printer: PrinterInfo | null;
   request?: DesignRequest | null;
   onChanged?: () => void;
 };
 
-export default function DesignsScreen({ printer, request, onChanged }: DesignsScreenProps) {
+export default function DesignsScreen({ request, onChanged }: DesignsScreenProps) {
   const [history, setHistory] = useState(() =>
     startCanvasHistory(emptyCanvas(SIZE_PRESETS[1]!.size))
   );
@@ -808,16 +808,18 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
   /**
    * الطباعة: إلى الطابعة المختارة ورقةً ورقة بسجلٍّ على القرص — فإن انقطعت
    * الكهرباء عند الورقة ٢٤ من ٤٥ سُئل المكتب في الإقلاع التالي ويستأنف منها.
-   * وبلا طابعةٍ مختارة يُفتح حوار النظام والدفعة مهمّةٌ واحدة.
+   * و«بإعدادات ويندوز» يُفتح حوار النظام والدفعة مهمّةٌ واحدة.
    */
   const print = useCallback(async () => {
+    const pick = await choosePrinter('designs', { allowSystem: true });
+    if (!pick) return;
     setBusy(true);
     const off = window.diwan.output.onPrintProgress((p) => say(`يُطبع… ${p.sent} من ${p.total} ورقة`));
     try {
       const out = await window.diwan.output.printJob({
         label: title.trim() || 'تصميم',
         pages,
-        printer: printer?.name ?? null,
+        printer: pick.system ? null : pick.printer,
         page: imp.sheet,
         duplex: Boolean(backDoc)
       });
@@ -846,7 +848,7 @@ export default function DesignsScreen({ printer, request, onChanged }: DesignsSc
       off();
       setBusy(false);
     }
-  }, [pages, printer, imp, backDoc, title, say, linkedOrder, designId, onChanged]);
+  }, [pages, imp, backDoc, title, say, linkedOrder, designId, onChanged]);
 
   const savePdf = useCallback(async () => {
     setBusy(true);

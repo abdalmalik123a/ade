@@ -16,7 +16,7 @@
  * وتختم بيدها. ورقم القيد للأرشيف وحده، و«العدد» على الكتاب ما أعطاه الزبون (§١).
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, PrinterInfo, TemplateSummary } from '@shared/api';
+import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, TemplateSummary } from '@shared/api';
 import { CALENDAR_LABEL, formatGregorian, formatHijri, type Calendar } from '@shared/dates';
 import { patchField } from '@shared/docEdit';
 import { normalizeFold } from '@shared/arabic';
@@ -40,6 +40,8 @@ import LetterSheet, { gapAfter } from '../components/LetterSheet';
 import SpellingPanel from '../components/SpellingPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import { onBeforeClose } from '../lib/beforeClose';
+import { choosePrinter } from '../lib/printChoice';
+import { describeRole } from '@shared/printRoles';
 
 const AUTOSAVE_MS = 4000;
 const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مختومة'];
@@ -63,13 +65,12 @@ type Props = {
   citizenId?: number | null;
   draftId?: number | null;
   documentId?: number | null;
-  printer: PrinterInfo | null;
   onStatus?: (status: { transaction: string | null; busy: boolean; exporting: boolean }) => void;
   onIssued?: () => void;
 };
 
 function EditorScreen(
-  { templateId = null, citizenId = null, draftId = null, documentId = null, printer, onStatus, onIssued }: Props,
+  { templateId = null, citizenId = null, draftId = null, documentId = null, onStatus, onIssued }: Props,
   ref: React.Ref<EditorHandle>
 ) {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
@@ -496,6 +497,9 @@ function EditorScreen(
 
   async function issue(opts: { copies: number; copyKind: string; print: boolean }) {
     if (!settings) return;
+    // الطابعة قبل الإصدار: تُقيَّد مع الكتاب، وإلغاء السؤال لا يُصدر شيئًا.
+    const pick = opts.print ? await choosePrinter('documents', { allowSystem: true }) : null;
+    if (opts.print && !pick) return;
     setBusy(true);
     setError(null);
     try {
@@ -517,7 +521,8 @@ function EditorScreen(
           gregorianDate: registry.dateGreg || formatGregorian(new Date()),
           hijriDate: registry.dateHijri || null,
           operator: settings.operatorName || null,
-          printer: printer?.name ?? null,
+          printer: pick?.printer ?? null,
+          printDialog: pick?.system ?? false,
           serialPrefix: settings.serialPrefix,
           serialYear: settings.serialYear,
           letterheadId
@@ -561,9 +566,11 @@ function EditorScreen(
 
   /** طباعة للمراجعة — بلا قيدٍ في الأرشيف. */
   async function printDraftSheet() {
+    const pick = await choosePrinter('documents', { allowSystem: true });
+    if (!pick) return;
     setBusy(true);
     try {
-      const r = await window.diwan.output.print({ sheetHtml: sheetHtml(), printer: printer?.name ?? null, copies: 1, silent: false, page: pageOf() });
+      const r = await window.diwan.output.print({ sheetHtml: sheetHtml(), printer: pick.printer, copies: 1, silent: !pick.system, page: pageOf() });
       if (!r.ok && r.reason) setError(`تعذّرت الطباعة: ${r.reason}`);
     } catch (e) {
       setError(errorText(e, 'تعذّرت الطباعة'));
@@ -604,7 +611,7 @@ function EditorScreen(
     ref,
     () => ({ saveDraft: () => void saveDraft(false), exportPdf: () => void exportPdf(), print: () => requestIssue() }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [saveDraft, checks, settings, printer]
+    [saveDraft, checks, settings]
   );
 
   // F2 استيراد مواطن، وCtrl+S حفظ مسودة — بموضع المفتاح فتعمل واللوحة عربية.
@@ -1099,7 +1106,7 @@ function EditorScreen(
         <IssueDialog
           number={registry.number}
           name={ownerName}
-          printerName={printer?.displayName ?? null}
+          printerName={settings ? describeRole(settings.printRoles.documents) : null}
           busy={busy}
           onClose={() => setIssueOpen(false)}
           onIssue={(opts) => void issue(opts)}
@@ -1124,7 +1131,8 @@ function EditorScreen(
             setRepeated([]);
           }}
           onReprint={async () => {
-            await window.diwan.documents.reprint([issued.id], 1);
+            const pick = await choosePrinter('documents');
+            if (pick) await window.diwan.documents.reprint([issued.id], 1, pick.printer);
           }}
           onExport={async () => {
             const path = await window.diwan.documents.exportPdf(issued.id);
@@ -1427,7 +1435,7 @@ function IssueDialog({
               الطباعة إلى: <span className="text-on-surface font-semibold">{printerName}</span>
             </>
           ) : (
-            'لم تُختر طابعة — سيفتح حوار الطباعة في النظام'
+            'تُختار الطابعة عند الطبع'
           )}
         </div>
         <div className="flex items-center justify-end gap-space-sm">

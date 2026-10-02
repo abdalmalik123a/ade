@@ -6,8 +6,9 @@
  * باسمها، ومعها سياسة الخصوصية (أين البيانات وما يُحفظ) والاختصارات الثابتة
  * ورقم الإصدار.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
+import { PRINT_ROLES, type PrintRole, type PrintRoleKey, type PrintRoles } from '@shared/printRoles';
 import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
@@ -137,35 +138,20 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               </div>
             </section>
 
-            {/* ── الطابعة ─────────────────────────────────────────────── */}
-            <section className={card}>
-              {title('print', 'الطابعة')}
-              <label className="flex flex-col gap-1">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">الطابعة الافتراضية</span>
-                <select
-                  className={input}
-                  data-setting="defaultPrinter"
-                  value={settings.defaultPrinter ?? ''}
-                  onChange={(e) => patch({ defaultPrinter: e.target.value || null })}
-                >
-                  <option value="">— يسأل النظام عند كل طباعة —</option>
-                  {printers.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.displayName}
-                      {p.isDefault ? ' (طابعة النظام)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                {printers.length === 0
-                  ? 'لا طابعة مثبَّتة على هذا الجهاز'
-                  : settings.defaultPrinter
-                    ? 'الطباعة تخرج مباشرةً إلى هذه الطابعة بلا حوار'
-                    : 'بلا طابعة محدَّدة يُفتح حوار الطباعة في النظام'}
-              </p>
+            {/* ── الطابعات ────────────────────────────────────────────── */}
+            <section className={`${card} lg:col-span-2`}>
+              {title('print', 'الطابعات')}
+              <PrintRolesTable
+                roles={settings.printRoles}
+                printers={printers}
+                onChange={(printRoles) =>
+                  // طابعة الكتب هي «الافتراضية» القديمة: يُقرأ بها ما لم يعرف الأدوار بعد (المعايرة، معالج البداية).
+                  patch({ printRoles, defaultPrinter: printRoles.documents.normal })
+                }
+              />
               <PrinterCalibration
-                printer={settings.defaultPrinter}
+                printers={calibrationPrinters(settings.printRoles, printers)}
+                initial={settings.printRoles.documents.normal}
                 offsets={settings.printOffsets ?? {}}
                 onSaved={(printOffsets) => setSettings((cur) => (cur ? { ...cur, printOffsets } : cur))}
                 say={say}
@@ -272,6 +258,126 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   );
 }
 
+/** أسماء الطابعات في الأدوار، ثم المثبّتة — لاختيار ما يُعايَر. */
+function calibrationPrinters(roles: PrintRoles, printers: PrinterInfo[]): string[] {
+  const names = new Set<string>();
+  for (const { key } of PRINT_ROLES) {
+    const r = roles[key];
+    if (r.normal) names.add(r.normal);
+    if (r.color) names.add(r.color);
+  }
+  for (const p of printers) names.add(p.name);
+  return [...names];
+}
+
+/**
+ * أدوار الطابعات (خطة Production، ٢٫١): لكلّ نوع عملٍ طابعة «عادي» و«ملوّن» اختيارية، و«اسأل عند
+ * كل طباعة». واسمٌ محفوظ لطابعةٍ لم تعد مثبّتة يبقى ظاهرًا «غير مثبّتة» — لا يُمحى صامتًا.
+ */
+function PrintRolesTable({
+  roles,
+  printers,
+  onChange
+}: {
+  roles: PrintRoles;
+  printers: PrinterInfo[];
+  onChange: (next: PrintRoles) => void;
+}) {
+  const set = (key: PrintRoleKey, next: Partial<PrintRole>) => {
+    const role = { ...roles[key], ...next };
+    if (!role.normal) role.color = null;
+    if (role.color === role.normal) role.color = null;
+    onChange({ ...roles, [key]: role });
+  };
+  const installed = new Set(printers.map((p) => p.name));
+  const options = (current: string | null) => (
+    <>
+      {current && !installed.has(current) && <option value={current}>{current} (غير مثبّتة)</option>}
+      {printers.map((p) => (
+        <option key={p.name} value={p.name}>
+          {p.displayName}
+          {p.isDefault ? ' (طابعة النظام)' : ''}
+        </option>
+      ))}
+    </>
+  );
+  const select =
+    'w-full h-9 px-2 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+
+  return (
+    <div className="flex flex-col gap-space-xs" data-print-roles="">
+      <p className="font-label-sm text-label-sm text-on-surface-variant">
+        {printers.length === 0
+          ? 'لا طابعة مثبّتة على هذا الجهاز — ثبّتها في ويندوز ثم ارجع إلى هنا.'
+          : 'طابعةٌ واحدة تطبع مباشرة بلا سؤال. وطابعتان (عادي وملوّن) يُسأل بينهما عند الطبع. و«اسأل» يعرض الطابعات كلّها في كلّ مرّة.'}
+      </p>
+      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-space-sm gap-y-space-xs items-center">
+        <span className="font-label-sm text-label-sm text-on-surface-variant">نوع العمل</span>
+        <span className="font-label-sm text-label-sm text-on-surface-variant">عادي</span>
+        <span className="font-label-sm text-label-sm text-on-surface-variant">ملوّن (اختياري)</span>
+        <span className="font-label-sm text-label-sm text-on-surface-variant">اسأل</span>
+        {PRINT_ROLES.map(({ key, label, hint }) => {
+          const role = roles[key];
+          return (
+            <Fragment key={key}>
+              <span className="flex flex-col min-w-0" data-role-label={key}>
+                <span className="font-label-md text-label-md text-on-surface font-semibold truncate">{label}</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{hint}</span>
+              </span>
+              <select
+                className={select}
+                data-role={key}
+                data-role-slot="normal"
+                value={role.normal ?? ''}
+                onChange={(e) => set(key, { normal: e.target.value || null })}
+              >
+                <option value="">— تُختار عند الطبع —</option>
+                {options(role.normal)}
+              </select>
+              <select
+                className={`${select} disabled:opacity-40`}
+                data-role={key}
+                data-role-slot="color"
+                disabled={!role.normal}
+                value={role.color ?? ''}
+                onChange={(e) => set(key, { color: e.target.value || null })}
+              >
+                <option value="">— لا —</option>
+                {options(role.color)}
+              </select>
+              <input
+                checked={role.dialog || !role.normal}
+                className="w-5 h-5 accent-secondary justify-self-center"
+                data-role={key}
+                data-role-slot="dialog"
+                disabled={!role.normal}
+                title={role.normal ? 'تُعرض الطابعات للاختيار عند كل طباعة' : 'بلا طابعة محدّدة يُسأل دائمًا'}
+                type="checkbox"
+                onChange={(e) => set(key, { dialog: e.target.checked })}
+              />
+            </Fragment>
+          );
+        })}
+      </div>
+      {printers.length > 0 && (
+        <button
+          className="self-start h-8 px-space-sm rounded-lg text-secondary hover:bg-surface-container-high font-label-sm text-label-sm"
+          data-act="roles-like-documents"
+          type="button"
+          onClick={() => {
+            const base = roles.documents;
+            const next = { ...roles };
+            for (const { key } of PRINT_ROLES) next[key] = { ...base };
+            onChange(next);
+          }}
+        >
+          اجعل الأدوار كلّها مثل «الكتب والمعاملات»
+        </button>
+      )}
+    </div>
+  );
+}
+
 /**
  * معايرة الطابعة: ورقةٌ تُطبع، وقياسان بالمسطرة يُكتبان كما هما.
  *
@@ -279,16 +385,21 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
  * المطبوعة سلفًا، ويُقصّ طرف الهويّة. والإزاحة لكل طابعة، وللطباعة الورقية وحدها.
  */
 function PrinterCalibration({
-  printer,
+  printers,
+  initial,
   offsets,
   onSaved,
   say
 }: {
-  printer: string | null;
+  printers: string[];
+  initial: string | null;
   offsets: Record<string, { x: number; y: number }>;
   onSaved: (next: Record<string, { x: number; y: number }>) => void;
   say: (text: string, tone?: 'ok' | 'warn') => void;
 }) {
+  // لكلّ طابعةٍ إزاحتها: تُختار هنا أيّها تُعايَر — وأوّلها طابعة الكتب.
+  const [chosen, setChosen] = useState<string | null>(null);
+  const printer = chosen && printers.includes(chosen) ? chosen : (initial ?? printers[0] ?? null);
   const current = offsets[printer ?? ''] ?? { x: 0, y: 0 };
   const seed = measureFromOffset(current);
   const [fromRight, setFromRight] = useState(String(seed.fromRight));
@@ -306,14 +417,26 @@ function PrinterCalibration({
   if (!printer)
     return (
       <p className="font-label-sm text-label-sm text-on-surface-variant" data-calibration="">
-        معايرة الطابعة: اختر الطابعة الافتراضية واحفظ، ثم عايرها من هنا.
+        معايرة الطابعة: ثبّت طابعةً في ويندوز، ثم عايرها من هنا.
       </p>
     );
 
   return (
     <div className="rounded-lg bg-surface-container-low p-space-sm space-y-space-xs" data-calibration="">
-      <div className="flex items-center justify-between">
-        <span className="font-label-md text-label-md text-on-surface font-semibold">معايرة الطابعة</span>
+      <div className="flex items-center justify-between gap-space-sm">
+        <span className="font-label-md text-label-md text-on-surface font-semibold shrink-0">معايرة الطابعة</span>
+        <select
+          className="min-w-0 flex-1 h-8 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"
+          data-calibration-printer=""
+          value={printer}
+          onChange={(e) => setChosen(e.target.value)}
+        >
+          {printers.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
         <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-calibration-offset="">
           {current.x || current.y ? `الإزاحة: ${current.x} يمينًا، ${current.y} نزولًا (ملم)` : 'بلا إزاحة'}
         </span>

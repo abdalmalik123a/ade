@@ -18,8 +18,13 @@ import {
 } from './doc';
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 
+/**
+ * ونصٌّ يقع في خاصّية (`src="…"`) تُهرَّب علامته `"` أيضًا — وإلا قطع اسمُ ملفٍّ أو قيمةٌ فيها
+ * علامة تنصيص الخاصّية وفتح غيرها (خطة Production، ٢٫٥). و`&quot;` ممّا يفكّه `htmlToText`،
+ * فالنصّ المستخرج للبحث والبصمة لا يتغيّر.
+ */
 export const escapeHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export type MissingMode = 'token' | 'blank' | 'hide';
 

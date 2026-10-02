@@ -130,8 +130,8 @@ export function registerDocumentIpc(): void {
         sheetHtml: issued.sheetHtml,
         deviceName: input.printer ?? undefined,
         copies: Math.max(1, input.copies),
-        // بلا طابعة مختارة يُفتح حوار النظام بدل أن تُبتلع الورقة صامتةً.
-        silent: Boolean(input.printer),
+        // بلا طابعة مختارة — أو طلب الموظف إعدادات ويندوز — يُفتح حوار النظام.
+        silent: Boolean(input.printer) && !input.printDialog,
         parent: w
       });
 
@@ -153,14 +153,15 @@ export function registerDocumentIpc(): void {
 
   ipcMain.handle('documents:stats', (_e, opts: svc.ListOptions) => svc.periodStats(getDb(), opts));
 
-  /** إعادة طباعة طبق الأصل — من المتن المحفوظ لا من إعادة تركيبه. */
+  /**
+   * إعادة طباعة طبق الأصل — من المتن المحفوظ لا من إعادة تركيبه، وبأنماطه يوم صدر (٢٫٤)،
+   * على الطابعة التي اختارها الموظف لدور «الكتب والمعاملات» (٢٫١). وبلا طابعةٍ حوار النظام.
+   */
   ipcMain.handle(
     'documents:reprint',
-    async (e, ids: number[], copies: number): Promise<{ printed: number; failed: number; voided: number }> => {
+    async (e, ids: number[], copies: number, printer?: string | null): Promise<{ printed: number; failed: number; voided: number }> => {
       const db = getDb();
-      const settings = db.prepare("SELECT value FROM settings WHERE key = 'defaultPrinter'").get() as
-        | { value: string }
-        | undefined;
+      const target = printer ?? null;
       const operator = (
         db.prepare("SELECT value FROM settings WHERE key = 'operatorName'").get() as
           | { value: string }
@@ -183,15 +184,16 @@ export function registerDocumentIpc(): void {
         }
         const result = await printSheet({
           sheetHtml: doc.bodyHtml,
-          deviceName: settings?.value,
+          deviceName: target ?? undefined,
           copies: Math.max(1, copies),
-          silent: Boolean(settings?.value),
-          parent: win(e)
+          silent: Boolean(target),
+          parent: win(e),
+          style: svc.documentStyle(db, id)
         });
         if (result.ok) {
           svc.recordReprint(db, id, {
             copies: Math.max(1, copies),
-            printer: settings?.value ?? null,
+            printer: target,
             operator: operator ?? null
           });
           printed++;
@@ -208,7 +210,8 @@ export function registerDocumentIpc(): void {
     const doc = svc.getDocument(getDb(), id);
     if (!w || !doc) return null;
     svc.assertNotVoid(getDb(), id);
-    const pdf = await renderPdf(doc.bodyHtml);
+    // بأنماطه يوم صدر — فـPDF الكتاب القديم كورقته يومها (٢٫٤).
+    const pdf = await renderPdf(doc.bodyHtml, undefined, svc.documentStyle(getDb(), id));
     return saveAs(w, pdf, `${safeName(doc.serial)}.pdf`, 'PDF', 'pdf');
   });
 
@@ -237,59 +240,48 @@ export function registerDocumentIpc(): void {
   /**
    * معاملة الزبون الواحد: خمس أوراق تصدر قيدًا واحدًا، ولكلٍّ رقمها وبصمتها.
    *
-   * الطباعة بعد الإصدار لا قبله — والرسم من الطريق نفسه الذي تسلكه الورقة
-   * المفردة، فلا يختلف ما يخرج من الطابعة عمّا رآه الموظف.
+   * والطباعة بعد الإصدار في طلبٍ مستقلّ (`documents:printIssued`): كانت هنا ورقةً ورقة بحوار
+   * النظام لكلٍّ منها، ونتيجتها تُرمى — فلا يعرف الموظف ما لم يُطبع (خطة Production، ٢٫٣).
    */
   ipcMain.handle(
     'documents:issueTransaction',
-    async (e, input: TransactionInput, print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult> => {
-      const out = svc.issueTransaction(getDb(), { ...input, serialYear: thisYear(), style: sheetStyle() });
-      if (print) {
-        const win = BrowserWindow.fromWebContents(e.sender);
-        for (const doc of out.documents) {
-          try {
-            await printSheet({
-              sheetHtml: forPrint(doc.sheetHtml, mode),
-              deviceName: input.printer ?? undefined,
-              parent: win ?? null
-            });
-          } catch {
-            // ورقةٌ لم تُطبع لا تُلغي المعاملة — الكتب مقيَّدة وتُعاد طباعتها.
-          }
-        }
-      }
-      return out;
-    }
+    (_e, input: TransactionInput): TransactionResult =>
+      svc.issueTransaction(getDb(), { ...input, serialYear: thisYear(), style: sheetStyle() })
   );
 
   /**
-   * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء.
-   *
-   * والطباعة بعد أن تُقيَّد الدفعة كلّها — فورقةٌ لم تُطبع تُعاد طباعتها من
-   * الأرشيف، أما رقمٌ حُرق على كتاب لم يُقيَّد فلا يُستردّ.
+   * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء. والطباعة بعد أن تُقيَّد كلّها — فورقةٌ لم
+   * تُطبع تُعاد من الأرشيف، أمّا رقمٌ حُرق على كتابٍ لم يُقيَّد فلا يُستردّ.
+   */
+  ipcMain.handle('documents:issueBatch', (_e, inputs: TransactionInput[]): TransactionResult[] => {
+    const style = sheetStyle();
+    return svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear(), style })), testPause());
+  });
+
+  /**
+   * أوراقٌ صدرت تُطبع على طابعةٍ اختارها الموظف (خطة Production، ٢٫٣): ورقةً ورقة بسجلٍّ على
+   * القرص، بلا حوار — فتُعرف نتيجة كلّ ورقة، ويُستأنف ما لم يُطبع ولو انقطعت الكهرباء — وبأنماط
+   * الكتب يوم صدرت. وهي الطبعة الأولى لا إعادةٌ تُقيَّد: «إصدار أول» قُيّد مع الكتاب.
    */
   ipcMain.handle(
-    'documents:issueBatch',
-    async (e, inputs: TransactionInput[], print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult[]> => {
-      const style = sheetStyle();
-      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear(), style })), testPause());
-      if (print) {
-        const win = BrowserWindow.fromWebContents(e.sender);
-        for (const out of all) {
-          for (const doc of out.documents) {
-            try {
-              await printSheet({
-                sheetHtml: forPrint(doc.sheetHtml, mode),
-                deviceName: inputs[0]?.printer ?? undefined,
-                parent: win ?? null
-              });
-            } catch {
-              // ورقةٌ لم تُطبع لا تُلغي الدفعة — الكتب مقيَّدة وتُعاد طباعتها.
-            }
-          }
-        }
-      }
-      return all;
+    'documents:printIssued',
+    async (e, req: { ids: number[]; printer: string | null; mode?: PrintMode; label?: string }) => {
+      const db = getDb();
+      const docs = (Array.isArray(req.ids) ? req.ids : [])
+        .map((id) => svc.getDocument(db, Number(id)))
+        .filter((d): d is NonNullable<typeof d> => d !== null && d.status !== 'void');
+      if (!req.printer) return { ok: false, sent: 0, total: docs.length, reason: 'لم تُختر طابعة', journaled: false };
+      if (!docs.length) return { ok: true, sent: 0, total: 0, journaled: false };
+      const job = journal().create({
+        label: req.label ?? `${docs.length} ورقة — ${docs[0]!.serial}`,
+        printer: req.printer,
+        page: { w: 210, h: 297 },
+        duplex: false,
+        pages: docs.map((d) => forPrint(d.bodyHtml, req.mode ?? 'full')),
+        // أوراق المهمّة الواحدة صدرت معًا فأنماطها واحدة.
+        styleHash: svc.documentStyleHash(db, docs[0]!.id)
+      });
+      return { ...(await runJob(journal(), job.id, 0, sendSheet(e), progress(e, job.id))), journaled: true, id: job.id };
     }
   );
 
@@ -354,7 +346,8 @@ export function registerDocumentIpc(): void {
       silent: true,
       parent: win(e),
       page: job.page,
-      duplex: job.duplex
+      duplex: job.duplex,
+      style: svc.styleByHash(getDb(), job.styleHash)
     });
   const progress = (e: Electron.IpcMainInvokeEvent, id: string) => (sent: number, total: number) => {
     if (!e.sender.isDestroyed()) e.sender.send('print:progress', { id, sent, total });

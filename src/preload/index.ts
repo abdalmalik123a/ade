@@ -107,7 +107,7 @@ const api: DiwanApi = {
     rename: (id: number, docType: string) => invoke('attachments:rename', id, docType),
     ocr: (id: number) => invoke('attachments:ocr', id),
     readMrz: (id: number) => invoke('attachments:readMrz', id),
-    print: (id: number) => invoke('attachments:print', id),
+    print: (id: number, printer: string | null) => invoke('attachments:print', id, printer),
     copyToClipboard: (id: number) => invoke('attachments:copy', id),
     exportZip: (citizenId: number) => invoke('attachments:exportZip', citizenId),
     delete: (id: number) => invoke('attachments:delete', id)
@@ -152,10 +152,9 @@ const api: DiwanApi = {
   },
   documents: {
     issue: (input: IssueInput, print: boolean) => invoke('documents:issue', input, print),
-    issueTransaction: (input: TransactionInput, print: boolean, mode?: 'full' | 'values') =>
-      invoke('documents:issueTransaction', input, print, mode ?? 'full'),
-    issueBatch: (inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values') =>
-      invoke('documents:issueBatch', inputs, print, mode ?? 'full'),
+    issueTransaction: (input: TransactionInput) => invoke('documents:issueTransaction', input),
+    issueBatch: (inputs: TransactionInput[]) => invoke('documents:issueBatch', inputs),
+    printIssued: (req) => invoke('documents:printIssued', req),
     linkCitizen: (transactionId: number, citizenId: number) => invoke('documents:linkCitizen', transactionId, citizenId),
     repeatSource: (id: number) => invoke('documents:repeatSource', id),
     get: (id: number) => invoke('documents:get', id),
@@ -163,7 +162,7 @@ const api: DiwanApi = {
       invoke('documents:list', opts ?? {}),
     stats: (opts?: { from?: string | null; to?: string | null }) =>
       invoke('documents:stats', opts ?? {}),
-    reprint: (ids: number[], copies: number) => invoke('documents:reprint', ids, copies),
+    reprint: (ids: number[], copies: number, printer: string | null) => invoke('documents:reprint', ids, copies, printer),
     void: (id, reason, operator) => invoke('documents:void', id, reason, operator),
     verify: () => invoke('documents:verify'),
     exportPdf: (id: number) => invoke('documents:exportPdf', id),

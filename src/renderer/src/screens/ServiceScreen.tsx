@@ -18,7 +18,7 @@ import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayo
 import type {
   CitizenInput,
   OfficeSettings,
-  PrinterInfo,
+  PrintJobResult,
   TemplateDetail,
   TemplateSummary,
   TransactionSheet
@@ -37,6 +37,7 @@ import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import SpellingPanel from '../components/SpellingPanel';
 import { isCombo, shortcut } from '@shared/shortcuts';
+import { choosePrinter } from '../lib/printChoice';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -48,7 +49,6 @@ type Loaded = {
 };
 
 export type ServiceScreenProps = {
-  printer: PrinterInfo | null;
   onIssued?: () => void;
   /**
    * الشبّاك لا يُهدم حين يُترك: يبقى مركّبًا مخفيًّا فتبقى المعاملة كما تُركت —
@@ -88,7 +88,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ printer, onIssued, active = true, repeat = null }: ServiceScreenProps) {
+export default function ServiceScreen({ onIssued, active = true, repeat = null }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -378,9 +378,9 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, values, fields, asPrinted]);
 
-  const common = () => ({
+  const common = (printer: string | null) => ({
     operator: settings?.operatorName || null,
-    printer: printer?.name ?? null,
+    printer,
     serialPrefix: settings?.serialPrefix ?? 'م',
     serialYear: settings?.serialYear ?? new Date().getFullYear(),
     gregorianDate: formatGregorian(new Date()),
@@ -394,19 +394,19 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       say('اكتب اسم صاحب العلاقة أولًا', 'warn');
       return;
     }
+    // الطابعة قبل الإصدار: تُقيَّد مع الكتاب، وإلغاء السؤال لا يُصدر شيئًا.
+    const pick = print ? await choosePrinter('documents') : null;
+    if (print && !pick) return;
+    const mode = valuesOnly ? 'values' : 'full';
     setBusy(true);
     try {
-      const out = await window.diwan.documents.issueTransaction(
-        {
-          ...common(),
-          citizenId,
-          citizenName,
-          nationalId: byRole('nationalId') || null,
-          sheets: collect()
-        },
-        print,
-        valuesOnly ? 'values' : 'full'
-      );
+      const out = await window.diwan.documents.issueTransaction({
+        ...common(pick?.printer ?? null),
+        citizenId,
+        citizenName,
+        nationalId: byRole('nationalId') || null,
+        sheets: collect()
+      });
       say(`صدرت ${out.documents.length} ورقة بمعاملة واحدة — ${out.documents[0]?.serial ?? ''}`);
       onIssued?.();
       // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
@@ -419,11 +419,74 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       if (out.citizenId === null) offerToRegistry(out.transactionId);
       else setNewCitizen(null);
       reset();
+      if (pick) {
+        await printIssued(
+          out.documents.map((d) => d.id),
+          pick.printer,
+          mode,
+          `معاملة ${citizenName} — ${out.documents[0]?.serial ?? ''}`
+        );
+      }
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
     } finally {
       setBusy(false);
     }
+  }
+
+  // ── طباعة ما صدر (خطة Production، ٢٫٣) ───────────────────────────
+  /**
+   * الأوراق تُرسل ورقةً ورقة بسجلٍّ على القرص، والموظف يرى كم طُبع: «طُبعت ٣ من ٥». وما توقّف
+   * (طابعةٌ لا تستجيب، ورقٌ نفد) يبقى معروضًا ليُكمَل من حيث وقف أو يُترك — الكتب صدرت وفي
+   * الأرشيف، فلا تُصدر ثانيةً لتُطبع.
+   */
+  const [printRun, setPrintRun] = useState<{
+    id?: string;
+    sent: number;
+    total: number;
+    reason?: string;
+    running: boolean;
+  } | null>(null);
+
+  async function followPrint(run: () => Promise<PrintJobResult>, total: number, from = 0) {
+    setPrintRun((r) => ({ id: r?.id, sent: from, total, running: true }));
+    const off = window.diwan.output.onPrintProgress((p) =>
+      setPrintRun((r) => (r ? { ...r, id: p.id, sent: p.sent, total: p.total } : r))
+    );
+    try {
+      const out = await run();
+      if (out.ok) {
+        setPrintRun(null);
+        say(`طُبعت ${out.sent} من ${out.total}`);
+      } else {
+        setPrintRun({ id: out.id, sent: out.sent, total: out.total, reason: out.reason, running: false });
+      }
+    } catch (e) {
+      setPrintRun((r) => ({
+        id: r?.id,
+        sent: r?.sent ?? from,
+        total,
+        reason: e instanceof Error ? e.message : String(e),
+        running: false
+      }));
+    } finally {
+      off();
+    }
+  }
+
+  const printIssued = (ids: number[], printer: string, mode: 'full' | 'values', label: string) =>
+    followPrint(() => window.diwan.documents.printIssued({ ids, printer, mode, label }), ids.length);
+
+  async function resumePrint() {
+    const run = printRun;
+    if (!run?.id) return;
+    await followPrint(() => window.diwan.output.resumeJob(run.id!, run.sent), run.total, run.sent);
+  }
+
+  async function dropPrint() {
+    if (printRun?.id) await window.diwan.output.discardJob(printRun.id);
+    setPrintRun(null);
+    say('تُركت الطباعة — الكتب صدرت، وتُعاد طباعتها من الأرشيف');
   }
 
   /** معاملةٌ جديدة: كل ما كُتب يُمحى، والنماذج المختارة معه. */
@@ -573,6 +636,9 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
       setGenderReview({ names: unsure, print });
       return;
     }
+    const pick = print ? await choosePrinter('documents') : null;
+    if (print && !pick) return;
+    const mode = valuesOnly ? 'values' : 'full';
     setBusy(true);
     try {
       const all = await window.diwan.documents.issueBatch(
@@ -582,20 +648,26 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
           const g = needsGender ? (decided[name] ?? guessGender(name, learned)?.gender) : undefined;
           if (g) rowValues[GENDER_KEY] = g;
           return {
-            ...common(),
+            ...common(pick?.printer ?? null),
             citizenId: null,
             citizenName: name,
             nationalId: byRole('nationalId') || null,
             sheets: collect(rowValues)
           };
-        }),
-        print,
-        valuesOnly ? 'values' : 'full'
+        })
       );
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
       say(`صدرت ${papers} ورقة لـ${all.length} اسمًا — كلٌّ بمعاملته`);
       onIssued?.();
       reset();
+      if (pick) {
+        await printIssued(
+          all.flatMap((t) => t.documents.map((d) => d.id)),
+          pick.printer,
+          mode,
+          `دمج ${all.length} اسمًا — ${all[0]?.documents[0]?.serial ?? ''}`
+        );
+      }
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
     } finally {
@@ -1294,6 +1366,49 @@ export default function ServiceScreen({ printer, onIssued, active = true, repeat
           say(n ? `مُلئ ${n} حقلًا من الرسالة — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
         }}
       />
+
+      {printRun && (
+        <div
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-space-sm px-space-md py-space-sm rounded-xl shadow-lg bg-surface-container-highest text-on-surface font-label-md text-label-md"
+          data-print-run={printRun.running ? 'running' : 'stopped'}
+          data-print-sent={printRun.sent}
+          data-print-total={printRun.total}
+        >
+          <span className={`material-symbols-outlined text-[20px] ${printRun.running ? 'animate-spin text-secondary' : 'text-error'}`}>
+            {printRun.running ? 'progress_activity' : 'print_error'}
+          </span>
+          {printRun.running ? (
+            <span>
+              يُطبع… {printRun.sent} من {printRun.total}
+            </span>
+          ) : (
+            <>
+              <span>
+                توقّفت الطباعة: طُبعت {printRun.sent} من {printRun.total}
+                {printRun.reason ? ` — ${printRun.reason}` : ''}
+              </span>
+              {printRun.id && (
+                <button
+                  className="h-8 px-space-md rounded-lg bg-secondary text-on-secondary font-bold"
+                  data-act="print-resume"
+                  type="button"
+                  onClick={() => void resumePrint()}
+                >
+                  أكمل الطباعة
+                </button>
+              )}
+              <button
+                className="h-8 px-space-sm rounded-lg hover:bg-surface-container-high"
+                data-act="print-drop"
+                type="button"
+                onClick={() => void dropPrint()}
+              >
+                اتركها
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {toast && (
         <div

@@ -23,6 +23,7 @@ import IdDuplexDialog from './screens/IdDuplexDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
 import ResumePrintDialog from './components/ResumePrintDialog';
+import PrintChooser from './components/PrintChooser';
 import TodayPanel from './components/TodayPanel';
 import { agendaHasItems } from '@shared/agenda';
 import type { TodayAgenda } from '@shared/api';
@@ -209,10 +210,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [handlePrint, navigate]);
 
-  const selectedPrinter =
-    printers.find((p) => p.name === settings?.defaultPrinter) ??
-    printers.find((p) => p.isDefault) ??
-    null;
+  // ما يُعرض في الشريط: طابعة الكتب والمعاملات — والطباعة نفسها تسأل دورها (`choosePrinter`).
+  const documentsPrinter = settings?.printRoles.documents.normal ?? null;
+  const selectedPrinter = printers.find((p) => p.name === documentsPrinter) ?? null;
 
   function renderScreen() {
     switch (route) {
@@ -227,7 +227,6 @@ export default function App() {
             citizenId={target.citizenId}
             draftId={target.draftId}
             documentId={target.documentId}
-            printer={selectedPrinter}
             onStatus={setEditorStatus}
             onIssued={() => void refresh()}
           />
@@ -257,7 +256,6 @@ export default function App() {
         return (
           <CitizensScreen
             focus={citizenFocus}
-            printer={selectedPrinter}
             onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
             onChanged={() => void refresh()}
           />
@@ -266,12 +264,11 @@ export default function App() {
         return (
           <PapersScreen
             ref={papersRef}
-            printer={selectedPrinter}
             onChanged={() => void refresh()}
           />
         );
       case 'designs':
-        return <DesignsScreen printer={selectedPrinter} request={designRequest} onChanged={() => void refresh()} />;
+        return <DesignsScreen request={designRequest} onChanged={() => void refresh()} />;
       case 'orders':
         return (
           <OrdersScreen
@@ -289,7 +286,7 @@ export default function App() {
           />
         );
       case 'photos':
-        return <PhotosScreen printer={selectedPrinter} />;
+        return <PhotosScreen />;
       case 'pdf':
         return <PdfScreen />;
       case 'clients':
@@ -341,7 +338,7 @@ export default function App() {
           navigate(key);
         }}
         counts={counts}
-        printerName={selectedPrinter?.displayName ?? null}
+        printerName={selectedPrinter?.displayName ?? documentsPrinter}
         printerReady={selectedPrinter?.ready ?? false}
         operatorName={settings?.operatorName || 'لم يُسجّل مشغّل'}
         officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
@@ -384,7 +381,6 @@ export default function App() {
             <ServiceScreen
               active={route === 'service'}
               repeat={repeatRequest}
-              printer={selectedPrinter}
               onIssued={() => void refresh()}
             />
           </ErrorBoundary>
@@ -416,12 +412,14 @@ export default function App() {
         <IdDuplexDialog
           isOpen={true}
           onClose={() => setIdDuplexOpen(false)}
-          printer={selectedPrinter}
         />
       )}
 
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
+
+      {/* «على أيّ طابعة؟» — تسأله الشاشات حين للدور طابعتان أو طلب المكتب أن يُسأل. */}
+      <PrintChooser />
 
       {agenda && (
         <TodayPanel agenda={agenda} officeName={settings?.officeName ?? ''} onClose={closeAgenda} onNavigate={navigate} />

@@ -10,10 +10,10 @@
  * تُقال ولا تُصحَّح.
  */
 import { useMemo, useState } from 'react';
-import type { PrinterInfo } from '@shared/api';
 import { CHOICE_LETTERS, gradeOmr, omrCapacity, omrSheetHtml, parseKey, readOmr, type OmrGrade, type OmrSpec } from '@shared/omr';
 import type { PixelData } from '@shared/deskew';
 import { itemAnalysis, itemNote } from '@shared/examAnalysis';
+import { choosePrinter } from '../lib/printChoice';
 
 const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -43,14 +43,12 @@ export default function OmrPanel({
   onSpec,
   title,
   lines,
-  printer,
   onSay
 }: {
   spec: OmrSpec;
   onSpec: (spec: OmrSpec) => void;
   title: string;
   lines: string[];
-  printer: PrinterInfo | null;
   onSay: (text: string, tone?: 'ok' | 'warn') => void;
 }) {
   const [keyText, setKeyText] = useState(() => spec.key.map((k) => (k >= 0 ? CHOICE_LETTERS[k] : '-')).join(' '));
@@ -63,13 +61,16 @@ export default function OmrPanel({
   const set = (patch: Partial<OmrSpec>) => onSpec({ ...spec, ...patch, key });
 
   async function printSheets() {
+    const pick = await choosePrinter('papers', { allowSystem: true });
+    if (!pick) return;
     setBusy(true);
     try {
       const page = omrSheetHtml({ ...spec, key }, { title, lines });
       const out = await window.diwan.output.printJob({
         label: `أوراق إجابة — ${title}`,
         pages: Array.from({ length: Math.max(1, copies) }, () => page),
-        printer: printer?.name ?? null,
+        // «بإعدادات ويندوز»: مهمّةٌ واحدة بحوار النظام، بلا سجلٍّ يُستأنف منه.
+        printer: pick.system ? null : pick.printer,
         page: { w: 210, h: 297 },
         duplex: false
       });

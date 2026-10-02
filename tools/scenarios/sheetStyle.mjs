@@ -24,11 +24,11 @@ export default async function scenario(page, { profile }) {
     const t = await window.diwan.documents.issueTransaction({
       citizenId: null, citizenName: 'زينب', nationalId: null, ${COMMON},
       sheets: [{ sheetHtml: ${JSON.stringify(SHEET('زينب'))}, ${SHEET_FIELDS} }, { sheetHtml: ${JSON.stringify(SHEET('زينب ٢'))}, ${SHEET_FIELDS} }]
-    }, false);
+    });
     const b = await window.diwan.documents.issueBatch(['حسن', 'مريم'].map((n) => ({
       citizenId: null, citizenName: n, nationalId: null, ${COMMON},
       sheets: [{ sheetHtml: '<div class="a4-sheet"><p>' + n + '</p></div>', ${SHEET_FIELDS} }]
-    })), false);
+    })));
     return [a.id, ...t.documents.map((d) => d.id), ...b.flatMap((x) => x.documents.map((d) => d.id))];
   `);
 

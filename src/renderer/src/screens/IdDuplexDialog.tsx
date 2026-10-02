@@ -6,7 +6,7 @@
  * والطباعة بوجهين متطابقين، أو صفحة واحدة للدوائر الرسمية.
  */
 import { useMemo, useState } from 'react';
-import type { Attachment, PrinterInfo } from '@shared/api';
+import type { Attachment } from '@shared/api';
 import {
   STANDARD_CARD_SIZES,
   generateIdDuplexHtml,
@@ -17,11 +17,11 @@ import {
 import DeskewModal from './DeskewModal';
 import { WATERMARK_PRESETS, purposeWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  printer: PrinterInfo | null;
   citizenName?: string;
   attachments?: Attachment[];
 };
@@ -29,7 +29,6 @@ type Props = {
 export default function IdDuplexDialog({
   isOpen,
   onClose,
-  printer,
   citizenName,
   attachments = []
 }: Props) {
@@ -126,13 +125,15 @@ export default function IdDuplexDialog({
       say('الرجاء اختيار صورة الوجه أو الظهر أولاً', true);
       return;
     }
+    const pick = await choosePrinter('copies', { allowSystem: true });
+    if (!pick) return;
     setBusy(true);
     try {
       const out = await window.diwan.output.print({
         sheetHtml: pagesHtml.join(''),
-        printer: printer?.name ?? null,
+        printer: pick.printer,
         copies: 1,
-        silent: false,
+        silent: !pick.system,
         page: { w: 210, h: 297 },
         duplex: mode === 'duplex'
       });

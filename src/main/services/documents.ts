@@ -222,6 +222,28 @@ export function ensureSheetStyles(db: Database): void {
   if (!cols.includes('style_hash')) db.exec('ALTER TABLE documents ADD COLUMN style_hash TEXT');
 }
 
+/** الأنماط ببصمتها — وما لا بصمة له (كتابٌ صدر قبلها) لا شيء: يُطبع بأنماط يومه كما كان. */
+export function styleByHash(db: Database, hash: string | null | undefined): SheetStyle | null {
+  if (!hash) return null;
+  const row = db.prepare('SELECT css, body_class AS bodyClass FROM sheet_styles WHERE hash = ?').get(hash) as
+    | { css: string; bodyClass: string | null }
+    | undefined;
+  return row ? { css: row.css, bodyClass: row.bodyClass } : null;
+}
+
+/** أنماط الكتاب يوم صدر — لإعادة طبعه وتصديره كما صدر (خطة Production، ٢٫٤). */
+export function documentStyle(db: Database, id: number): SheetStyle | null {
+  prepareDocuments(db);
+  const row = db.prepare('SELECT style_hash AS h FROM documents WHERE id = ?').get(id) as { h: string | null } | undefined;
+  return styleByHash(db, row?.h);
+}
+
+/** بصمة أنماط الكتاب — تُحفظ مع مهمّة الطباعة فيُستأنف بها بعد الانقطاع. */
+export function documentStyleHash(db: Database, id: number): string | null {
+  prepareDocuments(db);
+  return (db.prepare('SELECT style_hash AS h FROM documents WHERE id = ?').get(id) as { h: string | null } | undefined)?.h ?? null;
+}
+
 /** يُحفظ النمط مرّةً لبصمته، ويعود ما يُشار به إليه. */
 function keepStyle(db: Database, style: SheetStyle): string {
   const NUL = String.fromCharCode(0);

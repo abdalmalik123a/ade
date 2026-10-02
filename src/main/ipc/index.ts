@@ -16,6 +16,7 @@ import { orderCounts } from '../services/orders';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
+import { normalizePrintRoles } from '@shared/printRoles';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -29,6 +30,7 @@ const DEFAULTS: OfficeSettings = {
   officeName: '',
   operatorName: '',
   defaultPrinter: null,
+  printRoles: normalizePrintRoles(undefined, null),
   serialPrefix: 'م',
   serialYear: 0,
   uiScale: 1,
@@ -45,10 +47,12 @@ function readSettings(): OfficeSettings {
     value: string;
   }[];
   const map = new Map(rows.map((r) => [r.key, r.value]));
+  const defaultPrinter = map.get('defaultPrinter') ?? DEFAULTS.defaultPrinter;
   return {
     officeName: map.get('officeName') ?? DEFAULTS.officeName,
     operatorName: map.get('operatorName') ?? DEFAULTS.operatorName,
-    defaultPrinter: map.get('defaultPrinter') ?? DEFAULTS.defaultPrinter,
+    defaultPrinter,
+    printRoles: normalizePrintRoles(parseJson(map.get('printRoles')), defaultPrinter),
     serialPrefix: map.get('serialPrefix') ?? DEFAULTS.serialPrefix,
     // سنة القيد سنة اليوم دائمًا — لا تُحفظ فتثبت (ipc/documents.ts).
     serialYear: new Date().getFullYear(),
@@ -59,6 +63,15 @@ function readSettings(): OfficeSettings {
     // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null)
   };
+}
+
+/** قيمةٌ محفوظةٌ JSON — وما فسد منها `undefined` لا يُسقط الإعدادات. */
+function parseJson(raw: string | undefined): unknown {
+  try {
+    return raw === undefined ? undefined : (JSON.parse(raw) as unknown);
+  } catch {
+    return undefined;
+  }
 }
 
 /** الإزاحات محفوظةً JSON — وما فسد منها يُترك لا يُسقط الإعدادات. */

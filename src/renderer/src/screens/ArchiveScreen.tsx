@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 import { auditLabel } from '@shared/auditLabels';
 
 const COLUMNS = ['رقم الصادر', 'صاحب العلاقة', 'نوع الكتاب', 'الجهة', 'التاريخ والنسخ'];
@@ -173,9 +174,11 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
     }
   }
 
-  const reprint = (ids: number[]) =>
-    run('print', async () => {
-      const r = await window.diwan.documents.reprint(ids, 1);
+  const reprint = async (ids: number[]) => {
+    const pick = await choosePrinter('documents');
+    if (!pick) return;
+    await run('print', async () => {
+      const r = await window.diwan.documents.reprint(ids, 1, pick.printer);
       const parts = [`أُعيدت طباعة ${nf.format(r.printed)}`];
       if (r.voided) parts.push(`وتُرك ${nf.format(r.voided)} مُبطَلًا لا يُطبع`);
       if (r.failed) parts.push(`وتعذّر ${nf.format(r.failed)}`);
@@ -183,6 +186,7 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
       void loadDetail(inspected);
       onChanged?.();
     });
+  };
 
   const exportReport = () =>
     run('excel', async () => {

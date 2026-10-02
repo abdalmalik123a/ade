@@ -7,6 +7,7 @@ import ExcelJS from 'exceljs';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/citizens';
 import { listScanners, removeStoreFile, scanPage } from '../services/scanner';
+import { printSheet } from '../services/render';
 import { unreferenced } from '../services/storeRefs';
 import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
 import { readCardBack } from '../services/mrzRead';
@@ -210,36 +211,26 @@ export function registerCitizenIpc(): void {
     return readCardBack({ gray: grayOf(new Uint8Array(img.toBitmap()), width, height, 'bgra'), width, height }, recognizeLines);
   });
 
-  /** الطباعة من داخل التطبيق: نافذة إخراج مخفية تحمل الصورة بمقاس الورقة. */
-  ipcMain.handle('attachments:print', async (_e, id: number) => {
+  /**
+   * المستمسك يُطبع بمحرّك الإخراج نفسه، على طابعة دور «استنساخ المستمسكات» التي اختارها الموظف
+   * (خطة Production، ٢٫٢) — وكان بنافذةٍ خاصّة تفتح حوار النظام دائمًا وتتجاوز معايرة الطابعة.
+   */
+  ipcMain.handle('attachments:print', async (e, id: number, printer?: string | null) => {
     const row = getDb()
       .prepare('SELECT file_path AS p FROM attachments WHERE id = ?')
       .get(id) as { p: string } | undefined;
     if (!row) throw new Error('المستمسك غير موجود');
-
-    const image = nativeImage.createFromPath(absolute(row.p));
-    const dataUrl = image.toDataURL();
-    const win = new BrowserWindow({ show: false, webPreferences: { javascript: false } });
-    try {
-      await win.loadURL(
-        'data:text/html;charset=utf-8,' +
-          encodeURIComponent(
-            `<!doctype html><html><head><meta charset="utf-8"><style>
-               @page { size: A4 portrait; margin: 10mm; }
-               html,body{margin:0;padding:0;}
-               img{max-width:100%;max-height:277mm;object-fit:contain;display:block;margin:auto;}
-             </style></head><body><img src="${dataUrl}"></body></html>`
-          )
-      );
-      return await new Promise<boolean>((resolve) => {
-        win.webContents.print(
-          { silent: false, printBackground: true, pageSize: 'A4', color: true },
-          (ok) => resolve(ok)
-        );
-      });
-    } finally {
-      win.destroy();
-    }
+    const src = `diwan://store/${row.p.split('/').map(encodeURIComponent).join('/')}`;
+    const out = await printSheet({
+      sheetHtml:
+        `<div style="width:210mm;height:297mm;padding:10mm;box-sizing:border-box;display:flex;align-items:center;justify-content:center">` +
+        `<img alt="" src="${src}" style="max-width:100%;max-height:100%;object-fit:contain"/></div>`,
+      deviceName: printer ?? undefined,
+      silent: Boolean(printer),
+      parent: BrowserWindow.fromWebContents(e.sender)
+    });
+    if (!out.ok && out.reason && out.reason !== 'cancelled') throw new Error(`تعذّرت طباعة المستمسك: ${out.reason}`);
+    return out.ok;
   });
 
   /** حافظة Electron 44 بنمط W3C: عناصر بأنواع MIME، لا writeImage. */

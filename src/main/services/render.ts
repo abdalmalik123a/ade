@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { BrowserWindow } from 'electron';
 import { fitCanvasText } from '@shared/canvasFit';
@@ -22,6 +22,9 @@ import { getDb } from '../db';
 /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر غيره. */
 export type PageMm = { w: number; h: number };
 const A4: PageMm = { w: 210, h: 297 };
+
+/** أطول ما تُنتظر الخطوط — من القرص لا من الشبكة، فما جاوزه عطلٌ لا بطء. */
+const FONT_WAIT_MS = 10_000;
 
 let styleCache: SheetStyle | null | undefined;
 
@@ -130,6 +133,11 @@ async function withRenderWindow<T>(
     offset?: { x: number; y: number };
     /** طبقةٌ تُختم فوق صفحة PDF: شفّافة، ودورانها من التصميم لا يُنزع (`layerCss`). */
     layer?: boolean;
+    /**
+     * أنماط الكتاب يوم صدر (`sheet_styles`، خطة Production ٢٫٤): تحلّ محلّ أنماط اليوم، فيُعاد
+     * طبعه بما رُسم به — وإلا غيّر تحديثٌ للواجهة خطّه وتقسيم صفحاته.
+     */
+    style?: SheetStyle | null;
   } = {}
 ): Promise<T> {
   const page = opts.page ?? A4;
@@ -155,8 +163,17 @@ async function withRenderWindow<T>(
     else
       await win.loadFile(join(__dirname, '../renderer/index.html'), { query: { mode: 'print' } });
 
-    await win.webContents.executeJavaScript(`
+    const fonts = (await win.webContents.executeJavaScript(`
       (() => {
+        const kept = ${JSON.stringify(opts.style ?? null)};
+        if (kept) {
+          // أنماط يوم الإصدار مكان أنماط اليوم — وصنف <body> الذي يرث منه خطّ الورقة.
+          for (const node of document.querySelectorAll('link[rel="stylesheet"], style')) node.remove();
+          const old = document.createElement('style');
+          old.textContent = kept.css;
+          document.head.appendChild(old);
+          document.body.className = kept.bodyClass || '';
+        }
         const style = document.createElement('style');
         style.textContent = ${JSON.stringify(opts.layer ? layerCss(page) : printCss(page, opts.offset))};
         document.head.appendChild(style);
@@ -164,15 +181,28 @@ async function withRenderWindow<T>(
         root.className = 'print-root';
         root.innerHTML = ${JSON.stringify(sheetHtml)};
         document.body.appendChild(root);
+        void root.offsetHeight; // التخطيط يطلب الخطوط التي تستعملها الورقة
         // انتظار الخطوط قبل الرسم — وإلا خرجت الورقة بخطّ بديل. وبمهلة قصوى
         // كي لا يتعلّق الإصدار كلّه على خطّ لم يُحمَّل. ثم تُقاس الأسماء بخطّها
         // الحقيقي فتصغر ما يلزم لتسع — كما قيست في المعاينة.
+        let timedOut = false;
         return Promise.race([
           document.fonts.ready,
-          new Promise((r) => setTimeout(r, 3000))
-        ]).then(() => (${fitCanvasText.toString()})(root) >= 0);
+          new Promise((r) => setTimeout(() => { timedOut = true; r(null); }, ${FONT_WAIT_MS}))
+        ]).then(() => {
+          (${fitCanvasText.toString()})(root);
+          const failed = [...document.fonts].filter((f) => f.status === 'error').map((f) => f.family);
+          const waiting = [...document.fonts].filter((f) => f.status === 'loading').map((f) => f.family);
+          return { failed: [...new Set([...failed, ...(timedOut ? waiting : [])])] };
+        });
       })()
-    `);
+    `)) as { failed: string[] };
+
+    // خطٌّ لم يُحمَّل لا يُرسم بديله صامتًا (خطة Production ٢٫٥): كتابٌ رسميّ بخطّ النظام الاحتياطي
+    // تقسيمُ أسطره وصفحاته غير ما رآه الموظف — فيُقال ولا يُطبع.
+    if (fonts.failed.length) {
+      throw new Error(`خطّ الورقة لم يُحمَّل (${fonts.failed.join('، ')}) — لم تُطبع حتى لا تخرج بخطٍّ بديل`);
+    }
 
     return await work(win);
   } finally {
@@ -196,7 +226,34 @@ export type PrintRequest = {
   duplex?: boolean;
   /** ورقة المعايرة تُطبع بلا إزاحة — فهي ما تُقاس به الإزاحة. */
   raw?: boolean;
+  /** أنماط الكتاب يوم صدر — لإعادة طبع ما في الأرشيف كما صدر. */
+  style?: SheetStyle | null;
 };
+
+/**
+ * تحت المِقْود وحده (`DIWAN_TEST_PRINT_LOG`): لا يُرسل شيءٌ إلى طابعة، بل يُكتب سطرٌ لكلّ طلب
+ * طباعة — الطابعة، وأصامتٌ هو، وأوّل ما في الورقة — فتُختبر الطباعة على التطبيق الحقيقي بلا ورق.
+ * وطابعةٌ يبدأ اسمها بـ«معطّلة» تُرفض دائمًا، و«تتوقّف» تقف مرّةً واحدة عند ورقتها الثالثة (نفد
+ * الورق) — ليُختبر ما يُقال حين لا تُطبع ورقة، والاستئناف من حيث وقفت.
+ */
+function testPrintLog(req: PrintRequest): { ok: boolean; reason?: string } | null {
+  const file = process.env['DIWAN_TEST_PRINT_LOG'];
+  if (!file) return null;
+  const printer = req.deviceName ?? null;
+  let before = 0;
+  try {
+    before = readFileSync(file, 'utf8')
+      .split('\n')
+      .filter((line) => line && (JSON.parse(line) as { printer: string | null }).printer === printer).length;
+  } catch {
+    // لا سجلّ بعد.
+  }
+  const text = req.sheetHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+  appendFileSync(file, `${JSON.stringify({ printer, silent: req.silent ?? false, style: Boolean(req.style), text })}\n`, 'utf8');
+  if (printer?.startsWith('معطّلة')) return { ok: false, reason: 'الطابعة لا تستجيب' };
+  if (printer?.startsWith('تتوقّف') && before === 2) return { ok: false, reason: 'نفد الورق' };
+  return { ok: true };
+}
 
 /**
  * إزاحة الطابعة التي ستطبع، من إعدادات المكتب — باسمها، أو الافتراضية إن لم تُسمَّ.
@@ -246,9 +303,26 @@ export function calibrationSheet(): string {
 }
 
 export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reason?: string }> {
+  const logged = testPrintLog(req);
+  if (logged) return logged;
   const silent = req.silent ?? false;
   const page = req.page ?? A4;
   const { landscape, pageSize } = pageSizeOf(page);
+  try {
+    return await printWith(req, silent, page, landscape, pageSize);
+  } catch (e) {
+    // خطٌّ لم يُحمَّل أو نافذةٌ لم تُفتح: ورقةٌ لم تُطبع، يُقال سببها — لا استثناءٌ يُسقط الدفعة.
+    return { ok: false, reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+function printWith(
+  req: PrintRequest,
+  silent: boolean,
+  page: PageMm,
+  landscape: boolean,
+  pageSize: ReturnType<typeof pageSizeOf>['pageSize']
+): Promise<{ ok: boolean; reason?: string }> {
   return withRenderWindow(
     req.sheetHtml,
     (win) =>
@@ -273,12 +347,12 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
       }),
     // حوار النظام لا يظهر فوق نافذة مرسومة خارج الشاشة، فالطباعة غير الصامتة
     // تحتاج نافذة حقيقية مخفية معلَّقة على نافذة التطبيق.
-    { offscreen: silent, parent: silent ? null : req.parent, page, offset: req.raw ? undefined : printerOffset(req.deviceName) }
+    { offscreen: silent, parent: silent ? null : req.parent, page, offset: req.raw ? undefined : printerOffset(req.deviceName), style: req.style }
   );
 }
 
-/** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية). */
-export async function renderPdf(sheetHtml: string, page: PageMm = A4): Promise<Buffer> {
+/** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية) — وبأنماط الكتاب يوم صدر إن أُعطيت. */
+export async function renderPdf(sheetHtml: string, page: PageMm = A4, style: SheetStyle | null = null): Promise<Buffer> {
   const { landscape, pageSize } = pageSizeOf(page);
   return withRenderWindow(
     sheetHtml,
@@ -290,7 +364,7 @@ export async function renderPdf(sheetHtml: string, page: PageMm = A4): Promise<B
         landscape,
         preferCSSPageSize: true
       }),
-    { page }
+    { page, style }
   );
 }
 

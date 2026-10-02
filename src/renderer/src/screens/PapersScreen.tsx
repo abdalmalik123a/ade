@@ -20,7 +20,7 @@ import {
   useRef,
   useState
 } from 'react';
-import type { PrinterInfo, TemplateSummary } from '@shared/api';
+import type { TemplateSummary } from '@shared/api';
 import {
   itemScore,
   listScore,
@@ -50,6 +50,7 @@ import {
   versionItems
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 import QuestionBankPanel from '../components/QuestionBankPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import OmrPanel from '../components/OmrPanel';
@@ -294,7 +295,6 @@ function freshCopy(item: ListItem): ListItem {
 // ── الشاشة ───────────────────────────────────────────────────────────
 
 export type PapersScreenProps = {
-  printer: PrinterInfo | null;
   onChanged?: () => void;
 };
 
@@ -311,7 +311,7 @@ export type PapersHandle = {
 };
 
 function PapersScreenInner(
-  { printer, onChanged }: PapersScreenProps,
+  { onChanged }: PapersScreenProps,
   ref: React.Ref<PapersHandle>
 ) {
   const [head, setHead] = useState<Record<string, string>>(emptyHead);
@@ -546,14 +546,16 @@ function PapersScreenInner(
   const print = useCallback(async () => {
     const sheets = sheetsFor();
     if (!sheets) return;
+    const pick = await choosePrinter('papers', { allowSystem: true });
+    if (!pick) return;
     setBusy(true);
     try {
       // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
       const out = await window.diwan.output.print({
         sheetHtml: sheets.html,
-        printer: printer?.name ?? null,
+        printer: pick.printer,
         copies: sheets.copies,
-        silent: false
+        silent: !pick.system
       });
       say(
         out.ok
@@ -568,7 +570,7 @@ function PapersScreenInner(
     } finally {
       setBusy(false);
     }
-  }, [printer, copies, versions, sheetsFor, say]);
+  }, [copies, versions, sheetsFor, say]);
 
   const exportPdf = useCallback(async () => {
     // PDF النموذجين ورقتان: «أ» ثم «ب» — للمدرّس يطبع منه ما شاء.
@@ -846,7 +848,6 @@ function PapersScreenInner(
               <OmrPanel
                 key={omrEpoch}
                 lines={[head['المدرسة'], head['الدور']].map((l) => l?.trim() ?? '').filter(Boolean)}
-                printer={printer}
                 spec={omr}
                 title={title}
                 onSay={say}

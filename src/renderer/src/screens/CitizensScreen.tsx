@@ -8,7 +8,7 @@
  * ولا مواطن مبرمَج: يبدأ الدليل فارغًا.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, PrinterInfo, ScannerDevice } from '@shared/api';
+import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, ScannerDevice } from '@shared/api';
 import CitizenForm from './CitizenForm';
 import IdDuplexDialog from './IdDuplexDialog';
 import DeskewModal from './DeskewModal';
@@ -18,6 +18,7 @@ import UploadExportDialog from '../components/UploadExportDialog';
 import { readMrz, type MrzResult } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -31,12 +32,11 @@ type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 type Props = {
   onInsertIntoEditor?: (citizenId: number) => void;
   onChanged?: () => void;
-  printer?: PrinterInfo | null;
   /** ملفٌّ يُفتح من خارج الشاشة — مواطنٌ وُجد في البحث الشامل. `key` يعيد فتحه ولو تكرّر. */
   focus?: { key: number; citizenId: number } | null;
 };
 
-export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer, focus = null }: Props) {
+export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = null }: Props) {
   const [stats, setStats] = useState<CitizenStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<CitizenSummary[]>([]);
@@ -739,8 +739,10 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
                                 icon="print"
                                 title="طباعة فورية ملونة"
                                 onClick={() =>
-                                  void withBusy(`print-${a.id}`, () =>
-                                    window.diwan.attachments.print(a.id)
+                                  void choosePrinter('copies').then(
+                                    (pick) =>
+                                      pick &&
+                                      withBusy(`print-${a.id}`, () => window.diwan.attachments.print(a.id, pick.printer))
                                   )
                                 }
                               />
@@ -1104,7 +1106,6 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, printer,
         <IdDuplexDialog
           isOpen={true}
           onClose={() => setIdDuplexOpen(false)}
-          printer={printer ?? null}
           citizenName={detail?.fullName}
           attachments={detail?.attachments ?? []}
         />

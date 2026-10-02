@@ -6,6 +6,7 @@ import type { MrzResult } from './mrz';
 import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
+import type { PrintRoles } from './printRoles';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -27,7 +28,10 @@ import type { TemplateInput, TemplateVariable } from './template';
 export type OfficeSettings = {
   officeName: string;
   operatorName: string;
+  /** الطابعة الافتراضية القديمة — يأخذها كلّ دورٍ لم يُحفظ بعد (`printRoles`). */
   defaultPrinter: string | null;
+  /** طابعة كلّ نوع عمل: عادي وملوّن اختياري، ونافذة الطباعة (`shared/printRoles.ts`). */
+  printRoles: PrintRoles;
   serialPrefix: string;
   serialYear: number;
   /**
@@ -222,6 +226,8 @@ export type IssueInput = {
   hijriDate: string | null;
   operator: string | null;
   printer: string | null;
+  /** نافذة ويندوز قبل الطبع — اختارها الموظف ليضبط الورق والجودة («بإعدادات ويندوز»). */
+  printDialog?: boolean;
   serialPrefix: string;
   serialYear: number;
   /** الترويسة التي جاء منها — واللقطة محفوظة مع الكتاب، وهذا للسؤال والترتيب. */
@@ -679,7 +685,7 @@ export type DiwanApi = {
     ocr(id: number): Promise<{ text: string; confidence: number }>;
     /** ظهر البطاقة بقارئه الخاصّ: السطور الثلاثة كما قُرئت، والحقول بتحقّقها (أو عدمٌ إن لم تُوجد). */
     readMrz(id: number): Promise<{ result: MrzResult | null; lines: string[] }>;
-    print(id: number): Promise<boolean>;
+    print(id: number, printer: string | null): Promise<boolean>;
     copyToClipboard(id: number): Promise<boolean>;
     exportZip(citizenId: number): Promise<{ path: string; count: number } | null>;
     delete(id: number): Promise<void>;
@@ -693,11 +699,15 @@ export type DiwanApi = {
   documents: {
     /** الإصدار: رقم وبصمة ورمز تحقق وقيد في السجل، ثم طباعة وأرشفة PDF. */
     issue(input: IssueInput, print: boolean): Promise<IssueOutcome>;
-    /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. */
-    /** `mode: 'values'` يطبع القيم وحدها في مواضعها — على استمارةٍ مطبوعةٍ مسبقًا. */
-    issueTransaction(input: TransactionInput, print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult>;
+    /** معاملة الزبون الواحد: خمس أوراق قيدٌ واحد، ولكلٍّ رقمها وبصمتها. والطباعة بعدها (`printIssued`). */
+    issueTransaction(input: TransactionInput): Promise<TransactionResult>;
     /** الدمج: معاملةٌ لكل اسم في القائمة، والدفعة كلّها أو لا شيء. */
-    issueBatch(inputs: TransactionInput[], print: boolean, mode?: 'full' | 'values'): Promise<TransactionResult[]>;
+    issueBatch(inputs: TransactionInput[]): Promise<TransactionResult[]>;
+    /**
+     * أوراقٌ صدرت تُطبع على الطابعة المختارة ورقةً ورقة بسجلٍّ يُستأنف (خطة Production، ٢٫٣)، وبأنماطها
+     * يوم صدرت. و`mode: 'values'` يطبع القيم وحدها في مواضعها — على استمارةٍ مطبوعةٍ مسبقًا.
+     */
+    printIssued(req: { ids: number[]; printer: string | null; mode?: 'full' | 'values'; label?: string }): Promise<PrintJobResult>;
     /** يربط كتب معاملةٍ بملف مواطنٍ حُفظ بعدها — المتن والبصمة لا يُمسّان. */
     linkCitizen(transactionId: number, citizenId: number): Promise<number>;
     /** «كرّره»: أمِن المحرّر صدر فيعود إليه، أم من الشبّاك فيعود بنماذجه وقيمه؟ */
@@ -712,8 +722,8 @@ export type DiwanApi = {
       limit?: number;
     }): Promise<DocumentRow[]>;
     stats(opts?: { from?: string | null; to?: string | null }): Promise<PeriodStats>;
-    /** إعادة طباعة طبق الأصل — تُقيَّد ولا تستهلك رقمًا جديدًا. */
-    reprint(ids: number[], copies: number): Promise<{ printed: number; failed: number; voided: number }>;
+    /** إعادة طباعة طبق الأصل — تُقيَّد ولا تستهلك رقمًا جديدًا، وبأنماط الكتاب يوم صدر. */
+    reprint(ids: number[], copies: number, printer: string | null): Promise<{ printed: number; failed: number; voided: number }>;
     /** تصدير الكتاب PDF إلى مكان يختاره المكتب. */
     exportPdf(id: number): Promise<string | null>;
     /** تقرير المدة جدولًا في Excel — العنوان يظهر في ورقة المؤشرات. */

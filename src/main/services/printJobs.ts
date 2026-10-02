@@ -43,6 +43,8 @@ export type PrintJob = {
   /** ما أُرسل إلى الطابعة من الأوراق. */
   sent: number;
   createdAt: string;
+  /** أنماط الكتب يوم صدرت — لأوراقٍ من الأرشيف (`sheet_styles`)، فتُستأنف بها كما بدأت. */
+  styleHash?: string | null;
 };
 
 export type PrintJournal = {

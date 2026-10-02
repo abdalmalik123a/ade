@@ -178,7 +178,7 @@ export default async function scenario(page, { profile, kill }) {
       authorityId: null, docType: 'إفادة', destination: null, purpose: null, values: {}, copies: 1, copyKind: 'نسخة أصلية', fee: 0 });
     const inputs = Array.from({ length: ${BATCH} }, (_, i) => ({ citizenId: null, citizenName: 'موظف ' + i, nationalId: null, operator: null, printer: null,
       serialPrefix: 'م', serialYear: 2026, gregorianDate: '', hijriDate: null, sheets: [sheet(i)] }));
-    setTimeout(() => void window.diwan.documents.issueBatch(inputs, false).catch(() => null), 300);
+    setTimeout(() => void window.diwan.documents.issueBatch(inputs).catch(() => null), 300);
     return true;`);
   await wait(2500);
   // من خارج البرنامج: القيد مفتوح فلا يُرى منه شيء — وهذا ما يُقتل فيه.
@@ -222,7 +222,7 @@ export async function afterRestart(page, { profile }) {
     const out = await window.diwan.documents.issueBatch([{ citizenId: null, citizenName: 'بعد الانقطاع', nationalId: null, operator: null, printer: null,
       serialPrefix: 'م', serialYear: 2026, gregorianDate: '', hijriDate: null,
       sheets: [{ sheetHtml: '<div class="a4-sheet"><div>كتابٌ بعد الانقطاع.</div></div>', templateId: null, letterheadId: null, authorityId: null,
-        docType: 'إفادة', destination: null, purpose: null, values: {}, copies: 1, copyKind: 'نسخة أصلية', fee: 0 }] }], false);
+        docType: 'إفادة', destination: null, purpose: null, values: {}, copies: 1, copyKind: 'نسخة أصلية', fee: 0 }] }]);
     return out[0].documents[0].serial;`);
   const seq = Number(String(next).split('/').pop());
   ok(`والترقيم يكمل بلا ثقبٍ ولا تكرار (${next})`, seq === count + 1);
