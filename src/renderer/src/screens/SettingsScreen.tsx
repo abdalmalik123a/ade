@@ -18,6 +18,7 @@ import { UI_SCALES } from '../shell/Onboarding';
 import BackupPanel from '../components/BackupPanel';
 import LicenseCard from '../components/LicenseCard';
 import AboutDialog from '../components/AboutDialog';
+import UpdateCard from '../components/UpdateCard';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -106,6 +107,9 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
           <div className="grid lg:grid-cols-2 gap-space-md items-start">
             {/* ── التفعيل ────────────────────────────────────────────── */}
             <LicenseCard card={card} title={title('verified', 'التفعيل')} onChanged={() => onChanged?.()} />
+
+            {/* ── التحديث «أ+» ────────────────────────────────────────── */}
+            <UpdateCard card={card} title={title('system_update_alt', 'التحديث')} version={info?.version ?? null} />
 
             {/* ── المكتب ─────────────────────────────────────────────── */}
             <section className={card}>

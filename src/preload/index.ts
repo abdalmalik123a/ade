@@ -27,7 +27,8 @@ const api: DiwanApi = {
       ipcRenderer.on('app:closing', handler);
       return () => ipcRenderer.removeListener('app:closing', handler);
     },
-    closeReady: () => ipcRenderer.send('app:closeReady')
+    closeReady: () => ipcRenderer.send('app:closeReady'),
+    requestClose: () => ipcRenderer.send('app:requestClose')
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')
@@ -144,6 +145,11 @@ const api: DiwanApi = {
     mirrorPick: () => invoke('backup:mirrorPick'),
     mirrorInspect: (path, password, snapshot) => invoke('backup:mirrorInspect', path, password ?? null, snapshot ?? null),
     mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null)
+  },
+  update: {
+    pick: () => invoke('update:pick'),
+    install: (path) => invoke('update:install', path),
+    whatsNew: () => invoke('app:whatsNew')
   },
   license: {
     status: () => invoke('license:status'),
@@ -304,3 +310,8 @@ const api: DiwanApi = {
 };
 
 contextBridge.exposeInMainWorld('diwan', api);
+
+// `window.close()` في صندوقٍ (sandbox) يُغلق النافذة فورًا ويتخطّى إغلاقها على مرحلتيه — فتضيع مسودة المحرّر
+// والنسخة التلقائية. فيُوجَّه إلى ما يفعله زرّ الإغلاق نفسه (خطة Production، ٦٫٤) — كما كان Electron يفعل
+// قبل الصندوق.
+void webFrame.executeJavaScript('window.close = () => window.diwan.ui.requestClose();');

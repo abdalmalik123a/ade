@@ -43,6 +43,8 @@ function now(): Date {
   return new Date();
 }
 const publicKey = (): string => test('DIWAN_TEST_LICENSE_PUBKEY') ?? OWNER_PUBLIC_KEY;
+/** مفتاح المالك العامّ — للتفعيل وللتحديث «أ+» (وتحت المِقْود مفتاح الاختبار، في غير المثبّت وحده). */
+export const ownerPublicKey = publicKey;
 
 let machine: string | null = null;
 /** معرّف ويندوز للجهاز — يُقرأ بلا صلاحيات مدير. وإن تعذّر فاسم الجهاز والمستخدم. */

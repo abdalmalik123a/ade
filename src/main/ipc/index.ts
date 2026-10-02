@@ -4,6 +4,7 @@ import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
 import { registerContentIpc } from './content';
 import { registerLicenseIpc } from './license';
+import { registerUpdateIpc } from './update';
 import { assertGateComplete, installProductiveGate } from './gate';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
@@ -144,6 +145,7 @@ export function registerIpc(): void {
   registerBackupIpc();
   registerContentIpc();
   registerLicenseIpc();
+  registerUpdateIpc();
 
   /** بطاقة التعبئة للمواقع الحكومية (هـ٦): نافذةٌ فوق المتصفّح لمواطنٍ من السجل. */
   ipcMain.handle('fillcard:open', (_e, citizenId: number) => openFillCard(Number(citizenId)));

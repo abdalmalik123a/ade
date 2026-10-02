@@ -1,6 +1,6 @@
 {
   "name": "diwan",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "ديوان — منظومة الكتب والتحارير",
   "main": "./out/main/index.js",
   "author": "مكتب الاستنساخ المركزي",
@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --win",
+    "release": "npm run dist && node tools/release.mjs",
     "postinstall": "electron-builder install-app-deps",
     "tokens": "node tools/extract-tokens.mjs",
     "test": "vitest run",

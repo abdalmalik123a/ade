@@ -18,6 +18,7 @@ import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { closeDb, dataDir, getDb } from '../db';
 import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBackup, writeBackup, type OpenedBackup } from '../services/backup';
 import { mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
+import { stampDataVersion } from '../services/dataVersion';
 import { logAudit, prepareDocuments } from '../services/documents';
 import { ensureSearchColumn } from '../services/citizens';
 import { prepareLetterheads } from '../services/letterheads';
@@ -72,6 +73,8 @@ function reopen(): void {
   prepareLetterheads(db);
   prepareTemplates(db);
   prepareSearch(db);
+  // رُحّلت بإصدار هذا البرنامج — فلا يحسبها الإقلاع التالي «أقدم» فيعيد نسخها ويعرض «ما الجديد».
+  stampDataVersion(db, app.getVersion());
 }
 
 export async function createBackup(

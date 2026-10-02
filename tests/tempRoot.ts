@@ -7,9 +7,20 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-export default function setup(): () => void {
+export default function setup(): () => Promise<void> {
   const root = mkdtempSync(join(tmpdir(), 'diwan-vitest-'));
   // العمّال يُنشَؤون بعد هذا فيرثونه: `tmpdir()` فيهم يقرأ TEMP.
   process.env['TEMP'] = process.env['TMP'] = process.env['TMPDIR'] = root;
-  return () => rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  return async () => {
+    // عاملٌ لم يخرج بعدُ قد يمسك ملفًّا لحظات: يُعاد المحو. ومجلّدٌ مؤقّتٌ بقي لا يُفشل التشغيل.
+    for (let i = 0; i < 20; i++) {
+      try {
+        rmSync(root, { recursive: true, force: true });
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+    console.warn(`لم يُمحَ مجلّد الاختبار المؤقّت: ${root}`);
+  };
 }

@@ -22,6 +22,7 @@ import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import IdSheetDialog from './components/IdSheetDialog';
 import AboutDialog from './components/AboutDialog';
+import WhatsNewDialog from './components/WhatsNewDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
 import ResumePrintDialog from './components/ResumePrintDialog';
@@ -95,6 +96,8 @@ export default function App() {
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   const [idSheetOpen, setIdSheetOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  /** رُحّلت البيانات من إصدارٍ أقدم في هذا الإقلاع: «ما الجديد» مرّةً (خطة Production، ٧٫١). */
+  const [whatsNew, setWhatsNew] = useState<{ from: string; to: string } | null>(null);
   /** المدّة التجريبية أو التفعيل (خطة Production، ٦٫٢) — تُسأل عند الإقلاع وكلّ عشر دقائق وبعد كلّ تغيير. */
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [editorStatus, setEditorStatus] = useState<{
@@ -125,6 +128,10 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    void window.diwan.update.whatsNew().then(setWhatsNew).catch(() => undefined);
+  }, []);
 
   // اليوم يتبدّل والبرنامج مفتوح: الأيّام الباقية تُحسب من جديد.
   useEffect(() => {
@@ -468,6 +475,7 @@ export default function App() {
 
       {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      {whatsNew && <WhatsNewDialog from={whatsNew.from} to={whatsNew.to} onClose={() => setWhatsNew(null)} />}
 
       {idDuplexOpen && (
         <IdDuplexDialog

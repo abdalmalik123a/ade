@@ -12,7 +12,7 @@
  * **والقراءة من الفهرس المركزي** لا من ترويسات الملفات: فتقرأ ما كتبه هذا الملف، وما كتبته `zipSync`
  * في النسخ القديمة، بطريقةٍ واحدة. وكلّ ملفٍّ يُفكّ إلى القرص مارًّا ويُطابَق CRC.
  */
-import { createReadStream, createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream, rmSync } from 'node:fs';
 import { open, stat, type FileHandle } from 'node:fs/promises';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -322,8 +322,14 @@ export async function extractEntry(path: string, entry: ZipEntry, dest: string):
   );
   if (entry.method === 8) stages.push(createInflateRaw());
   stages.push(counter);
-  await pipeline(...(stages as [Readable, Transform]), createWriteStream(dest));
-  if ((counter.crc >>> 0) !== entry.crc || counter.size !== entry.size) throw new Error(`«${entry.name}» معطوبٌ في النسخة`);
+  try {
+    await pipeline(...(stages as [Readable, Transform]), createWriteStream(dest));
+    if ((counter.crc >>> 0) !== entry.crc || counter.size !== entry.size) throw new Error(`«${entry.name}» معطوبٌ في الأرشيف`);
+  } catch (e) {
+    // ما فُكّ نصفه أو فُكّ معطوبًا لا يبقى على القرص كأنه سليم.
+    rmSync(dest, { force: true });
+    throw e;
+  }
 }
 
 /** مسارٌ داخل الأرشيف يُكتب تحت مجلّده — لا `..` ولا مسارٌ مطلق ولا حرف قرص. */

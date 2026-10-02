@@ -1,7 +1,9 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'electron';
 import { pathToFileURL } from 'node:url';
-import { getDb, closeDb, storeDir } from './db';
+import { getDb, closeDb, dataDir, storeDir } from './db';
+import { guardDataVersion, stampDataVersion } from './services/dataVersion';
+import { rememberStartup } from './ipc/update';
 import { registerIpc } from './ipc';
 import { autoBackupConfigured, runConfiguredAutoBackup } from './ipc/backup';
 import { prepareDocuments } from './services/documents';
@@ -43,6 +45,9 @@ function bringToFront(): void {
 }
 
 app.on('second-instance', bringToFront);
+
+// `window.close()` من الواجهة يمرّ بما يمرّ به زرّ الإغلاق (preload): الحدث `close` وإغلاقه على مرحلتيه.
+ipcMain.on('app:requestClose', (e) => BrowserWindow.fromWebContents(e.sender)?.close());
 
 /**
  * مقاس النافذة من شاشة الجهاز (خطة Production، ٣٫١): كانت ١٦٠٠×١٠٠٠ وحدّها الأدنى ١٢٨٠×٨٠٠ — أكبر
@@ -169,12 +174,30 @@ app.whenReady().then(() => {
 
   // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.
   try {
+    // إصدارٌ أقدم لا يفتح بيانات أحدث، والتحديث يأخذ نسخةً قبل الترحيل (خطة Production، ٧٫٢).
+    const guard = guardDataVersion({
+      file: join(dataDir(), 'diwan.db'),
+      current: app.getVersion(),
+      snapshotDir: join(dataDir(), 'before-update')
+    });
+    if (guard.kind === 'newer') {
+      dialog.showErrorBox(
+        'بيانات المكتب من إصدارٍ أحدث',
+        `بيانات هذا الجهاز فتحها «ديوان ${guard.from}»، وهذا البرنامج ${app.getVersion()} — أقدم منه.\n\n` +
+          'لا تُفتح حتى لا يُفسدها إصدارٌ لا يعرف ما أُضيف إليها. ثبّت الإصدار الأحدث (أو الأحدث منه) ثم افتحها.'
+      );
+      app.quit();
+      return;
+    }
+    rememberStartup(guard);
     getDb();
     registerIpc();
     // الفهارس تُطابَق جداولها (وتُبنى أوّل مرّة على قاعدة مكتبٍ قائمة). ولا تُسقط
     // الإقلاع إن تعذّرت: البحث يعود إلى المسح (services/searchIndex.ts).
     prepareDocuments(getDb());
     prepareSearch(getDb());
+    // رُحّلت كلّها: يُكتب فيها هذا الإصدار.
+    stampDataVersion(getDb(), app.getVersion());
   } catch (e) {
     dialog.showErrorBox(
       'تعذّر تشغيل ديوان',

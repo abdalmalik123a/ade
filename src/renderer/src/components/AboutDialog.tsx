@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { LicenseStatus } from '@shared/api';
-import { DEVELOPER } from '@shared/brand';
+import { DEVELOPER, channels } from '@shared/brand';
 import icon from '../assets/brand/diwan-icon.png';
 import logo from '../assets/brand/madatech-logo.png';
 import notices from '../assets/notices.json';
@@ -59,6 +59,25 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
             {DEVELOPER.phoneDisplay} — WhatsApp
           </a>
         </div>
+
+        {channels().length > 0 && (
+          <div className="flex flex-col gap-space-xs" data-channels="">
+            <span className="font-label-sm text-label-sm text-on-surface-variant">قنواتنا — تُفتح في متصفّح الجهاز</span>
+            <div className="flex flex-wrap gap-space-xs">
+              {channels().map((c) => (
+                <a
+                  key={c.key}
+                  className="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center"
+                  href={c.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {c.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* الشعار أبيضٌ وأزرق على شفّاف: يُعرض على داكن. */}
         <div className="rounded-xl bg-[#0b1020] p-space-md flex items-center justify-center">

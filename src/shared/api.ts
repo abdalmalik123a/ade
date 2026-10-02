@@ -619,6 +619,8 @@ export type DiwanApi = {
     onClosing(listener: (info: { backup: boolean }) => void): () => void;
     /** الواجهة أفرغت ما لم يُحفظ: يمضي الإغلاق. وإن لم تقلها مضى بعد مهلة. */
     closeReady(): void;
+    /** إغلاق النافذة كزرّ الإغلاق: على مرحلتيه (`window.close()` يُوجَّه إليه). */
+    requestClose(): void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;
@@ -809,6 +811,13 @@ export type DiwanApi = {
     /** `snapshot`: نسخة القاعدة المختارة من المجلّد — وبلا اختيارٍ آخرها. */
     mirrorInspect(path: string, password?: string | null, snapshot?: string | null): Promise<BackupSummary>;
     mirrorRestore(path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+  };
+  /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
+  update: {
+    pick(): Promise<{ path: string; version: string; notes: string; size: number; issued: string; current: string } | null>;
+    install(path: string): Promise<{ installer: string; launched: boolean }>;
+    /** رُحّلت البيانات من إصدارٍ أقدم في هذا الإقلاع: «ما الجديد» بين الإصدارين — وإلا `null`. */
+    whatsNew(): Promise<{ from: string; to: string } | null>;
   };
   /** التفعيل بلا شبكة: الحال، ومفتاحٌ يُلصق — كاملٌ أو تمديد — لهذا الجهاز وحده. */
   license: {
