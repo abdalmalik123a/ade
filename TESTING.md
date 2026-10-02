@@ -14,12 +14,16 @@ npm run build                                     # قبل السيناريوه�
 node tools/drive.mjs tools/scenarios/<name>.mjs   # سيناريو واحد: ✓ و✗ لكل فحص
 ```
 
-والسيناريوهات كلّها معًا (ويخرج كلٌّ بـ١ إن فشل فحصٌ واحد). **ومعها `DIWAN_TEST_SAVE_DIR`**، وإلا
-تُخطّى فحوص الحفظ (PDF وExcel والنسخة الاحتياطية) صامتةً:
+والسيناريوهات كلّها معًا (ويخرج كلٌّ بـ١ إن فشل فحصٌ واحد):
 
 ```bash
-for f in tools/scenarios/*.mjs; do DIWAN_TEST_SAVE_DIR="$TEMP/diwan-save-$RANDOM" node tools/drive.mjs "$f" | grep -c "✗" | sed "s|^|$f ✗|"; done
+for f in tools/scenarios/*.mjs; do node tools/drive.mjs "$f" | grep -c "✗" | sed "s|^|$f ✗|"; done
 ```
+
+**ولكلّ تشغيلٍ مجلّدٌ مؤقّتٌ واحد يُمحى في آخره** ولو سقط السيناريو: فيه الملف الشخصي، ومجلّدات السيناريو
+(تُبنى من TEMP)، وما يحفظه التطبيق — `DIWAN_TEST_SAVE_DIR` إن لم يُعطَ، فلا تُتخطّى فحوص الحفظ (PDF وExcel
+والنسخة الاحتياطية) صامتةً. و`KEEP_RUN=1` يُبقيه للتحقيق. واختبارات الوحدة كذلك: ما تبنيه بـ`tmpdir()`
+في مجلّدٍ يُمحى بعد خروج عمّالها (`tests/tempRoot.ts`). وكانت تبقى في TEMP حتى بلغت أربعة آلاف مجلّد.
 
 **وPDF يُفحص بمحتواه لا بترويسته**: ملفٌّ يبدأ بـ`%PDF` قد يكون ورقةً بيضاء (وكان كذلك لكل
 ورقةٍ ليست `.print-sheet` — المرحلة ٢). فالنصّ خطٌّ مضمَّن (`/FontFile`)، والصورة `/Subtype /Image`.

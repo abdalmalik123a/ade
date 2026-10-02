@@ -14,7 +14,8 @@
  * - `DIWAN_EXE`: يُشغَّل التطبيق المُثبَّت (المبني بـelectron-builder) لا نسخة التطوير.
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -247,22 +248,44 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
 
 // تشغيل مباشر: node tools/drive.mjs scenario.mjs
 if (process.argv[2]) {
-  const mod = await import(pathToFileURL(resolve(process.argv[2])).href);
-  // سيناريو يحتاج تهيئةً قبل إقلاع التطبيق (ملفًا يُبنى، أو متغيّر بيئة يُضبط).
-  const env = mod.prepare ? await mod.prepare() : undefined;
-  const profile = join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
-  let out = await drive(mod.default, {
-    userDataDir: profile,
-    shotsDir: process.env.SHOT_DIR,
-    env,
-    keepOnboarding: mod.keepOnboarding === true
-  });
-  // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
-  if (mod.afterRestart) {
-    const again = await drive(mod.afterRestart, { userDataDir: profile, keepProfile: true, shotsDir: process.env.SHOT_DIR, env, keepOnboarding: true });
-    out = [out, again].filter((x) => typeof x === 'string').join('\n');
+  // كلّ ما يكتبه التشغيل — الملف الشخصي، ومجلّدات السيناريو (تُبنى من TEMP)، وما يحفظه التطبيق —
+  // في مجلّدٍ واحد يُمحى في آخره ولو سقط السيناريو: كانت تبقى في TEMP حتى بلغت أربعة آلاف مجلّد.
+  // و`KEEP_RUN=1` يُبقيه للتحقيق. وبلا `DIWAN_TEST_SAVE_DIR` يُعطى مجلّدًا فيه: فحوص الحفظ لا
+  // تُتخطّى صامتةً.
+  const root = mkdtempSync(join(process.env.TEMP ?? tmpdir(), 'diwan-run-'));
+  process.env.TEMP = process.env.TMP = root;
+  process.env.DIWAN_TEST_SAVE_DIR ??= join(root, 'save');
+  let out;
+  try {
+    const mod = await import(pathToFileURL(resolve(process.argv[2])).href);
+    // سيناريو يحتاج تهيئةً قبل إقلاع التطبيق (ملفًا يُبنى، أو متغيّر بيئة يُضبط).
+    const env = mod.prepare ? await mod.prepare() : undefined;
+    const profile = join(root, `diwan-drive-${Date.now()}`);
+    out = await drive(mod.default, {
+      userDataDir: profile,
+      shotsDir: process.env.SHOT_DIR,
+      env,
+      keepOnboarding: mod.keepOnboarding === true
+    });
+    // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
+    if (mod.afterRestart) {
+      const again = await drive(mod.afterRestart, { userDataDir: profile, keepProfile: true, shotsDir: process.env.SHOT_DIR, env, keepOnboarding: true });
+      out = [out, again].filter((x) => typeof x === 'string').join('\n');
+    }
+    if (out !== undefined) console.log(out);
+  } catch (e) {
+    out = `✗ سقط السيناريو: ${e?.stack ?? e}`;
+    console.log(out);
+  } finally {
+    if (process.env.KEEP_RUN !== '1') {
+      try {
+        // عمليات Electron الفرعية قد تمسك ملفًّا لحظاتٍ بعد القتل — فيُعاد المحو.
+        rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+      } catch (e) {
+        console.error(`لم يُمحَ مجلّد التشغيل ${root}: ${e.message}`);
+      }
+    }
   }
-  if (out !== undefined) console.log(out);
   // فحصٌ واحدٌ فاشل يُفشل السيناريو كلّه — وإلا مرّ ✗ في سجلٍّ لا يقرؤه أحد.
   process.exit(typeof out === 'string' && out.includes('✗') ? 1 : 0);
 }

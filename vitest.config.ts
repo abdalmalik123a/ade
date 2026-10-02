@@ -9,6 +9,7 @@ export default defineConfig({
   },
   test: {
     include: ['tests/**/*.test.ts'],
-    environment: 'node'
+    environment: 'node',
+    globalSetup: ['tests/tempRoot.ts']
   }
 });
