@@ -16,6 +16,7 @@ import { normalizeFold } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
 import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
+  Attachment,
   CitizenInput,
   OfficeSettings,
   PrintJobResult,
@@ -38,6 +39,7 @@ import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@sh
 import SpellingPanel from '../components/SpellingPanel';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import { choosePrinter } from '../lib/printChoice';
+import IdSheetDialog from '../components/IdSheetDialog';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -487,6 +489,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
     if (printRun?.id) await window.diwan.output.discardJob(printRun.id);
     setPrintRun(null);
     say('تُركت الطباعة — الكتب صدرت، وتُعاد طباعتها من الأرشيف');
+  }
+
+  /** ورقة مستمسكات صاحب العلاقة (خطة Production، المرحلة ٥) — من ملفّه في السجل والزبون واقف. */
+  const [idSheet, setIdSheet] = useState<{ name: string; attachments: Attachment[] } | null>(null);
+  async function openIdSheet() {
+    if (citizenId === null) return;
+    const detail = await window.diwan.citizens.get(citizenId);
+    if (detail) setIdSheet({ name: detail.fullName, attachments: detail.attachments });
   }
 
   /** معاملةٌ جديدة: كل ما كُتب يُمحى، والنماذج المختارة معه. */
@@ -968,6 +978,18 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                   <span className="material-symbols-outlined text-[18px] text-secondary">content_paste_go</span>
                   لصق من واتساب
                 </button>
+                {citizenId !== null && (
+                  <button
+                    className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+                    data-act="counter-id-sheet"
+                    title="مستمسكات صاحب العلاقة من ملفّه بمقاسها 1:1 على ورقة A4 واحدة"
+                    type="button"
+                    onClick={() => void openIdSheet()}
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-secondary">document_scanner</span>
+                    ورقة مستمسكاته
+                  </button>
+                )}
               </div>
 
               {nameField && (
@@ -1366,6 +1388,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
           say(n ? `مُلئ ${n} حقلًا من الرسالة — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
         }}
       />
+
+      {idSheet && <IdSheetDialog citizenName={idSheet.name} attachments={idSheet.attachments} onClose={() => setIdSheet(null)} />}
 
       {printRun && (
         <div

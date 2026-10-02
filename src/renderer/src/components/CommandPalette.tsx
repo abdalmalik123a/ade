@@ -21,6 +21,7 @@ type Props = {
   onOpenCitizen?: (citizenId: number) => void;
   onOpenTemplate?: (templateId: number) => void;
   onOpenIdDuplex?: () => void;
+  onOpenIdSheet?: () => void;
   /** أقسامٌ أخفاها المكتب — لا تُعرض شاشاتها هنا كما لا تُعرض في الشريط (`shared/sections.ts`). */
   hidden?: readonly RouteKey[];
 };
@@ -41,6 +42,7 @@ export default function CommandPalette({
   onOpenCitizen,
   onOpenTemplate,
   onOpenIdDuplex,
+  onOpenIdSheet,
   hidden = []
 }: Props) {
   const [query, setQuery] = useState('');
@@ -132,6 +134,17 @@ export default function CommandPalette({
         action: () => {
           onClose();
           onOpenIdDuplex?.();
+        }
+      },
+      {
+        id: 'id-sheet',
+        title: 'ورقة المستمسكات المجمّعة 1:1',
+        subtitle: 'الوطنية والسكن وجهًا وظهرًا — كلٌّ بمقاسه على ورقة A4 واحدة',
+        category: 'أدوات سريعة',
+        icon: 'document_scanner',
+        action: () => {
+          onClose();
+          onOpenIdSheet?.();
         }
       },
       {
@@ -256,7 +269,7 @@ export default function CommandPalette({
         }
       }
     ];
-  }, [onNavigate, onClose, onOpenIdDuplex]);
+  }, [onNavigate, onClose, onOpenIdDuplex, onOpenIdSheet]);
 
   // تصفية الأوامر حسب نص البحث
   const filteredCommands = useMemo(() => {

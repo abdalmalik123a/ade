@@ -146,19 +146,20 @@ export function layoutIdCards(config: IdCardConfig): IdPageLayout[] {
 
 const mm = (v: number) => `${Math.round(v * 100) / 100}mm`;
 
+/** مرشّح الصورة: ملوّنة، أو «نسخة تصوير» عالية التباين، أو رمادية — ولورقة المستمسكات المجمّعة أيضًا. */
+export function cardFilterCss(colorFilter: IdColorFilter, brightness = 1, contrast = 1): string {
+  if (colorFilter === 'photocopy') return `grayscale(100%) contrast(150%) brightness(${Math.max(0.9, brightness * 1.05)})`;
+  if (colorFilter === 'grayscale') return `grayscale(100%) brightness(${brightness}) contrast(${contrast})`;
+  return `brightness(${brightness}) contrast(${contrast})`;
+}
+
 /**
  * يولّد كود HTML لأوراق الطباعة بمقاس A4 الحقيقي بالمليمتر
  */
 export function generateIdDuplexHtml(config: IdCardConfig, resolveUrl: (src: string) => string): string[] {
   const layouts = layoutIdCards(config);
 
-  // إعدادات مرشح الألوان
-  let filterStr = `brightness(${config.brightness}) contrast(${config.contrast})`;
-  if (config.colorFilter === 'photocopy') {
-    filterStr = `grayscale(100%) contrast(150%) brightness(${Math.max(0.9, config.brightness * 1.05)})`;
-  } else if (config.colorFilter === 'grayscale') {
-    filterStr = `grayscale(100%) brightness(${config.brightness}) contrast(${config.contrast})`;
-  }
+  const filterStr = cardFilterCss(config.colorFilter, config.brightness, config.contrast);
 
   const pagesHtml: string[] = [];
 

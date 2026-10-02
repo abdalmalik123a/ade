@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, ScannerDevice } from '@shared/api';
 import CitizenForm from './CitizenForm';
 import IdDuplexDialog from './IdDuplexDialog';
+import IdSheetDialog from '../components/IdSheetDialog';
 import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
@@ -58,6 +59,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
   /** النصّ المستخرَج — أو ظهر البطاقة بقارئه الخاصّ (`mrz`، ولا دقّة له: أرقام التحقّق حَكَمُه). */
   const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number | null; mrz?: MrzResult | null } | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
+  /** ورقة المستمسكات المجمّعة (خطة Production، المرحلة ٥) — بمستمسكات الملف المفتوح إن كان. */
+  const [idSheetOpen, setIdSheetOpen] = useState(false);
   /** «صدّر للرفع» (تعميق الموجود ٤): كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع. */
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deskewAttachment, setDeskewAttachment] = useState<Attachment | null>(null);
@@ -288,6 +291,16 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
             >
               <span className="material-symbols-outlined text-[18px]">badge</span>
               <span>استنساخ هوية 1:1 (وجه وظهر)</span>
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+              data-act="open-id-sheet"
+              type="button"
+              title="عدّة مستمسكاتٍ بمقاسها 1:1 على ورقة A4 واحدة — الوطنية والسكن وجهًا وظهرًا"
+              onClick={() => setIdSheetOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px]">document_scanner</span>
+              <span>ورقة المستمسكات</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold transition-all"
@@ -632,6 +645,16 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
                       >
                         <span className="material-symbols-outlined text-[18px]">badge</span>
                         <span>طباعة هوية وجه وظهر 1:1</span>
+                      </button>
+                      <button
+                        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
+                        data-act="citizen-id-sheet"
+                        type="button"
+                        title="مستمسكات المواطن كلّها بمقاسها 1:1 على ورقة A4 واحدة"
+                        onClick={() => setIdSheetOpen(true)}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">document_scanner</span>
+                        <span>ورقة مستمسكاته</span>
                       </button>
                       <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all disabled:opacity-40"
@@ -1099,6 +1122,14 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
             setUploadOpen(false);
             say(message);
           }}
+        />
+      )}
+
+      {idSheetOpen && (
+        <IdSheetDialog
+          citizenName={detail?.fullName}
+          attachments={detail?.attachments ?? []}
+          onClose={() => setIdSheetOpen(false)}
         />
       )}
 

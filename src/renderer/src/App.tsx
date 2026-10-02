@@ -20,6 +20,7 @@ import AuditScreen from './screens/AuditScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
+import IdSheetDialog from './components/IdSheetDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
 import ResumePrintDialog from './components/ResumePrintDialog';
@@ -91,6 +92,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarTimer = useRef<number | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
+  const [idSheetOpen, setIdSheetOpen] = useState(false);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
     busy: boolean;
@@ -446,8 +448,11 @@ export default function App() {
         onOpenCitizen={(cId) => openEditor({ citizenId: cId })}
         onOpenTemplate={(tId) => openEditor({ templateId: tId })}
         onOpenIdDuplex={() => setIdDuplexOpen(true)}
+        onOpenIdSheet={() => setIdSheetOpen(true)}
         hidden={hiddenSections}
       />
+
+      {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
 
       {idDuplexOpen && (
         <IdDuplexDialog
