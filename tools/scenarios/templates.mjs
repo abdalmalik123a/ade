@@ -134,13 +134,15 @@ export default async function scenario(page, { profile, shotsDir }) {
     await page.eval(`return !!document.querySelector('button[title="حذف النموذج"]')`));
   ok('زرّ التصدير ظاهر على البطاقة',
     await page.eval(`return !!document.querySelector('button[title^="تصدير النموذج"]')`));
-  // الطرق الثلاث (§٦) باقية ومعها باب العقود — فيُسأل عن كلٍّ باسمه لا بالعدد.
+  // الطرق الثلاث (§٦) باقية ومعها صورة الورقة — فيُسأل عن كلٍّ باسمه لا بالعدد. وباب العقود
+  // حُذف بقرار المالك (٢٩ أيلول ٢٠٢٦): كانت تُحفظ ووسوم HTML نصٌّ في متنها.
   ok(
-    'و«نموذجٌ جديد» ظاهرٌ بطرقه وباب العقود وصورة الورقة',
+    'و«نموذجٌ جديد» ظاهرٌ بطرقه وصورة الورقة',
     await page.eval(
-      `return ['new-blank', 'new-word', 'new-folder', 'install-contracts', 'new-photo'].every((a) => document.querySelector('[data-new-template] [data-act="' + a + '"]'));`
+      `return ['new-blank', 'new-word', 'new-folder', 'new-photo'].every((a) => document.querySelector('[data-new-template] [data-act="' + a + '"]'));`
     )
   );
+  ok('ولا باب للعقود الجاهزة', await page.eval(`return !document.querySelector('[data-act="install-contracts"]');`));
   ok('زرّ تصدير المكتبة ظاهر', (await page.text()).includes('تصدير المكتبة كاملة'));
   ok('زرّ استرجاع المكتبة ظاهر', (await page.text()).includes('استرجاع مكتبة'));
 

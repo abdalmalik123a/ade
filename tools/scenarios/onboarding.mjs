@@ -49,7 +49,8 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // ── مكتبة النماذج: مدخلٌ واحد لنموذجٍ جديد بطرقه كلّها ──────────────
   const hub = await page.eval(`return [...document.querySelectorAll('[data-new-template] [data-act]')].map((b) => b.dataset.act).join(',');`);
-  ok('ونموذجٌ جديد بطرقه وباب العقود وصورة الورقة في مكانٍ واحد', hub === 'new-blank,install-contracts,new-word,new-folder,new-photo');
+  // والعقود الجاهزة حُذفت بقرار المالك (٢٩ أيلول ٢٠٢٦) — يحلّ محلّها ملفّ مستنداتٍ يُستورد.
+  ok('ونموذجٌ جديد بطرقه وصورة الورقة في مكانٍ واحد — بلا باب العقود', hub === 'new-blank,new-word,new-folder,new-photo');
   ok('بلا زرّ إضافةٍ مكرّر', !(await page.text()).includes('إضافة نموذج'));
 
   // ── الشريط العلوي يتبع الشاشة ──────────────────────────────────────
