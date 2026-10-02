@@ -30,6 +30,7 @@ import type { TodayAgenda } from '@shared/api';
 /** يومُ آخر عرضٍ لـ«ما ينتظرك اليوم» — تفضيلٌ لهذا الجهاز لا بيانات. */
 const TODAY_SEEN = 'diwan.todaySeen';
 import { isCombo, shortcut } from '@shared/shortcuts';
+import { flushBeforeClose } from './lib/beforeClose';
 
 /** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
 type EditorTarget = {
@@ -63,9 +64,19 @@ export default function App() {
     void window.diwan.ui.info().then((i) => setVersion(i.version));
   }, []);
 
-  /** البرنامج يُغلق ويأخذ نسخته التلقائية أوّلًا — فيُقال ذلك لا يُترك نافذةً لا تستجيب. */
+  /**
+   * البرنامج يُغلق: يُفرَغ ما لم يُحفظ (مسودة المحرّر) ثم يمضي الإغلاق — ويأخذ نسخته التلقائية
+   * إن كانت، فيُقال ذلك لا يُترك نافذةً لا تستجيب.
+   */
   const [closing, setClosing] = useState(false);
-  useEffect(() => window.diwan.ui.onClosing(() => setClosing(true)), []);
+  useEffect(
+    () =>
+      window.diwan.ui.onClosing(({ backup }) => {
+        if (backup) setClosing(true);
+        void flushBeforeClose().finally(() => window.diwan.ui.closeReady());
+      }),
+    []
+  );
   const [search, setSearch] = useState('');
   /** ملفّ مواطنٍ يُفتح من البحث الشامل. */
   const [citizenFocus, setCitizenFocus] = useState<{ key: number; citizenId: number } | null>(null);

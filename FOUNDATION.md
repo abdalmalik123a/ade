@@ -1237,6 +1237,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
   src/designs/            أجزاء شاشة التصاميم: المعرض، والدفعة، واستوديو التصوير، ومراجعة الأوراق
                           وخياراتها، ومكتبة الرسومات، و«حقولٌ من أسماء الطبقات»
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
+                          · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر)
                           · portraitCanvas.ts رسم صورة المعاملة: المعاينة والحفظ من دالّةٍ واحدة
   src/assets/suits/       القاط المدمج: WebP شفّافة من مكتبة المالك، والنظاميّ بلا شارات (tools/prepare-suits.py)
 ```

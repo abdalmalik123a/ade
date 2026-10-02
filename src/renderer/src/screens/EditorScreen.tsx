@@ -39,6 +39,7 @@ import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterSheet, { gapAfter } from '../components/LetterSheet';
 import SpellingPanel from '../components/SpellingPanel';
 import SymbolPalette from '../components/SymbolPalette';
+import { onBeforeClose } from '../lib/beforeClose';
 
 const AUTOSAVE_MS = 4000;
 const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مختومة'];
@@ -429,6 +430,24 @@ function EditorScreen(
     const timer = setTimeout(() => void saveDraft(true), AUTOSAVE_MS);
     return () => clearTimeout(timer);
   }, [doc, values, registry, hasContent, saveDraft]);
+
+  /**
+   * ما لم يُحفظ بعد يُحفظ عند مغادرة المحرّر وعند إغلاق البرنامج (خطة Production، ١٫٥).
+   *
+   * مؤقّت الحفظ يُعاد مع كلّ حرف ويُلغى مع الشاشة، فكان ما كُتب منذ آخر توقّفٍ عن الكتابة يضيع
+   * بنقرةٍ على الشريط — بلا تنبيه. والحفظ هنا هو الحفظ التلقائيّ نفسه، بلا رسالة.
+   */
+  const flushDraft = useRef<() => Promise<void>>(async () => undefined);
+  flushDraft.current = async () => {
+    if (dirty.current && hasContent) await saveDraft(true);
+  };
+  useEffect(() => {
+    const unregister = onBeforeClose(() => flushDraft.current());
+    return () => {
+      unregister();
+      void flushDraft.current();
+    };
+  }, []);
 
   // ── الإخراج والإصدار ──────────────────────────────────────────────────
   /** علامات الورقة كما تُطبع — وتُقيَّد كما هي، فلا شيء يُملأ فيها بعد الإصدار. */

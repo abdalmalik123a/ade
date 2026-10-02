@@ -22,11 +22,12 @@ const api: DiwanApi = {
       ipcRenderer.on('app:error', handler);
       return () => ipcRenderer.removeListener('app:error', handler);
     },
-    onClosing: (listener: () => void) => {
-      const handler = () => listener();
+    onClosing: (listener: (info: { backup: boolean }) => void) => {
+      const handler = (_e: unknown, info?: { backup?: boolean }) => listener({ backup: Boolean(info?.backup) });
       ipcRenderer.on('app:closing', handler);
       return () => ipcRenderer.removeListener('app:closing', handler);
-    }
+    },
+    closeReady: () => ipcRenderer.send('app:closeReady')
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')

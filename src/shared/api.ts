@@ -579,8 +579,13 @@ export type DiwanApi = {
     pasteText(): Promise<string>;
     /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
     onError(listener: (message: string) => void): () => void;
-    /** البرنامج يُغلق ويأخذ نسخته التلقائية أوّلًا — تُقال في الواجهة لا تُترك نافذةً معلّقة. */
-    onClosing(listener: () => void): () => void;
+    /**
+     * البرنامج يُغلق (خطة Production، ١٫٥): تُفرغ الواجهة ما لم يُحفظ ثم تقول `closeReady` — وإن
+     * كانت نسخةٌ تلقائية (`backup`) قيل ذلك في الواجهة، فلا تُترك نافذةً معلّقة.
+     */
+    onClosing(listener: (info: { backup: boolean }) => void): () => void;
+    /** الواجهة أفرغت ما لم يُحفظ: يمضي الإغلاق. وإن لم تقلها مضى بعد مهلة. */
+    closeReady(): void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;

@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, shell, protocol, net, dialog } from 'electron';
+import { app, BrowserWindow, shell, protocol, net, dialog, ipcMain } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
@@ -71,27 +71,43 @@ function createWindow(): void {
   mainWindow.once('ready-to-show', firstShow);
   firstShow();
 
-  // النسخة التلقائية عند الإغلاق (تعميق الموجود ٢): تُؤخذ قبل أن تُغلق النافذة، وتقول
-  // الواجهةُ ذلك فلا يظنّ الموظف أنّ البرنامج علق. وما تعثّر يُسجَّل ويُقال عند الفتح التالي
-  // — ولا يمنع الإغلاق.
-  let backingUp = false;
-  let backedUp = false;
+  // الإغلاق على مرحلتين: تُفرغ الواجهة ما لم يُحفظ — مسودة المحرّر (خطة Production، ١٫٥) — ثم
+  // تُؤخذ النسخة التلقائية إن كانت (تعميق الموجود ٢)، وتقول الواجهةُ ذلك فلا يظنّ الموظف أنّ
+  // البرنامج علق. وما تعثّر يُسجَّل ويُقال عند الفتح التالي — ولا يمنع الإغلاق، والواجهة التي
+  // لا تجيب لا تحبسه: بعد مهلةٍ يمضي.
+  let closing = false;
+  let closed = false;
   mainWindow.on('close', (e) => {
-    if (backedUp || !autoBackupConfigured()) return;
+    if (closed) return;
     e.preventDefault();
-    if (backingUp) return;
-    backingUp = true;
-    mainWindow?.webContents.send('app:closing');
-    // مهلةٌ لتصل الرسالة وتُرسم قبل أن تشغل النسخة العملية الرئيسة.
-    setTimeout(() => {
-      try {
-        runConfiguredAutoBackup();
-      } catch (err) {
-        logError('autoBackup', err);
-      }
-      backedUp = true;
-      mainWindow?.close();
-    }, 250);
+    if (closing) return;
+    closing = true;
+    const backup = autoBackupConfigured();
+    let went = false;
+    const go = (): void => {
+      if (went) return;
+      went = true;
+      clearTimeout(timer);
+      ipcMain.removeListener('app:closeReady', go);
+      // مهلةٌ لتُرسم «تُؤخذ النسخة» قبل أن تشغل النسخة العملية الرئيسة.
+      setTimeout(
+        () => {
+          if (backup) {
+            try {
+              runConfiguredAutoBackup();
+            } catch (err) {
+              logError('autoBackup', err);
+            }
+          }
+          closed = true;
+          mainWindow?.close();
+        },
+        backup ? 250 : 0
+      );
+    };
+    const timer = setTimeout(go, 3000);
+    ipcMain.on('app:closeReady', go);
+    mainWindow?.webContents.send('app:closing', { backup });
   });
 
   // تسجيل أخطاء الواجهة لسرعة التشخيص
