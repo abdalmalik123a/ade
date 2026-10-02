@@ -12,6 +12,7 @@ import type {
   DocumentRow,
   IssueInput,
   PeriodStats,
+  SheetStyle,
   TransactionInput,
   TransactionResult
 } from '@shared/api';
@@ -203,6 +204,32 @@ export function ensureChain(db: Database): void {
   })();
 }
 
+/**
+ * أنماط الورقة مع كلّ كتاب (خطة Production، ١٫٣).
+ *
+ * الورقة المؤرشفة علاماتٌ تعتمد على أنماط التطبيق، فتغيّرُ خطّ الواجهة يومًا (٢٩ أيلول ٢٠٢٦)
+ * غيّر خطّ كتب الإصدار الأوّل عند إعادة طبعها — وقيس ذلك في PDF. فتُحفظ الأنماط التي رُسم بها
+ * الكتاب مرّةً لكلّ بصمة، ويُشار إليها منه. ولا تدخل البصمة ولا السلسلة: هي صورة الكتاب لا متنه.
+ */
+export function ensureSheetStyles(db: Database): void {
+  db.exec(`CREATE TABLE IF NOT EXISTS sheet_styles (
+    hash       TEXT PRIMARY KEY,
+    css        TEXT NOT NULL,
+    body_class TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  const cols = (db.prepare('PRAGMA table_info(documents)').all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes('style_hash')) db.exec('ALTER TABLE documents ADD COLUMN style_hash TEXT');
+}
+
+/** يُحفظ النمط مرّةً لبصمته، ويعود ما يُشار به إليه. */
+function keepStyle(db: Database, style: SheetStyle): string {
+  const NUL = String.fromCharCode(0);
+  const hash = createHash('sha256').update(`${style.bodyClass ?? ''}${NUL}${style.css}`, 'utf8').digest('hex');
+  db.prepare('INSERT OR IGNORE INTO sheet_styles (hash, css, body_class) VALUES (?, ?, ?)').run(hash, style.css, style.bodyClass);
+  return hash;
+}
+
 export function prepareDocuments(db: Database): void {
   ensureDocumentSearchColumn(db);
   ensureCitizenSnapshot(db);
@@ -210,6 +237,7 @@ export function prepareDocuments(db: Database): void {
   ensureTransactionLink(db);
   ensureVoidColumns(db);
   ensureChain(db);
+  ensureSheetStyles(db);
 }
 
 export type IssueResult = {
@@ -249,6 +277,7 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
       | { chain: string | null }
       | undefined;
     const chain = chainLink(prev?.chain ?? CHAIN_GENESIS, sha256, serial);
+    const styleHash = input.style ? keepStyle(db, input.style) : null;
 
     const info = db
       .prepare(
@@ -256,8 +285,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
            serial, serial_year, serial_seq, template_id, citizen_id, authority_id,
            citizen_name, citizen_nid, doc_type, destination, purpose, values_json,
            body_html, copies, copy_kind, fee, gregorian_date, hijri_date, operator,
-           sha256, status, search_fold, letterhead_id, transaction_id, chain
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?,?)`
+           sha256, status, search_fold, letterhead_id, transaction_id, chain, style_hash
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?,?,?)`
       )
       .run(
         serial,
@@ -283,7 +312,8 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         searchFold([serial, name, nidOf(input.nationalId), input.docType, input.destination, input.purpose, bodyText]),
         input.letterheadId ?? null,
         input.transactionId ?? null,
-        chain
+        chain,
+        styleHash
       );
 
     // آخر استعمال للترويسة — عليه يقوم ترتيب المكتبة، وهو في المعاملة نفسها.
@@ -386,7 +416,8 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
         serialYear: input.serialYear,
         gregorianDate: input.gregorianDate,
         hijriDate: input.hijriDate,
-        transactionId
+        transactionId,
+        style: input.style ?? null
       })
     );
 

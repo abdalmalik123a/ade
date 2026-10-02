@@ -8,7 +8,7 @@ import * as svc from '../services/documents';
 import { searchOthers } from '../services/search';
 import { todayAgenda } from '../services/today';
 import { createBackup } from './backup';
-import { printSheet, calibrationSheet, renderPdf, renderPng } from '../services/render';
+import { printSheet, calibrationSheet, renderPdf, renderPng, sheetStyle } from '../services/render';
 import { reportToExcel } from '../services/export';
 import { docToDocx } from '../services/docDocx';
 import { fillDoc } from '@shared/docFill';
@@ -98,7 +98,7 @@ export function registerDocumentIpc(): void {
     'documents:issue',
     async (e, input: IssueInput, print: boolean): Promise<IssueOutcome> => {
       const db = getDb();
-      const issued = svc.issueDocument(db, { ...input, serialYear: thisYear() });
+      const issued = svc.issueDocument(db, { ...input, serialYear: thisYear(), style: sheetStyle() });
 
       let archivedPath: string | null = null;
       let archiveError: string | undefined;
@@ -243,7 +243,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueTransaction',
     async (e, input: TransactionInput, print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult> => {
-      const out = svc.issueTransaction(getDb(), { ...input, serialYear: thisYear() });
+      const out = svc.issueTransaction(getDb(), { ...input, serialYear: thisYear(), style: sheetStyle() });
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const doc of out.documents) {
@@ -271,7 +271,8 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueBatch',
     async (e, inputs: TransactionInput[], print: boolean, mode: PrintMode = 'full'): Promise<TransactionResult[]> => {
-      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear() })), testPause());
+      const style = sheetStyle();
+      const all = svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear(), style })), testPause());
       if (print) {
         const win = BrowserWindow.fromWebContents(e.sender);
         for (const out of all) {

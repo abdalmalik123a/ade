@@ -228,7 +228,15 @@ export type IssueInput = {
   letterheadId: number | null;
   /** معاملة الزبون: خمس أوراق قيدٌ واحد. تُملأ داخل `issueTransaction`. */
   transactionId?: number | null;
+  /** أنماط الورقة التي رُسم بها الكتاب — تملؤها العملية الرئيسة لا الواجهة (`render.ts`). */
+  style?: SheetStyle | null;
 };
+
+/**
+ * أنماط الورقة كما تُرسم يوم الإصدار: ملفّ أنماط التطبيق، وصنف `<body>` الذي يرث منه خطّها.
+ * تُحفظ مع كلّ كتابٍ يصدر — مرّةً لكلّ بصمة — فيُعاد طبعه كما صدر (خطة Production، ١٫٣).
+ */
+export type SheetStyle = { css: string; bodyClass: string | null };
 
 /** ورقةٌ في معاملة — ما يخصّها وحدها، وما يشترك فيه الجميع في المعاملة. */
 export type TransactionSheet = Pick<
@@ -257,6 +265,8 @@ export type TransactionInput = {
   gregorianDate: string;
   hijriDate: string | null;
   sheets: TransactionSheet[];
+  /** أنماط أوراقها — تملؤها العملية الرئيسة (`IssueInput.style`). */
+  style?: SheetStyle | null;
 };
 
 export type TransactionResult = {

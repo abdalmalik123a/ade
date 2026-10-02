@@ -1,6 +1,8 @@
-import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join, posix } from 'node:path';
 import { BrowserWindow } from 'electron';
 import { fitCanvasText } from '@shared/canvasFit';
+import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 
 /**
@@ -20,6 +22,42 @@ import { getDb } from '../db';
 /** مقاس الورقة بالملّم — A4 عموديًّا ما لم يُذكر غيره. */
 export type PageMm = { w: number; h: number };
 const A4: PageMm = { w: 210, h: 297 };
+
+let styleCache: SheetStyle | null | undefined;
+
+/**
+ * أنماط الورقة كما ترسمها نافذة الإخراج الآن: ملفّات الأنماط التي تربطها `index.html`، وصنف
+ * `<body>` الذي يرث منه خطّها — تُحفظ مع كلّ كتابٍ يصدر (خطة Production، ١٫٣).
+ *
+ * تُقرأ من الملفّ المبنيّ نفسه الذي تحمّله نافذة الإخراج، لا من الواجهة: فهي ما رُسم به فعلًا.
+ * و`url(./…)` في الأنماط نسبيٌّ إلى مجلّدها، فيُكتب نسبيًّا إلى `index.html` لتُحقن يومًا في
+ * صفحتها. وفي نمط التطوير (خادم Vite) لا ملفّ مبنيًّا يُوثق به، فلا يُلتقط شيء.
+ */
+export function sheetStyle(): SheetStyle | null {
+  if (styleCache !== undefined) return styleCache;
+  styleCache = null;
+  if (process.env['ELECTRON_RENDERER_URL']) return styleCache;
+  try {
+    const dir = join(__dirname, '../renderer');
+    const html = readFileSync(join(dir, 'index.html'), 'utf8');
+    const hrefs = [...html.matchAll(/<link\b[^>]*>/g)]
+      .map((m) => m[0])
+      .filter((tag) => /\brel="stylesheet"/.test(tag))
+      .map((tag) => /\bhref="([^"]+)"/.exec(tag)?.[1])
+      .filter((href): href is string => Boolean(href));
+    const css = hrefs
+      .map((href) => {
+        const base = posix.dirname(href.replace(/^\.\//, ''));
+        return readFileSync(join(dir, href), 'utf8').replace(/url\(\s*(['"]?)\.\//g, `url($1./${base}/`);
+      })
+      .join('\n');
+    const bodyClass = /<body\b[^>]*\bclass="([^"]*)"/.exec(html)?.[1] ?? null;
+    if (css.trim()) styleCache = { css, bodyClass };
+  } catch {
+    // لا ملفّ مبنيّ يُقرأ — يصدر الكتاب بلا أنماطٍ محفوظة، ويُعاد طبعه بأنماط يومه كما كان.
+  }
+  return styleCache;
+}
 
 /**
  * أنماط الورقة وقت الإخراج: مقاسها الفيزيائي بلا تكبير ولا ظلّ ولا حدود.
