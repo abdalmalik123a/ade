@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, shell, protocol, net, dialog, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
@@ -9,6 +9,7 @@ import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
 import { closePortrait } from './services/portrait';
+import { hardenSession, hardenWindow } from './harden';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
 installMainErrorHandlers();
@@ -74,12 +75,14 @@ function createWindow(): void {
     title: 'ديوان — منظومة الكتب والتحارير',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      // الواجهة في صندوقٍ بلا Node: الجسر (preload) وحده يكلّم العملية الرئيسة (خطة Production، ٦٫٤).
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: false
     }
   });
+  hardenWindow(mainWindow, 'main');
 
   // أوّل ظهورٍ وسط الشاشة — وعلى شاشةٍ أصغر من مقاسها تملؤها. والتشغيل الثاني يُظهرها حيث تركها الموظف.
   const firstShow = (): void => {
@@ -137,12 +140,6 @@ function createWindow(): void {
     if (level >= 3) logError('renderer', new Error(`${message} (${sourceId}:${line})`));
   });
 
-  // أي رابط خارجي يُفتح في المتصفح، لا داخل نافذة التطبيق.
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
   if (process.env['ELECTRON_RENDERER_URL']) {
     void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
   } else {
@@ -153,6 +150,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   // النسخة الثانية تخرج قبل أن تفتح القاعدة أو نافذة.
   if (!primary) return;
+  hardenSession();
 
   // diwan://store/<relative-path> → ملف داخل مخزن التطبيق فقط
   protocol.handle('diwan', (request) => {

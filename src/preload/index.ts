@@ -145,6 +145,10 @@ const api: DiwanApi = {
     mirrorInspect: (path, password, snapshot) => invoke('backup:mirrorInspect', path, password ?? null, snapshot ?? null),
     mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null)
   },
+  license: {
+    status: () => invoke('license:status'),
+    activate: (key) => invoke('license:activate', key)
+  },
   content: {
     export: () => invoke('content:export'),
     import: () => invoke('content:import')

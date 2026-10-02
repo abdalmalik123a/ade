@@ -1,5 +1,6 @@
 import { ROUTES, type RouteKey } from '@shared/routes';
 import type { SidebarCounts } from '@shared/api';
+import icon from '../assets/brand/diwan-icon.png';
 
 /* أصناف الشريط من توكنات التصميم (stitch_). والعنصر النشط يختلف بـaria-current وأصنافه
    وحدها — فالتنقّل يُبنى من بيانات لا بتكرار العلامات. */
@@ -44,6 +45,8 @@ export type SidebarProps = {
   pinned: boolean;
   open: boolean;
   onPin: (pinned: boolean) => void;
+  /** «عن البرنامج»: من اسمه في رأس الشريط. */
+  onAbout: () => void;
   /** الفأرة عادت إليه قبل أن يُخفى — يبقى. */
   onEnter: () => void;
   onLeave: () => void;
@@ -62,6 +65,7 @@ export default function Sidebar({
   pinned,
   open,
   onPin,
+  onAbout,
   onEnter,
   onLeave
 }: SidebarProps) {
@@ -179,17 +183,15 @@ export default function Sidebar({
       onMouseLeave={() => !pinned && onLeave()}
     >
       <div className="h-16 shrink-0 px-space-md flex items-center justify-between gap-space-xs bg-surface-container-low">
-        <div className="flex items-center gap-space-sm min-w-0">
-          <div className="w-9 h-9 shrink-0 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
-            <span className="material-symbols-outlined text-[20px]">account_balance</span>
-          </div>
+        <button className="flex items-center gap-space-sm min-w-0 text-start" data-act="sidebar-about" title="عن البرنامج" type="button" onClick={onAbout}>
+          <img alt="" className="w-9 h-9 shrink-0" src={icon} />
           <div className="flex flex-col min-w-0">
             <span className="font-headline-sm text-headline-sm text-on-surface tracking-tight truncate">
               {version ? `ديوان ${version}` : 'ديوان'}
             </span>
             <span className="font-label-sm text-label-sm text-on-surface-variant truncate">منظومة الكتب والتحارير</span>
           </div>
-        </div>
+        </button>
         <button
           className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
           data-act={pinned ? 'sidebar-hide' : 'sidebar-pin'}

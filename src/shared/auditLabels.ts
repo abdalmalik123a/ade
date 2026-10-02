@@ -10,7 +10,8 @@ export const AUDIT_ENTITIES: { value: string; label: string }[] = [
   { value: 'document', label: 'الكتب' },
   { value: 'transaction', label: 'المعاملات' },
   { value: 'backup', label: 'النسخ الاحتياطية' },
-  { value: 'content', label: 'حزم المحتوى' }
+  { value: 'content', label: 'حزم المحتوى' },
+  { value: 'license', label: 'التفعيل' }
 ];
 
 export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>): string {
@@ -33,6 +34,10 @@ export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>):
       return `استُرجعت نسخة احتياطية${detail ? `: ${detail}` : ''}`;
     case 'content/export':
       return `صُدّرت حزمة محتوى${detail ? `: ${detail}` : ''}`;
+    case 'license/activate':
+      return `فُعّل البرنامج${detail ? ` لـ${detail}` : ''}`;
+    case 'license/extend':
+      return `مُدّت المدّة التجريبية${detail ? ` ${detail}` : ''}`;
     case 'content/import':
       return `استُوردت حزمة محتوى${detail ? `: ${detail}` : ''}`;
     default:

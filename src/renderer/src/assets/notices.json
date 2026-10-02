@@ -1,0 +1,152 @@
+[
+  {
+    "name": "@fontsource/amiri",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/amiri"
+  },
+  {
+    "name": "@fontsource/aref-ruqaa",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/aref-ruqaa"
+  },
+  {
+    "name": "@fontsource/cairo",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/cairo"
+  },
+  {
+    "name": "@fontsource/el-messiri",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/el-messiri"
+  },
+  {
+    "name": "@fontsource/ibm-plex-sans",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/ibm-plex-sans"
+  },
+  {
+    "name": "@fontsource/ibm-plex-sans-arabic",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/ibm-plex-sans-arabic"
+  },
+  {
+    "name": "@fontsource/lalezar",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/lalezar"
+  },
+  {
+    "name": "@fontsource/noto-kufi-arabic",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/noto-kufi-arabic"
+  },
+  {
+    "name": "@fontsource/noto-naskh-arabic",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/noto-naskh-arabic"
+  },
+  {
+    "name": "@fontsource/reem-kufi",
+    "version": "5.3.0",
+    "license": "OFL-1.1",
+    "home": "https://fontsource.org/fonts/reem-kufi"
+  },
+  {
+    "name": "better-sqlite3",
+    "version": "13.0.3",
+    "license": "MIT",
+    "home": "http://github.com/WiseLibs/better-sqlite3"
+  },
+  {
+    "name": "docx",
+    "version": "9.7.1",
+    "license": "MIT",
+    "home": "https://docx.js.org"
+  },
+  {
+    "name": "electron",
+    "version": "44.3.0",
+    "license": "MIT",
+    "home": "https://github.com/electron/electron"
+  },
+  {
+    "name": "exceljs",
+    "version": "4.4.0",
+    "license": "MIT",
+    "home": "https://github.com/exceljs/exceljs"
+  },
+  {
+    "name": "fflate",
+    "version": "0.8.3",
+    "license": "MIT",
+    "home": "https://101arrowz.github.io/fflate"
+  },
+  {
+    "name": "material-symbols",
+    "version": "0.27.2",
+    "license": "Apache-2.0",
+    "home": "https://marella.github.io/material-symbols/demo/"
+  },
+  {
+    "name": "onnxruntime-node",
+    "version": "1.30.0",
+    "license": "MIT",
+    "home": "https://github.com/Microsoft/onnxruntime"
+  },
+  {
+    "name": "pdf-lib",
+    "version": "1.17.1",
+    "license": "MIT",
+    "home": "https://pdf-lib.js.org"
+  },
+  {
+    "name": "pdfjs-dist",
+    "version": "6.3.289",
+    "license": "Apache-2.0",
+    "home": "https://mozilla.github.io/pdf.js/"
+  },
+  {
+    "name": "react",
+    "version": "18.3.1",
+    "license": "MIT",
+    "home": "https://reactjs.org/"
+  },
+  {
+    "name": "react-dom",
+    "version": "18.3.1",
+    "license": "MIT",
+    "home": "https://reactjs.org/"
+  },
+  {
+    "name": "tesseract.js",
+    "version": "7.0.0",
+    "license": "Apache-2.0",
+    "home": "https://github.com/naptha/tesseract.js"
+  },
+  {
+    "name": "MODNet — فصل الشخص عن خلفيّته (resources/models)",
+    "version": "q8",
+    "license": "Apache-2.0",
+    "home": "https://github.com/ZHKKe/MODNet"
+  },
+  {
+    "name": "Tesseract — بيانات قراءة العربية والإنكليزية (resources/tessdata)",
+    "version": "4.x",
+    "license": "Apache-2.0",
+    "home": "https://github.com/tesseract-ocr/tessdata"
+  },
+  {
+    "name": "صور القاط في «الصور الشخصية»",
+    "version": "—",
+    "license": "من مكتبةٍ مفتوحة المصدر — مسموحٌ استعمالها (قرار المالك)",
+    "home": ""
+  }
+]

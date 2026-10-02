@@ -206,6 +206,16 @@ export type BackupSummary = {
   fromNewer: boolean;
 };
 
+/**
+ * حال التفعيل على هذا الجهاز (خطة Production، ٦٫٢): مفعَّل مدى الحياة، أو في المدّة التجريبية بأيّامها،
+ * أو انتهت — ومعها رمز الجهاز الذي يُرسل إلى المطوّر، ورقمه.
+ */
+export type LicenseStatus = (
+  | { status: 'activated'; office: string | null; issued: string }
+  | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean }
+  | { status: 'expired'; lastDay: string }
+) & { device: string; phone: string; trialStart: string };
+
 export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };
 /** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
 export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'> };
@@ -799,6 +809,11 @@ export type DiwanApi = {
     /** `snapshot`: نسخة القاعدة المختارة من المجلّد — وبلا اختيارٍ آخرها. */
     mirrorInspect(path: string, password?: string | null, snapshot?: string | null): Promise<BackupSummary>;
     mirrorRestore(path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+  };
+  /** التفعيل بلا شبكة: الحال، ومفتاحٌ يُلصق — كاملٌ أو تمديد — لهذا الجهاز وحده. */
+  license: {
+    status(): Promise<LicenseStatus>;
+    activate(key: string): Promise<LicenseStatus>;
   };
   /**
    * حزمة المحتوى (خطة Production، ٤٫٣): النماذج والترويسات والكليشات وصورها — بلا بيانات الناس —

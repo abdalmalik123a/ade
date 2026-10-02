@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RouteKey } from '@shared/routes';
-import type { OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
+import type { LicenseStatus, OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
 import Onboarding from './shell/Onboarding';
@@ -21,6 +21,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import IdSheetDialog from './components/IdSheetDialog';
+import AboutDialog from './components/AboutDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
 import ResumePrintDialog from './components/ResumePrintDialog';
@@ -93,6 +94,9 @@ export default function App() {
   const sidebarTimer = useRef<number | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   const [idSheetOpen, setIdSheetOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  /** المدّة التجريبية أو التفعيل (خطة Production، ٦٫٢) — تُسأل عند الإقلاع وكلّ عشر دقائق وبعد كلّ تغيير. */
+  const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
     busy: boolean;
@@ -113,6 +117,7 @@ export default function App() {
     setSettings(s);
     setCounts(c);
     setPrinters(p);
+    void window.diwan.license.status().then(setLicense).catch(() => undefined);
     // حجم الواجهة الذي اختاره المكتب — يُطبَّق عند كل إقلاع.
     window.diwan.ui.setZoom(s.uiScale);
   }, []);
@@ -120,6 +125,12 @@ export default function App() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // اليوم يتبدّل والبرنامج مفتوح: الأيّام الباقية تُحسب من جديد.
+  useEffect(() => {
+    const t = window.setInterval(() => void window.diwan.license.status().then(setLicense).catch(() => undefined), 10 * 60_000);
+    return () => window.clearInterval(t);
+  }, []);
 
   /**
    * «ما ينتظرك اليوم» (د٧): مرّةً في اليوم عند الإقلاع، بعد معالج البداية، وإن كان
@@ -371,6 +382,7 @@ export default function App() {
         pinned={sidebarPinned}
         open={sidebarOpen}
         onPin={pinSidebar}
+        onAbout={() => setAboutOpen(true)}
         onEnter={() => showSidebar(true)}
         onLeave={() => showSidebar(false, 250)}
         counts={counts}
@@ -394,6 +406,8 @@ export default function App() {
           onOpenTemplate={(id) => openEditor({ templateId: id })}
           sidebarPinned={sidebarPinned}
           onShowSidebar={() => showSidebar(true)}
+          license={license}
+          onLicense={() => navigate('settings')}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           context={
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
@@ -453,6 +467,7 @@ export default function App() {
       />
 
       {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
 
       {idDuplexOpen && (
         <IdDuplexDialog

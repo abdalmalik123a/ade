@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { DocumentRow, SearchHits } from '@shared/api';
+import type { DocumentRow, LicenseStatus, SearchHits } from '@shared/api';
 import { isCombo, shortcut } from '@shared/shortcuts';
 
 /**
@@ -25,6 +25,9 @@ export type HeaderProps = {
   /** الشريط الجانبي مثبّت: يأخذ الشريط العلوي ما بقي بجانبه؛ وإلا فالعرض كلّه وزرٌّ يُظهره. */
   sidebarPinned: boolean;
   onShowSidebar: () => void;
+  /** المدّة التجريبية: أيّامها الباقية، أو أنّها انتهت — وضغطةٌ تفتح «التفعيل». والمفعَّل لا يُرى شيئًا. */
+  license?: LicenseStatus | null;
+  onLicense?: () => void;
 };
 
 type Results = { query: string; documents: DocumentRow[]; others: SearchHits | null };
@@ -36,7 +39,9 @@ export default function Header({
   context,
   onOpenCommandPalette,
   sidebarPinned,
-  onShowSidebar
+  onShowSidebar,
+  license,
+  onLicense
 }: HeaderProps) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
@@ -240,7 +245,31 @@ export default function Header({
           </button>
         )}
       </div>
-      {context && <div className="flex items-center gap-space-sm shrink-0" data-header-context="">{context}</div>}
+      <div className="flex items-center gap-space-sm shrink-0">
+        {context && (
+          <div className="flex items-center gap-space-sm" data-header-context="">
+            {context}
+          </div>
+        )}
+        {license && license.status !== 'activated' && (
+          <button
+            className={`h-9 px-space-md rounded-full font-label-md text-label-md font-semibold flex items-center gap-space-xs shrink-0 ${
+              license.status === 'expired'
+                ? 'bg-error text-on-error'
+                : license.daysLeft <= 3
+                  ? 'bg-error-container text-on-error-container'
+                  : 'bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]'
+            }`}
+            data-license-pill={license.status}
+            title={`للتفعيل: ${license.phone} (واتساب واتصال) — أو افتح «الإعدادات ← التفعيل»`}
+            type="button"
+            onClick={onLicense}
+          >
+            <span className="material-symbols-outlined text-[18px]">{license.status === 'expired' ? 'lock_clock' : 'hourglass_top'}</span>
+            {license.status === 'expired' ? 'انتهت المدّة التجريبية — فعّل' : `تجريبية — بقي ${license.daysLeft} ${license.daysLeft === 1 ? 'يوم' : license.daysLeft <= 10 ? 'أيام' : 'يومًا'}`}
+          </button>
+        )}
+      </div>
     </header>
   );
 }

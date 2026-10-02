@@ -6,6 +6,7 @@
  */
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
+import { hardenWindow } from './harden';
 
 let card: BrowserWindow | null = null;
 
@@ -22,12 +23,13 @@ export async function openFillCard(citizenId: number): Promise<void> {
       backgroundColor: '#f8f9ff',
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
-        sandbox: false,
+        sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: false
       }
     });
+    hardenWindow(card, 'fillCard');
     // فوق المتصفّح وإن كان بملء الشاشة.
     card.setAlwaysOnTop(true, 'floating');
     card.on('closed', () => {

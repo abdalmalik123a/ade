@@ -16,6 +16,8 @@ import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
 import { UI_SCALES } from '../shell/Onboarding';
 import BackupPanel from '../components/BackupPanel';
+import LicenseCard from '../components/LicenseCard';
+import AboutDialog from '../components/AboutDialog';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -28,6 +30,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   const [dirty, setDirty] = useState(false);
   const [info, setInfo] = useState<{ version: string; dataDir: string } | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  const [about, setAbout] = useState(false);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -81,15 +84,29 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               ما يغيّره صاحب المكتب — وسياسة الخصوصية والاختصارات
             </p>
           </div>
-          {info && (
-            <span className="font-label-md text-label-md text-on-surface-variant" data-version="">
-              ديوان — الإصدار {info.version}
-            </span>
-          )}
+          <div className="flex items-center gap-space-sm">
+            {info && (
+              <span className="font-label-md text-label-md text-on-surface-variant" data-version="">
+                ديوان — الإصدار {info.version}
+              </span>
+            )}
+            <button
+              className="h-9 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs shadow-sm"
+              data-act="open-about"
+              type="button"
+              onClick={() => setAbout(true)}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">info</span>
+              عن البرنامج
+            </button>
+          </div>
         </header>
 
         {settings && (
           <div className="grid lg:grid-cols-2 gap-space-md items-start">
+            {/* ── التفعيل ────────────────────────────────────────────── */}
+            <LicenseCard card={card} title={title('verified', 'التفعيل')} onChanged={() => onChanged?.()} />
+
             {/* ── المكتب ─────────────────────────────────────────────── */}
             <section className={card}>
               <div className="flex items-center justify-between">
@@ -261,6 +278,8 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
           </div>
         )}
       </div>
+
+      {about && <AboutDialog onClose={() => setAbout(false)} />}
 
       {toast && (
         <div

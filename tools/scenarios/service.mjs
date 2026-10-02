@@ -192,8 +192,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('قالت المراجعة إن الباقي مثلها', (await page.text()).includes('وبقيّة الأسماء 1 مثلها'));
 
   await page.clickText('أصدر بلا طباعة');
-  await wait(2500);
-  ok('صدرت الدفعة', (await page.text()).includes('صدرت 2 ورقة لـ2 اسمًا'));
+  // الرسالة تُعرض ثوانيَ ثم تختفي: يُنتظر ظهورها لا مدّةٌ ثابتة (كانت تفوت أحيانًا).
+  let batchSaid = false;
+  for (let i = 0; i < 30 && !batchSaid; i++) {
+    await wait(200);
+    batchSaid = (await page.text()).includes('صدرت 2 ورقة لـ2 اسمًا');
+  }
+  ok('صدرت الدفعة', batchSaid);
 
   const db2 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
   const txs = db2.prepare('SELECT id, citizen_name AS name FROM transactions ORDER BY id').all();

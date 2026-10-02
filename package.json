@@ -8,16 +8,18 @@
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
+    "build": "npm run typecheck && npm run notices && electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
-    "pack": "npm run icon && npm run build && electron-builder --dir",
-    "dist": "npm run icon && npm run build && electron-builder --win",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --win",
     "postinstall": "electron-builder install-app-deps",
     "tokens": "node tools/extract-tokens.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icon": "node tools/make-icon.mjs"
+    "brand": "python tools/make-brand.py",
+    "notices": "node tools/make-notices.mjs",
+    "license": "node tools/license/keygen.mjs"
   },
   "build": {
     "appId": "iq.diwan.bureau",
@@ -49,6 +51,14 @@
         "to": "models"
       }
     ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
     "asarUnpack": [
       "**/*.node",
       "**/onnxruntime-node/bin/**/*.dll"

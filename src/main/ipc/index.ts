@@ -3,6 +3,8 @@ import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
 import { registerContentIpc } from './content';
+import { registerLicenseIpc } from './license';
+import { assertGateComplete, installProductiveGate } from './gate';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
 import { registerPdfIpc } from './pdf';
@@ -126,6 +128,8 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
 }
 
 export function registerIpc(): void {
+  // قبل أيّ قناة: ما يُنتج ورقةً أو ملفًّا يمرّ بالمدّة التجريبية (ipc/gate.ts).
+  installProductiveGate();
   registerLetterheadIpc();
   registerFileIpc();
   registerDesignIpc();
@@ -139,6 +143,7 @@ export function registerIpc(): void {
   registerQuestionIpc();
   registerBackupIpc();
   registerContentIpc();
+  registerLicenseIpc();
 
   /** بطاقة التعبئة للمواقع الحكومية (هـ٦): نافذةٌ فوق المتصفّح لمواطنٍ من السجل. */
   ipcMain.handle('fillcard:open', (_e, citizenId: number) => openFillCard(Number(citizenId)));
@@ -214,4 +219,7 @@ export function registerIpc(): void {
       };
     });
   });
+
+  // وكلّ قناةٍ في قائمة البوّابة سُجّلت فعلًا — اسمٌ خاطئٌ فيها يُقال عند الإقلاع.
+  assertGateComplete();
 }
