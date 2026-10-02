@@ -87,6 +87,9 @@ export default function App() {
   /** «كرّره» لكتابٍ صدر من الشبّاك: يُفتح فيه لا في المحرّر. */
   const [repeatRequest, setRepeatRequest] = useState<RepeatRequest | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  /** الشريط غير المثبّت ظاهرٌ فوق الشاشة الآن — بتقريب الفأرة من الحافّة أو بزرّه (خطة Production، ٣٫٢). */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarTimer = useRef<number | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   const [editorStatus, setEditorStatus] = useState<{
     transaction: string | null;
@@ -210,6 +213,20 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [handlePrint, navigate]);
 
+  const sidebarPinned = settings?.sidebarPinned ?? true;
+  const hiddenSections = settings?.hiddenSections ?? [];
+  const showSidebar = (show: boolean, delay = 0) => {
+    if (sidebarTimer.current) window.clearTimeout(sidebarTimer.current);
+    sidebarTimer.current = null;
+    if (delay) sidebarTimer.current = window.setTimeout(() => setSidebarOpen(show), delay);
+    else setSidebarOpen(show);
+  };
+  const pinSidebar = (pinned: boolean) => {
+    showSidebar(false);
+    setSettings((cur) => (cur ? { ...cur, sidebarPinned: pinned } : cur));
+    void window.diwan.settings.set({ sidebarPinned: pinned });
+  };
+
   // ما يُعرض في الشريط: طابعة الكتب والمعاملات — والطباعة نفسها تسأل دورها (`choosePrinter`).
   const documentsPrinter = settings?.printRoles.documents.normal ?? null;
   const selectedPrinter = printers.find((p) => p.name === documentsPrinter) ?? null;
@@ -330,13 +347,30 @@ export default function App() {
           }}
         />
       )}
+      {/* الشريط المخفيّ يظهر حين تقترب الفأرة من حافّة النافذة اليمنى. */}
+      {!sidebarPinned && (
+        <div
+          className="fixed right-0 top-0 h-full w-2 z-[45]"
+          data-sidebar-edge=""
+          onMouseEnter={() => showSidebar(true, 120)}
+          onMouseLeave={() => !sidebarOpen && showSidebar(false)}
+        />
+      )}
       <Sidebar
         active={route}
-        // الشريط يفتح الشاشة نظيفة — لا يُعاد فتح تصميم طلبٍ سابق.
+        // الشريط يفتح الشاشة نظيفة — لا يُعاد فتح تصميم طلبٍ سابق ولا بحثٍ سابق في الأرشيف.
         onNavigate={(key) => {
           setDesignRequest(null);
+          setSearch('');
+          if (!sidebarPinned) showSidebar(false);
           navigate(key);
         }}
+        hidden={hiddenSections}
+        pinned={sidebarPinned}
+        open={sidebarOpen}
+        onPin={pinSidebar}
+        onEnter={() => showSidebar(true)}
+        onLeave={() => showSidebar(false, 250)}
         counts={counts}
         printerName={selectedPrinter?.displayName ?? documentsPrinter}
         printerReady={selectedPrinter?.ready ?? false}
@@ -344,14 +378,20 @@ export default function App() {
         officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
         version={version}
       />
-      <div className="pr-72">
+      <div className={`${sidebarPinned ? 'pr-72' : ''} transition-[padding] duration-200`}>
         <Header
-          search={search}
-          onSearch={(value) => {
+          // النتائج تحت الحقل في مكانها؛ والأرشيف بالبحث كاملًا حين يُطلب (Enter، أو كتابٌ من النتائج).
+          onSearchArchive={(value) => {
             setSearch(value);
-            // البحث الشامل يصل إلى الأرشيف — وفيه الكتب، ومعها المواطن والنموذج والمستمسك.
-            if (value.trim() && route !== 'archive') navigate('archive');
+            navigate('archive');
           }}
+          onOpenCitizen={(id) => {
+            setCitizenFocus({ key: Date.now(), citizenId: id });
+            navigate('citizens');
+          }}
+          onOpenTemplate={(id) => openEditor({ templateId: id })}
+          sidebarPinned={sidebarPinned}
+          onShowSidebar={() => showSidebar(true)}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           context={
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
@@ -406,6 +446,7 @@ export default function App() {
         onOpenCitizen={(cId) => openEditor({ citizenId: cId })}
         onOpenTemplate={(tId) => openEditor({ templateId: tId })}
         onOpenIdDuplex={() => setIdDuplexOpen(true)}
+        hidden={hiddenSections}
       />
 
       {idDuplexOpen && (

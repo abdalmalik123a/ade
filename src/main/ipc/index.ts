@@ -17,6 +17,7 @@ import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
 import { normalizePrintRoles } from '@shared/printRoles';
+import { normalizeHidden } from '@shared/sections';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -37,7 +38,9 @@ const DEFAULTS: OfficeSettings = {
   onboarded: false,
   printOffsets: {},
   basmala: null,
-  lastBackupAt: null
+  lastBackupAt: null,
+  sidebarPinned: true,
+  hiddenSections: []
 };
 
 function readSettings(): OfficeSettings {
@@ -61,7 +64,9 @@ function readSettings(): OfficeSettings {
     printOffsets: parseOffsets(map.get('printOffsets')),
     basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala,
     // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
-    lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null)
+    lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
+    sidebarPinned: map.get('sidebarPinned') !== 'false',
+    hiddenSections: normalizeHidden(parseJson(map.get('hiddenSections')))
   };
 }
 

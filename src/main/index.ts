@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, shell, protocol, net, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, protocol, net, dialog, ipcMain, screen } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, storeDir } from './db';
 import { registerIpc } from './ipc';
@@ -43,12 +43,31 @@ function bringToFront(): void {
 
 app.on('second-instance', bringToFront);
 
+/**
+ * مقاس النافذة من شاشة الجهاز (خطة Production، ٣٫١): كانت ١٦٠٠×١٠٠٠ وحدّها الأدنى ١٢٨٠×٨٠٠ — أكبر
+ * من شاشة حاسوبٍ محمول بـ١٣٦٦×٧٦٨، فيقع أسفلها تحت شريط المهامّ ولا يُصغَّر. فتأخذ مساحة العمل إن
+ * ضاقت، وحدّها الأدنى ١٠٢٤×٦٤٠ (أو الشاشة إن كانت أصغر).
+ */
+function windowSize(): { width: number; height: number; minWidth: number; minHeight: number; fill: boolean } {
+  const work = screen.getPrimaryDisplay().workAreaSize;
+  const width = Math.min(1600, work.width);
+  const height = Math.min(1000, work.height);
+  return {
+    width,
+    height,
+    minWidth: Math.min(1024, work.width),
+    minHeight: Math.min(640, work.height),
+    fill: width < 1600 || height < 1000
+  };
+}
+
 function createWindow(): void {
+  const size = windowSize();
   mainWindow = new BrowserWindow({
-    width: 1600,
-    height: 1000,
-    minWidth: 1280,
-    minHeight: 800,
+    width: size.width,
+    height: size.height,
+    minWidth: size.minWidth,
+    minHeight: size.minHeight,
     show: true,
     autoHideMenuBar: true,
     backgroundColor: '#f8f9ff', // لون surface من توكنات التصميم
@@ -62,9 +81,10 @@ function createWindow(): void {
     }
   });
 
-  // أوّل ظهورٍ وسط الشاشة — والتشغيل الثاني يُظهرها حيث تركها الموظف.
+  // أوّل ظهورٍ وسط الشاشة — وعلى شاشةٍ أصغر من مقاسها تملؤها. والتشغيل الثاني يُظهرها حيث تركها الموظف.
   const firstShow = (): void => {
     mainWindow?.center();
+    if (size.fill) mainWindow?.maximize();
     bringToFront();
   };
 

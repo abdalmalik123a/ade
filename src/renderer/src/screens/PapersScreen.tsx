@@ -656,7 +656,8 @@ function PapersScreenInner(
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="flex h-[calc(100vh-4rem)]">
         {/* ── المؤلِّف ─────────────────────────────────────────────── */}
-        <section className="w-[620px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-lg">
+        {/* يضيق على الشاشات الصغيرة فتبقى للمعاينة وأزرارها مساحة (خطة Production، ٣٫١). */}
+        <section className="w-[clamp(440px,45%,620px)] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-lg">
           <header className="flex items-center justify-between">
             <div>
               <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">
@@ -905,7 +906,8 @@ function PapersScreenInner(
 
         {/* ── المعاينة ─────────────────────────────────────────────── */}
         <section className="flex-1 flex flex-col min-w-0">
-          <div className="h-14 px-space-lg flex items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest overflow-x-auto">
+          {/* يلتفّ سطرين إن ضاق — كان يُمرَّر أفقيًّا فتختفي «اطبع» و«حفظ» خلف طرف النافذة. */}
+          <div className="min-h-14 px-space-lg py-space-xs flex flex-wrap items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest">
             <span
               className={`px-space-sm py-0.5 rounded-full font-label-sm text-label-sm font-bold shrink-0 whitespace-nowrap ${
                 total === 100
@@ -919,7 +921,7 @@ function PapersScreenInner(
             </span>
 
             <div className="flex-1" />
-            <div className="flex items-center gap-space-sm shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-space-sm">
               <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
                 <input
                   checked={answers}

@@ -482,7 +482,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(500);
   await page.type('[data-global-search]', 'الموسوي');
   await wait(1000);
-  ok('البحث الشامل يصل إلى الأرشيف', await page.eval(`return Boolean(document.querySelector('[data-archive]'));`));
+  // النتائج في مكانها تحت الحقل (خطة Production، ٣٫٤)، وEnter يفتحها كلّها في الأرشيف.
+  ok('البحث الشامل يعرض الكتاب تحت الحقل', await page.eval(`return [...document.querySelectorAll('[data-search-results] [data-search-doc]')].some((b) => b.dataset.searchDoc === ${JSON.stringify(doc?.serial ?? '—')});`));
+  await page.eval(`document.querySelector('[data-global-search]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return true;`);
+  await wait(1000);
+  ok('وEnter يصل إلى الأرشيف', await page.eval(`return Boolean(document.querySelector('[data-archive]'));`));
   ok('ويجد الكتاب في الأرشيف كلّه', (await page.text()).includes(doc?.serial ?? '—'));
   ok('ومعه ملف المواطن', await page.eval(`return [...document.querySelectorAll('[data-search-others] [data-act="open-citizen"]')].some((b) => b.innerText.includes('أحمد عادل كريم الموسوي'));`));
   await page.eval(`document.querySelector('[data-search-others] [data-act="open-citizen"]').click(); return true;`);

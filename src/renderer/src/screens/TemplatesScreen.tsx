@@ -531,6 +531,30 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
                 ? 'ابدأ من «نموذجٌ جديد» أعلاه: ورقةٌ فارغة، أو ملف Word، أو مجلد ملفاتك كلّه'
                 : 'جرّب كلمة بحث أخرى أو تصنيفًا مختلفًا'}
             </span>
+            {/* المكتبة الفارغة تعرض أقصر الطرق إليها في مكانها (خطة Production، ٣٫٥): مجلد ملفات المكتب كلّه. */}
+            {items.length === 0 && (
+              <div className="flex flex-wrap justify-center gap-space-sm pt-space-xs">
+                <button
+                  className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-bold flex items-center gap-space-xs disabled:opacity-50"
+                  data-act="empty-import-folder"
+                  disabled={busy}
+                  type="button"
+                  onClick={() => void importFolder()}
+                >
+                  <span className="material-symbols-outlined text-[20px]">folder_open</span>
+                  استورد مجلدي
+                </button>
+                <button
+                  className="h-11 px-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs"
+                  data-act="empty-new-blank"
+                  type="button"
+                  onClick={() => void openDesigner(null)}
+                >
+                  <span className="material-symbols-outlined text-[20px]">note_add</span>
+                  ورقة فارغة
+                </button>
+              </div>
+            )}
           </section>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-space-lg">

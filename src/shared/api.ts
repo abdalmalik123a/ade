@@ -7,6 +7,7 @@ import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
+import type { RouteKey } from './routes';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -54,6 +55,10 @@ export type OfficeSettings = {
   basmala: boolean | null;
   /** آخر نسخةٍ احتياطية (ISO) — «آخر نسخة منذ…» ويُذكَّر بها إن طالت. */
   lastBackupAt: string | null;
+  /** الشريط الجانبي مثبّت؛ و`false` مخفيٌّ يظهر بتقريب الفأرة من حافّة النافذة (خطة Production، ٣٫٢). */
+  sidebarPinned: boolean;
+  /** أقسامٌ أخفاها المكتب من الشريط ولوحة الأوامر — والشبّاك والأرشيف والإعدادات لا تُخفى (`shared/sections.ts`). */
+  hiddenSections: RouteKey[];
 };
 
 export type SidebarCounts = {

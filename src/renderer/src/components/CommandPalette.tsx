@@ -21,6 +21,8 @@ type Props = {
   onOpenCitizen?: (citizenId: number) => void;
   onOpenTemplate?: (templateId: number) => void;
   onOpenIdDuplex?: () => void;
+  /** أقسامٌ أخفاها المكتب — لا تُعرض شاشاتها هنا كما لا تُعرض في الشريط (`shared/sections.ts`). */
+  hidden?: readonly RouteKey[];
 };
 
 type CommandItem = {
@@ -38,7 +40,8 @@ export default function CommandPalette({
   onNavigate,
   onOpenCitizen,
   onOpenTemplate,
-  onOpenIdDuplex
+  onOpenIdDuplex,
+  hidden = []
 }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -258,13 +261,14 @@ export default function CommandPalette({
   // تصفية الأوامر حسب نص البحث
   const filteredCommands = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return baseCommands;
-    return baseCommands.filter(
+    const visible = baseCommands.filter((cmd) => !hidden.includes(cmd.id as RouteKey));
+    if (!q) return visible;
+    return visible.filter(
       (cmd) =>
         cmd.title.toLowerCase().includes(q) ||
         (cmd.subtitle && cmd.subtitle.toLowerCase().includes(q))
     );
-  }, [baseCommands, query]);
+  }, [baseCommands, query, hidden]);
 
   // تحويل نتائج البحث إلى عناصر أوامر
   const citizenCommands: CommandItem[] = useMemo(() => {
@@ -329,6 +333,7 @@ export default function CommandPalette({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center pt-24 bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-100"
+      data-command-palette=""
       onClick={onClose}
     >
       <div

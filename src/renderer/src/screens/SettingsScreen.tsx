@@ -9,6 +9,8 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
 import { PRINT_ROLES, type PrintRole, type PrintRoleKey, type PrintRoles } from '@shared/printRoles';
+import type { RouteKey } from '@shared/routes';
+import { LOCKED_SECTIONS, SECTIONS } from '@shared/sections';
 import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
@@ -51,7 +53,9 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 
   const save = () => {
     if (!settings) return;
-    void window.diwan.settings.set(settings).then((saved) => {
+    // الشريط والأقسام تُحفظ لحظة تغييرها — وزرّ الشريط يغيّرها من خارج هذه الشاشة، فلا يُعيدها الحفظ.
+    const { sidebarPinned: _pinned, hiddenSections: _hidden, ...office } = settings;
+    void window.diwan.settings.set(office).then((saved) => {
       setSettings(saved);
       setDirty(false);
       onChanged?.();
@@ -158,6 +162,19 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               />
             </section>
 
+            {/* ── الأقسام الظاهرة والشريط ─────────────────────────────────── */}
+            <SectionsSetting
+              card={card}
+              title={title('view_sidebar', 'الأقسام الظاهرة')}
+              hidden={settings.hiddenSections}
+              pinned={settings.sidebarPinned}
+              onChange={(next) => {
+                // يُطبَّق ويُحفظ فورًا كحجم الخطّ — تغييرٌ يُرى لا يحتاج «حفظ».
+                setSettings((cur) => (cur ? { ...cur, ...next } : cur));
+                void window.diwan.settings.set(next).then(() => onChanged?.());
+              }}
+            />
+
             {/* ── البيانات والنسخ الاحتياطية ─────────────────────────────── */}
             <BackupPanel
               card={card}
@@ -255,6 +272,67 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * الأقسام الظاهرة (خطة Production، ٣٫٣): ما لا يستعمله المكتب يُخفى من الشريط ولوحة الأوامر، ولا يُمحى
+ * منه شيء. والشبّاك والأرشيف والإعدادات لا تُخفى. ومعها الشريط: مثبّتٌ أو يظهر بتقريب الفأرة.
+ */
+function SectionsSetting({
+  card,
+  title,
+  hidden,
+  pinned,
+  onChange
+}: {
+  card: string;
+  title: ReactNode;
+  hidden: RouteKey[];
+  pinned: boolean;
+  onChange: (next: Partial<Pick<OfficeSettings, 'hiddenSections' | 'sidebarPinned'>>) => void;
+}) {
+  return (
+    <section className={card} data-sections="">
+      {title}
+      <p className="font-label-sm text-label-sm text-on-surface-variant">
+        ما لا يستعمله المكتب يُخفى من الشريط ولوحة الأوامر — ولا يُمحى منه شيء، ويعود من هنا.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-x-space-md gap-y-1">
+        {SECTIONS.map(({ key, label }) => {
+          const locked = LOCKED_SECTIONS.includes(key);
+          return (
+            <label
+              key={key}
+              className={`flex items-center gap-space-xs font-label-md text-label-md ${locked ? 'text-on-surface-variant' : 'text-on-surface cursor-pointer'}`}
+              title={locked ? 'لا يُخفى' : undefined}
+            >
+              <input
+                checked={locked || !hidden.includes(key)}
+                className="w-4 h-4 accent-secondary"
+                data-section={key}
+                disabled={locked}
+                type="checkbox"
+                onChange={(e) =>
+                  onChange({ hiddenSections: e.target.checked ? hidden.filter((k) => k !== key) : [...hidden, key] })
+                }
+              />
+              <span className="truncate">{label}</span>
+            </label>
+          );
+        })}
+      </div>
+      <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer pt-space-xs border-t border-outline-variant/30">
+        <input
+          checked={pinned}
+          className="w-4 h-4 accent-secondary"
+          data-setting="sidebarPinned"
+          type="checkbox"
+          onChange={(e) => onChange({ sidebarPinned: e.target.checked })}
+        />
+        الشريط الجانبي مثبّت — وغير المثبّت يظهر حين تقترب الفأرة من حافّة النافذة اليمنى
+      </label>
+    </section>
   );
 }
 

@@ -4,14 +4,16 @@ import type { SidebarCounts } from '@shared/api';
 /* أصناف الشريط من توكنات التصميم (stitch_). والعنصر النشط يختلف بـaria-current وأصنافه
    وحدها — فالتنقّل يُبنى من بيانات لا بتكرار العلامات. */
 
+/** شاشةٌ قصيرة (١٣٦٦×٧٦٨ و١٢٨٠×٧٢٠): البنود أضيق فتسع كلّها بلا تمرير غالبًا (خطة Production، ٣٫١). */
+const SHORT = '[@media(max-height:820px)]:py-1';
 const NAV_BASE =
-  'flex items-center justify-between px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150';
+  `${SHORT} flex items-center justify-between px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150`;
 const NAV_ACTIVE =
-  'flex items-center justify-between px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20';
+  `${SHORT} flex items-center justify-between px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20`;
 const TOOL_BASE =
-  'flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150';
+  `${SHORT} flex items-center gap-space-md px-space-md py-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all duration-150`;
 const TOOL_ACTIVE =
-  'flex items-center gap-space-md px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20';
+  `${SHORT} flex items-center gap-space-md px-space-md py-space-sm transition-all duration-150 bg-primary-container text-on-primary rounded-xl font-bold active-nav-glow shadow-md border border-secondary/20`;
 const BADGE = 'px-2 py-0.5 rounded-full text-[10px] bg-surface-container-high text-on-surface-variant font-medium';
 /** شارةٌ تنبّه: طلبٌ متأخّر أو موعده اليوم — تُرى من أي شاشة. */
 const BADGE_ALERT = 'px-2 py-0.5 rounded-full text-[10px] bg-error text-on-error font-bold';
@@ -33,6 +35,18 @@ export type SidebarProps = {
   officeName: string;
   /** رقم الإصدار من الحزمة — لا نصًّا مكتوبًا يتخلّف عنها. */
   version: string | null;
+  /** أقسامٌ أخفاها المكتب (`shared/sections.ts`) — لا تُعرض. */
+  hidden: readonly RouteKey[];
+  /**
+   * مثبّتٌ يأخذ مكانه؛ وغير المثبّت خارج النافذة، و`open` يُظهره فوق الشاشة حين تقترب الفأرة من
+   * حافّتها (خطة Production، ٣٫٢).
+   */
+  pinned: boolean;
+  open: boolean;
+  onPin: (pinned: boolean) => void;
+  /** الفأرة عادت إليه قبل أن يُخفى — يبقى. */
+  onEnter: () => void;
+  onLeave: () => void;
 };
 
 export default function Sidebar({
@@ -43,7 +57,13 @@ export default function Sidebar({
   printerReady,
   operatorName,
   officeName,
-  version
+  version,
+  hidden,
+  pinned,
+  open,
+  onPin,
+  onEnter,
+  onLeave
 }: SidebarProps) {
   /**
    * الشاشة اليومية وحدها في الأعلى.
@@ -103,126 +123,92 @@ export default function Sidebar({
     { key: 'settings', icon: 'settings', label: 'الإعدادات' }
   ];
 
+  const shown = (items: NavItem[]) => items.filter((item) => !hidden.includes(item.key));
+  const link = (item: NavItem, base: string, activeCls: string, row: boolean) => {
+    const isActive = item.key === active;
+    return (
+      <a
+        key={item.key}
+        aria-current={isActive ? 'page' : undefined}
+        className={isActive ? activeCls : base}
+        data-path={ROUTES[item.key]}
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          onNavigate(item.key);
+        }}
+      >
+        {row ? (
+          <>
+            <div className="flex items-center gap-space-md min-w-0">
+              <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+              <span className="font-label-lg text-label-lg truncate">{item.label}</span>
+            </div>
+            {item.badge && (
+              <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} font-semibold`}>{item.badge.text}</span>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+            <span className="font-label-lg text-label-lg truncate">{item.label}</span>
+          </>
+        )}
+      </a>
+    );
+  };
+  const group = (title: string, items: NavItem[], tool = false) =>
+    items.length > 0 && (
+      <div className="px-space-md pt-space-sm [@media(max-height:820px)]:pt-space-xs">
+        <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
+          {title}
+        </div>
+        <nav className="space-y-1 [@media(max-height:820px)]:space-y-0.5">
+          {items.map((item) => (tool ? link(item, TOOL_BASE, TOOL_ACTIVE, false) : link(item, NAV_BASE, NAV_ACTIVE, true)))}
+        </nav>
+      </div>
+    );
+
   return (
-    <aside className="fixed right-0 top-0 h-full w-72 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-hidden">
-      <div className="flex flex-col flex-1">
-        <div className="h-16 px-space-lg flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-space-sm">
-            <div className="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
-              <span className="material-symbols-outlined text-[20px]">account_balance</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-headline-sm text-headline-sm text-on-surface tracking-tight">
-                {version ? `ديوان ${version}` : 'ديوان'}
-              </span>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                منظومة الكتب والتحارير
-              </span>
-            </div>
+    <aside
+      className={`fixed right-0 top-0 h-full w-72 bg-surface-container-lowest z-50 flex flex-col overflow-hidden transition-transform duration-200 ${
+        pinned ? 'shadow-[0_1px_8px_rgba(0,0,0,0.04)]' : 'shadow-2xl'
+      } ${pinned || open ? 'translate-x-0' : 'translate-x-full'}`}
+      data-sidebar={pinned ? 'pinned' : open ? 'open' : 'hidden'}
+      onMouseEnter={() => !pinned && open && onEnter()}
+      onMouseLeave={() => !pinned && onLeave()}
+    >
+      <div className="h-16 shrink-0 px-space-md flex items-center justify-between gap-space-xs bg-surface-container-low">
+        <div className="flex items-center gap-space-sm min-w-0">
+          <div className="w-9 h-9 shrink-0 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
+            <span className="material-symbols-outlined text-[20px]">account_balance</span>
           </div>
-          <div className="flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container-highest text-secondary">
-            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-            <span className="font-label-sm text-label-sm font-semibold">محلي</span>
-          </div>
-        </div>
-
-        <div className="px-space-md py-space-sm">
-          <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
-            العمل اليومي
-          </div>
-          <nav className="space-y-1">
-            {daily.map((item) => {
-              const isActive = item.key === active;
-              return (
-                <a
-                  key={item.key}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={isActive ? NAV_ACTIVE : NAV_BASE}
-                  data-path={ROUTES[item.key]}
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.key);
-                  }}
-                >
-                  <div className="flex items-center gap-space-md">
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                    <span className="font-label-lg text-label-lg">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} font-semibold`}>
-                      {item.badge.text}
-                    </span>
-                  )}
-                </a>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="px-space-md pt-space-xs">
-          <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
-            الورشة — تُبنى مرّةً وتُستعمل كل يوم
-          </div>
-          <nav className="space-y-1">
-            {workshop.map((item) => {
-              const isActive = item.key === active;
-              return (
-                <a
-                  key={item.key}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={isActive ? NAV_ACTIVE : NAV_BASE}
-                  data-path={ROUTES[item.key]}
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.key);
-                  }}
-                >
-                  <div className="flex items-center gap-space-md">
-                    <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                    <span className="font-label-lg text-label-lg">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={item.badge.alert ? BADGE_ALERT : `${BADGE} font-semibold`}>
-                      {item.badge.text}
-                    </span>
-                  )}
-                </a>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="px-space-md pt-space-xs">
-          <div className="font-label-sm text-label-sm text-on-surface-variant px-space-sm mb-space-xs font-semibold">
-            أدوات التوثيق
-          </div>
-          <div className="space-y-1">
-            {tools.map((item) => {
-              const isActive = item.key === active;
-              return (
-                <a
-                  key={item.key}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={isActive ? TOOL_ACTIVE : TOOL_BASE}
-                  data-path={ROUTES[item.key]}
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate(item.key);
-                  }}
-                >
-                  <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                  <span className="font-label-lg text-label-lg">{item.label}</span>
-                </a>
-              );
-            })}
+          <div className="flex flex-col min-w-0">
+            <span className="font-headline-sm text-headline-sm text-on-surface tracking-tight truncate">
+              {version ? `ديوان ${version}` : 'ديوان'}
+            </span>
+            <span className="font-label-sm text-label-sm text-on-surface-variant truncate">منظومة الكتب والتحارير</span>
           </div>
         </div>
+        <button
+          className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+          data-act={pinned ? 'sidebar-hide' : 'sidebar-pin'}
+          title={pinned ? 'أخفِ الشريط — يظهر حين تقترب الفأرة من حافّة النافذة' : 'ثبّت الشريط في مكانه'}
+          type="button"
+          onClick={() => onPin(!pinned)}
+        >
+          <span className="material-symbols-outlined text-[20px]">{pinned ? 'right_panel_close' : 'keep'}</span>
+        </button>
       </div>
 
-      <div className="p-space-md bg-surface-container-low space-y-space-sm">
+      {/* البنود تُمرَّر إن ضاقت النافذة — كانت تُقصّ فيختفي آخرها والطابعة والإعدادات. */}
+      <div className="flex-1 min-h-0 overflow-y-auto pb-space-sm">
+        {group('العمل اليومي', shown(daily))}
+        {group('الورشة — تُبنى مرّةً وتُستعمل كل يوم', shown(workshop))}
+        {group('أدوات التوثيق', shown(tools), true)}
+      </div>
+
+      <div className="shrink-0 p-space-md [@media(max-height:820px)]:p-space-sm bg-surface-container-low space-y-space-sm [@media(max-height:820px)]:space-y-space-xs">
         <div className="p-space-sm rounded-lg bg-surface-container-lowest flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-space-sm">
             <span className="material-symbols-outlined text-secondary text-[22px]">print</span>
