@@ -2,6 +2,7 @@ import { app, clipboard, ipcMain, BrowserWindow } from 'electron';
 import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
+import { registerContentIpc } from './content';
 import { registerFileIpc } from './files';
 import { registerDesignIpc } from './designs';
 import { registerPdfIpc } from './pdf';
@@ -137,6 +138,7 @@ export function registerIpc(): void {
   registerPhotoIpc();
   registerQuestionIpc();
   registerBackupIpc();
+  registerContentIpc();
 
   /** بطاقة التعبئة للمواقع الحكومية (هـ٦): نافذةٌ فوق المتصفّح لمواطنٍ من السجل. */
   ipcMain.handle('fillcard:open', (_e, citizenId: number) => openFillCard(Number(citizenId)));

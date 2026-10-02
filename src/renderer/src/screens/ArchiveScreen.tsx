@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import BackupDialog from '../components/BackupDialog';
 import { auditLabel } from '@shared/auditLabels';
 
 const COLUMNS = ['رقم الصادر', 'صاحب العلاقة', 'نوع الكتاب', 'الجهة', 'التاريخ والنسخ'];
@@ -199,11 +200,8 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
       if (result) setToast(`حُفظ التقرير (${nf.format(result.count)} سجلًا): ${result.path}`);
     });
 
-  const backup = () =>
-    run('backup', async () => {
-      const result = await window.diwan.documents.backup();
-      if (result) setToast(`حُفظت نسخة احتياطية (${(result.bytes / 1024 / 1024).toFixed(1)} م.ب): ${result.path}`);
-    });
+  /** النسخة الاحتياطية بحوارها — بكلمة مرورٍ إن شاء المكتب (خطة Production، ٤٫١). */
+  const [backupOpen, setBackupOpen] = useState(false);
 
   const savePdf = (id: number) =>
     run('pdf', async () => {
@@ -340,10 +338,10 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
                 className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-40"
                 type="button"
                 disabled={busy !== null}
-                onClick={() => void backup()}
+                onClick={() => setBackupOpen(true)}
               >
                 <span className="material-symbols-outlined text-[18px]">backup</span>
-                {busy === 'backup' ? 'ينسخ...' : 'نسخ احتياطي فوري'}
+                نسخة احتياطية…
               </button>
             </div>
           </div>
@@ -609,6 +607,12 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
           </div>
         </section>
       </div>
+      {backupOpen && (
+        <BackupDialog
+          onClose={() => setBackupOpen(false)}
+          onDone={(r) => setToast(`حُفظت نسخة احتياطية ${r.encrypted ? 'مشفّرة ' : ''}(${(r.bytes / 1024 / 1024).toFixed(1)} م.ب): ${r.path}`)}
+        />
+      )}
     </main>
   );
 }

@@ -7,7 +7,6 @@ import { getDb, storeDir } from '../db';
 import * as svc from '../services/documents';
 import { searchOthers } from '../services/search';
 import { todayAgenda } from '../services/today';
-import { createBackup } from './backup';
 import { printSheet, calibrationSheet, renderPdf, renderPng, sheetStyle } from '../services/render';
 import { reportToExcel } from '../services/export';
 import { docToDocx } from '../services/docDocx';
@@ -302,15 +301,6 @@ export function registerDocumentIpc(): void {
   ipcMain.handle('documents:linkCitizen', (_e, transactionId: number, citizenId: number) =>
     svc.linkTransactionCitizen(getDb(), Number(transactionId), Number(citizenId))
   );
-
-  /**
-   * نسخة احتياطية فورية من الأرشيف: القاعدة ومخزن الملفات في حزمةٍ واحدة — بالمسار
-   * نفسه الذي في «الإعدادات» (ipc/backup.ts)، فيُقيَّد تاريخها ويُذكَّر بها.
-   */
-  ipcMain.handle('documents:backup', async (e): Promise<{ path: string; bytes: number } | null> => {
-    const w = win(e);
-    return w ? createBackup(w, null) : null;
-  });
 
   // ── إخراج الورقة الجارية في المحرر (قبل الإصدار أو بلا إصدار) ─────────
   ipcMain.handle(

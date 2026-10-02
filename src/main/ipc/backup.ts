@@ -11,13 +11,13 @@
  * ٤. إن تعثّر شيءٌ في ٣ عاد ما نُقل جانبًا إلى مكانه.
  * ثم تُعاد الواجهة فتقرأ البيانات الجديدة من أوّلها.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { BrowserWindow, ipcMain, safeStorage } from 'electron';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { open } from 'node:fs/promises';
+import { join } from 'node:path';
+import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { closeDb, dataDir, getDb } from '../db';
-import { inspectBackup, isEncrypted, packBackup, unpackBackup } from '../services/backup';
-import { mirrorInfo, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
+import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBackup, writeBackup, type OpenedBackup } from '../services/backup';
+import { mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { logAudit, prepareDocuments } from '../services/documents';
 import { ensureSearchColumn } from '../services/citizens';
 import { prepareLetterheads } from '../services/letterheads';
@@ -28,19 +28,25 @@ import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
-/** ملفّات المخزن نسبيّةً إليه — لتُحزم. */
-async function readStore(root: string): Promise<Record<string, Uint8Array>> {
-  const files: Record<string, Uint8Array> = {};
-  if (!existsSync(root)) return files;
-  const walk = async (dir: string, prefix: string): Promise<void> => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) await walk(full, `${prefix}${entry.name}/`);
-      else files[`${prefix}${entry.name}`] = new Uint8Array(await readFile(full));
-    }
+/** ما يُفكّ مؤقّتًا للفحص والاسترجاع — في مجلّد بيانات المكتب: على قرصه، فيُنقل منه بلا نسخ. */
+const workDir = () => join(dataDir(), 'restore-work');
+
+/** النسخة مفتوحةً وقاعدتها مفكوكةً في ملفٍّ مؤقّت ومفحوصة — و`done` يمحو ما فُكّ. */
+async function openAndInspect(path: string, password: string | null): Promise<{ opened: OpenedBackup; dbFile: string; summary: BackupSummary; done: () => void }> {
+  const opened = await openBackup(path, password, workDir());
+  const dbFile = join(workDir(), `inspect-${process.pid}-${Date.now()}.db`);
+  const done = () => {
+    rmSync(dbFile, { force: true });
+    opened.dispose();
   };
-  await walk(root, '');
-  return files;
+  try {
+    await opened.extractDb(dbFile);
+    const summary = inspectDbFile(dbFile, opened.files.length, opened.meta, app.getVersion());
+    return { opened, dbFile, summary, done };
+  } catch (e) {
+    done();
+    throw e;
+  }
 }
 
 /** نسخةٌ متّسقة من القاعدة الجارية — ولو صدر كتابٌ لحظتها. */
@@ -83,13 +89,13 @@ export async function createBackup(
 
   const snapshot = join(dataDir(), `backup-${stamp()}.db`);
   snapshotDb(snapshot);
+  let size: number;
   try {
-    const bytes = packBackup(new Uint8Array(await readFile(snapshot)), await readStore(join(dataDir(), 'store')), password);
-    await writeFile(target, bytes);
+    // ملفًّا ملفًّا من القرص — لا المخزن كلّه في الذاكرة (خطة Production، ٤٫١).
+    size = (await writeBackup({ target, dbFile: snapshot, storeRoot: join(dataDir(), 'store'), password, appVersion: app.getVersion() })).bytes;
   } finally {
     if (existsSync(snapshot)) rmSync(snapshot);
   }
-  const size = statSync(target).size;
   // «آخر نسخة منذ…» — يُذكَّر بها المكتب إن طالت (شاشة اليوم والإعدادات).
   setting('lastBackupAt', new Date().toISOString());
   logAudit(getDb(), 'backup', 'create', `${encrypted ? 'مشفّرة — ' : ''}${(size / 1024 / 1024).toFixed(1)} م.ب`);
@@ -100,10 +106,10 @@ export async function createBackup(
  * يستبدل بيانات المكتب بالنسخة — وما كان يُنقل جانبًا لا يُحذف.
  * يعيد مجلّد ما نُقل جانبًا، ليُقال للمكتب أين هو.
  *
- * و`writeStore` يكتب مخزن النسخة في مجلّده: من الحزمة المفكوكة في الذاكرة، أو من مجلّد
- * النسخة التلقائية ملفًّا ملفًّا.
+ * و`placeDb` يضع قاعدة النسخة في مكانها (نقلًا من ملفّها المفكوك، أو كتابةً من نسخة المرآة)،
+ * و`writeStore` يكتب مخزنها في مجلّده — ملفًّا ملفًّا في الحالين.
  */
-function applyRestore(dbBytes: Uint8Array, writeStore: (store: string) => void): string {
+async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (store: string) => void | Promise<void>): Promise<string> {
   const dir = dataDir();
   const aside = join(dir, `before-restore-${stamp()}`);
   mkdirSync(aside, { recursive: true });
@@ -123,9 +129,9 @@ function applyRestore(dbBytes: Uint8Array, writeStore: (store: string) => void):
   move(store, join(aside, 'store'));
 
   try {
-    writeFileSync(dbFile, dbBytes);
+    placeDb(dbFile);
     mkdirSync(store, { recursive: true });
-    writeStore(store);
+    await writeStore(store);
     reopen();
   } catch (e) {
     // تعثّر: يُمحى ما كُتب، ويعود ما نُقل جانبًا إلى مكانه — فالجهاز كما كان.
@@ -193,7 +199,14 @@ export function runConfiguredAutoBackup(): AutoBackupResult | null {
   const status = autoStatus();
   if (!status.dir) return null;
   try {
-    const r = runAutoBackup({ target: status.dir, storeRoot: join(dataDir(), 'store'), snapshotDb, password: autoPassword(), keep: status.keep });
+    const r = runAutoBackup({
+      target: status.dir,
+      storeRoot: join(dataDir(), 'store'),
+      snapshotDb,
+      password: autoPassword(),
+      keep: status.keep,
+      appVersion: app.getVersion()
+    });
     saveAutoState({ lastAt: new Date().toISOString(), lastError: null });
     return r;
   } catch (e) {
@@ -244,19 +257,21 @@ export function registerBackupIpc(): void {
     const path = await pickFolderPath(w, { title: 'مجلّد النسخة التلقائية', buttonLabel: 'افحصه' });
     if (!path) return null;
     const info = mirrorInfo(path);
-    return { path, encrypted: info.encrypted, lastAt: info.lastAt };
+    return { path, encrypted: info.encrypted, lastAt: info.lastAt, snapshots: mirrorSnapshots(path) };
   });
 
-  ipcMain.handle('backup:mirrorInspect', (_e, path: string, password?: string | null): BackupSummary => {
-    const mirror = readMirror(path, password ?? null);
-    return { ...inspectBackup({ db: mirror.db, store: {} }), files: mirror.files };
-  });
+  const mirrorSummary = (mirror: ReturnType<typeof readMirror>): BackupSummary =>
+    inspectDbBytes(mirror.db, mirror.files, mirror.appVersion ? { appVersion: mirror.appVersion, createdAt: null } : null, app.getVersion());
 
-  ipcMain.handle('backup:mirrorRestore', (_e, path: string, password?: string | null): { summary: BackupSummary; aside: string } => {
-    const mirror = readMirror(path, password ?? null);
-    const summary = { ...inspectBackup({ db: mirror.db, store: {} }), files: mirror.files };
-    if (!summary.ok) throw new Error(`القاعدة في النسخة لا تجتاز الفحص (${summary.integrity}) — لا تُسترجع`);
-    const aside = applyRestore(mirror.db, mirror.writeStore);
+  ipcMain.handle('backup:mirrorInspect', (_e, path: string, password?: string | null, snapshot?: string | null): BackupSummary =>
+    mirrorSummary(readMirror(path, password ?? null, snapshot ?? null))
+  );
+
+  ipcMain.handle('backup:mirrorRestore', async (_e, path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
+    const mirror = readMirror(path, password ?? null, snapshot ?? null);
+    const summary = mirrorSummary(mirror);
+    assertRestorable(summary, app.getVersion());
+    const aside = await applyRestore((dbFile) => writeFileSync(dbFile, mirror.db), mirror.writeStore);
     logAudit(getDb(), 'backup', 'restore', `من النسخة التلقائية (${mirror.snapshot}): ${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
     setTimeout(() => {
       for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
@@ -280,27 +295,35 @@ export function registerBackupIpc(): void {
       extensions: ['zip', 'diwan']
     });
     if (!path) return null;
-    const head = new Uint8Array(await readFile(path)).subarray(0, 16);
+    // أوّل الملف وحده — كان يُقرأ كلّه ليُعرف أمشفّرٌ هو.
+    const head = Buffer.alloc(16);
+    const h = await open(path, 'r');
+    try {
+      await h.read(head, 0, 16, 0);
+    } finally {
+      await h.close();
+    }
     return { path, encrypted: isEncrypted(head) };
   });
 
-  ipcMain.handle('backup:inspect', async (_e, path: string, password?: string | null): Promise<BackupSummary> =>
-    inspectBackup(unpackBackup(new Uint8Array(await readFile(path)), password ?? null))
-  );
+  ipcMain.handle('backup:inspect', async (_e, path: string, password?: string | null): Promise<BackupSummary> => {
+    const { summary, done } = await openAndInspect(path, password ?? null);
+    done();
+    return summary;
+  });
 
   ipcMain.handle(
     'backup:restore',
     async (_e, path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
-      const unpacked = unpackBackup(new Uint8Array(await readFile(path)), password ?? null);
-      const summary = inspectBackup(unpacked);
-      if (!summary.ok) throw new Error(`القاعدة في النسخة لا تجتاز الفحص (${summary.integrity}) — لا تُسترجع`);
-      const aside = applyRestore(unpacked.db, (store) => {
-        for (const [rel, bytes] of Object.entries(unpacked.store)) {
-          const file = join(store, rel);
-          mkdirSync(dirname(file), { recursive: true });
-          writeFileSync(file, bytes);
-        }
-      });
+      const { opened, dbFile, summary, done } = await openAndInspect(path, password ?? null);
+      let aside: string;
+      try {
+        assertRestorable(summary, app.getVersion());
+        // القاعدة المفكوكة تُنقل إلى مكانها (على القرص نفسه)، والمخزن يُفكّ ملفًّا ملفًّا.
+        aside = await applyRestore((target) => renameSync(dbFile, target), (store) => opened.extractStore(store));
+      } finally {
+        done();
+      }
       logAudit(getDb(), 'backup', 'restore', `${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
       // الواجهة تُعاد لتقرأ البيانات الجديدة من أوّلها — بعد أن يصلها الجواب.
       setTimeout(() => {

@@ -5,9 +5,10 @@
  * يحلّ محلّ بيانات هذا الجهاز كلّها، فيُقال ذلك بصراحة، وما كان يُنقل جانبًا لا يُحذف.
  */
 import { useEffect, useState } from 'react';
-import type { AutoBackupStatus, BackupSummary } from '@shared/api';
+import type { AutoBackupStatus, BackupSummary, MirrorSnapshot } from '@shared/api';
 import { BACKUP_REMIND_DAYS, daysSince, sinceText } from '@shared/dates';
 import { errorText } from '../lib/errors';
+import BackupCreate from './BackupCreate';
 
 const nf = new Intl.NumberFormat('en-US');
 const input =
@@ -24,13 +25,12 @@ export default function BackupPanel({
   title: React.ReactNode;
   onBackedUp: (at: string) => void;
 }) {
-  const [encrypt, setEncrypt] = useState(false);
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
   // الاسترجاع: الملف (أو مجلّد النسخة التلقائية)، ثم كلمته إن كان مشفّرًا، ثم ما فيه، ثم الموافقة.
-  const [picked, setPicked] = useState<{ path: string; encrypted: boolean; mirror?: boolean } | null>(null);
+  const [picked, setPicked] = useState<{ path: string; encrypted: boolean; mirror?: boolean; snapshots?: MirrorSnapshot[] } | null>(null);
+  /** نسخة القاعدة المختارة من مجلّد النسخة التلقائية — وأحدثها أوّلًا (خطة Production، ٤٫٢). */
+  const [snapshot, setSnapshot] = useState<string | null>(null);
   const [restorePassword, setRestorePassword] = useState('');
   const [summary, setSummary] = useState<BackupSummary | null>(null);
   // النسخة التلقائية عند الإغلاق.
@@ -51,8 +51,6 @@ export default function BackupPanel({
   }, []);
 
   const stale = !lastBackupAt || daysSince(lastBackupAt) >= BACKUP_REMIND_DAYS;
-  const mismatch = encrypt && confirm.length > 0 && password !== confirm;
-  const canCreate = !encrypt || (password.length >= 4 && password === confirm);
   const autoMismatch = autoEncrypt && autoConfirm.length > 0 && autoPassword !== autoConfirm;
   const canEnableAuto = !autoEncrypt || (autoPassword.length >= 4 && autoPassword === autoConfirm);
 
@@ -101,43 +99,28 @@ export default function BackupPanel({
     setNote({ text: 'أُوقفت النسخة التلقائية — وما أُخذ منها باقٍ في مجلّده', tone: 'ok' });
   }
 
-  async function create() {
-    setBusy('create');
-    setNote(null);
-    try {
-      const r = await window.diwan.backup.create(encrypt ? password : null);
-      if (r) {
-        onBackedUp(new Date().toISOString());
-        setNote({ text: `حُفظت نسخة ${r.encrypted ? 'مشفّرة ' : ''}(${(r.bytes / 1024 / 1024).toFixed(1)} م.ب): ${r.path}`, tone: 'ok' });
-        setPassword('');
-        setConfirm('');
-      }
-    } catch (e) {
-      setNote({ text: errorText(e, 'تعذّرت النسخة الاحتياطية'), tone: 'warn' });
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function pick(mirror = false) {
     setNote(null);
     setSummary(null);
     setRestorePassword('');
     try {
       const p = mirror ? await window.diwan.backup.mirrorPick() : await window.diwan.backup.pick();
-      const next = p ? { path: p.path, encrypted: p.encrypted, mirror } : null;
+      const snapshots = p && 'snapshots' in p ? (p.snapshots as MirrorSnapshot[]) : undefined;
+      const next = p ? { path: p.path, encrypted: p.encrypted, mirror, snapshots } : null;
+      const first = next?.snapshots?.[0]?.name ?? null;
       setPicked(next);
-      if (next && !next.encrypted) await inspect(next, null);
+      setSnapshot(first);
+      if (next && !next.encrypted) await inspect(next, null, first);
     } catch (e) {
       setPicked(null);
       setNote({ text: errorText(e, 'تعذّر فتح النسخة'), tone: 'warn' });
     }
   }
 
-  async function inspect(target: { path: string; mirror?: boolean }, pw: string | null) {
+  async function inspect(target: { path: string; mirror?: boolean }, pw: string | null, snap: string | null = snapshot) {
     setBusy('inspect');
     try {
-      setSummary(target.mirror ? await window.diwan.backup.mirrorInspect(target.path, pw) : await window.diwan.backup.inspect(target.path, pw));
+      setSummary(target.mirror ? await window.diwan.backup.mirrorInspect(target.path, pw, snap) : await window.diwan.backup.inspect(target.path, pw));
       setNote(null);
     } catch (e) {
       setSummary(null);
@@ -152,7 +135,7 @@ export default function BackupPanel({
     setBusy('restore');
     try {
       const pw = picked.encrypted ? restorePassword : null;
-      const r = picked.mirror ? await window.diwan.backup.mirrorRestore(picked.path, pw) : await window.diwan.backup.restore(picked.path, pw);
+      const r = picked.mirror ? await window.diwan.backup.mirrorRestore(picked.path, pw, snapshot) : await window.diwan.backup.restore(picked.path, pw);
       setNote({ text: `استُرجعت النسخة — وما كان على الجهاز حُفظ في: ${r.aside}. تُعاد الشاشة الآن…`, tone: 'ok' });
     } catch (e) {
       setNote({ text: errorText(e, 'تعذّر الاسترجاع — بقي الجهاز كما كان'), tone: 'warn' });
@@ -169,31 +152,13 @@ export default function BackupPanel({
       </p>
 
       {/* خذ نسخة */}
-      <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
-        <input checked={encrypt} className="w-4 h-4 accent-secondary" data-backup-encrypt="" type="checkbox" onChange={(e) => setEncrypt(e.target.checked)} />
-        مشفّرة بكلمة مرور — فيها صور المستمسكات وأرقام الناس
-      </label>
-      {encrypt && (
-        <div className="flex flex-col gap-1">
-          <div className="flex gap-space-xs">
-            <input className={`${input} flex-1`} data-backup-password="" placeholder="كلمة المرور" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <input className={`${input} flex-1`} data-backup-confirm="" placeholder="أعِدها" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-          </div>
-          <span className={`font-label-sm text-label-sm ${mismatch ? 'text-error' : 'text-on-surface-variant'}`}>
-            {mismatch ? 'الكلمتان لا تتطابقان' : 'لا تُحفظ الكلمة في أي مكان: من نسيها لا تُفتح نسخته أبدًا. وأربعة أحرفٍ أقلّها.'}
-          </span>
-        </div>
-      )}
-      <button
-        className="h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs disabled:opacity-40"
-        data-act="backup-create"
-        type="button"
-        disabled={busy !== null || !canCreate}
-        onClick={() => void create()}
-      >
-        <span className="material-symbols-outlined text-[18px]">backup</span>
-        {busy === 'create' ? 'ينسخ...' : 'خذ نسخة احتياطية الآن'}
-      </button>
+      <BackupCreate
+        onDone={(r) => {
+          onBackedUp(new Date().toISOString());
+          setNote({ text: `حُفظت نسخة ${r.encrypted ? 'مشفّرة ' : ''}(${(r.bytes / 1024 / 1024).toFixed(1)} م.ب): ${r.path}`, tone: 'ok' });
+        }}
+        onError={(text) => setNote({ text, tone: 'warn' })}
+      />
 
       {/* النسخة التلقائية عند الإغلاق */}
       {auto && (
@@ -298,6 +263,30 @@ export default function BackupPanel({
           <span className="material-symbols-outlined text-[18px]">folder_open</span>
           استرجع من مجلّد النسخة التلقائية…
         </button>
+        {picked?.mirror && picked.snapshots && picked.snapshots.length > 1 && (
+          <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface">
+            نسخة القاعدة
+            <select
+              className={`${input} flex-1`}
+              data-mirror-snapshot=""
+              value={snapshot ?? ''}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSnapshot(next);
+                setSummary(null);
+                if (!picked.encrypted || restorePassword) void inspect(picked, picked.encrypted ? restorePassword : null, next);
+              }}
+            >
+              {picked.snapshots.map((s, i) => (
+                <option key={s.name} value={s.name}>
+                  {new Date(s.at).toLocaleString('ar-IQ-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })}
+                  {i === 0 ? ' — الأحدث' : ''}
+                  {s.appVersion ? ` — الإصدار ${s.appVersion}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {picked?.encrypted && !summary && (
           <div className="flex gap-space-xs">
             <input
@@ -331,7 +320,18 @@ export default function BackupPanel({
               {nf.format(summary.citizens)} مواطنًا · {nf.format(summary.templates)} نموذجًا · {nf.format(summary.files)} ملفًّا
               {summary.lastIssuedAt ? ` — آخر كتابٍ فيها ${summary.lastIssuedAt.slice(0, 16)}` : ''}
             </span>
-            {summary.ok && (
+            {(summary.appVersion || summary.createdAt) && (
+              <span className="text-on-surface-variant" data-backup-version="">
+                {summary.createdAt ? `أُخذت ${new Date(summary.createdAt).toLocaleString('ar-IQ-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+                {summary.appVersion ? `${summary.createdAt ? ' — ' : ''}بالإصدار ${summary.appVersion}` : ''}
+              </span>
+            )}
+            {summary.fromNewer && (
+              <span className="text-error font-semibold" data-backup-newer="">
+                النسخة من إصدارٍ أحدث من هذا البرنامج — ثبّت الإصدار الأحدث ثم استرجعها، فقاعدتها قد تحمل ما لا يعرفه هذا.
+              </span>
+            )}
+            {summary.ok && !summary.fromNewer && (
               <>
                 <span className="text-error">
                   تحلّ محلّ بيانات هذا الجهاز كلّها. وما عليه الآن يُنقل جانبًا إلى مجلّدٍ في بيانات المكتب — لا يُحذف.

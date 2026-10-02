@@ -152,9 +152,11 @@ export function saveLetterhead(
     category?: string | null;
   }
 ): Letterhead {
-  const json = JSON.stringify(input.layout);
+  // بصيغة هذا الإصدار كاملةً — كما تُقرأ: ترويسةٌ من حزمة محتوى قديمة أو ناقصة لا تُسقط الحفظ (٤٫٣).
+  const layout = normalizeLayout(input.layout);
+  const json = JSON.stringify(layout);
   const category = input.category?.trim() || null;
-  const fold = searchFold(input.name, category, input.layout);
+  const fold = searchFold(input.name, category, layout);
 
   const id = db.transaction(() => {
     if (input.id === null) {
@@ -178,7 +180,7 @@ export function saveLetterhead(
         name: input.name,
         category,
         authorityId: input.authorityId,
-        layout: input.layout
+        layout
       });
     }
     db.prepare(

@@ -33,7 +33,11 @@ type Manifest = {
   check?: string;
   lastAt?: string;
   lastDbHash?: string;
+  /** إصدار البرنامج الذي أخذ كلّ نسخةٍ من القاعدة — باسمها (خطة Production، ٤٫٢). */
+  versions?: Record<string, string>;
 };
+
+const SNAPSHOT = /^diwan-(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})\.db(\.enc)?$/;
 
 const keyOf = (password: string, salt: Buffer) => scryptSync(password.normalize('NFC'), salt, 32, SCRYPT);
 
@@ -125,6 +129,8 @@ export function runAutoBackup(opts: {
   password: string | null;
   keep: number;
   now?: Date;
+  /** إصدار البرنامج — يُكتب مع كلّ نسخةٍ من القاعدة، فلا يُسترجع في إصدارٍ أقدم منه. */
+  appVersion?: string;
 }): AutoBackupResult {
   if (!existsSync(opts.target)) {
     throw new Error(`مجلّد النسخة التلقائية غير موجود: ${opts.target} — أهي فلاشةٌ غير موصولة؟`);
@@ -156,7 +162,9 @@ export function runAutoBackup(opts: {
     const hash = createHash('sha256').update(db).digest('hex');
     if (hash !== manifest.lastDbHash) {
       const out = key ? seal(db, key) : db;
-      writeAtomic(join(root, 'db', `diwan-${stamp(now)}.db${key ? ENC : ''}`), out);
+      const name = `diwan-${stamp(now)}.db${key ? ENC : ''}`;
+      writeAtomic(join(root, 'db', name), out);
+      if (opts.appVersion) manifest.versions = { ...manifest.versions, [name]: opts.appVersion };
       bytesCopied += out.length;
       manifest.lastDbHash = hash;
       dbChanged = true;
@@ -167,7 +175,10 @@ export function runAutoBackup(opts: {
   const snapshots = readdirSync(join(root, 'db'))
     .filter((f) => /^diwan-.*\.db(\.enc)?$/.test(f))
     .sort();
-  for (const old of snapshots.slice(0, Math.max(0, snapshots.length - Math.max(1, opts.keep)))) rmSync(join(root, 'db', old));
+  for (const old of snapshots.slice(0, Math.max(0, snapshots.length - Math.max(1, opts.keep)))) {
+    rmSync(join(root, 'db', old));
+    if (manifest.versions) delete manifest.versions[old];
+  }
 
   // ── المخزن: الجديد وحده، بالاسم والحجم ─────────────────────────────
   let filesCopied = 0;
@@ -196,23 +207,50 @@ export function mirrorInfo(dir: string): { root: string; encrypted: boolean; las
   return { root, encrypted: m.encrypted, lastAt: m.lastAt ?? null };
 }
 
+export type MirrorSnapshot = { name: string; at: string; bytes: number; appVersion: string | null };
+
+/** نسخ القاعدة في المرآة — أحدثها أوّلًا — ليُختار منها ما يُسترجع (خطة Production، ٤٫٢). */
+export function mirrorSnapshots(dir: string): MirrorSnapshot[] {
+  const root = mirrorRoot(dir);
+  const m = readManifest(root);
+  if (!m) throw new Error('المجلّد ليس نسخةً تلقائية من ديوان');
+  const dbDir = join(root, 'db');
+  return (existsSync(dbDir) ? readdirSync(dbDir) : [])
+    .map((name) => ({ name, match: SNAPSHOT.exec(name) }))
+    .filter((x): x is { name: string; match: RegExpExecArray } => x.match !== null)
+    .sort((a, b) => b.name.localeCompare(a.name))
+    .map(({ name, match }) => ({
+      name,
+      // الاسم بوقت UTC (`stamp`) — فيعود وقتًا كاملًا تعرضه الواجهة بوقت المكتب.
+      at: `${match[1]}T${match[2]}:${match[3]}:${match[4]}Z`,
+      bytes: statSync(join(dbDir, name)).size,
+      appVersion: m.versions?.[name] ?? null
+    }));
+}
+
 /**
- * آخر نسخةٍ من القاعدة في المرآة (مفكوكةً)، وما يكتب مخزنها إلى مجلّد — ملفًّا ملفًّا،
- * فلا يُحمل المخزن كلّه في الذاكرة.
+ * نسخةٌ من القاعدة في المرآة (مفكوكةً) — المختارة، أو آخرها — وما يكتب مخزنها إلى مجلّد ملفًّا ملفًّا،
+ * فلا يُحمل المخزن كلّه في الذاكرة. والمخزن في المرآة لا يُمحى منه شيء، فنسخةٌ قديمة تجد ملفّاتها.
  */
-export function readMirror(dir: string, password: string | null): { db: Uint8Array; snapshot: string; files: number; writeStore: (to: string) => void } {
+export function readMirror(
+  dir: string,
+  password: string | null,
+  snapshot?: string | null
+): { db: Uint8Array; snapshot: string; appVersion: string | null; files: number; writeStore: (to: string) => void } {
   const root = mirrorRoot(dir);
   const m = readManifest(root);
   if (!m) throw new Error('المجلّد ليس نسخةً تلقائية من ديوان');
   const key = keyFor(m, password);
   const dbDir = join(root, 'db');
-  const latest = (existsSync(dbDir) ? readdirSync(dbDir) : []).filter((f) => /^diwan-.*\.db(\.enc)?$/.test(f)).sort().at(-1);
-  if (!latest) throw new Error('لا قاعدة في مجلّد النسخة التلقائية');
-  const raw = readFileSync(join(dbDir, latest));
+  const all = mirrorSnapshots(dir);
+  const chosen = snapshot ? all.find((s) => s.name === snapshot) : all[0];
+  if (!chosen) throw new Error(snapshot ? 'هذه النسخة لم تعد في المجلّد' : 'لا قاعدة في مجلّد النسخة التلقائية');
+  const raw = readFileSync(join(dbDir, chosen.name));
   const store = walk(join(root, 'store'));
   return {
     db: key ? unseal(raw, key) : raw,
-    snapshot: latest,
+    snapshot: chosen.name,
+    appVersion: chosen.appVersion,
     files: store.length,
     writeStore: (to) => {
       for (const rel of store) {

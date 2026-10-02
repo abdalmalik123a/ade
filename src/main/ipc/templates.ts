@@ -5,8 +5,8 @@ import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
-import { importTemplateFile, parseTemplateXml } from '../services/import';
-import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../services/export';
+import { importTemplateFile } from '../services/import';
+import { templateToDocx, templateToXml } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
 import { listRevisions, revisionPayload } from '../services/revisions';
@@ -29,7 +29,6 @@ import {
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
 import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
-import { isoDate } from '@shared/dates'; // اسم الملف بيوم المكتب لا بيوم UTC
 
 /** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
 const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 'clip'];
@@ -218,91 +217,6 @@ export function registerTemplateIpc(): void {
     } else {
       await writeFile(result.filePath, templateToXml(t), 'utf8');
     }
-    return result.filePath;
-  });
-
-  /** تصدير المكتبة كاملة في ملف واحد — يُسترجع لاحقًا بزرّ الاسترجاع. */
-  ipcMain.handle('templates:exportLibrary', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    if (!win) return null;
-    const db = getDb();
-    const all = svc
-      .listTemplates(db)
-      .map((t) => svc.getTemplate(db, t.id))
-      .filter((t): t is NonNullable<typeof t> => t !== null);
-    if (all.length === 0) throw new Error('لا نماذج لتصديرها');
-
-    const stamp = isoDate(new Date());
-    const result = await dialog.showSaveDialog(win, {
-      title: 'تصدير المكتبة كاملة',
-      defaultPath: `diwan-library-${stamp}.xml`,
-      filters: [{ name: 'مكتبة ديوان', extensions: ['xml'] }]
-    });
-    if (result.canceled || !result.filePath) return null;
-    await writeFile(result.filePath, libraryToXml(all), 'utf8');
-    return { path: result.filePath, count: all.length };
-  });
-
-  /** استرجاع مكتبة مصدَّرة. الكود المكرَّر يُتخطّى فلا يُفسد ما هو قائم. */
-  ipcMain.handle('templates:restoreLibrary', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    if (!win) return null;
-    const result = await dialog.showOpenDialog(win, {
-      title: 'استرجاع مكتبة',
-      buttonLabel: 'استرجاع',
-      properties: ['openFile'],
-      filters: [{ name: 'مكتبة ديوان', extensions: ['xml'] }]
-    });
-    if (result.canceled || !result.filePaths[0]) return null;
-
-    const xml = await readFile(result.filePaths[0], 'utf8');
-    const chunks = splitLibraryXml(xml);
-    if (chunks.length === 0) throw new Error('الملف لا يحتوي نماذج');
-
-    const db = getDb();
-    let added = 0;
-    let skipped = 0;
-    for (const chunk of chunks) {
-      const parsed = parseTemplateXml(chunk);
-      if (!parsed.title) continue;
-      if (parsed.code && svc.isCodeTaken(db, parsed.code, null)) {
-        skipped++;
-        continue;
-      }
-      svc.saveTemplate(db, {
-        id: null,
-        code: parsed.code,
-        title: parsed.title,
-        subtitle: parsed.subtitle,
-        category: parsed.category,
-        subjectLine: parsed.subjectLine,
-        bodyHtml: parsed.body,
-        letterheadId: null,
-        variables: parsed.variables
-      });
-      added++;
-    }
-    return { added, skipped };
-  });
-
-  /** نسخة احتياطية كاملة للنماذج والمسودات — ملف JSON واحد يختار المكتب مكانه. */
-  ipcMain.handle('templates:backup', async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    if (!win) return null;
-    const db = getDb();
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      templates: svc.listTemplates(db).map((t) => svc.getTemplate(db, t.id)),
-      drafts: svc.listDrafts(db)
-    };
-    const stamp = isoDate(new Date());
-    const result = await dialog.showSaveDialog(win, {
-      title: 'نسخ احتياطي للنماذج والمسودات',
-      defaultPath: `diwan-templates-${stamp}.json`,
-      filters: [{ name: 'JSON', extensions: ['json'] }]
-    });
-    if (result.canceled || !result.filePath) return null;
-    await writeFile(result.filePath, JSON.stringify(payload, null, 2), 'utf8');
     return result.filePath;
   });
 

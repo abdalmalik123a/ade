@@ -420,8 +420,11 @@ export default async function scenario(page, { profile, shotsDir }) {
     // خطٌّ مضمَّن = نصٌّ رُسم فعلًا؛ الورقة البيضاء صالحةُ الترويسة أيضًا ولا خطّ فيها.
     ok('وفيه نصّ الكتاب لا ورقة بيضاء', pdfs.length === 1 && readFileSync(join(saveDir, pdfs[0]), 'latin1').includes('/FontFile'));
 
-    // النسخ الاحتياطي الكامل
-    await page.clickText('نسخ احتياطي فوري');
+    // النسخ الاحتياطي الكامل — بحواره (خطة Production، ٤٫١): بكلمةٍ إن شاء المكتب، ويُؤخذ هنا بلا كلمة.
+    await page.clickText('نسخة احتياطية…');
+    await wait(400);
+    ok('زرّ الأرشيف يفتح حوار النسخة بخيار التشفير', await page.eval(`return Boolean(document.querySelector('[data-backup-dialog] [data-backup-encrypt]'));`));
+    await page.eval(`document.querySelector('[data-backup-dialog] [data-act="backup-create"]').click(); return true;`);
     const backupAnnounced = await awaitText('حُفظت نسخة احتياطية');
     const zips = saved('.zip');
     ok('أُنشئت نسخة احتياطية', zips.length === 1);
@@ -429,7 +432,8 @@ export default async function scenario(page, { profile, shotsDir }) {
       'الأرشيف حزمة صالحة وفيه القاعدة',
       zips.length === 1 &&
         headerOf(zips[0], 2) === 'PK' &&
-        readFileSync(join(saveDir, zips[0]), { encoding: 'latin1' }).includes('diwan.db')
+        readFileSync(join(saveDir, zips[0]), { encoding: 'latin1' }).includes('diwan.db') &&
+        readFileSync(join(saveDir, zips[0]), { encoding: 'latin1' }).includes('diwan-backup.json')
     );
     ok('أعلن التطبيق حجم النسخة', backupAnnounced);
 

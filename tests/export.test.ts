@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { libraryToXml, splitLibraryXml, templateToDocx, templateToXml } from '../src/main/services/export';
+import { templateToDocx, templateToXml } from '../src/main/services/export';
 import { importTemplateFile, parseTemplateXml } from '../src/main/services/import';
-import { getTemplate, listTemplates, saveTemplate } from '../src/main/services/templates';
+import { getTemplate, saveTemplate } from '../src/main/services/templates';
 import type { TemplateInput } from '../src/shared/template';
 
 const dir = mkdtempSync(join(tmpdir(), 'diwan-export-'));
@@ -71,54 +71,6 @@ describe('تصدير النموذج واسترجاعه', () => {
     const saved = saveTemplate(db, tpl());
     const parsed = parseTemplateXml(templateToXml(getTemplate(db, saved.id)!));
     expect(parsed.body.split('\n')).toHaveLength(2);
-  });
-});
-
-describe('تصدير المكتبة كاملة', () => {
-  it('يجمع كل النماذج ويفكّها كما كانت', () => {
-    const db = freshDb();
-    saveTemplate(db, tpl({ code: 'A', title: 'أول' }));
-    saveTemplate(db, tpl({ code: 'B', title: 'ثانٍ' }));
-    saveTemplate(db, tpl({ code: 'C', title: 'ثالث' }));
-
-    const all = listTemplates(db).map((t) => getTemplate(db, t.id)!);
-    const xml = libraryToXml(all);
-    const chunks = splitLibraryXml(xml);
-
-    expect(chunks).toHaveLength(3);
-    const titles = chunks.map((c) => parseTemplateXml(c).title).sort();
-    expect(titles).toEqual(['أول', 'ثالث', 'ثانٍ'].sort());
-  });
-
-  it('الاسترجاع في قاعدة نظيفة يعيد بناء المكتبة', () => {
-    const source = freshDb();
-    saveTemplate(source, tpl({ code: 'A', title: 'أول' }));
-    saveTemplate(source, tpl({ code: 'B', title: 'ثانٍ' }));
-    const xml = libraryToXml(listTemplates(source).map((t) => getTemplate(source, t.id)!));
-
-    const target = freshDb();
-    for (const chunk of splitLibraryXml(xml)) {
-      const p = parseTemplateXml(chunk);
-      saveTemplate(target, {
-        id: null,
-        code: p.code,
-        title: p.title,
-        subtitle: p.subtitle,
-        category: p.category,
-        subjectLine: p.subjectLine,
-        bodyHtml: p.body,
-        letterheadId: null,
-        variables: p.variables
-      });
-    }
-
-    expect(listTemplates(target)).toHaveLength(2);
-    const restored = getTemplate(target, listTemplates(target)[0]!.id)!;
-    expect(restored.variables).toHaveLength(2);
-  });
-
-  it('مكتبة فارغة تنتج ملفًا صالحًا بلا نماذج', () => {
-    expect(splitLibraryXml(libraryToXml([]))).toEqual([]);
   });
 });
 

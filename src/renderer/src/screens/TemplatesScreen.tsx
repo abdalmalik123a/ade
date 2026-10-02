@@ -284,11 +284,15 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     }
   }
 
-  async function exportLibrary() {
+  /**
+   * حزمة المحتوى (خطة Production، ٤٫٣): النماذج والترويسات والكليشات وصورها — بلا بيانات الناس —
+   * لمكتبٍ آخر أو لجهازٍ جديد. والمكرّر يُعرف بمعرّفه فلا يُضاف ثانيةً.
+   */
+  async function exportContent() {
     setBusy(true);
     try {
-      const result = await window.diwan.templates.exportLibrary();
-      if (result) say('صُدّرت المكتبة: ' + nf.format(result.count) + ' نموذجًا');
+      const r = await window.diwan.content.export();
+      if (r) say(`صُدّرت حزمة المحتوى: ${nf.format(r.templates)} نموذجًا، ${nf.format(r.letterheads)} ترويسة، ${nf.format(r.clips)} كليشة — ${r.path}`);
     } catch (e) {
       say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
@@ -296,30 +300,21 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
     }
   }
 
-  async function restoreLibrary() {
+  async function importContent() {
     setBusy(true);
     try {
-      const result = await window.diwan.templates.restoreLibrary();
-      if (!result) return;
+      const r = await window.diwan.content.import();
+      if (!r) return;
       await reload(active);
       onChanged?.();
+      const a = r.added;
+      const had = r.existing.templates + r.existing.letterheads + r.existing.clips;
       say(
-        result.skipped > 0
-          ? 'استُرجع ' + result.added + ' نموذجًا، وتُخطّي ' + result.skipped + ' لتكرار الكود'
-          : 'استُرجع ' + result.added + ' نموذجًا'
+        `أُضيف ${nf.format(a.templates)} نموذجًا، ${nf.format(a.letterheads)} ترويسة، ${nf.format(a.clips)} كليشة` +
+          (had ? ` — و${nf.format(had)} موجودٌ في المكتب فتُرك كما هو` : '')
       );
     } catch (e) {
-      say(errorText(e, 'تعذّر الاسترجاع'), 'warn');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function backup() {
-    setBusy(true);
-    try {
-      const path = await window.diwan.templates.backup();
-      if (path) say('حُفظت النسخة الاحتياطية');
+      say(errorText(e, 'تعذّر الاستيراد'), 'warn');
     } finally {
       setBusy(false);
     }
@@ -579,36 +574,31 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
           <div className="flex items-center gap-space-xs text-on-surface-variant">
             <span className="material-symbols-outlined text-[18px] text-secondary">folder_zip</span>
             <span className="font-label-sm text-label-sm">
-              مكتبة محلية بالكامل — النماذج والمسودات محفوظة على هذا الجهاز وحده
+              مكتبة محلية بالكامل — وحزمة المحتوى تنقلها إلى جهازٍ أو مكتبٍ آخر
             </span>
           </div>
           <div className="flex items-center gap-space-sm">
             <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+              data-act="content-export"
+              title="النماذج والترويسات والكليشات وصورها في ملفٍّ واحد — بلا بيانات الناس"
               type="button"
-              disabled={busy || items.length === 0}
-              onClick={() => void exportLibrary()}
+              disabled={busy}
+              onClick={() => void exportContent()}
             >
               <span className="material-symbols-outlined text-[18px]">drive_file_move</span>
-              <span>تصدير المكتبة كاملة</span>
+              <span>صدّر حزمة المحتوى</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+              data-act="content-import"
+              title="ما ليس في المكتب يُضاف، وما فيه بمعرّفه يُترك كما هو"
               type="button"
               disabled={busy}
-              onClick={() => void restoreLibrary()}
+              onClick={() => void importContent()}
             >
-              <span className="material-symbols-outlined text-[18px]">restore_page</span>
-              <span>استرجاع مكتبة</span>
-            </button>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
-              type="button"
-              disabled={busy}
-              onClick={() => void backup()}
-            >
-              <span className="material-symbols-outlined text-[18px]">backup</span>
-              <span>نسخ احتياطي للمسودات</span>
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              <span>استورد حزمة محتوى</span>
             </button>
           </div>
         </section>

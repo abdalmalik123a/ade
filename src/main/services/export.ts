@@ -46,30 +46,6 @@ export function templateToXml(t: TemplateDetail): string {
   );
 }
 
-/** مكتبة كاملة في ملف واحد — لاسترجاعها على جهاز آخر أو بعد إعادة تثبيت. */
-export function libraryToXml(templates: TemplateDetail[]): string {
-  const inner = templates
-    .map((t) =>
-      templateToXml(t)
-        .replace(/^<\?xml[^\n]*\n/, '')
-        .split('\n')
-        .map((l) => (l ? `  ${l}` : l))
-        .join('\n')
-    )
-    .join('');
-  return (
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    `<library exported="${new Date().toISOString()}" count="${templates.length}">\n` +
-    inner +
-    '</library>\n'
-  );
-}
-
-/** يفكّ مكتبة مصدَّرة إلى نصوص نماذج مفردة ليُعاد استيراد كلٍّ منها. */
-export function splitLibraryXml(xml: string): string[] {
-  return [...xml.matchAll(/<template>[\s\S]*?<\/template>/g)].map((m) => m[0]);
-}
-
 export async function templateToDocx(
   t: TemplateDetail,
   letterhead: Letterhead | null,

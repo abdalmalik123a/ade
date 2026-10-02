@@ -142,8 +142,12 @@ const api: DiwanApi = {
     autoSet: (config) => invoke('backup:autoSet', config),
     autoRun: () => invoke('backup:autoRun'),
     mirrorPick: () => invoke('backup:mirrorPick'),
-    mirrorInspect: (path, password) => invoke('backup:mirrorInspect', path, password ?? null),
-    mirrorRestore: (path, password) => invoke('backup:mirrorRestore', path, password ?? null)
+    mirrorInspect: (path, password, snapshot) => invoke('backup:mirrorInspect', path, password ?? null, snapshot ?? null),
+    mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null)
+  },
+  content: {
+    export: () => invoke('content:export'),
+    import: () => invoke('content:import')
   },
   scanner: {
     list: () => invoke('scanner:list'),
@@ -172,8 +176,7 @@ const api: DiwanApi = {
       query?: string;
       title?: string;
     }) =>
-      invoke('documents:exportReport', opts),
-    backup: () => invoke('documents:backup')
+      invoke('documents:exportReport', opts)
   },
   output: {
     print: (payload: {
@@ -231,10 +234,7 @@ const api: DiwanApi = {
     planFolder: () => invoke('templates:planFolder'),
     applyImport: (plan: unknown, choices: unknown) =>
       invoke('templates:applyImport', plan, choices),
-    export: (id: number) => invoke('templates:export', id),
-    exportLibrary: () => invoke('templates:exportLibrary'),
-    restoreLibrary: () => invoke('templates:restoreLibrary'),
-    backup: () => invoke('templates:backup')
+    export: (id: number) => invoke('templates:export', id)
   },
   learning: {
     stats: () => invoke('learning:stats'),

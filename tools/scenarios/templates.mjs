@@ -143,8 +143,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     )
   );
   ok('ولا باب للعقود الجاهزة', await page.eval(`return !document.querySelector('[data-act="install-contracts"]');`));
-  ok('زرّ تصدير المكتبة ظاهر', (await page.text()).includes('تصدير المكتبة كاملة'));
-  ok('زرّ استرجاع المكتبة ظاهر', (await page.text()).includes('استرجاع مكتبة'));
+  ok('وحزمة المحتوى تُصدَّر وتُستورد من المكتبة', await page.eval(`return Boolean(document.querySelector('[data-act="content-export"]') && document.querySelector('[data-act="content-import"]'));`));
 
   // الحذف من البطاقة: يطلب تأكيدًا ثم يتراجع
   await page.eval(`document.querySelector('button[title="حذف النموذج"]')?.click()`);

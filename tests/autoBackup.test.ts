@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MIRROR, mirrorInfo, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
+import { MIRROR, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
 
 function office() {
   const base = mkdtempSync(join(tmpdir(), 'diwan-auto-'));
@@ -21,8 +21,8 @@ function office() {
     store,
     usb,
     setDb: (text: string) => (db = Buffer.from(text)),
-    run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z') =>
-      runAutoBackup({ target: usb, storeRoot: store, snapshotDb: (f) => writeFileSync(f, db), password, keep, now: new Date(at) })
+    run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z', appVersion?: string) =>
+      runAutoBackup({ target: usb, storeRoot: store, snapshotDb: (f) => writeFileSync(f, db), password, keep, now: new Date(at), appVersion })
   };
 }
 
@@ -89,5 +89,36 @@ describe('النسخة التلقائية مرآةً', () => {
     expect(() => runAutoBackup({ target: missing, storeRoot: o.store, snapshotDb: () => undefined, password: null, keep: 3 })).toThrow('فلاشة');
     expect(existsSync(missing)).toBe(false);
     expect(() => mirrorInfo(o.usb)).toThrow('ليس نسخةً');
+  });
+});
+
+describe('اختيار النسخة عند الاسترجاع (خطة Production، ٤٫٢)', () => {
+  it('نسخ القاعدة أحدثها أوّلًا بوقتها وإصدارها — ويُسترجع منها ما يُختار لا آخرها وحده', () => {
+    const o = office();
+    o.setDb('قاعدة الاثنين');
+    o.run(null, 5, '2026-09-28T10:00:00Z', '1.0.0');
+    o.setDb('قاعدة الثلاثاء');
+    o.run(null, 5, '2026-09-29T10:00:00Z', '1.1.0');
+    const snaps = mirrorSnapshots(o.usb);
+    expect(snaps.map((x) => [x.at, x.appVersion])).toEqual([
+      ['2026-09-29T10:00:00Z', '1.1.0'],
+      ['2026-09-28T10:00:00Z', '1.0.0']
+    ]);
+    expect(Buffer.from(readMirror(o.usb, null).db).toString()).toBe('قاعدة الثلاثاء');
+    const older = readMirror(o.usb, null, snaps[1]!.name);
+    expect(Buffer.from(older.db).toString()).toBe('قاعدة الاثنين');
+    expect(older.appVersion).toBe('1.0.0');
+    expect(() => readMirror(o.usb, null, 'diwan-1999-01-01-00-00-00.db')).toThrow(/لم تعد في المجلّد/);
+  });
+
+  it('وما حذفه «تُبقى آخر…» يُحذف إصداره معه', () => {
+    const o = office();
+    for (const [i, at] of ['2026-09-28T10:00:00Z', '2026-09-28T11:00:00Z', '2026-09-28T12:00:00Z'].entries()) {
+      o.setDb(`قاعدة ${i}`);
+      o.run(null, 2, at, `1.0.${i}`);
+    }
+    const manifest = JSON.parse(readFileSync(join(o.usb, MIRROR, 'manifest.json'), 'utf8')) as { versions: Record<string, string> };
+    expect(Object.values(manifest.versions).sort()).toEqual(['1.0.1', '1.0.2']);
+    expect(mirrorSnapshots(o.usb)).toHaveLength(2);
   });
 });

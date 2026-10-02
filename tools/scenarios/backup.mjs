@@ -72,6 +72,7 @@ export default async function scenario(page, { profile }) {
   const summary = await page.eval(`return document.querySelector('[data-backup-summary]')?.innerText ?? '';`);
   ok(`وبالصحيحة يُرى ما فيها قبل الموافقة (${summary.split('\n')[0]})`, summary.includes('النسخة سليمة') && summary.includes('1 مواطنًا'));
   ok('ويُقال إنها تحلّ محلّ البيانات، وما عليه يُنقل جانبًا', summary.includes('تحلّ محلّ بيانات هذا الجهاز كلّها') && summary.includes('لا يُحذف'));
+  ok('ومعها وقتها وإصدار البرنامج الذي أخذها', summary.includes('أُخذت') && summary.includes('بالإصدار'));
 
   await page.eval(`document.querySelector('[data-act="backup-restore"]').click(); return true;`);
   await wait(4000); // الجواب، ثم إعادة الواجهة
@@ -79,6 +80,8 @@ export default async function scenario(page, { profile }) {
   ok('استُرجعت البيانات: ما بعد النسخة غاب، وما قبلها باقٍ', JSON.stringify(citizens()) === JSON.stringify(['قبل النسخة']));
   const aside = readdirSync(join(profile, 'data')).filter((f) => f.startsWith('before-restore-'));
   ok('وما كان على الجهاز نُقل جانبًا لا حُذف', aside.length === 1 && existsSync(join(profile, 'data', aside[0] ?? '-', 'diwan.db')));
+  const work = join(profile, 'data', 'restore-work');
+  ok('وما فُكّ مؤقّتًا للفحص والاسترجاع مُحي', !existsSync(work) || readdirSync(work).length === 0);
   if (aside.length === 1) {
     const old = new Database(join(profile, 'data', aside[0], 'diwan.db'), { readonly: true });
     const n = old.prepare('SELECT COUNT(*) AS n FROM citizens').get().n;

@@ -199,7 +199,19 @@ export type BackupSummary = {
   files: number;
   /** آخر كتابٍ صدر فيها — إلى أين تصل. */
   lastIssuedAt: string | null;
+  /** الإصدار الذي أخذها ووقتها — و`null` لنسخةٍ أُخذت قبل أن يُكتبا فيها (خطة Production، ٤٫٢). */
+  appVersion: string | null;
+  createdAt: string | null;
+  /** من إصدارٍ أحدث من هذا البرنامج: لا تُسترجع حتى يُحدَّث. */
+  fromNewer: boolean;
 };
+
+export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };
+/** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
+export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'> };
+
+/** نسخةٌ من القاعدة في مجلّد النسخة التلقائية — يُختار منها ما يُسترجع. */
+export type MirrorSnapshot = { name: string; at: string; bytes: number; appVersion: string | null };
 
 /** البحث الشامل فيما سوى الكتب — والكتب في الأرشيف نفسه بمدّتها. */
 export type SearchHits = {
@@ -738,8 +750,6 @@ export type DiwanApi = {
       query?: string;
       title?: string;
     }): Promise<{ path: string; count: number } | null>;
-    /** نسخة احتياطية كاملة لقاعدة البيانات ومخزن الملفات. */
-    backup(): Promise<{ path: string; bytes: number } | null>;
     /** إبطال كتابٍ صادر بسببه: يبقى برقمه وبصمته، ولا يُعاد طبعه. */
     void(id: number, reason: string, operator: string | null): Promise<DocumentDetail | null>;
     /** سلسلة البصمات وبصمة كل كتاب من متنه — من أوّل الأرشيف إلى آخره. */
@@ -785,9 +795,18 @@ export type DiwanApi = {
     autoSet(config: { dir: string | null; keep?: number; password?: string | null }): Promise<AutoBackupStatus>;
     autoRun(): Promise<{ dbChanged: boolean; filesCopied: number; bytesCopied: number; snapshots: number; root: string } | null>;
     /** الاسترجاع من مجلّد النسخة التلقائية — كالحزمة: يُفحص، ثم يُرى، ثم يُوافق عليه. */
-    mirrorPick(): Promise<{ path: string; encrypted: boolean; lastAt: string | null } | null>;
-    mirrorInspect(path: string, password?: string | null): Promise<BackupSummary>;
-    mirrorRestore(path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+    mirrorPick(): Promise<{ path: string; encrypted: boolean; lastAt: string | null; snapshots: MirrorSnapshot[] } | null>;
+    /** `snapshot`: نسخة القاعدة المختارة من المجلّد — وبلا اختيارٍ آخرها. */
+    mirrorInspect(path: string, password?: string | null, snapshot?: string | null): Promise<BackupSummary>;
+    mirrorRestore(path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+  };
+  /**
+   * حزمة المحتوى (خطة Production، ٤٫٣): النماذج والترويسات والكليشات وصورها — بلا بيانات الناس —
+   * تُصدَّر ملفًّا وتُستورد في مكتبٍ آخر. والمكرّر يُعرف بمعرّفه فلا يُضاف ثانيةً.
+   */
+  content: {
+    export(): Promise<ContentCounts & { path: string } | null>;
+    import(): Promise<ContentImportResult | null>;
   };
   templates: {
     /** `issuing` يفصل مكتبة الكتب عن أوراق الأسئلة — والأصل الكتب. */
@@ -815,9 +834,6 @@ export type DiwanApi = {
     /** ينفّذ ما قبِله الموظف من الخطّة. */
     applyImport(plan: ImportPlan, choices: ImportChoices): Promise<ImportOutcome>;
     export(id: number): Promise<string | null>;
-    exportLibrary(): Promise<{ path: string; count: number } | null>;
-    restoreLibrary(): Promise<{ added: number; skipped: number } | null>;
-    backup(): Promise<string | null>;
   };
   /** ما تعلّمه البرنامج من هذا المكتب — عدٌّ لا نموذج، ويُعرض لا يُخفى. */
   learning: {

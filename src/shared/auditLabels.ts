@@ -9,7 +9,8 @@ import type { AuditEntry } from './api';
 export const AUDIT_ENTITIES: { value: string; label: string }[] = [
   { value: 'document', label: 'الكتب' },
   { value: 'transaction', label: 'المعاملات' },
-  { value: 'backup', label: 'النسخ الاحتياطية' }
+  { value: 'backup', label: 'النسخ الاحتياطية' },
+  { value: 'content', label: 'حزم المحتوى' }
 ];
 
 export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>): string {
@@ -30,6 +31,10 @@ export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>):
       return `نسخة احتياطية${detail ? `: ${detail}` : ''}`;
     case 'backup/restore':
       return `استُرجعت نسخة احتياطية${detail ? `: ${detail}` : ''}`;
+    case 'content/export':
+      return `صُدّرت حزمة محتوى${detail ? `: ${detail}` : ''}`;
+    case 'content/import':
+      return `استُوردت حزمة محتوى${detail ? `: ${detail}` : ''}`;
     default:
       return [e.entity, e.action, detail].filter(Boolean).join(' · ');
   }
