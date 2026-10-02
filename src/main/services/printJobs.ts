@@ -10,8 +10,25 @@
  * والأوراق نفسها تُحفظ معه — فالاستئناف يطبع ما رآه المكتب في المراجعة حرفًا
  * بحرف، لا ما يُعاد بناؤه من تصميمٍ ربما تغيّر.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
+
+/**
+ * يُكتب إلى ملفٍّ جانبيّ ويُزامَن مع القرص ثم يحلّ محلّ القديم: فانقطاع الكهرباء في منتصفه لا
+ * يترك سجلًّا نصف مكتوب، ولا يُضيع ما كُتب قبله بلحظة — وهذا السجلّ هو ما يُستأنف منه بعد
+ * الانقطاع نفسه (خطة Production، ١٫٢).
+ */
+function writeDurable(file: string, text: string): void {
+  const part = `${file}.part`;
+  const fd = openSync(part, 'w');
+  try {
+    writeSync(fd, text);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+  renameSync(part, file);
+}
 
 export type PrintJob = {
   id: string;
@@ -49,7 +66,7 @@ export function printJournal(dir: string): PrintJournal {
       return null;
     }
   };
-  const write = (job: PrintJob) => writeFileSync(state(job.id), JSON.stringify(job));
+  const write = (job: PrintJob) => writeDurable(state(job.id), JSON.stringify(job));
   // ملفّ الأوراق لا يتغيّر بعد إنشائه: يُقرأ مرّةً للدفعة لا مرّةً لكلّ ورقة — كان يُقرأ
   // ويُفكّ كاملًا مع كلّ ورقةٍ تُطبع (التدقيق المستقل). والقرص يبقى مرجع الاستئناف.
   const pagesCache = new Map<string, string[]>();
@@ -74,7 +91,7 @@ export function printJournal(dir: string): PrintJournal {
         sent: 0,
         createdAt: new Date().toISOString()
       };
-      writeFileSync(pagesFile(job.id), JSON.stringify(pages));
+      writeDurable(pagesFile(job.id), JSON.stringify(pages));
       write(job);
       return job;
     },

@@ -2,6 +2,7 @@ import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { app } from 'electron';
 import Database from 'better-sqlite3';
+import { configureConnection } from './pragmas';
 
 let db: Database.Database | null = null;
 
@@ -38,11 +39,7 @@ export function getDb(): Database.Database {
   mkdirSync(dirname(file), { recursive: true });
 
   db = new Database(file);
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('temp_store = MEMORY');
-  db.pragma('mmap_size = 268435456');
+  configureConnection(db);
 
   db.exec(sqlFile('schema.sql'));
   db.exec(sqlFile('search.sql'));
