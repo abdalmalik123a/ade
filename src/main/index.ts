@@ -17,12 +17,31 @@ installMainErrorHandlers();
 // استوديو التصوير على التطبيق الحقيقي بلا كاميرا موصولة.
 if (process.env['DIWAN_TEST_FAKE_CAMERA']) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 
+// نسخةٌ واحدة من البرنامج (خطة Production، ١٫٤): نقرتان على الأيقونة كانتا تفتحان نسختين على
+// القاعدة نفسها — نافذتان، وقائمة المعاملات المعلّقة تكتبها كلٌّ فوق الأخرى، ونسختان احتياطيتان
+// عند الإغلاق. فالثانية تُظهر الأولى وتخرج. والقفل في مجلّد بيانات البرنامج، فملفّا تعريفٍ
+// مختلفان (المِقْود) لا يتزاحمان.
+const primary = app.requestSingleInstanceLock();
+if (!primary) app.quit();
+
 // مخطط مخصّص لعرض ملفات المخزن (الصور والمستمسكات) دون فتح file:// على كامل القرص.
 protocol.registerSchemesAsPrivileged([
   { scheme: 'diwan', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }
 ]);
 
 let mainWindow: BrowserWindow | null = null;
+
+/** النافذة إلى الأمام: عند فتحها، وحين يُشغَّل البرنامج ثانيةً وهو مفتوح. */
+function bringToFront(): void {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.setAlwaysOnTop(true);
+  mainWindow.focus();
+  mainWindow.setAlwaysOnTop(false);
+}
+
+app.on('second-instance', bringToFront);
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -43,18 +62,14 @@ function createWindow(): void {
     }
   });
 
-  const bringToFront = (): void => {
-    if (!mainWindow) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.center();
-    mainWindow.show();
-    mainWindow.setAlwaysOnTop(true);
-    mainWindow.focus();
-    mainWindow.setAlwaysOnTop(false);
+  // أوّل ظهورٍ وسط الشاشة — والتشغيل الثاني يُظهرها حيث تركها الموظف.
+  const firstShow = (): void => {
+    mainWindow?.center();
+    bringToFront();
   };
 
-  mainWindow.once('ready-to-show', bringToFront);
-  bringToFront();
+  mainWindow.once('ready-to-show', firstShow);
+  firstShow();
 
   // النسخة التلقائية عند الإغلاق (تعميق الموجود ٢): تُؤخذ قبل أن تُغلق النافذة، وتقول
   // الواجهةُ ذلك فلا يظنّ الموظف أنّ البرنامج علق. وما تعثّر يُسجَّل ويُقال عند الفتح التالي
@@ -100,6 +115,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // النسخة الثانية تخرج قبل أن تفتح القاعدة أو نافذة.
+  if (!primary) return;
+
   // diwan://store/<relative-path> → ملف داخل مخزن التطبيق فقط
   protocol.handle('diwan', (request) => {
     const url = new URL(request.url);
