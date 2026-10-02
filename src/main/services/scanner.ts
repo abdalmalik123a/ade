@@ -178,7 +178,10 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   return { relativePath: `attachments/${name}`, dpi: Number(done[1]) || dpi, format: 'PNG' };
 }
 
-/** يحذف ملفًا من المخزن — يُستدعى عند حذف مستمسك. */
+/**
+ * يحذف ملفًا من المخزن. والمستدعي يسأل `unreferenced` أوّلًا (storeRefs.ts): المخزن باسم
+ * البصمة، فملفٌّ واحد قد يكون مستمسكًا لاثنين.
+ */
 export async function removeStoreFile(relativePath: string): Promise<void> {
   if (!relativePath || relativePath.includes('..')) return;
   try {

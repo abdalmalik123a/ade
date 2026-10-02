@@ -7,6 +7,7 @@ import ExcelJS from 'exceljs';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/citizens';
 import { listScanners, removeStoreFile, scanPage } from '../services/scanner';
+import { unreferenced } from '../services/storeRefs';
 import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
 import { readCardBack } from '../services/mrzRead';
 import { grayOf } from '@shared/mrzImage';
@@ -41,9 +42,10 @@ export function registerCitizenIpc(): void {
   ipcMain.handle('citizens:usage', (_e, id: number) => svc.citizenUsage(getDb(), id));
 
   ipcMain.handle('citizens:delete', async (_e, id: number) => {
-    const orphans = svc.deleteCitizen(getDb(), id);
-    // الملفات تُحذف بعد نجاح حذف السجلّ، فلا تضيع صور لسجلّ باقٍ.
-    await Promise.all(orphans.map(removeStoreFile));
+    const files = svc.deleteCitizen(getDb(), id);
+    // الملفات تُحذف بعد نجاح حذف السجلّ، فلا تضيع صور لسجلّ باقٍ — وما يستعمله سجلٌّ آخر
+    // يبقى: المخزن باسم البصمة، فمستمسكٌ مشترك ملفٌّ واحد (storeRefs.ts).
+    await Promise.all(unreferenced(getDb(), files).map(removeStoreFile));
   });
 
   /** سجل المواطن وكتبه الصادرة في ملف Excel — يُولَّد برمجيًا بلا فتح Excel. */
@@ -288,7 +290,7 @@ export function registerCitizenIpc(): void {
 
   ipcMain.handle('attachments:delete', async (_e, id: number) => {
     const path = svc.deleteAttachment(getDb(), id);
-    if (path) await removeStoreFile(path);
+    await Promise.all(unreferenced(getDb(), [path]).map(removeStoreFile));
   });
 
   // ── الماسح والتعرّف ────────────────────────────────────────────────

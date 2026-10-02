@@ -12,6 +12,7 @@ import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import { cutout } from '../services/portrait';
 import { removeStoreFile } from '../services/scanner';
+import { unreferenced } from '../services/storeRefs';
 import { importFile, pickOpenPath } from './files';
 import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPresets';
 import { parseCustomSuits, pngTransparency, type CustomSuit } from '@shared/suits';
@@ -104,7 +105,8 @@ export function registerPhotoIpc(): void {
     const gone = list.find((s) => s.id === id);
     const next = list.filter((s) => s.id !== id);
     writeSetting('photoSuits', next);
-    if (gone) await removeStoreFile(gone.path);
+    // قاطٌ استُورد مرّتين ملفٌّ واحد (المخزن باسم البصمة): لا يُحذف ما بقي له مرجع.
+    await Promise.all(unreferenced(getDb(), [gone?.path]).map(removeStoreFile));
     return next;
   });
 }
