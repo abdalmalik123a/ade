@@ -49,7 +49,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('العدّادات صفر', text.includes('لم يُعتمد أي نموذج بعد'));
 
   // ── فتح المصمّم ──────────────────────────────────────────────────
-  await page.clickText('ورقة فارغة');
+  await page.clickText('ورقة فارغة', '[data-act$="new-blank"]');
   await wait(400);
   text = await page.text();
   ok('انفتح مصمّم النماذج', text.includes('مصمّم النماذج والمُعاملات'));
@@ -93,7 +93,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'tpl-grid.png'));
 
   // ── منع تكرار الكود ─────────────────────────────────────────────
-  await page.clickText('ورقة فارغة');
+  await page.clickText('ورقة فارغة', '[data-act$="new-blank"]');
   await wait(400);
   await page.type('input[placeholder^="مثال: تأييد"]', 'نموذج ثانٍ');
   await page.type('input[placeholder="اختياري"]', 'DIW-EDU-1');
@@ -156,7 +156,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('التراجع يُبقي النموذج', (await page.text()).includes('تأييد استمرار بالخدمة'));
 
   // زرّ الإضافة يفتح المصمّم فارغًا
-  await page.clickText('ورقة فارغة');
+  await page.clickText('ورقة فارغة', '[data-act$="new-blank"]');
   await wait(500);
   ok('زرّ الإضافة يفتح مصمّمًا فارغًا',
     (await page.text()).includes('المتغيّرات على الورقة (0)'));

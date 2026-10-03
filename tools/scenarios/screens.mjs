@@ -3,8 +3,8 @@
  *
  * حاسوبٌ محمول بـ١٣٦٦×٧٦٨ أو شاشةٌ بـ١٢٨٠×٧٢٠: تُفتح الشاشات الأربع عشرة على المقاسين ويُفتّش في
  * كلٍّ منها: لا تمريرٌ أفقيّ للصفحة، ولا زرٌّ أو حقلٌ يقطعه طرف النافذة أو حاويةٌ لا تُمرَّر، وأسفل
- * الشريط الجانبي (الطابعة والإعدادات) ظاهر. ثم الشريط نفسه: يُخفى بزرّه فتأخذ الشاشة عرضه، ويظهر
- * بتقريب الفأرة من الحافّة ويختفي بابتعادها، ويُثبَّت. ثم الأقسام الظاهرة، والبحث الشامل في مكانه.
+ * السكّة (الإعدادات) ظاهر. ثم السكّة نفسها (المرحلة ٢): خمس وجهاتٍ ظاهرة، والأدوات بطاقاتٌ في الشبّاك،
+ * والزبائن بتبويبين، وبطاقات الشبّاك تُخفى وتُرتَّب من الإعدادات وتُصفّى بالبحث. ثم البحث الشامل في مكانه.
  */
 import { join } from 'node:path';
 
@@ -92,54 +92,64 @@ export default async function scenario(page, { shotsDir }) {
     ok(`${w}×${h}: الشاشات الأربع عشرة بلا مقصوص${bad.length ? ` — ${bad.join(' | ')}` : ''}`, bad.length === 0);
   }
 
-  // ── الشريط الجانبي: يُخفى ويظهر بالفأرة ويُثبَّت ─────────────────────
+  // ── السكّة: خمس وجهاتٍ ظاهرة دائمًا، والإعدادات زرٌّ صغير (المرحلة ٢، ن٤) ──
   await size(1280, 720);
   await page.goto('service-counter');
   await wait(500);
-  const state = () => page.eval(`return document.querySelector('[data-sidebar]')?.dataset.sidebar ?? null;`);
-  const contentRight = () =>
-    page.eval(`return Math.round(document.querySelector('header').getBoundingClientRect().right);`);
-  ok('الشريط مثبّتٌ أوّل مرّة', (await state()) === 'pinned');
-  await page.eval(`document.querySelector('[data-act="sidebar-hide"]').click(); return true;`);
-  await wait(500);
-  ok('زرّ «أخفِ الشريط» يخفيه فيأخذ الشريط العلوي العرض كلّه', (await state()) === 'hidden' && (await contentRight()) >= 1279);
-  const box = await page.eval(`const r = document.querySelector('[data-sidebar-edge]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };`);
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 600, y: 360 });
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: box.x, y: box.y });
-  await wait(600);
-  ok('ويظهر حين تقترب الفأرة من الحافّة اليمنى — فوق الشاشة لا بجانبها', (await state()) === 'open' && (await contentRight()) >= 1279);
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1200, y: 300 });
-  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 500, y: 300 });
-  await wait(700);
-  ok('ويختفي حين تبتعد عنه', (await state()) === 'hidden');
-  ok('والإخفاء يُحفظ', (await page.eval(`return (await window.diwan.settings.get()).sidebarPinned;`)) === false);
-  await page.eval(`document.querySelector('[data-act="sidebar-show"]').click(); return true;`);
-  await wait(500);
-  ok('وزرّ «الأقسام» في الشريط العلوي يُظهره', (await state()) === 'open');
-  await page.eval(`document.querySelector('[data-act="sidebar-pin"]').click(); return true;`);
-  await wait(500);
-  ok('و«ثبّت» يعيده إلى مكانه', (await state()) === 'pinned' && (await contentRight()) <= 1280 - 280);
+  const rail = () =>
+    page.eval(`return [...document.querySelectorAll('[data-sidebar="rail"] [data-dest]')].map((a) => ({ dest: a.dataset.dest, label: a.querySelector('span:last-child').innerText.trim(), on: a.getAttribute('aria-current') === 'page' }));`);
+  let dests = await rail();
+  ok(
+    'خمس وجهاتٍ بأسمائها: الشبّاك وقيد العمل والسجلّ والزبائن والمكتبة',
+    dests.map((d) => d.label).join('|') === 'الشبّاك|قيد العمل|السجلّ|الزبائن|المكتبة'
+  );
+  ok('والإعدادات زرٌّ صغير أسفلها', await page.eval(`return Boolean(document.querySelector('[data-sidebar="rail"] [data-act="open-settings"]'));`));
+  ok('ولا إخفاء ولا تثبيت: السكّة ظاهرةٌ دائمًا', !(await page.eval(`return Boolean(document.querySelector('[data-act="sidebar-hide"], [data-act="sidebar-pin"], [data-act="sidebar-show"], [data-sidebar-edge]'));`)));
+  ok('والشريط العلوي بجانبها لا تحتها', (await page.eval(`return Math.round(document.querySelector('header').getBoundingClientRect().right);`)) <= 1280 - 80);
 
-  // ── الأقسام الظاهرة ────────────────────────────────────────────────
+  // الأدوات بطاقاتٌ في الشبّاك، وتُحسب عليه.
+  await page.eval(`document.querySelector('[data-cards] [data-card="photos"]').click(); return true;`);
+  await wait(700);
+  dests = await rail();
+  ok('بطاقة «صور شخصية» تفتح أداتها، والسكّة على «الشبّاك»', (await page.text()).includes('الصور') && dests.find((d) => d.on)?.dest === 'service');
+
+  // الزبائن: أشخاصٌ وجهات تبويبان في رأس الشاشة.
+  await page.goto('citizens-identity-records');
+  await wait(600);
+  const tabs = await page.eval(`return [...document.querySelectorAll('[data-tabs] a')].map((a) => a.innerText.trim()).join('|');`);
+  ok('«الزبائن» بتبويبين: أشخاص وجهات', tabs === 'أشخاص|جهات');
+  await page.goto('clients-directory');
+  await wait(600);
+  dests = await rail();
+  ok('و«جهات» تحت «الزبائن» في السكّة', dests.find((d) => d.on)?.dest === 'customers');
+
+  // ── بطاقات الشبّاك من الإعدادات ────────────────────────────────────
   await page.goto('office-settings');
   await wait(800);
-  const locked = await page.eval(`return ['service', 'archive', 'settings'].every((k) => document.querySelector('[data-section="' + k + '"]')?.disabled);`);
-  ok('الشبّاك والأرشيف والإعدادات لا تُخفى', locked);
-  await page.eval(`for (const k of ['designs', 'papers']) document.querySelector('[data-section="' + k + '"]').click(); return true;`);
+  await page.eval(`for (const k of ['designs', 'papers']) document.querySelector('[data-counter-cards] [data-card="' + k + '"]').click(); return true;`);
   await wait(700);
-  const links = () => page.eval(`return [...document.querySelectorAll('aside a[data-path]')].map((a) => a.dataset.path);`);
-  const after = await links();
-  ok('وما أُخفي يغيب من الشريط فورًا', !after.includes('designed-documents') && !after.includes('exam-papers') && after.includes('service-counter'));
-  ok('ويُحفظ', (await page.eval(`return (await window.diwan.settings.get()).hiddenSections.join();`)) === 'designs,papers');
-  await page.eval(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true })); return true;`);
-  await wait(500);
-  const palette = await page.eval(`return document.querySelector('[data-command-palette]')?.innerText ?? null;`);
-  ok('ويغيب من لوحة الأوامر', palette !== null && palette.includes('الشبّاك') && !palette.includes('تصاميم البطاقات') && !palette.includes('الأسئلة الامتحانية'));
-  await page.eval(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' })); return true;`);
+  ok('ما أُخفي يُحفظ', (await page.eval(`return (await window.diwan.settings.get()).counterCards.join();`)) === 'photos,id-copy,pdf,blank,id-sheet,order');
+  await page.goto('service-counter');
+  await wait(800);
+  const cards = () => page.eval(`return [...document.querySelectorAll('[data-cards] [data-card]')].map((b) => b.dataset.card);`);
+  let shown = await cards();
+  ok('ويغيب من الشبّاك', !shown.includes('designs') && !shown.includes('papers') && shown.includes('photos'));
+  await page.goto('office-settings');
+  await wait(800);
+  await page.eval(`document.querySelector('[data-card-row="pdf"] [data-act="card-up"]').click(); return true;`);
+  await wait(400);
+  await page.eval(`for (const k of ['designs', 'papers']) document.querySelector('[data-counter-cards] [data-card="' + k + '"]').click(); return true;`);
+  await wait(700);
+  await page.goto('service-counter');
+  await wait(800);
+  shown = await cards();
+  ok('ويعود من الإعدادات، والترتيب بيد المكتب («ملفات PDF» قبل «استنساخ هوية»)', shown.includes('designs') && shown.indexOf('pdf') < shown.indexOf('id-copy'));
+  await page.type('[data-counter-search]', 'جواز');
+  await wait(400);
+  shown = await cards();
+  ok('والبحث يصفّي البطاقات بكلمة الزبون («جواز» ← صور شخصية)', shown.join() === 'photos');
+  await page.type('[data-counter-search]', '');
   await wait(300);
-  await page.eval(`for (const k of ['designs', 'papers']) document.querySelector('[data-section="' + k + '"]').click(); return true;`);
-  await wait(700);
-  ok('ويعود من الإعدادات', (await links()).includes('designed-documents'));
 
   // ── البحث الشامل في مكانه ─────────────────────────────────────────
   await page.eval(`return window.diwan.citizens.save({ id: null, fullName: 'زينب كاظم الساعدي', nationalId: '199012345678', jobTitle: null, workplace: null, employeeCode: null, serviceStatus: null, birthDate: null, birthPlace: null, enrollmentDept: null, address: null, housingCardNo: null, landmark: null, phone: null, photoPath: null, category: null, notes: null, verified: false }).then(() => true);`);

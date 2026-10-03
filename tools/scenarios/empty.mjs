@@ -4,7 +4,8 @@
  */
 import { join } from 'node:path';
 
-const ROUTES = ['editor', 'templates', 'archive', 'citizens', 'letterhead', 'search'];
+// بمساراتها لا بمواضعها في السكّة — صارت خمس وجهات، والمحرّر بطاقةٌ في الشبّاك.
+const ROUTES = ['smart-editor-a4-preview', 'templates-library-drafts', 'transactions-archive-ledger', 'citizens-identity-records', 'header-seal-configuration', 'service-counter'];
 
 /** كل ما ورد في ملفات التصميم كبيانات. ظهور أيٍّ منه = فشل. */
 const FORBIDDEN = [
@@ -24,7 +25,7 @@ export default async function scenario(page, { shotsDir }) {
   const findings = [];
 
   for (let i = 0; i < ROUTES.length; i++) {
-    await page.goto(i);
+    await page.goto(ROUTES[i]);
     await new Promise((r) => setTimeout(r, 500));
     const text = await page.text();
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RouteKey } from '@shared/routes';
+import { ROUTES, type RouteKey } from '@shared/routes';
 import type { LicenseStatus, OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
@@ -8,17 +8,16 @@ import ServiceScreen, { type RepeatRequest } from './screens/ServiceScreen';
 import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
 import CitizensScreen from './screens/CitizensScreen';
-import TemplatesScreen from './screens/TemplatesScreen';
+import TemplatesScreen, { type WordIncoming } from './screens/TemplatesScreen';
 import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
 import DesignsScreen, { type DesignRequest } from './screens/DesignsScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import ClientsScreen from './screens/ClientsScreen';
-import PhotosScreen from './screens/PhotosScreen';
-import PdfScreen from './screens/PdfScreen';
+import PhotosScreen, { type PhotoIncoming } from './screens/PhotosScreen';
+import PdfScreen, { type PdfIncoming } from './screens/PdfScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
 import AuditScreen from './screens/AuditScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import CommandPalette from './components/CommandPalette';
 import IdDuplexDialog from './screens/IdDuplexDialog';
 import IdSheetDialog from './components/IdSheetDialog';
 import AboutDialog from './components/AboutDialog';
@@ -29,6 +28,7 @@ import ResumePrintDialog from './components/ResumePrintDialog';
 import PrintChooser from './components/PrintChooser';
 import TodayPanel from './components/TodayPanel';
 import { agendaHasItems } from '@shared/agenda';
+import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
 
 /** يومُ آخر عرضٍ لـ«ما ينتظرك اليوم» — تفضيلٌ لهذا الجهاز لا بيانات. */
@@ -87,12 +87,12 @@ export default function App() {
   const [target, setTarget] = useState<EditorTarget>(NO_TARGET);
   /** ما تُفتح به التصاميم من غيرها: تصميم طلبٍ بقائمته، أو المعرض على جهة. */
   const [designRequest, setDesignRequest] = useState<DesignRequest | null>(null);
+  /** ملفٌّ من «الملفّات» في الشبّاك، في طريقه إلى أداته (المرحلة ٢، ن٨). */
+  const [pdfIncoming, setPdfIncoming] = useState<PdfIncoming | null>(null);
+  const [photoIncoming, setPhotoIncoming] = useState<PhotoIncoming | null>(null);
+  const [wordIncoming, setWordIncoming] = useState<WordIncoming | null>(null);
   /** «كرّره» لكتابٍ صدر من الشبّاك: يُفتح فيه لا في المحرّر. */
   const [repeatRequest, setRepeatRequest] = useState<RepeatRequest | null>(null);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  /** الشريط غير المثبّت ظاهرٌ فوق الشاشة الآن — بتقريب الفأرة من الحافّة أو بزرّه (خطة Production، ٣٫٢). */
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const sidebarTimer = useRef<number | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   const [idSheetOpen, setIdSheetOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -216,40 +216,40 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // بموضع المفتاح لا بحرفه — فتعمل ولوحة المفاتيح عربية (shared/shortcuts.ts).
-      if (isCombo(e, shortcut('palette').combo)) {
-        e.preventDefault();
-        setCommandPaletteOpen((prev) => !prev);
-      }
       if (isCombo(e, shortcut('print').combo)) {
         e.preventDefault();
         handlePrint();
       }
-      if (isCombo(e, shortcut('library').combo)) {
-        e.preventDefault();
-        navigate('templates');
-      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handlePrint, navigate]);
+  }, [handlePrint]);
 
-  const sidebarPinned = settings?.sidebarPinned ?? true;
-  const hiddenSections = settings?.hiddenSections ?? [];
-  const showSidebar = (show: boolean, delay = 0) => {
-    if (sidebarTimer.current) window.clearTimeout(sidebarTimer.current);
-    sidebarTimer.current = null;
-    if (delay) sidebarTimer.current = window.setTimeout(() => setSidebarOpen(show), delay);
-    else setSidebarOpen(show);
-  };
-  const pinSidebar = (pinned: boolean) => {
-    showSidebar(false);
-    setSettings((cur) => (cur ? { ...cur, sidebarPinned: pinned } : cur));
-    void window.diwan.settings.set({ sidebarPinned: pinned });
-  };
 
-  // ما يُعرض في الشريط: طابعة الكتب والمعاملات — والطباعة نفسها تسأل دورها (`choosePrinter`).
-  const documentsPrinter = settings?.printRoles.documents.normal ?? null;
-  const selectedPrinter = printers.find((p) => p.name === documentsPrinter) ?? null;
+  /** تبويبات الوجهة (الزبائن: أشخاص وجهات…) في رأس الشاشة — بمساراتها، فيصلها الرابط والسيناريو. */
+  const tabs = tabsOf(route);
+  const tabBar = tabs ? (
+    <nav className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-tabs="">
+      {tabs.map((t) => (
+        <a
+          key={t.route}
+          aria-current={t.route === route ? 'page' : undefined}
+          className={`h-8 px-space-md rounded-lg flex items-center font-label-md text-label-md transition-colors ${
+            t.route === route ? 'bg-primary-container text-on-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+          }`}
+          data-path={ROUTES[t.route]}
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setSearch('');
+            navigate(t.route);
+          }}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  ) : undefined;
 
   function renderScreen() {
     switch (route) {
@@ -271,6 +271,7 @@ export default function App() {
       case 'templates':
         return (
           <TemplatesScreen
+            incoming={wordIncoming}
             onOpenInEditor={(id) => openEditor({ templateId: id })}
             onOpenDraft={(id) => openEditor({ draftId: id })}
             onChanged={() => void refresh()}
@@ -323,9 +324,9 @@ export default function App() {
           />
         );
       case 'photos':
-        return <PhotosScreen />;
+        return <PhotosScreen incoming={photoIncoming} />;
       case 'pdf':
-        return <PdfScreen />;
+        return <PdfScreen incoming={pdfIncoming} />;
       case 'clients':
         return (
           <ClientsScreen
@@ -367,39 +368,20 @@ export default function App() {
           }}
         />
       )}
-      {/* الشريط المخفيّ يظهر حين تقترب الفأرة من حافّة النافذة اليمنى. */}
-      {!sidebarPinned && (
-        <div
-          className="fixed right-0 top-0 h-full w-2 z-[45]"
-          data-sidebar-edge=""
-          onMouseEnter={() => showSidebar(true, 120)}
-          onMouseLeave={() => !sidebarOpen && showSidebar(false)}
-        />
-      )}
       <Sidebar
         active={route}
-        // الشريط يفتح الشاشة نظيفة — لا يُعاد فتح تصميم طلبٍ سابق ولا بحثٍ سابق في الأرشيف.
+        // السكّة تفتح الشاشة نظيفة — لا يُعاد فتح تصميم طلبٍ سابق ولا بحثٍ سابق في الأرشيف.
         onNavigate={(key) => {
           setDesignRequest(null);
           setSearch('');
-          if (!sidebarPinned) showSidebar(false);
           navigate(key);
         }}
-        hidden={hiddenSections}
-        pinned={sidebarPinned}
-        open={sidebarOpen}
-        onPin={pinSidebar}
         onAbout={() => setAboutOpen(true)}
-        onEnter={() => showSidebar(true)}
-        onLeave={() => showSidebar(false, 250)}
         counts={counts}
-        printerName={selectedPrinter?.displayName ?? documentsPrinter}
-        printerReady={selectedPrinter?.ready ?? false}
-        operatorName={settings?.operatorName || 'لم يُسجّل مشغّل'}
-        officeName={settings?.officeName || 'لم يُسمّ المكتب بعد'}
         version={version}
+        officeName={settings?.officeName ?? ''}
       />
-      <div className={`${sidebarPinned ? 'pr-72' : ''} transition-[padding] duration-200`}>
+      <div className="pr-20">
         <Header
           // النتائج تحت الحقل في مكانها؛ والأرشيف بالبحث كاملًا حين يُطلب (Enter، أو كتابٌ من النتائج).
           onSearchArchive={(value) => {
@@ -411,11 +393,8 @@ export default function App() {
             navigate('citizens');
           }}
           onOpenTemplate={(id) => openEditor({ templateId: id })}
-          sidebarPinned={sidebarPinned}
-          onShowSidebar={() => showSidebar(true)}
           license={license}
           onLicense={() => navigate('settings')}
-          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           context={
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
             route === 'editor' ? (
@@ -435,7 +414,9 @@ export default function App() {
                   نموذجٌ آخر
                 </button>
               </>
-            ) : undefined
+            ) : (
+              tabBar
+            )
           }
         />
         {/* الشبّاك يبقى مركّبًا مخفيًّا حين يُترك: المعاملة الجارية لا تضيع بالانتقال. */}
@@ -445,6 +426,25 @@ export default function App() {
               active={route === 'service'}
               repeat={repeatRequest}
               onIssued={() => void refresh()}
+              onOpenTool={(t) => {
+                if ('route' in t) {
+                  if (t.route === 'editor') openEditor({});
+                  else navigate(t.route);
+                } else if (t.dialog === 'id-copy') setIdDuplexOpen(true);
+                else setIdSheetOpen(true);
+              }}
+              onOpenFile={async (f, as) => {
+                if (as === 'pdf') {
+                  setPdfIncoming({ key: Date.now(), ...(await window.diwan.inbox.openPdf([f.id])) });
+                  navigate('pdf');
+                } else if (as === 'photo') {
+                  setPhotoIncoming({ key: Date.now(), path: await window.diwan.inbox.toPhotos(f.id) });
+                  navigate('photos');
+                } else {
+                  setWordIncoming({ key: Date.now(), imported: await window.diwan.inbox.importWord(f.id) });
+                  navigate('templates');
+                }
+              }}
             />
           </ErrorBoundary>
         </div>
@@ -461,17 +461,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onNavigate={(r) => navigate(r)}
-        onOpenCitizen={(cId) => openEditor({ citizenId: cId })}
-        onOpenTemplate={(tId) => openEditor({ templateId: tId })}
-        onOpenIdDuplex={() => setIdDuplexOpen(true)}
-        onOpenIdSheet={() => setIdSheetOpen(true)}
-        hidden={hiddenSections}
-      />
 
       {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}

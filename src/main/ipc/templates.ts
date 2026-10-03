@@ -35,7 +35,7 @@ const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
-function storeLetterheadImage(bytes: Uint8Array, extension: string): string | null {
+export function storeLetterheadImage(bytes: Uint8Array, extension: string): string | null {
   try {
     const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
     const name = `${hash}${extension.toLowerCase()}`;

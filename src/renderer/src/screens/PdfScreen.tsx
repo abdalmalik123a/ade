@@ -159,7 +159,11 @@ async function shootPages(bytes: Uint8Array): Promise<{ shot: Blob; w: number; h
 
 type Snap = { pages: PageRef[]; overlays: Overlay[] };
 
-export default function PdfScreen() {
+/** ملفّاتٌ فتحها الشبّاك من «الملفّات» — تُضاف مرّةً بمفتاحها. */
+export type PdfIncoming = { key: number; opened: PdfOpened[]; failed: { name: string; error: string }[] };
+let pdfIncomingSeen = 0;
+
+export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming | null } = {}) {
   const [sources, setSources] = useState<Record<string, Src>>({});
   const [pages, setPages] = useState<PageRef[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -271,6 +275,17 @@ export default function PdfScreen() {
     if (!name && loaded[0]) setName(loaded[0].image?.dpi ? 'ملف ممسوح' : `${loaded[0].name.replace(/\.[^.]+$/, '')} — معدّل`);
     return added;
   }
+
+  // ما جاء من «الملفّات» في الشبّاك يُضاف حين تُفتح الأداة — مرّةً واحدة.
+  useEffect(() => {
+    if (!incoming || incoming.key === pdfIncomingSeen) return;
+    pdfIncomingSeen = incoming.key;
+    void add(incoming.opened).then((added) => {
+      if (incoming.failed.length) say(incoming.failed.map((f) => `«${f.name}»: ${f.error}`).join(' · '), 'warn');
+      else if (added.length) say(`فُتح «${incoming.opened[0]?.name ?? ''}» — ${pagesWord(added.length)}`);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming?.key]);
 
   async function open() {
     setBusy('يُفتح…');

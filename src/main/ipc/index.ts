@@ -7,6 +7,7 @@ import { registerLicenseIpc } from './license';
 import { registerUpdateIpc } from './update';
 import { assertGateComplete, installProductiveGate } from './gate';
 import { registerFileIpc } from './files';
+import { registerInboxIpc } from './inbox';
 import { registerDesignIpc } from './designs';
 import { registerPdfIpc } from './pdf';
 import { registerTemplateIpc } from './templates';
@@ -22,6 +23,7 @@ import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
+import { normalizeCounterCards } from '@shared/counterCards';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -43,8 +45,7 @@ const DEFAULTS: OfficeSettings = {
   printOffsets: {},
   basmala: null,
   lastBackupAt: null,
-  sidebarPinned: true,
-  hiddenSections: [],
+  counterCards: normalizeCounterCards(undefined),
   newEditor: true
 };
 
@@ -70,8 +71,8 @@ function readSettings(): OfficeSettings {
     basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala,
     // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
-    sidebarPinned: map.get('sidebarPinned') !== 'false',
-    hiddenSections: normalizeHidden(parseJson(map.get('hiddenSections'))),
+    // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
+    counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
     // الأصل الجديد منذ ٤ تشرين الأول — ومن أطفأه بنفسه يبقى على اختياره.
     newEditor: map.has('newEditor') ? map.get('newEditor') === 'true' : DEFAULTS.newEditor
   };
@@ -136,6 +137,7 @@ export function registerIpc(): void {
   installProductiveGate();
   registerLetterheadIpc();
   registerFileIpc();
+  registerInboxIpc();
   registerDesignIpc();
   registerPdfIpc();
   registerTemplateIpc();

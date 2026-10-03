@@ -37,14 +37,19 @@ const SORTS = [
 type View = 'grid' | 'drafts';
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
+/** ملفّ Word فتحه الشبّاك من «الملفّات» — مقروءًا، يُفتح في المصمّم مرّةً بمفتاحه. */
+export type WordIncoming = { key: number; imported: ImportedTemplate };
+let wordIncomingSeen = 0;
+
 type Props = {
+  incoming?: WordIncoming | null;
   onOpenInEditor?: (templateId: number) => void;
   onOpenDraft?: (draftId: number) => void;
   /** يُستدعى بعد كل تغيير يمسّ عدّادات الشريط الجانبي. */
   onChanged?: () => void;
 };
 
-export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged }: Props) {
+export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpenDraft, onChanged }: Props) {
   const [stats, setStats] = useState<TemplateStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<TemplateSummary[]>([]);
@@ -161,6 +166,22 @@ export default function TemplatesScreen({ onOpenInEditor, onOpenDraft, onChanged
       : imported.warnings;
     say(notes.length ? notes.join(' · ') : 'استُورد النموذج — راجعه ثم احفظ', 'ok');
   }
+
+  /** ما قُرئ من ملفّ Word: ورقةٌ منسّقة تُفتح كما هي، وغيرها يُسأل عن ترويسته (كالاستيراد بالحوار). */
+  function receive(imported: ImportedTemplate) {
+    if (!imported.doc && imported.letterhead && !isLayoutEmpty(imported.letterhead)) {
+      setPendingImport(imported);
+      return;
+    }
+    openImported(imported, null);
+  }
+
+  useEffect(() => {
+    if (!incoming || incoming.key === wordIncomingSeen) return;
+    wordIncomingSeen = incoming.key;
+    receive(incoming.imported);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoming?.key]);
 
   async function importTemplate() {
     setBusy(true);

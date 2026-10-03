@@ -9,8 +9,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
 import { PRINT_ROLES, type PrintRole, type PrintRoleKey, type PrintRoles } from '@shared/printRoles';
-import type { RouteKey } from '@shared/routes';
-import { LOCKED_SECTIONS, SECTIONS } from '@shared/sections';
+import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
 import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
@@ -57,8 +56,8 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 
   const save = () => {
     if (!settings) return;
-    // الشريط والأقسام تُحفظ لحظة تغييرها — وزرّ الشريط يغيّرها من خارج هذه الشاشة، فلا يُعيدها الحفظ.
-    const { sidebarPinned: _pinned, hiddenSections: _hidden, newEditor: _newEditor, ...office } = settings;
+    // بطاقات الشبّاك والمحرّر تُحفظ لحظة تغييرها — فلا يُعيدها الحفظ.
+    const { counterCards: _cards, newEditor: _newEditor, ...office } = settings;
     void window.diwan.settings.set(office).then((saved) => {
       setSettings(saved);
       setDirty(false);
@@ -183,12 +182,11 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               />
             </section>
 
-            {/* ── الأقسام الظاهرة والشريط ─────────────────────────────────── */}
-            <SectionsSetting
+            {/* ── بطاقات الشبّاك ─────────────────────────────────────────── */}
+            <CounterCardsSetting
               card={card}
-              title={title('view_sidebar', 'الأقسام الظاهرة')}
-              hidden={settings.hiddenSections}
-              pinned={settings.sidebarPinned}
+              title={title('dashboard_customize', 'بطاقات الشبّاك')}
+              cards={settings.counterCards}
               onChange={(next) => {
                 // يُطبَّق ويُحفظ فورًا كحجم الخطّ — تغييرٌ يُرى لا يحتاج «حفظ».
                 setSettings((cur) => (cur ? { ...cur, ...next } : cur));
@@ -322,62 +320,67 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 }
 
 /**
- * الأقسام الظاهرة (خطة Production، ٣٫٣): ما لا يستعمله المكتب يُخفى من الشريط ولوحة الأوامر، ولا يُمحى
- * منه شيء. والشبّاك والأرشيف والإعدادات لا تُخفى. ومعها الشريط: مثبّتٌ أو يظهر بتقريب الفأرة.
+ * بطاقات الشبّاك (المرحلة ٢، ن١): ما يقدّمه المكتب يظهر، وما لا يقدّمه يُخفى — ولا يُمحى منه شيء،
+ * والترتيب ثابتٌ بيد المكتب لا يتعلّم من الاستعمال. وحلّت محلّ «الأقسام الظاهرة» و«تثبيت الشريط»:
+ * السكّة خمس وجهاتٍ ظاهرة دائمًا، والأدوات بطاقات.
  */
-function SectionsSetting({
+function CounterCardsSetting({
   card,
   title,
-  hidden,
-  pinned,
+  cards,
   onChange
 }: {
   card: string;
   title: ReactNode;
-  hidden: RouteKey[];
-  pinned: boolean;
-  onChange: (next: Partial<Pick<OfficeSettings, 'hiddenSections' | 'sidebarPinned'>>) => void;
+  cards: CounterCardId[];
+  onChange: (next: Pick<OfficeSettings, 'counterCards'>) => void;
 }) {
+  // الظاهرة بترتيبها أوّلًا، ثم المخفيّة — فتُعاد من مكانها.
+  const ordered = [...cards.map((id) => COUNTER_CARDS.find((c) => c.id === id)!), ...COUNTER_CARDS.filter((c) => !cards.includes(c.id))];
+  const move = (id: CounterCardId, dir: -1 | 1) => {
+    const at = cards.indexOf(id);
+    const to = at + dir;
+    if (at < 0 || to < 0 || to >= cards.length) return;
+    const next = [...cards];
+    [next[at], next[to]] = [next[to]!, next[at]!];
+    onChange({ counterCards: next });
+  };
   return (
-    <section className={card} data-sections="">
+    <section className={card} data-counter-cards="">
       {title}
       <p className="font-label-sm text-label-sm text-on-surface-variant">
-        ما لا يستعمله المكتب يُخفى من الشريط ولوحة الأوامر — ولا يُمحى منه شيء، ويعود من هنا.
+        ما يقدّمه مكتبك يظهر في الشبّاك بهذا الترتيب. وما لا تقدّمه أخفِه — ولا يُمحى شيء، ويعود من هنا.
       </p>
-      <div className="grid sm:grid-cols-2 gap-x-space-md gap-y-1">
-        {SECTIONS.map(({ key, label }) => {
-          const locked = LOCKED_SECTIONS.includes(key);
+      <div className="flex flex-col gap-1">
+        {ordered.map((c) => {
+          const on = cards.includes(c.id);
           return (
-            <label
-              key={key}
-              className={`flex items-center gap-space-xs font-label-md text-label-md ${locked ? 'text-on-surface-variant' : 'text-on-surface cursor-pointer'}`}
-              title={locked ? 'لا يُخفى' : undefined}
-            >
-              <input
-                checked={locked || !hidden.includes(key)}
-                className="w-4 h-4 accent-secondary"
-                data-section={key}
-                disabled={locked}
-                type="checkbox"
-                onChange={(e) =>
-                  onChange({ hiddenSections: e.target.checked ? hidden.filter((k) => k !== key) : [...hidden, key] })
-                }
-              />
-              <span className="truncate">{label}</span>
-            </label>
+            <div key={c.id} className={`flex items-center gap-space-xs p-1.5 rounded-lg ${on ? 'bg-surface-container-low' : ''}`} data-card-row={c.id}>
+              <label className={`flex-1 min-w-0 flex items-center gap-space-xs font-label-md text-label-md cursor-pointer ${on ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+                <input
+                  checked={on}
+                  className="w-4 h-4 accent-secondary"
+                  data-card={c.id}
+                  type="checkbox"
+                  onChange={(e) => onChange({ counterCards: e.target.checked ? [...cards, c.id] : cards.filter((x) => x !== c.id) })}
+                />
+                <span className="material-symbols-outlined text-[18px] text-secondary">{c.icon}</span>
+                <span className="truncate">{c.label}</span>
+              </label>
+              {on && (
+                <>
+                  <button className="w-7 h-7 rounded text-on-surface-variant hover:bg-surface-container-high" data-act="card-up" title="قبل" type="button" onClick={() => move(c.id, -1)}>
+                    <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
+                  </button>
+                  <button className="w-7 h-7 rounded text-on-surface-variant hover:bg-surface-container-high" data-act="card-down" title="بعد" type="button" onClick={() => move(c.id, 1)}>
+                    <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                  </button>
+                </>
+              )}
+            </div>
           );
         })}
       </div>
-      <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer pt-space-xs border-t border-outline-variant/30">
-        <input
-          checked={pinned}
-          className="w-4 h-4 accent-secondary"
-          data-setting="sidebarPinned"
-          type="checkbox"
-          onChange={(e) => onChange({ sidebarPinned: e.target.checked })}
-        />
-        الشريط الجانبي مثبّت — وغير المثبّت يظهر حين تقترب الفأرة من حافّة النافذة اليمنى
-      </label>
     </section>
   );
 }

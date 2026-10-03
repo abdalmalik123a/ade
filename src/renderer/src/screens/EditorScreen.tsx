@@ -568,7 +568,7 @@ function EditorScreen(
         );
       }
     } catch (e) {
-      setError(errorText(e, 'تعذّر الإصدار'));
+      setError(errorText(e, 'تعذّر الطبع'));
     } finally {
       setBusy(false);
     }
@@ -624,13 +624,9 @@ function EditorScreen(
     [saveDraft, checks, settings]
   );
 
-  // F2 استيراد مواطن، وCtrl+S حفظ مسودة — بموضع المفتاح فتعمل واللوحة عربية.
+  // Ctrl+S حفظ مسودة — بموضع المفتاح فتعمل واللوحة عربية. و«هات الزبون» زرٌّ بلا اختصار (ن١٥).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isCombo(e, shortcut('citizen').combo)) {
-        e.preventDefault();
-        setPickerOpen(true);
-      }
       if (isCombo(e, shortcut('save').combo)) {
         e.preventDefault();
         void saveDraft(false);
@@ -821,7 +817,7 @@ function EditorScreen(
                 onClick={() => setPickerOpen(true)}
               >
                 <span className="material-symbols-outlined text-[16px] text-secondary">person_search</span>
-                استيراد (F2)
+                هات الزبون
               </button>
             )}
             {!nameField && (
@@ -921,9 +917,9 @@ function EditorScreen(
             </button>
           </section>
 
-          {/* ٤ — قبل الإصدار */}
+          {/* ٤ — قبل الطبع */}
           <section className={section} data-checks="">
-            {title('fact_check', 'قبل الإصدار')}
+            {title('fact_check', 'قبل الطبع')}
             <ul className="flex flex-col gap-1">
               {checks.map((c, i) => (
                 <li
@@ -978,7 +974,8 @@ function EditorScreen(
               onClick={requestIssue}
             >
               <span className="material-symbols-outlined text-[18px]">print</span>
-              {busy ? 'يصدر الكتاب...' : blocked ? 'أصدر — بعد إكمال ما يمنع' : 'أصدر واطبع'}
+              {/* لغة المكتب (ن٦): «اطبع» لا «أصدر» — والحفظ في السجلّ يجري وحده. */}
+              {busy ? 'يُطبع الكتاب…' : blocked ? 'اطبع — بعد إكمال ما يمنع' : 'اطبع'}
             </button>
           </section>
 
@@ -1274,7 +1271,7 @@ function CitizenPicker({ onClose, onPick }: { onClose: () => void; onPick: (c: C
     };
   }, [query]);
   return (
-    <Modal title="استيراد من سجل المواطنين" onClose={onClose}>
+    <Modal title="هات الزبون" onClose={onClose}>
       <input autoFocus className={inputCls} placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..." type="text" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="mt-space-sm max-h-[50vh] overflow-y-auto divide-y divide-outline-variant">
         {loading ? (
@@ -1438,10 +1435,10 @@ function IssueDialog({
   const [copies, setCopies] = useState(1);
   const [copyKind, setCopyKind] = useState(COPY_KINDS[0]!);
   return (
-    <Modal title="إصدار الكتاب" onClose={onClose}>
+    <Modal title="اطبع الكتاب" onClose={onClose}>
       <div className="flex flex-col gap-space-md">
         <div className="p-space-sm rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
-          يُقيَّد الكتاب في أرشيف المكتب برقمٍ متسلسل وبصمة — والرقم للأرشيف وحده، لا يُطبع على الكتاب ولا يُلغى بعد الإصدار.
+          يُحفظ الكتاب في السجلّ تلقائيًّا برقمٍ داخلي وبصمة — والرقم للسجلّ وحده، لا يُطبع على الكتاب ولا يُلغى بعد الحفظ.
           <div className="mt-1 text-on-surface">
             صاحب العلاقة: <span className="font-bold">{name}</span>
             {number && (
@@ -1487,7 +1484,7 @@ function IssueDialog({
             type="button"
             onClick={() => onIssue({ copies, copyKind, print: false })}
           >
-            إصدار وقيد بلا طباعة
+            احفظ بلا طباعة
           </button>
           <button
             className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
@@ -1495,7 +1492,7 @@ function IssueDialog({
             type="button"
             onClick={() => onIssue({ copies, copyKind, print: true })}
           >
-            {busy ? 'يصدر...' : 'إصدار وطباعة'}
+            {busy ? 'يُطبع…' : 'اطبع'}
           </button>
         </div>
       </div>

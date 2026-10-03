@@ -45,7 +45,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وحُفظ اسم المكتب', rows.officeName === 'مكتب الرافدين للاستنساخ');
   ok('وحجم الخطّ', rows.uiScale === '1.15');
   ok('ولا يعود المعالج', rows.onboarded === 'true');
-  ok('واسم المكتب في الشريط الجانبي', (await page.text()).includes('مكتب الرافدين للاستنساخ'));
+  // السكّة لا تتّسع لاسم المكتب (المرحلة ٢): في تلميح شعارها.
+  ok('واسم المكتب على شعار السكّة', (await page.eval(`return document.querySelector('[data-act="sidebar-about"]').title;`)).includes('مكتب الرافدين للاستنساخ'));
 
   // ── مكتبة النماذج: مدخلٌ واحد لنموذجٍ جديد بطرقه كلّها ──────────────
   const hub = await page.eval(`return [...document.querySelectorAll('[data-new-template] [data-act]')].map((b) => b.dataset.act).join(',');`);

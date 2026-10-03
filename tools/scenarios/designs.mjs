@@ -86,7 +86,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(900);
 
   let text = await page.text();
-  ok('للتصاميم شاشةٌ في الشريط', text.includes('التصاميم — شهادات وهويات'));
+  // التصاميم أداةٌ تُفتح من بطاقتها في الشبّاك (المرحلة ٢) — لا قسمٌ في السكّة.
+  ok('للتصاميم بطاقةٌ في الشبّاك تفتحها', (await page.eval(`return Boolean(document.querySelector('[data-cards] [data-card="designs"]'));`)) && text.includes('لمن؟'));
   ok('تبدأ بالمعرض: «لمن؟» ثم اللون والنمط', text.includes('لمن؟') && text.includes('النمط'));
 
   // ── المعرض: اثنا عشر نوعًا حيّةً بعيّنة، لا صناديق فارغة ─────────────

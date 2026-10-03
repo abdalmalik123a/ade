@@ -4,6 +4,9 @@
  * **ولكل اختصارٍ زرٌّ ظاهر** (قرار المالك): الاختصار تسريعٌ لمن حفظه، لا بابٌ
  * وحيدٌ إلى عمل. فكل سطرٍ هنا يسمّي زرّه.
  *
+ * **واختصاراتٌ أقلّ** (قرار ٣ تشرين الأول، ن١٥): ما يعرفه الموظف من Windows وWord وحده، وF4 للخانة.
+ * فزال Ctrl+K (شريط الأوامر) وCtrl+M والأرقام في الشبّاك ومعنيا F2 — ولكلٍّ منها زرّه ظاهرٌ كما كان.
+ *
  * **والمفتاح يُعرف بموضعه على اللوحة لا بحرفه** (`KeyboardEvent.code`): لوحة
  * المكتب عربيةٌ أكثر الوقت، و`Ctrl+F` عليها يصل حرفًا عربيًّا («ب») لا «f» —
  * فكان الاختصار يموت كلّما كانت اللوحة عربية (FOUNDATION §١٠، البند ٩).
@@ -30,17 +33,16 @@ export type Shortcut = {
 };
 
 export const SHORTCUTS: Shortcut[] = [
-  { id: 'palette', combo: { code: 'KeyK', ctrl: true }, keys: 'Ctrl+K', label: 'شريط الأوامر', where: 'في كل الشاشات', button: '«الأوامر» في الشريط العلوي' },
   { id: 'search', combo: { code: 'KeyF', ctrl: true }, keys: 'Ctrl+F', label: 'البحث الشامل', where: 'في كل الشاشات', button: 'خانة البحث في الشريط العلوي' },
-  { id: 'print', combo: { code: 'KeyP', ctrl: true }, keys: 'Ctrl+P', label: 'طباعة الورقة المعروضة', where: 'المحرّر والأسئلة', button: '«طباعة» في الشاشة نفسها' },
-  { id: 'library', combo: { code: 'KeyM', ctrl: true }, keys: 'Ctrl+M', label: 'مكتبة النماذج', where: 'في كل الشاشات', button: '«مكتبة النماذج» في الشريط الجانبي' },
+  { id: 'print', combo: { code: 'KeyP', ctrl: true }, keys: 'Ctrl+P', label: 'طباعة الورقة المعروضة', where: 'المحرّر والأسئلة', button: '«اطبع» في الشاشة نفسها' },
   { id: 'save', combo: { code: 'KeyS', ctrl: true }, keys: 'Ctrl+S', label: 'حفظ مسودة الكتاب', where: 'المحرّر', button: '«حفظ مسودة»' },
-  { id: 'citizen', combo: { code: 'F2' }, keys: 'F2', label: 'جلب بيانات مواطن من السجل', where: 'الشبّاك والمحرّر', button: '«استيراد (F2)»' },
-  { id: 'new-citizen', combo: { code: 'F2' }, keys: 'F2', label: 'ملف مواطن جديد', where: 'سجل المواطنين', button: '«إضافة ملف مواطن»' },
-  { id: 'to-editor', combo: { code: 'Enter', ctrl: true }, keys: 'Ctrl+Enter', label: 'إدراج المواطن في محرّر الكتب', where: 'سجل المواطنين', button: '«إدراج في محرر الكتب»' },
-  { id: 'field', combo: { code: 'F4' }, keys: 'F4', label: 'اجعل النصّ المظلَّل حقلًا', where: 'محرّر الكتل', button: '«اجعل المظلَّل متغيّرًا»' },
-  { id: 'bold', combo: { code: 'KeyB', ctrl: true }, keys: 'Ctrl+B', label: 'عريض', where: 'محرّر الكتل', button: 'زرّ العريض' },
-  { id: 'underline', combo: { code: 'KeyU', ctrl: true }, keys: 'Ctrl+U', label: 'تسطير', where: 'محرّر الكتل', button: 'زرّ التسطير' },
+  { id: 'select-all', combo: { code: 'KeyA', ctrl: true }, keys: 'Ctrl+A', label: 'تحديد الورقة كلّها', where: 'المحرّر', button: '«تحديد الكلّ»' },
+  { id: 'bold', combo: { code: 'KeyB', ctrl: true }, keys: 'Ctrl+B', label: 'عريض', where: 'المحرّر', button: 'زرّ العريض' },
+  { id: 'italic', combo: { code: 'KeyI', ctrl: true }, keys: 'Ctrl+I', label: 'مائل', where: 'المحرّر', button: 'زرّ المائل' },
+  { id: 'underline', combo: { code: 'KeyU', ctrl: true }, keys: 'Ctrl+U', label: 'تسطير', where: 'المحرّر', button: 'زرّ التسطير' },
+  { id: 'page-break', combo: { code: 'Enter', ctrl: true }, keys: 'Ctrl+Enter', label: 'صفحةٌ جديدة من موضع المؤشّر', where: 'المحرّر', button: '«إدراج ← فاصل صفحة»' },
+  { id: 'line-break', combo: { code: 'Enter', shift: true }, keys: 'Shift+Enter', label: 'سطرٌ جديد في الفقرة نفسها', where: 'المحرّر', button: '—' },
+  { id: 'field', combo: { code: 'F4' }, keys: 'F4', label: 'اجعل النصّ المظلَّل خانة', where: 'المحرّر', button: '«خانة»' },
   { id: 'undo', combo: { code: 'KeyZ', ctrl: true }, keys: 'Ctrl+Z', label: 'تراجع', where: 'المحرّر والتصاميم', button: 'زرّ التراجع' },
   { id: 'redo', combo: { code: 'KeyY', ctrl: true }, keys: 'Ctrl+Y', label: 'إعادة', where: 'المحرّر والتصاميم', button: 'زرّ الإعادة' },
   { id: 'duplicate', combo: { code: 'KeyD', ctrl: true }, keys: 'Ctrl+D', label: 'تكرار العنصر', where: 'التصاميم', button: '«تكرار» في خصائص العنصر' }

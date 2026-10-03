@@ -7,7 +7,7 @@ import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
-import type { RouteKey } from './routes';
+import type { CounterCardId } from './counterCards';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -55,10 +55,11 @@ export type OfficeSettings = {
   basmala: boolean | null;
   /** آخر نسخةٍ احتياطية (ISO) — «آخر نسخة منذ…» ويُذكَّر بها إن طالت. */
   lastBackupAt: string | null;
-  /** الشريط الجانبي مثبّت؛ و`false` مخفيٌّ يظهر بتقريب الفأرة من حافّة النافذة (خطة Production، ٣٫٢). */
-  sidebarPinned: boolean;
-  /** أقسامٌ أخفاها المكتب من الشريط ولوحة الأوامر — والشبّاك والأرشيف والإعدادات لا تُخفى (`shared/sections.ts`). */
-  hiddenSections: RouteKey[];
+  /**
+   * بطاقات الشبّاك الظاهرة بترتيبها (`shared/counterCards.ts`) — يضبطها المكتب من الإعدادات. وحلّت محلّ
+   * «الأقسام الظاهرة» و«تثبيت الشريط» حين صارت السكّة خمس وجهاتٍ ظاهرة (المرحلة ٢).
+   */
+  counterCards: CounterCardId[];
   /**
    * المحرّر الجديد (خطّة الترقية، المرحلة ١): الورقة وثيقةٌ واحدة، فيُحدَّد النصّ بالحرف عبر
    * الفقرات ويُنسَّق المحدَّد كما في Word. صار الأصل بعد اختبار الميدان (٤ تشرين الأول)،
@@ -571,6 +572,17 @@ export type DraftRow = {
   updatedAt: string;
 };
 
+/** ملفٌّ وصل المكتب (المرحلة ٢، ن٨) — بمعرّفه لا بمساره: الواجهة لا ترى المسارات. */
+export type InboxFile = {
+  id: string;
+  name: string;
+  kind: 'pdf' | 'image' | 'word';
+  source: 'downloads' | 'desktop' | 'documents' | 'whatsapp' | 'flash';
+  /** ISO. */
+  modified: string;
+  size: number;
+};
+
 export type ImportedTemplate = {
   title: string;
   subtitle: string | null;
@@ -958,6 +970,19 @@ export type DiwanApi = {
     delete(id: number): Promise<void>;
   };
   /** محرّر PDF (خدمات التقديم الإلكتروني): الملفّات تُفتح مصادرَ، والخطّة تُبنى ملفًّا جديدًا. */
+  /**
+   * «الملفّات» في الشبّاك: ما وصل من التنزيلات وسطح المكتب والمستندات وواتساب والفلاشة، وما أُفلت
+   * على منطقته — ويُفتح كلٌّ في أداته.
+   */
+  inbox: {
+    list(): Promise<InboxFile[]>;
+    /** ملفّاتٌ أُفلتت على منطقة الإفلات — ما يُفتح منها في ديوان. */
+    adopt(files: File[]): Promise<InboxFile[]>;
+    openPdf(ids: string[]): Promise<{ opened: PdfOpened[]; failed: { name: string; error: string }[] }>;
+    importWord(id: string): Promise<ImportedTemplate>;
+    /** الصورة إلى مخزن الصور الشخصية — ومسارها فيه. */
+    toPhotos(id: string): Promise<string>;
+  };
   pdf: {
     open(): Promise<{ opened: PdfOpened[]; failed: { name: string; error: string }[] } | null>;
     /** صفحةٌ من الماسح مصدرًا جديدًا — بمقاسها الحقيقي. */

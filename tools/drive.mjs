@@ -183,19 +183,28 @@ class Page {
   }
 
   /**
-   * ينتقل إلى شاشة بمسارها (data-path) أو برقمها.
+   * ينتقل إلى شاشة بمسارها (data-path).
    *
-   * والمسار أولى: إضافة شاشة إلى الشريط تُزحزح الأرقام فتكسر كل سيناريو.
+   * والمسار في أيّ مكان: السكّة بوجهاتها الخمس، وتبويبات الوجهة (أشخاص وجهات…)، وبطاقات الشبّاك
+   * للأدوات (المرحلة ٢ من UPGRADE.md). وما ليس ظاهرًا الآن يُبلغ من وجهته أوّلًا: تبويب «جهات»
+   * يُرى في «الزبائن»، فيُفتح الزبائن ثم التبويب.
    */
   async goto(route) {
-    const found = await this.eval(`
-      const links = [...document.querySelectorAll('aside a[data-path]')];
-      const el = typeof ${JSON.stringify(route)} === 'number'
-        ? links[${JSON.stringify(route)}]
-        : links.find((a) => a.dataset.path === ${JSON.stringify(route)});
-      el?.click();
-      return Boolean(el);
-    `);
+    const click = (path) =>
+      this.eval(`
+        const el = document.querySelector('[data-path=' + JSON.stringify(${JSON.stringify(path)}) + ']');
+        el?.click();
+        return Boolean(el);
+      `);
+    let found = await click(route);
+    if (!found) {
+      // تبويبٌ لم يُرسم بعد: يُفتح أوّل ما في وجهته ثم يُعاد.
+      const viaDest = { 'clients-directory': 'citizens-identity-records', 'audit-log-integrity': 'transactions-archive-ledger', 'header-seal-configuration': 'templates-library-drafts' }[route];
+      if (viaDest && (await click(viaDest))) {
+        await sleep(500);
+        found = await click(route);
+      }
+    }
     if (!found) throw new Error(`لا شاشة بهذا المسار: ${route}`);
     await sleep(700);
   }

@@ -165,28 +165,31 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(600);
   await page.goto('service-counter');
   await wait(1000);
+  // بلا أرقام (ن١٥): البطاقة تُختار بالنقر — والأرقام ١–٩ لا تفعل شيئًا.
   const cards = await page.eval(`
-    return [...document.querySelectorAll('[data-card-key]')].map((e) => ({ n: e.dataset.cardKey, title: e.closest('button')?.innerText ?? '' }));`);
-  ok(`البطاقات بأرقامها (${cards.length})`, cards.length >= 2 && cards[0].n === '1');
+    return [...document.querySelectorAll('[data-template-card]')].map((e) => ({ id: e.dataset.templateCard, title: e.innerText ?? '' }));`);
+  ok(`نماذج المكتبة في الشبّاك (${cards.length})`, cards.length >= 2);
   const target = cards.find((c) => c.title.includes('إفادة عمل'));
-  await page.key(`Digit${target?.n ?? 1}`);
+  const pickCard = () => page.eval(`document.querySelector('[data-template-card="${target?.id}"]').click(); return true;`);
+  await page.key('Digit1');
   await wait(300);
-  ok('ورقمها يختارها', (await page.text()).includes('املأ (1)'));
-  await page.key(`Digit${target?.n ?? 1}`);
+  ok('والأرقام لا تختار شيئًا', !(await page.text()).includes('املأ (1)'));
+  await pickCard();
+  await wait(300);
+  ok('والنقر يختارها', (await page.text()).includes('املأ (1)'));
+  await pickCard();
   await wait(300);
   ok('ويُعيده فيُلغيها', !(await page.text()).includes('املأ (1)'));
 
   await page.type('input[data-counter-search]', 'تاييد');
   await wait(400);
-  const filtered = await page.eval(`return [...document.querySelectorAll('[data-card-key]')].map((e) => e.closest('button')?.innerText ?? '');`);
+  const filtered = await page.eval(`return [...document.querySelectorAll('[data-template-card]')].map((e) => e.innerText ?? '');`);
   ok('والبحث متساهلٌ مع الهمزة: «تاييد» تجد «تأييد سكن»', filtered.length === 1 && filtered[0].includes('تأييد سكن'));
   await page.key('Escape');
   await wait(400);
-  ok('وEsc تمحو البحث', (await page.eval(`return document.querySelectorAll('[data-card-key]').length;`)) === cards.length);
+  ok('وEsc تمحو البحث', (await page.eval(`return document.querySelectorAll('[data-template-card]').length;`)) === cards.length);
 
-  const again = await page.eval(`
-    return [...document.querySelectorAll('[data-card-key]')].find((e) => e.closest('button')?.innerText.includes('إفادة عمل'))?.dataset.cardKey ?? '1';`);
-  await page.key(`Digit${again}`);
+  await pickCard();
   await wait(300);
   await page.key('Enter');
   await wait(1200);
@@ -218,7 +221,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   await page.clickText('راجع الأوراق');
   await wait(1200);
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(2500);
   const issued = (() => {
     const d = db();
@@ -253,7 +256,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   await click('[data-act="issue"]');
   await wait(700);
-  await page.clickText('إصدار وقيد بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   const suggestion = await until(() => page.eval(`return document.querySelector('[data-repeated-clip]')?.innerText ?? null;`), 20);
   ok(`بعد الإصدار: الفقرة التي تكرّرت في الكتب تُقترح عبارةً (${filled ? 'مُلئ الاسم' : 'لم يُملأ الاسم'})`, Boolean(suggestion?.includes('نرجو التفضّل بالاطلاع')));
   if (shotsDir) await page.shot(join(shotsDir, 'repeated-clip.png'));

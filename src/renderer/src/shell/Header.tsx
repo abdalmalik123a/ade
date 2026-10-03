@@ -21,10 +21,6 @@ export type HeaderProps = {
   onOpenTemplate: (templateId: number) => void;
   /** سياق الشاشة المعروضة — يُرسم يسار الشريط، ولا شيء بغيره. */
   context?: ReactNode;
-  onOpenCommandPalette?: () => void;
-  /** الشريط الجانبي مثبّت: يأخذ الشريط العلوي ما بقي بجانبه؛ وإلا فالعرض كلّه وزرٌّ يُظهره. */
-  sidebarPinned: boolean;
-  onShowSidebar: () => void;
   /** المدّة التجريبية: أيّامها الباقية، أو أنّها انتهت — وضغطةٌ تفتح «التفعيل». والمفعَّل لا يُرى شيئًا. */
   license?: LicenseStatus | null;
   onLicense?: () => void;
@@ -37,9 +33,6 @@ export default function Header({
   onOpenCitizen,
   onOpenTemplate,
   context,
-  onOpenCommandPalette,
-  sidebarPinned,
-  onShowSidebar,
   license,
   onLicense
 }: HeaderProps) {
@@ -103,20 +96,10 @@ export default function Header({
 
   return (
     <header
-      className={`fixed top-0 ${sidebarPinned ? 'right-72' : 'right-0'} left-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg gap-space-md transition-[right] duration-200`}
+      // السكّة ظاهرةٌ دائمًا بعرضها (٨٠ بكسلًا) — والشريط العلوي بجانبها.
+      className="fixed top-0 right-20 left-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg gap-space-md"
     >
       <div className="flex items-center gap-space-sm w-full max-w-2xl min-w-0">
-        {!sidebarPinned && (
-          <button
-            className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-surface-container-lowest text-on-surface hover:bg-surface-container-high shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
-            data-act="sidebar-show"
-            title="الأقسام — والشريط يظهر أيضًا حين تقترب الفأرة من حافّة النافذة"
-            type="button"
-            onClick={onShowSidebar}
-          >
-            <span className="material-symbols-outlined text-[22px]">menu</span>
-          </button>
-        )}
         <div className="relative flex-1 min-w-0">
           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
             search
@@ -224,26 +207,12 @@ export default function Header({
                 type="button"
                 onClick={() => done(() => onSearchArchive(q))}
               >
-                كلّ النتائج في الأرشيف (Enter)
+                كلّ النتائج في السجلّ (Enter)
               </button>
             </div>
           )}
         </div>
 
-        {onOpenCommandPalette && (
-          <button
-            type="button"
-            className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/40 text-on-surface font-label-md text-label-md font-semibold transition-colors shrink-0 shadow-sm"
-            title="شريط الأوامر السريع (Ctrl+K)"
-            onClick={onOpenCommandPalette}
-          >
-            <span className="material-symbols-outlined text-[18px] text-primary">terminal</span>
-            <span className="[@media(max-width:1180px)]:hidden">الأوامر</span>
-            <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-container-lowest text-on-surface-variant border">
-              Ctrl+K
-            </kbd>
-          </button>
-        )}
       </div>
       <div className="flex items-center gap-space-sm shrink-0">
         {context && (

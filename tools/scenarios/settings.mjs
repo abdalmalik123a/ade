@@ -19,7 +19,9 @@ export default async function scenario(page, { profile }) {
   // ── الشريط ───────────────────────────────────────────────────────
   let text = await page.text();
   ok('لا «تبديل الحساب» في برنامجٍ بلا حسابات', !text.includes('تبديل الحساب'));
-  ok('ورقم الإصدار من الحزمة لا «2.4»', text.includes(`ديوان ${version}`) && !text.includes('ديوان 2.4'));
+  // رقم الإصدار في تلميح شعار السكّة (المرحلة ٢) وفي «عن البرنامج».
+  const logoTitle = await page.eval(`return document.querySelector('[data-act="sidebar-about"]').title;`);
+  ok('ورقم الإصدار من الحزمة لا «2.4»', logoTitle.includes(`ديوان ${version}`) && !logoTitle.includes('ديوان 2.4'));
 
   await page.eval(`document.querySelector('[data-act="open-settings"]').click(); return true;`);
   await wait(700);
@@ -34,7 +36,8 @@ export default async function scenario(page, { profile }) {
   ok('فيها رقم الإصدار', text.includes(`الإصدار ${version}`));
   ok('وسياسة الخصوصية: البيانات على الجهاز ولا إنترنت', text.includes('البيانات كلّها على هذا الجهاز') && text.includes('لا يتّصل بالإنترنت'));
   ok('ومجلّد البيانات مكتوبٌ بمساره', text.includes(join(profile, 'data')) || text.includes('data'));
-  ok('والاختصارات الثابتة بأزرارها', text.includes('Ctrl+K') && text.includes('شريط الأوامر') && text.includes('«الأوامر» في الشريط العلوي'));
+  // ما يعرفه الموظف من Windows وWord وحده وF4 (ن١٥) — ولا Ctrl+K ولا F2.
+  ok('والاختصارات الثابتة بأزرارها', text.includes('Ctrl+F') && text.includes('Ctrl+Enter') && text.includes('«تحديد الكلّ»') && !text.includes('Ctrl+K') && !text.includes('شريط الأوامر'));
   ok('ولم تبقَ «سنة السجل» خانةً تُحفظ', !text.includes('سنة السجل'));
 
   await page.goto('header-seal-configuration');
@@ -99,8 +102,9 @@ export default async function scenario(page, { profile }) {
   await arabicKey('KeyF', 'ب', 70);
   ok('Ctrl+F بلوحةٍ عربية تصل البحث الشامل', await page.eval(`return document.activeElement?.hasAttribute('data-global-search') ?? false;`));
   await page.eval(`document.activeElement?.blur(); return true;`);
+  // ولا شريط أوامر: Ctrl+K زال مع الاختصارات التي لا يعرفها الموظف من Windows ولا Word (ن١٥).
   await arabicKey('KeyK', 'ن', 75);
-  ok('وCtrl+K تفتح شريط الأوامر', await page.eval(`return Boolean(document.querySelector('input[placeholder^="اكتب أمرًا"]'));`));
+  ok('وCtrl+K لا تفتح شيئًا — والإعدادات تعرض الاختصارات الباقية', !(await page.eval(`return Boolean(document.querySelector('[data-command-palette], input[placeholder^="اكتب أمرًا"]'));`)));
 
   return steps.join('\n');
 }

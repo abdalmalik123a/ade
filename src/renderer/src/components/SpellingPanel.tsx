@@ -19,7 +19,7 @@ export default function SpellingPanel({
   title?: string;
   /** سطرٌ تحت العنوان: من أين الاقتراحات، وأين تُصلح. */
   note?: string;
-  /** بلا `onFix` يُعرض اللوح للاطّلاع وحده (نصّ نموذجٍ يُصلح في الورشة). */
+  /** بلا `onFix` يُعرض اللوح للاطّلاع وحده (نصّ نموذجٍ يُصلح في المكتبة). */
   onFix?: (chosen: SpellIssue[]) => void;
 }) {
   const key = (i: SpellIssue) => `${i.word}→${i.fix}`;

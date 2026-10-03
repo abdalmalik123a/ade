@@ -93,6 +93,21 @@ async function writeUnique(folder: string, name: string, ext: string, bytes: Uin
   return path;
 }
 
+/** ملفّاتٌ بمساراتها — من حوار الفتح، أو من «الملفّات» في الشبّاك. ملفٌّ لا يُفتح يُقال باسمه ولا يُسقط البقيّة. */
+export async function openPdfPaths(paths: string[]): Promise<{ opened: PdfOpened[]; failed: { name: string; error: string }[] }> {
+  const opened: PdfOpened[] = [];
+  const failed: { name: string; error: string }[] = [];
+  for (const path of paths) {
+    try {
+      opened.push(await openOne(path));
+      openedPaths.add(resolve(path).toLowerCase());
+    } catch (err) {
+      failed.push({ name: basename(path), error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { opened, failed };
+}
+
 export function registerPdfIpc(): void {
   ipcMain.handle('pdf:open', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
@@ -104,18 +119,7 @@ export function registerPdfIpc(): void {
       extensions: PDF_EXT
     });
     if (!paths.length) return null;
-    const opened: PdfOpened[] = [];
-    const failed: { name: string; error: string }[] = [];
-    // ملفٌّ لا يُفتح يُقال باسمه — ولا يُسقط البقيّة.
-    for (const path of paths) {
-      try {
-        opened.push(await openOne(path));
-        openedPaths.add(resolve(path).toLowerCase());
-      } catch (err) {
-        failed.push({ name: basename(path), error: err instanceof Error ? err.message : String(err) });
-      }
-    }
-    return { opened, failed };
+    return openPdfPaths(paths);
   });
 
   ipcMain.handle('pdf:scan', () => openScan());

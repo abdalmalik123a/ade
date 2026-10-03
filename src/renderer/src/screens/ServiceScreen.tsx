@@ -37,9 +37,14 @@ import GenderReview from '../components/GenderReview';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import SpellingPanel from '../components/SpellingPanel';
-import { isCombo, shortcut } from '@shared/shortcuts';
 import { choosePrinter } from '../lib/printChoice';
 import IdSheetDialog from '../components/IdSheetDialog';
+import { ROUTES, type RouteKey } from '@shared/routes';
+import { COUNTER_CARDS, cardMatches, normalizeCounterCards, type CounterCard } from '@shared/counterCards';
+import InboxPanel, { type InboxOpen } from '../components/InboxPanel';
+import { seasonOf } from '@shared/seasons';
+import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
+import type { InboxFile } from '@shared/api';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -61,6 +66,10 @@ export type ServiceScreenProps = {
   active?: boolean;
   /** «كرّره» من الأرشيف: نماذج معاملةٍ صدرت وقيمها — تُفتح نسخةً جديدة للتعديل. */
   repeat?: RepeatRequest | null;
+  /** بطاقةٌ تفتح أداةً (الصور، PDF، الأسئلة…) أو نافذة (استنساخ الهوية) — المرحلة ٢. */
+  onOpenTool?: (target: CounterCard['target']) => void;
+  /** ملفٌّ من «الملفّات» يُفتح في أداته — ويُرفض بخطأٍ يقوله اللوح. */
+  onOpenFile?: (file: InboxFile, as: InboxOpen) => Promise<void>;
 };
 
 export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
@@ -90,7 +99,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ onIssued, active = true, repeat = null }: ServiceScreenProps) {
+export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -109,18 +118,6 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
 
-  // F2 في خطوة «املأ»: ما يعرفه البرنامج عن المواطن — كما يعلن زرّه (§١).
-  useEffect(() => {
-    if (step !== 'fill' || !active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (isCombo(e, shortcut('citizen').combo)) {
-        e.preventDefault();
-        setPicker(true);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [step, active]);
   /** رسالة الزبون من واتساب تُلصق كما هي فتتوزّع على الحقول. */
   const [pasteOpen, setPasteOpen] = useState(false);
   /** استمارةٌ مطبوعةٌ مسبقًا في الطابعة: تُطبع القيم وحدها في فراغاتها. */
@@ -184,8 +181,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   /**
-   * الشبّاك بلوحة المفاتيح (د١١): الكتابة تصفّي، والأرقام ١–٩ تختار بطاقتها، وEnter
-   * تملأ، وEsc تمحو البحث. والرقم بموضع مفتاحه (`code`) — فيعمل واللوحة عربية.
+   * الشبّاك بلوحة المفاتيح (د١١): الكتابة تصفّي، وEnter تملأ، وEsc تمحو البحث. والأرقام ١–٩ التي
+   * كانت تختار البطاقات زالت (ن١٥): اختصارٌ لا يعرفه الموظف من Windows ولا Word.
    */
   useEffect(() => {
     if (!active || step !== 'pick') return;
@@ -195,13 +192,6 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
       const inSearch = target === searchRef.current;
       const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
       if (typing && !inSearch) return;
-      const digit = /^(Digit|Numpad)([1-9])$/.exec(e.code);
-      if (digit) {
-        e.preventDefault();
-        const card = ordered[Number(digit[2]) - 1];
-        if (card) toggle(card.id);
-        return;
-      }
       if (e.key === 'Enter' && picked.length > 0) {
         e.preventDefault();
         void goFill();
@@ -217,7 +207,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, step, ordered, picked, query]);
+  }, [active, step, picked, query]);
 
   /** الحقول التي تُعرض: اتحاد ما تطلبه المختارات، بلا تكرار. */
   const fields: DocField[] = useMemo(() => mergeFields(loaded.map((l) => l.doc)), [loaded]);
@@ -409,7 +399,15 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
         nationalId: byRole('nationalId') || null,
         sheets: collect()
       });
-      say(`صدرت ${out.documents.length} ورقة بمعاملة واحدة — ${out.documents[0]?.serial ?? ''}`);
+      const customer = { values: { ...values }, citizenId: out.citizenId ?? citizenId, genderByHand };
+      const label = `معاملة ${citizenName} — ${out.documents[0]?.serial ?? ''}`;
+      setAfter({
+        outcome: { what: papersWord(out.documents.length), printer: pick?.printer ?? null, serial: out.documents[0]?.serial ?? '' },
+        ids: out.documents.map((d) => d.id),
+        mode,
+        label,
+        customer
+      });
       onIssued?.();
       // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
       const chosen = values[GENDER_KEY] as Gender | undefined;
@@ -422,12 +420,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
       else setNewCitizen(null);
       reset();
       if (pick) {
-        await printIssued(
-          out.documents.map((d) => d.id),
-          pick.printer,
-          mode,
-          `معاملة ${citizenName} — ${out.documents[0]?.serial ?? ''}`
-        );
+        await printIssued(out.documents.map((d) => d.id), pick.printer, mode, label);
       }
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
@@ -500,6 +493,35 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
   }
 
   /** معاملةٌ جديدة: كل ما كُتب يُمحى، والنماذج المختارة معه. */
+  /**
+   * ما خرج الآن (ن٩): يُقال في شريطٍ بعد الطبع — وأين خرج، وبرقمه في السجلّ — ومنه «أعد الطبع»
+   * و«شيءٌ آخر لنفس الزبون» (تعود قيمه إلى ورقة الإدخال للمختار التالي).
+   */
+  const [after, setAfter] = useState<{
+    outcome: Outcome;
+    ids: number[];
+    mode: 'full' | 'values';
+    label: string;
+    customer: { values: Record<string, string>; citizenId: number | null; genderByHand: boolean } | null;
+  } | null>(null);
+
+  async function reprintAfter() {
+    if (!after) return;
+    const printer = after.outcome.printer ?? (await choosePrinter('documents'))?.printer;
+    if (!printer) return;
+    setAfter({ ...after, outcome: { ...after.outcome, printer } });
+    await printIssued(after.ids, printer, after.mode, after.label);
+  }
+
+  function sameCustomer() {
+    if (!after?.customer) return;
+    setValues(after.customer.values);
+    setCitizenId(after.customer.citizenId);
+    setGenderByHand(after.customer.genderByHand);
+    setAfter(null);
+    say('الزبون نفسه — اختر ما يريده بعدُ، وحقوله مملوءة');
+  }
+
   function reset() {
     setStep('pick');
     setPicked([]);
@@ -559,7 +581,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
     setPicked(repeat.templateIds);
     void goFill(repeat.templateIds).then(() => {
       setValues(repeat.values);
-      say(`نسخة عن ${repeat.serial} — بدّل ما يلزم ثم أصدر، والأصل يبقى كما صدر`);
+      say(`نسخة عن ${repeat.serial} — بدّل ما يلزم ثم اطبع، والأصل يبقى في السجلّ كما خرج`);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repeat?.key]);
@@ -667,17 +689,18 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
         })
       );
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
-      say(`صدرت ${papers} ورقة لـ${all.length} اسمًا — كلٌّ بمعاملته`);
+      const ids = all.flatMap((t) => t.documents.map((d) => d.id));
+      const label = `دمج ${all.length} اسمًا — ${all[0]?.documents[0]?.serial ?? ''}`;
+      setAfter({
+        outcome: { what: `${papersWord(papers)} لـ${all.length} اسمًا`, printer: pick?.printer ?? null, serial: all[0]?.documents[0]?.serial ?? '' },
+        ids,
+        mode,
+        label,
+        customer: null
+      });
       onIssued?.();
       reset();
-      if (pick) {
-        await printIssued(
-          all.flatMap((t) => t.documents.map((d) => d.id)),
-          pick.printer,
-          mode,
-          `دمج ${all.length} اسمًا — ${all[0]?.documents[0]?.serial ?? ''}`
-        );
-      }
+      if (pick) await printIssued(ids, pick.printer, mode, label);
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
     } finally {
@@ -767,11 +790,80 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                   انقر ما يريده — واحدةً أو عدّة أوراقٍ معًا — ثم املأها مرّةً واحدة.
                 </p>
               </div>
+              {after && (
+                <AfterPrint
+                  outcome={after.outcome}
+                  onReprint={() => void reprintAfter()}
+                  onSameCustomer={after.customer ? sameCustomer : undefined}
+                  onClose={() => setAfter(null)}
+                />
+              )}
+              {/* بطاقات الخدمات (ن١): الغرض أوّلًا — والبحث تحتها يصفّيها مع النماذج. */}
+              {(() => {
+                const cards = (settings?.counterCards ?? normalizeCounterCards(undefined))
+                  .map((id) => COUNTER_CARDS.find((c) => c.id === id))
+                  .filter((c): c is CounterCard => Boolean(c) && cardMatches(c!, query));
+                return cards.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-space-sm" data-cards="">
+                    {cards.map((c) => (
+                      <button
+                        key={c.id}
+                        className="p-space-sm rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-right flex items-center gap-space-sm shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"
+                        data-card={c.id}
+                        data-path={'route' in c.target ? ROUTES[c.target.route as RouteKey] : undefined}
+                        type="button"
+                        onClick={() => onOpenTool?.(c.target)}
+                      >
+                        <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
+                        </span>
+                        <span className="flex flex-col min-w-0">
+                          <span className="font-label-lg text-label-lg text-on-surface font-semibold truncate">{c.label}</span>
+                          <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{c.hint}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+              {/* صفّ الموسم (ن١): ما يكثر طلبه الآن — وما لا يقدّمه المكتب من بطاقاته لا يُعرض. */}
+              {(() => {
+                const season = query.trim() ? null : seasonOf();
+                const offered = settings?.counterCards ?? normalizeCounterCards(undefined);
+                const items = season?.items.filter((it) => !('card' in it) || offered.includes(it.card)) ?? [];
+                return season && items.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-space-xs px-1" data-season="">
+                    <span className="flex items-center gap-1 font-label-md text-label-md text-on-surface font-semibold">
+                      <span className="material-symbols-outlined text-[18px] text-secondary">event</span>
+                      {season.title}
+                    </span>
+                    {items.map((it) => (
+                      <button
+                        key={it.label}
+                        className="h-8 px-3 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+                        data-season-item=""
+                        type="button"
+                        onClick={() => {
+                          if ('card' in it) {
+                            const card = COUNTER_CARDS.find((c) => c.id === it.card);
+                            if (card) onOpenTool?.(card.target);
+                          } else setQuery(it.search);
+                        }}
+                      >
+                        {it.label}
+                      </button>
+                    ))}
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">يتبدّل مع المواسم</span>
+                  </div>
+                ) : null;
+              })()}
+              {/* «الملفّات» (ن٨): ما وصل الآن، ومنطقة الإفلات. */}
+              {onOpenFile && !query.trim() && <InboxPanel active={active && step === 'pick'} onOpen={onOpenFile} />}
               {newCitizen && (
                 <div className="p-space-sm rounded-xl bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-new-citizen="">
                   <span className="material-symbols-outlined text-[20px] text-secondary">person_add</span>
                   <span className="flex-1 font-label-md text-label-md text-on-surface">
-                    «{newCitizen.input.fullName}» ليس في سجل المواطنين — أيُحفظ بما كُتب له، فتُجلب بياناته بـF2
+                    «{newCitizen.input.fullName}» ليس في «الزبائن» — أيُحفظ بما كُتب له، فتُجلب بياناته بـ«هات الزبون»
                     في المرّة القادمة وتُربط به كتبه؟
                   </span>
                   <button
@@ -856,7 +948,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                   ref={searchRef}
                   className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                   data-counter-search=""
-                  placeholder="اكتب لتصفّي — والأرقام ١–٩ تختار، وEnter تملأ"
+                  placeholder="ابحث بما يقوله الزبون: تأييد، صور، PDF — وEnter تملأ"
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -896,12 +988,12 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
               {shown.length === 0 ? (
                 <div className="py-space-lg text-center font-body-md text-body-md text-on-surface-variant">
                   {items.length === 0
-                    ? 'المكتبة فارغة — استورد مجلد ملفاتك من الورشة'
+                    ? 'المكتبة فارغة — استورد ملفّات Word من «المكتبة»'
                     : 'لا نموذج بهذا الاسم'}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
-                  {ordered.map((t, i) => {
+                  {ordered.map((t) => {
                     const on = picked.includes(t.id);
                     return (
                       <button
@@ -911,6 +1003,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                             ? 'border-secondary ring-2 ring-secondary shadow-md'
                             : 'border-outline-variant hover:border-outline hover:shadow-md'
                         }`}
+                        data-template-card={t.id}
                         type="button"
                         onClick={() => toggle(t.id)}
                       >
@@ -923,15 +1016,9 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                             <span className="material-symbols-outlined text-[15px]">check</span>
                           )}
                         </span>
+                        {/* وكان رقمه على لوحة المفاتيح (١–٩) — زالت الأرقام مع الاختصارات غير المعروفة (ن١٥). */}
                         <span className="w-11 h-11 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
-                          {i < 9 ? (
-                            // رقمه على لوحة المفاتيح — ١ لأكثرها طلبًا.
-                            <span className="font-headline-sm text-headline-sm font-bold" data-card-key={i + 1}>
-                              {i + 1}
-                            </span>
-                          ) : (
-                            <span className="material-symbols-outlined text-[22px]">description</span>
-                          )}
+                          <span className="material-symbols-outlined text-[22px]">description</span>
                         </span>
                         <span className="font-headline-sm text-headline-sm text-on-surface leading-snug">
                           {t.title}
@@ -963,11 +1050,12 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                 </span>
                 <button
                   className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+                  data-act="pick-customer"
                   type="button"
                   onClick={() => setPicker(true)}
                 >
                   <span className="material-symbols-outlined text-[18px] text-secondary">badge</span>
-                  استيراد (F2)
+                  هات الزبون
                 </button>
                 <button
                   className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
@@ -1019,7 +1107,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                         onClick={() => setMergePicker(true)}
                       >
                         <span className="material-symbols-outlined text-[16px]">badge</span>
-                        أضف من سجل المواطنين
+                        أضف من الزبائن
                       </button>
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
                         {rows.length} اسمًا × {loaded.length} ورقة ={' '}
@@ -1156,7 +1244,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                 <SpellingPanel
                   issues={templateSpelling}
                   title="في نصّ النموذج نفسه"
-                  note="يُصلح من الورشة (تدقيق إملائي في مصمّم النماذج) — فالشبّاك لا يعدّل النماذج"
+                  note="يُصلح من «المكتبة» (تدقيق إملائي في مصمّم النماذج) — فالشبّاك لا يعدّل النماذج"
                 />
               </div>
             )}
@@ -1321,13 +1409,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
           )}
           {step === 'review' && (
             <>
+              <PrinterNote role="documents" roles={settings?.printRoles} />
               <button
                 className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
                 type="button"
                 disabled={busy || blocked}
                 onClick={() => void issue(false)}
               >
-                أصدر بلا طباعة
+                احفظ بلا طباعة
               </button>
               <button
                 className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
@@ -1336,7 +1425,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null }
                 onClick={() => void issue(true)}
               >
                 {busy
-                  ? 'جارٍ الإصدار...'
+                  ? 'لحظة…'
                   : `اطبع ${merge ? rows.length * loaded.length : loaded.length} ورقة`}
               </button>
             </>
@@ -1476,7 +1565,7 @@ function CitizenPicker({
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
       <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
-          استيراد من سجل المواطنين
+          هات الزبون
         </span>
         <input
           autoFocus

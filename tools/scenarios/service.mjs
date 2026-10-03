@@ -94,9 +94,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   ok('وعُرض اتحاد الحقول بلا تكرار', fieldCount > 0 && fieldCount < 12);
 
-  await page.clickText('استيراد (F2)');
+  await page.clickText('هات الزبون');
   await wait(800);
-  ok('انفتح سجل المواطنين', (await page.text()).includes('استيراد من سجل المواطنين'));
+  ok('انفتح البحث في الزبائن', await page.eval(`return Boolean(document.querySelector('input[placeholder="اسم المواطن أو رقمه"]'));`));
   await page.clickText('أحمد عادل كريم الموسوي', 'button');
   await wait(800);
   ok('استُوردت بيانات المواطن', (await page.text()).includes('استُوردت بيانات المواطن'));
@@ -123,9 +123,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   // والمال صامت (§١): لا خانة أجرةٍ في شريط القرار.
   ok('لا أجرة ولا رسوم في الشبّاك', !(await page.text()).includes('الأجرة'));
 
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(1500);
-  ok('صدرت المعاملة', (await page.text()).includes('صدرت 2 ورقة بمعاملة واحدة'));
+  const afterText = () => page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`);
+  ok('حُفظت المعاملة، والشريط يقول ما خرج', (await afterText()).includes('حُفظت ورقتان بلا طباعة') && (await afterText()).includes('في السجلّ برقم'));
   ok('وعاد إلى الاختيار لزبون جديد', (await page.text()).includes('اختر'));
 
   // ── التفتيش في القاعدة ─────────────────────────────────────────────
@@ -191,12 +192,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1200);
   ok('قالت المراجعة إن الباقي مثلها', (await page.text()).includes('وبقيّة الأسماء 1 مثلها'));
 
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   // الرسالة تُعرض ثوانيَ ثم تختفي: يُنتظر ظهورها لا مدّةٌ ثابتة (كانت تفوت أحيانًا).
   let batchSaid = false;
   for (let i = 0; i < 30 && !batchSaid; i++) {
     await wait(200);
-    batchSaid = (await page.text()).includes('صدرت 2 ورقة لـ2 اسمًا');
+    batchSaid = (await afterText()).includes('ورقتان لـ2 اسمًا');
   }
   ok('صدرت الدفعة', batchSaid);
 
@@ -238,11 +239,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.goto('service-counter');
   await wait(800);
   await pickFirst();
-  const f2 = { code: 'F2', key: 'F2', windowsVirtualKeyCode: 113, nativeVirtualKeyCode: 113 };
-  await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...f2 });
-  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...f2 });
+  // «هات الزبون» زرٌّ بلا اختصار (ن١٥): F2 زال، والزرّ كما كان.
+  await page.eval(`document.querySelector('[data-screen="service"] [data-act="pick-customer"]').click(); return true;`);
   await wait(600);
-  ok('F2 في الشبّاك يفتح سجل المواطنين — كما يعلن زرّه', (await page.text()).includes('استيراد من سجل المواطنين'));
+  ok('«هات الزبون» في الشبّاك يفتح البحث في الزبائن', await page.eval(`return Boolean(document.querySelector('input[placeholder="اسم المواطن أو رقمه"]'));`));
   await page.clickExact('إغلاق');
   await wait(300);
 
@@ -272,9 +272,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── زبونٌ جديد: يُعرض حفظه في السجل، وتُربط به كتبه ──────────────────
   await page.clickText('راجع الأوراق');
   await wait(1000);
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(1500);
-  ok('صدرت معاملة الزبون الجديد', (await page.text()).includes('صدرت 1 ورقة بمعاملة واحدة'));
+  ok('حُفظت معاملة الزبون الجديد', (await afterText()).includes('ورقةٌ واحدة'));
   ok('وعُرض حفظه في سجل المواطنين', (await page.eval(`return document.querySelector('[data-new-citizen]')?.innerText ?? '';`)).includes('كريم حسن علي'));
   await page.eval(`document.querySelector('[data-act="save-new-citizen"]').click(); return true;`);
   await wait(900);

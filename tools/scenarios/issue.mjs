@@ -102,7 +102,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.goto('smart-editor-a4-preview');
   await wait(900);
   let text = await page.text();
-  ok('فُتح المحرّر بورقته ولوحه', text.includes('النموذج والترويسة') && text.includes('قبل الإصدار'));
+  ok('فُتح المحرّر بورقته ولوحه', text.includes('النموذج والترويسة') && text.includes('قبل الطبع'));
   ok('لا مسودة بعد', text.includes('لا مسودة'));
 
   // الإصدار قبل ملء شيء يُرفض بما يمنعه — من قائمة التحقّق
@@ -197,9 +197,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('والحقل على ورقة التحرير صندوقٌ باسمه قبل أن يُملأ', (await page.eval(`return document.querySelector('[data-screen="editor"] [data-block] [data-field]')?.innerText ?? '';`)).includes('الاسم الرباعي'));
 
   // استيراد المواطن من السجل (F2)
-  await page.clickText('استيراد (F2)');
+  await page.clickText('هات الزبون');
   await wait(700);
-  ok('انفتح حوار الاستيراد', (await page.text()).includes('استيراد من سجل المواطنين'));
+  ok('انفتح حوار «هات الزبون»', await page.eval(`return Boolean(document.querySelector('input[placeholder^="ابحث بالاسم أو الرقم الوطني"]'));`));
   await page.clickText('أحمد عادل كريم الموسوي', 'button');
   await wait(700);
   const valueOf = (key) =>
@@ -297,12 +297,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الإصدار ────────────────────────────────────────────────────────
   await page.eval(`document.querySelector('[data-act="issue"]').click(); return true;`);
   await wait(600);
-  ok('انفتح حوار الإصدار', (await page.text()).includes('إصدار الكتاب'));
+  ok('انفتح حوار «اطبع الكتاب»', (await page.text()).includes('اطبع الكتاب'));
 
   // والمال صامت (§١): لا خانة رسومٍ في حوار الإصدار.
   ok('ولا رسوم فيه', !(await page.text()).includes('الرسوم'));
   await fill('عدد النسخ', '2');
-  await page.clickText('إصدار وقيد بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(2500);
 
   text = await page.text();

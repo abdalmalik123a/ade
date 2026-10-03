@@ -65,7 +65,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(700);
 
   let text = await page.text();
-  ok('للأسئلة شاشةٌ في الشريط', text.includes('الأسئلة — أوراق الامتحانات'));
+  // الأسئلة أداةٌ تُفتح من بطاقتها في الشبّاك (المرحلة ٢) — لا قسمٌ في السكّة.
+  ok('للأسئلة بطاقةٌ في الشبّاك', (await page.eval(`return Boolean(document.querySelector('[data-cards] [data-card="papers"]'));`)));
   ok('ورقةٌ تُطبع ولا تُقيَّد', text.includes('لا رقم صادر ولا بصمة'));
   ok('والرأس ثابتٌ لا يُحرَّر', text.includes('الرأس ثابت'));
 

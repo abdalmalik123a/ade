@@ -78,7 +78,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الجهة ─────────────────────────────────────────────────────────
   await page.goto('clients-directory');
   await wait(800);
-  ok('للجهات شاشةٌ في الشريط', (await page.text()).includes('الجهات — مدارس ودوائر'));
+  // الجهات تبويبٌ تحت «الزبائن» في السكّة (المرحلة ٢).
+  ok('للجهات تبويبٌ تحت «الزبائن»', (await page.eval(`return document.querySelector('[data-tabs] a[aria-current="page"]')?.innerText.trim() + '|' + document.querySelector('[data-sidebar="rail"] [aria-current="page"]')?.dataset.dest;`)) === 'جهات|customers');
   await click('[data-act="new-client"]');
   await wait(300);
   await page.type('input[data-client-name]', 'مدرسة الرافدين الابتدائية');
@@ -152,7 +153,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وموعده «اليوم»', c?.due === 'اليوم');
   await page.goto('orders-board');
   await wait(600);
-  ok('والشريط الجانبي ينبّه: «اليوم ١»', (await page.eval(`return document.querySelector('aside [data-path="orders-board"]').innerText;`)).includes('اليوم 1'));
+  // عدّاد «قيد العمل» في السكّة بلون التنبيه، وتلميحه «موعده اليوم».
+  ok('والسكّة تنبّه على «قيد العمل»: طلبٌ موعده اليوم', await page.eval(`const b = document.querySelector('[data-dest="work"] [data-badge]'); return Boolean(b) && b.dataset.badge === 'alert' && b.innerText.trim() === '1' && b.title.includes('اليوم');`));
   if (shotsDir) await page.shot(join(shotsDir, 'orders-board.png'));
 
   // ── فتح تصميم الطلب: الدفعة جاهزة ─────────────────────────────────

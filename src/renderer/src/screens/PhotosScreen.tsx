@@ -52,7 +52,11 @@ function frameFor(photo: Size): Size {
   return w <= 600 ? { w, h: FRAME_H } : { w: 600, h: (600 * photo.h) / photo.w };
 }
 
-export default function PhotosScreen() {
+/** صورةٌ فتحها الشبّاك من «الملفّات» — محفوظةً في المخزن، تُفتح مرّةً بمفتاحها. */
+export type PhotoIncoming = { key: number; path: string };
+let photoIncomingSeen = 0;
+
+export default function PhotosScreen({ incoming = null }: { incoming?: PhotoIncoming | null } = {}) {
   const [src, setSrc] = useState<string | null>(null);
   const [natural, setNatural] = useState<Size | null>(null);
   const [modelReady, setModelReady] = useState(false);
@@ -300,6 +304,12 @@ export default function PhotosScreen() {
   }
   const loadRef = useRef(load);
   loadRef.current = load;
+
+  useEffect(() => {
+    if (!incoming || incoming.key === photoIncomingSeen) return;
+    photoIncomingSeen = incoming.key;
+    void loadRef.current(incoming.path);
+  }, [incoming]);
 
   async function open() {
     const path = await window.diwan.files.pickImage('photos');

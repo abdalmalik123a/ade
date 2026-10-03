@@ -76,10 +76,13 @@ export default async function scenario(page, { shotsDir }) {
   await page.eval(`document.querySelector('[data-act="id-sheet-close"]').click(); return true;`);
   await wait(300);
 
-  // ولوحة الأوامر تفتحها من أيّ مكان.
-  await page.eval(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true })); return true;`);
+  // وبطاقتها في الشبّاك تفتحها (المرحلة ٢) — بدل لوحة الأوامر التي زالت.
+  await page.goto('service-counter');
+  await wait(600);
+  await page.eval(`document.querySelector('[data-cards] [data-card="id-sheet"]').click(); return true;`);
   await wait(500);
-  ok('وفي لوحة الأوامر بابها', (await page.eval(`return document.querySelector('[data-command-palette]')?.innerText ?? '';`)).includes('ورقة المستمسكات المجمّعة'));
+  ok('وبطاقة «المستمسكات على ورقة» في الشبّاك تفتحها', await page.eval(`return Boolean(document.querySelector('[data-id-sheet]'));`));
+  await page.eval(`document.querySelector('[data-act="id-sheet-close"]')?.click(); return true;`);
 
   rmSync(DIR, { recursive: true, force: true });
   return steps.join('\n');

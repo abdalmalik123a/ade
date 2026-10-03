@@ -70,7 +70,7 @@ export default async function scenario(page, { profile }) {
   await wait(400);
   await page.clickText('راجع الأوراق');
   await wait(1000);
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(900);
   const asked = await page.eval(`return [...document.querySelectorAll('[data-gender-review] [data-gender-name]')].map((e) => e.getAttribute('data-gender-name'));`);
   ok(`قبل أن تصدر: سُئل عن المجهول وحده (${JSON.stringify(asked)})`, JSON.stringify(asked) === JSON.stringify(['غسق حسن علي']));
@@ -85,7 +85,8 @@ export default async function scenario(page, { profile }) {
   await wait(200);
   await page.eval(`document.querySelector('[data-act="gender-review-done"]').click(); return true;`);
   await wait(2500);
-  ok('ثم صدرت الدفعة', (await page.text()).includes('صدرت 3 ورقة لـ3 اسمًا'));
+  // بعد الحفظ شريطٌ يقول ما خرج وأين (ن٩) — بدل «صدرت…».
+  ok('ثم حُفظت الدفعة', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('3 أوراق لـ3 اسمًا'));
   let d = db();
   const bodies = Object.fromEntries(d.prepare('SELECT citizen_name AS n, body_html AS b FROM documents').all().map((r) => [r.n, r.b]));
   const memory = d.prepare('SELECT name, gender FROM name_genders').all();
@@ -109,12 +110,12 @@ export default async function scenario(page, { profile }) {
   await page.clickText('راجع الأوراق');
   await wait(900);
   ok('اسمٌ مجهول: يُسأل عنه في الشبّاك', await page.eval(`return Boolean(document.querySelector('[data-gender-unsure]'));`));
-  const issueButtons = () => page.eval(`return [...document.querySelectorAll('[data-screen="service"] button')].filter((b) => /أصدر بلا طباعة|اطبع \\d/.test(b.textContent)).map((b) => b.disabled);`);
+  const issueButtons = () => page.eval(`return [...document.querySelectorAll('[data-screen="service"] button')].filter((b) => /احفظ بلا طباعة|اطبع \\d/.test(b.textContent)).map((b) => b.disabled);`);
   ok('ولا يصدر حتى يُحسم', (await issueButtons()).every(Boolean));
   await page.eval(`document.querySelector('[data-gender-unsure] [data-gender-choose="ذكر"]').click(); return true;`);
   await wait(400);
   ok('وضغطةٌ تحسمه', (await issueButtons()).every((x) => !x));
-  await page.clickText('أصدر بلا طباعة');
+  await page.clickText('احفظ بلا طباعة');
   await wait(2000);
   d = db();
   const learned = d.prepare("SELECT gender FROM name_genders WHERE name = 'نمير'").get();

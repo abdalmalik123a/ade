@@ -20,7 +20,6 @@ import { readMrz, type MrzResult } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
-import { isCombo, shortcut } from '@shared/shortcuts';
 
 const nf = new Intl.NumberFormat('en-US');
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
@@ -137,22 +136,6 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
   useEffect(() => {
     void window.diwan.scanner.ocrAvailable().then(setOcrReady);
   }, []);
-
-  // F2 — إضافة ملف مواطن، كما يعلن التصميم على الزرّ.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isCombo(e, shortcut('new-citizen').combo) && !form.open) {
-        e.preventDefault();
-        setForm({ open: true, initial: null });
-      }
-      if (isCombo(e, shortcut('to-editor').combo) && detail && !form.open) {
-        e.preventDefault();
-        onInsertIntoEditor?.(detail.id);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [form.open, detail, onInsertIntoEditor]);
 
   async function withBusy<T>(key: string, fn: () => Promise<T>): Promise<T | null> {
     setBusy(key);
@@ -309,7 +292,6 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
             >
               <span className="material-symbols-outlined text-[18px]">person_add</span>
               <span>إضافة ملف مواطن</span>
-              <span className="font-code-sm text-code-sm opacity-70">F2</span>
             </button>
           </div>
         </section>

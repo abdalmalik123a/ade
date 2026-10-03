@@ -1,7 +1,7 @@
 /**
- * الأقسام الظاهرة (خطة Production، ٣٫٣ — قرار المالك ٢٩ أيلول ٢٠٢٦): مكتبٌ لا يصمّم شهاداتٍ ولا
- * يطبع أسئلة لا يرى أقسامها في شريطه كلّ يوم. والإخفاء من الشريط ولوحة الأوامر وحدهما: لا يُمحى شيء،
- * وما أُخفي يعود من «الإعدادات».
+ * الأقسام الظاهرة (خطة Production، ٣٫٣ — قرار المالك ٢٩ أيلول ٢٠٢٦) — صارت قديمة: السكّة خمس وجهاتٍ
+ * ظاهرة، والأدوات بطاقاتٌ في الشبّاك (المرحلة ٢ من UPGRADE.md). ويُقرأ المحفوظ منها وحده، فمكتبٌ أخفى
+ * قسمًا تُخفى بطاقته أوّل مرّة (`counterCards.ts`).
  */
 import { ROUTES, type RouteKey } from './routes';
 
@@ -20,21 +20,3 @@ export function normalizeHidden(raw: unknown): RouteKey[] {
   }
   return out;
 }
-
-/** الأقسام بترتيب الشريط، بأسمائها كما في «الإعدادات». */
-export const SECTIONS: readonly { key: RouteKey; label: string }[] = [
-  { key: 'service', label: 'الشبّاك' },
-  { key: 'orders', label: 'الطلبات' },
-  { key: 'photos', label: 'الصور الشخصية' },
-  { key: 'pdf', label: 'ملفات PDF' },
-  { key: 'archive', label: 'الأرشيف والبحث' },
-  { key: 'citizens', label: 'سجل المواطنين والمستمسكات' },
-  { key: 'templates', label: 'مكتبة النماذج والمسودات' },
-  { key: 'editor', label: 'المحرّر ومعاينة A4' },
-  { key: 'clients', label: 'الجهات — مدارس ودوائر' },
-  { key: 'letterhead', label: 'الترويسات والشعارات' },
-  { key: 'papers', label: 'الأسئلة — أوراق الامتحانات' },
-  { key: 'designs', label: 'التصاميم — شهادات وهويات' },
-  { key: 'audit', label: 'سجلّ التدقيق وسلامة الأرشيف' },
-  { key: 'settings', label: 'الإعدادات' }
-];

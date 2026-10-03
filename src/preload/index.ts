@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame } from 'electron';
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
 import type { DiwanApi, OfficeSettings, Seal } from '@shared/api';
 import type { Letterhead, LetterheadLayout } from '@shared/letterhead';
 import type { TemplateInput } from '@shared/template';
@@ -213,6 +213,14 @@ const api: DiwanApi = {
       ipcRenderer.on('print:progress', handler);
       return () => ipcRenderer.removeListener('print:progress', handler);
     }
+  },
+  inbox: {
+    list: () => invoke('inbox:list'),
+    // مسار الملفّ المُفلَت يُعرف هنا وحده (`webUtils`) — والواجهة لا تراه.
+    adopt: (files: File[]) => invoke('inbox:adopt', files.map((f) => webUtils.getPathForFile(f)).filter(Boolean)),
+    openPdf: (ids: string[]) => invoke('inbox:openPdf', ids),
+    importWord: (id: string) => invoke('inbox:importWord', id),
+    toPhotos: (id: string) => invoke('inbox:toPhotos', id)
   },
   pdf: {
     open: () => invoke('pdf:open'),

@@ -182,7 +182,8 @@ export default async function scenario(page, { profile }) {
   await wait(600);
 
   // التصنيف من العنوان: نماذج المكتب المصنَّفة شواهد
-  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('ورقة فارغة'))?.click(); return true;`);
+  // «ورقة فارغة» في المكتبة بعينها — والشبّاك المخفيّ فيه بطاقة «كتابٌ على ورقة فارغة» أيضًا.
+  await page.eval(`document.querySelector('[data-act="new-blank"]')?.click(); return true;`);
   await wait(1200);
   await page.type('input[placeholder="مثال: تأييد استمرار بالخدمة"]', 'تأييد دوام طالبة');
   await wait(1200);
