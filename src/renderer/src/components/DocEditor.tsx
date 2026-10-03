@@ -1368,11 +1368,14 @@ function IconBtn({
 export function FieldPanel({
   doc,
   onChange,
-  onInsert
+  onInsert,
+  top
 }: {
   doc: Doc;
   onChange: (doc: Doc) => void;
   onInsert: (key: string) => void;
+  /** ما يُعرض فوق الحقول — الخانات المقترحة في المحرّر الجديد. */
+  top?: ReactNode;
 }) {
   const move = (key: string, dir: -1 | 1) => {
     const keys = doc.fields.map((f) => f.key);
@@ -1385,6 +1388,7 @@ export function FieldPanel({
 
   return (
     <div className="w-72 shrink-0 overflow-y-auto border-r border-outline-variant p-space-sm flex flex-col gap-space-xs">
+      {top}
       <span className="font-label-md text-label-md text-on-surface font-semibold">
         المتغيّرات على الورقة ({doc.fields.length})
       </span>

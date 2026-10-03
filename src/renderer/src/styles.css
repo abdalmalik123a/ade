@@ -202,6 +202,12 @@ table th {
   border-top: 1.5px solid currentColor;
   margin: 6px 0;
 }
+/* «جرّب باسمٍ آخر»: ما بقي مذكّرًا أو نصًّا وهو خانة */
+.pm-page .pm-wrong {
+  background: rgba(220, 38, 38, 0.12);
+  text-decoration: underline wavy #dc2626;
+  text-underline-offset: 4px;
+}
 .pm-page .pm-empty::before {
   content: attr(data-placeholder);
   color: #93a099;

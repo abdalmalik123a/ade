@@ -21,7 +21,7 @@ import { AllSelection, EditorState, NodeSelection, Plugin, TextSelection, type C
 import { Decoration, DecorationSet, EditorView, type NodeView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, chainCommands, selectAll, splitBlockAs, toggleMark } from 'prosemirror-commands';
-import { history, redo, undo } from 'prosemirror-history';
+import { history, redo, undo, undoDepth } from 'prosemirror-history';
 import { gapCursor } from 'prosemirror-gapcursor';
 import {
   addColumnAfter,
@@ -69,6 +69,38 @@ import {
   type MenuClip
 } from './DocEditor';
 import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
+import FieldHints from './FieldHints';
+import { wrongGenderWords } from '@shared/fieldHints';
+import { GENDER_KEY, isChoiceKey, pickChoice } from '@shared/gender';
+import { sampleValues } from '@shared/letterDraft';
+
+/** «جرّب باسمٍ آخر»: امرأةٌ وقيمٌ تجريبية — فيُرى ما بقي مذكّرًا أو نصًّا وهو خانة. */
+function trialValues(fields: DocField[], values: Record<string, string> = {}): Record<string, string> {
+  const named: Record<string, string> = { [GENDER_KEY]: 'أنثى' };
+  for (const f of fields) if (f.role === 'name' || f.source === 'fullName') named[f.key] = 'زينب علي حسين';
+  return sampleValues(fields, { ...values, ...named });
+}
+
+/** يعلّم الكلمات على الورقة — كلمةً كاملة لا جزءَ كلمة. */
+function markWords(doc: PMNode, words: string[]): DecorationSet {
+  if (!words.length) return DecorationSet.empty;
+  const letter = /[ء-يٱ-ۓـ\u064B-\u0652]/;
+  const out: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text) return true;
+    const text = node.text;
+    for (const w of words) {
+      for (let at = text.indexOf(w); at >= 0; at = text.indexOf(w, at + w.length)) {
+        const before = text[at - 1];
+        const after = text[at + w.length];
+        if ((before && letter.test(before)) || (after && letter.test(after))) continue;
+        out.push(Decoration.inline(pos + at, pos + at + w.length, { class: 'pm-wrong', 'data-wrong': '' }));
+      }
+    }
+    return false;
+  });
+  return DecorationSet.create(doc, out);
+}
 
 /**
  * ما فوق المتن (قرار ٣ تشرين الأول، ن١٧): ترويسةٌ رسمية من المكتبة، أو أسطرٌ تُكتب في أعلى
@@ -508,18 +540,16 @@ class ColumnsView implements NodeView {
   contentDOM: HTMLElement;
   constructor(private node: PMNode) {
     this.dom = document.createElement('div');
-    this.dom.className = 'pm-columns flex';
+    this.dom.className = 'pm-columns grid';
     this.contentDOM = this.dom;
     this.render();
   }
+  /** الأوزان شبكةٌ على عنصر الصفّ نفسه — لا أنماطٌ على أعمدةٍ يملك المحرّرُ عناصرها فيقرؤها تغييرًا. */
   private render() {
     this.dom.style.gap = `${(this.node.attrs.gap as number | null) ?? 16}px`;
     const widths = (this.node.attrs.widths as number[] | null) ?? [];
-    requestAnimationFrame(() => {
-      Array.from(this.dom.children).forEach((c, i) => {
-        (c as HTMLElement).style.flex = `${widths[i] ?? 1} 1 0`;
-      });
-    });
+    const n = this.node.childCount || 1;
+    this.dom.style.gridTemplateColumns = Array.from({ length: n }, (_, i) => `minmax(0, ${widths[i] ?? 1}fr)`).join(' ');
   }
   update(node: PMNode) {
     if (node.type !== this.node.type) return false;
@@ -527,8 +557,10 @@ class ColumnsView implements NodeView {
     this.render();
     return true;
   }
+  // سمات العمودين (الفجوة والأوزان) يضعها العرض نفسه: لو قُرئت تغييرًا من الكاتب لأعاد المحرّر
+  // قراءة الصفّ كلّه — فتدخل خطوةٌ وهمية التراجعَ، وتلتصق بالخانة علامةُ حجمٍ لم يضعها أحد.
   ignoreMutation(m: { type: string; target: Node }) {
-    return m.type === 'attributes' && m.target !== this.dom;
+    return m.type === 'attributes';
   }
 }
 
@@ -557,8 +589,8 @@ class GroupView implements NodeView {
     this.render();
     return true;
   }
-  ignoreMutation(m: { target: Node }) {
-    return this.tag.contains(m.target);
+  ignoreMutation(m: { type: string; target: Node }) {
+    return m.type === 'attributes' || this.tag.contains(m.target);
   }
 }
 
@@ -582,24 +614,45 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const [pages, setPages] = useState(1);
   const [customMargins, setCustomMargins] = useState(false);
 
+  const [trying, setTrying] = useState(false);
+  const shownValues = useMemo(() => (trying ? trialValues(doc.fields, values) : values), [trying, doc.fields, values]);
   const labelOf = useCallback(
     (key: string) => {
-      const value = values?.[key]?.trim();
+      // خيار التذكير والتأنيث: بالجنس إن عُرف، وبالخيارين معًا إن لم يُعرف.
+      if (isChoiceKey(key)) {
+        const g = shownValues?.[GENDER_KEY];
+        return g ? `=${pickChoice(key, g)}` : pickChoice(key, undefined);
+      }
+      const value = shownValues?.[key]?.trim();
       return value ? `=${value}` : doc.fields.find((f) => f.key === key)?.label || key;
     },
-    [doc.fields, values]
+    [doc.fields, shownValues]
   );
+  /** ما يُعلَّم على الورقة في «جرّب باسمٍ آخر»: المذكّر الباقي نصًّا، وقيم الخانات المكتوبة نصًّا. */
+  const wrongRef = useRef<string[]>([]);
+  wrongRef.current = trying
+    ? [
+        ...wrongGenderWords('أنثى'),
+        ...doc.fields.filter((f) => !isChoiceKey(f.key) && f.label.trim().split(/\s+/).length >= 2).map((f) => f.label.trim())
+      ]
+    : [];
   const labelRef = useRef(labelOf);
   labelRef.current = labelOf;
 
   /** ما في المحرّر إلى الوثيقة — والحقول تتبع ما على الورقة. */
+  /**
+   * كلّ خانةٍ عُرفت في هذه الجلسة بوصفها: التراجع يرفع الخانة من الورقة فتسقط من القائمة،
+   * والإعادة تردّها — فتعود باسمها ودورها لا مفتاحًا عاريًا.
+   */
+  const fieldMemory = useRef(new Map<string, DocField>());
   const emit = useCallback((pm: PMNode) => {
     const blocks = pmBlocks(pm);
     ownBlocks.current = blocks;
     const base = docRef.current;
+    for (const f of [...base.fields, ...pendingFields.current]) fieldMemory.current.set(f.key, f);
     const withPending = { ...base, blocks, fields: [...base.fields, ...pendingFields.current.filter((f) => !base.fields.some((x) => x.key === f.key))] };
     pendingFields.current = [];
-    const next: Doc = { ...withPending, fields: reconcileFields(withPending) };
+    const next: Doc = { ...withPending, fields: reconcileFields(withPending, (key) => fieldMemory.current.get(key) ?? {}) };
     docRef.current = next;
     onChangeRef.current(next);
   }, []);
@@ -692,7 +745,18 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     const view = new EditorView(mountRef.current, {
       state: EditorState.create({
         doc: blocksToPm(docRef.current.blocks),
-        plugins: [history({ depth: 200 }), keys, keymap(baseKeymap), gapCursor(), tableEditing(), uniqueIds, placeholder, caretAfterPaste, pageFlowPlugin()]
+        plugins: [
+          history({ depth: 200 }),
+          keys,
+          keymap(baseKeymap),
+          gapCursor(),
+          tableEditing(),
+          uniqueIds,
+          placeholder,
+          caretAfterPaste,
+          pageFlowPlugin(),
+          new Plugin({ props: { decorations: (state) => markWords(state.doc, wrongRef.current) } })
+        ]
       }),
       nodeViews: nodeViews(),
       attributes: { class: 'pm-page outline-none', dir: 'rtl', 'data-page-editor': '' },
@@ -740,9 +804,24 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   // قيم الحقول وأسماؤها تتغيّر بلا أن تتغيّر الورقة — فتُعاد رسم الصناديق. وبالبصمة لا
   // بالمرجع: قائمة الحقول تُبنى من جديد مع كلّ حرف، وإعادة الرسم مع كلّ حرف تُربك الكتابة.
   const labelSig = useMemo(
-    () => JSON.stringify([doc.fields.map((f) => [f.key, f.label]), values ?? {}]),
-    [doc.fields, values]
+    () => JSON.stringify([doc.fields.map((f) => [f.key, f.label]), shownValues ?? {}]),
+    [doc.fields, shownValues]
   );
+  // والعلامات الحمراء تُرسم حين يُجرَّب الاسم الآخر وتُمحى حين يُترك.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (view) view.dispatch(view.state.tr.setMeta('trial', trying));
+  }, [trying]);
+
+  /** اقتراحاتٌ قُبلت: الوثيقة كلّها خطوةً واحدة في المحرّر — يتراجع عنها Ctrl+Z. */
+  const applyDoc = (next: Doc) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const known = new Set(docRef.current.fields.map((f) => f.key));
+    pendingFields.current.push(...next.fields.filter((f) => !known.has(f.key)));
+    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, blocksToPm(next.blocks).content));
+    view.focus();
+  };
   const firstSig = useRef(labelSig);
   useEffect(() => {
     if (labelSig === firstSig.current) return;
@@ -900,7 +979,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
 
   return (
     <div className="flex gap-space-md h-full min-h-0">
-      <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="" data-editor="v2">
+      <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="" data-editor="v2" data-undo-depth={state ? undoDepth(state) : 0}>
         {/* الأدوات وشريط الورقة معًا في أعلى الشاشة، والورقة تمرّ تحتهما. */}
         <div className="sticky top-0 z-10">
           <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
@@ -1234,7 +1313,12 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
       </div>
 
       {aside === undefined ? (
-        <FieldPanel doc={doc} onChange={onChange} onInsert={(key) => apiRef?.current?.insertField(key) ?? insertFieldFallback(viewRef.current, key)} />
+        <FieldPanel
+          doc={doc}
+          top={<FieldHints doc={doc} trying={trying} onApply={applyDoc} onTry={setTrying} />}
+          onChange={onChange}
+          onInsert={(key) => apiRef?.current?.insertField(key) ?? insertFieldFallback(viewRef.current, key)}
+        />
       ) : (
         aside
       )}
