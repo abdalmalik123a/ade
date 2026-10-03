@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { formatDateIn, formatGregorian, formatHijri, fromIsoDate } from '../src/shared/dates';
-import { emptyDoc, fieldRef, isDateField, makeField, normalizeDoc, paragraph, type Doc } from '../src/shared/doc';
+import { emptyDoc, fieldRef, isDateField, keepTogetherFrom, makeField, newUuid, normalizeDoc, paragraph, run, type Block, type Doc } from '../src/shared/doc';
 import { pageCss, renderDocHtml } from '../src/shared/docHtml';
 import { makeTable } from '../src/shared/docEdit';
 
@@ -52,6 +52,39 @@ describe('الجدول الطويل بين الصفحات', () => {
 
   it('والصفّ لا يُشطر بين صفحتين', () => {
     expect(renderDocHtml(withTable(true), {})).toContain('<tr style="break-inside:avoid">');
+  });
+});
+
+describe('التوقيع لا يبدأ صفحةً وحده', () => {
+  const long = (t: string) => paragraph([run(`${t} — يرجى التفضل بالاطلاع واتخاذ ما يلزم بشأن الطلب المقدّم إليكم`)]);
+  const line = (t: string) => paragraph([run(t)]);
+
+  it('الخاتمة («مع التقدير» والمنصب والختم) وآخر فقرةٍ قبلها كتلةٌ واحدة', () => {
+    const blocks: Block[] = [long('أولًا'), long('ثانيًا'), line('مع التقدير.'), paragraph([]), line('مدير المدرسة'), { id: newUuid(), kind: 'image', src: 's.png', width: 80, align: 'left' }];
+    expect(keepTogetherFrom(blocks)).toBe(1);
+  });
+
+  it('وصفّ التوقيعين جنبًا إلى جنب من الخاتمة', () => {
+    const sign: Block = { id: newUuid(), kind: 'columns', columns: [[line('المدير')], [line('المعاون')]] };
+    expect(keepTogetherFrom([long('أ'), long('ب'), sign])).toBe(1);
+  });
+
+  it('ولا خاتمة لورقةٍ تنتهي بفقرةٍ طويلة، ولا لما بعد فاصل صفحة', () => {
+    expect(keepTogetherFrom([long('أ'), long('ب')])).toBe(-1);
+    expect(keepTogetherFrom([long('أ'), { id: newUuid(), kind: 'pageBreak' }, line('مع التقدير.')])).toBe(-1);
+    expect(keepTogetherFrom([long('أ'), paragraph([]), paragraph([])])).toBe(-1);
+  });
+
+  it('والطباعة تضمّها في كتلةٍ لا تُشطر — والمتن قبلها كما هو', () => {
+    const doc = { ...emptyDoc(), blocks: [long('أولًا'), long('ثانيًا'), line('مع التقدير.'), line('مدير المدرسة')] };
+    const html = renderDocHtml(doc, {}, { paragraphs: 'blocks' });
+    const keep = html.indexOf('<div data-keep="" style="break-inside:avoid">');
+    expect(keep).toBeGreaterThan(0);
+    expect(html.slice(0, keep)).toContain('أولًا');
+    expect(html.slice(keep)).toContain('ثانيًا');
+    expect(html.slice(keep)).toContain('مدير المدرسة');
+    // وفي ظلّ البحث النصّي لا كتل
+    expect(renderDocHtml(doc)).not.toContain('data-keep');
   });
 });
 

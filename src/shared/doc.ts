@@ -813,3 +813,32 @@ export function paginate(
   flush();
   return pages;
 }
+
+/**
+ * التواقيع لا تبدأ صفحةً وحدها (قرار ٣ تشرين الأول، ن١٩): من أين تبدأ خاتمة الورقة التي
+ * لا تُشطر — وإلا -1.
+ *
+ * الخاتمة ما في آخر الورقة من أسطرٍ قصيرة («مع التقدير»، المنصب والاسم) وصفوفٍ (توقيعان
+ * جنبًا إلى جنب) وصورٍ (ختمٌ أو توقيع) — ومعها آخر فقرةٍ من المتن قبلها، فلا ينزل التوقيع
+ * إلى صفحةٍ ليس فيها من الكتاب شيء. ويُطبع هذا كتلةً واحدة (`docHtml`)، ويعرضه المحرّر
+ * كذلك (`pageFlow`).
+ */
+export function keepTogetherFrom(blocks: Block[]): number {
+  const SHORT = 40;
+  const MAX_TAIL = 12;
+  const textLength = (b: ParagraphBlock) =>
+    b.inlines.reduce((n, i) => n + (i.kind === 'run' ? i.text.trim().length : i.kind === 'field' ? 10 : 0), 0);
+  let i = blocks.length;
+  let content = false;
+  while (i > 0 && blocks.length - i < MAX_TAIL) {
+    const b = blocks[i - 1]!;
+    if (b.kind === 'paragraph' && textLength(b) <= SHORT) {
+      if (textLength(b) > 0) content = true;
+    } else if (b.kind === 'columns' || b.kind === 'image') content = true;
+    else if (b.kind !== 'spacer') break;
+    i -= 1;
+  }
+  const body = blocks[i - 1];
+  if (!content || i === blocks.length || !body || body.kind !== 'paragraph') return -1;
+  return i - 1;
+}

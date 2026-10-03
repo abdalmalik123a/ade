@@ -17,6 +17,8 @@
  * كاملة يمتدّ عبر الحدّ على الشاشة — والطابعة تقسمه.
  */
 import type { Node as PMNode } from 'prosemirror-model';
+import { keepTogetherFrom } from '@shared/doc';
+import { pmBlocks } from '@shared/docPm';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
 
@@ -81,8 +83,11 @@ export function pageFlowPlugin(): Plugin<FlowState> {
 
 // ── المحاكاة ─────────────────────────────────────────────────────────────
 
-/** ما يُوزَّع على الصفحات بترتيبه: أسطرٌ تُقسم، أو كتلةٌ تنزل كاملة. و`forced` بعد فاصلٍ صريح. */
-type FlowUnit<R> = { kind: 'lines' | 'atom'; el: HTMLElement; forced: boolean; ref: R };
+/**
+ * ما يُوزَّع على الصفحات بترتيبه: أسطرٌ تُقسم، أو كتلةٌ تنزل كاملة. و`forced` بعد فاصلٍ صريح،
+ * و`last` آخر عنصرٍ في كتلةٍ من عدّة عناصر (خاتمة الورقة).
+ */
+type FlowUnit<R> = { kind: 'lines' | 'atom'; el: HTMLElement; last?: HTMLElement; forced: boolean; ref: R };
 
 /** فاصلٌ محسوب: قبل الوحدة كلّها (`line` صفر) أو قبل سطرٍ منها. */
 type FlowBreak<R> = { unit: FlowUnit<R>; line: number; glyphTop: number; height: number };
@@ -157,9 +162,9 @@ function simulate<R>(
 
   for (const u of units) {
     const r = u.el.getBoundingClientRect();
-    if (!r.height && u.kind === 'atom') continue;
+    if (!r.height && u.kind === 'atom' && !u.last) continue;
     const top = flat(Y(r.top));
-    const bottom = flat(Y(r.bottom));
+    const bottom = flat(Y((u.last ?? u.el).getBoundingClientRect().bottom));
     if (u.forced && !firstOnPage(top)) breakAt(u, 0, top, top);
     if (bottom + shift <= endR(page) + 0.5) continue;
 
@@ -203,11 +208,14 @@ function simulate<R>(
 
 type PmRef = { pos: number; node: PMNode };
 
-/** وحدات المحرّر من الوثيقة: فقرةٌ تُقسم أسطرًا، وكتلةٌ تنزل كاملة، وما بعد الفاصل الصريح. */
+/**
+ * وحدات المحرّر من الوثيقة: فقرةٌ تُقسم أسطرًا، وكتلةٌ تنزل كاملة، وما بعد الفاصل الصريح —
+ * وخاتمة الورقة مع آخر فقرةٍ قبلها كتلةٌ واحدة، كما تُطبع (`keepTogetherFrom`).
+ */
 function pmUnits(view: EditorView): FlowUnit<PmRef>[] {
   const out: FlowUnit<PmRef>[] = [];
   let forced = false;
-  view.state.doc.descendants((node, pos) => {
+  const visit = (node: PMNode, pos: number): boolean => {
     const name = node.type.name;
     if (name === 'list' || name === 'list_item' || name === 'group') return true;
     if (name === 'page_break') {
@@ -220,6 +228,21 @@ function pmUnits(view: EditorView): FlowUnit<PmRef>[] {
       forced = false;
     }
     return false;
+  };
+  const doc = view.state.doc;
+  const keep = keepTogetherFrom(pmBlocks(doc));
+  doc.forEach((node, pos, index) => {
+    if (keep >= 0 && index >= keep) {
+      if (index !== keep) return;
+      const el = view.nodeDOM(pos);
+      const last = view.nodeDOM(doc.content.size - doc.lastChild!.nodeSize);
+      if (el instanceof HTMLElement && last instanceof HTMLElement) {
+        out.push({ kind: 'atom', el, last, forced, ref: { pos, node } });
+        forced = false;
+      }
+      return;
+    }
+    if (visit(node, pos)) node.descendants((child, at) => visit(child, pos + 1 + at));
   });
   return out;
 }

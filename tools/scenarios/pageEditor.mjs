@@ -10,7 +10,7 @@
  * الكتب: لا سطر في هامشٍ ولا في الفجوة بين ورقتين، وعدد صفحاته على الشاشة هو عدد صفحات
  * ملف PDF الذي يخرج من محرّك الطباعة نفسه.
  */
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 
@@ -299,6 +299,54 @@ export default async function scenario(page, { profile, shotsDir }) {
     const printed = (raw.match(/\/Type\s*\/Page(?!s)/g) ?? []).length;
     ok(`وصفحاته في الطباعة (${printed}) كصفحاته على الشاشة (${total})`, printed === total);
   }
+
+  // ── التوقيع لا يبدأ صفحةً وحده ─────────────────────────────────────
+  // متنٌ بأسطرٍ كاملة (أطول من الخاتمة، وكلٌّ في سطرٍ واحد) حتى يبقى من الصفحة الأولى أقلّ من
+  // سطرين، ثم خاتمةٌ بسطرين: لا تسعها الصفحة — فتنزل ومعها آخر فقرةٍ من المتن.
+  const BODY = 'يرجى التفضل بالاطلاع واتخاذ ما يلزم بشأن الطلب المقدّم من المذكور';
+  await page.eval(`document.querySelector('${ed} [data-page-editor]').focus(); return true;`);
+  await page.key('KeyA', { ctrl: true });
+  await page.send('Input.insertText', { text: BODY });
+  /** ما بقي من متن الورقة الأولى تحت آخر فقرة، بالبكسل. */
+  const room = () =>
+    page.eval(`
+      const root = document.querySelector('${ed} [data-paper]');
+      const scale = root.getBoundingClientRect().width / root.offsetWidth || 1;
+      const pad = parseFloat(getComputedStyle(root).paddingTop) * scale;
+      const sheet = root.querySelector('[data-sheet="1"]').getBoundingClientRect();
+      const ps = [...root.querySelectorAll('[data-page-editor] > p')];
+      return (sheet.bottom - pad - ps[ps.length - 1].getBoundingClientRect().bottom) / scale;
+    `);
+  await wait(400);
+  for (let i = 0; i < 60 && (await room()) >= 60; i++) {
+    await page.key('Enter');
+    await page.send('Input.insertText', { text: BODY });
+    await wait(120);
+  }
+  const left = await room();
+  await page.key('Enter');
+  await page.send('Input.insertText', { text: 'مع التقدير.' });
+  await page.key('Enter');
+  await page.send('Input.insertText', { text: 'مدير المدرسة' });
+  await wait(900);
+  const sheetsOf = () =>
+    page.eval(`
+      const root = document.querySelector('${ed} [data-paper]');
+      const sheets = [...root.querySelectorAll('[data-sheet]')].map((s) => s.getBoundingClientRect());
+      const ps = [...root.querySelectorAll('[data-page-editor] > p')];
+      const on = (p) => sheets.findIndex((s) => p.getBoundingClientRect().top >= s.top && p.getBoundingClientRect().top < s.bottom) + 1;
+      return { lastBody: on(ps[ps.length - 3]), sign: on(ps[ps.length - 1]), count: sheets.length };
+    `);
+  const where = await sheetsOf();
+  ok(`بقي من الأولى أقلّ من سطرين (${Math.round(left)} بكسل)`, left > 0 && left < 64);
+  ok('والتوقيع في صفحة آخر فقرةٍ من المتن لا وحده', where.sign === 2 && where.lastBody === 2 && where.count === 2);
+  if (shotsDir) await page.shot(join(shotsDir, 'page-editor-sign.png'));
+  for (const f of readdirSync(saveDir)) rmSync(join(saveDir, f));
+  await page.eval(`document.querySelector('[data-act="export-pdf"]').click(); return true;`);
+  await wait(3500);
+  const signPdf = readdirSync(saveDir).filter((f) => f.toLowerCase().endsWith('.pdf'));
+  const signPages = signPdf.length === 1 ? (readFileSync(join(saveDir, signPdf[0]), 'latin1').match(/\/Type\s*\/Page(?!s)/g) ?? []).length : 0;
+  ok(`وفي الطباعة صفحتان كما على الشاشة (${signPages})`, signPages === 2);
 
   return steps.join('\n');
 }

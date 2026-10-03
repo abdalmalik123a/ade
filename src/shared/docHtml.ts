@@ -6,6 +6,7 @@
  */
 import {
   walkBlocks,
+  keepTogetherFrom,
   type Block,
   type Doc,
   type DocField,
@@ -335,7 +336,11 @@ export function renderDocHtml(
   };
   const fields = new Map(doc.fields.map((f) => [f.key, f]));
   const parts = doc.blocks.map((b) => renderBlock(b, values, fields, opts));
-  return opts.paragraphs === 'lines' ? parts.join('<br/>') : parts.join('');
+  if (opts.paragraphs === 'lines') return parts.join('<br/>');
+  // الخاتمة وآخر فقرةٍ قبلها كتلةٌ لا تُشطر: التوقيع لا يبدأ صفحةً وحده (`keepTogetherFrom`).
+  const keep = keepTogetherFrom(doc.blocks);
+  if (keep < 0) return parts.join('');
+  return parts.slice(0, keep).join('') + `<div data-keep="" style="break-inside:avoid">${parts.slice(keep).join('')}</div>`;
 }
 
 /**
