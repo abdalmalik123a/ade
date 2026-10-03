@@ -843,7 +843,8 @@ function pageSetupFrom(sect: XNode | undefined): { setup: PageSetup; widthTw: nu
   const short = Math.min(w, h);
   return {
     setup: {
-      size: Math.abs(short - 8391) < 300 ? 'A5' : 'A4',
+      // والفولسكاب بطوله: ١٣ إنشًا (١٨٧٢٠) أو ٣٣ سم (١٨٧٠٩).
+      size: Math.abs(short - 8391) < 300 ? 'A5' : Math.abs(Math.max(w, h) - 18720) < 400 ? 'FS' : 'A4',
       orientation: w > h ? 'landscape' : 'portrait',
       margins,
       // الرأس جزءٌ من الورقة هنا — فلا ترويسة تُطبع فوقه.

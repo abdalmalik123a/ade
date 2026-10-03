@@ -203,7 +203,9 @@ describe('الكتل التي عجز عنها النصّ الواحد', () => {
     expect(html).toContain('<th');
     expect(html).toContain('الدرجة');
     expect(html).toContain('٨٥');
-    expect(html).toContain('page-break-inside:auto');
+    // جدولٌ يسعه صفحةٌ ينزل كاملًا كما يريه المحرّر (pageFlow)، وصفّه لا يُشطر.
+    expect(html).toContain('break-inside:avoid;page-break-inside:avoid');
+    expect(html).toContain('<tr style="break-inside:avoid">');
   });
 
   it('خليّة الجدول تحمل حقلًا — وهو ما عجز عنه الوسم النصّي', () => {

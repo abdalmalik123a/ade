@@ -35,6 +35,7 @@ import AddressingPicker from '../components/AddressingPicker';
 import DateTools from '../components/DateTools';
 import DocEditor, { type DocEditorApi } from '../components/DocEditor';
 import PageEditor from '../components/PageEditor';
+import { printedPages } from '../components/pageFlow';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterSheet, { gapAfter } from '../components/LetterSheet';
@@ -365,12 +366,20 @@ function EditorScreen(
     const pagePx = page.h * MM_PX;
     const head = sheet.querySelector<HTMLElement>('[data-letterhead]');
     const body = sheet.querySelector<HTMLElement>('[data-body]');
-    const top = sheet.getBoundingClientRect().top;
-    const bottom = body ? body.getBoundingClientRect().bottom - top : 0;
-    const printable = (page.h - m.top - m.bottom) * MM_PX;
+    // الصفحات بمحاكاة الطابعة نفسها التي يعرض بها المحرّر صفحاته (`pageFlow.ts`) — لا بقسمة
+    // الارتفاع: تلك لا ترى فاصل الصفحة ولا السطر الذي ينزل وحده.
+    const bottomMm = doc.pageSetup.pageNumbers ? Math.max(m.bottom, 14) : m.bottom;
     setMeasure({
       headRatio: head ? head.getBoundingClientRect().height / pagePx : null,
-      pages: printable > 0 ? Math.max(1, Math.ceil((bottom - m.top * MM_PX) / printable)) : null
+      pages: body
+        ? printedPages(sheet, body, {
+            pageW: page.w * MM_PX,
+            pageH: pagePx,
+            top: m.top * MM_PX,
+            bottom: bottomMm * MM_PX,
+            head: doc.pageSetup.repeatLetterhead ? head : null
+          })
+        : null
     });
   }, [doc, shown, layout, registry]);
 

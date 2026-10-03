@@ -214,7 +214,9 @@ function renderBlock(
       const [first, ...rest] = block.rows;
       const head = block.header && first ? `<thead>${row(first, 'th')}</thead>` : '';
       const body = (head ? rest : block.rows).map((r) => row(r, 'td')).join('');
-      return `<table${dir} style="width:100%;border-collapse:collapse;page-break-inside:auto"><colgroup>${cols}</colgroup>${head}<tbody>${body}</tbody></table>`;
+      // جدولٌ يسعه صفحةٌ ينزل كاملًا إلى التالية ولا يُشطر — كما يريه المحرّر (`pageFlow.ts`)؛
+      // وما طال عن صفحةٍ تقسمه الطابعة صفوفًا ويتكرّر رأسه.
+      return `<table${dir} style="width:100%;border-collapse:collapse;break-inside:avoid;page-break-inside:avoid"><colgroup>${cols}</colgroup>${head}<tbody>${body}</tbody></table>`;
     }
 
     case 'image': {
@@ -223,14 +225,14 @@ function renderBlock(
       const align = block.align === 'justify' ? 'center' : block.align;
       const src = block.src ? `diwan://store/${escapeHtml(block.src)}` : '';
       const height = block.height ? `height:${block.height}px;` : '';
-      return `<div style="text-align:${align}"><img alt="" src="${src}" style="display:inline-block;width:${block.width}px;${height}max-width:100%"/></div>`;
+      return `<div style="text-align:${align};break-inside:avoid"><img alt="" src="${src}" style="display:inline-block;width:${block.width}px;${height}max-width:100%"/></div>`;
     }
 
     case 'spacer':
       // مساحة الإجابة: سطورٌ منقّطة يكتب عليها الطالب.
       return block.lines
-        ? `<div style="height:${block.height}px;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,currentColor 27px,currentColor 28px);opacity:.45"></div>`
-        : `<div style="height:${block.height}px"></div>`;
+        ? `<div style="height:${block.height}px;break-inside:avoid;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,currentColor 27px,currentColor 28px);opacity:.45"></div>`
+        : `<div style="height:${block.height}px;break-inside:avoid"></div>`;
 
     case 'columns': {
       // عمودان لا يتدفّقان: كل عمود كتلُه، ولا ينسكب شيء إلى صفحة تالية.
@@ -312,7 +314,8 @@ function renderItems(
     .join('');
 
   const pad = depth === 0 ? 0 : 18;
-  return `<div${dir} style="padding-inline-start:${pad}px">${body}</div>`;
+  // `data-flow`: أسطرٌ تقسمها الطابعة لا كتلةٌ تنزل كاملة — به يعدّ `pageFlow.ts` الصفحات.
+  return `<div${dir} data-flow="lines" style="padding-inline-start:${pad}px">${body}</div>`;
 }
 
 export function renderDocHtml(

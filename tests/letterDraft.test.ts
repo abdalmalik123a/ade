@@ -86,7 +86,7 @@ describe('قائمة التحقّق قبل الإصدار', () => {
     const info = checks.filter((c) => c.level === 'info').map((c) => c.text).join(' | ');
     expect(info).toContain('فراغًا منقوطًا');
     expect(info).toContain('العدد فارغ');
-    expect(info).toContain('2 صفحات');
+    expect(info).toContain('الكتاب في صفحتين');
   });
 
   it('ينبّه إلى كتابٍ ختم بخاتمته بلا اسم موقّع — ولا يحكم على ما لا خاتمة له', () => {

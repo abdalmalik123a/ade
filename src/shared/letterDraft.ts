@@ -212,6 +212,9 @@ export function letterChecks(input: {
         : { level: 'info', text: `الترويسة تشغل ${pct}٪ من الورقة` }
     );
   }
-  if (input.pages !== null && input.pages > 1) checks.push({ level: 'info', text: `الكتاب في ${input.pages} صفحات` });
+  if (input.pages !== null && input.pages > 1) {
+    const n = input.pages;
+    checks.push({ level: 'info', text: `الكتاب في ${n === 2 ? 'صفحتين' : n <= 10 ? `${n} صفحات` : `${n} صفحة`}` });
+  }
   return checks;
 }

@@ -5,7 +5,12 @@
  * ويُكتب في المصمّم ثلاث فقرات بلوحة المفاتيح، ثم يُحدَّد الكلّ بـCtrl+A ويُنسَّق مرّةً واحدة —
  * حجمًا وعريضًا وتوسيطًا — ويُظلَّل مدًى يعبر فقرتين فيُمال، ويُصنع حقلٌ بـF4، ويُدرج فاصل
  * صفحة بـCtrl+Enter. ثم يُحفظ النموذج ويُفتَّش في القاعدة: كلّ ما رُئي محفوظ، والمعرّفات فريدة.
+ *
+ * والصفحات كما تُطبع: شريط الورقة (المقاس والاتجاه والهوامش بدرجاتها)، ثم كتابٌ طويل في محرّر
+ * الكتب: لا سطر في هامشٍ ولا في الفجوة بين ورقتين، وعدد صفحاته على الشاشة هو عدد صفحات
+ * ملف PDF الذي يخرج من محرّك الطباعة نفسه.
  */
+import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 
@@ -156,6 +161,36 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وCtrl+Y يعيدها', (await page.eval(`return document.querySelector('[data-page-editor]').textContent;`)).includes('الصفحة الثانية'));
   if (shotsDir) await page.shot(join(shotsDir, 'page-editor-break.png'));
 
+  // ── شريط الورقة ────────────────────────────────────────────────────
+  const paperBox = () =>
+    page.eval(`
+      const p = document.querySelector('[data-paper]');
+      const mm = 96 / 25.4;
+      return {
+        w: Math.round(p.offsetWidth / mm),
+        top: Math.round(parseFloat(getComputedStyle(p).paddingTop) / mm),
+        sheetH: Math.round(document.querySelector('[data-sheet]').offsetHeight / mm)
+      };
+    `);
+  let box = await paperBox();
+  ok('الورقة A4 عمودية بهامشٍ متوسّط', box.w === 210 && box.top === 20 && box.sheetH === 297);
+  await click('[data-act="landscape"]');
+  await wait(400);
+  box = await paperBox();
+  ok('«أفقية» تقلبها: عرضها ٢٩٧', box.w === 297 && box.sheetH === 210);
+  await click('[data-act="portrait"]');
+  await wait(200);
+  await click('[data-margins="narrow"]');
+  await wait(300);
+  ok('«ضيّقة» تجعل الهامش ١٢ ملم', (await paperBox()).top === 12);
+  await choose('[data-act="page-size"]', 'FS');
+  await wait(300);
+  box = await paperBox();
+  ok('والفولسكاب بطوله ٣٣٠', box.w === 216 && box.sheetH === 330);
+  await click('[data-margins="custom"]');
+  await wait(200);
+  ok('و«مخصّصة» تفتح أرقام الجوانب الأربعة', (await page.eval(`return document.querySelectorAll('[data-margin]').length;`)) === 4);
+
   // ── الحفظ ثم القاعدة ───────────────────────────────────────────────
   await page.clickText('حفظ النموذج');
   await wait(1800);
@@ -180,6 +215,71 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('والمعرّفات فريدة — لا فقرتان بمعرّفٍ واحد بعد Enter', ids.length === new Set(ids).size && blocks.every((b) => b.id));
   ok('وظلّه النصّي للبحث', (row?.body ?? '').includes('أقرّ أنا الموقّع'));
   ok('ولا نصّ ضاع', runs.map((r) => r.text).join('').includes('وأتحمّل التبعات القانونية'));
+  ok('وضبط الورقة محفوظ: فولسكاب بهامشٍ ضيّق', doc?.pageSetup?.size === 'FS' && doc?.pageSetup?.margins?.top === 12);
+
+  // ── كتابٌ طويل: الصفحات كما تُطبع ─────────────────────────────────
+  await page.goto('smart-editor-a4-preview');
+  await wait(1200);
+  await page.eval(`document.querySelector('[data-view="edit"]')?.click(); return true;`);
+  await wait(600);
+  const ed = '[data-screen="editor"]';
+  ok('محرّر الكتب بالمحرّر الجديد', await page.eval(`return Boolean(document.querySelector('${ed} [data-page-editor]'));`));
+  await page.eval(`document.querySelector('${ed} [data-page-editor]').focus(); return true;`);
+  await wait(200);
+  for (let i = 1; i <= 34; i++) {
+    await page.send('Input.insertText', {
+      text: `البند ${i}: يلتزم الطرفان بما ورد في هذه الاتفاقية من شروطٍ وأحكام، ولا يجوز لأيٍّ منهما الإخلال بها أو تعديلها إلا باتفاقٍ مكتوب.`
+    });
+    await page.key('Enter');
+  }
+  await wait(900);
+  const pagesNow = () => page.eval(`return Number(document.querySelector('${ed} [data-page-count]')?.dataset.pageCount ?? 0);`);
+  const flowed = await pagesNow();
+  ok(`الكتاب الطويل صار صفحاتٍ على الشاشة (${flowed})`, flowed >= 2);
+
+  /** أسطرٌ خارج متن كلّ ورقة — في هامشها أو في الفجوة بين ورقتين. والهامشان متساويان هنا (٢٠). */
+  const outside = () =>
+    page.eval(`
+      const root = document.querySelector('${ed} [data-paper]');
+      const scale = root.getBoundingClientRect().width / root.offsetWidth || 1;
+      const pad = parseFloat(getComputedStyle(root).paddingTop) * scale;
+      const sheets = [...root.querySelectorAll('[data-sheet]')].map((s) => s.getBoundingClientRect());
+      const r = document.createRange();
+      const walker = document.createTreeWalker(root.querySelector('[data-page-editor]'), NodeFilter.SHOW_TEXT);
+      let bad = 0;
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        r.selectNodeContents(n);
+        for (const rect of r.getClientRects()) {
+          if (!rect.height) continue;
+          if (!sheets.some((s) => rect.top >= s.top + pad - 1 && rect.bottom <= s.bottom - pad + 1)) bad++;
+        }
+      }
+      return bad;
+    `);
+  ok('لا سطر في هامشٍ ولا بين ورقتين', (await outside()) === 0);
+
+  // Ctrl+Enter في آخره: صفحةٌ جديدة لما بعده.
+  await page.key('Enter', { ctrl: true });
+  await page.send('Input.insertText', { text: 'وحُرّرت هذه الاتفاقية من نسختين.' });
+  await wait(900);
+  const total = await pagesNow();
+  ok('وفاصل الصفحة يزيدها صفحة', total === flowed + 1);
+  ok('وما بعد الفاصل في أعلى ورقته', (await outside()) === 0);
+  if (shotsDir) await page.shot(join(shotsDir, 'page-editor-pages.png'));
+  ok('وقائمة «قبل الإصدار» تقول العدد نفسه', (await page.text()).includes(`الكتاب في ${total} صفحات`));
+
+  // ── PDF من محرّك الطباعة: عدد صفحاته عدد صفحات الشاشة ─────────────
+  const saveDir = process.env.DIWAN_TEST_SAVE_DIR;
+  if (saveDir) mkdirSync(saveDir, { recursive: true });
+  await page.eval(`document.querySelector('[data-act="export-pdf"]').click(); return true;`);
+  await wait(3500);
+  const pdfs = saveDir ? readdirSync(saveDir).filter((f) => f.toLowerCase().endsWith('.pdf')) : [];
+  ok('حُفظ الكتاب PDF', pdfs.length === 1);
+  if (pdfs.length === 1) {
+    const raw = readFileSync(join(saveDir, pdfs[0]), 'latin1');
+    const printed = (raw.match(/\/Type\s*\/Page(?!s)/g) ?? []).length;
+    ok(`وصفحاته في الطباعة (${printed}) كصفحاته على الشاشة (${total})`, printed === total);
+  }
 
   return steps.join('\n');
 }

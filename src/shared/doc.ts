@@ -266,7 +266,8 @@ export type Block =
 
 // ── الصفحة ───────────────────────────────────────────────────────────
 
-export type PageSize = 'A4' | 'A5';
+/** `FS` الفولسكاب: ٨٫٥×١٣ إنشًا — ورق الدوائر والمحاكم الطويل (حجة الإعالة، الاتفاقيات). */
+export type PageSize = 'A4' | 'A5' | 'FS';
 export type Orientation = 'portrait' | 'landscape';
 /** `reserve` يترك مكان الترويسة فارغًا — لمن يطبع على ورق الدائرة المطبوع. */
 export type LetterheadMode = 'print' | 'reserve' | 'none';
@@ -297,8 +298,31 @@ export type PageSetup = {
 /** مقاسات الورق بالمليمتر. */
 export const PAGE_MM: Record<PageSize, { w: number; h: number }> = {
   A4: { w: 210, h: 297 },
-  A5: { w: 148, h: 210 }
+  A5: { w: 148, h: 210 },
+  FS: { w: 216, h: 330 }
 };
+
+/** أسماء المقاسات كما يقولها المكتب. */
+export const PAGE_NAMES: Record<PageSize, string> = { A4: 'A4', A5: 'A5', FS: 'فولسكاب' };
+
+/**
+ * الهوامش بثلاث درجات (قرار ٣ تشرين الأول): ما يختاره الموظف بكلمة لا بأربعة أرقام.
+ * والأرقام باقيةٌ لمن أرادها («مخصّصة»).
+ */
+export const MARGIN_PRESETS = {
+  narrow: { label: 'ضيّقة', mm: 12 },
+  medium: { label: 'متوسّطة', mm: 20 },
+  wide: { label: 'واسعة', mm: 30 }
+} as const;
+export type MarginPreset = keyof typeof MARGIN_PRESETS;
+
+/** درجة الهوامش إن تساوت جوانبها الأربعة على إحداها — وإلا فهي مخصّصة. */
+export function marginPreset(m: PageSetup['margins']): MarginPreset | null {
+  for (const [k, p] of Object.entries(MARGIN_PRESETS) as [MarginPreset, (typeof MARGIN_PRESETS)[MarginPreset]][]) {
+    if (m.top === p.mm && m.right === p.mm && m.bottom === p.mm && m.left === p.mm) return k;
+  }
+  return null;
+}
 
 export const DEFAULT_PAGE: PageSetup = {
   size: 'A4',
@@ -639,7 +663,7 @@ function normalizePage(raw: unknown): PageSetup {
   if (!isObj(raw)) return base;
   const v = raw as Partial<PageSetup>;
   return {
-    size: v.size === 'A5' ? 'A5' : 'A4',
+    size: v.size === 'A5' || v.size === 'FS' ? v.size : 'A4',
     orientation: v.orientation === 'landscape' ? 'landscape' : 'portrait',
     margins: { ...base.margins, ...(isObj(v.margins) ? (v.margins as PageSetup['margins']) : {}) },
     letterheadMode:

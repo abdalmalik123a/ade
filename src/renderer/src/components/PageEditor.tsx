@@ -37,7 +37,23 @@ import {
 } from 'prosemirror-tables';
 import { liftListItem, sinkListItem, splitListItem, wrapInList } from 'prosemirror-schema-list';
 import { blocksToPm, docSchema, pmBlocks } from '@shared/docPm';
-import { newUuid, pageMm, paragraph, reconcileFields, run, type Align, type Block, type Doc, type DocField } from '@shared/doc';
+import {
+  MARGIN_PRESETS,
+  PAGE_NAMES,
+  marginPreset,
+  newUuid,
+  pageMm,
+  paragraph,
+  reconcileFields,
+  run,
+  type Align,
+  type Block,
+  type Doc,
+  type DocField,
+  type MarginPreset,
+  type PageSetup,
+  type PageSize
+} from '@shared/doc';
 import { watermarkHtml } from '@shared/docHtml';
 import { fieldFromText, makeTable } from '@shared/docEdit';
 import {
@@ -51,6 +67,7 @@ import {
   type DocEditorProps,
   type MenuClip
 } from './DocEditor';
+import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
 
 const S = docSchema;
 const N = S.nodes as Record<string, NonNullable<(typeof S.nodes)[string]>>;
@@ -60,6 +77,16 @@ const M = S.marks as Record<string, MarkType>;
 const FONTS = ['Simplified Arabic', 'Traditional Arabic', 'Sakkal Majalla', 'Arial', 'Times New Roman', 'Tahoma', 'Amiri', 'Cairo', 'IBM Plex Sans Arabic'];
 /** تباعد الأسطر كما في Word: مفرد، و١٫١٥، ونصف، ومزدوج. */
 const LINE_HEIGHTS = [1, 1.15, 1.5, 2, 2.5];
+/** الفجوة بين ورقتين على الشاشة. */
+const SHEET_GAP = 24;
+
+/** «صفحة واحدة»، «صفحتان»، «٣ صفحات» — كما تُقال. */
+function pagesLabel(n: number): string {
+  if (n === 1) return 'صفحة واحدة';
+  if (n === 2) return 'صفحتان';
+  return n <= 10 ? `${n} صفحات` : `${n} صفحة`;
+}
+const indicDigits = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 
 // ── الأوامر ─────────────────────────────────────────────────────────────
 
@@ -509,6 +536,10 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   onChangeRef.current = onChange;
   const [menu, setMenu] = useState(false);
   const [, setTick] = useState(0);
+  const paperRef = useRef<HTMLDivElement | null>(null);
+  const headRef = useRef<HTMLDivElement | null>(null);
+  const [pages, setPages] = useState(1);
+  const [customMargins, setCustomMargins] = useState(false);
 
   const labelOf = useCallback(
     (key: string) => {
@@ -620,7 +651,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     const view = new EditorView(mountRef.current, {
       state: EditorState.create({
         doc: blocksToPm(docRef.current.blocks),
-        plugins: [history({ depth: 200 }), keys, keymap(baseKeymap), gapCursor(), tableEditing(), uniqueIds, placeholder]
+        plugins: [history({ depth: 200 }), keys, keymap(baseKeymap), gapCursor(), tableEditing(), uniqueIds, placeholder, pageFlowPlugin()]
       }),
       nodeViews: nodeViews(),
       attributes: { class: 'pm-page outline-none', dir: 'rtl', 'data-page-editor': '' },
@@ -664,6 +695,60 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     viewRef.current?.setProps({ nodeViews: nodeViews() });
   }, [labelSig, nodeViews]);
 
+  // ── الصفحات ─────────────────────────────────────────────────────────
+  const page = pageMm(doc.pageSetup);
+  const margins = doc.pageSetup.margins;
+  // كما في `pageCss`: الترقيم يحتاج هامشًا سفليًّا لا يقلّ عن ١٤ ملم.
+  const bottomMm = doc.pageSetup.pageNumbers ? Math.max(margins.bottom, 14) : margins.bottom;
+  const repeatHead = doc.pageSetup.repeatLetterhead && Boolean(header);
+  const geo = useRef({ pageW: 0, pageH: 0, top: 0, bottom: 0, repeat: false });
+  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: bottomMm * MM_PX, repeat: repeatHead };
+  const frame = useRef(0);
+
+  /** يقيس الورقة بعد أن تُرسم، ويضع الفواصل حيث تقسمها الطابعة. */
+  const remeasure = useCallback(() => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const view = viewRef.current;
+      const paper = paperRef.current;
+      const mount = mountRef.current;
+      if (!view || !paper || !mount) return;
+      const g = geo.current;
+      const scale = paper.getBoundingClientRect().width / g.pageW || 1;
+      const head = g.repeat && headRef.current ? headRef.current.getBoundingClientRect().height / scale : 0;
+      const { breaks, pages: n } = measurePages(view, paper, mount, { pageW: g.pageW, pageH: g.pageH, gap: SHEET_GAP, top: g.top, bottom: g.bottom, repeatHead: head });
+      setPages(n);
+      if (!sameBreaks(pageFlowKey.getState(view.state)?.breaks ?? [], breaks)) {
+        view.dispatch(view.state.tr.setMeta(pageFlowKey, breaks).setMeta('addToHistory', false));
+      }
+    });
+  }, []);
+
+  // بعد كلّ رسم: كتابةٌ أو تنسيقٌ أو مقاسٌ أو هوامش. والقياس الذي لا يغيّر شيئًا لا يُرسل شيئًا.
+  useEffect(() => {
+    remeasure();
+  });
+  // والخطوط حين تكتمل، وكلّ تغيّرٍ في ارتفاع المتن لم يمرّ بالمحرّر.
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+    const ro = new ResizeObserver(() => remeasure());
+    ro.observe(mount);
+    void document.fonts?.ready.then(() => remeasure());
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(frame.current);
+    };
+  }, [remeasure]);
+
+  /** ضبط الورقة من شريطها — والمتن كما هو. */
+  const setPage = (patch: Partial<PageSetup>) => {
+    const next: Doc = { ...docRef.current, pageSetup: { ...docRef.current.pageSetup, ...patch } };
+    docRef.current = next;
+    onChangeRef.current(next);
+  };
+  const preset = marginPreset(margins);
+
   if (apiRef)
     apiRef.current = {
       insertField: (key) =>
@@ -704,135 +789,256 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const inTable = state ? isInTable(state) : false;
   const selChars = state && !state.selection.empty ? state.doc.textBetween(state.selection.from, state.selection.to, ' ').length : 0;
 
-  const page = pageMm(doc.pageSetup);
+  const pageH = page.h * MM_PX;
+  const stride = pageH + SHEET_GAP;
+  const pageNumber = (n: number) => (doc.pageSetup.numerals === 'indic' ? indicDigits(n) : String(n));
 
   return (
     <div className="flex gap-space-md h-full min-h-0">
       <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="" data-editor="v2">
-        <div className="sticky top-0 z-10 bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
-          <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
-          <Tool act="redo" icon="redo" title="إعادة (Ctrl+Y)" onRun={() => run_(redo)} />
-          <ToolSep />
-          <select
-            aria-label="الخطّ"
-            className="h-8 w-40 rounded-lg bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
-            data-act="font"
-            title="الخطّ — لما حُدِّد، أو لما سيُكتب"
-            value={curFont ?? ''}
-            onChange={(e) => run_(setValueMark(M.font, e.target.value ? { family: e.target.value } : null))}
-          >
-            <option value="">خطّ الورقة</option>
-            {FONTS.map((f) => (
-              <option key={f} value={f} style={{ fontFamily: `'${f}'` }}>
-                {f}
-              </option>
+        {/* الأدوات وشريط الورقة معًا في أعلى الشاشة، والورقة تمرّ تحتهما. */}
+        <div className="sticky top-0 z-10">
+          <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
+            <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
+            <Tool act="redo" icon="redo" title="إعادة (Ctrl+Y)" onRun={() => run_(redo)} />
+            <ToolSep />
+            <select
+              aria-label="الخطّ"
+              className="h-8 w-40 rounded-lg bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
+              data-act="font"
+              title="الخطّ — لما حُدِّد، أو لما سيُكتب"
+              value={curFont ?? ''}
+              onChange={(e) => run_(setValueMark(M.font, e.target.value ? { family: e.target.value } : null))}
+            >
+              <option value="">خطّ الورقة</option>
+              {FONTS.map((f) => (
+                <option key={f} value={f} style={{ fontFamily: `'${f}'` }}>
+                  {f}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="حجم الخطّ"
+              className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
+              data-act="size"
+              title="حجم الخطّ — لما حُدِّد، أو لما سيُكتب"
+              value={String(curSize)}
+              onChange={(e) => {
+                const px = Number(e.target.value);
+                run_(setValueMark(M.size, px === BASE_SIZE ? null : { px }));
+              }}
+            >
+              {[...new Set([...SIZES, curSize])].sort((a, b) => a - b).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <ToolSep />
+            <Tool act="bold" icon="format_bold" title="عريض (Ctrl+B)" active={state ? markActive(state, M.bold) : false} onRun={() => run_(toggleMark(M.bold))} />
+            <Tool act="italic" icon="format_italic" title="مائل (Ctrl+I)" active={state ? markActive(state, M.italic) : false} onRun={() => run_(toggleMark(M.italic))} />
+            <Tool act="underline" icon="format_underlined" title="تحته خطّ (Ctrl+U)" active={state ? markActive(state, M.underline) : false} onRun={() => run_(toggleMark(M.underline))} />
+            <ToolSep />
+            {(
+              [
+                { align: 'right', icon: 'format_align_right', title: 'محاذاة يمين' },
+                { align: 'center', icon: 'format_align_center', title: 'توسيط' },
+                { align: 'left', icon: 'format_align_left', title: 'محاذاة يسار' },
+                { align: 'justify', icon: 'format_align_justify', title: 'ضبط الطرفين' }
+              ] as const
+            ).map((a) => (
+              <Tool key={a.align} act={`align-${a.align}`} icon={a.icon} title={a.title} active={curAlign === a.align} onRun={() => run_(setParagraphAttr('align', a.align))} />
             ))}
-          </select>
-          <select
-            aria-label="حجم الخطّ"
-            className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
-            data-act="size"
-            title="حجم الخطّ — لما حُدِّد، أو لما سيُكتب"
-            value={String(curSize)}
-            onChange={(e) => {
-              const px = Number(e.target.value);
-              run_(setValueMark(M.size, px === BASE_SIZE ? null : { px }));
-            }}
-          >
-            {[...new Set([...SIZES, curSize])].sort((a, b) => a - b).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <ToolSep />
-          <Tool act="bold" icon="format_bold" title="عريض (Ctrl+B)" active={state ? markActive(state, M.bold) : false} onRun={() => run_(toggleMark(M.bold))} />
-          <Tool act="italic" icon="format_italic" title="مائل (Ctrl+I)" active={state ? markActive(state, M.italic) : false} onRun={() => run_(toggleMark(M.italic))} />
-          <Tool act="underline" icon="format_underlined" title="تحته خطّ (Ctrl+U)" active={state ? markActive(state, M.underline) : false} onRun={() => run_(toggleMark(M.underline))} />
-          <ToolSep />
-          {(
-            [
-              { align: 'right', icon: 'format_align_right', title: 'محاذاة يمين' },
-              { align: 'center', icon: 'format_align_center', title: 'توسيط' },
-              { align: 'left', icon: 'format_align_left', title: 'محاذاة يسار' },
-              { align: 'justify', icon: 'format_align_justify', title: 'ضبط الطرفين' }
-            ] as const
-          ).map((a) => (
-            <Tool key={a.align} act={`align-${a.align}`} icon={a.icon} title={a.title} active={curAlign === a.align} onRun={() => run_(setParagraphAttr('align', a.align))} />
-          ))}
-          <select
-            aria-label="تباعد الأسطر"
-            className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
-            data-act="line-height"
-            title="تباعد الأسطر"
-            value={curLh == null ? '' : String(curLh)}
-            onChange={(e) => run_(setParagraphAttr('lineHeight', e.target.value ? Number(e.target.value) : null))}
-          >
-            <option value="">تلقائي</option>
-            {LINE_HEIGHTS.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <Tool
-            act="indent"
-            icon="format_indent_increase"
-            title="مسافة بادئة ٢ سم لأوّل السطر — كما يُكتب متن الكتاب الرسمي"
-            active={Boolean(curIndent)}
-            onRun={() => run_(setParagraphAttr('indent', curIndent ? null : OFFICIAL_INDENT_MM))}
-          />
-          <Tool act="bullets" icon="format_list_bulleted" title="تعداد نقطي" onRun={() => run_(toggleList('bullet'))} />
-          <Tool act="numbers" icon="format_list_numbered" title="ترقيم" onRun={() => run_(toggleList('number'))} />
-          <ToolSep />
-          <button
-            className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-secondary transition-all shadow-xs"
-            type="button"
-            data-act="insert"
-            title="إدراج جدول أو صورة أو كليشة أو فاصل صفحة"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setMenu(true)}
-          >
-            <span className="material-symbols-outlined text-[16px]">post_add</span>
-            <span>إدراج</span>
-          </button>
-          <Tool act="select-all" icon="select_all" title="تحديد الكلّ (Ctrl+A)" active={all} onRun={() => run_(selectAll)}>
-            <span className="font-label-sm text-label-sm">تحديد الكلّ</span>
-          </Tool>
-          <Tool act="clear" icon="format_clear" title="مسح التنسيق" onRun={() => run_(clearMarks)} />
-          <Tool act="field" icon="data_object" title="اجعل المظلَّل خانة (F4)" onRun={() => run_(toField)}>
-            <span className="font-label-sm text-label-sm">خانة</span>
-          </Tool>
+            <select
+              aria-label="تباعد الأسطر"
+              className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
+              data-act="line-height"
+              title="تباعد الأسطر"
+              value={curLh == null ? '' : String(curLh)}
+              onChange={(e) => run_(setParagraphAttr('lineHeight', e.target.value ? Number(e.target.value) : null))}
+            >
+              <option value="">تلقائي</option>
+              {LINE_HEIGHTS.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+            <Tool
+              act="indent"
+              icon="format_indent_increase"
+              title="مسافة بادئة ٢ سم لأوّل السطر — كما يُكتب متن الكتاب الرسمي"
+              active={Boolean(curIndent)}
+              onRun={() => run_(setParagraphAttr('indent', curIndent ? null : OFFICIAL_INDENT_MM))}
+            />
+            <Tool act="bullets" icon="format_list_bulleted" title="تعداد نقطي" onRun={() => run_(toggleList('bullet'))} />
+            <Tool act="numbers" icon="format_list_numbered" title="ترقيم" onRun={() => run_(toggleList('number'))} />
+            <ToolSep />
+            <button
+              className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-secondary transition-all shadow-xs"
+              type="button"
+              data-act="insert"
+              title="إدراج جدول أو صورة أو كليشة أو فاصل صفحة"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setMenu(true)}
+            >
+              <span className="material-symbols-outlined text-[16px]">post_add</span>
+              <span>إدراج</span>
+            </button>
+            <Tool act="select-all" icon="select_all" title="تحديد الكلّ (Ctrl+A)" active={all} onRun={() => run_(selectAll)}>
+              <span className="font-label-sm text-label-sm">تحديد الكلّ</span>
+            </Tool>
+            <Tool act="clear" icon="format_clear" title="مسح التنسيق" onRun={() => run_(clearMarks)} />
+            <Tool act="field" icon="data_object" title="اجعل المظلَّل خانة (F4)" onRun={() => run_(toField)}>
+              <span className="font-label-sm text-label-sm">خانة</span>
+            </Tool>
 
-          {inTable && (
-            <>
-              <ToolSep />
-              <Tool act="row-add" icon="table_rows" title="صفٌّ بعد هذا" onRun={() => run_(addRowAfter)} />
-              <Tool act="col-add" icon="view_column" title="عمودٌ بعد هذا" onRun={() => run_(addColumnAfter)} />
-              <Tool act="row-del" icon="remove_road" title="احذف الصفّ" onRun={() => run_(deleteRow)} />
-              <Tool act="col-del" icon="splitscreen_left" title="احذف العمود" onRun={() => run_(deleteColumn)} />
-              <Tool act="merge" icon="call_merge" title="ادمج الخلايا المحدَّدة" onRun={() => run_(mergeCells)} />
-              <Tool act="split" icon="call_split" title="افصل الخليّة" onRun={() => run_(splitCell)} />
-              <Tool act="table-del" icon="delete" title="احذف الجدول كلّه" onRun={() => run_(deleteTable)} />
-            </>
-          )}
+            {inTable && (
+              <>
+                <ToolSep />
+                <Tool act="row-add" icon="table_rows" title="صفٌّ بعد هذا" onRun={() => run_(addRowAfter)} />
+                <Tool act="col-add" icon="view_column" title="عمودٌ بعد هذا" onRun={() => run_(addColumnAfter)} />
+                <Tool act="row-del" icon="remove_road" title="احذف الصفّ" onRun={() => run_(deleteRow)} />
+                <Tool act="col-del" icon="splitscreen_left" title="احذف العمود" onRun={() => run_(deleteColumn)} />
+                <Tool act="merge" icon="call_merge" title="ادمج الخلايا المحدَّدة" onRun={() => run_(mergeCells)} />
+                <Tool act="split" icon="call_split" title="افصل الخليّة" onRun={() => run_(splitCell)} />
+                <Tool act="table-del" icon="delete" title="احذف الجدول كلّه" onRun={() => run_(deleteTable)} />
+              </>
+            )}
+          </div>
+
+          {/* شريط الورقة: المقاس والاتجاه والهوامش — بكلمةٍ لا بأرقام، والأرقام لمن أرادها. */}
+          <div className="flex items-center gap-1 flex-wrap px-space-sm py-1 bg-surface-container-low border-b border-outline-variant/30" data-page-bar="">
+            <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الورقة</span>
+            <select
+              aria-label="مقاس الورقة"
+              className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+              data-act="page-size"
+              value={doc.pageSetup.size}
+              onChange={(e) => setPage({ size: e.target.value as PageSize })}
+            >
+              {(Object.keys(PAGE_NAMES) as PageSize[]).map((s) => (
+                <option key={s} value={s}>
+                  {PAGE_NAMES[s]}
+                </option>
+              ))}
+            </select>
+            <Tool act="portrait" icon="crop_portrait" title="عمودية" active={doc.pageSetup.orientation === 'portrait'} onRun={() => setPage({ orientation: 'portrait' })} />
+            <Tool act="landscape" icon="crop_landscape" title="أفقية" active={doc.pageSetup.orientation === 'landscape'} onRun={() => setPage({ orientation: 'landscape' })} />
+            <ToolSep />
+            <span className="font-label-sm text-label-sm text-on-surface-variant">الهوامش</span>
+            {(Object.keys(MARGIN_PRESETS) as MarginPreset[]).map((k) => (
+              <button
+                key={k}
+                className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
+                  preset === k && !customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
+                }`}
+                data-margins={k}
+                title={`${MARGIN_PRESETS[k].mm} ملم من كلّ جانب`}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setCustomMargins(false);
+                  const mm = MARGIN_PRESETS[k].mm;
+                  setPage({ margins: { top: mm, right: mm, bottom: mm, left: mm } });
+                }}
+              >
+                {MARGIN_PRESETS[k].label}
+              </button>
+            ))}
+            <button
+              className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
+                preset === null || customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
+              }`}
+              data-margins="custom"
+              title="هامشٌ لكلّ جانبٍ بالملّيمتر"
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setCustomMargins((v) => !v)}
+            >
+              مخصّصة
+            </button>
+            {(customMargins || preset === null) &&
+              (
+                [
+                  ['top', 'أعلى'],
+                  ['right', 'يمين'],
+                  ['bottom', 'أسفل'],
+                  ['left', 'يسار']
+                ] as const
+              ).map(([side, label]) => (
+                <label key={side} className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+                  {label}
+                  <input
+                    className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
+                    data-margin={side}
+                    max={60}
+                    min={0}
+                    type="number"
+                    value={margins[side]}
+                    onChange={(e) => {
+                      const v = Math.max(0, Math.min(60, Number(e.target.value) || 0));
+                      setPage({ margins: { ...margins, [side]: v } });
+                    }}
+                  />
+                </label>
+              ))}
+            <span className="ms-auto font-label-sm text-label-sm text-on-surface-variant tabular" data-page-count={pages}>
+              {pagesLabel(pages)}
+            </span>
+          </div>
         </div>
 
-        {/* الورقة بمقاسها الحقيقي وهوامشها — فيلتفّ السطر حيث يلتفّ في الطباعة. */}
+        {/* الورقة بمقاسها الحقيقي وهوامشها، وصفحاتها كما تقسمها الطابعة (`pageFlow.ts`). */}
         <div
-          className="relative isolate mx-auto mt-space-md shrink-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)] flex flex-col"
+          ref={paperRef}
+          className="relative isolate mx-auto my-space-md shrink-0 flex flex-col"
+          data-paper=""
           style={{
             width: `${page.w}mm`,
-            minHeight: `${page.h}mm`,
-            paddingTop: `${doc.pageSetup.margins.top}mm`,
-            paddingRight: `${doc.pageSetup.margins.right}mm`,
-            paddingBottom: `${doc.pageSetup.margins.bottom}mm`,
-            paddingLeft: `${doc.pageSetup.margins.left}mm`
+            minHeight: `${pages * pageH + (pages - 1) * SHEET_GAP}px`,
+            paddingTop: `${margins.top}mm`,
+            paddingRight: `${margins.right}mm`,
+            paddingLeft: `${margins.left}mm`
           }}
         >
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 pointer-events-none" style={{ zIndex: -2 }}>
+            {Array.from({ length: pages }, (_, i) => (
+              <div
+                key={i}
+                className="absolute inset-x-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)]"
+                data-sheet={i + 1}
+                style={{ top: i * stride, height: pageH }}
+              />
+            ))}
+          </div>
           <div className="contents" dangerouslySetInnerHTML={{ __html: watermarkHtml(doc) }} />
-          {header}
+          {header ? <div ref={headRef}>{header}</div> : null}
           <div ref={mountRef} className="flex-1 font-body-md text-body-md leading-8 text-on-surface" />
+          {repeatHead &&
+            Array.from({ length: pages - 1 }, (_, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="absolute pointer-events-none"
+                data-repeat-head={i + 2}
+                style={{ top: (i + 1) * stride + margins.top * MM_PX, right: `${margins.right}mm`, left: `${margins.left}mm` }}
+              >
+                {header}
+              </div>
+            ))}
+          {doc.pageSetup.pageNumbers &&
+            Array.from({ length: pages }, (_, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="absolute inset-x-0 text-center text-[10pt] leading-none text-on-surface-variant pointer-events-none"
+                data-page-number={i + 1}
+                style={{ top: i * stride + pageH - (bottomMm * MM_PX) / 2 - 6 }}
+              >
+                صفحة {pageNumber(i + 1)} من {pageNumber(pages)}
+              </div>
+            ))}
         </div>
 
         <div className="mx-auto my-space-sm font-label-sm text-label-sm text-on-surface-variant" data-selection-status="">
