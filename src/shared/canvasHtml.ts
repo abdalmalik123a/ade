@@ -58,6 +58,7 @@ function inlinesHtml(
         let out = escapeHtml(resolveChoices(node.text, values[GENDER_KEY]));
         const m = node.marks;
         if (m?.underline) out = `<u>${out}</u>`;
+        if (m?.italic) out = `<em>${out}</em>`;
         if (m?.bold) out = `<strong>${out}</strong>`;
         return out;
       }

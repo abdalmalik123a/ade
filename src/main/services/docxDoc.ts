@@ -107,7 +107,7 @@ function find(n: XNode, name: string): XNode | undefined {
 
 // ── الأنماط: ما لم يُكتب على المقطع يُرث من نمطه ثم من افتراض المستند ──
 
-type RProps = { b?: boolean; bCs?: boolean; u?: boolean; sz?: number; szCs?: number; rtl?: boolean };
+type RProps = { b?: boolean; bCs?: boolean; i?: boolean; iCs?: boolean; u?: boolean; sz?: number; szCs?: number; rtl?: boolean };
 type PProps = {
   jc?: string;
   bidi?: boolean;
@@ -131,6 +131,8 @@ function readR(rpr: XNode | undefined): RProps {
   };
   set('b', toggle(kid(rpr, 'w:b')));
   set('bCs', toggle(kid(rpr, 'w:bCs')));
+  set('i', toggle(kid(rpr, 'w:i')));
+  set('iCs', toggle(kid(rpr, 'w:iCs')));
   set('rtl', toggle(kid(rpr, 'w:rtl')));
   const u = kid(rpr, 'w:u');
   if (u) o.u = (val(u) ?? 'single') !== 'none';
@@ -344,7 +346,7 @@ function mapJc(jc: string | undefined, bidi: boolean): Align {
 // ── الفقرة ───────────────────────────────────────────────────────────
 
 /** حرفٌ بتنسيقه — الوحدة التي تُقصّ عندها الأعمدة وتُصحّح الأصفار. */
-type Cell = { ch: string; bold: boolean; underline: boolean; px: number };
+type Cell = { ch: string; bold: boolean; italic: boolean; underline: boolean; px: number };
 type Piece = { kind: 'chars'; cells: Cell[] } | { kind: 'break' } | { kind: 'page' };
 
 type Ctx = {
@@ -471,6 +473,7 @@ function readPieces(
     const cellOf = (ch: string): Cell => ({
       ch,
       bold: Boolean(cs ? (rr.bCs ?? false) : rr.b),
+      italic: Boolean(cs ? (rr.iCs ?? false) : rr.i),
       underline: Boolean(rr.u),
       px: sizePx(rr, cs)
     });
@@ -533,6 +536,7 @@ function toInlines(pieces: Piece[], basePx: number): Inline[] {
       const size = round1(c.px);
       const marks: Marks = {};
       if (c.bold) marks.bold = true;
+      if (c.italic) marks.italic = true;
       if (c.underline) marks.underline = true;
       if (size !== basePx) marks.size = size;
       const ch = c.ch === '\t' ? '    ' : c.ch;

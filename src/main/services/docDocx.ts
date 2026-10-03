@@ -96,12 +96,17 @@ function runs(inlines: Inline[], rtl: boolean, ctx: Ctx, sizePx?: number, bold?:
       return new TextRun({ text: `{${n.ref}}`, rightToLeft: rtl, highlight: 'yellow', bold, size: sizePx ? halfPoints(sizePx) : undefined });
     }
     const size = n.marks?.size ?? sizePx;
+    const font = n.marks?.font;
     return new TextRun({
       text: n.text,
       rightToLeft: rtl,
       bold: bold || n.marks?.bold,
+      italics: n.marks?.italic,
+      italicsComplexScript: n.marks?.italic,
       underline: n.marks?.underline ? {} : undefined,
-      size: size ? halfPoints(size) : undefined
+      size: size ? halfPoints(size) : undefined,
+      // الخطّ للعربية واللاتينية معًا: Word يرسم العربية بخطّ «النصوص المعقّدة».
+      font: font ? { ascii: font, hAnsi: font, cs: font } : undefined
     });
   });
 }

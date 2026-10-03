@@ -87,8 +87,10 @@ function renderInlines(
         let out = escapeHtml(resolveChoices(node.text, values[GENDER_KEY]));
         const m = node.marks;
         if (!m) return out;
+        if (m.font) out = `<span style="font-family:'${escapeHtml(m.font)}'">${out}</span>`;
         if (m.size) out = `<span style="font-size:${m.size}px">${out}</span>`;
         if (m.underline) out = `<u>${out}</u>`;
+        if (m.italic) out = `<em>${out}</em>`;
         if (m.bold) out = `<strong>${out}</strong>`;
         return out;
       }
