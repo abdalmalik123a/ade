@@ -1019,6 +1019,10 @@ export type DiwanApi = {
   };
   files: {
     pickImage(bucket: string): Promise<string | null>;
+    /** صورةٌ أُلصقت محفوظةً في المخزن — ومسارها، أو `null` إن لم تكن صورةً معروفة. */
+    storeImage(bytes: Uint8Array): Promise<string | null>;
+    /** صورةٌ في نصٍّ لُصق من Word (ملفٌّ مؤقّت) محفوظةً في المخزن، أو `null`. */
+    storeImageUrl(url: string): Promise<string | null>;
     /** مجلد صورٍ لدفعة — لكلٍّ اسمُ ملفّه بلا امتداد، وعليه يُطابَق بصفّه. */
     pickImageFolder(bucket: string): Promise<{ name: string; src: string }[] | null>;
     /** قائمةٌ من ملف Excel أو CSV — نصًّا بأعمدةٍ مفصولة بالجدولة، كما لو أُلصقت. */

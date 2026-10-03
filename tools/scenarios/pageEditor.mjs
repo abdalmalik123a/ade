@@ -11,7 +11,8 @@
  * ملف PDF الذي يخرج من محرّك الطباعة نفسه.
  */
 import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
 
 export default async function scenario(page, { profile, shotsDir }) {
@@ -347,6 +348,74 @@ export default async function scenario(page, { profile, shotsDir }) {
   const signPdf = readdirSync(saveDir).filter((f) => f.toLowerCase().endsWith('.pdf'));
   const signPages = signPdf.length === 1 ? (readFileSync(join(saveDir, signPdf[0]), 'latin1').match(/\/Type\s*\/Page(?!s)/g) ?? []).length : 0;
   ok(`وفي الطباعة صفحتان كما على الشاشة (${signPages})`, signPages === 2);
+
+  // ── اللصق من Word: بتنسيقه وجدوله وصورته ──────────────────────────
+  // ما يضعه Word في الحافظة: وسوم Office، وتعليقاتٌ شرطية، و`<o:p>`، والصورة ملفٌّ مؤقّت.
+  const picture = pathToFileURL(resolve('tests/fixtures/tiny.jpg')).href;
+  const WORD_HTML =
+    `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">` +
+    `<head><meta name=Generator content="Microsoft Word 15"><style><!-- p.MsoNormal {margin:0cm;font-size:11.0pt;} --></style></head>` +
+    `<body lang=EN-US><!--StartFragment-->` +
+    `<p class=MsoNormal align=center dir=RTL style='text-align:center;direction:rtl'><b><span lang=AR-IQ style='font-size:16.0pt;font-family:"Simplified Arabic",serif'>إقرار وتعهد<o:p></o:p></span></b></p>` +
+    `<p class=MsoNormal dir=RTL style='text-align:justify;direction:rtl'><span lang=AR-IQ style='font-size:14.0pt'>أتعهد أنا <i>المذكور</i> بالالتزام بما ورد<o:p></o:p></span></p>` +
+    `<p class=MsoListParagraphCxSpFirst dir=RTL style='margin-right:36pt;text-indent:-18pt;mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol'><span style='mso-list:Ignore'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span lang=AR-IQ>البند الأول<o:p></o:p></span></p>` +
+    `<p class=MsoListParagraphCxSpLast dir=RTL style='margin-right:36pt;text-indent:-18pt;mso-list:l1 level1 lfo2'><![if !supportLists]><span><span style='mso-list:Ignore'>2.<span>&nbsp; </span></span></span><![endif]><span lang=AR-IQ>البند الثاني<o:p></o:p></span></p>` +
+    `<table class=MsoTableGrid dir=rtl border=1 cellspacing=0><tr><td><p class=MsoNormal><span lang=AR-IQ>الاسم</span></p></td><td><p class=MsoNormal><span lang=AR-IQ>التوقيع</span></p></td></tr></table>` +
+    `<p class=MsoNormal dir=RTL><img width=120 height=40 src="${picture}"><o:p></o:p></p>` +
+    `<!--EndFragment--></body></html>`;
+  await page.eval(`document.querySelector('${ed} [data-page-editor]').focus(); return true;`);
+  await page.key('KeyA', { ctrl: true });
+  const paste = (html, text, png) =>
+    page.eval(`
+      const dt = new DataTransfer();
+      ${html ? `dt.setData('text/html', ${JSON.stringify(html)});` : ''}
+      ${text ? `dt.setData('text/plain', ${JSON.stringify(text)});` : ''}
+      if (${png ? 'true' : 'false'}) {
+        const c = document.createElement('canvas');
+        c.width = 300; c.height = 80;
+        const g = c.getContext('2d'); g.fillStyle = '#c33'; g.fillRect(0, 0, 300, 80);
+        const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+        dt.items.add(new File([blob], 'shot.png', { type: 'image/png' }));
+      }
+      const el = document.querySelector('${ed} [data-page-editor]');
+      el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+      return true;
+    `);
+  await paste(WORD_HTML, 'إقرار وتعهد\nأتعهد أنا المذكور بالالتزام بما ورد');
+  await wait(1500);
+  const pasted = await page.eval(`
+    const ed = document.querySelector('${ed} [data-page-editor]');
+    const first = ed.querySelector(':scope > p');
+    return {
+      text: ed.textContent,
+      centered: first?.style.textAlign === 'center',
+      bold: Boolean(first?.querySelector('strong, b')),
+      size: Math.round(parseFloat(first?.querySelector('[style*="font-size"]')?.style.fontSize ?? '0')),
+      font: (ed.querySelector('[style*="font-family"]')?.style.fontFamily ?? ''),
+      italic: [...ed.querySelectorAll('em')].some((e) => e.textContent.includes('المذكور')),
+      cells: ed.querySelectorAll('table td').length,
+      img: ed.querySelector('img')?.getAttribute('src') ?? ''
+    };
+  `);
+  ok('لُصق النصّ بلا بقايا Word', pasted.text.includes('إقرار وتعهد') && pasted.text.includes('بالالتزام') && !/StartFragment|o:p|MsoNormal|supportLists|endif|·/.test(pasted.text));
+  ok('ونقطة البند «•» ورقمه كما كُتب', /•\s*البند الأول/.test(pasted.text) && /2\.\s*البند الثاني/.test(pasted.text));
+  ok(`والعنوان موسَّطٌ عريضٌ بحجمه (${pasted.size}) وخطّه`, pasted.centered && pasted.bold && pasted.size === 21 && pasted.font.includes('Simplified Arabic'));
+  ok('والمائل في موضعه', pasted.italic);
+  ok('والجدول بخليّتيه', pasted.cells === 2);
+  ok('والصورة نُسخت من ملفّ Word المؤقّت إلى المخزن', pasted.img.startsWith('diwan://store/images/'));
+  if (pasted.img.startsWith('diwan://store/images/')) {
+    ok('وملفّها في المخزن', readdirSync(join(profile, 'data', 'store', 'images')).includes(pasted.img.split('/').pop()));
+  }
+
+  // لقطة شاشة وحدها في الحافظة: تُدرج صورةً بمقاسها.
+  await paste(null, null, true);
+  await wait(1200);
+  const shot = await page.eval(`
+    const imgs = [...document.querySelectorAll('${ed} [data-page-editor] img')];
+    return imgs.map((i) => ({ src: i.getAttribute('src'), w: Math.round(i.getBoundingClientRect().width) }));
+  `);
+  ok('ولقطة الشاشة تُلصق صورةً محفوظة بعرضها (٣٠٠) — بعد صورة Word لا مكانها', shot.length === 2 && shot.some((s) => s.src.startsWith('diwan://store/images/') && s.w === 300));
+  if (shotsDir) await page.shot(join(shotsDir, 'page-editor-paste.png'));
 
   return steps.join('\n');
 }

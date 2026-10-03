@@ -225,6 +225,16 @@ const nodes: Record<string, NodeSpec> = {
           src: dom(el).getAttribute('data-src'),
           width: Number(dom(el).getAttribute('width')) || 140
         })
+      },
+      {
+        // صورةٌ لُصقت من Word (ملفٌّ مؤقّت `file:`) أو مضمّنة (`data:`): مصدرها كما جاء حتى
+        // يحفظها المحرّر في المخزن (`PageEditor`). وما جاء من الشبكة لا يُلصق — البرنامج بلا إنترنت.
+        tag: 'img[src]',
+        getAttrs: (el) => {
+          const src = dom(el).getAttribute('src') ?? '';
+          if (!/^(file:|data:image\/)/i.test(src)) return false;
+          return { src, width: Math.min(640, Number(dom(el).getAttribute('width')) || 140) };
+        }
       }
     ],
     toDOM: (node) => ['img', { 'data-src': node.attrs.src, width: String(node.attrs.width) }]

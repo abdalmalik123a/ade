@@ -297,6 +297,8 @@ const api: DiwanApi = {
   },
   files: {
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
+    storeImage: (bytes: Uint8Array) => invoke('files:storeImage', bytes),
+    storeImageUrl: (url: string) => invoke('files:storeImageUrl', url),
     pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),
     pickImageFolder: (bucket: string) => invoke('files:pickImageFolder', bucket),
     readSheet: () => invoke('files:readSheet'),

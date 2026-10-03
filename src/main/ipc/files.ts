@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
@@ -122,6 +123,20 @@ export async function pickFolderPath(
  */
 const BUCKET = /^[a-z][a-z0-9-]{0,31}$/;
 
+/** نوع الصورة من أوّل بايتاتها — لا من اسمٍ أو نوعٍ تقوله الواجهة. */
+export function imageExt(bytes: Uint8Array): '.png' | '.jpg' | '.gif' | '.webp' | null {
+  const b = bytes;
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return '.png';
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return '.jpg';
+  if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return '.gif';
+  if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50)
+    return '.webp';
+  return null;
+}
+
+/** أكبر صورةٍ تُلصق في ورقة — لقطةُ شاشةٍ كاملة أصغر منها بكثير. */
+const PASTE_MAX = 20 * 1024 * 1024;
+
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
   if (!BUCKET.test(bucket)) throw new Error('مجلّد تخزينٍ غير معروف');
   const bytes = await readFile(sourcePath);
@@ -133,6 +148,38 @@ export async function importFile(sourcePath: string, bucket: string): Promise<st
 }
 
 export function registerFileIpc(): void {
+  /**
+   * صورةٌ أُلصقت في المحرّر (لقطة شاشة، أو صورةٌ نُسخت من متصفّح أو Word) تُحفظ في المخزن
+   * باسمٍ من محتواها. وما ليس صورةً معروفة يُرفض بلا خطأ: يعود `null` فلا يُلصق شيء.
+   */
+  ipcMain.handle('files:storeImage', async (_e, raw: unknown): Promise<string | null> => {
+    if (!(raw instanceof Uint8Array) || raw.length === 0 || raw.length > PASTE_MAX) return null;
+    const ext = imageExt(raw);
+    if (!ext) return null;
+    const name = `${createHash('sha256').update(raw).digest('hex').slice(0, 32)}${ext}`;
+    await writeFile(join(storeDir('images'), name), raw);
+    return `images/${name}`;
+  });
+
+  /**
+   * صورةٌ في نصٍّ لُصق من Word: Word يضعها ملفًّا مؤقّتًا (`file:///…/clip_image001.png`) ما دام
+   * النسخ قائمًا — فتُنسخ إلى المخزن. وما ليس ملفًّا محلّيًّا ولا صورةً معروفة يعود `null`.
+   */
+  ipcMain.handle('files:storeImageUrl', async (_e, url: unknown): Promise<string | null> => {
+    if (typeof url !== 'string' || !/^file:/i.test(url)) return null;
+    try {
+      const bytes = await readFile(fileURLToPath(url));
+      if (bytes.length === 0 || bytes.length > PASTE_MAX) return null;
+      const ext = imageExt(bytes);
+      if (!ext) return null;
+      const name = `${createHash('sha256').update(bytes).digest('hex').slice(0, 32)}${ext}`;
+      await writeFile(join(storeDir('images'), name), bytes);
+      return `images/${name}`;
+    } catch {
+      return null;
+    }
+  });
+
   ipcMain.handle('files:pickImage', async (e, bucket: string): Promise<string | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
