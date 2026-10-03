@@ -239,6 +239,11 @@ export type ColumnsBlock = BlockBase & {
   widths?: number[];
 };
 export type PageBreakBlock = BlockBase & { kind: 'pageBreak' };
+/**
+ * الخطّ الفاصل: خطٌّ أفقيّ بعرض المتن — تحت أسطر الترويسة التي تُكتب في أعلى الورقة،
+ * كما يرسمه Word حدًّا سفليًّا للفقرة (`w:pBdr`).
+ */
+export type RuleBlock = BlockBase & { kind: 'rule' };
 
 /**
  * المجموعة: شرطية أو متكررة.
@@ -261,6 +266,7 @@ export type Block =
   | ImageBlock
   | SpacerBlock
   | PageBreakBlock
+  | RuleBlock
   | ColumnsBlock
   | GroupBlock;
 
@@ -269,8 +275,12 @@ export type Block =
 /** `FS` الفولسكاب: ٨٫٥×١٣ إنشًا — ورق الدوائر والمحاكم الطويل (حجة الإعالة، الاتفاقيات). */
 export type PageSize = 'A4' | 'A5' | 'FS';
 export type Orientation = 'portrait' | 'landscape';
-/** `reserve` يترك مكان الترويسة فارغًا — لمن يطبع على ورق الدائرة المطبوع. */
-export type LetterheadMode = 'print' | 'reserve' | 'none';
+/**
+ * ما فوق المتن. `print` ترويسةٌ رسمية من المكتبة، و`lines` أسطرٌ تُكتب في أعلى الورقة
+ * نفسها (كما يُصنع الرأس في Word) وتحتها خطٌّ فاصل إن شاء، و`none` لا شيء.
+ * و`reserve` يترك مكان الترويسة فارغًا — لمن يطبع على ورق الدائرة المطبوع.
+ */
+export type LetterheadMode = 'print' | 'reserve' | 'lines' | 'none';
 export type Numerals = 'arabic' | 'indic';
 
 /**
@@ -667,7 +677,7 @@ function normalizePage(raw: unknown): PageSetup {
     orientation: v.orientation === 'landscape' ? 'landscape' : 'portrait',
     margins: { ...base.margins, ...(isObj(v.margins) ? (v.margins as PageSetup['margins']) : {}) },
     letterheadMode:
-      v.letterheadMode === 'reserve' || v.letterheadMode === 'none' ? v.letterheadMode : 'print',
+      v.letterheadMode === 'reserve' || v.letterheadMode === 'lines' || v.letterheadMode === 'none' ? v.letterheadMode : 'print',
     repeatLetterhead: v.repeatLetterhead === true,
     pageNumbers: v.pageNumbers === true,
     numerals: v.numerals === 'indic' ? 'indic' : 'arabic',
@@ -725,6 +735,7 @@ const BLOCK_KINDS = new Set([
   'image',
   'spacer',
   'pageBreak',
+  'rule',
   'columns',
   'group'
 ]);

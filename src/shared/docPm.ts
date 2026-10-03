@@ -246,6 +246,14 @@ const nodes: Record<string, NodeSpec> = {
     toDOM: () => ['div', { 'data-page-break': '' }]
   },
 
+  rule: {
+    group: 'block',
+    atom: true,
+    attrs: { ...blockAttrs },
+    parseDOM: [{ tag: 'div[data-rule]' }, { tag: 'hr' }],
+    toDOM: () => ['div', { 'data-rule': '' }]
+  },
+
   columns: {
     group: 'block',
     content: 'column+',
@@ -447,6 +455,8 @@ function blockToPm(b: Block): PMNode {
       return S.nodes.spacer!.create({ id: b.id, dir: b.dir ?? null, height: b.height, lines: b.lines ?? false });
     case 'pageBreak':
       return S.nodes.page_break!.create({ id: b.id, dir: b.dir ?? null });
+    case 'rule':
+      return S.nodes.rule!.create({ id: b.id, dir: b.dir ?? null });
     case 'columns':
       return S.nodes.columns!.create(
         { id: b.id, dir: b.dir ?? null, gap: b.gap ?? null, widths: b.widths ?? null },
@@ -535,6 +545,8 @@ function pmBlock(node: PMNode): Block | null {
     }
     case 'page_break':
       return withDir<Block>({ id, kind: 'pageBreak' }, a.dir);
+    case 'rule':
+      return withDir<Block>({ id, kind: 'rule' }, a.dir);
     case 'columns': {
       const columns: Block[][] = [];
       node.forEach((col) => columns.push(pmBlocks(col)));

@@ -4,9 +4,9 @@
  * المتغيّرات تُشتقّ من المتن نفسه لا من قائمة منفصلة — فلا يمكن أن تتعارض
  * القائمة مع ما هو مكتوب فعلًا. يكتب الموظف {الاسم} فيظهر المتغيّر تلقائيًا.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import DocEditor from '../components/DocEditor';
-import PageEditor from '../components/PageEditor';
+import PageEditor, { type HeadChoice, type PageEditorProps } from '../components/PageEditor';
 import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
 import { normalizeFold } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
@@ -54,7 +54,8 @@ export default function TemplateDesigner({
   useEffect(() => {
     void window.diwan.settings.get().then((s) => setNewEditor(s.newEditor));
   }, []);
-  const Editor = newEditor ? PageEditor : DocEditor;
+  // الأوّل لا يعرف شريط الترويسة (`head`) فيتركه.
+  const Editor: ComponentType<PageEditorProps> = newEditor ? PageEditor : DocEditor;
   const [code, setCode] = useState(initial?.code ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? '');
@@ -160,6 +161,17 @@ export default function TemplateDesigner({
   const [savedHead, setSavedHead] = useState<Letterhead | null>(null);
   const heads = savedHead ? [...letterheads.filter((l) => l.id !== savedHead.id), savedHead] : letterheads;
   const letterhead = heads.find((l) => l.id === letterheadId) ?? null;
+
+  /** شريط الورقة: ترويسة النموذج من المكتبة، أو أسطرٌ في أعلى الورقة، أو بلا (ن١٧). */
+  const headChoice: HeadChoice = {
+    mode: letterhead ? 'formal' : doc.pageSetup.letterheadMode === 'lines' ? 'lines' : 'none',
+    letterheads: heads.map((l) => ({ id: l.id, name: l.name })),
+    letterheadId,
+    onChoose: (c) => {
+      setLetterheadId(c.mode === 'formal' ? c.id : null);
+      setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, letterheadMode: c.mode === 'formal' ? 'print' : c.mode } }));
+    }
+  };
 
   /**
    * رأس الورقة إن عُرف حدّه — وبغيره لا يُعرض الاقتراح.
@@ -711,6 +723,7 @@ export default function TemplateDesigner({
             <Editor
               clips={clips}
               doc={doc}
+              head={headChoice}
               onChange={setDoc}
               header={
                 letterhead?.layout.sheet?.length ? (
@@ -725,7 +738,7 @@ export default function TemplateDesigner({
                       </div>
                     )}
                   </div>
-                ) : doc.pageSetup.letterheadMode === 'none' ? null : (
+                ) : doc.pageSetup.letterheadMode === 'none' || doc.pageSetup.letterheadMode === 'lines' ? null : (
                   <div className="mb-space-md py-space-sm text-center text-on-surface-variant font-label-sm text-label-sm border border-dashed border-outline-variant rounded">
                     بلا ترويسة — اخترها من قسم التعريف
                   </div>

@@ -34,7 +34,7 @@ import { errorText } from '../lib/errors';
 import AddressingPicker from '../components/AddressingPicker';
 import DateTools from '../components/DateTools';
 import DocEditor, { type DocEditorApi } from '../components/DocEditor';
-import PageEditor from '../components/PageEditor';
+import PageEditor, { type HeadChoice } from '../components/PageEditor';
 import { printedPages } from '../components/pageFlow';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
@@ -640,6 +640,30 @@ function EditorScreen(
     return () => window.removeEventListener('keydown', onKey);
   }, [saveDraft]);
 
+  /** شريط الورقة: رسمية من المكتبة، أو أسطرٌ في أعلى الورقة، أو بلا (ن١٧). */
+  const headChoice: HeadChoice = {
+    mode: headLayout ? 'formal' : doc.pageSetup.letterheadMode === 'lines' ? 'lines' : 'none',
+    letterheads: letterheads.map((l) => ({ id: l.id, name: l.name })),
+    letterheadId,
+    onChoose: (c) => {
+      applyLetterhead(c.mode === 'formal' ? (letterheads.find((l) => l.id === c.id) ?? null) : null);
+      setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, letterheadMode: c.mode === 'formal' ? 'print' : c.mode } }));
+    },
+    // الخطّ تحت الترويسة الرسمية من نسخة الكتاب منها — ورأسٌ من ورقة خطّه في كتله.
+    divider:
+      headLayout && !layout.sheet?.length
+        ? {
+            on: layout.divider,
+            set: (on) => {
+              setLayout((l) => ({ ...l, divider: on }));
+              setLayoutDirty(true);
+              dirty.current = true;
+            }
+          }
+        : undefined,
+    onEdit: () => setDesignerOpen(true)
+  };
+
   // ── الواجهة ──────────────────────────────────────────────────────────
   const head = headLayout ? (
     <div className={gapAfter(headLayout) ? 'mb-space-md' : ''}>
@@ -1062,7 +1086,7 @@ function EditorScreen(
           <div className="flex-1 min-h-0">
             {view === 'edit' ? (
               settings?.newEditor ? (
-                <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
+                <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} head={headChoice} header={head} values={effective} onChange={setDoc} />
               ) : (
                 <DocEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
               )

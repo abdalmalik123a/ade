@@ -949,6 +949,8 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
                 </div>
               )}
 
+              {block.kind === 'rule' && <div className="my-1.5 border-t-[1.5px] border-current" data-rule="" />}
+
               {block.kind === 'pageBreak' && (
                 <div className="my-space-xs border-t-2 border-dashed border-secondary text-center">
                   <span className="px-2 -mt-2 inline-block bg-surface-container-lowest font-label-sm text-label-sm text-secondary">
@@ -960,6 +962,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
               {/* ما لا يُكتب فيه لا يُمسح بـBackspace — فحذفه زرٌّ صريح. */}
               {(block.kind === 'spacer' ||
                 block.kind === 'pageBreak' ||
+                block.kind === 'rule' ||
                 block.kind === 'columns' ||
                 block.kind === 'list') && (
                 <button
@@ -1023,6 +1026,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
               insertBlocks([{ id: newUuid(), kind: 'spacer', height: 112, lines: true }]);
             else if (what === 'spacer') insertBlocks([{ id: newUuid(), kind: 'spacer', height: 24 }]);
             else if (what === 'pageBreak') insertBlocks([{ id: newUuid(), kind: 'pageBreak' }]);
+            else if (what === 'rule') insertBlocks([{ id: newUuid(), kind: 'rule' }]);
           }}
         />
       )}
@@ -1070,7 +1074,7 @@ export function ToolSep() {
   return <span className="w-px h-5 bg-outline-variant/60 mx-1" />;
 }
 
-type Preset = 'copies' | 'columns' | 'answer' | 'spacer' | 'pageBreak';
+type Preset = 'copies' | 'columns' | 'answer' | 'spacer' | 'pageBreak' | 'rule';
 
 /**
  * قائمة الإدراج: ما يحتاجه الكتاب الرسمي بضغطة — بلا أشرطة أدوات.
@@ -1152,7 +1156,8 @@ export function InsertMenu({
               <MenuItem act="ins-columns" icon="view_column" label="عمودان" onClick={() => onPick('columns')} />
               <MenuItem act="ins-answer" icon="edit_note" label="مساحة كتابة" onClick={() => onPick('answer')} />
               <MenuItem act="ins-spacer" icon="height" label="مسافة" onClick={() => onPick('spacer')} />
-              <MenuItem act="ins-break" icon="insert_page_break" label="فاصل صفحة" wide onClick={() => onPick('pageBreak')} />
+              <MenuItem act="ins-rule" icon="horizontal_rule" label="خطّ فاصل" onClick={() => onPick('rule')} />
+              <MenuItem act="ins-break" icon="insert_page_break" label="فاصل صفحة" onClick={() => onPick('pageBreak')} />
             </div>
 
             {clips.length > 0 && (

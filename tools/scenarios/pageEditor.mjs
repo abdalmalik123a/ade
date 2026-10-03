@@ -191,6 +191,24 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(200);
   ok('و«مخصّصة» تفتح أرقام الجوانب الأربعة', (await page.eval(`return document.querySelectorAll('[data-margin]').length;`)) === 4);
 
+  // ── الترويسة على شريط الورقة: رسمية، أو أسطرٌ في أعلاها، أو بلا ─────
+  ok('الطرق الثلاث على الشريط', (await page.eval(`return document.querySelectorAll('[data-head]').length;`)) === 3);
+  ok('و«رسمية» معطّلة ولا ترويسة في المكتبة بعد', await page.eval(`return document.querySelector('[data-head="formal"]').disabled;`));
+  await click('[data-head="lines"]');
+  await wait(300);
+  ok('«أسطرٌ في أعلى الورقة» تعرض «خطّ فاصل»', Boolean(await page.eval(`return document.querySelector('[data-act="head-divider"]') !== null;`)));
+  await click('[data-act="head-divider"]');
+  await wait(400);
+  ok(
+    'والخطّ تحت أسطر الرأس — بعد الفقرات الثلاث وقبل فاصل الصفحة',
+    await page.eval(`
+      const kids = [...document.querySelector('[data-page-editor]').children].filter((e) => !e.dataset.pageGap);
+      const i = kids.findIndex((e) => e.dataset.rule !== undefined);
+      return i === 3 && kids[4]?.dataset.pageBreak !== undefined;
+    `)
+  );
+  if (shotsDir) await page.shot(join(shotsDir, 'page-editor-head.png'));
+
   // ── الحفظ ثم القاعدة ───────────────────────────────────────────────
   await page.clickText('حفظ النموذج');
   await wait(1800);
@@ -216,6 +234,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وظلّه النصّي للبحث', (row?.body ?? '').includes('أقرّ أنا الموقّع'));
   ok('ولا نصّ ضاع', runs.map((r) => r.text).join('').includes('وأتحمّل التبعات القانونية'));
   ok('وضبط الورقة محفوظ: فولسكاب بهامشٍ ضيّق', doc?.pageSetup?.size === 'FS' && doc?.pageSetup?.margins?.top === 12);
+  ok('والرأس أسطرٌ وتحته خطّه', doc?.pageSetup?.letterheadMode === 'lines' && blocks[3]?.kind === 'rule');
 
   // ── كتابٌ طويل: الصفحات كما تُطبع ─────────────────────────────────
   await page.goto('smart-editor-a4-preview');

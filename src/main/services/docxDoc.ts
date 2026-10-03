@@ -121,6 +121,8 @@ type PProps = {
   tabs?: number[];
   numId?: string;
   ilvl?: number;
+  /** حدٌّ سفليّ للفقرة: الخطّ الفاصل الذي يرسمه Word تحت أسطر الرأس («___» ثم Enter). */
+  ruleBelow?: boolean;
 };
 
 function readR(rpr: XNode | undefined): RProps {
@@ -172,6 +174,8 @@ function readP(ppr: XNode | undefined): PProps {
     .map((t) => num(t.attrs['w:pos']))
     .filter((p): p is number => typeof p === 'number' && p > 0);
   if (tabs.length) o.tabs = tabs;
+  const bottom = kid(kid(ppr, 'w:pBdr'), 'w:bottom');
+  if (bottom) o.ruleBelow = !['nil', 'none'].includes(val(bottom) ?? 'none');
   const numPr = kid(ppr, 'w:numPr');
   if (numPr) {
     const id = val(kid(numPr, 'w:numId'));
@@ -737,6 +741,7 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
     );
   });
 
+  if (pp.ruleBelow) blocks.push({ id: newUuid(), kind: 'rule' });
   return blocks;
 }
 
@@ -847,8 +852,8 @@ function pageSetupFrom(sect: XNode | undefined): { setup: PageSetup; widthTw: nu
       size: Math.abs(short - 8391) < 300 ? 'A5' : Math.abs(Math.max(w, h) - 18720) < 400 ? 'FS' : 'A4',
       orientation: w > h ? 'landscape' : 'portrait',
       margins,
-      // الرأس جزءٌ من الورقة هنا — فلا ترويسة تُطبع فوقه.
-      letterheadMode: 'none',
+      // الرأس أسطرٌ في أعلى الورقة هنا (كما يُصنع في Word) — فلا ترويسة تُطبع فوقه.
+      letterheadMode: 'lines',
       repeatLetterhead: false,
       pageNumbers: false,
       numerals: 'arabic',
@@ -908,10 +913,21 @@ export function docxToDoc(files: Record<string, Uint8Array>, saveImage?: SaveIma
   );
 
   const blocks: Block[] = [];
+  /** موضع الخطّ الفاصل الذي ختم الفقرة السابقة — إن كان آخر ما أُضيف. */
+  let lastRule = -1;
   const walk = (n: XNode) => {
     for (const k of n.kids) {
-      if (k.name === 'w:p') blocks.push(...convertParagraph(k, ctx));
-      else if (k.name === 'w:tbl') blocks.push(convertTable(k, ctx));
+      if (k.name === 'w:p') {
+        const out = convertParagraph(k, ctx);
+        const endsRule = out[out.length - 1]?.kind === 'rule';
+        // فقراتٌ متتالية بالحدّ نفسه يرسم Word حدّها مرّةً واحدة تحت آخرها.
+        if (endsRule && lastRule === blocks.length - 1) blocks.splice(lastRule, 1);
+        blocks.push(...out);
+        lastRule = endsRule ? blocks.length - 1 : -1;
+        continue;
+      }
+      lastRule = -1;
+      if (k.name === 'w:tbl') blocks.push(convertTable(k, ctx));
       else if (k.name === 'w:sdt') walk(kid(k, 'w:sdtContent') ?? k);
     }
   };

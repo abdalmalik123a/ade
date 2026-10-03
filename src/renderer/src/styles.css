@@ -197,6 +197,11 @@ table th {
 .pm-page .pm-columns > div {
   min-width: 0;
 }
+/* الخطّ الفاصل كما يُطبع (docHtml) */
+.pm-page div[data-rule] {
+  border-top: 1.5px solid currentColor;
+  margin: 6px 0;
+}
 .pm-page .pm-empty::before {
   content: attr(data-placeholder);
   color: #93a099;

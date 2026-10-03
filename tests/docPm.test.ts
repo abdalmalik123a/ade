@@ -110,6 +110,7 @@ function everything(): Block[] {
     { id: 'sp', kind: 'spacer', height: 112, lines: true },
     { id: 'sp2', kind: 'spacer', height: 24 },
     { id: 'pb', kind: 'pageBreak' },
+    { id: 'hr', kind: 'rule' },
     {
       id: 'cols',
       kind: 'columns',

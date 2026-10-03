@@ -253,6 +253,10 @@ function blocks(list: Block[], ctx: Ctx): (Paragraph | Table)[] {
       case 'pageBreak':
         out.push(new Paragraph({ children: [new PageBreak()] }));
         break;
+      case 'rule':
+        // الخطّ الفاصل كما يرسمه Word: حدٌّ سفليّ لفقرةٍ فارغة.
+        out.push(new Paragraph({ border: { bottom: { ...LINE, size: 12 } } }));
+        break;
       case 'group':
         // النموذج يُصدَّر كاملًا: ما يظهر بشرطٍ يظهر، فيراه المكتب ويقرّر.
         out.push(...blocks(b.blocks, ctx));

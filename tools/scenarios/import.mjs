@@ -77,7 +77,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('بعنوانٍ من سطر موضوعه', row?.title?.includes('انذار'));
   ok('ولم تُحفظ ترويسةٌ منفصلة', heads.n === 0 && row?.lh === null);
   const doc = row?.docJson ? JSON.parse(row.docJson) : null;
-  ok('والوثيقة بهوامش الملف وبلا ترويسة فوقها', doc?.pageSetup?.margins?.top === 12.7 && doc?.pageSetup?.letterheadMode === 'none');
+  ok('والوثيقة بهوامش الملف، ورأسها أسطرٌ في أعلاها لا ترويسةٌ فوقها', doc?.pageSetup?.margins?.top === 12.7 && doc?.pageSetup?.letterheadMode === 'lines');
   ok('وعمودا الرأس محفوظان بأوزانهما', doc?.blocks?.some((b) => b.kind === 'columns' && b.widths?.length === 2));
   ok('والخطّ الفاصل في المخزن', readdirSync(join(profile, 'data', 'store', 'letterheads')).some((f) => f.endsWith('.gif')));
 

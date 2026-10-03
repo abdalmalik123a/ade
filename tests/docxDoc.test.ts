@@ -52,7 +52,7 @@ describe('warning-letter.docx — ورقةٌ واحدة كما رسمها Word',
 
   it('الرأس لا يُفصل ترويسةً: هو أسطرُ أعلى الورقة', () => {
     const { doc } = load();
-    expect(doc.pageSetup.letterheadMode).toBe('none');
+    expect(doc.pageSetup.letterheadMode).toBe('lines');
     const first = doc.blocks.find((b) => b.kind === 'columns') as ColumnsBlock;
     expect(doc.blocks.indexOf(first)).toBeLessThan(3);
   });
@@ -222,6 +222,23 @@ describe('Word ← ورقة: حالات لا يحملها الملف المرج�
     const files = docx(p(r('قبل') + '<w:r><w:br w:type="page"/></w:r>' + r('بعد')));
     const kinds = docxToDoc(files).doc.blocks.map((b) => b.kind);
     expect(kinds).toEqual(['paragraph', 'pageBreak', 'paragraph']);
+  });
+
+  it('الخطّ الفاصل حدًّا سفليًّا للفقرة («___» ثم Enter) يصير خطًّا تحتها', () => {
+    const border = '<w:bidi/><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="auto"/></w:pBdr>';
+    const kinds = docxToDoc(docx(p(r('ادارة المدرسة'), border) + p(r('المتن')))).doc.blocks.map((b) => b.kind);
+    expect(kinds).toEqual(['paragraph', 'rule', 'paragraph']);
+  });
+
+  it('وفقراتٌ متتالية بالحدّ نفسه خطٌّ واحد تحت آخرها — كما يرسمها Word', () => {
+    const border = '<w:bidi/><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="auto"/></w:pBdr>';
+    const kinds = docxToDoc(docx(p(r('جمهورية العراق'), border) + p(r('وزارة التربية'), border) + p(r('المتن')))).doc.blocks.map((b) => b.kind);
+    expect(kinds).toEqual(['paragraph', 'paragraph', 'rule', 'paragraph']);
+  });
+
+  it('والحدّ الملغى (`none`) لا يُرسم', () => {
+    const kinds = docxToDoc(docx(p(r('سطر'), '<w:bidi/><w:pBdr><w:bottom w:val="none"/></w:pBdr>'))).doc.blocks.map((b) => b.kind);
+    expect(kinds).toEqual(['paragraph']);
   });
 
   it('سطرٌ طويلٌ من المتن فيه فراغ لا يُقسم عمودين', () => {

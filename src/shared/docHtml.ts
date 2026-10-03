@@ -250,6 +250,10 @@ function renderBlock(
     case 'pageBreak':
       return `<div style="break-after:page;page-break-after:always"></div>`;
 
+    case 'rule':
+      // لا يبدأ صفحةً وحده: يبقى مع الأسطر التي فوقه.
+      return `<div data-rule="" style="border-top:1.5px solid currentColor;margin:6px 0;break-before:avoid"></div>`;
+
     case 'group':
       // الظهور يقرّره الحقل: «المرفقات» تُلغى إن لم توجد، ولا تُترك سطرًا فارغًا.
       if (block.mode === 'conditional' && !values[block.on]?.trim()) return '';

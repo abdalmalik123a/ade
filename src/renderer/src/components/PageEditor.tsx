@@ -56,6 +56,7 @@ import {
 } from '@shared/doc';
 import { watermarkHtml } from '@shared/docHtml';
 import { fieldFromText, makeTable } from '@shared/docEdit';
+import { HEAD_MAX, findSheetHead } from '@shared/sheetHead';
 import {
   BASE_SIZE,
   FieldPanel,
@@ -68,6 +69,24 @@ import {
   type MenuClip
 } from './DocEditor';
 import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
+
+/**
+ * ما فوق المتن (قرار ٣ تشرين الأول، ن١٧): ترويسةٌ رسمية من المكتبة، أو أسطرٌ تُكتب في أعلى
+ * الورقة نفسها كما في Word، أو لا شيء — ومعها الخطّ الفاصل. وكان الطريقان موجودين ولا يعرفهما
+ * الموظفون: فصارا على شريط الورقة. والشاشة تملك الترويسة، والمحرّر يعرض الاختيار.
+ */
+export type HeadChoice = {
+  mode: 'formal' | 'lines' | 'none';
+  letterheads: { id: number; name: string }[];
+  letterheadId: number | null;
+  onChoose: (choice: { mode: 'formal'; id: number } | { mode: 'lines' } | { mode: 'none' }) => void;
+  /** خطّ الترويسة الرسمية الفاصل — حيث يملكه الكتاب (نسخته من الترويسة). */
+  divider?: { on: boolean; set: (on: boolean) => void };
+  /** «صمّم ترويسة» أو «حرّر الترويسة». */
+  onEdit?: () => void;
+};
+
+export type PageEditorProps = DocEditorProps & { head?: HeadChoice };
 
 const S = docSchema;
 const N = S.nodes as Record<string, NonNullable<(typeof S.nodes)[string]>>;
@@ -523,7 +542,7 @@ class GroupView implements NodeView {
 
 // ── المحرّر ─────────────────────────────────────────────────────────────
 
-export default function PageEditor({ doc, onChange, clips = [], header, values, aside, apiRef }: DocEditorProps) {
+export default function PageEditor({ doc, onChange, clips = [], header, values, aside, apiRef, head }: PageEditorProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const docRef = useRef(doc);
@@ -741,6 +760,53 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     };
   }, [remeasure]);
 
+  /** الخطّ الفاصل تحت أسطر الرأس: أوّل خطٍّ في أعلى الورقة — أو صورة Word الممطوطة. */
+  const topRule = (): { pos: number; size: number } | null => {
+    const view = viewRef.current;
+    if (!view) return null;
+    let found: { pos: number; size: number } | null = null;
+    let i = 0;
+    view.state.doc.forEach((node, pos) => {
+      if (found || i++ >= HEAD_MAX) return;
+      const h = Number(node.attrs.height);
+      const wordLine = node.type === N.image && h > 0 && h <= 20 && Number(node.attrs.width) >= 200;
+      if (node.type === N.rule || wordLine) found = { pos, size: node.nodeSize };
+    });
+    return found;
+  };
+
+  /**
+   * يضع الخطّ تحت أسطر الرأس أو يرفعه. وحدّ الرأس: ما يعرفه كاشف الرأس، وإلا فالأسطر
+   * الأولى حتى أوّل فراغٍ أو جدولٍ أو فاصل (ستّةٌ على الأكثر)، وإلا فالسطر الأوّل.
+   */
+  const toggleLinesRule = () => {
+    const view = viewRef.current;
+    if (!view) return;
+    const { state } = view;
+    const existing = topRule();
+    if (existing) {
+      view.dispatch(state.tr.delete(existing.pos, existing.pos + existing.size));
+      view.focus();
+      return;
+    }
+    const blocks = pmBlocks(state.doc);
+    let end = findSheetHead({ ...docRef.current, blocks });
+    if (end <= 0) {
+      // سطرٌ من الرأس: فقرةٌ فيها نصّ، أو صفٌّ بأعمدته — وما سواهما (فراغٌ أو جدولٌ أو فاصل) حدّه.
+      const headish = (b: Block) =>
+        b.kind === 'columns' || (b.kind === 'paragraph' && b.inlines.some((x) => x.kind !== 'run' || x.text.trim()));
+      while (end < Math.min(6, blocks.length) && headish(blocks[end]!)) end += 1;
+      if (end === 0 || end === 6) end = 1;
+    }
+    let at = 0;
+    let i = 0;
+    state.doc.forEach((node, pos) => {
+      if (i++ < end) at = pos + node.nodeSize;
+    });
+    view.dispatch(state.tr.insert(at, N.rule.create({ id: newUuid() })).scrollIntoView());
+    view.focus();
+  };
+
   /** ضبط الورقة من شريطها — والمتن كما هو. */
   const setPage = (patch: Partial<PageSetup>) => {
     const next: Doc = { ...docRef.current, pageSetup: { ...docRef.current.pageSetup, ...patch } };
@@ -909,7 +975,83 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
 
           {/* شريط الورقة: المقاس والاتجاه والهوامش — بكلمةٍ لا بأرقام، والأرقام لمن أرادها. */}
           <div className="flex items-center gap-1 flex-wrap px-space-sm py-1 bg-surface-container-low border-b border-outline-variant/30" data-page-bar="">
-            <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الورقة</span>
+            {head && (
+            <>
+              <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الترويسة</span>
+              {(
+                [
+                  ['formal', 'رسمية', 'ترويسةٌ من المكتبة تُطبع فوق المتن'],
+                  ['lines', 'أسطرٌ في أعلى الورقة', 'تكتب الرأس على الورقة نفسها كما في Word'],
+                  ['none', 'بلا', 'لا شيء فوق المتن']
+                ] as const
+              ).map(([m, label, hint]) => {
+                const noLibrary = m === 'formal' && head.letterheads.length === 0 && !head.onEdit;
+                return (
+                  <button
+                    key={m}
+                    className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors disabled:opacity-40 ${
+                      head.mode === m ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
+                    }`}
+                    data-head={m}
+                    disabled={noLibrary}
+                    title={noLibrary ? 'لا ترويسة في المكتبة بعد — صمّمها من «الترويسات والشعارات»' : hint}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      if (m === 'formal') {
+                        if (head.mode === 'formal') return;
+                        const first = head.letterheads[0];
+                        if (first) head.onChoose({ mode: 'formal', id: first.id });
+                        else head.onEdit?.();
+                      } else head.onChoose({ mode: m });
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+              {head.mode === 'formal' && head.letterheads.length > 1 && (
+                <select
+                  aria-label="الترويسة الرسمية"
+                  className="h-8 max-w-[11rem] rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+                  data-act="letterhead"
+                  value={head.letterheadId ?? ''}
+                  onChange={(e) => e.target.value && head.onChoose({ mode: 'formal', id: Number(e.target.value) })}
+                >
+                  {head.letterheadId === null && <option value="">ترويسة هذا الكتاب</option>}
+                  {head.letterheads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {(head.mode === 'lines' || (head.mode === 'formal' && head.divider)) && (
+                <label className="flex items-center gap-1 px-1 font-label-md text-label-md text-on-surface cursor-pointer" title="خطٌّ أفقيّ بين الرأس والمتن">
+                  <input
+                    checked={head.mode === 'lines' ? Boolean(topRule()) : Boolean(head.divider?.on)}
+                    className="w-4 h-4 accent-secondary"
+                    data-act="head-divider"
+                    type="checkbox"
+                    onChange={(e) => (head.mode === 'lines' ? toggleLinesRule() : head.divider?.set(e.target.checked))}
+                  />
+                  خطّ فاصل
+                </label>
+              )}
+              {head.mode === 'formal' && head.onEdit && (
+                <button
+                  className="h-8 px-2 rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-high"
+                  data-act="head-edit"
+                  type="button"
+                  onClick={head.onEdit}
+                >
+                  حرّر الترويسة
+                </button>
+              )}
+              <ToolSep />
+            </>
+          )}
+          <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الورقة</span>
             <select
               aria-label="مقاس الورقة"
               className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
@@ -1042,7 +1184,13 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
         </div>
 
         <div className="mx-auto my-space-sm font-label-sm text-label-sm text-on-surface-variant" data-selection-status="">
-          {all ? 'المحدَّد: الورقة كلّها — كلّ تنسيقٍ يقع عليها' : selChars ? `محدَّد ${selChars} حرفًا` : 'ظلّل عبارةً واضغط F4 لتصير خانة · Shift+Enter سطرٌ في الفقرة نفسها · Ctrl+Enter صفحةٌ جديدة'}
+          {all
+            ? 'المحدَّد: الورقة كلّها — كلّ تنسيقٍ يقع عليها'
+            : selChars
+              ? `محدَّد ${selChars} حرفًا`
+              : head?.mode === 'lines' && !topRule()
+                ? 'اكتب أسطر الترويسة في أعلى الورقة، ثم «خطّ فاصل» يضع الخطّ تحتها'
+                : 'ظلّل عبارةً واضغط F4 لتصير خانة · Shift+Enter سطرٌ في الفقرة نفسها · Ctrl+Enter صفحةٌ جديدة'}
         </div>
       </div>
 
@@ -1067,6 +1215,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             else if (what === 'answer') insertBlocks([{ id: newUuid(), kind: 'spacer', height: 112, lines: true }]);
             else if (what === 'spacer') insertBlocks([{ id: newUuid(), kind: 'spacer', height: 24 }]);
             else if (what === 'pageBreak') insertBlocks([{ id: newUuid(), kind: 'pageBreak' }, paragraph([])]);
+            else if (what === 'rule') insertBlocks([{ id: newUuid(), kind: 'rule' }]);
           }}
         />
       )}
