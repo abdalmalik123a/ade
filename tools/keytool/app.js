@@ -85,14 +85,22 @@ $('createBtn').onclick = () =>
     $('createBtn').textContent = 'يُشفَّر…';
     enter(await call('createPassword', $('newPw').value, $('newPw2').value));
   });
-$('newPw2').onkeydown = (e) => e.key === 'Enter' && $('createBtn').click();
+// معالجٌ يعيد false يمنع الحرف — فلا يُعاد شيءٌ هنا (كان «e.key === 'Enter' && …» يمنع الكتابة كلّها).
+$('newPw').onkeydown = (e) => {
+  if (e.key === 'Enter') $('newPw2').focus();
+};
+$('newPw2').onkeydown = (e) => {
+  if (e.key === 'Enter') $('createBtn').click();
+};
 
 $('unlockBtn').onclick = () =>
   run($('unlockBtn'), $('loginMsg'), async () => {
     $('unlockBtn').textContent = 'يُفتح…';
     enter(await call('unlock', $('pw').value));
   });
-$('pw').onkeydown = (e) => e.key === 'Enter' && $('unlockBtn').click();
+$('pw').onkeydown = (e) => {
+  if (e.key === 'Enter') $('unlockBtn').click();
+};
 
 $('lockBtn').onclick = async () => {
   await call('lock');
@@ -151,7 +159,9 @@ function onPlan() {
 }
 for (const r of document.querySelectorAll('input[name=plan]')) r.onchange = onPlan;
 $('start').onchange = previewUntil;
-$('until').oninput = () => (untilTouched = true);
+$('until').oninput = () => {
+  untilTouched = true;
+};
 
 $('device').onblur = async () => {
   const v = $('device').value.trim();
@@ -205,8 +215,12 @@ async function copy(text, label) {
   await call('copy', text);
   $('copied').textContent = `✓ نُسخ ${label}`;
 }
-$('copyKey').onclick = () => last && copy(last.key, 'المفتاح');
-$('copyMsg').onclick = () => last && copy(last.message, 'نصّ الرسالة');
+$('copyKey').onclick = () => {
+  if (last) void copy(last.key, 'المفتاح');
+};
+$('copyMsg').onclick = () => {
+  if (last) void copy(last.message, 'نصّ الرسالة');
+};
 
 // ── السجلّ ──────────────────────────────────────────────────────────────
 
@@ -283,7 +297,9 @@ $('makeUpd').onclick = () =>
     msg.classList.add('ok');
     const b = document.createElement('button');
     b.textContent = 'اعرضه في مجلّده';
-    b.onclick = () => call('showFile', r.out);
+    b.onclick = () => {
+      void call('showFile', r.out);
+    };
     msg.appendChild(b);
   });
 

@@ -153,6 +153,20 @@ class Page {
     await sleep(200);
   }
 
+  /**
+   * يكتب حرفًا حرفًا بلوحة المفاتيح كما يكتب الإنسان — keydown ثم الحرف: فمعالجٌ يمنع الحرف يُرى
+   * (`type` يضع القيمة مباشرةً فلا يراه — فاتت به كلمة سرّ الأداة لا تُكتب).
+   */
+  async typeKeys(selector, text) {
+    const ok = await this.eval(`const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el;`);
+    if (!ok) throw new Error(`لا حقل يُكتب فيه: ${selector}`);
+    for (const ch of text) {
+      await this.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch, unmodifiedText: ch });
+      await this.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ch });
+    }
+    await sleep(100);
+  }
+
   /** يكتب في حقل — عبر مُعيِّن React ليصل التغيير إلى الحالة. */
   async type(selector, value) {
     const ok = await this.eval(`

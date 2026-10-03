@@ -29,6 +29,7 @@ export async function prepare() {
 
 /** المفتاح كما يقرؤه البرنامج: الحمولة، وتوقيعها بالمفتاح العامّ. */
 function readKey(key) {
+  if (!key?.startsWith('DIWAN-')) return null;
   const [body, sig] = key.slice('DIWAN-'.length).split('.');
   const good = verify(null, Buffer.from(body, 'utf8'), publicKey, Buffer.from(sig, 'base64url'));
   return good ? JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) : null;
@@ -63,8 +64,16 @@ export default async function scenario(page, { shotsDir }) {
   await click('createBtn');
   ok('وكلمتان مختلفتان تُرفضان', (await text('#createMsg')).includes('لا تتطابقان'));
   ok('ولم يُمسّ المفتاح بعد', existsSync(join(DIR, 'diwan-owner-private.pem')) && !existsSync(join(DIR, 'diwan-owner-private.key')));
-  await setVal('newPw2', PASSWORD);
-  await click('createBtn', 2500);
+  // كما يكتب المالك: حرفًا حرفًا في الخانتين، وEnter من الأولى إلى الثانية ومن الثانية يُشفَّر.
+  await setVal('newPw', '');
+  await setVal('newPw2', '');
+  await page.typeKeys('#newPw', PASSWORD);
+  await page.key('Enter');
+  await page.typeKeys('#newPw2', PASSWORD);
+  const typed = await page.eval(`return [document.getElementById('newPw').value, document.getElementById('newPw2').value];`);
+  ok('الكلمة تُكتب بلوحة المفاتيح في الخانتين', typed[0] === PASSWORD && typed[1] === PASSWORD);
+  await page.key('Enter');
+  await wait(2500);
   ok('فإذا تطابقتا: شُفّر المفتاح وفُتحت الأداة', await visible('app'));
   ok('وغير المشفّر مُحي، والمشفّر وحده في المجلّد', !existsSync(join(DIR, 'diwan-owner-private.pem')) && readFileSync(join(DIR, 'diwan-owner-private.key'), 'utf8').includes('BEGIN DIWAN ENCRYPTED KEY'));
   ok('ومفتاح الاختبار لا يطابق مفتاح البرنامج — فيُنبَّه', (await text('[data-match]')).includes('لا يطابق'));
@@ -175,9 +184,12 @@ export default async function scenario(page, { shotsDir }) {
   await setVal('pw', PASSWORD);
   await click('unlockBtn', 2000);
   ok('والكلمة القديمة لم تعد تفتح', (await text('[data-login-msg]')).includes('خاطئة') && (await visible('login')));
-  await setVal('pw', NEW_PASSWORD);
-  await click('unlockBtn', 2000);
-  ok('والجديدة تفتح', await visible('app'));
+  await setVal('pw', '');
+  await page.typeKeys('#pw', NEW_PASSWORD);
+  ok('وخانة الدخول تُكتب بلوحة المفاتيح', (await page.eval(`return document.getElementById('pw').value;`)) === NEW_PASSWORD);
+  await page.key('Enter');
+  await wait(2000);
+  ok('والجديدة تفتح — بـEnter', await visible('app'));
   await shot('4-app');
 
   // ── الخمول ───────────────────────────────────────────────────────
