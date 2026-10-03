@@ -187,7 +187,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await choose('[data-act="page-size"]', 'FS');
   await wait(300);
   box = await paperBox();
-  ok('والفولسكاب بطوله ٣٣٠', box.w === 216 && box.sheetH === 330);
+  ok('والفولسكاب ٢١٠×٣٣٠', box.w === 210 && box.sheetH === 330);
   await click('[data-margins="custom"]');
   await wait(200);
   ok('و«مخصّصة» تفتح أرقام الجوانب الأربعة', (await page.eval(`return document.querySelectorAll('[data-margin]').length;`)) === 4);

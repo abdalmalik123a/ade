@@ -45,7 +45,7 @@ const DEFAULTS: OfficeSettings = {
   lastBackupAt: null,
   sidebarPinned: true,
   hiddenSections: [],
-  newEditor: false
+  newEditor: true
 };
 
 function readSettings(): OfficeSettings {
@@ -72,7 +72,8 @@ function readSettings(): OfficeSettings {
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
     sidebarPinned: map.get('sidebarPinned') !== 'false',
     hiddenSections: normalizeHidden(parseJson(map.get('hiddenSections'))),
-    newEditor: map.get('newEditor') === 'true'
+    // الأصل الجديد منذ ٤ تشرين الأول — ومن أطفأه بنفسه يبقى على اختياره.
+    newEditor: map.has('newEditor') ? map.get('newEditor') === 'true' : DEFAULTS.newEditor
   };
 }
 

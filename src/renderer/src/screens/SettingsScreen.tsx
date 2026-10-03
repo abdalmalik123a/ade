@@ -212,9 +212,9 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                   }}
                 />
                 <span>
-                  المحرّر الجديد — تحديدٌ بالحرف عبر الفقرات وCtrl+A، والتنسيق على ما حُدِّد، واللصق من Word بتنسيقه، والمائل
-                  والخطّ وتباعد الأسطر والتعداد.{' '}
-                  <span className="text-on-surface-variant">تجريبي: يُجرَّب بجانب المحرّر الحالي حتى يثبت.</span>
+                  المحرّر الجديد — تحديدٌ بالحرف عبر الفقرات وCtrl+A، والتنسيق على ما حُدِّد، واللصق من Word بتنسيقه، والصفحات
+                  كما تُطبع.{' '}
+                  <span className="text-on-surface-variant">هو الأصل؛ وإطفاؤه يعيد المحرّر الأوّل احتياطًا.</span>
                 </span>
               </label>
             </section>

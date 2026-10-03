@@ -16,6 +16,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // المحرّر الأوّل: صار احتياطًا منذ ٤ تشرين الأول — وهذا السيناريو يختبره (والجديد في pageEditor.mjs).
+  await page.eval(`await window.diwan.settings.set({ newEditor: false }); return true;`);
   const click = (selector) =>
     page.eval(`
       const el = document.querySelector(${JSON.stringify(selector)});
