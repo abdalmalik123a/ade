@@ -31,7 +31,7 @@ export const DESTINATIONS: readonly Destination[] = [
     routes: ['archive', 'audit'],
     tabs: [
       { route: 'archive', label: 'ما خرج' },
-      { route: 'audit', label: 'سلامة السجلّ' }
+      { route: 'audit', label: 'الأحداث' }
     ]
   },
   {

@@ -61,6 +61,18 @@ export function fromIsoDate(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * وقتٌ خزّنته القاعدة (`datetime('now')`: UTC بلا علامة) بتوقيت الجهاز: «2026-10-04 14:05».
+ * وكان يُعرض كما خُزّن فيتأخّر ثلاث ساعاتٍ عن توقيت العراق (المرحلة ٣ من UPGRADE.md).
+ */
+export function localStamp(at: string): string {
+  const iso = /[TZ+]/.test(at.slice(10)) ? at : `${at.replace(' ', 'T')}Z`;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return at.slice(0, 16);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 /** كم يومًا مضى على وقتٍ (ISO) — بالتقويم المحلّي لا بالساعات: أمسِ الليلة يومٌ مضى. */
 export function daysSince(iso: string, now: Date = new Date()): number {
   const then = new Date(iso);

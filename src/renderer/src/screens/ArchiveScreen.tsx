@@ -11,6 +11,7 @@
  * (د٣): يبقى برقمه وبصمته ولا يُعاد طبعه.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { localStamp } from '@shared/dates';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
@@ -461,7 +462,7 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
                 <div className="flex flex-wrap gap-x-space-md gap-y-0.5" data-history="">
                   {[...history].reverse().map((h) => (
                     <span key={h.id}>
-                      {auditLabel(h)} · {h.at.slice(0, 16)}
+                      {auditLabel(h)} · {localStamp(h.at)}
                       {h.operator ? ` · ${h.operator}` : ''}
                     </span>
                   ))}

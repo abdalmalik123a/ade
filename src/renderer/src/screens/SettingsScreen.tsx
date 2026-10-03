@@ -15,6 +15,7 @@ import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
 import { UI_SCALES } from '../shell/Onboarding';
 import BackupPanel from '../components/BackupPanel';
+import ArchiveIntegrity from '../components/ArchiveIntegrity';
 import LicenseCard from '../components/LicenseCard';
 import AboutDialog from '../components/AboutDialog';
 import UpdateCard from '../components/UpdateCard';
@@ -218,6 +219,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
             </section>
 
             {/* ── البيانات والنسخ الاحتياطية ─────────────────────────────── */}
+            <ArchiveIntegrity card={card} />
             <BackupPanel
               card={card}
               lastBackupAt={settings.lastBackupAt}

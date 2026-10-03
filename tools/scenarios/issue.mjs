@@ -522,8 +522,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── سجلّ التدقيق وسلامة الأرشيف (د٤ ود٥) ─────────────────────────────
   await page.goto('audit-log-integrity');
   await wait(900);
-  ok('سجلّ التدقيق: الإصدار والإبطال بمن فعلهما', await page.eval(`return Boolean(document.querySelector('[data-audit-row="document/issue"]')) && Boolean(document.querySelector('[data-audit-row="document/void"]'));`));
-  await page.eval(`document.querySelector('[data-act="verify-archive"]').click(); return true;`);
+  ok('«الأحداث» في السجلّ: الإصدار والإبطال بمن فعلهما', await page.eval(`return Boolean(document.querySelector('[data-audit-row="document/issue"]')) && Boolean(document.querySelector('[data-audit-row="document/void"]'));`));
+  // وفحص السلامة في «الإعدادات ← البيانات» (المرحلة ٣) — فحصٌ شهريّ لا قراءةٌ يومية.
+  await page.goto('office-settings');
+  await wait(900);
+  await page.eval(`document.querySelector('[data-integrity] [data-act="verify-archive"]').click(); return true;`);
   await wait(1200);
   ok('والأرشيف سليم: بصمةٌ من كل متن، وسلسلةٌ متّصلة', await page.eval(`return document.querySelector('[data-check-result]')?.getAttribute('data-check-result') === 'ok';`));
   ok('وبصمة آخر السلسلة تُعرض لتُحفظ خارج الجهاز', /^[0-9a-f]{64}$/.test(await page.eval(`return document.querySelector('[data-chain-head]')?.innerText.trim() ?? '';`)));

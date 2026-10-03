@@ -119,7 +119,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الطلب ─────────────────────────────────────────────────────────
   await page.goto('orders-board');
   await wait(800);
-  ok('للطلبات شاشةٌ بحالاتها الأربع', (await page.eval(`return document.querySelectorAll('[data-column]').length;`)) === 4);
+  // قيد العمل بثلاثة أعمدةٍ بالخطوة التالية (المرحلة ٣، ن١٤) — وحالات الطلب فيها.
+  ok('«قيد العمل» بأعمدته الثلاثة', (await page.eval(`return [...document.querySelectorAll('[data-column]')].map((c) => c.dataset.column).join();`)) === 'yours,customer,ready');
   await click('[data-act="new-order"]');
   await wait(600);
   await page.eval(`
@@ -145,7 +146,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const card = () =>
     page.eval(`
       const c = document.querySelector('[data-order]');
-      return c ? { column: c.closest('[data-column]')?.dataset.column, due: c.querySelector('[data-due]')?.textContent, text: c.innerText } : null;
+      return c ? { column: c.dataset.status, place: c.closest('[data-column]')?.dataset.column, due: c.querySelector('[data-due]')?.textContent, text: c.innerText } : null;
     `);
   let c = await card();
   ok('سُجّل الطلب في «جديد»', c?.column === 'new' && c.text.includes('هويّات طلاب'));
@@ -171,7 +172,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     await click('[data-order] [data-act="advance"]');
     await wait(700);
     c = await card();
-    ok(`وسار إلى «${expected}»`, c?.column === expected);
+    ok(`وسار إلى «${expected}» — في عمود «${expected === 'ready' ? 'جاهز للتسليم' : 'عليك أن تكمله'}»`, c?.column === expected && c?.place === (expected === 'ready' ? 'ready' : 'yours'));
   }
   await click('[data-order] [data-act="advance"]');
   await wait(800);

@@ -73,6 +73,8 @@ export type SidebarCounts = {
   issuedToday: number;
   /** الطلبات المفتوحة، وما موعده اليوم، والمتأخّر — لشارة الشريط. */
   orders: OrderCounts;
+  /** ما سوى الطلبات في «قيد العمل»: المسودات والمعاملات المعلّقة (المرحلة ٣). */
+  pending: number;
 };
 
 /** Electron 44 لم يعد يعطي isDefault/status مباشرة — يُستخرجان من options الخاصة بالنظام. */

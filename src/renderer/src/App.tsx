@@ -60,7 +60,7 @@ export default function App() {
    */
   const [route, setRoute] = useState<RouteKey>('service');
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 } });
+  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 }, pending: 0 });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [version, setVersion] = useState<string | null>(null);
 
@@ -91,6 +91,8 @@ export default function App() {
   const [pdfIncoming, setPdfIncoming] = useState<PdfIncoming | null>(null);
   const [photoIncoming, setPhotoIncoming] = useState<PhotoIncoming | null>(null);
   const [wordIncoming, setWordIncoming] = useState<WordIncoming | null>(null);
+  /** «استأنف» من قيد العمل: معاملةٌ معلّقة تُفتح في الشبّاك (المرحلة ٣). */
+  const [resumeRequest, setResumeRequest] = useState<{ key: number; parkedKey: number } | null>(null);
   /** «كرّره» لكتابٍ صدر من الشبّاك: يُفتح فيه لا في المحرّر. */
   const [repeatRequest, setRepeatRequest] = useState<RepeatRequest | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
@@ -311,6 +313,11 @@ export default function App() {
         return (
           <OrdersScreen
             onChanged={() => void refresh()}
+            onOpenDraft={(id) => openEditor({ draftId: id })}
+            onResumeParked={(parkedKey) => {
+              setResumeRequest({ key: Date.now(), parkedKey });
+              navigate('service');
+            }}
             onOpenDesign={(order) => {
               setDesignRequest({
                 key: Date.now(),
@@ -425,6 +432,7 @@ export default function App() {
             <ServiceScreen
               active={route === 'service'}
               repeat={repeatRequest}
+              resumeRequest={resumeRequest}
               onIssued={() => void refresh()}
               onOpenTool={(t) => {
                 if ('route' in t) {

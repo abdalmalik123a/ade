@@ -203,7 +203,17 @@ export function registerIpc(): void {
     const issuedToday = db
       .prepare("SELECT COUNT(*) AS n FROM documents WHERE date(issued_at,'localtime') = date('now','localtime')")
       .get() as { n: number };
-    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db) };
+    // قيد العمل كلّه: الطلبات، والمسودات، والمعلّقات (مخزونةً في الإعدادات).
+    const drafts = db.prepare('SELECT COUNT(*) AS n FROM drafts').get() as { n: number };
+    const parkedRow = db.prepare("SELECT value FROM settings WHERE key = 'parkedTransactions'").get() as { value: string } | undefined;
+    let parked = 0;
+    try {
+      const list = JSON.parse(parkedRow?.value ?? '[]') as unknown;
+      parked = Array.isArray(list) ? list.length : 0;
+    } catch {
+      parked = 0;
+    }
+    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db), pending: drafts.n + parked };
   });
 
   ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));

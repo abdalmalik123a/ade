@@ -1,5 +1,10 @@
 /**
- * الطلبات — لوحةٌ بحالاتها: جديد، بانتظار الزبون، قيد العمل، جاهز.
+ * قيد العمل (خطّة الترقية، المرحلة ٣ — ن١٤): ما لم يكتمل في مكانٍ واحد، بثلاثة أعمدةٍ بالخطوة
+ * التالية — «عليك أن تكمله» و«ينتظر الزبون» و«جاهز للتسليم» — ولكلّ بطاقةٍ زرٌّ واحد. ويمتلئ وحده:
+ * مسودة كتابٍ لم يُطبع، ومعاملةٌ عُلّقت في الشبّاك (أو تُركت حين أُغلق البرنامج)، وطلبٌ يُسلَّم لاحقًا.
+ * وكانت ثلاث قوائم لشيءٍ واحد: المعلّقات في الشبّاك، والمسودات في المكتبة، والطلبات هنا.
+ *
+ * والطلبات — لوحةٌ بحالاتها: جديد، بانتظار الزبون، قيد العمل، جاهز.
  *
  * «مدرسة الرافدين: ٤٠٠ هويّة، الخميس» كانت ورقةً ملصقة على الشاشة أو في ذاكرة
  * صاحب المكتب. والآن بطاقةٌ تعرف موعدها («متأخّر يومين» بالأحمر)، وتصميمها،
@@ -8,7 +13,9 @@
  * **ولا مبالغ فيها** عمدًا: ديوان أداة إنتاج لا دفتر حسابات (قرار المالك).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { TemplateSummary } from '@shared/api';
+import type { DraftRow, TemplateSummary } from '@shared/api';
+import { localStamp } from '@shared/dates';
+import type { Parked } from './ServiceScreen';
 import { readyMessage } from '@shared/agenda';
 import {
   OPEN_STATUSES,
@@ -42,13 +49,24 @@ function addDays(today: string, n: number): string {
   return localToday(d);
 }
 
+/** الأعمدة الثلاثة بالخطوة التالية (ن١٤) — وحالات الطلب الستّ تقع فيها. */
+const COLUMNS: { key: 'yours' | 'customer' | 'ready'; label: string; hint: string; statuses: OrderStatus[] }[] = [
+  { key: 'yours', label: 'عليك أن تكمله', hint: 'مسوداتٌ وطلباتٌ تنتظر عملك', statuses: ['new', 'working'] },
+  { key: 'customer', label: 'ينتظر الزبون', hint: 'معاملاتٌ معلّقة، وطلباتٌ تنقصها صورٌ أو قائمة', statuses: ['waiting'] },
+  { key: 'ready', label: 'جاهز للتسليم', hint: 'مطبوعٌ ينتظر صاحبه', statuses: ['ready'] }
+];
+
 export type OrdersScreenProps = {
   /** يفتح تصميم الطلب في التصاميم، وقائمتُه في الدفعة. */
   onOpenDesign: (order: Order) => void;
   onChanged?: () => void;
+  /** «أكمله»: مسودة كتابٍ تُفتح في المحرّر. */
+  onOpenDraft?: (draftId: number) => void;
+  /** «استأنف»: معاملةٌ معلّقة تُفتح في الشبّاك من حيث تُركت. */
+  onResumeParked?: (parkedKey: number) => void;
 };
 
-export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenProps) {
+export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onResumeParked }: OrdersScreenProps) {
   /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨). */
   const [officeName, setOfficeName] = useState('');
   useEffect(() => {
@@ -61,12 +79,21 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
   const [toast, setToast] = useState<string | null>(null);
   const today = localToday();
 
+  const [drafts, setDrafts] = useState<DraftRow[]>([]);
+  const [parked, setParked] = useState<Parked[]>([]);
   const reload = useCallback(async () => {
     setOrders(await window.diwan.orders.list({ status: tab === 'open' ? 'open' : 'delivered', query }));
+    // ما لم يكتمل من غير الطلبات — يصل وحده، ويُصفّى بالبحث نفسه.
+    const [d, p] = await Promise.all([window.diwan.drafts.list(), window.diwan.service.parked()]);
+    const q = query.trim();
+    setDrafts(d.filter((x) => !q || `${x.title} ${x.citizenName ?? ''} ${x.templateTitle ?? ''}`.includes(q)));
+    setParked((p as Parked[]).filter((x) => !q || x.label.includes(q)));
   }, [tab, query]);
 
+  // وعدّاد السكّة يتبع ما قُرئ هنا: مسودةٌ حُفظت لحظة مغادرة المحرّر تُعدّ.
   useEffect(() => {
-    void reload();
+    void reload().then(() => onChanged?.());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload]);
 
   const say = (text: string) => {
@@ -96,14 +123,14 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
         <header className="flex flex-wrap items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-md">
             <div>
-              <h1 className="font-headline-md text-headline-md text-on-surface font-bold">الطلبات</h1>
-              <p className="font-label-md text-label-md text-on-surface-variant">ما يُطلب اليوم ويُسلَّم لاحقًا</p>
+              <h1 className="font-headline-md text-headline-md text-on-surface font-bold">قيد العمل</h1>
+              <p className="font-label-md text-label-md text-on-surface-variant">ما لم يكتمل — يصل وحده: المعلّقات والمسودات والطلبات</p>
             </div>
             {tab === 'open' && (
               <div className="flex items-center gap-space-xs" data-orders-summary="">
                 {counts.late > 0 && <span className={`px-3 py-1 rounded-full font-label-md text-label-md font-semibold ${TONE.late}`}>متأخّر {toIndic(counts.late)}</span>}
                 {counts.today > 0 && <span className={`px-3 py-1 rounded-full font-label-md text-label-md font-semibold ${TONE.today}`}>اليوم {toIndic(counts.today)}</span>}
-                <span className={`px-3 py-1 rounded-full font-label-md text-label-md ${TONE.later}`}>مفتوح {toIndic(counts.open)}</span>
+                <span className={`px-3 py-1 rounded-full font-label-md text-label-md ${TONE.later}`}>مفتوح {toIndic(counts.open + drafts.length + parked.length)}</span>
               </div>
             )}
           </div>
@@ -111,7 +138,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
             <div className="flex p-1 rounded-xl bg-surface-container-low">
               {(
                 [
-                  ['open', 'المفتوحة'],
+                  ['open', 'ما لم يكتمل'],
                   ['delivered', 'سُلِّمت']
                 ] as const
               ).map(([key, label]) => (
@@ -146,20 +173,48 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
         </header>
 
         {tab === 'open' ? (
-          <div className="flex-1 min-h-0 grid grid-cols-4 gap-space-md">
-            {OPEN_STATUSES.map((key) => {
-              const info = statusOf(key);
-              const list = orders.filter((o) => o.status === key);
+          <div className="flex-1 min-h-0 grid grid-cols-3 gap-space-md">
+            {COLUMNS.map((col) => {
+              const list = orders.filter((o) => col.statuses.includes(o.status));
+              const extra = col.key === 'yours' ? drafts.length : col.key === 'customer' ? parked.length : 0;
               return (
-                <section key={key} className="min-h-0 flex flex-col rounded-xl bg-surface-container-low" data-column={key}>
+                <section key={col.key} className="min-h-0 flex flex-col rounded-xl bg-surface-container-low" data-column={col.key}>
                   <div className="px-space-md pt-space-md pb-space-sm">
                     <div className="flex items-center justify-between">
-                      <span className="font-body-md text-body-md text-on-surface font-semibold">{info.label}</span>
-                      <span className="font-label-md text-label-md text-on-surface-variant tabular">{toIndic(list.length)}</span>
+                      <span className="font-body-md text-body-md text-on-surface font-semibold">{col.label}</span>
+                      <span className="font-label-md text-label-md text-on-surface-variant tabular">{toIndic(list.length + extra)}</span>
                     </div>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">{info.hint}</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{col.hint}</span>
                   </div>
                   <div className="flex-1 min-h-0 overflow-auto px-space-sm pb-space-sm space-y-space-sm">
+                    {col.key === 'yours' &&
+                      drafts.map((d) => (
+                        <PendingCard
+                          key={`d${d.id}`}
+                          action="أكمله"
+                          act="resume-draft"
+                          icon="edit_document"
+                          kind="مسودة كتاب"
+                          sub={[d.citizenName, d.templateTitle].filter(Boolean).join(' · ')}
+                          title={d.title || 'كتابٌ بلا عنوان'}
+                          when={localStamp(d.updatedAt)}
+                          onRun={() => onOpenDraft?.(d.id)}
+                        />
+                      ))}
+                    {col.key === 'customer' &&
+                      parked.map((p) => (
+                        <PendingCard
+                          key={`p${p.key}`}
+                          action="استأنف"
+                          act="resume-parked"
+                          icon="pending_actions"
+                          kind="معاملة معلّقة في الشبّاك"
+                          sub={p.step === 'review' ? 'عند المراجعة' : 'عند الملء'}
+                          title={p.label}
+                          when={localStamp(new Date(p.key).toISOString())}
+                          onRun={() => onResumeParked?.(p.key)}
+                        />
+                      ))}
                     {list.map((o) => (
                       <OrderCard
                         key={o.id}
@@ -174,9 +229,11 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
                         }}
                       />
                     ))}
-                    {list.length === 0 && (
+                    {list.length + extra === 0 && (
                       <p className="px-space-sm py-space-lg text-center font-label-sm text-label-sm text-on-surface-variant">
-                        {key === 'new' && orders.length === 0 ? 'لا طلبات — «طلب جديد» حين يطلب زبونٌ شيئًا يُسلَّم لاحقًا' : '—'}
+                        {col.key === 'yours' && orders.length + drafts.length + parked.length === 0
+                          ? 'لا شيء ينتظر — ما يُترك قبل أن يكتمل يصل هنا وحده، و«طلب جديد» لما يُسلَّم لاحقًا'
+                          : '—'}
                       </p>
                     )}
                   </div>
@@ -253,6 +310,44 @@ export default function OrdersScreen({ onOpenDesign, onChanged }: OrdersScreenPr
   );
 }
 
+/** بطاقة ما لم يكتمل من غير الطلبات: مسودةٌ أو معاملةٌ معلّقة — بزرٍّ واحد. */
+function PendingCard({
+  kind,
+  icon,
+  title,
+  sub,
+  when,
+  action,
+  act,
+  onRun
+}: {
+  kind: string;
+  icon: string;
+  title: string;
+  sub: string;
+  when: string;
+  action: string;
+  act: string;
+  onRun: () => void;
+}) {
+  return (
+    <article className="rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)]" data-pending={act}>
+      <div className="flex items-center justify-between gap-2 font-label-sm text-label-sm text-on-surface-variant">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="material-symbols-outlined text-[16px] text-secondary">{icon}</span>
+          <span className="truncate">{kind}</span>
+        </span>
+        <span className="shrink-0 tabular">{when}</span>
+      </div>
+      <div className="font-body-md text-body-md text-on-surface font-semibold truncate">{title}</div>
+      {sub && <div className="font-label-sm text-label-sm text-on-surface-variant truncate">{sub}</div>}
+      <button className="w-full h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
+        {action}
+      </button>
+    </article>
+  );
+}
+
 function OrderCard({
   order,
   today,
@@ -275,6 +370,7 @@ function OrderCard({
     <article
       className={`rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)] ${due.tone === 'late' ? 'ring-2 ring-error/60' : ''}`}
       data-order={order.id}
+      data-status={order.status}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 min-w-0 font-label-sm text-label-sm text-on-surface-variant">

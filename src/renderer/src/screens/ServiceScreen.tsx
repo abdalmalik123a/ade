@@ -45,6 +45,7 @@ import InboxPanel, { type InboxOpen } from '../components/InboxPanel';
 import { seasonOf } from '@shared/seasons';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
+import { onBeforeClose } from '../lib/beforeClose';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -70,6 +71,8 @@ export type ServiceScreenProps = {
   onOpenTool?: (target: CounterCard['target']) => void;
   /** ملفٌّ من «الملفّات» يُفتح في أداته — ويُرفض بخطأٍ يقوله اللوح. */
   onOpenFile?: (file: InboxFile, as: InboxOpen) => Promise<void>;
+  /** «استأنف» من قيد العمل: معاملةٌ معلّقة بمفتاحها (المرحلة ٣). */
+  resumeRequest?: { key: number; parkedKey: number } | null;
 };
 
 export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
@@ -99,7 +102,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile }: ServiceScreenProps) {
+export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, resumeRequest = null }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -616,6 +619,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     genderByHand
   });
 
+  /**
+   * ما يُترك قبل أن يكتمل يصل قيد العمل وحده (ن١٤): برنامجٌ يُغلق ومعاملةٌ في وسطها — نماذجها
+   * مختارة وفي ورقة الإدخال أو المراجعة — تُعلَّق قبل الإغلاق، فتنتظر صاحبها في «قيد العمل».
+   */
+  const closeFlush = useRef<() => unknown>(() => undefined);
+  closeFlush.current = () => (loaded.length > 0 && step !== 'pick' ? window.diwan.service.setParked([...parked, snapshot()]) : undefined);
+  useEffect(() => onBeforeClose(() => closeFlush.current()), []);
+
   /** تُعلَّق المعاملة كما هي، ويُفتح الشبّاك لزبونٍ آخر. */
   function park() {
     setParked((list) => [...list, snapshot()]);
@@ -627,8 +638,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
    * تُستأنف معلّقةٌ من حيث تُركت — والجارية إن كان فيها شيء تُعلَّق مكانها. والنماذج تُحمَّل
    * من جديد: ما حُذف منها منذ التعليق يُقال.
    */
-  async function resume(key: number) {
-    const p = parked.find((x) => x.key === key);
+  async function resume(key: number, from: Parked[] = parked) {
+    const p = from.find((x) => x.key === key);
     if (!p) return;
     const current = loaded.length > 0 ? snapshot() : null;
     const found = (await Promise.all(p.picked.map((id) => window.diwan.templates.get(id).catch(() => null)))).filter(Boolean).length;
@@ -650,6 +661,17 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setAt(0);
     say(found < p.picked.length ? `استُؤنفت معاملة ${p.label} — وحُذف من نماذجها ما لم يعد في المكتبة` : `استُؤنفت معاملة ${p.label}`);
   }
+
+  // «استأنف» من قيد العمل: القائمة من القاعدة (قد عُلّقت عند الإغلاق بعد أن قُرئت هنا) ثم الاستئناف.
+  useEffect(() => {
+    if (!resumeRequest) return;
+    void window.diwan.service.parked().then((list) => {
+      const fresh = list as Parked[];
+      setParkedState(fresh);
+      void resume(resumeRequest.parkedKey, fresh);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeRequest?.key]);
 
   /**
    * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء.

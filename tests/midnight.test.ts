@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { isoDate } from '../src/shared/dates';
+import { isoDate, localStamp } from '../src/shared/dates';
 import { issueDocument, listDocuments } from '../src/main/services/documents';
 import type { IssueInput } from '../src/shared/api';
 
@@ -52,5 +52,16 @@ describe('منتصف الليل', () => {
     const found = listDocuments(db, { from: local, to: local, limit: 10 });
     expect(found.map((r) => r.id)).toContain(id);
     expect(found[0]!.issuedDate).toBe(local);
+  });
+});
+
+describe('وقت سجلّ التدقيق بتوقيت الجهاز', () => {
+  it('ما خزّنته القاعدة UTC يُعرض محلّيًّا — لا متأخّرًا ثلاث ساعات', () => {
+    const utc = new Date(Date.UTC(2026, 9, 4, 11, 5));
+    const p = (n: number) => String(n).padStart(2, '0');
+    const local = `${utc.getFullYear()}-${p(utc.getMonth() + 1)}-${p(utc.getDate())} ${p(utc.getHours())}:${p(utc.getMinutes())}`;
+    expect(localStamp('2026-10-04 11:05:00')).toBe(local);
+    expect(localStamp('2026-10-04T11:05:00.000Z')).toBe(local);
+    expect(localStamp('فاسد')).toBe('فاسد');
   });
 });
