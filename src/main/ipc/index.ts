@@ -44,7 +44,8 @@ const DEFAULTS: OfficeSettings = {
   basmala: null,
   lastBackupAt: null,
   sidebarPinned: true,
-  hiddenSections: []
+  hiddenSections: [],
+  newEditor: false
 };
 
 function readSettings(): OfficeSettings {
@@ -70,7 +71,8 @@ function readSettings(): OfficeSettings {
     // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
     sidebarPinned: map.get('sidebarPinned') !== 'false',
-    hiddenSections: normalizeHidden(parseJson(map.get('hiddenSections')))
+    hiddenSections: normalizeHidden(parseJson(map.get('hiddenSections'))),
+    newEditor: map.get('newEditor') === 'true'
   };
 }
 

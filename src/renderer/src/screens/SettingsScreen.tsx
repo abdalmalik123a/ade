@@ -58,7 +58,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   const save = () => {
     if (!settings) return;
     // الشريط والأقسام تُحفظ لحظة تغييرها — وزرّ الشريط يغيّرها من خارج هذه الشاشة، فلا يُعيدها الحفظ.
-    const { sidebarPinned: _pinned, hiddenSections: _hidden, ...office } = settings;
+    const { sidebarPinned: _pinned, hiddenSections: _hidden, newEditor: _newEditor, ...office } = settings;
     void window.diwan.settings.set(office).then((saved) => {
       setSettings(saved);
       setDirty(false);
@@ -195,6 +195,29 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                 void window.diwan.settings.set(next).then(() => onChanged?.());
               }}
             />
+
+            {/* ── المحرّر ────────────────────────────────────────────────── */}
+            <section className={card} data-editor-setting="">
+              {title('edit_document', 'المحرّر')}
+              <label className="flex items-start gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+                <input
+                  checked={settings.newEditor}
+                  className="w-4 h-4 mt-1 accent-secondary"
+                  data-setting="newEditor"
+                  type="checkbox"
+                  onChange={(e) => {
+                    const next = { newEditor: e.target.checked };
+                    setSettings((cur) => (cur ? { ...cur, ...next } : cur));
+                    void window.diwan.settings.set(next).then(() => onChanged?.());
+                  }}
+                />
+                <span>
+                  المحرّر الجديد — تحديدٌ بالحرف عبر الفقرات وCtrl+A، والتنسيق على ما حُدِّد، واللصق من Word بتنسيقه، والمائل
+                  والخطّ وتباعد الأسطر والتعداد.{' '}
+                  <span className="text-on-surface-variant">تجريبي: يُجرَّب بجانب المحرّر الحالي حتى يثبت.</span>
+                </span>
+              </label>
+            </section>
 
             {/* ── البيانات والنسخ الاحتياطية ─────────────────────────────── */}
             <BackupPanel

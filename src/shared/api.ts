@@ -59,6 +59,11 @@ export type OfficeSettings = {
   sidebarPinned: boolean;
   /** أقسامٌ أخفاها المكتب من الشريط ولوحة الأوامر — والشبّاك والأرشيف والإعدادات لا تُخفى (`shared/sections.ts`). */
   hiddenSections: RouteKey[];
+  /**
+   * المحرّر الجديد (خطّة الترقية، المرحلة ١): الورقة وثيقةٌ واحدة، فيُحدَّد النصّ بالحرف عبر
+   * الفقرات ويُنسَّق المحدَّد كما في Word. يُجرَّب بجانب الأوّل حتى يثبت، ثم يصير الأصل.
+   */
+  newEditor: boolean;
 };
 
 export type SidebarCounts = {

@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import DocEditor from '../components/DocEditor';
+import PageEditor from '../components/PageEditor';
 import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
 import { normalizeFold } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
@@ -48,6 +49,12 @@ export default function TemplateDesigner({
   onSaved,
   onDeleted
 }: DesignerProps) {
+  // المحرّر الجديد أو الأوّل — بإعداد المكتب، حتى يثبت الجديد (خطّة الترقية، المرحلة ١).
+  const [newEditor, setNewEditor] = useState(false);
+  useEffect(() => {
+    void window.diwan.settings.get().then((s) => setNewEditor(s.newEditor));
+  }, []);
+  const Editor = newEditor ? PageEditor : DocEditor;
   const [code, setCode] = useState(initial?.code ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? '');
@@ -701,7 +708,7 @@ export default function TemplateDesigner({
 
           {/* الورقة هي مساحة التأليف الوحيدة؛ المتغيّرات ترافقها في اللوح الجانبي. */}
           <div className="flex-1 min-w-0">
-            <DocEditor
+            <Editor
               clips={clips}
               doc={doc}
               onChange={setDoc}

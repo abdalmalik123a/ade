@@ -34,6 +34,7 @@ import { errorText } from '../lib/errors';
 import AddressingPicker from '../components/AddressingPicker';
 import DateTools from '../components/DateTools';
 import DocEditor, { type DocEditorApi } from '../components/DocEditor';
+import PageEditor from '../components/PageEditor';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterSheet, { gapAfter } from '../components/LetterSheet';
@@ -1051,7 +1052,11 @@ function EditorScreen(
 
           <div className="flex-1 min-h-0">
             {view === 'edit' ? (
-              <DocEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
+              settings?.newEditor ? (
+                <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
+              ) : (
+                <DocEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
+              )
             ) : (
               <div className="h-full overflow-auto flex justify-center py-space-lg bg-surface-dim/40" data-preview="">
                 <div style={{ zoom: 0.85 }} className="w-fit">

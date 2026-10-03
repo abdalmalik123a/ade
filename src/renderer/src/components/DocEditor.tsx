@@ -101,11 +101,11 @@ export type DocEditorApi = {
 };
 
 /** الأحجام المعروضة: من الهامش إلى العنوان — والقائمة الطويلة عبءٌ لا ميزة. */
-const SIZES = [11, 12, 14, 16, 18, 20, 24, 28, 32];
+export const SIZES = [11, 12, 14, 16, 18, 20, 24, 28, 32];
 /** حجم المتن حين لا يُذكر حجم — وهو حجم الورقة في المعاينة والإصدار. */
-const BASE_SIZE = 14;
+export const BASE_SIZE = 14;
 /** المسافة البادئة للكتاب الرسمي: ٢ سم في أوّل سطر المتن (الأساس §٤). */
-const OFFICIAL_INDENT_MM = 20;
+export const OFFICIAL_INDENT_MM = 20;
 
 // ── تحويل الأجزاء ↔ العلامات ────────────────────────────────────────
 
@@ -1031,7 +1031,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
 }
 
 /** زرّ أداة: لا يسرق التحديد من الورقة، وإلا ضاع ما ظلّله الكاتب قبل أن يُنسَّق. */
-function Tool({
+export function Tool({
   act,
   icon,
   title,
@@ -1066,7 +1066,7 @@ function Tool({
   );
 }
 
-function ToolSep() {
+export function ToolSep() {
   return <span className="w-px h-5 bg-outline-variant/60 mx-1" />;
 }
 
@@ -1078,9 +1078,9 @@ type Preset = 'copies' | 'columns' | 'answer' | 'spacer' | 'pageBreak';
  * ولا توقيع فيها ولا ختم: المكتب يستنسخ ويطبع، والجهة توقّع وتختم بيدها بعد
  * الطباعة. فالصور شعاراتٌ تُطبع مع الورقة، لا أختامٌ تُزوَّر عليها.
  */
-type MenuClip = { id: number; title: string; body: string; direction?: Addressing | null };
+export type MenuClip = { id: number; title: string; body: string; direction?: Addressing | null };
 
-function InsertMenu({
+export function InsertMenu({
   addressing,
   clips,
   onPick,
@@ -1360,7 +1360,7 @@ function IconBtn({
 }
 
 /** لوحة الحقول: ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
-function FieldPanel({
+export function FieldPanel({
   doc,
   onChange,
   onInsert

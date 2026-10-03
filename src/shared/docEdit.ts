@@ -222,20 +222,22 @@ export function fieldify(
   if (!block) return doc;
 
   const cut = splitAt(block.inlines, start, end);
-  const label = (patch.label ?? cut.taken).trim();
-  if (!cut.clean || !label) return doc;
+  const field = cut.clean ? fieldFromText(doc, cut.taken, patch) : null;
+  if (!field) return doc;
 
-  const key = uniqueKey(doc, keyOf(label));
-  const field = makeField({
-    key,
-    label,
-    width: Math.max(6, cut.taken.trim().length),
-    ...patch
-  });
-
-  const inlines = [...cut.before, { kind: 'field' as const, id: newUuid(), ref: key }, ...cut.after];
+  const inlines = [...cut.before, { kind: 'field' as const, id: newUuid(), ref: field.key }, ...cut.after];
   const next = setInlines({ ...doc, fields: [...doc.fields, field] }, blockId, inlines);
   return next;
+}
+
+/**
+ * الحقل الذي يصنعه تظليل نصٍّ وF4: اسمه النصّ نفسه، ومفتاحه فريدٌ في الوثيقة، وعرضه
+ * طول ما كان مكتوبًا. وفي دالّةٍ واحدة لأنّ المحرّرين يصنعانه — فلا يختلف اسمٌ بينهما.
+ */
+export function fieldFromText(doc: Doc, text: string, patch: Partial<DocField> = {}): DocField | null {
+  const label = (patch.label ?? text).trim();
+  if (!label) return null;
+  return makeField({ key: uniqueKey(doc, keyOf(label)), label, width: Math.max(6, text.trim().length), ...patch });
 }
 
 const keyOf = (label: string) => label.trim().replace(/\s+/g, '_').replace(/[{}]/g, '') || 'حقل';

@@ -59,17 +59,33 @@ const dom = (el: unknown) => el as DomEl;
 
 const ALIGNS: Align[] = ['right', 'center', 'left', 'justify'];
 
+/** بادئة السطر بالملّم: Word يكتبها `1.0cm` أو `36.0pt`، والمحرّر `20mm`. */
+export function cssIndentToMm(value: string): number | null {
+  const m = /^\s*([\d.]+)\s*(mm|cm|pt|px)\s*$/i.exec(value);
+  if (!m) return null;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const unit = m[2]!.toLowerCase();
+  const mm = unit === 'mm' ? n : unit === 'cm' ? n * 10 : unit === 'pt' ? n * 0.3528 : n * 0.2646;
+  return Math.round(mm * 10) / 10;
+}
+
+/** تباعد الأسطر مضاعفًا: `1.5` أو `150%` — والمطلق بالنقاط («18pt») لا يُعرف مضاعفه فيُترك. */
+export function cssLineHeight(value: string): number | null {
+  const v = value.trim();
+  const pct = /^([\d.]+)%$/.exec(v);
+  const n = pct ? Number(pct[1]) / 100 : /^[\d.]+$/.test(v) ? Number(v) : NaN;
+  return Number.isFinite(n) && n >= 0.8 && n <= 4 ? Math.round(n * 100) / 100 : null;
+}
+
 function paragraphAttrsFromDom(el: DomEl): Record<string, unknown> {
   const s = el.style;
   const align = ALIGNS.includes(s.textAlign as Align) ? (s.textAlign as Align) : el.getAttribute('align') ?? 'right';
-  const indentMm = /^([\d.]+)mm$/.exec(s.textIndent ?? '');
-  const indentPt = /^([\d.]+)pt$/.exec(s.textIndent ?? '');
-  const lh = Number(s.lineHeight);
   return {
     id: el.getAttribute('data-id') || null,
     align: ALIGNS.includes(align as Align) ? align : 'right',
-    indent: indentMm ? Number(indentMm[1]) : indentPt ? Math.round(Number(indentPt[1]) * 0.3528) : null,
-    lineHeight: Number.isFinite(lh) && lh > 0.5 && lh < 5 ? lh : null,
+    indent: cssIndentToMm(s.textIndent ?? ''),
+    lineHeight: cssLineHeight(s.lineHeight ?? ''),
     size: s.fontSize ? cssSizeToPx(s.fontSize) : null,
     dir: el.getAttribute('dir') === 'ltr' ? 'ltr' : null
   };
