@@ -67,11 +67,13 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
               {channels().map((c) => (
                 <a
                   key={c.key}
-                  className="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center"
+                  className="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs"
+                  data-channel={c.key}
                   href={c.url}
                   rel="noreferrer"
                   target="_blank"
                 >
+                  <span className="material-symbols-outlined text-[18px] text-secondary">{c.icon}</span>
                   {c.label}
                 </a>
               ))}

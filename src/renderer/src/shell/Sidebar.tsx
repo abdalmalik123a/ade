@@ -1,6 +1,8 @@
 import { ROUTES, type RouteKey } from '@shared/routes';
 import type { SidebarCounts } from '@shared/api';
 import icon from '../assets/brand/diwan-icon.png';
+import { useEffect, useRef, useState } from 'react';
+import { channels } from '@shared/brand';
 
 /* أصناف الشريط من توكنات التصميم (stitch_). والعنصر النشط يختلف بـaria-current وأصنافه
    وحدها — فالتنقّل يُبنى من بيانات لا بتكرار العلامات. */
@@ -242,17 +244,69 @@ export default function Sidebar({
               </span>
             </div>
           </div>
-          <button
-            className="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
-            data-act="open-settings"
-            title="الإعدادات"
-            type="button"
-            onClick={() => onNavigate('settings')}
-          >
-            <span className="material-symbols-outlined text-[20px]">settings</span>
-          </button>
+          <div className="flex items-center">
+            <ChannelsButton />
+            <button
+              className="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+              data-act="open-settings"
+              title="الإعدادات"
+              type="button"
+              onClick={() => onNavigate('settings')}
+            >
+              <span className="material-symbols-outlined text-[20px]">settings</span>
+            </button>
+          </div>
         </div>
       </div>
     </aside>
+  );
+}
+
+/**
+ * «قنواتنا» (قرار المالك ٢ تشرين الأول ٢٠٢٦): قنوات المطوّر الرسمية — تُفتح في متصفّح الجهاز، والبرنامج نفسه
+ * لا يتّصل. قائمةٌ صغيرة فوق الزرّ، وتُغلق بالنقر خارجها.
+ */
+function ChannelsButton() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const list = channels();
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [open]);
+  if (!list.length) return null;
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className="p-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+        data-act="open-channels"
+        title="قنواتنا — تيليجرام ويوتيوب وواتساب وفيسبوك"
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="material-symbols-outlined text-[20px]">campaign</span>
+      </button>
+      {open && (
+        <div className="absolute bottom-10 left-0 z-50 w-52 rounded-xl bg-surface-container-lowest shadow-2xl p-space-xs flex flex-col gap-0.5" data-channels-menu="">
+          <span className="px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant">قنواتنا</span>
+          {list.map((c) => (
+            <a
+              key={c.key}
+              className="flex items-center gap-space-sm px-space-sm h-9 rounded-lg hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+              data-channel={c.key}
+              href={c.url}
+              rel="noreferrer"
+              target="_blank"
+              onClick={() => setOpen(false)}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">{c.icon}</span>
+              {c.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

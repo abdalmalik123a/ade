@@ -2,12 +2,13 @@
  * أداة المفاتيح — للمالك وحده، ولا تُحزم في المثبّت (خطة Production، ٦٫٣).
  *
  *   node tools/license/keygen.mjs init
- *       يصنع زوج المفاتيح مرّةً واحدة: الخاصّ في مجلّد المالك خارج المشروع
- *       (%USERPROFILE%\Diwan-Owner\diwan-owner-private.pem) — احفظ منه نسختين خارج الجهاز ولا تعطه أحدًا —
+ *       يصنع زوج المفاتيح مرّةً واحدة: الخاصّ في مجلّد المالك خارج المشروع — «لا يجب فقدانها» على سطح المكتب
+ *       (أو DIWAN_OWNER_DIR) — احفظ المجلّد كلّه على فلاشةٍ وفي Google Drive ولا تعطِ المفتاح أحدًا —
  *       والعامّ في src/main/license/ownerKey.ts ليُبنى به البرنامج.
  *
- *   node tools/license/keygen.mjs issue DWN-XXXX-XXXX-XXXX-XXXX [--office "مكتب الرافدين"]
- *       مفتاح تفعيلٍ كامل مدى الحياة لذلك الجهاز.
+ *   node tools/license/keygen.mjs issue DWN-XXXX-XXXX-XXXX-XXXX [--office "مكتب الرافدين"] [--phone 07…]
+ *       مفتاح تفعيلٍ كامل مدى الحياة لذلك الجهاز — ويُكتب في «سجل المفاتيح المصدرة.csv» في مجلّد المالك،
+ *       فيُعاد إصداره لمن طلبه يومًا ويُعرف لمن بيع.
  *
  *   node tools/license/keygen.mjs extend DWN-XXXX-XXXX-XXXX-XXXX --until 2026-11-30
  *       تمديد المدّة التجريبية لذلك الجهاز إلى يومٍ بعينه (شاملًا).
@@ -20,14 +21,20 @@
  * وصيغته هي ما يقرؤه البرنامج (src/main/services/license.ts) — ويُثبّت ذلك tests/license.test.ts.
  */
 import { generateKeyPairSync, createHash, createPrivateKey, sign } from 'node:crypto';
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { Zip, ZipDeflate, ZipPassThrough } from 'fflate';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const DEFAULT_KEY = join(homedir(), 'Diwan-Owner', 'diwan-owner-private.pem');
+/** مجلّد المالك: المفتاح الخاصّ وسجلّ المفاتيح المصدرة — يُرفع كلّه على فلاشةٍ وGoogle Drive. */
+const OWNER_DIR = process.env.DIWAN_OWNER_DIR ?? join(homedir(), 'Desktop', 'لا يجب فقدانها');
+const KEY_NAME = 'diwan-owner-private.pem';
+/** ما كان قبل المجلّد (٢ تشرين الأول ٢٠٢٦): يُقرأ منه إن لم يُنقل بعد. */
+const LEGACY_KEY = join(homedir(), 'Diwan-Owner', KEY_NAME);
+const DEFAULT_KEY = existsSync(join(OWNER_DIR, KEY_NAME)) || !existsSync(LEGACY_KEY) ? join(OWNER_DIR, KEY_NAME) : LEGACY_KEY;
+const LEDGER = join(OWNER_DIR, 'سجل المفاتيح المصدرة.csv');
 const PUBLIC_TS = join(ROOT, 'src', 'main', 'license', 'ownerKey.ts');
 
 const args = process.argv.slice(2);
@@ -67,6 +74,20 @@ function makeKey(payload, keyPath) {
 }
 
 const today = new Date().toLocaleDateString('en-CA');
+
+/**
+ * كلّ مفتاحٍ صدر بمفتاح المالك يُكتب سطرًا في السجلّ — بعلامة UTF-8 في أوّله فيقرأ Excel العربية. ولا يُكتب
+ * ما صدر بمفتاح اختبار (`--key`).
+ */
+function record(row) {
+  if (flag('key')) return;
+  const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  if (!existsSync(LEDGER)) {
+    mkdirSync(dirname(LEDGER), { recursive: true });
+    writeFileSync(LEDGER, String.fromCharCode(0xfeff) + ['التاريخ', 'النوع', 'رمز الجهاز', 'المكتب', 'الهاتف', 'حتى', 'المفتاح'].map(cell).join(',') + '\r\n');
+  }
+  appendFileSync(LEDGER, [row.date, row.kind, row.device, row.office, row.phone, row.until, row.key].map(cell).join(',') + '\r\n');
+}
 
 /** قسم الإصدار من CHANGELOG.md: من «## X.Y.Z» إلى القسم الذي يليه. */
 function changelogSection(version) {
@@ -123,11 +144,16 @@ if (cmd === 'init') {
   const payload = { v: 1, device: normalizeDevice(device), kind: 'full', issued: today };
   const office = flag('office');
   if (office) payload.office = office;
-  console.log(makeKey(payload, flag('key') ?? DEFAULT_KEY));
+  const key = makeKey(payload, flag('key') ?? DEFAULT_KEY);
+  record({ date: today, kind: 'كامل', device: payload.device, office, phone: flag('phone'), until: '', key });
+  console.log(key);
 } else if (cmd === 'extend') {
   const until = flag('until');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(until ?? '')) fail('--until YYYY-MM-DD: آخر يومٍ تعمل فيه المدّة');
-  console.log(makeKey({ v: 1, device: normalizeDevice(device), kind: 'extend', issued: today, until }, flag('key') ?? DEFAULT_KEY));
+  const payload = { v: 1, device: normalizeDevice(device), kind: 'extend', issued: today, until };
+  const key = makeKey(payload, flag('key') ?? DEFAULT_KEY);
+  record({ date: today, kind: 'تمديد', device: payload.device, office: flag('office'), phone: flag('phone'), until, key });
+  console.log(key);
 } else if (cmd === 'update') {
   const exe = args[1];
   const version = flag('version');

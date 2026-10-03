@@ -34,6 +34,27 @@ export default async function scenario(page, { shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'about.png'));
   const notices = await page.eval(`return [...document.querySelectorAll('[data-about-notices] li')].map((l) => l.innerText);`);
   ok(`والإشعارات القانونية لما فيه من عمل غيرنا (${notices.length})`, notices.length >= 20 && notices.some((n) => n.includes('electron')) && notices.some((n) => n.includes('OFL-1.1')));
+  const aboutChannels = await page.eval(`return [...document.querySelectorAll('[data-about] [data-channel]')].map((a) => a.dataset.channel);`);
+  ok('و«قنواتنا» الأربع فيه', aboutChannels.join() === 'telegram,youtube,whatsapp,facebook');
+  await page.eval(`document.querySelector('[data-about] button[title="إغلاق"]').click(); return true;`);
+  await wait(300);
+
+  // «قنواتنا» من أسفل الشريط: روابطها كما أعطاها المالك، تُفتح في المتصفّح (لا تُضغط هنا).
+  await page.eval(`document.querySelector('[data-act="open-channels"]').click(); return true;`);
+  await wait(300);
+  const links = await page.eval(`return [...document.querySelectorAll('[data-channels-menu] a')].map((a) => [a.dataset.channel, a.href, a.target]);`);
+  ok(
+    '«قنواتنا» من أسفل الشريط: تيليجرام ويوتيوب وقناة واتساب وفيسبوك',
+    links.length === 4 &&
+      links.every(([, href, target]) => href.startsWith('https://') && target === '_blank') &&
+      links[0][1] === 'https://t.me/MadaTechDev' &&
+      links[1][1] === 'https://www.youtube.com/@MadaTechDev' &&
+      links[2][1].startsWith('https://whatsapp.com/channel/') &&
+      links[3][1].includes('facebook.com/profile.php?id=61595170464546')
+  );
+  await page.eval(`document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return true;`);
+  await wait(200);
+  ok('وتُغلق قائمتها بالنقر خارجها', !(await page.eval(`return Boolean(document.querySelector('[data-channels-menu]'));`)));
 
   // واجهةٌ تسقط تُعاد.
   await page.send('Page.crash').catch(() => undefined);
