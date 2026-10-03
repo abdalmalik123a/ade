@@ -12,8 +12,10 @@
  * - `afterRestart` في السيناريو: يُقتل التطبيق فجأةً بعد السيناريو (كانقطاع الكهرباء)
  *   ثم يُشغَّل على الملف الشخصي نفسه، فيُتفقَّد ما بقي.
  * - `DIWAN_EXE`: يُشغَّل التطبيق المُثبَّت (المبني بـelectron-builder) لا نسخة التطوير.
+ * - `appDir` في السيناريو: تطبيقٌ آخر من المشروع بدل ديوان — «أداة مفاتيح ديوان» (tools/keytool)، ومبنيّةً
+ *   بـ`DIWAN_KEYTOOL_EXE`.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -25,6 +27,15 @@ const ELECTRON = resolve('node_modules/electron/dist/electron.exe');
 const EXE = process.env.DIWAN_EXE ? resolve(process.env.DIWAN_EXE) : null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * يُقتل التطبيق بشجرته: الأداة المحمولة (portable) مُطلِقٌ يفكّ البرنامج ويشغّله ابنًا — وقتلُ المُطلِق
+ * وحده يُبقي الابن حيًّا ممسكًا منفذ البروتوكول ومجلّد التشغيل.
+ */
+function killTree(child) {
+  if (process.platform === 'win32' && child.pid) spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+  child.kill();
+}
 
 async function fetchJson(url, tries = 60) {
   for (let i = 0; i < tries; i++) {
@@ -185,7 +196,7 @@ class Page {
   }
 }
 
-export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false, keepProfile = false } = {}) {
+export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false, keepProfile = false, appDir = '.', exe = EXE } = {}) {
   const profile = userDataDir ?? join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
   if (!keepProfile) rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
@@ -200,7 +211,7 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
     '--disable-backgrounding-occluded-windows',
     '--disable-renderer-backgrounding'
   ];
-  const child = spawn(EXE ?? ELECTRON, EXE ? args : ['.', ...args], {
+  const child = spawn(exe ?? ELECTRON, exe ? args : [appDir, ...args], {
     stdio: ['ignore', 'pipe', 'pipe'],
     // «none»: لا ماسح تحت المِقْود إلا ما يعطيه السيناريو صورةً — فماسحٌ موصولٌ بجهاز
     // الاختبار لا يمسح ما على زجاجه (مسح بطاقةً حقيقية مرّة) ولا يغيّر النتيجة.
@@ -234,14 +245,14 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
 
     // `kill` يقتل البرنامج فورًا من خارج البروتوكول: والعملية الرئيسة مشغولةٌ بقيدٍ
     // متزامن لا تمرّر رسائل البروتوكول حتى تفرغ — فلا يُقتل «في منتصف القيد» من داخله.
-    const result = await scenario(page, { profile, shotsDir, kill: () => child.kill() });
+    const result = await scenario(page, { profile, shotsDir, kill: () => killTree(child) });
     await sleep(300);
     ws.close();
     // خطأٌ لم يلتقطه أحد يُقال — ولو مرّت فحوص السيناريو كلّها.
     const thrown = page.exceptions.map((e) => `✗ استثناءٌ غير ممسوك في الواجهة: ${e}`);
     return typeof result === 'string' && thrown.length ? [result, ...thrown].join('\n') : result;
   } finally {
-    child.kill();
+    killTree(child);
     await sleep(400);
   }
 }
@@ -265,7 +276,8 @@ if (process.argv[2]) {
       userDataDir: profile,
       shotsDir: process.env.SHOT_DIR,
       env,
-      keepOnboarding: mod.keepOnboarding === true
+      keepOnboarding: mod.keepOnboarding === true,
+      ...(mod.appDir ? { appDir: resolve(mod.appDir), exe: process.env.DIWAN_KEYTOOL_EXE ? resolve(process.env.DIWAN_KEYTOOL_EXE) : null } : {})
     });
     // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
     if (mod.afterRestart) {

@@ -162,9 +162,12 @@ export function licenseStatus(fresh = false): LicenseStatus {
 export function requireProductive(): void {
   const s = licenseStatus();
   if (s.status !== 'expired') return;
+  const day = formatGregorian(new Date(`${s.lastDay}T12:00:00`));
   throw new Error(
-    `انتهت المدّة التجريبية يوم ${formatGregorian(new Date(`${s.lastDay}T12:00:00`))} — فعّل البرنامج من «الإعدادات ← التفعيل» ليعود الإصدار والطباعة. ` +
-      `والعرض والبحث والنسخ الاحتياطي تعمل كما هي. للتفعيل: ${DEVELOPER_PHONE} (واتساب واتصال)`
+    (s.ended === 'subscription'
+      ? `انتهى الاشتراك يوم ${day} — جدّده بمفتاحٍ من المطوّر في «الإعدادات ← التفعيل» ليعود الإصدار والطباعة. `
+      : `انتهت المدّة التجريبية يوم ${day} — فعّل البرنامج من «الإعدادات ← التفعيل» ليعود الإصدار والطباعة. `) +
+      `والعرض والبحث والنسخ الاحتياطي تعمل كما هي. للتفعيل والتجديد: ${DEVELOPER_PHONE} (واتساب واتصال)`
   );
 }
 
@@ -189,7 +192,10 @@ export function registerLicenseIpc(): void {
     } catch {
       // في القاعدة يكفي.
     }
-    logAudit(getDb(), 'license', r.payload.kind === 'full' ? 'activate' : 'extend', r.payload.kind === 'full' ? r.payload.office ?? null : `حتى ${r.payload.until}`);
+    const p = r.payload;
+    if (p.kind === 'full') logAudit(getDb(), 'license', 'activate', p.office ?? null);
+    else if (p.kind === 'sub') logAudit(getDb(), 'license', 'subscribe', `${p.plan === 'yearly' ? 'سنوي' : 'شهري'} حتى ${p.until}${p.office ? ` — ${p.office}` : ''}`);
+    else logAudit(getDb(), 'license', 'extend', `حتى ${p.until}`);
     return licenseStatus(true);
   });
 }

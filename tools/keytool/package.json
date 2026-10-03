@@ -1,0 +1,10 @@
+{
+  "name": "diwan-keytool",
+  "productName": "Diwan Keys",
+  "version": "1.0.0",
+  "description": "أداة مفاتيح ديوان — للمالك وحده",
+  "author": "MADA TECH",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs"
+}

@@ -11,8 +11,16 @@ import { errorText } from '../lib/errors';
 /** يومٌ من المفتاح أو المدّة (YYYY-MM-DD) بتقويم المكتب: «١٥ تشرين الأول ٢٠٢٦». */
 const day = (iso: string) => formatGregorian(new Date(`${iso}T12:00:00`));
 
+const days = (n: number) => `${n} ${n === 1 ? 'يوم' : n <= 10 ? 'أيام' : 'يومًا'}`;
+
 export function licenseLine(s: LicenseStatus): string {
   if (s.status === 'activated') return `مفعَّل مدى الحياة${s.office ? ` — ${s.office}` : ''} (صدر المفتاح ${day(s.issued)})`;
+  if (s.status === 'subscribed') {
+    return `اشتراك ${s.plan === 'yearly' ? 'سنوي' : 'شهري'}${s.office ? ` — ${s.office}` : ''} حتى ${day(s.lastDay)} (بقي ${days(s.daysLeft)})`;
+  }
+  if (s.status === 'expired' && s.ended === 'subscription') {
+    return `انتهى الاشتراك يوم ${day(s.lastDay)} — العرض والبحث والنسخ تعمل، والإصدار والطباعة تتوقّف حتى التجديد`;
+  }
   if (s.status === 'trial') return `نسخة تجريبية — بقي ${s.daysLeft} ${s.daysLeft === 1 ? 'يوم' : s.daysLeft <= 10 ? 'أيام' : 'يومًا'} (حتى ${day(s.lastDay)})${s.extended ? ' بتمديد' : ''}`;
   return `انتهت المدّة التجريبية يوم ${day(s.lastDay)} — العرض والبحث والنسخ تعمل، والإصدار والطباعة تتوقّف حتى التفعيل`;
 }
@@ -50,6 +58,9 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
       <p className={`font-label-md text-label-md font-semibold ${tone}`} data-license-line="">
         {licenseLine(status)}
       </p>
+      {status.status === 'subscribed' && (
+        <p className="font-label-sm text-label-sm text-on-surface-variant">للتجديد: أرسل رمز الجهاز إلى المطوّر، والصق مفتاح التجديد هنا قبل يوم الانتهاء أو بعده.</p>
+      )}
       {status.status !== 'activated' && (
         <>
           <div className="flex items-center gap-space-xs">

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+<title>أداة مفاتيح ديوان</title>
+<style>
+  :root { --bg:#eef0ec; --card:#fff; --ink:#18211d; --mute:#5b6660; --green:#0f6b52; --green2:#e3f1ec; --red:#b3261e; --red2:#fde8e6; --line:#d9ded9; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font: 15px/1.6 "Segoe UI", Tahoma, sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:14px 22px; background:var(--card); border-bottom:1px solid var(--line); }
+  header h1 { font-size:20px; margin:0; flex:1; }
+  header .dir { font-size:12px; color:var(--mute); direction:ltr; }
+  main { max-width:900px; margin:22px auto; padding:0 18px; }
+  .card { background:var(--card); border-radius:14px; padding:18px 20px; box-shadow:0 1px 8px rgba(0,0,0,.05); margin-bottom:16px; }
+  h2 { font-size:17px; margin:0 0 12px; }
+  label { display:block; font-size:13px; color:var(--mute); margin:10px 0 4px; }
+  input, select, textarea { width:100%; font:inherit; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:#fbfcfb; }
+  input:focus, textarea:focus, select:focus { outline:2px solid var(--green); outline-offset:-1px; }
+  .ltr { direction:ltr; text-align:left; font-family: Consolas, monospace; }
+  button { font:inherit; border:0; border-radius:9px; padding:9px 16px; cursor:pointer; background:#e8ece9; color:var(--ink); }
+  button.primary { background:var(--green); color:#fff; font-weight:600; }
+  button:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; } .row > * { flex:1; min-width:180px; }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; } .tabs button.on { background:var(--green); color:#fff; }
+  .note { padding:10px 12px; border-radius:10px; background:var(--green2); color:#0b4d3b; font-size:14px; }
+  .warn { background:var(--red2); color:var(--red); }
+  .plans { display:flex; gap:8px; flex-wrap:wrap; } .plans label { margin:0; display:flex; align-items:center; gap:6px; padding:8px 12px; border:1px solid var(--line); border-radius:9px; color:var(--ink); cursor:pointer; }
+  .plans input { width:auto; }
+  .keybox { white-space:pre-wrap; word-break:break-all; direction:ltr; text-align:left; font:13px Consolas, monospace; background:#f4f6f4; border-radius:9px; padding:10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; } th, td { padding:7px 6px; border-bottom:1px solid var(--line); text-align:right; } th { color:var(--mute); font-weight:600; }
+  .hidden { display:none !important; }
+  .muted { color:var(--mute); font-size:13px; }
+  .ok { color:var(--green); font-weight:600; } .bad { color:var(--red); font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>أداة مفاتيح ديوان</h1>
+  <span class="dir" id="dir"></span>
+  <button id="lockBtn" class="hidden" data-act="lock">قفل</button>
+</header>
+<main>
+  <!-- إنشاء كلمة السرّ: أوّل فتح، والمفتاح بعدُ غير مشفّر -->
+  <section class="card hidden" id="create" data-screen="create">
+    <h2>أنشئ كلمة سرّ للأداة</h2>
+    <p class="note warn">بها يُشفَّر مفتاحك الخاص في هذا المجلّد: إن تسرّبت الفلاشة أو Google Drive لا يُصدَر بهما مفتاح. <b>ومن نسي الكلمة فقد المفتاح نهائيًّا</b> — اكتبها على ورقة واحفظها بعيدًا عن الفلاشة.</p>
+    <label>كلمة السرّ (ثمانية أحرفٍ أقلّها)</label><input type="password" id="newPw" data-field="new-password" />
+    <label>أعِدها</label><input type="password" id="newPw2" data-field="new-password2" />
+    <p><button class="primary" id="createBtn" data-act="create-password">شفّر المفتاح وافتح الأداة</button></p>
+    <p class="muted" id="createMsg"></p>
+  </section>
+
+  <!-- الدخول -->
+  <section class="card hidden" id="login" data-screen="login">
+    <h2>كلمة السرّ</h2>
+    <input type="password" id="pw" data-field="password" autofocus />
+    <p><button class="primary" id="unlockBtn" data-act="unlock">افتح</button></p>
+    <p class="bad" id="loginMsg" data-login-msg></p>
+  </section>
+
+  <!-- لا مفتاح -->
+  <section class="card hidden" id="nokey" data-screen="nokey">
+    <h2>لا مفتاح خاصّ هنا</h2>
+    <p>ضع الأداة في مجلّد «لا يجب فقدانها» بجانب ملف <span class="ltr">diwan-owner-private.key</span>، أو انسخ المجلّد إلى سطح المكتب.</p>
+  </section>
+
+  <!-- الأداة -->
+  <section id="app" class="hidden" data-screen="app">
+    <p class="note" id="match" data-match></p>
+    <div class="tabs">
+      <button class="on" data-tab="issue">مفتاح جديد</button>
+      <button data-tab="ledger">السجلّ</button>
+      <button data-tab="update">ملفّ تحديث</button>
+      <button data-tab="password">كلمة السرّ</button>
+    </div>
+
+    <div class="card" data-pane="issue">
+      <h2>مفتاحٌ لمكتب</h2>
+      <p class="muted" id="counter" data-counter></p>
+      <label>رمز الجهاز — من «الإعدادات ← التفعيل» في البرنامج</label>
+      <input class="ltr" id="device" data-field="device" placeholder="DWN-XXXX-XXXX-XXXX-XXXX" />
+      <p class="muted" id="deviceMsg"></p>
+      <div class="row">
+        <div><label>اسم المكتب</label><input id="office" data-field="office" /></div>
+        <div><label>الهاتف</label><input class="ltr" id="phone" data-field="phone" /></div>
+      </div>
+      <label>الخطّة</label>
+      <div class="plans">
+        <label><input type="radio" name="plan" value="lifetime" checked /> مدى الحياة</label>
+        <label><input type="radio" name="plan" value="monthly" /> شهري</label>
+        <label><input type="radio" name="plan" value="yearly" /> سنوي</label>
+        <label><input type="radio" name="plan" value="extend" /> تمديد التجربة</label>
+      </div>
+      <div class="row hidden" id="subDates">
+        <div><label>يبدأ من</label><input type="date" id="start" data-field="start" /></div>
+        <div><label>ينتهي في (آخر يوم، شاملًا)</label><input type="date" id="until" data-field="until" /></div>
+      </div>
+      <div class="row hidden" id="extDates">
+        <div><label>التجربة حتى (آخر يوم، شاملًا)</label><input type="date" id="extUntil" data-field="ext-until" /></div>
+      </div>
+      <div class="row">
+        <div><label>السعر (اختياري — للسجلّ وحده)</label><input id="price" data-field="price" /></div>
+        <div><label>ملاحظات</label><input id="notes" data-field="notes" /></div>
+      </div>
+      <p><button class="primary" id="issueBtn" data-act="issue">ولّد</button></p>
+      <p class="bad" id="issueMsg" data-issue-msg></p>
+      <div id="result" class="hidden" data-result>
+        <p class="note" id="resultTitle"></p>
+        <div class="keybox" id="resultKey" data-result-key></div>
+        <p><button id="copyKey" data-act="copy-key">انسخ المفتاح</button> <button id="copyMsg" data-act="copy-message">انسخ رسالة واتساب</button> <span class="muted" id="copied"></span></p>
+      </div>
+    </div>
+
+    <div class="card hidden" data-pane="ledger">
+      <h2>المفاتيح المصدرة</h2>
+      <p class="muted" id="ledgerSum" data-ledger-sum></p>
+      <input id="ledgerQ" placeholder="ابحث: مكتب، هاتف، رمز جهاز…" />
+      <table><thead><tr><th>التاريخ</th><th>الخطّة</th><th>رقم</th><th>المكتب</th><th>الهاتف</th><th>حتى</th><th></th></tr></thead><tbody id="ledgerBody" data-ledger></tbody></table>
+    </div>
+
+    <div class="card hidden" data-pane="update">
+      <h2>ملفّ تحديث «أ+»</h2>
+      <p class="muted">اختر مثبّت الإصدار الجديد (بعد npm run release)، فيُصنع بجانبه ملفٌّ يُرسل إلى المكاتب — يُثبَّت من «الإعدادات ← التحديث».</p>
+      <p><button id="pickExe" data-act="pick-installer">اختر المثبّت…</button> <span class="ltr" id="exePath"></span></p>
+      <div class="row"><div><label>رقم الإصدار</label><input class="ltr" id="version" data-field="version" /></div></div>
+      <label>ما الجديد</label><textarea id="relNotes" rows="7" data-field="release-notes"></textarea>
+      <p><button class="primary" id="makeUpd" data-act="make-update">اصنع ملفّ التحديث</button></p>
+      <p id="updMsg" data-update-msg></p>
+    </div>
+
+    <div class="card hidden" data-pane="password">
+      <h2>تغيير كلمة السرّ</h2>
+      <label>الحالية</label><input type="password" id="oldPw" />
+      <label>الجديدة (ثمانية أحرفٍ أقلّها)</label><input type="password" id="chPw" />
+      <label>أعِد الجديدة</label><input type="password" id="chPw2" />
+      <p><button class="primary" id="changeBtn" data-act="change-password">غيّرها</button></p>
+      <p id="changeMsg"></p>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

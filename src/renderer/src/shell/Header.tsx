@@ -251,12 +251,12 @@ export default function Header({
             {context}
           </div>
         )}
-        {license && license.status !== 'activated' && (
+        {license && (license.status === 'trial' || license.status === 'expired' || (license.status === 'subscribed' && license.daysLeft <= 7)) && (
           <button
             className={`h-9 px-space-md rounded-full font-label-md text-label-md font-semibold flex items-center gap-space-xs shrink-0 ${
               license.status === 'expired'
                 ? 'bg-error text-on-error'
-                : license.daysLeft <= 3
+                : license.daysLeft <= 3 || license.status === 'subscribed'
                   ? 'bg-error-container text-on-error-container'
                   : 'bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]'
             }`}
@@ -266,7 +266,11 @@ export default function Header({
             onClick={onLicense}
           >
             <span className="material-symbols-outlined text-[18px]">{license.status === 'expired' ? 'lock_clock' : 'hourglass_top'}</span>
-            {license.status === 'expired' ? 'انتهت المدّة التجريبية — فعّل' : `تجريبية — بقي ${license.daysLeft} ${license.daysLeft === 1 ? 'يوم' : license.daysLeft <= 10 ? 'أيام' : 'يومًا'}`}
+            {license.status === 'expired'
+              ? license.ended === 'subscription'
+                ? 'انتهى الاشتراك — جدّده'
+                : 'انتهت المدّة التجريبية — فعّل'
+              : `${license.status === 'subscribed' ? 'ينتهي الاشتراك' : 'تجريبية'} — بقي ${license.daysLeft} ${license.daysLeft === 1 ? 'يوم' : license.daysLeft <= 10 ? 'أيام' : 'يومًا'}`}
           </button>
         )}
       </div>

@@ -4,7 +4,8 @@
  * المِقْود يعطي البرنامج (غير المثبّت وحده) مفتاحًا عامًّا للاختبار ومعرّف جهازٍ ثابتًا، وساعةً من ملفٍّ
  * يقدّمها السيناريو. فيُرى: أربعة عشر يومًا يعمل فيها كلّ شيء، ثم يتوقّف الإصدار والطباعة وPDF
  * ويبقى العرض والنسخ الاحتياطي، وإرجاع الساعة لا يعيدها، ومفتاح التمديد يمدّها، ومفتاح جهازٍ آخر
- * يُرفض، والمفتاح الكامل يفعّله ولو بعد سنين.
+ * يُرفض، والاشتراك الشهري يعمل إلى يومه وينبّه قبله بأسبوع وينتهي كالتجربة ويُجدَّد، والمفتاح الكامل يفعّله ولو
+ * بعد سنين.
  */
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -16,6 +17,7 @@ const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 
 const canonical = (p) => {
   const o = { v: p.v, device: p.device, kind: p.kind, issued: p.issued };
+  if (p.plan) o.plan = p.plan;
   if (p.until) o.until = p.until;
   if (p.office) o.office = p.office;
   return JSON.stringify(o);
@@ -99,6 +101,42 @@ export default async function scenario(page) {
   ok(`مفتاح التمديد — ولو لُصق بأسطر — يمدّها إلى يومه (${s.status} ${s.daysLeft ?? ''})`, s.status === 'trial' && s.extended && s.lastDay === '2026-10-31' && s.daysLeft === 16);
   ok('فيعود الإصدار', (await tryIssue()) === 'ok');
 
+  // ── الاشتراك (قرار المالك ٣ تشرين الأول): إلى يومه، والتنبيه قبله بأسبوع، وانتهاؤه كانتهاء التجربة ──
+  await at('2026-11-02T09:00:00');
+  ok('بعد التمديد انتهت المدّة ثانيةً', (await status()).status === 'expired');
+  const card = () => page.eval(`return document.querySelector('[data-license]')?.innerText ?? '';`);
+  const activate = async (key) => {
+    await page.goto('office-settings');
+    await wait(800);
+    await page.type('[data-license-key]', key);
+    await page.eval(`document.querySelector('[data-act="license-activate"]').click(); return true;`);
+    await wait(800);
+  };
+  await activate(keyFor({ v: 1, device, kind: 'sub', issued: '2026-11-01', plan: 'monthly', until: '2026-11-30', office: 'مكتب الاختبار' }));
+  s = await status();
+  ok(`مفتاح الاشتراك الشهري يشغّله إلى يومه (${s.status} ${s.daysLeft ?? ''})`, s.status === 'subscribed' && s.plan === 'monthly' && s.lastDay === '2026-11-30' && s.daysLeft === 29);
+  ok('فيعود الإصدار', (await tryIssue()) === 'ok');
+  ok('و«التفعيل» يقول: اشتراك شهري حتى يومه', (await card()).includes('اشتراك شهري') && (await card()).includes('للتجديد'));
+  await page.eval(`location.reload(); return true;`);
+  await wait(2500);
+  ok('ولا شريط والانتهاء بعيد', (await pill()) === '');
+  await at('2026-11-25T09:00:00');
+  await page.eval(`location.reload(); return true;`);
+  await wait(2500);
+  ok('وقبله بأسبوع يقول الشريط: ينتهي الاشتراك — بقي ٦ أيام', (await pill()).includes('ينتهي الاشتراك — بقي 6 أيام'));
+  await at('2026-12-01T09:00:00');
+  s = await status();
+  ok('وبعد يومه ينتهي كانتهاء التجربة', s.status === 'expired' && s.ended === 'subscription' && s.lastDay === '2026-11-30');
+  const ended = await tryIssue();
+  ok('فلا يصدر كتاب — ويُقال: انتهى الاشتراك، جدّده', ended.includes('انتهى الاشتراك') && ended.includes('التفعيل'));
+  ok('والعرض باقٍ', (await page.eval(`return (await window.diwan.documents.list({ limit: 10 })).length;`)) >= 3);
+  await page.eval(`location.reload(); return true;`);
+  await wait(2500);
+  ok('والشريط: انتهى الاشتراك — جدّده', (await pill()).includes('انتهى الاشتراك'));
+  await activate(keyFor({ v: 1, device, kind: 'sub', issued: '2026-12-01', plan: 'yearly', until: '2027-11-30', office: 'مكتب الاختبار' }));
+  s = await status();
+  ok('ومفتاح التجديد السنوي يعيده إلى سنته', s.status === 'subscribed' && s.plan === 'yearly' && s.lastDay === '2027-11-30' && (await tryIssue()) === 'ok');
+
   // ── المفتاح الكامل ─────────────────────────────────────────────────
   const full = keyFor({ v: 1, device, kind: 'full', issued: '2026-10-20', office: 'مكتب الاختبار' });
   await page.type('[data-license-key]', full);
@@ -110,7 +148,7 @@ export default async function scenario(page) {
   await page.eval(`location.reload(); return true;`);
   await wait(2500);
   ok('ولا شريط مدّةٍ بعد التفعيل', (await pill()) === '');
-  ok('وقُيّد التمديد والتفعيل في سجلّ التدقيق', (await page.eval(`return (await window.diwan.audit.list({ entity: 'license' })).length;`)) === 2);
+  ok('وقُيّد التمديد والاشتراكان والتفعيل في سجلّ التدقيق', (await page.eval(`return (await window.diwan.audit.list({ entity: 'license' })).length;`)) === 4);
 
   rmSync(DIR, { recursive: true, force: true });
   return steps.join('\n');

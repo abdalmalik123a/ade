@@ -1,0 +1,30 @@
+{
+  "appId": "iq.diwan.keytool",
+  "productName": "Diwan Keys",
+  "electronVersion": "44.3.0",
+  "npmRebuild": false,
+  "compression": "maximum",
+  "electronLanguages": ["ar", "en-US"],
+  "publish": null,
+  "directories": {
+    "app": "tools/keytool",
+    "output": "release/keytool",
+    "buildResources": "resources"
+  },
+  "files": ["package.json", "main.mjs", "core.mjs", "appKey.mjs", "preload.cjs", "index.html", "app.js", "!**/node_modules/**/*"],
+  "electronFuses": {
+    "runAsNode": false,
+    "enableCookieEncryption": true,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true
+  },
+  "win": {
+    "target": [{ "target": "portable", "arch": ["x64"] }],
+    "icon": "resources/icon.ico"
+  },
+  "portable": {
+    "artifactName": "Diwan-Keys-${version}.exe"
+  }
+}

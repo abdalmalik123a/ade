@@ -212,8 +212,9 @@ export type BackupSummary = {
  */
 export type LicenseStatus = (
   | { status: 'activated'; office: string | null; issued: string }
+  | { status: 'subscribed'; plan: 'monthly' | 'yearly'; daysLeft: number; lastDay: string; office: string | null; issued: string }
   | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean }
-  | { status: 'expired'; lastDay: string }
+  | { status: 'expired'; lastDay: string; ended: 'trial' | 'subscription' }
 ) & { device: string; phone: string; trialStart: string };
 
 export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };

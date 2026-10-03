@@ -56,7 +56,7 @@ describe('المدّة التجريبية', () => {
   it('أربعة عشر يومًا تقويمية: اليوم الأوّل ١٤، والأخير ١، ثم تنتهي', () => {
     expect(evaluate({ ...base, now: at('2026-10-02') })).toMatchObject({ status: 'trial', daysLeft: 14, lastDay: '2026-10-15' });
     expect(evaluate({ ...base, now: new Date('2026-10-15T23:59:00') })).toMatchObject({ status: 'trial', daysLeft: 1 });
-    expect(evaluate({ ...base, now: new Date('2026-10-16T00:01:00') })).toEqual({ status: 'expired', lastDay: '2026-10-15' });
+    expect(evaluate({ ...base, now: new Date('2026-10-16T00:01:00') })).toEqual({ status: 'expired', lastDay: '2026-10-15', ended: 'trial' });
   });
 
   it('وإرجاع الساعة لا يُطيلها: أحدث يومٍ رآه البرنامج هو اليوم', () => {
@@ -90,5 +90,32 @@ describe('أداة المالك', () => {
     expect(readKey(ext, testPub)).toMatchObject({ ok: true, payload: { kind: 'extend', until: '2026-12-31' } });
     // ومفتاحٌ صنعه مفتاحٌ غير مفتاح البرنامج لا يُقبل.
     expect(readKey(issued, pub).ok).toBe(false);
+  });
+});
+
+describe('الاشتراك الشهري والسنوي (قرار المالك ٣ تشرين الأول ٢٠٢٦)', () => {
+  const start = at('2026-10-02');
+  const sub = (until: string, plan: 'monthly' | 'yearly' = 'monthly', issued = '2026-10-10'): LicensePayload => ({ v: 1, device: DEVICE, kind: 'sub', plan, issued, until, office: 'مكتب الرافدين' });
+
+  it('مشتركٌ إلى يومه بأيّامه، ثم ينتهي كما تنتهي التجربة — ويُقال إنه الاشتراك', () => {
+    const keys = [sub('2026-11-09')];
+    expect(evaluate({ now: at('2026-11-03'), trialStart: start, keys, device: DEVICE })).toMatchObject({ status: 'subscribed', plan: 'monthly', daysLeft: 7, lastDay: '2026-11-09' });
+    expect(evaluate({ now: at('2026-11-10'), trialStart: start, keys, device: DEVICE })).toEqual({ status: 'expired', lastDay: '2026-11-09', ended: 'subscription' });
+  });
+
+  it('والتجديد مفتاحٌ إلى يومٍ أبعد يُضاف — والأبعد هو ما يُعمل به', () => {
+    const keys = [sub('2026-11-09'), sub('2027-11-09', 'yearly', '2026-11-08')];
+    expect(evaluate({ now: at('2026-12-01'), trialStart: start, keys, device: DEVICE })).toMatchObject({ status: 'subscribed', plan: 'yearly', lastDay: '2027-11-09' });
+  });
+
+  it('ومدى الحياة يغلب الاشتراك', () => {
+    const full: LicensePayload = { v: 1, device: DEVICE, kind: 'full', issued: '2026-12-01' };
+    expect(evaluate({ now: at('2030-01-01'), trialStart: start, keys: [sub('2026-11-09'), full], device: DEVICE }).status).toBe('activated');
+  });
+
+  it('ومفتاح اشتراكٍ بلا خطّته أو يومه يُرفض', () => {
+    expect(readKey(encodeKey(sub('2026-11-09'), signer), pub).ok).toBe(true);
+    expect(readKey(encodeKey({ ...sub('2026-11-09'), plan: undefined }, signer), pub).ok).toBe(false);
+    expect(readKey(encodeKey({ ...sub('2026-11-09'), until: undefined }, signer), pub).ok).toBe(false);
   });
 });

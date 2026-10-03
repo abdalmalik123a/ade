@@ -36,6 +36,8 @@ export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>):
       return `صُدّرت حزمة محتوى${detail ? `: ${detail}` : ''}`;
     case 'license/activate':
       return `فُعّل البرنامج${detail ? ` لـ${detail}` : ''}`;
+    case 'license/subscribe':
+      return `اشتراك${detail ? ` ${detail}` : ''}`;
     case 'license/extend':
       return `مُدّت المدّة التجريبية${detail ? ` ${detail}` : ''}`;
     case 'content/import':

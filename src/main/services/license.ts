@@ -2,8 +2,11 @@
  * التفعيل بلا شبكة (خطة Production، ٦٫٢ — قرارات المالك ٢٩ أيلول و٢ تشرين الأول ٢٠٢٦).
  *
  * - **رمز الجهاز** من معرّف ويندوز للجهاز (MachineGuid) مبصومًا: يرسله المكتب إلى المالك بواتساب.
- * - **المفتاح** يوقّعه المالك بمفتاحه الخاصّ (Ed25519) لذلك الرمز وحده: «كامل» مدى الحياة، أو «تمديد»
- *   للمدّة التجريبية إلى يومٍ بعينه. وفيه يوم إصداره — فسياسةٌ تتغيّر يومًا لا تمسّ ما صدر قبلها.
+ * - **المفتاح** يوقّعه المالك بمفتاحه الخاصّ (Ed25519) لذلك الرمز وحده: «كامل» مدى الحياة، أو «اشتراك» شهريٌّ
+ *   أو سنويٌّ إلى يومٍ بعينه (قرار المالك ٣ تشرين الأول ٢٠٢٦: أوّل عشرة مدى الحياة، وبعدهم يُسعَّر الشهري والسنوي
+ *   ومدى الحياة)، أو «تمديد» للمدّة التجريبية. وفيه يوم إصداره — فسياسةٌ تتغيّر يومًا لا تمسّ ما صدر قبلها.
+ * - **والاشتراك حين ينتهي** كالمدّة التجريبية حين تنتهي: تنبيهٌ قبله بأسبوع، ثم يتوقّف الإصدار والطباعة ويبقى
+ *   العرض والنسخ حتى يُلصق مفتاح التجديد.
  *   والبرنامج يحمل المفتاح العامّ وحده: لا يصنع مفتاحًا، ولا يتّصل بأحد.
  * - **المدّة التجريبية** ١٤ يومًا تقويمية من أوّل تشغيل: كلّ شيءٍ يعمل بلا علامةٍ على الورق. وبعدها يبقى
  *   العرض والبحث والنسخ والتصدير، ويتوقّف الإصدار والطباعة وإخراج الأوراق — ولا تُقفل بيانات أحد أبدًا.
@@ -45,13 +48,18 @@ export function normalizeDeviceCode(code: string): string {
   return body.length === 16 ? `DWN-${body.match(/.{4}/g)!.join('-')}` : code.trim().toUpperCase();
 }
 
+export type SubscriptionPlan = 'monthly' | 'yearly';
+
 export type LicensePayload = {
   v: 1;
   device: string;
-  kind: 'full' | 'extend';
+  /** كامل مدى الحياة، أو اشتراكٌ إلى يوم، أو تمديدٌ للمدّة التجريبية. */
+  kind: 'full' | 'sub' | 'extend';
   /** يوم الإصدار YYYY-MM-DD. */
   issued: string;
-  /** للتمديد: آخر يومٍ تعمل فيه المدّة (شاملًا). */
+  /** للاشتراك: شهريٌّ أو سنوي. */
+  plan?: SubscriptionPlan;
+  /** للاشتراك والتمديد: آخر يومٍ يعمل فيه (شاملًا). */
   until?: string;
   /** اسم المكتب كما كتبه المالك — يُعرض في «التفعيل». */
   office?: string;
@@ -62,6 +70,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** الحمولة بترتيبٍ ثابت — فما يوقّعه المالك هو ما يتحقّق منه البرنامج حرفًا بحرف. */
 export function canonicalPayload(p: LicensePayload): string {
   const ordered: Record<string, unknown> = { v: p.v, device: p.device, kind: p.kind, issued: p.issued };
+  if (p.plan) ordered['plan'] = p.plan;
   if (p.until) ordered['until'] = p.until;
   if (p.office) ordered['office'] = p.office;
   return JSON.stringify(ordered);
@@ -94,17 +103,25 @@ export function readKey(raw: string, publicKey: string | KeyObject): KeyCheck {
   } catch {
     return { ok: false, reason: 'المفتاح غير صحيح — انسخه كاملًا كما وصلك' };
   }
-  if (p?.v !== 1 || typeof p.device !== 'string' || (p.kind !== 'full' && p.kind !== 'extend') || !DAY.test(p.issued ?? '')) {
+  if (p?.v !== 1 || typeof p.device !== 'string' || !['full', 'sub', 'extend'].includes(p.kind) || !DAY.test(p.issued ?? '')) {
     return { ok: false, reason: 'مفتاحٌ بصيغةٍ لا يعرفها هذا الإصدار — حدّث البرنامج' };
   }
   if (p.kind === 'extend' && !DAY.test(p.until ?? '')) return { ok: false, reason: 'مفتاح التمديد بلا يومٍ ينتهي إليه' };
+  if (p.kind === 'sub' && (!DAY.test(p.until ?? '') || (p.plan !== 'monthly' && p.plan !== 'yearly'))) {
+    return { ok: false, reason: 'مفتاح الاشتراك بلا خطّته أو يومٍ ينتهي إليه' };
+  }
   return { ok: true, payload: p };
 }
 
 export type LicenseState =
   | { status: 'activated'; office: string | null; issued: string }
+  | { status: 'subscribed'; plan: SubscriptionPlan; daysLeft: number; lastDay: string; office: string | null; issued: string }
   | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean }
-  | { status: 'expired'; lastDay: string };
+  /** `ended`: ما انتهى — المدّة التجريبية أم الاشتراك — فيُقال لصاحبه ما يفعل. */
+  | { status: 'expired'; lastDay: string; ended: 'trial' | 'subscription' };
+
+/** قبل نهاية الاشتراك بهذا يُنبَّه في الشريط العلوي. */
+export const RENEW_WARN_DAYS = 7;
 
 /** رقم اليوم بتقويم الجهاز — فالمدّة أيّامٌ تقويمية لا ساعات. */
 export function dayNumber(d: Date): number {
@@ -122,9 +139,20 @@ export function evaluate(opts: { now: Date; trialStart: Date; lastSeen?: Date | 
   const full = mine.filter((k) => k.kind === 'full').sort((a, b) => a.issued.localeCompare(b.issued))[0];
   if (full) return { status: 'activated', office: full.office ?? null, issued: full.issued };
   const today = Math.max(dayNumber(opts.now), opts.lastSeen ? dayNumber(opts.lastSeen) : -Infinity);
+
+  // الاشتراك: أبعد يومٍ في مفاتيحه — فالتجديد مفتاحٌ جديدٌ إلى يومٍ أبعد يُضاف ولا يُلغي ما قبله.
+  const subs = mine.filter((k) => k.kind === 'sub').sort((a, b) => a.until!.localeCompare(b.until!));
+  const latest = subs.at(-1);
+  const subEnd = latest ? dayOf(latest.until!) + 1 : -Infinity;
+  if (latest && today < subEnd) {
+    return { status: 'subscribed', plan: latest.plan!, daysLeft: subEnd - today, lastDay: latest.until!, office: latest.office ?? null, issued: latest.issued };
+  }
+
   const trialEnd = dayNumber(opts.trialStart) + TRIAL_DAYS;
   const extended = Math.max(...mine.filter((k) => k.kind === 'extend').map((k) => dayOf(k.until!) + 1), -Infinity);
   const end = Math.max(trialEnd, extended);
-  const lastDay = dayString(end - 1);
-  return today < end ? { status: 'trial', daysLeft: end - today, lastDay, extended: extended > trialEnd } : { status: 'expired', lastDay };
+  if (today < end) return { status: 'trial', daysLeft: end - today, lastDay: dayString(end - 1), extended: extended > trialEnd };
+  return latest && subEnd >= end
+    ? { status: 'expired', lastDay: latest.until!, ended: 'subscription' }
+    : { status: 'expired', lastDay: dayString(end - 1), ended: 'trial' };
 }

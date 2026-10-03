@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "brand": "python tools/make-brand.py",
     "notices": "node tools/make-notices.mjs",
-    "license": "node tools/license/keygen.mjs"
+    "license": "node tools/license/keygen.mjs",
+    "keytool": "node tools/keytool/sync-key.mjs && electron-builder --win --config tools/keytool/electron-builder.json"
   },
   "build": {
     "appId": "iq.diwan.bureau",
