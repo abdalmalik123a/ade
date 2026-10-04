@@ -136,7 +136,7 @@ class Page {
    * فمفاتيح مثل F4 تُقاد من خارج الصفحة لا من داخلها.
    */
   async key(code, { ctrl = false, shift = false } = {}) {
-    const KEYS = { F4: 115, Enter: 13, Backspace: 8, Escape: 27, KeyZ: 90, KeyY: 89, KeyB: 66, KeyU: 85, KeyA: 65, KeyI: 73 };
+    const KEYS = { F4: 115, Enter: 13, Backspace: 8, Escape: 27, KeyZ: 90, KeyY: 89, KeyB: 66, KeyU: 85, KeyA: 65, KeyI: 73, KeyF: 70 };
     for (let d = 1; d <= 9; d++) KEYS[`Digit${d}`] = 48 + d;
     const vk = KEYS[code];
     if (!vk) throw new Error(`مفتاح غير معروف: ${code}`);
