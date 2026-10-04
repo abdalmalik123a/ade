@@ -843,7 +843,7 @@ function TemplateCard({
       </div>
 
       <div className="px-space-md py-space-sm bg-surface-container-low flex justify-center items-center">
-        <div className="w-full max-w-[310px] aspect-[1/1.38] bg-surface-container-lowest rounded shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] text-right relative overflow-hidden select-none">
+        <div className="paper w-full max-w-[310px] aspect-[1/1.38] bg-surface-container-lowest rounded shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] text-right relative overflow-hidden select-none">
           <MiniSheet template={template} letterhead={letterhead} scale={310 / 794} />
         </div>
       </div>

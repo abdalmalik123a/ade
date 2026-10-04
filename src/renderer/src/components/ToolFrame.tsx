@@ -86,7 +86,7 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
         {children}
       </div>
       <div className="flex items-center gap-space-sm">
-        <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+        <span className="icon-tile w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
           <span className="material-symbols-outlined text-[22px]">{icon}</span>
         </span>
         <div className="min-w-0">

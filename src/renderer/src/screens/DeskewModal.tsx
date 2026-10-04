@@ -319,7 +319,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
       <div className="w-full max-w-5xl h-[92vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-secondary">
             <span className="material-symbols-outlined text-[24px]">crop_free</span>
             <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
               إزالة ميلان المستمسكات (Perspective De-skew & Flatten)

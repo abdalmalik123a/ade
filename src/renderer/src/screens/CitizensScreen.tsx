@@ -267,7 +267,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
               )}
             </button>
             <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
               type="button"
               title="طباعة واستنساخ الهويات والبطاقات بمقاس 1:1 الحقيقي على ورقة A4"
               onClick={() => setIdDuplexOpen(true)}
@@ -276,7 +276,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
               <span>استنساخ هوية 1:1 (وجه وظهر)</span>
             </button>
             <button
-              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
               data-act="open-id-sheet"
               type="button"
               title="عدّة مستمسكاتٍ بمقاسها 1:1 على ورقة A4 واحدة — الوطنية والسكن وجهًا وظهرًا"
@@ -362,7 +362,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
                   {card.hint}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary shadow-sm">
                 <span className="material-symbols-outlined text-[24px]">{card.icon}</span>
               </div>
             </div>

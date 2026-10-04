@@ -177,7 +177,7 @@ export default function IdDuplexDialog({
       <div className="w-full max-w-6xl h-[94vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-secondary">
             <span className="material-symbols-outlined text-[26px]">badge</span>
             <div>
               <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
@@ -210,7 +210,7 @@ export default function IdDuplexDialog({
                 <button
                   type="button"
                   onClick={swapSides}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline px-2 py-0.5 rounded bg-primary/10"
+                  className="flex items-center gap-1 text-xs text-secondary hover:underline px-2 py-0.5 rounded bg-primary/10"
                 >
                   <span className="material-symbols-outlined text-[14px]">swap_vert</span>
                   تبديل الوجه والظهر
@@ -227,7 +227,7 @@ export default function IdDuplexDialog({
                   {frontSrc && (
                     <button
                       type="button"
-                      className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                      className="text-xs text-secondary hover:underline flex items-center gap-0.5"
                       onClick={() => setDeskewTarget('front')}
                     >
                       <span className="material-symbols-outlined text-[14px]">crop_free</span>
@@ -299,7 +299,7 @@ export default function IdDuplexDialog({
                   {backSrc && (
                     <button
                       type="button"
-                      className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                      className="text-xs text-secondary hover:underline flex items-center gap-0.5"
                       onClick={() => setDeskewTarget('back')}
                     >
                       <span className="material-symbols-outlined text-[14px]">crop_free</span>
@@ -495,7 +495,7 @@ export default function IdDuplexDialog({
                   type="checkbox"
                   checked={showDivider}
                   onChange={(e) => setShowDivider(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary"
+                  className="rounded text-secondary focus:ring-primary"
                 />
                 <span>إظهار خط منصف للطي والقص</span>
               </label>
@@ -504,7 +504,7 @@ export default function IdDuplexDialog({
                   type="checkbox"
                   checked={showCutMarks}
                   onChange={(e) => setShowCutMarks(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary"
+                  className="rounded text-secondary focus:ring-primary"
                 />
                 <span>إطار إرشادي خفيف حول الهوية</span>
               </label>
@@ -518,7 +518,7 @@ export default function IdDuplexDialog({
                   checked={wmOn}
                   data-act="id-watermark"
                   onChange={(e) => setWmOn(e.target.checked)}
-                  className="rounded text-primary focus:ring-primary"
+                  className="rounded text-secondary focus:ring-primary"
                 />
                 <span>علامة مائية فوق النسخة</span>
               </label>
@@ -606,7 +606,7 @@ export default function IdDuplexDialog({
             {toast && (
               <span
                 className={`text-xs px-2.5 py-1 rounded-md font-semibold ${
-                  toast.warn ? 'bg-error-container text-on-error-container' : 'bg-primary/10 text-primary'
+                  toast.warn ? 'bg-error-container text-on-error-container' : 'bg-primary/10 text-secondary'
                 }`}
               >
                 {toast.text}

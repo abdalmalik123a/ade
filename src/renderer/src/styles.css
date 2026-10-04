@@ -37,6 +37,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── هوية «منتصف الليل» (خطّة الترقية، المرحلة ٦) ──────────────────────
+   متغيّرات المظهرين من src/shared/theme.ts (themeCss) — يطابقها tests/theme.test.ts. النهاريّ أصلٌ
+   للجذر (نافذة الطباعة والأنماط المحفوظة يوم الإصدار)، والليليّ بـ data-theme، والورق نهاريٌّ دائمًا. */
+/* theme:start */
+:root{color-scheme:light;--c-background:238 243 252;--c-on-background:11 22 51;--c-surface:238 243 252;--c-surface-bright:247 249 254;--c-surface-dim:226 233 246;--c-surface-container-lowest:255 255 255;--c-surface-container-low:246 248 253;--c-surface-container:238 243 252;--c-surface-container-high:228 235 248;--c-surface-container-highest:217 226 243;--c-surface-variant:217 226 243;--c-on-surface:11 22 51;--c-on-surface-variant:70 83 111;--c-outline:107 120 153;--c-outline-variant:211 220 238;--c-surface-tint:21 112 218;--c-inverse-surface:27 38 71;--c-inverse-on-surface:238 243 255;--c-inverse-primary:141 184 255;--c-primary:20 104 204;--c-on-primary:255 255 255;--c-primary-container:20 70 216;--c-on-primary-container:255 255 255;--c-primary-fixed:220 231 253;--c-primary-fixed-dim:185 206 248;--c-on-primary-fixed:6 26 69;--c-on-primary-fixed-variant:20 70 216;--c-secondary:20 70 216;--c-on-secondary:255 255 255;--c-secondary-container:20 70 216;--c-on-secondary-container:255 255 255;--c-secondary-fixed:220 231 253;--c-secondary-fixed-dim:185 206 248;--c-on-secondary-fixed:6 26 69;--c-on-secondary-fixed-variant:20 70 216;--c-tertiary:125 95 34;--c-on-tertiary:255 255 255;--c-tertiary-container:243 233 214;--c-on-tertiary-container:92 68 25;--c-tertiary-fixed:243 233 214;--c-tertiary-fixed-dim:226 199 143;--c-on-tertiary-fixed:58 44 16;--c-on-tertiary-fixed-variant:92 68 25;--c-error:186 26 26;--c-on-error:255 255 255;--c-error-container:255 218 214;--c-on-error-container:147 0 10;--c-scrim:0 0 0;}
+:root[data-theme="dark"]{color-scheme:dark;--c-background:6 11 26;--c-on-background:238 243 255;--c-surface:6 11 26;--c-surface-bright:24 36 74;--c-surface-dim:5 9 21;--c-surface-container-lowest:13 22 48;--c-surface-container-low:10 18 38;--c-surface-container:15 26 56;--c-surface-container-high:22 34 74;--c-surface-container-highest:28 41 84;--c-surface-variant:28 41 84;--c-on-surface:238 243 255;--c-on-surface-variant:154 168 204;--c-outline:110 125 166;--c-outline-variant:31 44 84;--c-surface-tint:21 112 218;--c-inverse-surface:238 243 255;--c-inverse-on-surface:11 22 51;--c-inverse-primary:20 70 216;--c-primary:20 104 204;--c-on-primary:255 255 255;--c-primary-container:20 70 216;--c-on-primary-container:255 255 255;--c-primary-fixed:20 41 92;--c-primary-fixed-dim:27 56 120;--c-on-primary-fixed:238 243 255;--c-on-primary-fixed-variant:141 184 255;--c-secondary:141 184 255;--c-on-secondary:6 18 46;--c-secondary-container:20 70 216;--c-on-secondary-container:255 255 255;--c-secondary-fixed:20 41 92;--c-secondary-fixed-dim:27 56 120;--c-on-secondary-fixed:238 243 255;--c-on-secondary-fixed-variant:141 184 255;--c-tertiary:226 199 143;--c-on-tertiary:42 31 8;--c-tertiary-container:58 44 16;--c-on-tertiary-container:243 233 214;--c-tertiary-fixed:58 44 16;--c-tertiary-fixed-dim:110 83 32;--c-on-tertiary-fixed:243 233 214;--c-on-tertiary-fixed-variant:226 199 143;--c-error:255 180 171;--c-on-error:105 0 5;--c-error-container:147 0 10;--c-on-error-container:255 218 214;--c-scrim:0 0 0;}
+.paper,.a4-sheet,[data-letter-sheet],[data-design],[data-pdf-view],[data-photo-frame]{color-scheme:light;--c-background:238 243 252;--c-on-background:11 22 51;--c-surface:238 243 252;--c-surface-bright:247 249 254;--c-surface-dim:226 233 246;--c-surface-container-lowest:255 255 255;--c-surface-container-low:246 248 253;--c-surface-container:238 243 252;--c-surface-container-high:228 235 248;--c-surface-container-highest:217 226 243;--c-surface-variant:217 226 243;--c-on-surface:11 22 51;--c-on-surface-variant:70 83 111;--c-outline:107 120 153;--c-outline-variant:211 220 238;--c-surface-tint:21 112 218;--c-inverse-surface:27 38 71;--c-inverse-on-surface:238 243 255;--c-inverse-primary:141 184 255;--c-primary:20 104 204;--c-on-primary:255 255 255;--c-primary-container:20 70 216;--c-on-primary-container:255 255 255;--c-primary-fixed:220 231 253;--c-primary-fixed-dim:185 206 248;--c-on-primary-fixed:6 26 69;--c-on-primary-fixed-variant:20 70 216;--c-secondary:20 70 216;--c-on-secondary:255 255 255;--c-secondary-container:20 70 216;--c-on-secondary-container:255 255 255;--c-secondary-fixed:220 231 253;--c-secondary-fixed-dim:185 206 248;--c-on-secondary-fixed:6 26 69;--c-on-secondary-fixed-variant:20 70 216;--c-tertiary:125 95 34;--c-on-tertiary:255 255 255;--c-tertiary-container:243 233 214;--c-on-tertiary-container:92 68 25;--c-tertiary-fixed:243 233 214;--c-tertiary-fixed-dim:226 199 143;--c-on-tertiary-fixed:58 44 16;--c-on-tertiary-fixed-variant:92 68 25;--c-error:186 26 26;--c-on-error:255 255 255;--c-error-container:255 218 214;--c-on-error-container:147 0 10;--c-scrim:0 0 0;}
+/* theme:end */
+
+/* ليلي: الخلفية بوهجين — والشاشات فوقها شفّافة فيُرى الوهج. */
+:root[data-theme='dark'] body {
+  background-color: #060b1a;
+  background-image:
+    radial-gradient(56rem 36rem at 88% -12%, rgb(21 112 218 / 0.22), transparent 62%),
+    radial-gradient(48rem 32rem at -8% 108%, rgb(34 211 238 / 0.1), transparent 60%);
+  background-attachment: fixed;
+}
+:root[data-theme='dark'] main.bg-surface {
+  background-color: transparent;
+}
+
+/* الورقة والصورة بيضاوان في المظهرين. */
+.paper,
+.a4-sheet {
+  background-color: #fff;
+}
+
+/* تدرّج MADA — للزرّ الأساسي، والمحدَّد في السكّة، ومربّعات الأيقونات، والشعار وحدها. */
+.mada,
+button.bg-primary,
+a.bg-primary {
+  background-image: linear-gradient(135deg, #1570da, #1446d8);
+}
+.icon-tile {
+  background-image: linear-gradient(135deg, #1570da, #1446d8);
+  color: #fff;
+}
+
+/* ليلي: الحقول بحدٍّ خافت — فالبئر الداكنة على البطاقة الداكنة تُرى حدودها. */
+:root[data-theme='dark'] :is(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) {
+  box-shadow: inset 0 0 0 1px rgb(var(--c-outline-variant));
+}
+
+/* نهاري: علامة MT الخافتة داكنةً — حرفها الأبيض لا يُرى على الفاتح. */
+:root:not([data-theme='dark']) [data-watermark] {
+  filter: grayscale(1) brightness(0.2);
+}
+
 /* ── الطبقة الأساس: منقولة من <style> في ملفات التصميم ─────────────── */
 @layer base {
   html,

@@ -49,6 +49,7 @@ import { SCREEN_DPI } from '@shared/canvas';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
+import mark from '../assets/brand/mt-mark.png';
 
 type Step = 'pick' | 'fill' | 'review';
 
@@ -810,6 +811,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
+      {/* علامة MT خافتةً في الشبّاك (المرحلة ٦) — خلف العمل، لا تُلمس ولا تُطبع. */}
+      <img
+        alt=""
+        aria-hidden
+        className="pointer-events-none select-none absolute bottom-6 left-6 w-72 opacity-[0.05] print:hidden"
+        data-watermark=""
+        src={mark}
+      />
       <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         {/* الخطوات الثلاث */}
         <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-md">
@@ -880,7 +889,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         type="button"
                         onClick={() => onOpenTool?.(c.target, citizenId)}
                       >
-                        <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                        <span className="icon-tile w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
                           <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
                         </span>
                         <span className="flex flex-col min-w-0">

@@ -752,7 +752,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
       <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="">
         <div className="sticky top-0 z-10 bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
           <button
-            className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-secondary transition-all shadow-xs"
+            className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-primary transition-all shadow-xs"
             type="button"
             data-act="insert"
             title="إدراج جدول أو صورة أو كليشة"
@@ -842,7 +842,7 @@ export default function DocEditor({ doc, onChange, clips = [], header, values, a
         {/* الورقة بمقاسها الحقيقي وهوامشها — فيلتفّ السطر حيث يلتفّ في الطباعة. */}
         <div
           ref={paperRef}
-          className="relative isolate mx-auto mt-space-md shrink-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)] flex flex-col"
+          className="paper relative isolate mx-auto mt-space-md shrink-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)] flex flex-col"
           style={{
             width: `${page.w}mm`,
             minHeight: `${page.h}mm`,

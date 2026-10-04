@@ -147,7 +147,7 @@ function QuestionNode(props: NodeProps) {
     >
       {/* الترتيب كما يكتبه المدرّس: العلامة، ثم الدرجة، ثم النصّ. */}
       <div className="flex items-center gap-space-sm">
-        <span className="min-w-12 font-label-lg text-label-lg font-bold text-primary tabular">
+        <span className="min-w-12 font-label-lg text-label-lg font-bold text-secondary tabular">
           {head}
         </span>
 
@@ -685,7 +685,7 @@ function PapersScreenInner(
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-primary text-[20px]">lock</span>
+                <span className="material-symbols-outlined text-secondary text-[20px]">lock</span>
                 <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
                   الرأس ثابت (تعبئة تلقائية)
                 </h2>
@@ -915,7 +915,7 @@ function PapersScreenInner(
             <span
               className={`px-space-sm py-0.5 rounded-full font-label-sm text-label-sm font-bold shrink-0 whitespace-nowrap ${
                 total === 100
-                  ? 'bg-secondary text-on-primary'
+                  ? 'bg-secondary text-on-secondary'
                   : 'bg-surface-container-high text-on-surface-variant'
               }`}
               data-total
@@ -1053,7 +1053,7 @@ function PapersScreenInner(
       {toast && (
         <div
           className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-primary' : 'bg-error text-on-error'
+            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

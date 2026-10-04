@@ -58,7 +58,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   const save = () => {
     if (!settings) return;
     // بطاقات الشبّاك والمحرّر تُحفظ لحظة تغييرها — فلا يُعيدها الحفظ.
-    const { counterCards: _cards, newEditor: _newEditor, ...office } = settings;
+    const { counterCards: _cards, newEditor: _newEditor, theme: _theme, ...office } = settings;
     void window.diwan.settings.set(office).then((saved) => {
       setSettings(saved);
       setDirty(false);
@@ -195,6 +195,50 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               }}
             />
 
+            {/* ── المظهر (المرحلة ٦ — «منتصف الليل») ─────────────────────── */}
+            <section className={card} data-theme-setting="">
+              {title('contrast', 'المظهر')}
+              <div className="grid grid-cols-2 gap-space-sm">
+                {(
+                  [
+                    { value: 'dark', label: 'ليلي', hint: 'كحليٌّ بوهجٍ خافت — يريح العين في يومٍ طويل', swatch: ['#060B1A', '#0D1630', '#8DB8FF'] },
+                    { value: 'light', label: 'نهاري', hint: 'فاتحٌ لمكتبٍ مضاءٍ بالشمس', swatch: ['#EEF3FC', '#FFFFFF', '#1446D8'] }
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.value}
+                    aria-pressed={settings.theme === o.value}
+                    className={`p-space-sm rounded-xl text-right flex flex-col gap-1 transition-colors ${
+                      settings.theme === o.value ? 'ring-2 ring-secondary bg-surface-container-high' : 'bg-surface-container-low hover:bg-surface-container-high'
+                    }`}
+                    data-theme-option={o.value}
+                    type="button"
+                    onClick={() => {
+                      const next = { theme: o.value };
+                      setSettings((cur) => (cur ? { ...cur, ...next } : cur));
+                      // يُرى فورًا — والإعدادات تحفظه ويُرسم به الإقلاع التالي من أوّله.
+                      document.documentElement.dataset.theme = o.value;
+                      try {
+                        localStorage.setItem('diwan-theme', o.value);
+                      } catch {
+                        // لا تخزين.
+                      }
+                      void window.diwan.settings.set(next).then(() => onChanged?.());
+                    }}
+                  >
+                    <span className="flex gap-1" aria-hidden>
+                      {o.swatch.map((c) => (
+                        <span key={c} className="w-6 h-6 rounded-md border border-outline-variant" style={{ background: c }} />
+                      ))}
+                    </span>
+                    <span className="font-label-lg text-label-lg text-on-surface font-semibold">{o.label}</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant">{o.hint}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">والورقة والصورة بيضاوان في المظهرين — كما تُطبعان.</p>
+            </section>
+
             {/* ── المحرّر ────────────────────────────────────────────────── */}
             <section className={card} data-editor-setting="">
               {title('edit_document', 'المحرّر')}
@@ -311,7 +355,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
       {toast && (
         <div
           className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-primary' : 'bg-error text-on-error'
+            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

@@ -24,6 +24,7 @@ import { archiveStats } from '../services/documents';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
 import { normalizeCounterCards } from '@shared/counterCards';
+import { normalizeTheme } from '@shared/theme';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -46,7 +47,8 @@ const DEFAULTS: OfficeSettings = {
   basmala: null,
   lastBackupAt: null,
   counterCards: normalizeCounterCards(undefined),
-  newEditor: true
+  newEditor: true,
+  theme: 'dark'
 };
 
 function readSettings(): OfficeSettings {
@@ -74,7 +76,9 @@ function readSettings(): OfficeSettings {
     // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
     counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
     // الأصل الجديد منذ ٤ تشرين الأول — ومن أطفأه بنفسه يبقى على اختياره.
-    newEditor: map.has('newEditor') ? map.get('newEditor') === 'true' : DEFAULTS.newEditor
+    newEditor: map.has('newEditor') ? map.get('newEditor') === 'true' : DEFAULTS.newEditor,
+    // «منتصف الليل» ليليٌّ افتراضيًّا (المرحلة ٦) — والنهاريّ اختيار.
+    theme: normalizeTheme(map.get('theme'))
   };
 }
 

@@ -1056,7 +1056,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
       {busy && <div className="fixed bottom-6 right-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-surface-container-highest text-on-surface font-label-md text-label-md">{busy}</div>}
       {toast && (
-        <div className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${toast.warn ? 'bg-error text-on-error' : 'bg-secondary text-on-primary'}`}>
+        <div className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${toast.warn ? 'bg-error text-on-error' : 'bg-secondary text-on-secondary'}`}>
           {toast.text}
         </div>
       )}

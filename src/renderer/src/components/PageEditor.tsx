@@ -1059,7 +1059,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             <Tool act="numbers" icon="format_list_numbered" title="ترقيم" onRun={() => run_(toggleList('number'))} />
             <ToolSep />
             <button
-              className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-secondary transition-all shadow-xs"
+              className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-primary transition-all shadow-xs"
               type="button"
               data-act="insert"
               title="إدراج جدول أو صورة أو كليشة أو فاصل صفحة"
@@ -1266,7 +1266,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             {Array.from({ length: pages }, (_, i) => (
               <div
                 key={i}
-                className="absolute inset-x-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)]"
+                className="paper absolute inset-x-0 bg-surface-container-lowest shadow-[0_1px_3px_rgba(24,33,29,0.06),0_16px_32px_-4px_rgba(24,33,29,0.10)]"
                 data-sheet={i + 1}
                 style={{ top: i * stride, height: pageH }}
               />

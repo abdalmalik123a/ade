@@ -37,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex-1 min-h-[400px] flex items-center justify-center p-space-xl bg-surface-container-lowest m-space-lg rounded-2xl border border-error/30 shadow-lg text-right">
           <div className="max-w-md flex flex-col items-center text-center gap-space-md">
-            <div className="w-16 h-16 rounded-full bg-error-container text-on-error flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
               <span className="material-symbols-outlined text-[36px]">error</span>
             </div>
             <div>

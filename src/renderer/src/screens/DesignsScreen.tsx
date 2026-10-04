@@ -1934,7 +1934,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
       {toast && (
         <div
           className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-primary' : 'bg-error text-on-error'
+            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

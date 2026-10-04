@@ -48,7 +48,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
       <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-secondary">
             <span className="material-symbols-outlined text-[24px]">content_paste_go</span>
             <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
               لصق ذكي من رسائل الواتساب (WhatsApp Smart Parse)
@@ -73,7 +73,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
               </label>
               <button
                 type="button"
-                className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline px-2 py-1 rounded bg-primary/10"
+                className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline px-2 py-1 rounded bg-primary/10"
                 onClick={handlePasteClipboard}
               >
                 <span className="material-symbols-outlined text-[16px]">content_paste</span>

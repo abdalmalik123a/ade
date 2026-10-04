@@ -11,6 +11,8 @@ import { useState } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
 import type { RouteKey } from '@shared/routes';
 import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
+import icon from '../assets/brand/diwan-icon.png';
+import logo from '../assets/brand/madatech-logo.png';
 
 /** ما يُفتح بعد المعالج في المكتبة: مجلّد ملفّات Word، أو حزمةٌ جاهزة. */
 export type StartAction = 'folder' | 'pack';
@@ -63,9 +65,8 @@ export default function Onboarding({
       <div className="w-full max-w-2xl rounded-2xl bg-surface-container-lowest shadow-2xl overflow-hidden flex flex-col max-h-full">
         <div className="px-space-xl pt-space-lg pb-space-md flex items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-sm">
-            <span className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center">
-              <span className="material-symbols-outlined">account_balance</span>
-            </span>
+            {/* شاشة البدء: أيقونة ديوان — والشعار كاملًا أسفل المعالج (المرحلة ٦). */}
+            <img alt="ديوان" className="w-12 h-12 rounded-xl" src={icon} />
             <div>
               <div className="font-headline-sm text-headline-sm text-on-surface font-bold">أهلًا بك في ديوان</div>
               <div className="font-label-sm text-label-sm text-on-surface-variant">
@@ -224,7 +225,7 @@ export default function Onboarding({
           )}
         </div>
 
-        <div className="px-space-xl py-space-md bg-surface-container-low flex items-center justify-between">
+        <div className="px-space-xl py-space-md bg-surface-container-low flex items-center justify-between gap-space-md">
           <button
             className="h-10 px-space-md rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:opacity-0"
             disabled={step === 0}
@@ -233,6 +234,10 @@ export default function Onboarding({
           >
             السابق
           </button>
+          {/* الشعار كاملًا — على كحليٍّ في المظهرين: حروفه البيضاء لا تُرى على فاتح. */}
+          <span className="h-10 px-3 rounded-lg bg-[#060B1A] flex items-center" data-brand-logo="">
+            <img alt="MADA TECH" className="h-7 object-contain" src={logo} />
+          </span>
           {step < STEPS.length - 1 && (
             <button
               className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"

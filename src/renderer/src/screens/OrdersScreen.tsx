@@ -302,7 +302,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-primary font-label-md text-label-md">
+        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-secondary font-label-md text-label-md">
           {toast}
         </div>
       )}

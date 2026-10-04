@@ -15,7 +15,6 @@
     "dist": "npm run build && electron-builder --win",
     "release": "npm run dist && node tools/release.mjs",
     "postinstall": "electron-builder install-app-deps",
-    "tokens": "node tools/extract-tokens.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "brand": "python tools/make-brand.py",

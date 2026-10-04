@@ -201,7 +201,7 @@ export default function CameraStudio({
               {people[at + 1] && (
                 <span className="font-body-md text-body-md opacity-70">التالي: {people[at + 1]!.name}</span>
               )}
-              {photoOf(person.key) && <span className="font-label-md text-label-md text-secondary-fixed">له صورة — التقط ثانيةً لتبديلها</span>}
+              {photoOf(person.key) && <span className="font-label-md text-label-md text-white/80">له صورة — التقط ثانيةً لتبديلها</span>}
             </>
           ) : (
             <span className="text-[28px] font-bold" data-studio-done="">اكتمل الصفّ ✓</span>
