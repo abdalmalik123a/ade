@@ -568,7 +568,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       )}
 
       {pendingImport?.letterhead && (
-        <div className="fixed inset-0 z-50 bg-primary-container/45 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
+        <div className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
           <div className="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
             <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
               <span className="font-headline-sm text-headline-sm text-on-surface">
@@ -973,7 +973,7 @@ function PreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-primary-container/45 backdrop-blur-[2px] flex flex-col items-center overflow-auto py-space-lg"
+      className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center overflow-auto py-space-lg"
       onClick={onClose}
     >
       <div

@@ -16,8 +16,7 @@ import { destinationOf, DESTINATIONS, type Destination } from '../lib/destinatio
 const ITEM =
   'relative w-[68px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors';
 const ITEM_ON =
-  // المحدَّد بتدرّج MADA (المرحلة ٦) — من الأربعة التي يحملها التدرّج وحدها.
-  'mada relative w-[68px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-xl bg-primary-container text-on-primary font-bold shadow-md active-nav-glow';
+  'relative w-[68px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-xl bg-primary-container text-on-primary font-bold shadow-md active-nav-glow';
 const SMALL =
   'relative w-[68px] flex flex-col items-center gap-0.5 pt-1.5 pb-1.5 rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors';
 
@@ -60,8 +59,7 @@ export default function Sidebar({ active, onNavigate, counts, version, onAbout, 
       className="fixed right-0 top-0 h-full w-20 bg-surface-container-lowest z-50 flex flex-col items-center py-space-sm gap-1 shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
       data-sidebar="rail"
     >
-      {/* رأس السكّة (المرحلة ٦): علامة MT و«ديوان»، و«MADA TECH» تحتها. والعلامة على مربّعٍ كحليّ في
-          المظهرين — فحرفها الأبيض يُرى على النهاريّ أيضًا. */}
+      {/* رأس السكّة (المرحلة ٦): علامة MT و«ديوان»، و«MADA TECH» تحتها — على كحليّ السكّة بألوانها. */}
       <button
         className="mb-space-xs w-[68px] pt-1 pb-1.5 rounded-xl flex flex-col items-center gap-0.5 hover:bg-surface-container-high"
         data-act="sidebar-about"
@@ -69,7 +67,7 @@ export default function Sidebar({ active, onNavigate, counts, version, onAbout, 
         type="button"
         onClick={onAbout}
       >
-        <span className="w-11 h-11 rounded-xl bg-[#0D1630] flex items-center justify-center shadow-md" data-brand-mark="">
+        <span className="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center" data-brand-mark="">
           <img alt="MT" className="w-8 object-contain" src={mark} />
         </span>
         <span className="font-headline-sm text-[15px] leading-5 font-bold text-on-surface">ديوان</span>

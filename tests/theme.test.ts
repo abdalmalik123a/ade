@@ -1,11 +1,11 @@
 /**
- * هوية «منتصف الليل» (المرحلة ٦): كلّ نصٍّ بتباين ٤٫٥ فأكثر في المظهرين — «متى تتمّ» في UPGRADE.md.
- * يُفحص كلّ لون نصٍّ على كلّ سطح، وكلّ «on-X» على «X»، والأبيض على طرفي تدرّج MADA.
+ * مظهر ديوان الواحد: كلّ نصٍّ بتباين ٤٫٥ فأكثر — في مساحة العمل وفي السكّة الكحليّة.
+ * يُفحص كلّ لون نصٍّ على كلّ سطح، وكلّ «on-X» على «X».
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { COLOR_ROLES, MADA, THEMES, contrast, themeCss, type ColorRole, type ThemeName } from '../src/shared/theme';
+import { COLOR_ROLES, PALETTE, RAIL, contrast, themeCss, type ColorRole, type Palette } from '../src/shared/theme';
 
 const SURFACES: ColorRole[] = [
   'background',
@@ -19,49 +19,38 @@ const SURFACES: ColorRole[] = [
 /** ألوانٌ تُكتب بها النصوص على السطوح مباشرة. */
 const TEXTS: ColorRole[] = ['on-surface', 'on-surface-variant', 'secondary', 'error', 'tertiary'];
 
-describe('تباين النصّ في المظهرين', () => {
-  for (const name of ['dark', 'light'] as ThemeName[]) {
-    const t = THEMES[name];
-    it(`${name}: كلّ لون نصٍّ على كلّ سطح ٤٫٥ فأكثر`, () => {
-      const low: string[] = [];
-      for (const fg of TEXTS) for (const bg of SURFACES) if (contrast(t[fg], t[bg]) < 4.5) low.push(`${fg} على ${bg}: ${contrast(t[fg], t[bg]).toFixed(2)}`);
-      expect(low).toEqual([]);
-    });
-    it(`${name}: كلّ «on-X» على «X»`, () => {
-      const low: string[] = [];
-      for (const role of COLOR_ROLES) {
-        if (!role.startsWith('on-')) continue;
-        const base = role.slice(3) as ColorRole;
-        if (!(base in t)) continue;
-        const c = contrast(t[role], t[base]);
-        if (c < 4.5) low.push(`${role} على ${base}: ${c.toFixed(2)}`);
-      }
-      // والنصّ على الأسطح «الثابتة» (الشارات والمربّعات): الأزرق النصّيّ عليها.
-      for (const bg of ['secondary-fixed', 'primary-fixed'] as ColorRole[]) {
-        const c = contrast(t.secondary, t[bg]);
-        if (c < 4.5) low.push(`secondary على ${bg}: ${c.toFixed(2)}`);
-      }
-      const inv = contrast(t['inverse-on-surface'], t['inverse-surface']);
-      if (inv < 4.5) low.push(`inverse: ${inv.toFixed(2)}`);
-      expect(low).toEqual([]);
-    });
+function lowContrast(p: Palette, texts: ColorRole[]): string[] {
+  const low: string[] = [];
+  for (const fg of texts) for (const bg of SURFACES) if (contrast(p[fg], p[bg]) < 4.5) low.push(`${fg} على ${bg}: ${contrast(p[fg], p[bg]).toFixed(2)}`);
+  for (const role of COLOR_ROLES) {
+    if (!role.startsWith('on-')) continue;
+    const base = role.slice(3) as ColorRole;
+    if (base in p && contrast(p[role], p[base]) < 4.5) low.push(`${role} على ${base}: ${contrast(p[role], p[base]).toFixed(2)}`);
   }
+  for (const bg of ['secondary-fixed', 'primary-fixed'] as ColorRole[]) if (contrast(p.secondary, p[bg]) < 4.5) low.push(`secondary على ${bg}`);
+  if (contrast(p['inverse-on-surface'], p['inverse-surface']) < 4.5) low.push('inverse');
+  return low;
+}
 
-  it('والأبيض على طرفي تدرّج MADA', () => {
-    expect(contrast('#FFFFFF', MADA.from)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast('#FFFFFF', MADA.to)).toBeGreaterThanOrEqual(4.5);
+describe('تباين النصّ', () => {
+  it('مساحة العمل: كلّ لون نصٍّ على كلّ سطح، وكلّ «on-X» على «X» — ٤٫٥ فأكثر', () => {
+    expect(lowContrast(PALETTE, TEXTS)).toEqual([]);
+  });
+  it('والسكّة الكحليّة كذلك', () => {
+    // في السكّة لا يُكتب بالذهبيّ.
+    expect(lowContrast(RAIL, ['on-surface', 'on-surface-variant', 'secondary', 'error'])).toEqual([]);
   });
 });
 
 describe('التوكنات متغيّرات', () => {
-  it('كلّ دورٍ في المظهرين، ومتغيّره في الصفحة', () => {
+  it('كلّ دورٍ لونٌ، ومتغيّره في الصفحة وفي السكّة', () => {
     const css = themeCss();
     for (const role of COLOR_ROLES) {
-      expect(THEMES.dark[role]).toMatch(/^#[0-9A-F]{6}$/i);
-      expect(THEMES.light[role]).toMatch(/^#[0-9A-F]{6}$/i);
+      expect(PALETTE[role]).toMatch(/^#[0-9A-F]{6}$/i);
+      expect(RAIL[role]).toMatch(/^#[0-9A-F]{6}$/i);
       expect(css).toContain(`--c-${role}:`);
     }
-    expect(css).toContain(':root[data-theme="dark"]');
+    expect(css).toContain('[data-sidebar="rail"]{');
   });
 
   it('وstyles.css يحملها كما هي — فالأنماط المحفوظة يوم الإصدار تحملها معها', () => {

@@ -61,16 +61,6 @@ export default function App() {
    */
   const [route, setRoute] = useState<RouteKey>('service');
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  // المظهر من الإعدادات (المرحلة ٦) — ويُحفظ على الجهاز ليُرسم به الإقلاع التالي من أوّله.
-  useEffect(() => {
-    if (!settings) return;
-    document.documentElement.dataset.theme = settings.theme;
-    try {
-      localStorage.setItem('diwan-theme', settings.theme);
-    } catch {
-      // لا تخزين — يُقرأ من الإعدادات كلّ مرّة.
-    }
-  }, [settings?.theme]);
   const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 }, pending: 0 });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [version, setVersion] = useState<string | null>(null);

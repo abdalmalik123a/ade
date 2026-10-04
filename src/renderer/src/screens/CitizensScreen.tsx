@@ -951,7 +951,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
 
       {preview && (
         <div
-          className="fixed inset-0 z-50 bg-primary-container/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-space-lg"
+          className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-space-lg"
           onClick={() => setPreview(null)}
         >
           <div className="mb-space-sm flex items-center gap-space-md text-on-primary">
@@ -976,7 +976,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
 
       {ocrPanel && (
         <div
-          className="fixed inset-0 z-50 bg-primary-container/45 backdrop-blur-[2px] flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center"
           onClick={() => setOcrPanel(null)}
         >
           <div

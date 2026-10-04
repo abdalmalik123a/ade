@@ -12,7 +12,7 @@ import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
 import { closePortrait } from './services/portrait';
 import { hardenSession, hardenWindow } from './harden';
-import { THEMES, normalizeTheme } from '@shared/theme';
+import { PALETTE } from '@shared/theme';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
 installMainErrorHandlers();
@@ -68,16 +68,6 @@ function windowSize(): { width: number; height: number; minWidth: number; minHei
   };
 }
 
-/** لون النافذة قبل أن تُرسم الصفحة — من المظهر المحفوظ، فلا يومض الفاتح قبل الليليّ (المرحلة ٦). */
-function windowBackground(): string {
-  try {
-    const row = getDb().prepare("SELECT value FROM settings WHERE key = 'theme'").get() as { value: string } | undefined;
-    return THEMES[normalizeTheme(row?.value)].background;
-  } catch {
-    return THEMES.dark.background;
-  }
-}
-
 function createWindow(): void {
   const size = windowSize();
   mainWindow = new BrowserWindow({
@@ -87,7 +77,7 @@ function createWindow(): void {
     minHeight: size.minHeight,
     show: true,
     autoHideMenuBar: true,
-    backgroundColor: windowBackground(),
+    backgroundColor: PALETTE.background, // خلفية مساحة العمل — فلا يومض لونٌ آخر قبل الصفحة
     title: 'ديوان — منظومة الكتب والتحارير',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

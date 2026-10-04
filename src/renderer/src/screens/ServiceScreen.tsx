@@ -815,7 +815,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       <img
         alt=""
         aria-hidden
-        className="pointer-events-none select-none absolute bottom-6 left-6 w-72 opacity-[0.05] print:hidden"
+        className="pointer-events-none select-none absolute bottom-6 left-6 w-64 opacity-[0.035] print:hidden"
         data-watermark=""
         src={mark}
       />
@@ -889,7 +889,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         type="button"
                         onClick={() => onOpenTool?.(c.target, citizenId)}
                       >
-                        <span className="icon-tile w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                        <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
                           <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
                         </span>
                         <span className="flex flex-col min-w-0">

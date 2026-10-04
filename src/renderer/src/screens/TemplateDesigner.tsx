@@ -317,7 +317,7 @@ export default function TemplateDesigner({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch bg-primary-container/45 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-stretch bg-scrim/40 backdrop-blur-[2px]">
       <div className="m-auto w-[min(1520px,98vw)] h-[min(880px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         {/* الترويسة */}
         <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">

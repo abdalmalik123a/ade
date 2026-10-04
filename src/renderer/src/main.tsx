@@ -12,18 +12,6 @@ import './styles.css';
 const params = new URLSearchParams(window.location.search);
 const printMode = params.get('mode') === 'print';
 
-// المظهر قبل أوّل رسم — من آخر ما اختير على هذا الجهاز، فلا يومض النهاريّ ثم يصير ليلًا. ونافذة
-// الطباعة بلا مظهر: الورقة بألوان النهار (styles.css). والإعدادات تُصحّحه حين تُقرأ (App).
-if (!printMode) {
-  let theme = 'dark';
-  try {
-    theme = localStorage.getItem('diwan-theme') === 'light' ? 'light' : 'dark';
-  } catch {
-    // لا تخزين — الليليّ.
-  }
-  document.documentElement.dataset.theme = theme;
-}
-
 if (printMode) {
   document.getElementById('root')?.remove();
 } else if (params.get('mode') === 'fillcard') {

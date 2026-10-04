@@ -8,7 +8,6 @@ import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
-import type { ThemeName } from './theme';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -67,8 +66,6 @@ export type OfficeSettings = {
    * و`false` يعيد المحرّر الأوّل احتياطًا.
    */
   newEditor: boolean;
-  /** المظهر (المرحلة ٦ — «منتصف الليل»): ليليّ افتراضيّ أو نهاريّ. والورقة بيضاء في الاثنين. */
-  theme: ThemeName;
 };
 
 export type SidebarCounts = {
