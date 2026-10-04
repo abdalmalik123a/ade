@@ -70,8 +70,8 @@ export type PaperPlan = {
 const HEAD_WORDS = /(جمهوري|وزار|مديري|المديري|دائر|الدائر|محافظ|رئاس|قسم|شعب|هيئ|جامع|كلي|مدرس|العدد|الرقم|التاريخ|republic|ministry|directorate)/i;
 const SUBJECT = /^\s*(م\s*[/\\]|الموضوع\s*[:：/]?)/;
 const FIELD_LINE: { re: RegExp; label: string; key: string }[] = [
-  { re: /^\s*(العدد|الرقم|رقم الكتاب)\s*[:：/]?\s*/, label: 'العدد', key: 'العدد' },
-  { re: /^\s*(التاريخ)\s*[:：/]?\s*/, label: 'التاريخ', key: 'التاريخ' }
+  { re: /(?:^|[^\wء-ي])(العدد|الرقم|رقم الكتاب)\s*[:：/]?\s*/, label: 'العدد', key: 'العدد' },
+  { re: /(?:^|[^\wء-ي])(الت[أاإ]?ريخ|تاريخ)\s*[:：/]?\s*/, label: 'التاريخ', key: 'التاريخ' }
 ];
 const DIGITS = /[0-9٠-٩۰-۹]/;
 const LETTERS = /[A-Za-zء-ي]/g;
@@ -236,8 +236,8 @@ export function planPaper(read: PaperRead): PaperPlan {
   const firstTable = read.tables[0]?.box.y0 ?? Infinity;
   const divider = read.dividers.find((d) => d.y0 < H * 0.45 && d.x1 - d.x0 >= W * 0.5 && d.y0 < firstTable);
   let headRows: Piece[][] = [];
-  if (divider && rows.some((r) => cy(r[0]!.box) < divider.y0)) {
-    headRows = rows.filter((r) => cy(r[0]!.box) < divider.y0);
+  if (divider && rows.some((r) => cy(r[0]!.box) < divider.y1)) {
+    headRows = rows.filter((r) => cy(r[0]!.box) < divider.y1 || r.some((p) => FIELD_LINE.some((f) => f.re.test(p.text)) && cy(p.box) < divider.y1 + lineH * 1.5));
     notes.push('الترويسة: ما فوق الخطّ الفاصل');
   } else {
     for (const r of rows) {

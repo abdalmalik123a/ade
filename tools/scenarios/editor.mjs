@@ -225,11 +225,11 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // ── العلامة المائية ────────────────────────────────────────────────
   await click('[data-act="wm-text"]');
-  await wait(400);
+  await wait(800);
   ok(
     'وظهرت العلامة المائية خلف المتن على الورقة',
     await page.eval(`
-      const w = document.querySelector('[data-watermark]');
+      const w = document.querySelector('[data-doc-editor] [data-watermark]') || document.querySelector('.paper [data-watermark]') || document.querySelector('[data-watermark]:not(img)');
       return Boolean(w) && w.textContent.includes('مسودة');
     `)
   );

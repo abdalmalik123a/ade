@@ -14,7 +14,7 @@ import Database from 'better-sqlite3';
 
 const LETTER = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>
 @page { size: 210mm 297mm; margin: 0 }
-body { margin: 0; font-family: 'Traditional Arabic', 'Times New Roman', serif; font-size: 16pt; color: #111 }
+body { margin: 0; font-family: 'Amiri', 'Cairo', 'Traditional Arabic', 'Times New Roman', serif; font-size: 16pt; color: #111 }
 .sheet { width: 210mm; height: 297mm; padding: 18mm 20mm; box-sizing: border-box; position: relative; background: #fff }
 .head { display: flex; justify-content: space-between; font-weight: bold }
 .head div { line-height: 1.6 }
@@ -125,9 +125,24 @@ function phonePhoto(sheet) {
     for (let x = 0; x < w; x++) {
       const dx = (x - w / 2) / k;
       const dy = (y - h / 2) / k;
-      const sx = Math.round(sheet.w / 2 + dx * cos + dy * sin);
-      const sy = Math.round(sheet.h / 2 - dx * sin + dy * cos);
-      if (sx >= 0 && sy >= 0 && sx < sheet.w && sy < sheet.h) rgb.set(sheet.rgb.subarray((sy * sheet.w + sx) * 3, (sy * sheet.w + sx) * 3 + 3), (y * w + x) * 3);
+      const fx = sheet.w / 2 + dx * cos + dy * sin;
+      const fy = sheet.h / 2 - dx * sin + dy * cos;
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      if (x0 >= 0 && y0 >= 0 && x0 + 1 < sheet.w && y0 + 1 < sheet.h) {
+        const wx = fx - x0;
+        const wy = fy - y0;
+        const i00 = (y0 * sheet.w + x0) * 3;
+        const i10 = (y0 * sheet.w + x0 + 1) * 3;
+        const i01 = ((y0 + 1) * sheet.w + x0) * 3;
+        const i11 = ((y0 + 1) * sheet.w + x0 + 1) * 3;
+        const dst = (y * w + x) * 3;
+        for (let c = 0; c < 3; c++) {
+          const top = sheet.rgb[i00 + c] * (1 - wx) + sheet.rgb[i10 + c] * wx;
+          const bot = sheet.rgb[i01 + c] * (1 - wx) + sheet.rgb[i11 + c] * wx;
+          rgb[dst + c] = Math.round(top * (1 - wy) + bot * wy);
+        }
+      }
     }
   }
   return { w, h, rgb };

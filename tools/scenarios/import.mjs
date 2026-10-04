@@ -34,7 +34,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الاستيراد من مكتبة النماذج ──────────────────────────────────────
   await page.goto('templates-library-drafts');
   await wait(700);
-  await page.clickText('استيراد نموذج');
+  await page.eval(`document.querySelector('[data-act="new-word"]')?.click()`);
   await wait(2500);
 
   let text = await page.text();

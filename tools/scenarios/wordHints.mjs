@@ -34,7 +34,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.eval(`await window.diwan.settings.set({ newEditor: true }); return true;`);
   await page.goto('templates-library-drafts');
   await wait(700);
-  await page.clickText('استيراد نموذج');
+  await page.eval(`document.querySelector('[data-act="new-word"]')?.click()`);
   await wait(2500);
   ok('انفتح الملفّ في المحرّر الجديد', (await count('[data-editor="v2"] [data-page-editor]')) === 1);
 

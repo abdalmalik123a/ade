@@ -129,11 +129,18 @@ export default async function scenario(page, { profile, shotsDir }) {
       taughtRows[0]?.chosen === 'ملاحظة الختام'
   );
 
+  const clickImportFolder = async () => {
+    await page.eval(`
+      const b = document.querySelector('[data-act="empty-import-folder"]') || document.querySelector('[data-act="new-folder"]');
+      if (b) b.click();
+    `);
+  };
+
   // مرّةٌ واحدة لا تبلغ حدّ العادة، فيُعلَّم حتى يبلغها.
   for (let i = 1; i < HABIT; i++) {
     await page.goto('templates-library-drafts');
     await wait(600);
-    await page.clickText('استورد مجلدي');
+    await clickImportFolder();
     await wait(3000);
     await page.eval(`
       const inputs = [...document.querySelectorAll('input[type="text"]')];
@@ -152,7 +159,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   // واستيرادٌ رابع: أيقترح البرنامج اسمَ المكتب من نفسه؟
   await page.goto('templates-library-drafts');
   await wait(600);
-  await page.clickText('استورد مجلدي');
+  await clickImportFolder();
   await wait(3000);
 
   const taught = await page.eval(`
