@@ -69,7 +69,7 @@ describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => 
     const doc = buildDoc({ kind: 'student-id', style: 'official', palette: royal });
     const long = 'عبد الرحمن محمد عبد الكريم حسين الجبوري';
     const html = renderCanvasHtml(doc, { ...sampleValues(), الاسم: long }, { dpi: 96 });
-    const box = html.match(/data-fit="([\d.]+)" style="[^"]*font-size:([\d.]+)px[^"]*"><span[^>]*>عبد الرحمن/);
+    const box = html.match(/data-fit="([\d.]+)" style="[^"]*font-size:([\d.]+)px[^"]*"><span[^>]*>(?:<span class="fv">)?عبد الرحمن/);
     expect(box).not.toBeNull();
     expect(Number(box![2])).toBeLessThan(Number(box![1]));
     expect(estimateEm(long)).toBeGreaterThan(estimateEm('زينب علي'));
@@ -78,8 +78,8 @@ describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => 
   it('والرقم اللاتيني يُعزل باتجاهه — «2026-0457» لا «0457-2026»', () => {
     const doc = buildDoc({ kind: 'student-id', style: 'official', palette: royal });
     const html = renderCanvasHtml(doc, { الرقم: '2026-0457', الاسم: 'زينب' }, { dpi: 96 });
-    expect(html).toContain('<bdi dir="ltr">2026-0457</bdi>');
-    expect(html).not.toContain('<bdi dir="ltr">زينب');
+    expect(html).toContain('<bdi class="fv" dir="ltr">2026-0457</bdi>');
+    expect(html).not.toContain('dir="ltr">زينب');
   });
 
   it('والعيّنة تحمل اسم الجهة إن عُرف', () => {

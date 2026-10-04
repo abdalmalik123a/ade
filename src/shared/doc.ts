@@ -88,6 +88,8 @@ export type DocField = {
   hint?: string;
   /** لحقل التاريخ: بأيّ تقويمٍ يُكتب — والغائب ميلادي. */
   calendar?: Calendar;
+  /** «المجموع» في استمارةٍ مصوّرة: يُجمع من هذه الحقول وحده ما لم يُكتب بيد (المرحلة ٤). */
+  sumOf?: string[];
 };
 
 export const DEFAULT_FIELD_WIDTH = 14;
@@ -391,6 +393,8 @@ export type Doc = {
      * والكتل صورته. وبه يُفتح ما حُفظ فتعود الحقول إلى خاناتها.
      */
     head?: Record<string, string>;
+    /** استمارةٌ مصوّرة (المرحلة ٤): صورة الدائرة خلفيّتها، فالفارغ لا يُرسم عليها فراغًا ثانيًا. */
+    form?: boolean;
     /** ورقة الإجابة بالدوائر ومفتاحها — لورقة الأسئلة (`shared/omr.ts`). */
     omr?: { questions: number; choices: number; idDigits: number; key: number[] };
     /** لمن يُكتب الكتاب: جهةٌ أعلى أو أدنى أو مساوية — فتتصدّر كليشاتُ اتجاهه (FOUNDATION §٦). */

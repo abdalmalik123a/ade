@@ -8,12 +8,12 @@
  * من جديد، لا يُقلَّد.
  */
 import { useMemo, useState } from 'react';
-import type { PixelData } from '@shared/deskew';
 import type { Doc } from '@shared/doc';
 import { preparePaper, type Box } from '@shared/paperRules';
 import { paperDoc, planPaper, type PaperPlan, type ReviewReason } from '@shared/paperDoc';
 import { applySpelling } from '@shared/spelling';
 import CameraCapture from './CameraCapture';
+import { canvasOf, pixelsOf, pngOf } from '../lib/pixels';
 
 /** الأرقام بالهندية — إلا ما لصق حرفًا لاتينيًّا: «A4» اسمُ مقاسٍ لا عدد. */
 const toIndic = (n: number | string) => String(n).replace(/(?<![A-Za-z])\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
@@ -24,38 +24,6 @@ const REASON: Record<ReviewReason, string> = {
   spelling: 'إملاء',
   dropped: 'لم يُنقل'
 };
-
-async function pixelsOf(dataUrl: string, maxSide = 3600): Promise<PixelData> {
-  const img = new Image();
-  img.src = dataUrl;
-  try {
-    await img.decode();
-  } catch {
-    // رسالة المتصفّح إنكليزية («The source image cannot be decoded») — والسبب يُقال بالعربية.
-    throw new Error('الملف ليس صورةً تُقرأ — قد يكون تالفًا أو أُعيدت تسميته');
-  }
-  const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-  const c = document.createElement('canvas');
-  c.width = Math.round(img.naturalWidth * k);
-  c.height = Math.round(img.naturalHeight * k);
-  const ctx = c.getContext('2d')!;
-  ctx.drawImage(img, 0, 0, c.width, c.height);
-  return ctx.getImageData(0, 0, c.width, c.height);
-}
-
-function canvasOf(px: PixelData): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = px.width;
-  c.height = px.height;
-  c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(px.data), px.width, px.height), 0, 0);
-  return c;
-}
-
-async function pngOf(px: PixelData): Promise<Uint8Array> {
-  const blob = await new Promise<Blob | null>((r) => canvasOf(px).toBlob(r, 'image/png'));
-  if (!blob) throw new Error('تعذّر تجهيز الصورة للقراءة');
-  return new Uint8Array(await blob.arrayBuffer());
-}
 
 /** قصاصةٌ من الصورة حول القطعة — يُقارَن بها ما قُرئ. */
 function crop(view: HTMLCanvasElement, b: Box): string {

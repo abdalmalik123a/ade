@@ -43,6 +43,9 @@ import { ROUTES, type RouteKey } from '@shared/routes';
 import { COUNTER_CARDS, cardMatches, normalizeCounterCards, type CounterCard } from '@shared/counterCards';
 import InboxPanel, { type InboxOpen } from '../components/InboxPanel';
 import { seasonOf } from '@shared/seasons';
+import { formValues } from '@shared/imageForm';
+import { renderCanvasHtml } from '@shared/canvasHtml';
+import { SCREEN_DPI } from '@shared/canvas';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
@@ -231,7 +234,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [mergePicker, setMergePicker] = useState(false);
   /** أسماء القائمة التي لم يُعرف جنسها — تُسأل قبل أن تُطبع الدفعة. */
   const [genderReview, setGenderReview] = useState<{ names: string[]; print: boolean } | null>(null);
-  const asPrinted = useCallback((v: Record<string, string>) => derivedWords(v, keys), [keys]);
+  // والاستمارة المصوّرة: المجموع يُجمع والمربّع ✓ قبل أن تُكتب الأرقام كلماتٍ (المرحلة ٤).
+  const asPrinted = useCallback((v: Record<string, string>) => derivedWords(formValues(fields, v), keys), [keys, fields]);
   const effective = useMemo(() => asPrinted(values), [asPrinted, values]);
 
   const toggle = (id: number) =>
@@ -352,7 +356,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         node.classList.remove('values-preview');
         if (rowValues) {
           const body = node.querySelector('[data-body]');
-          if (body) body.innerHTML = renderDocHtml(l.doc, use, { missing: 'blank', paragraphs: 'blocks' });
+          if (body)
+            body.innerHTML =
+              l.doc.kind === 'canvas'
+                ? renderCanvasHtml(l.doc, use, { dpi: SCREEN_DPI, marks: false, missing: l.doc.meta.form ? 'hide' : 'blank' })
+                : renderDocHtml(l.doc, use, { missing: 'blank', paragraphs: 'blocks' });
         }
       }
       return {
@@ -1196,6 +1204,16 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         {f.required && <span className="text-error"> *</span>}
                       </span>
                       <span className="flex items-center gap-1">
+                        {/* مربّع الاختيار في الاستمارة المصوّرة: يُعلَّم فيُطبع ✓ (المرحلة ٤). */}
+                        {f.type === 'bool' ? (
+                          <input
+                            checked={Boolean(effective[f.key])}
+                            className="w-5 h-5 accent-secondary"
+                            data-check-field={f.key}
+                            type="checkbox"
+                            onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.checked ? '✓' : '' }))}
+                          />
+                        ) : (
                         <input
                           className="flex-1 min-w-0 h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                           type="text"
@@ -1205,6 +1223,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                             setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
                           }
                         />
+                        )}
                         {isDateField(f) && (
                           <DateTools
                             calendar={f.calendar}

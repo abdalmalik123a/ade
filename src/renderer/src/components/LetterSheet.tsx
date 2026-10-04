@@ -13,6 +13,8 @@ import type { CSSProperties } from 'react';
 import type { Doc } from '@shared/doc';
 import { pageMm } from '@shared/doc';
 import { pageCss, renderDocHtml, watermarkHtml } from '@shared/docHtml';
+import { renderCanvasHtml } from '@shared/canvasHtml';
+import { SCREEN_DPI } from '@shared/canvas';
 import type { LetterheadLayout } from '@shared/letterhead';
 import LetterheadView from './LetterheadView';
 
@@ -58,6 +60,26 @@ export type LetterSheetProps = {
 };
 
 export default function LetterSheet({ doc, layout, values, registry, resolve, className = '', sheetRef }: LetterSheetProps) {
+  // لوحةٌ (استمارةٌ مصوّرة أو تصميم) تُرسم بعناصرها في مواضعها — صفحةً واحدة بمقاسها. والاستمارة
+  // فراغاتها في صورتها: فالحقل الفارغ لا يُرسم عليها فراغًا ثانيًا (المرحلة ٤).
+  if (doc.kind === 'canvas' && doc.canvas) {
+    const { w, h } = doc.canvas.size;
+    return (
+      <div
+        ref={sheetRef}
+        className={`a4-sheet bg-white text-black shadow-lg ${className}`}
+        data-letter-sheet=""
+        data-form={doc.meta.form ? '' : undefined}
+        style={{ width: `${w}mm`, height: `${h}mm`, position: 'relative', overflow: 'hidden' }}
+      >
+        <style>{`@page{size:${w}mm ${h}mm;margin:0}`}</style>
+        <div
+          data-body=""
+          dangerouslySetInnerHTML={{ __html: renderCanvasHtml(doc, values, { dpi: SCREEN_DPI, marks: false, missing: doc.meta.form ? 'hide' : 'blank' }) }}
+        />
+      </div>
+    );
+  }
   // `data-letterhead`: به يُقاس ارتفاع الترويسة من الورقة في قائمة التحقّق.
   const head = layout ? (
     <div data-letterhead="">

@@ -6,6 +6,7 @@
  * استيراد DOCX/XML، ونسخ احتياطي. ولا نموذج مبرمَج: تبدأ المكتبة فارغة.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ImageFormDialog from '../components/ImageFormDialog';
 import ImportPlanDialog from '../components/ImportPlanDialog';
 import PaperPhotoDialog from '../components/PaperPhotoDialog';
 import type {
@@ -43,13 +44,16 @@ let wordIncomingSeen = 0;
 
 type Props = {
   incoming?: WordIncoming | null;
+  /** استمارةٌ مصوّرة تُفتح في المصمّم لتُرسم فيها خاناتٌ فاتت (المرحلة ٤). */
+  onOpenDesign?: (templateId: number) => void;
   onOpenInEditor?: (templateId: number) => void;
   onOpenDraft?: (draftId: number) => void;
   /** يُستدعى بعد كل تغيير يمسّ عدّادات الشريط الجانبي. */
   onChanged?: () => void;
 };
 
-export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpenDraft, onChanged }: Props) {
+export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpenDraft, onChanged, onOpenDesign }: Props) {
+  const [formOpen, setFormOpen] = useState(false);
   const [stats, setStats] = useState<TemplateStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<TemplateSummary[]>([]);
@@ -416,7 +420,8 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
                 { act: 'new-blank', icon: 'note_add', label: 'ورقة فارغة', hint: 'اكتب على الورقة، وظلّل ما يتغيّر واضغط F4', run: () => void openDesigner(null) },
                 { act: 'new-word', icon: 'upload_file', label: 'استيراد نموذج من Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
                 { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() },
-                { act: 'new-photo', icon: 'document_scanner', label: 'من صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) }
+                { act: 'new-photo', icon: 'document_scanner', label: 'من صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) },
+                { act: 'new-form-image', icon: 'dynamic_form', label: 'من صورة استمارة', hint: 'صورة الدائرة كما هي، والخانات فوقها', run: () => setFormOpen(true) }
               ] as const
             ).map((o) => (
               <button
@@ -748,6 +753,18 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
           </span>
           <span>{toast.text}</span>
         </div>
+      )}
+      {formOpen && (
+        <ImageFormDialog
+          onClose={() => setFormOpen(false)}
+          onSaved={(id, edit) => {
+            setFormOpen(false);
+            void reload(active);
+            onChanged?.();
+            say('حُفظت الاستمارة في المكتبة — تُملأ من الشبّاك كأيّ نموذج', 'ok');
+            if (edit) onOpenDesign?.(id);
+          }}
+        />
       )}
     </main>
   );

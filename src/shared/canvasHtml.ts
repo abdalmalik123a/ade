@@ -66,7 +66,8 @@ function inlinesHtml(
       const value = values[node.ref];
       // قيمةٌ لاتينية (رقمٌ بشَرطة، بريد) تُعزل باتجاهها: «2026-0457» داخل سطرٍ
       // عربي كانت تُعرض «0457-2026». والعربية تبقى في مجرى السطر كما هي.
-      if (value) return /[؀-ۿ]/.test(value) || !/[A-Za-z0-9]/.test(value) ? escapeHtml(value) : `<bdi dir="ltr">${escapeHtml(value)}</bdi>`;
+      // `fv`: القيمة المملوءة — وحدها تُطبع في «القيم وحدها» على ورقة الدائرة المطبوعة (المرحلة ٤).
+      if (value) return /[؀-ۿ]/.test(value) || !/[A-Za-z0-9]/.test(value) ? `<span class="fv">${escapeHtml(value)}</span>` : `<bdi class="fv" dir="ltr">${escapeHtml(value)}</bdi>`;
       if (missing === 'hide') return '';
       if (missing === 'blank') return blank(fields.get(node.ref));
       return `{${escapeHtml(node.ref)}}`;

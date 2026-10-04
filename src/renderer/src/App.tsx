@@ -274,6 +274,10 @@ export default function App() {
         return (
           <TemplatesScreen
             incoming={wordIncoming}
+            onOpenDesign={(templateId) => {
+              setDesignRequest({ key: Date.now(), templateId });
+              navigate('designs');
+            }}
             onOpenInEditor={(id) => openEditor({ templateId: id })}
             onOpenDraft={(id) => openEditor({ draftId: id })}
             onChanged={() => void refresh()}

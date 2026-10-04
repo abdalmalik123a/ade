@@ -626,8 +626,9 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
           id: asCopy ? null : designId,
           code: null,
           title: finalTitle,
-          subtitle: `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)} ملم`,
-          category: DESIGN_CATEGORY,
+          subtitle: doc.meta.form ? 'استمارة مصوّرة' : `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)} ملم`,
+          // الاستمارة المصوّرة تبقى في «استمارات» تُملأ من الشبّاك — لا تنتقل إلى التصاميم (المرحلة ٤).
+          category: doc.meta.form ? 'استمارات' : DESIGN_CATEGORY,
           subjectLine: null,
           bodyHtml: canvas.elements
             .filter((el): el is TextElement => el.kind === 'text')
