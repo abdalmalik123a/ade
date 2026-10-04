@@ -20,7 +20,8 @@
     "brand": "python tools/make-brand.py",
     "notices": "node tools/make-notices.mjs",
     "license": "node tools/license/keygen.mjs",
-    "keytool": "node tools/keytool/sync-key.mjs && electron-builder --win --config tools/keytool/electron-builder.json"
+    "keytool": "node tools/keytool/sync-key.mjs && electron-builder --win --config tools/keytool/electron-builder.json",
+    "packs": "node tools/build-packs.mjs"
   },
   "build": {
     "appId": "iq.diwan.bureau",
@@ -50,6 +51,10 @@
       {
         "from": "resources/models",
         "to": "models"
+      },
+      {
+        "from": "resources/packs",
+        "to": "packs"
       }
     ],
     "electronFuses": {

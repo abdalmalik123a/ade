@@ -7,8 +7,8 @@
  * فتظهر بطاقاته وحدها في الشبّاك، ثم ملفّات Word أو حزمةٌ جاهزة لجهةٍ أو مكتب — أو البدء
  * فارغًا. ولا ترويسة إلزامية قبل العمل. وكلّها تُتخطّى، وتُعدَّل لاحقًا.
  */
-import { useState } from 'react';
-import type { OfficeSettings, PrinterInfo } from '@shared/api';
+import { useEffect, useState } from 'react';
+import type { BundledPackInfo, OfficeSettings, PrinterInfo } from '@shared/api';
 import type { RouteKey } from '@shared/routes';
 import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
 import icon from '../assets/brand/diwan-icon.png';
@@ -43,6 +43,16 @@ export default function Onboarding({
   const [scale, setScale] = useState(settings.uiScale || 1);
   /** ما يقدّمه المكتب — بطاقات الشبّاك بترتيبها الثابت؛ وما لا يقدّمه لا يظهر (ن١). */
   const [cards, setCards] = useState<CounterCardId[]>(settings.counterCards?.length ? settings.counterCards : COUNTER_CARDS.map((c) => c.id));
+  const [packPicker, setPackPicker] = useState(false);
+  const [bundledPacks, setBundledPacks] = useState<BundledPackInfo[]>([]);
+  const [selectedPacks, setSelectedPacks] = useState<string[]>([]);
+  const [importingPacks, setImportingPacks] = useState(false);
+
+  useEffect(() => {
+    if (step === 3 && window.diwan?.content?.bundled) {
+      window.diwan.content.bundled().then(setBundledPacks).catch(() => undefined);
+    }
+  }, [step]);
 
   const patch = (): Partial<OfficeSettings> => ({
     officeName: officeName.trim(),
@@ -197,6 +207,89 @@ export default function Onboarding({
                 })}
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant pt-space-xs">ثم من أين تبدأ؟ — ولا ترويسة مطلوبةٌ قبل العمل.</p>
+              {packPicker ? (
+                <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant space-y-space-sm" data-onboarding-pack-picker="">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-label-md text-label-md font-bold text-on-surface">حزم الجهات الجاهزة</h3>
+                      <p className="font-label-sm text-label-sm text-on-surface-variant">معاملات رسمية يطلبها الزبائن — اختر ما تحتاجه لمكتبك (لا شيء مختارٌ سلفًا):</p>
+                    </div>
+                    <button
+                      className="text-label-sm font-semibold text-secondary hover:underline"
+                      type="button"
+                      onClick={() => setPackPicker(false)}
+                    >
+                      رجوع
+                    </button>
+                  </div>
+                  <div className="space-y-space-xs max-h-48 overflow-y-auto">
+                    {bundledPacks.length === 0 ? (
+                      <p className="font-body-sm text-body-sm text-on-surface-variant py-2">لا حزم مشحونة في هذا الإصدار.</p>
+                    ) : (
+                      bundledPacks.map((p) => {
+                        const checked = selectedPacks.includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex items-start gap-space-sm p-space-sm rounded-xl border transition-colors cursor-pointer ${
+                              checked ? 'bg-secondary-fixed/30 border-secondary' : 'bg-surface-container-lowest border-outline-variant hover:bg-surface-container-high'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1 w-4 h-4 rounded text-secondary focus:ring-secondary"
+                              checked={checked}
+                              onChange={(e) => {
+                                setSelectedPacks((prev) =>
+                                  e.target.checked ? [...prev, p.id] : prev.filter((x) => x !== p.id)
+                                );
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-space-xs">
+                                <span className="font-label-md text-label-md font-bold text-on-surface">{p.title}</span>
+                                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                                  {p.counts.templates} نماذج · {p.counts.clips} كليشات
+                                </span>
+                              </div>
+                              <p className="font-body-xs text-body-xs text-on-surface-variant mt-0.5">{p.description}</p>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div className="pt-space-xs flex items-center justify-between gap-space-sm">
+                    <button
+                      className="h-10 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                      data-act="onboarding-pack-file"
+                      type="button"
+                      onClick={() => onDone(patch(), 'templates', 'pack')}
+                    >
+                      من ملفّ ‎.diwanpack…
+                    </button>
+                    <button
+                      className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+                      data-act="onboarding-import-packs"
+                      disabled={selectedPacks.length === 0 || importingPacks}
+                      type="button"
+                      onClick={async () => {
+                        setImportingPacks(true);
+                        try {
+                          for (const packId of selectedPacks) {
+                            await window.diwan.content.importBundled(packId);
+                          }
+                        } finally {
+                          setImportingPacks(false);
+                          onDone(patch(), 'templates');
+                        }
+                      }}
+                    >
+                      {importingPacks ? 'جارٍ الاستيراد...' : `استورد المختار (${selectedPacks.length}) وابدأ`}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {(
                 [
                   { key: 'word', go: 'templates', action: 'folder', icon: 'folder_open', title: 'عندي ملفات Word', hint: 'مجلّدها كلّه إلى المكتبة دفعةً واحدة — تُراجع قبل أن تُحفظ' },
@@ -210,7 +303,13 @@ export default function Onboarding({
                   className={option(false)}
                   data-onboarding-go={o.key}
                   type="button"
-                  onClick={() => onDone(patch(), o.go, 'action' in o ? o.action : undefined)}
+                  onClick={() => {
+                    if (o.key === 'pack') {
+                      setPackPicker((v) => !v);
+                    } else {
+                      onDone(patch(), o.go, 'action' in o ? o.action : undefined);
+                    }
+                  }}
                 >
                   <span className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-secondary">{o.icon}</span>

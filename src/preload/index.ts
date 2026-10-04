@@ -157,7 +157,9 @@ const api: DiwanApi = {
   },
   content: {
     export: () => invoke('content:export'),
-    import: () => invoke('content:import')
+    import: () => invoke('content:import'),
+    bundled: () => invoke('content:bundled'),
+    importBundled: (id: string) => invoke('content:importBundled', id)
   },
   scanner: {
     list: () => invoke('scanner:list'),

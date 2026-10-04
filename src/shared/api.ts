@@ -230,6 +230,19 @@ export type ContentCounts = { templates: number; letterheads: number; clips: num
 /** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
 export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'> };
 
+/** حزمة مشحونة مع البرنامج في resources/packs ومعروضة للاختيار. */
+export type BundledPackInfo = {
+  id: string;
+  title: string;
+  section: string;
+  description: string;
+  version: string;
+  verifiedOn: string;
+  counts: ContentCounts;
+  sha256: string;
+  imported: boolean;
+};
+
 /** نسخةٌ من القاعدة في مجلّد النسخة التلقائية — يُختار منها ما يُسترجع. */
 export type MirrorSnapshot = { name: string; at: string; bytes: number; appVersion: string | null };
 
@@ -852,6 +865,8 @@ export type DiwanApi = {
   content: {
     export(): Promise<ContentCounts & { path: string } | null>;
     import(): Promise<ContentImportResult | null>;
+    bundled(): Promise<BundledPackInfo[]>;
+    importBundled(id: string): Promise<ContentImportResult | null>;
   };
   templates: {
     /** `issuing` يفصل مكتبة الكتب عن أوراق الأسئلة — والأصل الكتب. */

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "education",
+    "title": "التربية والمدارس",
+    "section": "التربية",
+    "description": "نماذج المعاملات المدرسية وطلبات أولياء الأمور والتأييدات والإنذارات المعتمدة في المدارس العراقية",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 6,
+      "letterheads": 0,
+      "clips": 4,
+      "files": 0
+    },
+    "sampleUuid": "2175bf2e-5021-5312-8eb1-806cb0c91036",
+    "sha256": "b02d6eb8dd410adf52f6a3bdb5e781dafd9738266227069d640efc109ba304f1"
+  }
+]

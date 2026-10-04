@@ -64,6 +64,8 @@ export default async function scenario(page, { profile }) {
   await page.goto('templates-library-drafts');
   await wait(800);
   await page.eval(`document.querySelector('[data-act="content-import"]').click(); return true;`);
+  await wait(400);
+  await page.eval(`document.querySelector('[data-act="content-import-file"]')?.click(); return true;`);
   await wait(1500);
   ok('الاستيراد يعيد النموذج والكليشة، ويترك الترويسة الموجودة', (await toast()).includes('أُضيف 1 نموذجًا، 0 ترويسة، 1 كليشة') && (await toast()).includes('1 موجودٌ في المكتب'));
   const back = db((d) => ({
@@ -75,6 +77,8 @@ export default async function scenario(page, { profile }) {
   ok('وظهر في المكتبة', (await page.text()).includes('تأييد استمرار بالدوام'));
 
   await page.eval(`document.querySelector('[data-act="content-import"]').click(); return true;`);
+  await wait(400);
+  await page.eval(`document.querySelector('[data-act="content-import-file"]')?.click(); return true;`);
   await wait(1500);
   ok('ومرّةً ثانية لا يُضاف شيء', (await toast()).includes('أُضيف 0 نموذجًا، 0 ترويسة، 0 كليشة') && db((d) => d.prepare('SELECT COUNT(*) AS n FROM templates').get().n) === 1);
   ok('وقُيّد التصدير والاستيراد في سجلّ التدقيق', db((d) => d.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE entity = 'content'").get().n) === 3);

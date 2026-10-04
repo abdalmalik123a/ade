@@ -58,10 +58,11 @@ export class ZipWriter {
   #now = dosTime(new Date());
   #force64: boolean;
 
-  /** `force64`: ZIP64 لكلّ شيء — ليُختبر بلا أربعة غيغات. */
-  constructor(sink: Sink, opts: { force64?: boolean } = {}) {
+  /** `force64`: ZIP64 لكلّ شيء — ليُختبر بلا أربعة غيغات. و`date`: تاريخٌ ثابت للبناء القابل للإعادة. */
+  constructor(sink: Sink, opts: { force64?: boolean; date?: Date } = {}) {
     this.#sink = sink;
     this.#force64 = Boolean(opts.force64);
+    if (opts.date) this.#now = dosTime(opts.date);
   }
 
   /** ملفٌّ من القرص: يُضغط إن طُلب (القاعدة)، ويُخزَّن كما هو إن كان مضغوطًا أصلًا (الصور وPDF). */
