@@ -42,6 +42,7 @@ import {
   type TextOverlay
 } from '@shared/pdfEdit';
 import { errorText } from '../lib/errors';
+import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
 import { fitJpeg, reencode, rememberLimit, savedLimit, toJpeg, TOP_DPI } from '../lib/fitImage';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -670,6 +671,25 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     if (out) say(`حُفظ ملفًّا جديدًا (${madeNote(out.made)}): ${out.path} — والأصل كما هو`);
   }
 
+  /** الملف الجاهز في ملفّ الزبون الذي فُتحت له الأداة (المرحلة ٥) — بحدّه كما في الحفظ. */
+  const nav = useToolNav();
+  async function toCustomer() {
+    const who = nav.customer;
+    if (!who) return;
+    const done = await run('يُبنى الملف…', async () => {
+      const made = await produce(plan);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(new Blob([made.bytes as BlobPart], { type: 'application/pdf' }));
+      });
+      await window.diwan.attachments.addFromDataUrl(who.id, name || 'ملف PDF', dataUrl);
+      return made;
+    });
+    if (done) say(`صار في ملفّ ${who.name || 'الزبون'} (${madeNote(done)})`);
+  }
+
   /** الصفحات المحدَّدة ملفًّا جديدًا وحدها — بطبقاتها. */
   async function extract() {
     const ids = targets;
@@ -763,6 +783,8 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* ── الشريط ─────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-space-xs px-space-md py-space-sm bg-surface-container-low border-b border-outline-variant">
+          <ToolHeader bar icon="picture_as_pdf" title="ملفات PDF" />
+          <span className="w-px h-6 bg-outline-variant mx-1" />
           <button className={btn} data-act="pdf-open" type="button" onClick={() => void open()}>
             <span className="material-symbols-outlined text-[18px]">{hasDoc ? 'library_add' : 'folder_open'}</span>
             {hasDoc ? 'أضف ملفّات (دمج)' : 'افتح PDF أو صورًا'}
@@ -805,40 +827,6 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
                 <span className="material-symbols-outlined text-[18px]">photo_library</span>صفحاتٌ صورًا
               </button>
               <div className="flex-1" />
-              <label className="flex items-center gap-1 font-label-md text-label-md" title="حدّ الحجم كما تطلبه خانة الرفع — للملف ولكلّ صورة">
-                الحجم
-                <select
-                  className="h-9 min-w-[6.5rem] px-1 rounded-lg bg-surface-container-lowest border border-outline-variant"
-                  data-pdf-limit=""
-                  value={limit}
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                >
-                  {SIZE_LIMITS.map((l) => (
-                    <option key={l.bytes} value={l.bytes}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-1 font-label-md text-label-md" title="يصغّر الملف كثيرًا، ويكفي أكثر المستمسكات">
-                <input checked={gray} data-pdf-gray="" type="checkbox" onChange={(e) => setGray(e.target.checked)} />
-                أبيض وأسود
-              </label>
-              <input
-                className="h-9 w-56 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
-                data-pdf-name=""
-                title="اسم الملف الجديد"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <button
-                className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
-                data-act="pdf-save"
-                type="button"
-                onClick={() => void save()}
-              >
-                <span className="material-symbols-outlined text-[18px]">save</span>احفظ ملفًّا جديدًا
-              </button>
               <button className={btn} data-act="pdf-reset" title="أغلق الملف وابدأ من جديد" type="button" onClick={reset}>
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -1200,6 +1188,49 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
               )}
             </aside>
           </div>
+        )}
+        {hasDoc && (
+          <ToolOutput bar>
+                <label className="flex items-center gap-1 font-label-md text-label-md" title="حدّ الحجم كما تطلبه خانة الرفع — للملف ولكلّ صورة">
+                  الحجم
+                  <select
+                    className="h-9 min-w-[6.5rem] px-1 rounded-lg bg-surface-container-lowest border border-outline-variant"
+                    data-pdf-limit=""
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value))}
+                  >
+                    {SIZE_LIMITS.map((l) => (
+                      <option key={l.bytes} value={l.bytes}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-1 font-label-md text-label-md" title="يصغّر الملف كثيرًا، ويكفي أكثر المستمسكات">
+                  <input checked={gray} data-pdf-gray="" type="checkbox" onChange={(e) => setGray(e.target.checked)} />
+                  أبيض وأسود
+                </label>
+                <input
+                  className="h-9 w-56 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
+                  data-pdf-name=""
+                  title="اسم الملف الجديد"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <button
+                  className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
+                  data-act="pdf-save"
+                  type="button"
+                  onClick={() => void save()}
+                >
+                  <span className="material-symbols-outlined text-[18px]">save</span>احفظ ملفًّا جديدًا
+                </button>
+            {nav.customer && (
+              <button className={btn} data-act="pdf-to-customer" title="في ملفّه مستمسكًا — بحدّ الحجم المختار" type="button" onClick={() => void toCustomer()}>
+                <span className="material-symbols-outlined text-[18px]">person_add</span>في ملفّ {nav.customer.name || 'الزبون'}
+              </button>
+            )}
+          </ToolOutput>
         )}
       </div>
 

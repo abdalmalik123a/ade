@@ -3,12 +3,17 @@
  *
  * البرنامج يبدأ فارغًا من كل ما يخصّ الجهة (§٢)، فكانت أول شاشةٍ يراها صاحب
  * المكتب «المكتبة فارغة» في كل مكان. والمعالج أربع خطوات قصيرة: من أنتم، وأيّ
- * طابعة، وأيّ حجم خطٍّ يريح العين، ومن أين تبدأون. وكلّها تُتخطّى — لا شيء
- * فيها إلزاميّ، وتُعدَّل كلّها لاحقًا من «الإعدادات».
+ * طابعة، وأيّ حجم خطٍّ يريح العين، و«ابدأ جاهزًا» (المرحلة ٥ — ن١٠): ما يقدّمه المكتب
+ * فتظهر بطاقاته وحدها في الشبّاك، ثم ملفّات Word أو حزمةٌ جاهزة لجهةٍ أو مكتب — أو البدء
+ * فارغًا. ولا ترويسة إلزامية قبل العمل. وكلّها تُتخطّى، وتُعدَّل لاحقًا.
  */
 import { useState } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
 import type { RouteKey } from '@shared/routes';
+import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
+
+/** ما يُفتح بعد المعالج في المكتبة: مجلّد ملفّات Word، أو حزمةٌ جاهزة. */
+export type StartAction = 'folder' | 'pack';
 
 export const UI_SCALES = [
   { value: 1, label: 'عادي' },
@@ -16,7 +21,7 @@ export const UI_SCALES = [
   { value: 1.3, label: 'أكبر' }
 ] as const;
 
-const STEPS = ['المكتب', 'الطابعة', 'حجم الخط', 'البداية'];
+const STEPS = ['المكتب', 'الطابعة', 'حجم الخط', 'ابدأ جاهزًا'];
 
 export default function Onboarding({
   settings,
@@ -25,7 +30,7 @@ export default function Onboarding({
 }: {
   settings: OfficeSettings;
   printers: PrinterInfo[];
-  onDone: (patch: Partial<OfficeSettings>, go?: RouteKey) => void;
+  onDone: (patch: Partial<OfficeSettings>, go?: RouteKey, action?: StartAction) => void;
 }) {
   const [step, setStep] = useState(0);
   const [officeName, setOfficeName] = useState(settings.officeName);
@@ -34,12 +39,15 @@ export default function Onboarding({
     settings.defaultPrinter ?? printers.find((p) => p.isDefault)?.name ?? null
   );
   const [scale, setScale] = useState(settings.uiScale || 1);
+  /** ما يقدّمه المكتب — بطاقات الشبّاك بترتيبها الثابت؛ وما لا يقدّمه لا يظهر (ن١). */
+  const [cards, setCards] = useState<CounterCardId[]>(settings.counterCards?.length ? settings.counterCards : COUNTER_CARDS.map((c) => c.id));
 
   const patch = (): Partial<OfficeSettings> => ({
     officeName: officeName.trim(),
     operatorName: operatorName.trim(),
     defaultPrinter: printer,
     uiScale: scale,
+    counterCards: COUNTER_CARDS.map((c) => c.id).filter((id) => cards.includes(id)),
     onboarded: true
   });
 
@@ -166,20 +174,42 @@ export default function Onboarding({
 
           {step === 3 && (
             <div className="space-y-space-sm">
-              <p className="font-body-md text-body-md text-on-surface-variant">من أين تبدأ؟</p>
+              <p className="font-body-md text-body-md text-on-surface-variant">ما يقدّمه مكتبك؟ يظهر في الشبّاك وحده — ويُغيَّر من الإعدادات.</p>
+              <div className="flex flex-wrap gap-space-xs" data-onboarding-cards="">
+                {COUNTER_CARDS.map((c) => {
+                  const on = cards.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      aria-pressed={on}
+                      className={`h-9 px-3 rounded-full flex items-center gap-1 font-label-md text-label-md transition-colors ${
+                        on ? 'bg-secondary-fixed text-on-surface ring-1 ring-secondary' : 'bg-surface-container-low text-on-surface-variant line-through'
+                      }`}
+                      data-onboarding-card={c.id}
+                      type="button"
+                      onClick={() => setCards((list) => (on ? list.filter((x) => x !== c.id) : [...list, c.id]))}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">{on ? 'check' : c.icon}</span>
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="font-body-md text-body-md text-on-surface-variant pt-space-xs">ثم من أين تبدأ؟ — ولا ترويسة مطلوبةٌ قبل العمل.</p>
               {(
                 [
-                  { go: 'templates', icon: 'folder_open', title: 'عندي ملفات Word', hint: 'استوردها من «مكتبة النماذج» — مجلّدًا كاملًا دفعةً واحدة' },
-                  { go: 'letterhead', icon: 'image', title: 'عندي شعارات المدارس والدوائر', hint: 'ارفعها مرّة، فتخرج الترويسات والتصاميم بشعار كلّ جهة ولونها' },
-                  { go: 'service', icon: 'storefront', title: 'أبدأ العمل الآن', hint: 'الشبّاك: اختر ما يطلبه الزبون واملأه واطبع' }
+                  { key: 'word', go: 'templates', action: 'folder', icon: 'folder_open', title: 'عندي ملفات Word', hint: 'مجلّدها كلّه إلى المكتبة دفعةً واحدة — تُراجع قبل أن تُحفظ' },
+                  { key: 'pack', go: 'templates', action: 'pack', icon: 'inventory_2', title: 'عندي حزمة جاهزة لجهةٍ أو مكتب', hint: 'ملفّ ‎.diwanpack بنماذجها وترويساتها — ما ليس عندك يُضاف' },
+                  { key: 'letterhead', go: 'letterhead', icon: 'image', title: 'عندي شعارات المدارس والدوائر', hint: 'ارفعها مرّة، فتخرج الترويسات والتصاميم بشعار كلّ جهة ولونها' },
+                  { key: 'service', go: 'service', icon: 'storefront', title: 'أبدأ فارغًا — العمل الآن', hint: 'الشبّاك: ورقةٌ فارغة كما في Word، والصور وPDF والمستمسكات' }
                 ] as const
               ).map((o) => (
                 <button
-                  key={o.go}
+                  key={o.key}
                   className={option(false)}
-                  data-onboarding-go={o.go}
+                  data-onboarding-go={o.key}
                   type="button"
-                  onClick={() => onDone(patch(), o.go)}
+                  onClick={() => onDone(patch(), o.go, 'action' in o ? o.action : undefined)}
                 >
                   <span className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-secondary">{o.icon}</span>

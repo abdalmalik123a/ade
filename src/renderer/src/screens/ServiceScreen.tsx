@@ -70,12 +70,17 @@ export type ServiceScreenProps = {
   active?: boolean;
   /** «كرّره» من الأرشيف: نماذج معاملةٍ صدرت وقيمها — تُفتح نسخةً جديدة للتعديل. */
   repeat?: RepeatRequest | null;
-  /** بطاقةٌ تفتح أداةً (الصور، PDF، الأسئلة…) أو نافذة (استنساخ الهوية) — المرحلة ٢. */
-  onOpenTool?: (target: CounterCard['target']) => void;
+  /** بطاقةٌ تفتح أداةً (الصور، PDF، الأسئلة…) أو نافذة (استنساخ الهوية) — المرحلة ٢. ومعها الزبون
+   * الواقف إن عُرف، فتقوله الأداة في رأسها وتحفظ في ملفّه (المرحلة ٥). */
+  onOpenTool?: (target: CounterCard['target'], citizenId: number | null) => void;
   /** ملفٌّ من «الملفّات» يُفتح في أداته — ويُرفض بخطأٍ يقوله اللوح. */
   onOpenFile?: (file: InboxFile, as: InboxOpen) => Promise<void>;
   /** «استأنف» من قيد العمل: معاملةٌ معلّقة بمفتاحها (المرحلة ٣). */
   resumeRequest?: { key: number; parkedKey: number } | null;
+  /** «شيءٌ آخر لنفس الزبون» من أداة: يعود الزبون، وتُملأ حقوله من ملفّه حين يُختار ما يريده. */
+  customerRequest?: { key: number; citizenId: number } | null;
+  /** إعدادات المكتب كما حفظها غيره (المعالج، الإعدادات) — تغيُّرها يُعيد قراءتها: بطاقات «ابدأ جاهزًا». */
+  settingsKey?: unknown;
 };
 
 export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
@@ -105,7 +110,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, resumeRequest = null }: ServiceScreenProps) {
+export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -163,7 +168,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       setLetterheads(lhs);
       setSettings(s);
     })();
-  }, [active]);
+  }, [active, settingsKey]);
 
   const topFavorites = useMemo(() => {
     return [...items].sort((a, b) => b.printCount - a.printCount).slice(0, 4);
@@ -524,6 +529,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     await printIssued(after.ids, printer, after.mode, after.label);
   }
 
+  /** ما قُيِّد الآن ملفًّا للزبون (واتساب، بريد) — كلّ كتابٍ ملفّه، من السجلّ كما صدر. */
+  async function pdfAfter() {
+    if (!after) return;
+    let saved = 0;
+    for (const id of after.ids) if (await window.diwan.documents.exportPdf(id)) saved++;
+    if (saved) say(saved === 1 ? 'حُفظ PDF من السجلّ كما صدر' : `حُفظت ${saved} ملفّات PDF من السجلّ`);
+  }
+
   function sameCustomer() {
     if (!after?.customer) return;
     setValues(after.customer.values);
@@ -578,6 +591,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       await window.diwan.documents.linkCitizen(newCitizen.transactionId, saved.id);
       say(`حُفظ «${saved.fullName}» في سجل المواطنين، ورُبطت به كتبه`);
       setNewCitizen(null);
+      // «شيءٌ آخر لنفس الزبون» بعدها يحمل ملفّه الجديد — فتعرفه الأداة التي يُفتح لها (المرحلة ٥).
+      setAfter((a) => (a?.customer ? { ...a, customer: { ...a.customer, citizenId: saved.id } } : a));
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الحفظ في السجل', 'warn');
     }
@@ -680,6 +695,26 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeRequest?.key]);
+
+  // الزبون عائدًا من أداة: يبقى زبون الشبّاك، وحقول ما يختاره بعدُ تُملأ من ملفّه.
+  const fillFrom = useRef<number | null>(null);
+  useEffect(() => {
+    if (!customerRequest) return;
+    setCitizenId(customerRequest.citizenId);
+    fillFrom.current = customerRequest.citizenId;
+    if (step === 'fill' && fields.length) {
+      fillFrom.current = null;
+      void useCitizen(customerRequest.citizenId);
+    } else say('الزبون نفسه — اختر ما يريده بعدُ، وحقوله تُملأ من ملفّه');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerRequest?.key]);
+  useEffect(() => {
+    if (step !== 'fill' || !fields.length || fillFrom.current === null) return;
+    const id = fillFrom.current;
+    fillFrom.current = null;
+    void useCitizen(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, fields]);
 
   /**
    * الدمج: معاملةٌ لكل اسم، والدفعة كلّها أو لا شيء.
@@ -824,6 +859,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                 <AfterPrint
                   outcome={after.outcome}
                   onReprint={() => void reprintAfter()}
+                  onPdf={() => void pdfAfter()}
                   onSameCustomer={after.customer ? sameCustomer : undefined}
                   onClose={() => setAfter(null)}
                 />
@@ -842,7 +878,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         data-card={c.id}
                         data-path={'route' in c.target ? ROUTES[c.target.route as RouteKey] : undefined}
                         type="button"
-                        onClick={() => onOpenTool?.(c.target)}
+                        onClick={() => onOpenTool?.(c.target, citizenId)}
                       >
                         <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
                           <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
@@ -876,7 +912,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         onClick={() => {
                           if ('card' in it) {
                             const card = COUNTER_CARDS.find((c) => c.id === it.card);
-                            if (card) onOpenTool?.(card.target);
+                            if (card) onOpenTool?.(card.target, citizenId);
                           } else setQuery(it.search);
                         }}
                       >

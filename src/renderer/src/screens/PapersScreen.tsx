@@ -51,6 +51,8 @@ import {
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import { ToolHeader, ToolOutput } from '../components/ToolFrame';
+import type { Outcome } from '../components/OutputBar';
 import QuestionBankPanel from '../components/QuestionBankPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import OmrPanel from '../components/OmrPanel';
@@ -543,34 +545,44 @@ function PapersScreenInner(
     }
   }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say]);
 
+  /** ما خرج آخر مرّة — يقوله شريط الإخراج، ومنه «أعد الطبع» بالنسخ نفسها (المرحلة ٥). */
+  const [after, setAfter] = useState<Outcome | null>(null);
+  const lastJob = useRef<{ sheetHtml: string; copies: number; printer: string; system: boolean; what: string } | null>(null);
+
+  const send = useCallback(
+    async (job: { sheetHtml: string; copies: number; printer: string; system: boolean; what: string }) => {
+      setBusy(true);
+      try {
+        // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
+        const out = await window.diwan.output.print({ sheetHtml: job.sheetHtml, printer: job.printer, copies: job.copies, silent: !job.system });
+        if (!out.ok) {
+          say(out.reason || 'لم تتم الطباعة', 'warn');
+          return;
+        }
+        lastJob.current = job;
+        setAfter({ what: job.what, printer: job.printer });
+      } catch (e) {
+        say(errorText(e, 'تعذّرت الطباعة'), 'warn');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [say]
+  );
+
   const print = useCallback(async () => {
     const sheets = sheetsFor();
     if (!sheets) return;
     const pick = await choosePrinter('papers', { allowSystem: true });
     if (!pick) return;
-    setBusy(true);
-    try {
-      // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
-      const out = await window.diwan.output.print({
-        sheetHtml: sheets.html,
-        printer: pick.printer,
-        copies: sheets.copies,
-        silent: !pick.system
-      });
-      say(
-        out.ok
-          ? versions
-            ? `أُرسلت ${copies} نسخة: «أ» و«ب» بالتناوب`
-            : `أُرسلت ${copies} نسخة إلى الطابعة`
-          : out.reason || 'لم تتم الطباعة',
-        out.ok ? 'ok' : 'warn'
-      );
-    } catch (e) {
-      say(errorText(e, 'تعذّرت الطباعة'), 'warn');
-    } finally {
-      setBusy(false);
-    }
-  }, [copies, versions, sheetsFor, say]);
+    await send({
+      sheetHtml: sheets.html,
+      copies: sheets.copies,
+      printer: pick.printer,
+      system: pick.system,
+      what: versions ? `${copies} نسخة («أ» و«ب» بالتناوب)` : `${copies} نسخة`
+    });
+  }, [copies, versions, sheetsFor, send]);
 
   const exportPdf = useCallback(async () => {
     // PDF النموذجين ورقتان: «أ» ثم «ب» — للمدرّس يطبع منه ما شاء.
@@ -658,24 +670,16 @@ function PapersScreenInner(
         {/* ── المؤلِّف ─────────────────────────────────────────────── */}
         {/* يضيق على الشاشات الصغيرة فتبقى للمعاينة وأزرارها مساحة (خطة Production، ٣٫١). */}
         <section className="w-[clamp(440px,45%,620px)] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-lg">
-          <header className="flex items-center justify-between">
-            <div>
-              <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">
-                الأسئلة
-              </h1>
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                ورقةٌ تُطبع ولا تُقيَّد — لا رقم صادر ولا بصمة
-              </p>
-            </div>
+          <ToolHeader hint="ورقةٌ تُطبع ولا تُقيَّد — لا رقم صادر ولا بصمة" icon="quiz" title="الأسئلة">
             <button
-              className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+              className="h-8 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               type="button"
               onClick={fresh}
             >
               <span className="material-symbols-outlined text-[18px]">note_add</span>
               ورقة جديدة
             </button>
-          </header>
+          </ToolHeader>
 
           {/* ── الرأس الثابت ──────────────────────────────────────── */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
@@ -964,6 +968,41 @@ function PapersScreenInner(
                 </div>
               )}
 
+            </div>
+          </div>
+
+          <div
+            ref={deskRef}
+            className="flex-1 overflow-auto flex flex-col items-center py-space-lg"
+          >
+            <div
+              ref={sheetRef}
+              className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top center'
+              }}
+            >
+              <div
+                className="text-black font-body-md text-body-md leading-relaxed"
+                dir={dir}
+                data-paper
+                dangerouslySetInnerHTML={{ __html: html }}
+                style={{
+                  padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
+                }}
+              />
+            </div>
+          </div>
+
+          <ToolOutput
+            bar
+            after={after}
+            role="papers"
+            onDismiss={() => setAfter(null)}
+            onReprint={lastJob.current ? () => void send(lastJob.current!) : undefined}
+          >
+            <div className="flex-1" />
               <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
                 نسخ
                 <input
@@ -1007,32 +1046,7 @@ function PapersScreenInner(
                 <span className="material-symbols-outlined text-[18px]">print</span>
                 اطبع
               </button>
-            </div>
-          </div>
-
-          <div
-            ref={deskRef}
-            className="flex-1 overflow-auto flex flex-col items-center py-space-lg"
-          >
-            <div
-              ref={sheetRef}
-              className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
-              style={{
-                transform: `scale(${zoom})`,
-                transformOrigin: 'top center'
-              }}
-            >
-              <div
-                className="text-black font-body-md text-body-md leading-relaxed"
-                dir={dir}
-                data-paper
-                dangerouslySetInnerHTML={{ __html: html }}
-                style={{
-                  padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
-                }}
-              />
-            </div>
-          </div>
+          </ToolOutput>
         </section>
       </div>
 

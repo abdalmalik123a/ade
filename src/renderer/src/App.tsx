@@ -3,7 +3,7 @@ import { ROUTES, type RouteKey } from '@shared/routes';
 import type { LicenseStatus, OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
-import Onboarding from './shell/Onboarding';
+import Onboarding, { type StartAction } from './shell/Onboarding';
 import ServiceScreen, { type RepeatRequest } from './screens/ServiceScreen';
 import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
 import ArchiveScreen from './screens/ArchiveScreen';
@@ -24,6 +24,7 @@ import AboutDialog from './components/AboutDialog';
 import WhatsNewDialog from './components/WhatsNewDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
+import { ToolNavProvider, useCustomerName } from './components/ToolFrame';
 import ResumePrintDialog from './components/ResumePrintDialog';
 import PrintChooser from './components/PrintChooser';
 import TodayPanel from './components/TodayPanel';
@@ -93,6 +94,11 @@ export default function App() {
   const [wordIncoming, setWordIncoming] = useState<WordIncoming | null>(null);
   /** «استأنف» من قيد العمل: معاملةٌ معلّقة تُفتح في الشبّاك (المرحلة ٣). */
   const [resumeRequest, setResumeRequest] = useState<{ key: number; parkedKey: number } | null>(null);
+  /** الزبون الذي فُتحت له الأداة من الشبّاك (المرحلة ٥ — ن٢)، وعودته إليه بـ«شيءٌ آخر لنفس الزبون». */
+  const [toolCustomer, setToolCustomer] = useState<number | null>(null);
+  const [customerRequest, setCustomerRequest] = useState<{ key: number; citizenId: number } | null>(null);
+  const [libraryRequest, setLibraryRequest] = useState<{ key: number; action: StartAction } | null>(null);
+  const toolCustomerName = useCustomerName(toolCustomer);
   /** «كرّره» لكتابٍ صدر من الشبّاك: يُفتح فيه لا في المحرّر. */
   const [repeatRequest, setRepeatRequest] = useState<RepeatRequest | null>(null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
@@ -253,6 +259,17 @@ export default function App() {
     </nav>
   ) : undefined;
 
+  /** الإطار الواحد للأداة: الزبون الذي فُتحت له، والرجوع إلى الشبّاك (المرحلة ٥). */
+  const toolNav = {
+    customer: toolCustomer === null ? null : { id: toolCustomer, name: toolCustomerName },
+    printRoles: settings?.printRoles ?? null,
+    back: () => navigate('service'),
+    sameCustomer: () => {
+      if (toolCustomer !== null) setCustomerRequest({ key: Date.now(), citizenId: toolCustomer });
+      navigate('service');
+    }
+  };
+
   function renderScreen() {
     switch (route) {
       case 'service':
@@ -274,12 +291,16 @@ export default function App() {
         return (
           <TemplatesScreen
             incoming={wordIncoming}
+            request={libraryRequest}
             onOpenDesign={(templateId) => {
               setDesignRequest({ key: Date.now(), templateId });
               navigate('designs');
             }}
             onOpenInEditor={(id) => openEditor({ templateId: id })}
-            onOpenDraft={(id) => openEditor({ draftId: id })}
+            onImportDesign={() => {
+              setDesignRequest({ key: Date.now(), action: 'import' });
+              navigate('designs');
+            }}
             onChanged={() => void refresh()}
           />
         );
@@ -370,11 +391,13 @@ export default function App() {
         <Onboarding
           printers={printers}
           settings={settings}
-          onDone={(patch, go) => {
+          onDone={(patch, go, action) => {
             void window.diwan.settings.set(patch).then((s) => {
               setSettings(s);
               window.diwan.ui.setZoom(s.uiScale);
             });
+            // «ابدأ جاهزًا»: المكتبة تفتح استيرادها مباشرة — المجلّد أو الحزمة (المرحلة ٥).
+            if (action) setLibraryRequest({ key: Date.now(), action });
             if (go) navigate(go);
           }}
         />
@@ -385,6 +408,8 @@ export default function App() {
         onNavigate={(key) => {
           setDesignRequest(null);
           setSearch('');
+          // من السكّة لا زبون: الأداة تُفتح لعملٍ لا لشخص.
+          setToolCustomer(null);
           navigate(key);
         }}
         onAbout={() => setAboutOpen(true)}
@@ -437,8 +462,11 @@ export default function App() {
               active={route === 'service'}
               repeat={repeatRequest}
               resumeRequest={resumeRequest}
+              customerRequest={customerRequest}
+              settingsKey={settings}
               onIssued={() => void refresh()}
-              onOpenTool={(t) => {
+              onOpenTool={(t, citizenId) => {
+                setToolCustomer(citizenId);
                 if ('route' in t) {
                   if (t.route === 'editor') openEditor({});
                   else navigate(t.route);
@@ -460,7 +488,9 @@ export default function App() {
             />
           </ErrorBoundary>
         </div>
-        {route !== 'service' && <ErrorBoundary key={route}>{renderScreen()}</ErrorBoundary>}
+        <ToolNavProvider value={toolNav}>
+          {route !== 'service' && <ErrorBoundary key={route}>{renderScreen()}</ErrorBoundary>}
+        </ToolNavProvider>
       </div>
 
       <ErrorBar />
@@ -479,10 +509,12 @@ export default function App() {
       {whatsNew && <WhatsNewDialog from={whatsNew.from} to={whatsNew.to} onClose={() => setWhatsNew(null)} />}
 
       {idDuplexOpen && (
-        <IdDuplexDialog
-          isOpen={true}
-          onClose={() => setIdDuplexOpen(false)}
-        />
+        <ToolNavProvider value={toolNav}>
+          <IdDuplexDialog
+            isOpen={true}
+            onClose={() => setIdDuplexOpen(false)}
+          />
+        </ToolNavProvider>
       )}
 
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}

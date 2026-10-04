@@ -46,7 +46,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   let text = await page.text();
   ok('فُتحت مكتبة النماذج', text.includes('مكتبة النماذج والمسودات') || text.includes('مكتبة النماذج فارغة'));
   ok('تعلن أنها فارغة', text.includes('مكتبة النماذج فارغة'));
-  ok('العدّادات صفر', text.includes('لم يُعتمد أي نموذج بعد'));
+  ok('والعدد صفر', text.includes('0 نموذجًا'));
 
   // ── فتح المصمّم ──────────────────────────────────────────────────
   await page.clickText('ورقة فارغة', '[data-act$="new-blank"]');
@@ -121,15 +121,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   ok('أُغلقت المعاينة بـ Esc', !(await page.text()).includes('فتح في المحرر\nإغلاق'));
 
-  // ── سجل المسودات ────────────────────────────────────────────────
-  await page.clickText('سجل مسودات');
-  await wait(400);
-  text = await page.text();
-  ok('انتقل إلى سجل المسودات', text.includes('سجل المسودات'));
-  ok('السجل فارغ', text.includes('لا مسودات محفوظة'));
-  await page.clickText('A4 مصغر');
-  await wait(400);
-  ok('عاد إلى شبكة A4', (await page.text()).includes('تأييد استمرار بالخدمة'));
+  // ── البحث يتسامح مع الهمزة (المرحلة ٥) — والمسودات في «قيد العمل» لا هنا ────────
+  await page.type('input[placeholder^="ابحث في النماذج"]', 'تاييد');
+  await wait(300);
+  ok('«تاييد» بلا همزة تجد «تأييد»', (await page.text()).includes('تأييد استمرار بالخدمة'));
+  await page.type('input[placeholder^="ابحث في النماذج"]', '');
+  await wait(300);
+  ok('ولا سجلّ مسوداتٍ في المكتبة', !(await page.text()).includes('سجل مسودات'));
 
   // ── الأزرار الجديدة على البطاقة ────────────────────────────────
   ok('زرّ الحذف ظاهر على البطاقة',
@@ -139,9 +137,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   // الطرق الثلاث (§٦) باقية ومعها صورة الورقة — فيُسأل عن كلٍّ باسمه لا بالعدد. وباب العقود
   // حُذف بقرار المالك (٢٩ أيلول ٢٠٢٦): كانت تُحفظ ووسوم HTML نصٌّ في متنها.
   ok(
-    'و«نموذجٌ جديد» ظاهرٌ بطرقه وصورة الورقة',
+    'و«ورقة فارغة» و«استورد» بطرقه وصورة الورقة',
     await page.eval(
-      `return ['new-blank', 'new-word', 'new-folder', 'new-photo'].every((a) => document.querySelector('[data-new-template] [data-act="' + a + '"]'));`
+      `return ['new-blank', 'import-menu', 'new-word', 'new-folder', 'new-photo', 'new-form-image', 'content-import'].every((a) => document.querySelector('[data-new-template] [data-act="' + a + '"]'));`
     )
   );
   ok('ولا باب للعقود الجاهزة', await page.eval(`return !document.querySelector('[data-act="install-contracts"]');`));

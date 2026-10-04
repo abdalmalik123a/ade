@@ -169,8 +169,8 @@ export function registerCitizenIpc(): void {
       if (!matches || !matches[2]) throw new Error('صيغة الصورة غير صالحة');
       const buffer = Buffer.from(matches[2], 'base64');
       const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
-      const isPng = matches[1]?.includes('png');
-      const ext = isPng ? '.png' : '.jpg';
+      // والملف الجاهز من «ملفات PDF» في ملفّ زبونه (المرحلة ٥) — كالمستمسك المستورد PDF.
+      const ext = matches[1]?.includes('pdf') ? '.pdf' : matches[1]?.includes('png') ? '.png' : '.jpg';
       const name = `${hash}${ext}`;
       const target = join(storeDir('attachments'), name);
       await writeFile(target, buffer);

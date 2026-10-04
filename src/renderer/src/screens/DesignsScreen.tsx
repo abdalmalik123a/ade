@@ -74,6 +74,8 @@ import { choosePrinter } from '../lib/printChoice';
 import Gallery, { type GalleryPick } from '../designs/Gallery';
 import BatchPanel from '../designs/BatchPanel';
 import SheetsPreview from '../designs/SheetsPreview';
+import { ToolHeader, ToolOutput } from '../components/ToolFrame';
+import type { Outcome } from '../components/OutputBar';
 import PrintOptions from '../designs/PrintOptions';
 import ClipartModal from '../designs/ClipartModal';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
@@ -139,6 +141,8 @@ export type DesignRequest = {
   clientId?: number;
   /** الطلب الذي فُتح منه التصميم — فإذا طُبع صار الطلب «جاهزًا للتسليم» (د٨). */
   order?: { id: number; title: string };
+  /** «المكتبة ← استورد ← تصميم من Photoshop أو PDF»: يُسأل عن الملف حين تُفتح (المرحلة ٥). */
+  action?: 'import';
 };
 
 export type DesignsScreenProps = {
@@ -811,8 +815,12 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
    * الكهرباء عند الورقة ٢٤ من ٤٥ سُئل المكتب في الإقلاع التالي ويستأنف منها.
    * و«بإعدادات ويندوز» يُفتح حوار النظام والدفعة مهمّةٌ واحدة.
    */
-  const print = useCallback(async () => {
-    const pick = await choosePrinter('designs', { allowSystem: true });
+  /** ما خرج آخر مرّة — يقوله شريط الإخراج، و«أعد الطبع» بالطابعة نفسها (المرحلة ٥). */
+  const [after, setAfter] = useState<Outcome | null>(null);
+  const lastPick = useRef<{ printer: string; system: boolean } | null>(null);
+
+  const print = useCallback(async (again?: { printer: string; system: boolean }) => {
+    const pick = again ?? (await choosePrinter('designs', { allowSystem: true }));
     if (!pick) return;
     setBusy(true);
     const off = window.diwan.output.onPrintProgress((p) => say(`يُطبع… ${p.sent} من ${p.total} ورقة`));
@@ -835,14 +843,17 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
           onChanged?.();
         }
       }
-      say(
-        out.ok
-          ? `أُرسلت ${sheets} ورقة${backDoc ? ' بوجهيها' : ''} إلى الطابعة${orderNote}`
-          : `توقّفت الطباعة بعد ${out.sent} من ${out.total} ورقة${out.reason ? ` — ${out.reason}` : ''}${
-              out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''
-            }`,
-        out.ok ? 'ok' : 'warn'
-      );
+      if (out.ok) {
+        // تُغلق المعاينة ويقول شريط الإخراج ما خرج وأين — والطلب إن صار جاهزًا.
+        lastPick.current = { printer: pick.printer, system: pick.system };
+        setSheetsOpen(false);
+        setAfter({ what: `${sheets} ورقة${backDoc ? ' بوجهيها' : ''}`, printer: pick.system ? 'طابعة ويندوز' : pick.printer });
+        if (orderNote) say(orderNote.replace(/^ — و/, ''));
+      } else
+        say(
+          `توقّفت الطباعة بعد ${out.sent} من ${out.total} ورقة${out.reason ? ` — ${out.reason}` : ''}${out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''}`,
+          'warn'
+        );
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), 'warn');
     } finally {
@@ -926,7 +937,10 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
         setBatchPhotos([]);
         setBatchKey((k) => k + 1);
       });
-    } else setView('gallery');
+    } else {
+      setView('gallery');
+      if (request.action === 'import') void importDesign();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.key]);
 
@@ -944,7 +958,11 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       {/* المعرض يبقى مركّبًا مخفيًّا: الرجوع إليه يجد الجهة واللون والنمط كما تُركت. */}
-      <div className={view === 'gallery' ? 'h-[calc(100vh-4rem)]' : 'hidden'}>
+      <div className={view === 'gallery' ? 'h-[calc(100vh-4rem)] flex flex-col' : 'hidden'}>
+        <div className="shrink-0 max-w-[1440px] w-full mx-auto px-space-xl pt-space-md">
+          <ToolHeader bar icon="workspace_premium" title="شهادات وتصاميم" />
+        </div>
+        <div className="flex-1 min-h-0">
         <Gallery
           presetClient={request?.clientId ? { id: request.clientId, key: request.key } : null}
           saved={designs}
@@ -954,6 +972,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
           onDeleteSaved={(id) => void deleteDesign(id)}
           onPick={pickFromGallery}
         />
+        </div>
       </div>
 
       {clipartModalOpen && (
@@ -1662,17 +1681,6 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
                   حفظ التصميم
                 </button>
               )}
-              <button
-                className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
-                data-act="print"
-                title="راجع الأوراق ثم اطبع — بلا إصدار"
-                type="button"
-                disabled={busy}
-                onClick={() => setSheetsOpen(true)}
-              >
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                اطبع
-              </button>
             </div>
           </div>
 
@@ -1799,6 +1807,27 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
               </div>
             </div>
           </div>
+
+          <ToolOutput
+            bar
+            after={after}
+            role="designs"
+            onDismiss={() => setAfter(null)}
+            onReprint={lastPick.current ? () => void print(lastPick.current!) : undefined}
+          >
+            <div className="flex-1" />
+            <button
+              className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+              data-act="print"
+              title="راجع الأوراق ثم اطبع — بلا إصدار"
+              type="button"
+              disabled={busy}
+              onClick={() => setSheetsOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px]">print</span>
+              راجع الأوراق واطبع
+            </button>
+          </ToolOutput>
         </section>
       </div>
 

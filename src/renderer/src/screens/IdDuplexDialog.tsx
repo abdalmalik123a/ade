@@ -18,6 +18,8 @@ import DeskewModal from './DeskewModal';
 import { WATERMARK_PRESETS, purposeWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import { PrinterNote } from '../components/OutputBar';
+import { useToolNav } from '../components/ToolFrame';
 
 type Props = {
   isOpen: boolean;
@@ -119,6 +121,8 @@ export default function IdDuplexDialog({
     setFrontSrc(backSrc);
     setBackSrc(temp);
   }
+
+  const { printRoles } = useToolNav();
 
   async function handlePrint() {
     if (pagesHtml.length === 0) {
@@ -610,7 +614,9 @@ export default function IdDuplexDialog({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* الطابعة مكتوبةً قبل «اطبع» — كشريط الإخراج في كلّ أداة (المرحلة ٥). */}
+            <PrinterNote role="copies" roles={printRoles} />
             <button
               type="button"
               disabled={busy || pagesHtml.length === 0}
@@ -628,7 +634,7 @@ export default function IdDuplexDialog({
               onClick={() => void handlePrint()}
             >
               <span className="material-symbols-outlined text-[18px]">print</span>
-              طباعة فورية A4 (١:١)
+              اطبع A4 بمقاسها (١:١)
             </button>
           </div>
         </footer>

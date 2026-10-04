@@ -35,19 +35,22 @@ export type Outcome = {
   what: string;
   /** الطابعة — أو `null`: حُفظ بلا طباعة. */
   printer: string | null;
-  /** رقمه الداخلي في السجلّ. */
-  serial: string;
+  /** رقمه الداخلي في السجلّ — وما لا يُقيَّد (الصور، التصاميم) بلا رقم. */
+  serial?: string;
 };
 
 /** بعد الطبع: ما خرج وأين، وما يُفعل بعده. */
 export function AfterPrint({
   outcome,
   onReprint,
+  onPdf,
   onSameCustomer,
   onClose
 }: {
   outcome: Outcome;
   onReprint?: () => void;
+  /** ما قُيِّد الآن ملفّ PDF للزبون — من السجلّ كما صدر (ن٩). */
+  onPdf?: () => void;
   onSameCustomer?: () => void;
   onClose: () => void;
 }) {
@@ -62,11 +65,17 @@ export function AfterPrint({
         ) : (
           <>حُفظت {outcome.what} بلا طباعة</>
         )}
-        <span className="text-on-surface-variant"> · في السجلّ برقم {outcome.serial}</span>
+        {outcome.serial && <span className="text-on-surface-variant"> · في السجلّ برقم {outcome.serial}</span>}
       </span>
       {onReprint && (
         <button className="h-9 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md" data-act="reprint" type="button" onClick={onReprint}>
           {outcome.printer ? 'أعد الطبع' : 'اطبعه الآن'}
+        </button>
+      )}
+      {onPdf && (
+        <button className="h-9 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1" data-act="after-pdf" type="button" onClick={onPdf}>
+          <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+          PDF
         </button>
       )}
       {onSameCustomer && (

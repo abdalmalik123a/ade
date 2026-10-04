@@ -26,6 +26,8 @@ import { autoCrop, fitSuit, keepAbove, landmarks, neckLine, rowWidths, strokeAlp
 import { NEUTRAL, applyEnhance, autoEnhance, type Enhance } from '@shared/portraitEnhance';
 import { BUILTIN_SUITS, SUIT_CATEGORIES, type CustomSuit, type SuitCategory } from '@shared/suits';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
+import { papersWord, type Outcome } from '../components/OutputBar';
+import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
 import SheetsPreview from '../designs/SheetsPreview';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
@@ -86,6 +88,10 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   const [presetsOpen, setPresetsOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const nav = useToolNav();
+  /** ما خرج آخر مرّة — يُقال في شريط الإخراج، ومنه «أعد الطبع» بالورقة نفسها. */
+  const [after, setAfter] = useState<Outcome | null>(null);
+  const lastPrint = useRef<{ html: string; count: number; paper: Size; printer: string; system: boolean } | null>(null);
   const [toast, setToast] = useState<{ text: string; warn?: boolean } | null>(null);
 
   const work = useRef<Work | null>(null);
@@ -555,10 +561,21 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   async function print() {
     const pick = await choosePrinter('photos', { allowSystem: true });
     if (!pick) return;
+    await send({ html: pages.join(''), count: pages.length, paper, printer: pick.printer, system: pick.system });
+  }
+
+  /** الورقة إلى الطابعة — ثم تُغلق المعاينة ويقول شريط الإخراج ما خرج وأين. */
+  async function send(job: { html: string; count: number; paper: Size; printer: string; system: boolean }) {
     setPrinting(true);
     try {
-      const out = await window.diwan.output.print({ sheetHtml: pages.join(''), printer: pick.printer, copies: 1, silent: !pick.system, page: paper });
-      say(out.ok ? `أُرسلت ${toIndic(pages.length)} ورقة` : out.reason || 'لم تتم الطباعة', !out.ok);
+      const out = await window.diwan.output.print({ sheetHtml: job.html, printer: job.printer, copies: 1, silent: !job.system, page: job.paper });
+      if (!out.ok) {
+        say(out.reason || 'لم تتم الطباعة', true);
+        return;
+      }
+      lastPrint.current = job;
+      setReview(null);
+      setAfter({ what: papersWord(job.count), printer: job.printer });
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), true);
     } finally {
@@ -626,11 +643,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="flex h-[calc(100vh-4rem)]">
-        <section className="w-[400px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md">
-          <header>
-            <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">الصور الشخصية</h1>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز</p>
-          </header>
+        <section className="w-[400px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md flex flex-col">
+          <ToolHeader hint="تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز" icon="portrait" title="الصور الشخصية" />
 
           {step(1, 'الصورة')}
           <div className="flex gap-space-xs">
@@ -890,6 +904,12 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               {layout.per ? `${toIndic(layout.per)} في الورقة — ${toIndic(Math.ceil(copies / layout.per))} ورقة` : 'المقاس أكبر من الورقة'}
             </span>
           </label>
+          <ToolOutput
+            after={after}
+            role="photos"
+            onDismiss={() => setAfter(null)}
+            onReprint={lastPrint.current ? () => void send(lastPrint.current!) : undefined}
+          >
           <button
             className="w-full h-11 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
             data-act="review-photos"
@@ -904,8 +924,15 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
             <button className={`${small} bg-surface-container-lowest h-10`} data-act="save-photo" disabled={!src || Boolean(busy)} type="button" onClick={() => void saveImage()}>
               احفظ الصورة ({toIndic(preset.dpi)} نقطة)
             </button>
-            <button className={`${small} bg-surface-container-lowest h-10`} data-act="link-citizen" disabled={!src || Boolean(busy)} type="button" onClick={() => setPicking(true)}>
-              في ملف مواطن
+            <button
+              className={`${small} bg-surface-container-lowest h-10 truncate`}
+              data-act="link-citizen"
+              disabled={!src || Boolean(busy)}
+              type="button"
+              // جاءت الأداة لزبونٍ من الشبّاك: في ملفّه مباشرة — وإلا يُختار صاحبها.
+              onClick={() => (nav.customer ? void linkCitizen(nav.customer.id) : setPicking(true))}
+            >
+              {nav.customer ? `في ملفّ ${nav.customer.name || 'الزبون'}` : 'في ملف مواطن'}
             </button>
           </div>
           <div className="flex items-center gap-space-xs">
@@ -925,6 +952,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               احفظها للرفع بهذا الحدّ
             </button>
           </div>
+          </ToolOutput>
         </section>
 
         <section className="flex-1 min-w-0 flex items-center justify-center" onMouseLeave={() => (onUp(), setCursor(null))} onMouseMove={onMove} onMouseUp={onUp}>

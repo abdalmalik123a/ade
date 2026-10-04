@@ -1,16 +1,15 @@
 /**
- * مكتبة النماذج والمسودات — data-path="templates-library-drafts"
+ * المكتبة — data-path="templates-library-drafts"
  *
- * كل أداة في التصميم مُنفَّذة: مصمّم النماذج، مرشّحات التصنيف، مبدّل العرض
- * (شبكة A4 / سجل مسودات)، فتح في المحرر، تعديل المتغيّرات، معاينة بالحجم الكامل،
- * استيراد DOCX/XML، ونسخ احتياطي. ولا نموذج مبرمَج: تبدأ المكتبة فارغة.
+ * ما يُبنى مرّة (ن٣): النماذج بأقسامها (تصنيفات الجهات)، وورقةٌ فارغة، و«استورد» واحدٌ بطرقه كلّها —
+ * Word ومجلّده، وصورة الورقة، وصورة الاستمارة، وتصميم Photoshop، وحزمة جهةٍ أو مكتب (المرحلة ٥).
+ * والمسودات لا تُعرض هنا: هي في «قيد العمل» مع ما لم يكتمل. ولا نموذج مبرمَج: تبدأ المكتبة فارغة.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ImageFormDialog from '../components/ImageFormDialog';
 import ImportPlanDialog from '../components/ImportPlanDialog';
 import PaperPhotoDialog from '../components/PaperPhotoDialog';
 import type {
-  DraftRow,
   ImportChoices,
   ImportPlan,
   ImportedTemplate,
@@ -26,6 +25,7 @@ import {
 import LetterheadView from '../components/LetterheadView';
 import TemplateDesigner from './TemplateDesigner';
 import { errorText } from '../lib/errors';
+import { normalizeFold } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -35,34 +35,38 @@ const SORTS = [
   { value: 'title', label: 'أبجدياً حسب العنوان الإداري' }
 ] as const;
 
-type View = 'grid' | 'drafts';
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 /** ملفّ Word فتحه الشبّاك من «الملفّات» — مقروءًا، يُفتح في المصمّم مرّةً بمفتاحه. */
 export type WordIncoming = { key: number; imported: ImportedTemplate };
 let wordIncomingSeen = 0;
+/** والمكتبة تُركّب من جديد كلّما فُتحت — فالطلب يُنفَّذ مرّةً لا كلّ رجوع. */
+let libraryRequestSeen = 0;
 
 type Props = {
   incoming?: WordIncoming | null;
+  /** «ابدأ جاهزًا»: يُفتح الاستيراد حين تُفتح المكتبة — مجلّد Word أو حزمةٌ جاهزة (المرحلة ٥). */
+  request?: { key: number; action: 'folder' | 'pack' } | null;
   /** استمارةٌ مصوّرة تُفتح في المصمّم لتُرسم فيها خاناتٌ فاتت (المرحلة ٤). */
   onOpenDesign?: (templateId: number) => void;
   onOpenInEditor?: (templateId: number) => void;
-  onOpenDraft?: (draftId: number) => void;
+  /** «استورد ← تصميمٌ من Photoshop أو PDF»: يُفتح في التصاميم ويُسأل عن الملف هناك. */
+  onImportDesign?: () => void;
   /** يُستدعى بعد كل تغيير يمسّ عدّادات الشريط الجانبي. */
   onChanged?: () => void;
 };
 
-export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpenDraft, onChanged, onOpenDesign }: Props) {
+export default function TemplatesScreen({ incoming = null, request = null, onOpenInEditor, onImportDesign, onChanged, onOpenDesign }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [stats, setStats] = useState<TemplateStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<TemplateSummary[]>([]);
-  const [drafts, setDrafts] = useState<DraftRow[]>([]);
   const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<(typeof SORTS)[number]['value']>('used');
-  const [view, setView] = useState<View>('grid');
+  /** قائمة «استورد» مفتوحة؟ */
+  const [importing, setImporting] = useState(false);
   const [designer, setDesigner] = useState<{
     open: boolean;
     initial: TemplateDetail | null;
@@ -88,17 +92,15 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
   }, []);
 
   const reload = useCallback(async (category: string | null) => {
-    const [s, c, list, d, lhs] = await Promise.all([
+    const [s, c, list, lhs] = await Promise.all([
       window.diwan.templates.stats(),
       window.diwan.templates.categories(),
       window.diwan.templates.list(category),
-      window.diwan.drafts.list(),
       window.diwan.letterheads.list()
     ]);
     setStats(s);
     setCategories(c);
     setItems(list);
-    setDrafts(d);
     setLetterheads(lhs);
   }, []);
 
@@ -123,9 +125,10 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
 
   const visible = items
     .filter((t) => {
-      const q = query.trim();
+      // يتسامح مع الهمزة والتاء المربوطة: «اجازة» تجد «إجازة».
+      const q = normalizeFold(query.trim());
       if (!q) return true;
-      return [t.title, t.subtitle, t.code, t.category].some((v) => v?.includes(q));
+      return [t.title, t.subtitle, t.code, t.category].some((v) => v && normalizeFold(v).includes(q));
     })
     .sort((a, b) => {
       if (sort === 'title') return a.title.localeCompare(b.title, 'ar');
@@ -133,11 +136,6 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
       return b.printCount - a.printCount;
     });
 
-  const visibleDrafts = drafts.filter((d) => {
-    const q = query.trim();
-    if (!q) return true;
-    return [d.title, d.templateTitle, d.citizenName].some((v) => v?.includes(q));
-  });
 
   async function openDesigner(id: number | null) {
     const initial = id === null ? null : await window.diwan.templates.get(id);
@@ -186,6 +184,15 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
     receive(incoming.imported);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming?.key]);
+
+  // «ابدأ جاهزًا» من المعالج: الاستيراد يُفتح مرّةً بمفتاحه — والمكتب يختار الملف أو المجلّد.
+  useEffect(() => {
+    if (!request || request.key === libraryRequestSeen) return;
+    libraryRequestSeen = request.key;
+    if (request.action === 'folder') void importFolder();
+    else void importContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.key]);
 
   async function importTemplate() {
     setBusy(true);
@@ -345,177 +352,104 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
     }
   }
 
-  async function deleteDraft(id: number) {
-    await window.diwan.drafts.delete(id);
-    await reload(active);
-    onChanged?.();
-    say('حُذفت المسودة');
-  }
-
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="p-space-lg flex flex-col gap-space-md">
-        {/* المؤشرات والإجراء الرئيسي */}
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
-          {[
-            {
-              label: 'النماذج الرسمية المعتمدة',
-              value: stats?.activeTemplates ?? 0,
-              unit: 'نموذجًا نافذًا',
-              icon: 'verified',
-              hint:
-                (stats?.activeTemplates ?? 0) === 0
-                  ? 'لم يُعتمد أي نموذج بعد'
-                  : 'جاهزة للاستعمال في المحرر'
-            },
-            {
-              label: 'مسودات المكتب الخاصة',
-              value: stats?.drafts ?? 0,
-              unit: 'مسودة',
-              icon: 'edit_note',
-              hint: (stats?.drafts ?? 0) === 0 ? 'لا مسودات محفوظة' : 'محفوظة محليًا'
-            },
-            {
-              label: 'الكتب المطبوعة هذا الشهر',
-              value: stats?.issuedThisMonth ?? 0,
-              unit: 'كتاب رسمي',
-              icon: 'print',
-              hint:
-                (stats?.issuedThisMonth ?? 0) === 0
-                  ? 'لم يُطبع أي كتاب هذا الشهر'
-                  : 'من سجل الصادر'
-            }
-          ].map((card) => (
-            <div
-              key={card.label}
-              className="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between"
+        {/* رأس المكتبة: ورقةٌ فارغة، و«استورد» واحدٌ بطرقه كلّها (المرحلة ٥). */}
+        <section className="flex flex-wrap items-center gap-space-sm" data-new-template="">
+          <div className="me-auto">
+            <h1 className="font-headline-md text-headline-md text-on-surface font-bold">المكتبة</h1>
+            <p className="font-label-md text-label-md text-on-surface-variant">
+              ما يُبنى مرّةً ويُطبع كثيرًا — {nf.format(stats?.activeTemplates ?? 0)} نموذجًا بأقسام جهاتها
+            </p>
+          </div>
+          <button
+            className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-bold flex items-center gap-space-xs"
+            data-act="new-blank"
+            title="اكتب على الورقة، وظلّل ما يتغيّر واضغط F4"
+            type="button"
+            onClick={() => void openDesigner(null)}
+          >
+            <span className="material-symbols-outlined text-[20px]">note_add</span>
+            ورقة فارغة
+          </button>
+          <div className="relative">
+            <button
+              aria-expanded={importing}
+              className="h-11 px-space-lg rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-space-xs shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
+              data-act="import-menu"
+              disabled={busy}
+              type="button"
+              onClick={() => setImporting((v) => !v)}
             >
-              <div className="flex flex-col gap-space-xs">
-                <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
-                  {card.label}
-                </span>
-                <div className="flex items-baseline gap-space-xs">
-                  <span className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight tabular">
-                    {nf.format(card.value)}
+              <span className="material-symbols-outlined text-[20px] text-secondary">upload_file</span>
+              استورد
+              <span className="material-symbols-outlined text-[18px]">expand_more</span>
+            </button>
+            {/* في الصفحة دائمًا ومخفيّةٌ حتى تُفتح — فالطرق تُعدّ وتُختبر بأسمائها. */}
+            <div
+              className={`${importing ? '' : 'hidden'} absolute z-30 top-full mt-1 end-0 w-[22rem] p-space-xs rounded-xl bg-surface-container-lowest shadow-xl border border-outline-variant`}
+              data-import-menu=""
+            >
+              {(
+                [
+                  { act: 'new-word', icon: 'description', label: 'ملفّ Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
+                  { act: 'new-folder', icon: 'folder_open', label: 'مجلّد ملفّات Word', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() },
+                  { act: 'new-photo', icon: 'document_scanner', label: 'صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) },
+                  { act: 'new-form-image', icon: 'dynamic_form', label: 'صورة استمارة', hint: 'صورة الدائرة كما هي، والخانات فوقها', run: () => setFormOpen(true) },
+                  { act: 'new-design-import', icon: 'layers', label: 'تصميم من Photoshop أو PDF', hint: 'شهادة أو بطاقة بطبقاتها — في التصاميم', run: () => onImportDesign?.() },
+                  { act: 'content-import', icon: 'inventory_2', label: 'حزمة جهةٍ أو مكتب', hint: 'نماذج وترويسات جاهزة — ما ليس عندك يُضاف', run: () => void importContent() }
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.act}
+                  className="w-full px-space-sm py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-right flex items-center gap-space-sm disabled:opacity-50"
+                  data-act={o.act}
+                  disabled={busy}
+                  type="button"
+                  onClick={() => {
+                    setImporting(false);
+                    o.run();
+                  }}
+                >
+                  <span className="material-symbols-outlined text-[20px] text-secondary">{o.icon}</span>
+                  <span className="flex flex-col min-w-0">
+                    <span className="font-label-md text-label-md text-on-surface font-semibold">{o.label}</span>
+                    <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{o.hint}</span>
                   </span>
-                  <span className="font-label-sm text-label-sm text-secondary font-semibold">
-                    {card.unit}
-                  </span>
-                </div>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  {card.hint}
-                </span>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-primary-container shadow-sm">
-                <span className="material-symbols-outlined text-[24px]">{card.icon}</span>
-              </div>
+                </button>
+              ))}
             </div>
-          ))}
-
-          {/* نموذجٌ جديد: طرقُه كلّها في مكانٍ واحد — ورقةٌ فارغة، وWord، والمجلد، وصورة الورقة (هـ٨). */}
-          <div className="bg-primary-container text-on-primary p-space-md rounded-xl shadow-md flex flex-col gap-space-xs" data-new-template="">
-            <span className="font-headline-sm text-headline-sm">نموذجٌ جديد</span>
-            {(
-              [
-                { act: 'new-blank', icon: 'note_add', label: 'ورقة فارغة', hint: 'اكتب على الورقة، وظلّل ما يتغيّر واضغط F4', run: () => void openDesigner(null) },
-                { act: 'new-word', icon: 'upload_file', label: 'استيراد نموذج من Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
-                { act: 'new-folder', icon: 'folder_open', label: 'استورد مجلدي', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() },
-                { act: 'new-photo', icon: 'document_scanner', label: 'من صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) },
-                { act: 'new-form-image', icon: 'dynamic_form', label: 'من صورة استمارة', hint: 'صورة الدائرة كما هي، والخانات فوقها', run: () => setFormOpen(true) }
-              ] as const
-            ).map((o) => (
-              <button
-                key={o.act}
-                className="w-full px-space-sm py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors text-right flex items-center gap-space-sm disabled:opacity-50"
-                data-act={o.act}
-                disabled={busy && o.act !== 'new-blank'}
-                type="button"
-                onClick={o.run}
-              >
-                <span className="material-symbols-outlined text-[20px] text-secondary">{o.icon}</span>
-                <span className="flex flex-col min-w-0">
-                  <span className="font-label-md text-label-md font-semibold">{o.label}</span>
-                  <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{o.hint}</span>
-                </span>
-              </button>
-            ))}
           </div>
         </section>
 
-        {/* المرشّحات */}
-        <section className="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col gap-space-md">
+        {/* الأقسام: تصنيفات الجهات — والبحث فيها يتسامح مع الهمزة */}
+        <section className="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col gap-space-md" data-library-sections="">
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
             <div className="flex items-center gap-space-xs overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-              <Chip
-                active={active === null && view === 'grid'}
-                onClick={() => {
-                  setActive(null);
-                  setView('grid');
-                }}
-              >
+              <Chip active={active === null} onClick={() => setActive(null)}>
                 الكل ({nf.format(stats?.activeTemplates ?? 0)})
               </Chip>
               {categories.map((c) => (
-                <Chip
-                  key={c.name}
-                  active={active === c.name && view === 'grid'}
-                  onClick={() => {
-                    setActive(c.name);
-                    setView('grid');
-                  }}
-                >
+                <Chip key={c.name} active={active === c.name} onClick={() => setActive(c.name)}>
                   {c.name} ({nf.format(c.count)})
                 </Chip>
               ))}
-              <Chip active={view === 'drafts'} onClick={() => setView('drafts')}>
-                مسوداتي الخاصة ({nf.format(stats?.drafts ?? 0)})
-              </Chip>
             </div>
 
             <div className="flex items-center gap-space-sm shrink-0 self-end lg:self-auto">
-
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
                   search
                 </span>
                 <input
                   className="h-9 w-56 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-on-surface-variant font-label-sm text-label-sm focus:outline-none focus:ring-1 focus:ring-secondary"
-                  placeholder="ابحث في النماذج والمسودات..."
+                  placeholder="ابحث في النماذج..."
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-
-              <div className="flex items-center bg-surface-container-low rounded-lg p-0.5">
-                <button
-                  className={
-                    view === 'grid'
-                      ? 'px-space-sm py-1 rounded bg-surface-container-lowest text-on-surface shadow-[0_1px_4px_rgba(0,0,0,0.04)] font-label-sm text-label-sm flex items-center gap-1'
-                      : 'px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm flex items-center gap-1'
-                  }
-                  title="عرض الشبكة الورقية"
-                  type="button"
-                  onClick={() => setView('grid')}
-                >
-                  <span className="material-symbols-outlined text-[16px]">grid_view</span>
-                  <span>A4 مصغر</span>
-                </button>
-                <button
-                  className={
-                    view === 'drafts'
-                      ? 'px-space-sm py-1 rounded bg-surface-container-lowest text-on-surface shadow-[0_1px_4px_rgba(0,0,0,0.04)] font-label-sm text-label-sm flex items-center gap-1'
-                      : 'px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm flex items-center gap-1'
-                  }
-                  title="عرض جدولي مفصل"
-                  type="button"
-                  onClick={() => setView('drafts')}
-                >
-                  <span className="material-symbols-outlined text-[16px]">table_rows</span>
-                  <span>سجل مسودات</span>
-                </button>
-              </div>
-
               <div className="h-6 w-px bg-surface-container-highest" />
               <select
                 className="h-9 px-space-sm bg-surface-container-low text-on-surface rounded-lg font-label-sm text-label-sm focus:outline-none cursor-pointer"
@@ -533,13 +467,7 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
         </section>
 
         {/* المحتوى */}
-        {view === 'drafts' ? (
-          <DraftsTable
-            drafts={visibleDrafts}
-            onOpen={(id) => onOpenDraft?.(id)}
-            onDelete={(id) => void deleteDraft(id)}
-          />
-        ) : visible.length === 0 ? (
+        {visible.length === 0 ? (
           <section className="bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] py-space-xl flex flex-col items-center gap-space-sm">
             <span className="material-symbols-outlined text-[44px] text-on-surface-variant">
               library_add
@@ -549,7 +477,7 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
             </span>
             <span className="font-label-md text-label-md text-on-surface-variant">
               {items.length === 0
-                ? 'ابدأ من «نموذجٌ جديد» أعلاه: ورقةٌ فارغة، أو ملف Word، أو مجلد ملفاتك كلّه'
+                ? 'ابدأ من «ورقة فارغة» أو «استورد» أعلاه: ملف Word، أو مجلد ملفاتك كلّه، أو حزمة جهة'
                 : 'جرّب كلمة بحث أخرى أو تصنيفًا مختلفًا'}
             </span>
             {/* المكتبة الفارغة تعرض أقصر الطرق إليها في مكانها (خطة Production، ٣٫٥): مجلد ملفات المكتب كلّه. */}
@@ -614,17 +542,6 @@ export default function TemplatesScreen({ incoming = null, onOpenInEditor, onOpe
             >
               <span className="material-symbols-outlined text-[18px]">drive_file_move</span>
               <span>صدّر حزمة المحتوى</span>
-            </button>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
-              data-act="content-import"
-              title="ما ليس في المكتب يُضاف، وما فيه بمعرّفه يُترك كما هو"
-              type="button"
-              disabled={busy}
-              onClick={() => void importContent()}
-            >
-              <span className="material-symbols-outlined text-[18px]">upload_file</span>
-              <span>استورد حزمة محتوى</span>
             </button>
           </div>
         </section>
@@ -1094,84 +1011,3 @@ function PreviewModal({
   );
 }
 
-function DraftsTable({
-  drafts,
-  onOpen,
-  onDelete
-}: {
-  drafts: DraftRow[];
-  onOpen: (id: number) => void;
-  onDelete: (id: number) => void;
-}) {
-  const COLUMNS = ['عنوان المسودة', 'النموذج', 'المواطن', 'آخر تعديل', 'الإجراءات'];
-
-  return (
-    <section className="bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] overflow-hidden">
-      <div className="p-space-md flex items-center justify-between">
-        <h3 className="font-headline-sm text-headline-sm text-on-surface">سجل المسودات</h3>
-        <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold">
-          {nf.format(drafts.length)} مسودة
-        </span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-right border-collapse">
-          <thead>
-            <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm tracking-wider select-none">
-              {COLUMNS.map((c) => (
-                <th key={c} className="p-space-md font-bold">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="font-body-sm text-body-sm text-on-surface">
-            {drafts.length === 0 ? (
-              <tr>
-                <td colSpan={COLUMNS.length}>
-                  <div className="py-space-xl flex flex-col items-center gap-space-xs text-on-surface-variant">
-                    <span className="material-symbols-outlined text-[40px]">edit_note</span>
-                    <span className="font-body-md text-body-md">لا مسودات محفوظة</span>
-                    <span className="font-label-sm text-label-sm">
-                      احفظ مسودة من المحرر لتظهر هنا
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              drafts.map((d) => (
-                <tr key={d.id} className="hover:bg-surface-container-high transition-colors">
-                  <td className="p-space-md font-semibold">{d.title || '(بلا عنوان)'}</td>
-                  <td className="p-space-md text-on-surface-variant">{d.templateTitle ?? '—'}</td>
-                  <td className="p-space-md text-on-surface-variant">{d.citizenName ?? '—'}</td>
-                  <td className="p-space-md font-mono text-label-sm text-on-surface-variant">
-                    {d.updatedAt}
-                  </td>
-                  <td className="p-space-md">
-                    <div className="flex items-center gap-1">
-                      <button
-                        className="px-space-sm h-8 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors font-label-sm text-label-sm flex items-center gap-1"
-                        type="button"
-                        onClick={() => onOpen(d.id)}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">edit_document</span>
-                        <span>متابعة</span>
-                      </button>
-                      <button
-                        className="w-8 h-8 rounded-lg text-error hover:bg-error-container transition-colors flex items-center justify-center"
-                        title="حذف المسودة"
-                        type="button"
-                        onClick={() => onDelete(d.id)}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}

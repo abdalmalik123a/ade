@@ -286,6 +286,23 @@ export default async function scenario(page, { profile, shotsDir }) {
   db3.close();
   ok('في القاعدة: ملفٌّ جديد، وكتابه مربوطٌ به', Boolean(karim) && karimDocs.length === 1 && karimDocs[0]?.c === karim?.id);
 
+  // ── الإطار الواحد (المرحلة ٥): أداةٌ تُفتح لزبون الشبّاك تقوله، و«شيءٌ آخر لنفس الزبون» يعود به ──
+  await page.eval(`document.querySelector('[data-act="same-customer"]').click(); return true;`);
+  await wait(500);
+  await page.eval(`document.querySelector('[data-screen="service"] [data-card="photos"]')?.click(); return true;`);
+  await wait(1200);
+  const head = await page.eval(`return document.querySelector('[data-tool-customer]')?.innerText ?? '';`);
+  ok(`الصور تُفتح للزبون: في رأسها اسمه (${head.trim().slice(0, 40)})`, head.includes('كريم حسن علي'));
+  ok('وزرّ «في ملفّه» باسمه بدل «في ملف مواطن»', (await page.eval(`return document.querySelector('[data-act="link-citizen"]')?.innerText ?? '';`)).includes('كريم حسن علي'));
+  ok('والطابعة مكتوبةٌ في شريط الإخراج', await page.eval(`return Boolean(document.querySelector('[data-tool-output="photos"] [data-printer-note="photos"]'));`));
+  await page.eval(`document.querySelector('[data-act="tool-same-customer"]').click(); return true;`);
+  await wait(900);
+  await pickFirst();
+  await wait(900);
+  ok('و«شيءٌ آخر لنفس الزبون» يعود إلى الشبّاك فتُملأ حقوله من ملفّه', (await firstValue()) === 'كريم حسن علي');
+  await page.eval(`document.querySelector('[data-act="park"]')?.click(); return true;`);
+  await wait(500);
+
   // ── «كرّره» من الأرشيف: كتاب الشبّاك يعود إلى الشبّاك بقيمه ────────────
   await page.goto('transactions-archive-ledger');
   await wait(900);

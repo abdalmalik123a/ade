@@ -7,13 +7,18 @@
  *
  * ويطبع ما كُشف (… في أوّل السطر) ليُقاس على الاستمارة: كم خانةً صحيحة.
  */
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 
 const FORM = process.env.FORM_IMAGE || 'graduation';
+const OUT = join(tmpdir(), 'diwan-image-form-out');
 
 export async function prepare() {
-  return { DIWAN_TEST_OPEN_FILE: resolve(`tests/fixtures/forms/${FORM}.jpg`) };
+  rmSync(OUT, { recursive: true, force: true });
+  mkdirSync(OUT, { recursive: true });
+  return { DIWAN_TEST_OPEN_FILE: resolve(`tests/fixtures/forms/${FORM}.jpg`), DIWAN_TEST_SAVE_DIR: OUT };
 }
 
 export default async function scenario(page, { profile, shotsDir }) {
@@ -102,5 +107,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('احفظ بلا طباعة');
   await wait(2000);
   ok('وحُفظت في السجلّ', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('في السجلّ'));
+  // وPDF من شريط ما خرج (ن٩): من السجلّ كما صدر — صورة الدائرة والقيم.
+  await click('[data-act="after-pdf"]');
+  await wait(3000);
+  const pdfs = existsSync(OUT) ? readdirSync(OUT).filter((f) => f.endsWith('.pdf')) : [];
+  const pdf = pdfs[0] ? readFileSync(join(OUT, pdfs[0])).toString('latin1') : '';
+  ok(`و«PDF» بعدها يحفظ الاستمارة ملفًّا فيه صورة الدائرة (${pdfs.join('، ')} ${pdf.match(/\/MediaBox\s*\[[^\]]*\]/)?.[0] ?? ''})`, pdfs.length === 1 && /\/Subtype\s*\/Image/.test(pdf));
   return steps.join('\n');
 }
