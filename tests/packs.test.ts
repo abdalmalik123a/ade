@@ -30,84 +30,106 @@ import type { ContentPackage } from '../src/main/services/contentPack';
 
 describe('حزم الجهات الجاهزة (Content Packs)', () => {
   const PACKS_DIR = join(process.cwd(), 'resources', 'packs');
-  const EDU_PACK_PATH = join(PACKS_DIR, 'education.diwanpack');
   const INDEX_PATH = join(PACKS_DIR, 'index.json');
 
-  it('حزمة التربية وفهرس الحزم موجودان', () => {
+  const PACK_IDS = [
+    'civil-status',
+    'court-petitions',
+    'education',
+    'general-requests',
+    'higher-education',
+    'housing-mukhtar'
+  ];
+
+  it('فهرس الحزم يحتوي على الحزم الست كاملة وتطابق إحصائياتها الكتالوج', () => {
     const indexRaw = readFileSync(INDEX_PATH, 'utf8');
     const index = JSON.parse(indexRaw) as BuiltIndexEntry[];
     expect(Array.isArray(index)).toBe(true);
-    const edu = index.find((p) => p.id === 'education');
-    expect(edu).toBeDefined();
-    expect(edu?.title).toBe('التربية والمدارس');
-    expect(edu?.section).toBe('التربية');
-    expect(edu?.counts.templates).toBe(6);
-    expect(edu?.counts.clips).toBe(4);
+    expect(index.length).toBe(6);
+
+    const ids = index.map((p) => p.id).sort();
+    expect(ids).toEqual(PACK_IDS);
+
+    // إجمالي النماذج 24 والكليشات 21
+    const totalTemplates = index.reduce((sum, p) => sum + p.counts.templates, 0);
+    const totalClips = index.reduce((sum, p) => sum + p.counts.clips, 0);
+    expect(totalTemplates).toBe(24);
+    expect(totalClips).toBe(21);
   });
 
-  it('بصمة SHA-256 في index.json تطابق ملف الحزمة بدقة', () => {
+  it('بصمة SHA-256 لكل حزمة في index.json تطابق ملف الحزمة بدقة', () => {
     const index = JSON.parse(readFileSync(INDEX_PATH, 'utf8')) as BuiltIndexEntry[];
-    const edu = index.find((p) => p.id === 'education')!;
-    const packBytes = readFileSync(EDU_PACK_PATH);
-    const hash = createHash('sha256').update(packBytes).digest('hex');
-    expect(hash).toBe(edu.sha256);
-  });
-
-  it('تُقرأ الحزمة بـ readZipIndex وتطابق الصيغة القياسية وخالية من بيانات الناس', async () => {
-    const entries = await readZipIndex(EDU_PACK_PATH);
-    const names = entries.map((e) => e.name);
-
-    expect(names).toContain('diwan-content.json');
-
-    // لا قاعدة بيانات ولا مجلدات مواطنين ولا مرفقات
-    for (const name of names) {
-      expect(name).not.toMatch(/^diwan\.db$/i);
-      expect(name).not.toMatch(/^(people|citizens|attachments|customers)\//i);
+    for (const entry of index) {
+      const packPath = join(PACKS_DIR, `${entry.id}.diwanpack`);
+      const packBytes = readFileSync(packPath);
+      const hash = createHash('sha256').update(packBytes).digest('hex');
+      expect(hash).toBe(entry.sha256);
     }
   });
 
-  it('محتوى الحزمة يطابق صيغة ContentPackage القياسية', () => {
-    const zipData = unzipSync(readFileSync(EDU_PACK_PATH));
-    const jsonBytes = zipData['diwan-content.json'];
-    expect(jsonBytes).toBeDefined();
+  it('تُقرأ كل حزمة بـ readZipIndex وتطابق الصيغة القياسية وخالية من بيانات الناس', async () => {
+    for (const id of PACK_IDS) {
+      const packPath = join(PACKS_DIR, `${id}.diwanpack`);
+      const entries = await readZipIndex(packPath);
+      const names = entries.map((e) => e.name);
 
-    const pkg = JSON.parse(Buffer.from(jsonBytes!).toString('utf8')) as ContentPackage;
-    expect(pkg.format).toBe(1);
-    expect(pkg.templates.length).toBe(6);
-    expect(pkg.clips.length).toBe(4);
-    expect(pkg.letterheads.length).toBe(0);
+      expect(names).toContain('diwan-content.json');
 
-    // التحقق من نماذج التربية الستة
-    const codes = pkg.templates.map((t) => t.code).sort();
-    expect(codes).toEqual(['EDU-01', 'EDU-02', 'EDU-03', 'EDU-04', 'EDU-05', 'EDU-06']);
-
-    // كل نموذج يحمل doc ومعرف uuid ثابت
-    for (const t of pkg.templates) {
-      expect(t.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
-      expect(t.title).toBeTruthy();
-      expect(t.category).toBe('التربية');
-      expect(t.doc).toBeDefined();
+      // لا قاعدة بيانات ولا مجلدات مواطنين ولا مرفقات
+      for (const name of names) {
+        expect(name).not.toMatch(/^diwan\.db$/i);
+        expect(name).not.toMatch(/^(people|citizens|attachments|customers)\//i);
+      }
     }
   });
 
-  it('كل وثيقة doc في الحزمة تمر بـ normalizeDoc بلا فقدان في الكتل أو الحقول', () => {
-    const zipData = unzipSync(readFileSync(EDU_PACK_PATH));
-    const pkg = JSON.parse(Buffer.from(zipData['diwan-content.json']!).toString('utf8')) as ContentPackage;
+  it('محتوى كل حزمة يطابق صيغة ContentPackage القياسية', () => {
+    for (const id of PACK_IDS) {
+      const packPath = join(PACKS_DIR, `${id}.diwanpack`);
+      const zipData = unzipSync(readFileSync(packPath));
+      const jsonBytes = zipData['diwan-content.json'];
+      expect(jsonBytes).toBeDefined();
 
-    for (const t of pkg.templates) {
-      const origDoc = t.doc as Doc;
-      const normalized = normalizeDoc(origDoc);
+      const pkg = JSON.parse(Buffer.from(jsonBytes!).toString('utf8')) as ContentPackage;
+      expect(pkg.format).toBe(1);
+      expect(pkg.letterheads.length).toBe(0);
 
-      expect(normalized.id).toBe(origDoc.id);
-      expect(normalized.schemaVersion).toBe(origDoc.schemaVersion);
-      expect(normalized.kind).toBe(origDoc.kind);
-      expect(normalized.blocks.length).toBe(origDoc.blocks.length);
-      expect(normalized.fields.length).toBe(origDoc.fields.length);
+      // كل نموذج يحمل doc ومعرف uuid ثابت
+      for (const t of pkg.templates) {
+        expect(t.uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+        expect(t.title).toBeTruthy();
+        expect(t.category).toBeTruthy();
+        expect(t.doc).toBeDefined();
+      }
 
-      // التأكد من أن جميع مفاتيح الحقول متطابقة
-      const origKeys = origDoc.fields.map((f: DocField) => f.key);
-      const normKeys = normalized.fields.map((f: DocField) => f.key);
-      expect(normKeys).toEqual(origKeys);
+      for (const c of pkg.clips) {
+        expect(c.title).toBeTruthy();
+        expect(c.body).toBeTruthy();
+      }
+    }
+  });
+
+  it('كل وثيقة doc في كل حزمة تمر بـ normalizeDoc بلا فقدان في الكتل أو الحقول', () => {
+    for (const id of PACK_IDS) {
+      const packPath = join(PACKS_DIR, `${id}.diwanpack`);
+      const zipData = unzipSync(readFileSync(packPath));
+      const pkg = JSON.parse(Buffer.from(zipData['diwan-content.json']!).toString('utf8')) as ContentPackage;
+
+      for (const t of pkg.templates) {
+        const origDoc = t.doc as Doc;
+        const normalized = normalizeDoc(origDoc);
+
+        expect(normalized.id).toBe(origDoc.id);
+        expect(normalized.schemaVersion).toBe(origDoc.schemaVersion);
+        expect(normalized.kind).toBe(origDoc.kind);
+        expect(normalized.blocks.length).toBe(origDoc.blocks.length);
+        expect(normalized.fields.length).toBe(origDoc.fields.length);
+
+        // التأكد من أن جميع مفاتيح الحقول متطابقة
+        const origKeys = origDoc.fields.map((f: DocField) => f.key);
+        const normKeys = normalized.fields.map((f: DocField) => f.key);
+        expect(normKeys).toEqual(origKeys);
+      }
     }
   });
 

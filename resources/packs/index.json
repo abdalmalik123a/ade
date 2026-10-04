@@ -1,5 +1,37 @@
 [
   {
+    "id": "civil-status",
+    "title": "الأحوال المدنية والبطاقة الوطنية",
+    "section": "الأحوال المدنية",
+    "description": "نماذج استدعاءات وطلبات دوائر البطاقة الوطنية والأحوال المدنية ومعاملات الفقدان والتصحيح وفصل القيود في العراق",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 4,
+      "letterheads": 0,
+      "clips": 4,
+      "files": 0
+    },
+    "sampleUuid": "3c87e133-0844-5a20-b15b-db5c22cd9935",
+    "sha256": "a2412c3f94de87c58c268c0238f94c7e80172ddf46cb2c57084b944c4a37c65c"
+  },
+  {
+    "id": "court-petitions",
+    "title": "المحاكم والعرائض الشرعية",
+    "section": "المحاكم والعرائض",
+    "description": "نماذج العرائض والطلبات والاستدعاءات الموجهة إلى محاكم الأحوال الشخصية ومحاكم البداءة غير المالية في العراق",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 3,
+      "letterheads": 0,
+      "clips": 3,
+      "files": 0
+    },
+    "sampleUuid": "a744183e-3140-5522-9399-1441c2f25e6a",
+    "sha256": "d0bcf4cddbd207680f7be95b23c396eab73d728f52b17623e7772620d4458620"
+  },
+  {
     "id": "education",
     "title": "التربية والمدارس",
     "section": "التربية",
@@ -14,5 +46,53 @@
     },
     "sampleUuid": "2175bf2e-5021-5312-8eb1-806cb0c91036",
     "sha256": "b02d6eb8dd410adf52f6a3bdb5e781dafd9738266227069d640efc109ba304f1"
+  },
+  {
+    "id": "general-requests",
+    "title": "الاستدعاءات والطلبات العامة",
+    "section": "الاستدعاءات العامة",
+    "description": "نماذج المعاريض والطلبات الرسمية والتظلمات الإدارية وطلبات المقابلة القياسية لأي وزارة أو جهة حكومية عراقية",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 3,
+      "letterheads": 0,
+      "clips": 3,
+      "files": 0
+    },
+    "sampleUuid": "95a1ed59-5ba3-56e6-b43f-e57d365490b9",
+    "sha256": "98b3b2ce5c10908973333d8f6ab22f4827e5241c48682415ad7f5af6e85bb1f8"
+  },
+  {
+    "id": "higher-education",
+    "title": "الجامعات والتعليم العالي",
+    "section": "التعليم العالي",
+    "description": "نماذج المعاملات الجامعية وتأييدات الاستمرار والتخرج والتأجيل والاستضافة المعتمدة في الجامعات العراقية",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 5,
+      "letterheads": 0,
+      "clips": 4,
+      "files": 0
+    },
+    "sampleUuid": "4dedd9ba-8d12-5a26-bd21-c316862972cb",
+    "sha256": "35f6fb84efcd39e7e6e4f0c0e74c02f52b938b2c3817de20da43aea729b7c91e"
+  },
+  {
+    "id": "housing-mukhtar",
+    "title": "السكن وبطاقة السكن والمخاتير",
+    "section": "السكن والمخاتير",
+    "description": "نماذج تأييدات السكن المعتمدة من المخاتير، واستدعاءات مكاتب معلومات السكن وإصدار وتجديد ونقل بطاقة السكن في العراق",
+    "version": "1.0.0",
+    "verifiedOn": "2026-10-04",
+    "counts": {
+      "templates": 3,
+      "letterheads": 0,
+      "clips": 3,
+      "files": 0
+    },
+    "sampleUuid": "bbc936a5-c8f8-5b05-b9d3-78986dd1a636",
+    "sha256": "2d04a62a4b77cf4ab6cca02658e904595bfc50155ba20fb310b7e67f13862980"
   }
 ]

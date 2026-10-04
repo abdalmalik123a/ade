@@ -69,7 +69,14 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   ok('انفتح حوار حزم الجهات الجاهزة', await page.eval(`return Boolean(document.querySelector('[data-packs-modal]'));`));
   const modalText = await page.eval(`return document.querySelector('[data-packs-modal]')?.innerText ?? '';`);
-  ok('حزمة التربية والمدارس معروضة في القائمة', modalText.includes('التربية والمدارس') && modalText.includes('6 نموذجًا'));
+  ok('الحزم الست معروضة في القائمة',
+    modalText.includes('التربية والمدارس') &&
+    modalText.includes('الجامعات والتعليم العالي') &&
+    modalText.includes('الأحوال المدنية والبطاقة الوطنية') &&
+    modalText.includes('السكن وبطاقة السكن والمخاتير') &&
+    modalText.includes('المحاكم والعرائض الشرعية') &&
+    modalText.includes('الاستدعاءات والطلبات العامة')
+  );
 
   if (shotsDir) await page.shot(join(shotsDir, 'packs-modal.png'));
 
