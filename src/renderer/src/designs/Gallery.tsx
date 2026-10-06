@@ -30,7 +30,7 @@ import {
 
 export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand };
 
-const GROUPS = ['الكل', 'شهادات', 'هويّات', 'مدرسية', 'مناسبات', 'أعمال'];
+const GROUPS = ['الكل', 'شهادات', 'هويّات', 'مدرسية', 'مناسبات', 'أعمال وكروت'];
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -145,7 +145,8 @@ export default function Gallery({
   onOpenSaved,
   onDeleteSaved,
   onOpenImage,
-  onImport
+  onImport,
+  onNewBlank
 }: {
   saved: TemplateSummary[];
   /** «صمّم لها» من ملف الجهة: يُفتح المعرض عليها. */
@@ -155,6 +156,7 @@ export default function Gallery({
   onDeleteSaved?: (id: number) => void;
   onOpenImage: () => void;
   onImport: () => void;
+  onNewBlank?: () => void;
 }) {
   const [logos, setLogos] = useState<Seal[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -237,6 +239,17 @@ export default function Gallery({
             </p>
           </div>
           <div className="flex items-center gap-space-sm flex-wrap">
+            {onNewBlank && (
+              <button
+                className="h-10 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-all"
+                data-act="new-blank"
+                type="button"
+                onClick={onNewBlank}
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                تصميم فارغ جديد (البدء من الصفر)
+              </button>
+            )}
             <button
               className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               data-act="background"
@@ -441,6 +454,24 @@ export default function Gallery({
         </nav>
 
         <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))' }}>
+          {onNewBlank && (
+            <button
+              className="group rounded-xl border-2 border-dashed border-outline-variant/80 hover:border-primary/80 bg-surface-container-low/50 hover:bg-surface-container-high/60 transition-all text-center overflow-hidden flex flex-col items-center justify-center p-space-lg min-h-[290px] focus:outline-none focus:ring-2 focus:ring-primary"
+              data-act="blank-card"
+              type="button"
+              onClick={onNewBlank}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-primary-container/40 group-hover:bg-primary-container flex items-center justify-center mb-space-sm transition-colors text-primary">
+                <span className="material-symbols-outlined text-[36px]">add</span>
+              </div>
+              <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold mb-1">
+                لوحة بيضاء فارغة
+              </h3>
+              <p className="font-label-sm text-label-sm text-on-surface-variant max-w-[200px]">
+                ابدأ من الصفر بالمقاس الذي تريده مع تحكم كامل بالعناصر والجداول والباركود
+              </p>
+            </button>
+          )}
           {kinds.map((k) => {
             const imp = impose(k.size, k.bleed);
             return (

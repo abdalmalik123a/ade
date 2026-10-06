@@ -27,11 +27,13 @@ import {
   mmToPx,
   normalizeCanvas,
   shapeElement,
+  tableElement,
   textElement,
   topZ,
   type Box,
   type Canvas,
   type CanvasElement,
+  type CanvasSize,
   type TextElement
 } from '@shared/canvas';
 import {
@@ -48,6 +50,7 @@ import {
   undoCanvas,
   withBoxes,
   type AlignMode,
+  type CanvasHistory,
   type Edge,
   type Guide,
   type LayerMove
@@ -78,6 +81,7 @@ import { ToolHeader, ToolOutput } from '../components/ToolFrame';
 import type { Outcome } from '../components/OutputBar';
 import PrintOptions from '../designs/PrintOptions';
 import ClipartModal from '../designs/ClipartModal';
+import NewBlankModal from '../designs/NewBlankModal';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
 
 const DESIGN_CATEGORY = 'تصاميم';
@@ -127,6 +131,8 @@ const kindName = (el: CanvasElement): string => {
       return `${el.symbology === 'qr' ? 'QR' : el.symbology === 'seal' ? 'نقش أمان' : 'باركود'} ${el.ref ? `{${el.ref}}` : el.value}`;
     case 'shape':
       return 'شكل';
+    case 'table':
+      return 'جدول';
   }
 };
 
@@ -154,7 +160,12 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
   const [history, setHistory] = useState(() =>
     startCanvasHistory(emptyCanvas(SIZE_PRESETS[1]!.size))
   );
-  const canvas = history.present;
+  const [activeSide, setActiveSide] = useState<'front' | 'back'>('front');
+  const [backHistory, setBackHistory] = useState<CanvasHistory | null>(null);
+
+  const canvas = activeSide === 'front'
+    ? history.present
+    : (backHistory?.present ?? emptyCanvas(history.present.size, history.present.bleed));
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [selection, setSelection] = useState<string[]>([]);
@@ -171,6 +182,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
   const [grid, setGrid] = useState(false);
   const [toast, setToast] = useState<Toast>(null);
   const [clipartModalOpen, setClipartModalOpen] = useState(false);
+  const [newBlankModalOpen, setNewBlankModalOpen] = useState(false);
   const [zoom, setZoom] = useState(0.5);
   /** المعرض أولًا: يبدأ المكتب من «لمن التصميم؟» لا من لوحةٍ فارغة. */
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
@@ -217,8 +229,15 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
 
   /** كل تغييرٍ منتهٍ يُقيَّد في التاريخ؛ وأثناء السحب يُبدَّل الحاضر بلا قيد. */
   const apply = useCallback((next: Canvas, commit = true) => {
-    setHistory((h) => (commit ? commitCanvas(h, next) : { ...h, present: next }));
-  }, []);
+    if (activeSide === 'front') {
+      setHistory((h) => (commit ? commitCanvas(h, next) : { ...h, present: next }));
+    } else {
+      setBackHistory((h) => {
+        const base = h ?? startCanvasHistory(emptyCanvas(history.present.size, history.present.bleed));
+        return commit ? commitCanvas(base, next) : { ...base, present: next };
+      });
+    }
+  }, [activeSide, history.present.size, history.present.bleed]);
 
   const loadDesigns = useCallback(async () => {
     try {
@@ -234,22 +253,36 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
     void loadDesigns();
   }, [loadDesigns]);
 
+  const effectiveBackDoc = useMemo(() => {
+    if (backHistory?.present && (backHistory.present.elements.length > 0 || backHistory.present.background.kind !== 'none')) {
+      return canvasDoc(backHistory.present);
+    }
+    return backDoc;
+  }, [backHistory, backDoc]);
+
   // ── الوثيقة مشتقّة، والحقول تتبع اللوحة ────────────────────────────
   const doc: Doc = useMemo(() => {
-    const built = canvasDoc(canvas, { title: title || 'تصميم', category: DESIGN_CATEGORY });
+    const built = canvasDoc(history.present, { title: title || 'تصميم', category: DESIGN_CATEGORY });
+    if (backHistory?.present && (backHistory.present.elements.length > 0 || backHistory.present.background.kind !== 'none')) {
+      built.backCanvas = backHistory.present;
+    }
     built.fields = reconcileFields(built);
     if (Object.keys(batchMap).length) built.meta = { ...built.meta, batchMap };
     return built;
-  }, [canvas, title, batchMap]);
+  }, [history.present, backHistory, title, batchMap]);
 
   const html = useMemo(
     // مع دفعةٍ تُعرض بطاقة أوّل اسمٍ فيها — فيُرى الاسم الحقيقي في موضعه لا وسمُه.
     () =>
-      renderCanvasHtml(doc, batchRows[0] ? { ...values, ...batchRows[0] } : values, {
-        dpi: SCREEN_DPI,
-        missing: preview ? 'blank' : 'token'
-      }),
-    [doc, values, preview, batchRows]
+      renderCanvasHtml(
+        activeSide === 'front' ? doc : (effectiveBackDoc ?? canvasDoc(canvas)),
+        batchRows[0] ? { ...values, ...batchRows[0] } : values,
+        {
+          dpi: SCREEN_DPI,
+          missing: preview ? 'blank' : 'token'
+        }
+      ),
+    [doc, effectiveBackDoc, canvas, activeSide, values, preview, batchRows]
   );
 
   /**
@@ -384,6 +417,8 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
   const pickFromGallery = useCallback(
     ({ kind, style, palette, brand }: GalleryPick) => {
       setHistory(startCanvasHistory(buildDesign({ kind: kind.key, style, palette, brand })));
+      setBackHistory(null);
+      setActiveSide('front');
       setValues({});
       setSelection([]);
       setDesignId(null);
@@ -392,6 +427,22 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
       setTitle(brand.name ? `${kind.title} — ${brand.name}` : kind.title);
       setView('editor');
       say(`${kind.title} — املأه، أو الصق قائمةً كاملة في «دفعة»`);
+    },
+    [say]
+  );
+
+  const handleCreateBlank = useCallback(
+    (size: CanvasSize, bleed = 0, customTitle = '') => {
+      setDesignId(null);
+      setBatchMap({});
+      setTitle(customTitle);
+      setSelection([]);
+      setBackHistory(null);
+      setActiveSide('front');
+      setValues({});
+      setHistory(startCanvasHistory(emptyCanvas(size, bleed)));
+      setView('editor');
+      say(customTitle ? `بدء تصميم فارغ: ${customTitle}` : 'بدء تصميم فارغ جديد');
     },
     [say]
   );
@@ -557,8 +608,17 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
     setGuides([]);
     const before = beforeDrag.current;
     beforeDrag.current = null;
-    if (before) setHistory((h) => ({ past: [...h.past, before].slice(-60), present: h.present, future: [] }));
-  }, []);
+    if (before) {
+      if (activeSide === 'front') {
+        setHistory((h) => ({ past: [...h.past, before].slice(-60), present: h.present, future: [] }));
+      } else {
+        setBackHistory((h) => {
+          const base = h ?? startCanvasHistory(emptyCanvas(history.present.size, history.present.bleed));
+          return { past: [...base.past, before].slice(-60), present: base.present, future: [] };
+        });
+      }
+    }
+  }, [activeSide, history.present.size, history.present.bleed]);
 
   // ── لوحة المفاتيح ──────────────────────────────────────────────────
   useEffect(() => {
@@ -568,12 +628,14 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
 
       if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
         e.preventDefault();
-        setHistory(undoCanvas);
+        if (activeSide === 'front') setHistory(undoCanvas);
+        else setBackHistory((h) => (h ? undoCanvas(h) : h));
         return;
       }
       if (e.ctrlKey && (e.code === 'KeyY' || (e.shiftKey && e.code === 'KeyZ'))) {
         e.preventDefault();
-        setHistory(redoCanvas);
+        if (activeSide === 'front') setHistory(redoCanvas);
+        else setBackHistory((h) => (h ? redoCanvas(h) : h));
         return;
       }
       if (e.ctrlKey && e.code === 'KeyD') {
@@ -610,7 +672,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canvas, selection, apply, duplicateSelected, removeSelected]);
+  }, [canvas, selection, apply, duplicateSelected, removeSelected, activeSide]);
 
   const selected = canvas.elements.filter((el) => selection.includes(el.id));
   const single = selected.length === 1 ? selected[0]! : null;
@@ -746,12 +808,12 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
     const draw = (d: Doc) => (i: number) =>
       renderCanvasHtml(d, cards[i]!, { dpi: SCREEN_DPI, missing: 'blank', marks: false });
     const front = renderPlan(imp, plan, draw(doc));
-    if (!backDoc) return front;
+    if (!effectiveBackDoc) return front;
     // الوجه ثم ظهره، وظهره معكوس الأعمدة — فالورقة المقلوبة يقع كلّ ظهرٍ خلف وجهه.
     // والظهر يُملأ بقيم صاحبه أيضًا (رقمه، صفّه) لا بقيمٍ ثابتة.
-    const back = renderPlan(imp, plan, draw(backDoc), { mirror: true });
+    const back = renderPlan(imp, plan, draw(effectiveBackDoc), { mirror: true });
     return front.flatMap((p, i) => [p, back[i]!]);
-  }, [sheetsOpen, imp, plan, cards, doc, backDoc]);
+  }, [sheetsOpen, imp, plan, cards, doc, effectiveBackDoc]);
 
   /**
    * فاحص ما قبل الطباعة: ما يُعرف من التصميم وقيمه، ثم دقّةُ كلّ صورةٍ في موضعها
@@ -830,9 +892,9 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
         pages,
         printer: pick.system ? null : pick.printer,
         page: imp.sheet,
-        duplex: Boolean(backDoc)
+        duplex: Boolean(effectiveBackDoc)
       });
-      const sheets = backDoc ? pages.length / 2 : pages.length;
+      const sheets = effectiveBackDoc ? pages.length / 2 : pages.length;
       // الطلب يتبع الطباعة (د٨): طُبعت دفعته كلّها فصار جاهزًا للتسليم — ويُقال ذلك.
       let orderNote = '';
       if (out.ok && linkedOrder && linkedOrder.templateId === designId) {
@@ -847,7 +909,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
         // تُغلق المعاينة ويقول شريط الإخراج ما خرج وأين — والطلب إن صار جاهزًا.
         lastPick.current = { printer: pick.printer, system: pick.system };
         setSheetsOpen(false);
-        setAfter({ what: `${sheets} ورقة${backDoc ? ' بوجهيها' : ''}`, printer: pick.system ? 'طابعة ويندوز' : pick.printer });
+        setAfter({ what: `${sheets} ورقة${effectiveBackDoc ? ' بوجهيها' : ''}`, printer: pick.system ? 'طابعة ويندوز' : pick.printer });
         if (orderNote) say(orderNote.replace(/^ — و/, ''));
       } else
         say(
@@ -860,7 +922,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
       off();
       setBusy(false);
     }
-  }, [pages, imp, backDoc, title, say, linkedOrder, designId, onChanged]);
+  }, [pages, imp, effectiveBackDoc, title, say, linkedOrder, designId, onChanged]);
 
   const savePdf = useCallback(async () => {
     setBusy(true);
@@ -910,6 +972,12 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
       try {
         const loaded = await window.diwan.templates.doc(id);
         setHistory(startCanvasHistory(normalizeCanvas(loaded.canvas)));
+        if (loaded.backCanvas) {
+          setBackHistory(startCanvasHistory(normalizeCanvas(loaded.backCanvas)));
+        } else {
+          setBackHistory(null);
+        }
+        setActiveSide('front');
         setTitle(loaded.meta.title ?? '');
         setValues({});
         setBatchMap(loaded.meta.batchMap ?? {});
@@ -971,9 +1039,18 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
           onOpenSaved={(id) => void openDesign(id)}
           onDeleteSaved={(id) => void deleteDesign(id)}
           onPick={pickFromGallery}
+          onNewBlank={() => setNewBlankModalOpen(true)}
         />
         </div>
       </div>
+
+      {newBlankModalOpen && (
+        <NewBlankModal
+          isOpen={newBlankModalOpen}
+          onClose={() => setNewBlankModalOpen(false)}
+          onCreate={handleCreateBlank}
+        />
+      )}
 
       {clipartModalOpen && (
         <ClipartModal
@@ -999,16 +1076,9 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
               </button>
               <button
                 className="h-8 px-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high border border-outline-variant font-label-xs text-label-xs text-on-surface flex items-center gap-1"
-                title="بدء تصميم فارغ جديد"
+                title="بدء تصميم فارغ جديد (البدء من الصفر)"
                 type="button"
-                onClick={() => {
-                  setDesignId(null);
-                  setBatchMap({});
-                  setTitle('');
-                  setSelection([]);
-                  apply(emptyCanvas(SIZE_PRESETS[1]!.size));
-                  say('بدء تصميم فارغ جديد');
-                }}
+                onClick={() => setNewBlankModalOpen(true)}
               >
                 <span className="material-symbols-outlined text-[15px]">add</span>
                 جديد
@@ -1099,7 +1169,30 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
 
           {/* الخلفية */}
           <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <h2 className="font-body-md text-body-md text-on-surface font-semibold">الخلفية والمقاس</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-body-md text-body-md text-on-surface font-semibold">
+                الخلفية والمقاس ({activeSide === 'front' ? 'الوجه' : 'الظهر'})
+              </h2>
+              {activeSide === 'back' && (
+                <button
+                  type="button"
+                  className="font-label-xs text-label-xs text-secondary hover:underline flex items-center gap-1"
+                  title="مطابقة مقاس ونزف الوجه للظهر"
+                  onClick={() => {
+                    apply({
+                      ...canvas,
+                      size: { ...history.present.size },
+                      bleed: history.present.bleed,
+                      cropMarks: history.present.cropMarks
+                    });
+                    say('تمت مطابقة مقاس الظهر مع الوجه');
+                  }}
+                >
+                  <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                  مطابقة مقاس الوجه
+                </button>
+              )}
+            </div>
             <button
               className="w-full h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
               data-act="background"
@@ -1107,7 +1200,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
               onClick={() => void openBackground()}
             >
               <span className="material-symbols-outlined text-[18px]">image</span>
-              افتح تصميمًا (صورة)
+              افتح تصميمًا (صورة {activeSide === 'front' ? 'الوجه' : 'الظهر'})
             </button>
             <button
               className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
@@ -1117,8 +1210,24 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
               onClick={() => void importDesign()}
             >
               <span className="material-symbols-outlined text-[18px]">upload_file</span>
-              استورد من Word أو Photoshop أو PDF
+              استورد {activeSide === 'front' ? 'الوجه' : 'الظهر'} (Photoshop / PDF / Word)
             </button>
+            {activeSide === 'back' && backHistory?.present && (backHistory.present.elements.length > 0 || backHistory.present.background.kind !== 'none') && (
+              <button
+                type="button"
+                className="w-full h-8 rounded-lg bg-error-container/20 text-error hover:bg-error-container/40 font-label-xs text-label-xs flex items-center justify-center gap-1 transition-colors"
+                onClick={() => {
+                  if (window.confirm('هل تريد مسح ظهر التصميم بالكامل والعودة لوجه واحد فقط؟')) {
+                    setBackHistory(null);
+                    setActiveSide('front');
+                    say('تم تفريغ الظهر — التصميم أصبح بوجه واحد');
+                  }
+                }}
+              >
+                <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
+                مسح الظهر بالكامل (العودة لوجه واحد)
+              </button>
+            )}
             <p className="font-label-sm text-label-sm text-on-surface-variant" data-size>
               المقاس {canvas.size.w.toFixed(1)} × {canvas.size.h.toFixed(1)} ملم
               {canvas.background.kind === 'image' && canvas.background.dpi
@@ -1310,6 +1419,21 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
                 + باركود
               </button>
               <button
+                className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface flex items-center gap-1 shadow-xs border border-outline-variant/60"
+                data-add="table"
+                type="button"
+                onClick={() =>
+                  add(
+                    tableElement({
+                      box: clampBox({ x: 0.08, y: 0.35, w: 0.84, h: 0.35 })
+                    })
+                  )
+                }
+              >
+                <span className="material-symbols-outlined text-[16px] text-secondary">table_chart</span>
+                <span>+ جدول</span>
+              </button>
+              <button
                 className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface"
                 data-add="shape"
                 type="button"
@@ -1458,6 +1582,177 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
                 </select>
               )}
 
+              {single.kind === 'table' && (
+                <div className="space-y-space-sm pt-2 border-t border-outline-variant/60" data-table-inspector="">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-sm text-label-sm text-on-surface font-semibold">
+                      صفوف وأعمدة الجدول
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high font-label-xs text-label-xs text-on-surface"
+                        title="إضافة صف جديد"
+                        type="button"
+                        onClick={() => {
+                          const newRow = single.columns.map(() => ({ text: '' }));
+                          patchElement(single.id, { rows: [...single.rows, newRow] });
+                        }}
+                      >
+                        + صف ({single.rows.length})
+                      </button>
+                      <button
+                        className="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high font-label-xs text-label-xs text-on-surface disabled:opacity-40"
+                        title="حذف آخر صف"
+                        type="button"
+                        disabled={single.rows.length <= 1}
+                        onClick={() => {
+                          patchElement(single.id, { rows: single.rows.slice(0, -1) });
+                        }}
+                      >
+                        - صف
+                      </button>
+                      <button
+                        className="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high font-label-xs text-label-xs text-on-surface"
+                        title="إضافة عمود جديد"
+                        type="button"
+                        onClick={() => {
+                          const newCols = [...single.columns, { title: 'عمود', widthPercent: 20, align: 'center' as const }];
+                          const newRows = single.rows.map((r) => [...r, { text: '' }]);
+                          patchElement(single.id, { columns: newCols, rows: newRows });
+                        }}
+                      >
+                        + عمود ({single.columns.length})
+                      </button>
+                      <button
+                        className="h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high font-label-xs text-label-xs text-on-surface disabled:opacity-40"
+                        title="حذف آخر عمود"
+                        type="button"
+                        disabled={single.columns.length <= 1}
+                        onClick={() => {
+                          const newCols = single.columns.slice(0, -1);
+                          const newRows = single.rows.map((r) => r.slice(0, -1));
+                          patchElement(single.id, { columns: newCols, rows: newRows });
+                        }}
+                      >
+                        - عمود
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* إعدادات المظهر والخط */}
+                  <div className="flex items-center gap-space-sm flex-wrap p-2 bg-surface-container-low rounded-lg border border-outline-variant/60">
+                    <label className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant">
+                      الخط
+                      <input
+                        className="w-14 h-7 px-1 rounded bg-surface-container-lowest border border-outline-variant text-center tabular font-label-xs text-label-xs"
+                        inputMode="numeric"
+                        value={single.fontSize ?? 10}
+                        onChange={(e) => patchElement(single.id, { fontSize: Number(e.target.value) || single.fontSize })}
+                      />
+                      نقطة
+                    </label>
+                    <label className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant">
+                      الترويسة
+                      <input
+                        className="w-14 h-7 px-1 rounded bg-surface-container-lowest border border-outline-variant text-center tabular font-label-xs text-label-xs"
+                        inputMode="numeric"
+                        value={single.headerFontSize ?? 11}
+                        onChange={(e) => patchElement(single.id, { headerFontSize: Number(e.target.value) || single.headerFontSize })}
+                      />
+                    </label>
+                    <label className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={single.stripe ?? false}
+                        onChange={(e) => patchElement(single.id, { stripe: e.target.checked })}
+                      />
+                      تخطيط مقلم
+                    </label>
+                    <div className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant">
+                      <span>الترويسة</span>
+                      <input
+                        type="color"
+                        className="w-7 h-7 rounded border border-outline-variant bg-surface-container-lowest cursor-pointer"
+                        value={toHexColor(single.headerBg ?? '#f1f5f9')}
+                        onChange={(e) => patchElement(single.id, { headerBg: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant">
+                      <span>الحدود</span>
+                      <input
+                        type="color"
+                        className="w-7 h-7 rounded border border-outline-variant bg-surface-container-lowest cursor-pointer"
+                        value={toHexColor(single.borderColor ?? '#cbd5e1')}
+                        onChange={(e) => patchElement(single.id, { borderColor: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* تعديل عناوين الأعمدة */}
+                  <div className="space-y-1">
+                    <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">عناوين الأعمدة:</span>
+                    <div className="grid gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-surface-container-low rounded-lg border border-outline-variant/60">
+                      {single.columns.map((col, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5">
+                          <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{idx + 1}</span>
+                          <input
+                            className="flex-1 h-7 px-2 rounded bg-surface-container-lowest border border-outline-variant font-label-xs text-label-xs text-on-surface"
+                            value={col.title}
+                            placeholder={`عمود ${idx + 1}`}
+                            onChange={(e) => {
+                              const nextCols = [...single.columns];
+                              nextCols[idx] = { ...col, title: e.target.value };
+                              patchElement(single.id, { columns: nextCols });
+                            }}
+                          />
+                          <select
+                            className="h-7 px-1 rounded bg-surface-container-lowest border border-outline-variant font-label-xs text-label-xs text-on-surface"
+                            value={col.align ?? 'center'}
+                            onChange={(e) => {
+                              const nextCols = [...single.columns];
+                              nextCols[idx] = { ...col, align: e.target.value as 'right' | 'center' | 'left' };
+                              patchElement(single.id, { columns: nextCols });
+                            }}
+                          >
+                            <option value="right">يمين</option>
+                            <option value="center">وسط</option>
+                            <option value="left">يسار</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* تعديل خلايا الصفوف */}
+                  <div className="space-y-1">
+                    <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">محتويات الخلايا (أو وسوم مثل {'{الاسم}'}):</span>
+                    <div className="max-h-48 overflow-auto p-1.5 bg-surface-container-low rounded-lg border border-outline-variant/60 space-y-1">
+                      {single.rows.map((row, rIdx) => (
+                        <div key={rIdx} className="flex items-center gap-1">
+                          <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{rIdx + 1}</span>
+                          {row.map((cell, cIdx) => (
+                            <input
+                              key={cIdx}
+                              className="flex-1 min-w-[50px] h-7 px-1.5 rounded bg-surface-container-lowest border border-outline-variant font-label-xs text-label-xs text-on-surface"
+                              value={cell.text}
+                              placeholder={single.columns[cIdx]?.title || `خ ${cIdx + 1}`}
+                              onChange={(e) => {
+                                const nextRows = single.rows.map((r, ri) =>
+                                  ri === rIdx
+                                    ? r.map((c, ci) => (ci === cIdx ? { ...c, text: e.target.value } : c))
+                                    : r
+                                );
+                                patchElement(single.id, { rows: nextRows });
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1503,13 +1798,58 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
         {/* ── اللوحة ───────────────────────────────────────────────── */}
         <section className="flex-1 flex flex-col min-w-0">
           <div className="h-14 px-space-lg flex items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest overflow-x-auto">
+            {/* مبدل الوجه والظهر */}
+            <div className="flex items-center bg-surface-container-low p-0.5 rounded-lg border border-outline-variant shrink-0" data-side-tabs="">
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-md font-label-sm text-label-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                  activeSide === 'front'
+                    ? 'bg-primary text-on-primary shadow-xs'
+                    : 'text-on-surface hover:bg-surface-container-high'
+                }`}
+                onClick={() => {
+                  setActiveSide('front');
+                  setSelection([]);
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">id_card</span>
+                <span>الوجه</span>
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 rounded-md font-label-sm text-label-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                  activeSide === 'back'
+                    ? 'bg-primary text-on-primary shadow-xs'
+                    : 'text-on-surface hover:bg-surface-container-high'
+                }`}
+                onClick={() => {
+                  if (!backHistory) {
+                    setBackHistory(startCanvasHistory(emptyCanvas(history.present.size, history.present.bleed)));
+                  }
+                  setActiveSide('back');
+                  setSelection([]);
+                }}
+              >
+                <span className="material-symbols-outlined text-[16px]">sync_alt</span>
+                <span>الظهر</span>
+                {backHistory?.present && (backHistory.present.elements.length > 0 || backHistory.present.background.kind !== 'none') && (
+                  <span className="w-2 h-2 rounded-full bg-secondary inline-block ring-1 ring-white" title="الظهر يحتوي عناصر أو خلفية" />
+                )}
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-outline-variant shrink-0" />
+
             <div className="flex items-center gap-1 shrink-0">
               <button
                 className={TOOL}
                 data-undo
                 title="تراجع (Ctrl+Z)"
                 type="button"
-                onClick={() => setHistory(undoCanvas)}
+                onClick={() => {
+                  if (activeSide === 'front') setHistory(undoCanvas);
+                  else setBackHistory((h) => (h ? undoCanvas(h) : h));
+                }}
               >
                 <span className="material-symbols-outlined text-[18px]">undo</span>
               </button>
@@ -1517,7 +1857,10 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
                 className={TOOL}
                 title="إعادة (Ctrl+Y)"
                 type="button"
-                onClick={() => setHistory(redoCanvas)}
+                onClick={() => {
+                  if (activeSide === 'front') setHistory(redoCanvas);
+                  else setBackHistory((h) => (h ? redoCanvas(h) : h));
+                }}
               >
                 <span className="material-symbols-outlined text-[18px]">redo</span>
               </button>
@@ -1835,7 +2178,7 @@ export default function DesignsScreen({ request, onChanged }: DesignsScreenProps
         <SheetsPreview
           busy={busy}
           cards={items.length}
-          duplex={Boolean(backDoc)}
+          duplex={Boolean(effectiveBackDoc)}
           issues={issues}
           options={
             <>

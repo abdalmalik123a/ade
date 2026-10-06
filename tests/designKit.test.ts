@@ -16,8 +16,8 @@ import { luminance } from '../src/shared/designKit/color';
 const royal = PALETTES[0]!;
 
 describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => {
-  it('اثنا عشر نوعًا بخمسة أنماط — ستّون تصميمًا يُبنى كلٌّ منها', () => {
-    expect(KINDS).toHaveLength(12);
+  it('ستّة عشر نوعًا بخمسة أنماط — ثمانون تصميمًا يُبنى كلٌّ منها', () => {
+    expect(KINDS).toHaveLength(16);
     expect(STYLES).toHaveLength(5);
     for (const kind of KINDS)
       for (const style of STYLES) {
@@ -31,6 +31,16 @@ describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => 
         // يُحفظ داخل الوثيقة — فحجمه كيلوبايتات لا ميغابايتات.
         expect([id, src.length < 120_000]).toEqual([id, true]);
       }
+  });
+
+  it('ولا نوعٌ ماليّ، والباركود على البطاقات وحدها (قرار المالك)', () => {
+    // ديوان ليس برنامجًا ماليًّا: لا وصل مبيعات ولا سند قبض ولا فاتورة في المعرض.
+    expect(KINDS.filter((k) => /وصل|سند|فاتور|مبيعات|قبض/.test(`${k.title} ${k.group}`)).map((k) => k.key)).toEqual([]);
+    for (const kind of KINDS) {
+      const canvas = buildDesign({ kind: kind.key, style: 'official', palette: royal });
+      const coded = canvas.elements.some((e) => e.kind === 'barcode');
+      if (kind.family !== 'card') expect([kind.key, coded]).toEqual([kind.key, false]);
+    }
   });
 
   it('وتُبنى مرّتين فتتطابقان — لا عشوائيّة، حتى قصاصات الأطفال', () => {

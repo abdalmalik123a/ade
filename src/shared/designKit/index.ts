@@ -13,12 +13,13 @@ import {
   canvasDoc,
   emptyCanvas,
   imageElement,
+  tableElement,
   textElement,
   type Canvas,
   type CanvasElement
 } from '../canvas';
 import { reconcileFields, tokenInlines, type Doc } from '../doc';
-import { PALETTES, paletteFrom, type Palette } from './color';
+import { PALETTES, paletteFrom, luminance, type Palette } from './color';
 import { KINDS, SAMPLE, kindOf, type Decor, type KindSpec, type Rect } from './kinds';
 import { U, ctxOf, n } from './ornaments';
 import { STYLES, styleOf, type Style, type StyleCtx } from './styles';
@@ -64,7 +65,13 @@ export function backgroundSvg(kind: KindSpec, style: Style, p: Palette, logo = f
   const defs = new Set<string>();
   const parts: string[] = [];
 
-  const frame = style.frame(c, [layout.calm, ...layout.texts.map((t) => t.at), ...layout.images.map((i) => i.at)]);
+  const keepZones = [
+    layout.calm,
+    ...layout.texts.map((t) => t.at),
+    ...layout.images.map((i) => i.at),
+    ...(layout.tables ?? []).map((t) => t.at)
+  ];
+  const frame = style.frame(c, keepZones);
   if (frame.defs) defs.add(frame.defs);
 
   const decor = (d: Decor) => {
@@ -144,6 +151,35 @@ export function buildDesign({ kind: kindKey, style: styleKey, palette, brand }: 
   }
   for (const code of layout.codes ?? []) {
     elements.push(barcodeElement({ box: toBox(code.at), ref: code.ref, z: z++, name: `باركود {${code.ref}}` }));
+  }
+  for (const tbl of layout.tables ?? []) {
+    const bakedRows = tbl.rows.map((row) =>
+      row.map((cell) => ({
+        ...cell,
+        text: bake(cell.text)
+      }))
+    );
+    const headerBg = tbl.headerBg ?? palette.primary;
+    const headerColor = luminance(headerBg) > 0.55 ? palette.ink : '#ffffff';
+    const isDarkPaper = luminance(style.paper(palette)) < 0.4;
+    elements.push(
+      tableElement({
+        box: toBox(tbl.at),
+        columns: tbl.columns,
+        rows: bakedRows,
+        headerBg,
+        headerColor,
+        borderColor: tbl.borderColor ?? (isDarkPaper ? '#475569' : '#cbd5e1'),
+        borderWidth: 1,
+        fontSize: tbl.fontSize ?? 10,
+        headerFontSize: (tbl.fontSize ?? 10) + 1,
+        stripe: tbl.stripe ?? true,
+        stripeBg: isDarkPaper ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+        font: style.type('body', palette, kind.family).font,
+        z: z++,
+        name: tbl.name ?? (tbl.columns[0]?.title ? `جدول ${tbl.columns[0].title}` : 'جدول')
+      })
+    );
   }
   canvas.elements = elements;
   return canvas;

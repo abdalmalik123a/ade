@@ -14,6 +14,7 @@ import {
   mmToPx,
   normalizeCanvas,
   ptToPx,
+  tableElement,
   textElement,
   topZ
 } from '../src/shared/canvas';
@@ -206,5 +207,87 @@ describe('ما حُفظ يُقرأ، وما فسد يُردّ إلى حدّه', 
   it('ووثيقةٌ متدفّقة لا تحمل لوحة', () => {
     const doc = normalizeDoc({ kind: 'flow', blocks: [], fields: [] });
     expect(doc.canvas).toBeUndefined();
+  });
+
+  it('عنصر الجدول: يُبنى ويُستخرج نصّه وحقوله ويُرسم في HTML', () => {
+    const table = tableElement({
+      box: { x: 0.1, y: 0.2, w: 0.8, h: 0.5 },
+      columns: [
+        { title: 'ت', widthPercent: 10, align: 'center' },
+        { title: 'الطالب', widthPercent: 50, align: 'right' },
+        { title: 'الدرجة', widthPercent: 40, align: 'center' }
+      ],
+      rows: [
+        [{ text: '١' }, { text: 'زينب علي حسين' }, { text: '٩٥' }],
+        [{ text: '٢' }, { text: 'حسين كريم جاسم' }, { text: '{الدرجة}' }]
+      ]
+    });
+    expect(table.kind).toBe('table');
+    expect(table.columns).toHaveLength(3);
+
+    const canvas = emptyCanvas(ID_CARD);
+    canvas.elements = [table];
+
+    // استخراج المفاتيح
+    const keys = canvasKeys(canvas);
+    expect(keys).toContain('الدرجة');
+
+    // استخراج النص
+    const text = canvasText(canvas, { الدرجة: '٨٨' });
+    expect(text).toContain('زينب علي حسين');
+    expect(text).toContain('٨٨');
+
+    // الرسم
+    const doc = canvasDoc(canvas);
+    const html = renderCanvasHtml(doc, { الدرجة: '٨٨' }, { dpi: 96 });
+    expect(html).toContain('<table');
+    expect(html).toContain('زينب علي حسين');
+    expect(html).toContain('٨٨');
+    expect(html).toContain('<th');
+  });
+
+  it('الجدول الجديد بلا أعمدةٍ مالية: تسلسلٌ وبيانٌ وملاحظات', () => {
+    const table = tableElement({ box: { x: 0.1, y: 0.2, w: 0.8, h: 0.5 } });
+    expect(table.columns.map((c) => c.title)).toEqual(['ت', 'البيان', 'ملاحظات']);
+    expect(table.rows.every((r) => r.length === table.columns.length)).toBe(true);
+  });
+
+  it('الوثيقة ذات الوجهين: تحمل لوحة الوجه ولوحة الظهر وتُقوَّم وتُستخرج حقولهما معًا', () => {
+    const front = emptyCanvas(ID_CARD);
+    front.elements = [textElement({ box: { x: 0.1, y: 0.1, w: 0.8, h: 0.2 }, inlines: [fieldRef('اسم الزبون')] })];
+
+    const back = emptyCanvas(ID_CARD);
+    back.elements = [textElement({ box: { x: 0.1, y: 0.1, w: 0.8, h: 0.2 }, inlines: [fieldRef('تعليمات الظهر')] })];
+
+    const rawDoc = {
+      kind: 'canvas',
+      canvas: front,
+      backCanvas: back
+    };
+    const doc = normalizeDoc(rawDoc);
+    expect(doc.canvas).toBeDefined();
+    expect(doc.backCanvas).toBeDefined();
+    expect(doc.canvas?.elements).toHaveLength(1);
+    expect(doc.backCanvas?.elements).toHaveLength(1);
+
+    const keys = usedKeys(doc);
+    expect(keys).toContain('اسم الزبون');
+    expect(keys).toContain('تعليمات الظهر');
+  });
+
+  it('المقاسات المعيارية: تشمل كروت العمل وثلث A4 والباجات العمودية وتعرّف أبعادها ونزفها بدقة', () => {
+    const keys = SIZE_PRESETS.map((p) => p.key);
+    expect(keys).toContain('business-card');
+    expect(keys).toContain('a4-third');
+    expect(keys).toContain('badge-portrait');
+
+    const business = SIZE_PRESETS.find((p) => p.key === 'business-card')!;
+    expect(business.size).toEqual({ w: 90, h: 50 });
+    expect(business.bleed).toBe(true);
+
+    const third = SIZE_PRESETS.find((p) => p.key === 'a4-third')!;
+    expect(third.size).toEqual({ w: 210, h: 99 });
+    // ولا مقاسٌ يحمل اسم وصلٍ أو فاتورة — ديوان ليس برنامجًا ماليًّا.
+    expect(SIZE_PRESETS.some((p) => /وصل|فاتورة|مبيعات/.test(p.label))).toBe(false);
   });
 });

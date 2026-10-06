@@ -43,11 +43,14 @@ export type SizePreset = {
  * ولم يُخمَّن.
  */
 export const SIZE_PRESETS: SizePreset[] = [
-  { key: 'id-card', label: 'هوية CR80', size: { w: 85.6, h: 54 }, bleed: true },
+  { key: 'id-card', label: 'هوية CR80 (85.6 × 54)', size: { w: 85.6, h: 54 }, bleed: true },
   { key: 'a4-landscape', label: 'شهادة A4 أفقي', size: { w: 297, h: 210 }, bleed: false },
   { key: 'a4-portrait', label: 'ملصق A4 عمودي', size: { w: 210, h: 297 }, bleed: false },
   { key: 'a5-portrait', label: 'دعوة A5', size: { w: 148, h: 210 }, bleed: true },
   { key: 'a5-landscape', label: 'دعوة A5 أفقي', size: { w: 210, h: 148 }, bleed: true },
+  { key: 'business-card', label: 'كرت عمل / شخصي (90 × 50)', size: { w: 90, h: 50 }, bleed: true },
+  { key: 'a4-third', label: 'ثلث A4 (210 × 99)', size: { w: 210, h: 99 }, bleed: false },
+  { key: 'badge-portrait', label: 'باج هوية عمودي (54 × 85.6)', size: { w: 54, h: 85.6 }, bleed: true },
   { key: 'a3-portrait', label: 'لوحة شرف A3', size: { w: 297, h: 420 }, bleed: false }
 ];
 
@@ -133,11 +136,40 @@ export type ShapeElement = ElementBase & {
   radius?: number;
 };
 
+export type TableCell = {
+  text: string;
+  field?: string;
+  align?: 'right' | 'center' | 'left';
+  bold?: boolean;
+};
+
+export type TableColumn = {
+  title: string;
+  widthPercent: number;
+  align?: 'right' | 'center' | 'left';
+};
+
+export type TableElement = ElementBase & {
+  kind: 'table';
+  columns: TableColumn[];
+  rows: TableCell[][];
+  headerBg?: string;
+  headerColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  fontSize?: number;
+  headerFontSize?: number;
+  font?: string;
+  stripe?: boolean;
+  stripeBg?: string;
+};
+
 export type CanvasElement =
   | TextElement
   | ImageElement
   | BarcodeElement
-  | ShapeElement;
+  | ShapeElement
+  | TableElement;
 
 export type Background =
   | { kind: 'none' }
@@ -182,7 +214,7 @@ export function topZ(elements: CanvasElement[]): number {
   return elements.reduce((max, el) => Math.max(max, el.z), 0);
 }
 
-/** مفاتيح الحقول المستعملة في اللوحة — نصًّا وصورةً وباركودًا. */
+/** مفاتيح الحقول المستعملة في اللوحة — نصًّا وصورةً وباركودًا وجدولاً. */
 export function canvasKeys(canvas: Canvas): string[] {
   const seen = new Set<string>();
   for (const el of canvas.elements) {
@@ -190,6 +222,14 @@ export function canvasKeys(canvas: Canvas): string[] {
       for (const node of el.inlines) if (node.kind === 'field') seen.add(node.ref);
     } else if ((el.kind === 'image' || el.kind === 'barcode') && el.ref) {
       seen.add(el.ref);
+    } else if (el.kind === 'table') {
+      for (const row of el.rows) {
+        for (const cell of row) {
+          if (cell.field) seen.add(cell.field);
+          const matches = cell.text.matchAll(/\{([^{}]+)\}/g);
+          for (const m of matches) if (m[1]?.trim()) seen.add(m[1].trim());
+        }
+      }
     }
   }
   return [...seen];
@@ -197,17 +237,29 @@ export function canvasKeys(canvas: Canvas): string[] {
 
 /** نصّ اللوحة مجرّدًا — للبحث والبصمة، كما يفعل `docText` بالمتن. */
 export function canvasText(canvas: Canvas, values: Record<string, string> = {}): string {
-  return byLayer(canvas.elements)
-    .filter((el): el is TextElement => el.kind === 'text')
-    .map((el) =>
-      el.inlines
+  const lines: string[] = [];
+  for (const el of byLayer(canvas.elements)) {
+    if (el.kind === 'text') {
+      const line = el.inlines
         .map((n) =>
           n.kind === 'run' ? n.text : n.kind === 'break' ? ' ' : (values[n.ref] ?? `{${n.ref}}`)
         )
-        .join('')
-    )
-    .filter((line) => line.trim())
-    .join('\n');
+        .join('');
+      if (line.trim()) lines.push(line);
+    } else if (el.kind === 'table') {
+      for (const row of el.rows) {
+        const rowStr = row
+          .map((c) => {
+            let val = c.field ? (values[c.field] ?? `{${c.field}}`) : c.text;
+            val = val.replace(/\{([^{}]+)\}/g, (_m, k: string) => values[k.trim()] ?? `{${k.trim()}}`);
+            return val;
+          })
+          .join(' | ');
+        if (rowStr.trim()) lines.push(rowStr);
+      }
+    }
+  }
+  return lines.join('\n');
 }
 
 // ── البناء ───────────────────────────────────────────────────────────
@@ -265,6 +317,37 @@ export function shapeElement(patch: Partial<ShapeElement> & { box: Box }): Shape
   return { id: newUuid(), kind: 'shape', shape: 'rect', z: 1, ...patch };
 }
 
+/** جدولٌ جديد: تسلسلٌ وبيانٌ وملاحظات — والمكتب يسمّي أعمدته لما يريد. */
+const defaultTableColumns = (): TableColumn[] => [
+  { title: 'ت', widthPercent: 12, align: 'center' },
+  { title: 'البيان', widthPercent: 58, align: 'right' },
+  { title: 'ملاحظات', widthPercent: 30, align: 'center' }
+];
+const defaultTableRows = (): TableCell[][] => [
+  [{ text: '١' }, { text: '' }, { text: '' }],
+  [{ text: '٢' }, { text: '' }, { text: '' }],
+  [{ text: '٣' }, { text: '' }, { text: '' }]
+];
+
+export function tableElement(patch: Partial<TableElement> & { box: Box }): TableElement {
+  return {
+    id: newUuid(),
+    kind: 'table',
+    z: 1,
+    dir: 'rtl',
+    columns: defaultTableColumns(),
+    rows: defaultTableRows(),
+    headerBg: '#f1f5f9',
+    headerColor: '#0f172a',
+    borderColor: '#cbd5e1',
+    borderWidth: 1,
+    fontSize: 10,
+    headerFontSize: 11,
+    stripe: false,
+    ...patch
+  };
+}
+
 // ── التقويم ──────────────────────────────────────────────────────────
 
 const num = (v: unknown, fallback: number): number =>
@@ -287,7 +370,7 @@ export function clampBox(box: Box): Box {
  * فالرسمة المحفوظة تصير صورةً بمحتواها نفسه — لا يتغيّر شكل تصميمٍ حُفظ —
  * وعنصر الويب يسقط، إذ لا يُرسم إلا بتنفيذ كودٍ لم يعد البرنامج يقبله.
  */
-const ELEMENT_KINDS = new Set(['text', 'image', 'barcode', 'shape', 'svg']);
+const ELEMENT_KINDS = new Set(['text', 'image', 'barcode', 'shape', 'svg', 'table']);
 
 /** رسمة SVG صورةً مضمَّنة — والرموز بعد التشفير لا تكسر السمة. */
 function svgImageSrc(svg: string): string {
@@ -395,6 +478,46 @@ function normalizeElement(raw: unknown, index: number): CanvasElement | null {
         stroke: typeof raw.stroke === 'string' ? raw.stroke : undefined,
         strokeWidth: typeof raw.strokeWidth === 'number' ? raw.strokeWidth : undefined,
         radius: typeof raw.radius === 'number' ? raw.radius : undefined
+      };
+    }
+    case 'table': {
+      const rawCols = Array.isArray(raw.columns) ? raw.columns : [];
+      const columns: TableColumn[] = rawCols.map((c, ci) => ({
+        title: isObj(c) && typeof c.title === 'string' ? c.title : `عمود ${ci + 1}`,
+        widthPercent: isObj(c) && typeof c.widthPercent === 'number' ? c.widthPercent : 100 / Math.max(1, rawCols.length),
+        align: isObj(c) && (c.align === 'center' || c.align === 'left' || c.align === 'right') ? c.align : 'center'
+      }));
+      const rawRows = Array.isArray(raw.rows) ? raw.rows : [];
+      const rows: TableCell[][] = rawRows.map((r) =>
+        Array.isArray(r)
+          ? r.map((c) => ({
+              text: isObj(c) && typeof c.text === 'string' ? c.text : typeof c === 'string' ? c : '',
+              field: isObj(c) && typeof c.field === 'string' ? c.field : undefined,
+              align: isObj(c) && (c.align === 'center' || c.align === 'left' || c.align === 'right') ? c.align : undefined,
+              bold: isObj(c) && c.bold === true ? true : undefined
+            }))
+          : []
+      );
+      return {
+        id,
+        kind: 'table',
+        name,
+        box,
+        z,
+        locked,
+        rotate,
+        dir,
+        columns: columns.length ? columns : defaultTableColumns(),
+        rows: rows.length ? rows : defaultTableRows(),
+        headerBg: typeof raw.headerBg === 'string' ? raw.headerBg : '#f1f5f9',
+        headerColor: typeof raw.headerColor === 'string' ? raw.headerColor : '#0f172a',
+        borderColor: typeof raw.borderColor === 'string' ? raw.borderColor : '#cbd5e1',
+        borderWidth: typeof raw.borderWidth === 'number' ? raw.borderWidth : 1,
+        fontSize: typeof raw.fontSize === 'number' ? raw.fontSize : 10,
+        headerFontSize: typeof raw.headerFontSize === 'number' ? raw.headerFontSize : 11,
+        font: typeof raw.font === 'string' ? raw.font : undefined,
+        stripe: raw.stripe === true,
+        stripeBg: typeof raw.stripeBg === 'string' ? raw.stripeBg : '#f8fafc'
       };
     }
     default:

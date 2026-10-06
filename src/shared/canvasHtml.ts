@@ -16,6 +16,7 @@ import {
   ptToPx,
   type Canvas,
   type CanvasElement,
+  type TableElement,
   type TextElement
 } from './canvas';
 import type { Doc, DocField, Inline } from './doc';
@@ -178,6 +179,64 @@ function textHtml(
   return `<div dir="${el.dir ?? 'rtl'}" style="${style}"><span style="width:100%">${inner}</span></div>`;
 }
 
+function tableHtml(
+  el: TableElement,
+  canvas: Canvas,
+  values: Record<string, string>,
+  fields: Map<string, DocField>,
+  opts: Required<Omit<CanvasRenderOptions, 'imageUrl'>>
+): string {
+  const borderPx = Math.max(1, Math.round((el.borderWidth ?? 1) * (opts.dpi / 96)));
+  const borderColor = el.borderColor ?? '#cbd5e1';
+  const borderStyle = `${borderPx}px solid ${borderColor}`;
+  const fontSizePx = ptToPx(el.fontSize ?? 10, opts.dpi);
+  const headerFontSizePx = ptToPx(el.headerFontSize ?? 11, opts.dpi);
+  const headerBg = el.headerBg ?? '#f1f5f9';
+  const headerColor = el.headerColor ?? '#0f172a';
+  const fontFam = el.font ? `font-family:${el.font};` : '';
+
+  const ths = el.columns
+    .map(
+      (col) =>
+        `<th style="border:${borderStyle};background:${headerBg};color:${headerColor};padding:4px 6px;text-align:${col.align ?? 'center'};width:${col.widthPercent}%;font-size:${headerFontSizePx.toFixed(1)}px;font-weight:700">${escapeHtml(col.title)}</th>`
+    )
+    .join('');
+
+  const trs = el.rows
+    .map((row, ri) => {
+      const bg = el.stripe && ri % 2 === 1 ? `background:${el.stripeBg ?? '#f8fafc'};` : '';
+      const tds = row
+        .map((cell, ci) => {
+          const col = el.columns[ci];
+          const align = cell.align ?? col?.align ?? 'center';
+          let val = cell.field ? (values[cell.field] ?? `{${cell.field}}`) : cell.text;
+          val = val.replace(/\{([^{}]+)\}/g, (_m, k: string) => values[k.trim()] ?? `{${k.trim()}}`);
+          const weight = cell.bold ? 'font-weight:700;' : '';
+          return `<td style="border:${borderStyle};padding:4px 6px;text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(val)}</td>`;
+        })
+        .join('');
+      return `<tr style="${bg}">${tds}</tr>`;
+    })
+    .join('');
+
+  const style = [
+    boxStyle(el, canvas, opts.dpi),
+    'display:block',
+    'overflow:hidden',
+    fontFam
+  ]
+    .filter(Boolean)
+    .join(';');
+
+  return (
+    `<div dir="${el.dir ?? 'rtl'}" style="${style}">` +
+    `<table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">` +
+    `<thead><tr>${ths}</tr></thead>` +
+    `<tbody>${trs}</tbody>` +
+    `</table></div>`
+  );
+}
+
 /**
  * يرسم اللوحة بقيمها.
  *
@@ -244,6 +303,8 @@ export function renderCanvasHtml(
             : '';
           return `<div style="${boxStyle(el, canvas, opts.dpi)};background:${el.fill ?? 'transparent'}${border}${radius}"></div>`;
         }
+        case 'table':
+          return tableHtml(el, canvas, values, fields, opts);
       }
     })
     .join('');

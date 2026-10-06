@@ -90,15 +90,26 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('للتصاميم بطاقةٌ في الشبّاك تفتحها', (await page.eval(`return Boolean(document.querySelector('[data-cards] [data-card="designs"]'));`)) && text.includes('لمن؟'));
   ok('تبدأ بالمعرض: «لمن؟» ثم اللون والنمط', text.includes('لمن؟') && text.includes('النمط'));
 
-  // ── المعرض: اثنا عشر نوعًا حيّةً بعيّنة، لا صناديق فارغة ─────────────
+  // ── المعرض: ستّة عشر نوعًا حيّةً بعيّنة، لا صناديق فارغة ─────────────
   await wait(1200);
   const gallery = await page.eval(`return document.querySelectorAll('[data-kind]').length;`);
-  ok('والمعرض اثنا عشر نوعًا', gallery === 12);
+  ok('والمعرض ستّة عشر نوعًا', gallery === 16);
   ok('ولمحاتُها تصاميم مرسومة بعيّنةٍ لا وسوم', await page.eval(`
     const thumbs = document.querySelectorAll('[data-kind] [data-canvas]');
     const text = [...thumbs].map((t) => t.innerText).join(' ');
-    return thumbs.length === 12 && text.includes('زينب علي حسين') && !text.includes('{الاسم}');
+    return thumbs.length === 16 && text.includes('زينب علي حسين') && !/\\{[^{}]+\\}/.test(text);
   `));
+  ok('ولا وصل ولا سند ولا فاتورة في المعرض — ديوان ليس ماليًّا', !(await page.text()).match(/وصل مبيعات|سند قبض|فواتير/));
+  // «لوحة بيضاء فارغة»: تُفتح نافذة المقاس، والمقاس يُختار فتُبدأ لوحةٌ بمقاسه.
+  await page.eval(`document.querySelector('[data-act="blank-card"]').click()`);
+  await wait(400);
+  ok('«لوحة بيضاء» تسأل عن المقاس أوّلًا', (await page.text()).includes('اختر مقاس الورق أو المطبوع'));
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('كرت عمل'))?.click()`);
+  await page.eval(`[...document.querySelectorAll('button[type="submit"]')].find((b) => b.textContent.includes('اللوحة البيضاء'))?.click()`);
+  await wait(500);
+  ok('وتُبدأ اللوحة بالمقاس المختار (٩٠ × ٥٠)', (await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`)).includes('90.0 × 50.0'));
+  await page.eval(`document.querySelector('[data-act="gallery"]')?.click(); return true;`);
+  await wait(900);
   const thumbBefore = await page.eval(`return document.querySelector('[data-kind="thanks"] [data-canvas] img').src.length;`);
   await page.eval(`document.querySelector('[data-style="islamic"]').click()`);
   await wait(600);

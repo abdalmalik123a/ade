@@ -102,6 +102,11 @@ module.exports = {
                       "IBM Plex Sans",
                       "sans-serif"
                 ],
+                "label-xs": [
+                      "IBM Plex Sans Arabic",
+                      "IBM Plex Sans",
+                      "sans-serif"
+                ],
                 "body-md": [
                       "IBM Plex Sans Arabic",
                       "IBM Plex Sans",
@@ -169,6 +174,14 @@ module.exports = {
                             "fontWeight": "600"
                       }
                 ],
+                // أصغر الأوسمة (عدّاد صغير، شرح تحت خانة) — وكانت الشاشات تكتب `label-xs` ولا تعريف له فيُهمل.
+                "label-xs": [
+                      "10px",
+                      {
+                            "lineHeight": "14px",
+                            "fontWeight": "500"
+                      }
+                ],
                 "body-md": [
                       "14px",
                       {
@@ -211,6 +224,13 @@ module.exports = {
                             "fontWeight": "400"
                       }
                 ]
+          },
+          // `shadow-xs` و`backdrop-blur-xs` من Tailwind 4 — وهنا Tailwind 3: بلا تعريفهما يُهملان صامتين.
+          "boxShadow": {
+                "xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+          },
+          "backdropBlur": {
+                "xs": "4px"
           }
     }
   },

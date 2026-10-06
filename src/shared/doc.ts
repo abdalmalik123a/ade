@@ -380,6 +380,8 @@ export type Doc = {
    * وبنيتها في `shared/canvas.ts`.
    */
   canvas?: Canvas;
+  /** ظهر اللوحة — للبطاقات والهويات ذات الوجهين (Two-Sided Cards & IDs). */
+  backCanvas?: Canvas;
   /** ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
   fields: DocField[];
   meta: {
@@ -463,11 +465,22 @@ export function usedKeys(doc: Doc): string[] {
     for (const i of blockInlines(b)) if (i.kind === 'field') seen.add(i.ref);
     if (b.kind === 'group' && b.on) seen.add(b.on);
   }
-  for (const el of doc.canvas?.elements ?? []) {
-    if (el.kind === 'text') {
-      for (const node of el.inlines) if (node.kind === 'field') seen.add(node.ref);
-    } else if ((el.kind === 'image' || el.kind === 'barcode') && el.ref) {
-      seen.add(el.ref);
+  const canvases = [doc.canvas, doc.backCanvas].filter(Boolean) as Canvas[];
+  for (const c of canvases) {
+    for (const el of c.elements) {
+      if (el.kind === 'text') {
+        for (const node of el.inlines) if (node.kind === 'field') seen.add(node.ref);
+      } else if ((el.kind === 'image' || el.kind === 'barcode') && el.ref) {
+        seen.add(el.ref);
+      } else if (el.kind === 'table') {
+        for (const row of el.rows) {
+          for (const cell of row) {
+            if (cell.field) seen.add(cell.field);
+            const matches = cell.text.matchAll(/\{([^{}]+)\}/g);
+            for (const m of matches) if (m[1]?.trim()) seen.add(m[1].trim());
+          }
+        }
+      }
     }
   }
   return [...seen];
@@ -584,8 +597,14 @@ export function docText(doc: Doc, values: Record<string, string> = {}): string {
   }
 
   // ونصّ اللوحة معه: الشهادة تُبحث باسم صاحبها كما يُبحث الكتاب.
-  for (const el of doc.canvas?.elements ?? []) {
-    if (el.kind === 'text') lines.push(inlineText(el.inlines));
+  const canvases = [doc.canvas, doc.backCanvas].filter(Boolean) as Canvas[];
+  for (const c of canvases) {
+    for (const el of c.elements) {
+      if (el.kind === 'text') lines.push(inlineText(el.inlines));
+      else if (el.kind === 'table') {
+        for (const r of el.rows) lines.push(r.map((cell) => cell.text).join(' | '));
+      }
+    }
   }
   return lines.join('\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -725,7 +744,10 @@ export function normalizeDoc(raw: unknown): Doc {
   };
 
   // اللوحة تُقوَّم بقواعدها: ما فسد منها يُردّ إلى حدّه ولا يُسقط الورقة.
-  if (doc.kind === 'canvas') doc.canvas = normalizeCanvas(v.canvas);
+  if (doc.kind === 'canvas') {
+    doc.canvas = normalizeCanvas(v.canvas);
+    if (v.backCanvas) doc.backCanvas = normalizeCanvas(v.backCanvas);
+  }
 
   // الحقول تتبع المتن دائمًا: ما اختفى من النصّ لا يبقى في شاشة الإدخال.
   doc.fields = reconcileFields(doc);

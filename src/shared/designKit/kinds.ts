@@ -57,6 +57,17 @@ export type Decor =
   | { t: 'seal'; cx: number; cy: number; r: number; faint?: boolean }
   | { t: 'medal'; cx: number; cy: number; r: number; rank: number };
 
+export type TableSlot = {
+  at: Rect;
+  name?: string;
+  columns: { title: string; widthPercent: number; align?: 'right' | 'center' | 'left' }[];
+  rows: { text: string; field?: string }[][];
+  headerBg?: string;
+  borderColor?: string;
+  fontSize?: number;
+  stripe?: boolean;
+};
+
 export type Layout = {
   texts: TextSlot[];
   images: ImageSlot[];
@@ -65,6 +76,7 @@ export type Layout = {
    * المدرسة أو المكتبة. ولا باركود في الكتب ولا الأسئلة ولا المعاملات.
    */
   codes?: { at: Rect; ref: string }[];
+  tables?: TableSlot[];
   decor: Decor[];
   /** منطقة النصّ الرئيسية — الزخرفة المتناثرة لا تدخلها. */
   calm: Rect;
@@ -87,6 +99,7 @@ export type KindSpec = {
 const A4L: CanvasSize = { w: 297, h: 210 };
 const A4P: CanvasSize = { w: 210, h: 297 };
 const A5P: CanvasSize = { w: 148, h: 210 };
+const A5L: CanvasSize = { w: 210, h: 148 };
 const A6L: CanvasSize = { w: 148, h: 105 };
 const CR80L: CanvasSize = { w: 85.6, h: 54 };
 const CR80P: CanvasSize = { w: 54, h: 85.6 };
@@ -128,7 +141,12 @@ export const SAMPLE: Record<string, string> = {
   الداعي: 'إدارة المدرسة والهيئة التعليمية',
   الأول: 'حسين علي عبد الأمير',
   الثاني: 'مريم أحمد صالح',
-  الثالث: 'يوسف كريم جاسم'
+  الثالث: 'يوسف كريم جاسم',
+  الدورة: 'التصميم المطبوع والنشر المكتبي',
+  الساعات: '٤٠ ساعة تدريبية',
+  التقدير: 'امتياز (٩٦٪)',
+  الفعالية: 'ملتقى بغداد للتقنيات والطباعة الحديثة',
+  الصفة: 'مشارك وباحث'
 };
 
 // ── الشهادات ─────────────────────────────────────────────────────────
@@ -374,9 +392,95 @@ function businessCard(): Layout {
   };
 }
 
+function trainingCert(): Layout {
+  return {
+    calm: [0.1, 0.18, 0.8, 0.65],
+    images: [{ at: [0.44, 0.05, 0.12, 0.14], logo: true, fit: 'contain' }],
+    decor: [
+      { t: 'seal', cx: 0.5, cy: 0.12, r: 0.09 },
+      { t: 'divider', cx: 0.5, y: 0.57, w: 0.4 },
+      { t: 'rule', x1: 0.62, x2: 0.88, y: 0.82 }
+    ],
+    texts: [
+      { text: '{الجهة}', at: [0.15, 0.2, 0.7, 0.045], role: 'org', size: 13, fit: true },
+      { text: 'شهادة إتمام دورة تدريبية', at: [0.1, 0.25, 0.8, 0.12], role: 'headline', size: 38 },
+      { text: 'يشهد المركز بأن المتدرب/ـة:', at: [0.15, 0.39, 0.7, 0.05], role: 'intro', size: 14 },
+      { text: '{الاسم}', at: [0.15, 0.44, 0.7, 0.1], role: 'name', size: 32, fit: true },
+      { text: 'قد اجتاز بنجاح الدورة التخصصية في {الدورة}', at: [0.1, 0.58, 0.8, 0.055], role: 'body', size: 14, fit: true },
+      { text: 'بواقع {الساعات} وبتقدير {التقدير}', at: [0.15, 0.64, 0.7, 0.05], role: 'accent', size: 13 },
+      { text: 'المدرب المشرف: {الموقّع}', at: [0.62, 0.83, 0.26, 0.045], role: 'meta', size: 12 },
+      { text: 'التاريخ: {التاريخ}', at: [0.12, 0.83, 0.3, 0.045], role: 'label', size: 11 }
+    ]
+  };
+}
+
+function eventBadge(): Layout {
+  return {
+    calm: [0.06, 0.6, 0.88, 0.35],
+    images: [
+      { at: [0.36, 0.04, 0.28, 0.14], logo: true, fit: 'contain' },
+      { at: [0.26, 0.34, 0.48, 0.32], ref: 'الصورة', fit: 'cover', radius: 8 }
+    ],
+    decor: [
+      { t: 'band', at: [0, 0, 1, 0.3], edge: 'bottom' },
+      { t: 'photo', at: [0.26, 0.34, 0.48, 0.32] },
+      { t: 'band', at: [0, 0.9, 1, 0.1], edge: 'top' }
+    ],
+    texts: [
+      { text: '{الفعالية}', at: [0.06, 0.19, 0.88, 0.07], role: 'onBand', size: 8.5, fit: true },
+      { text: '{الاسم}', at: [0.06, 0.67, 0.88, 0.07], role: 'name', size: 12, fit: true },
+      { text: '{الصفة}', at: [0.06, 0.74, 0.88, 0.05], role: 'accent', size: 9, fit: true },
+      { text: '{الجهة}', at: [0.06, 0.795, 0.88, 0.04], role: 'body', size: 7, fit: true },
+      { text: '{التاريخ}', at: [0.06, 0.915, 0.88, 0.06], role: 'onBandSmall', size: 6.5 }
+    ],
+    codes: [{ at: [0.36, 0.835, 0.28, 0.06], ref: 'الرقم' }]
+  };
+}
+
+function modernBusinessCard(): Layout {
+  return {
+    calm: [0.05, 0.1, 0.7, 0.8],
+    images: [{ at: [0.82, 0.12, 0.13, 0.25], logo: true, fit: 'contain' }],
+    decor: [
+      { t: 'rule', x1: 0.06, x2: 0.94, y: 0.46 },
+      { t: 'band', at: [0, 0.91, 1, 0.09], edge: 'top' }
+    ],
+    texts: [
+      { text: '{الاسم}', at: [0.06, 0.14, 0.72, 0.18], role: 'name', size: 13.5, align: 'right', fit: true },
+      { text: '{المسمى} — {الجهة}', at: [0.06, 0.31, 0.72, 0.11], role: 'accent', size: 8, align: 'right', fit: true },
+      { text: 'هاتف: {الهاتف}', at: [0.26, 0.52, 0.68, 0.1], role: 'body', size: 7.5, align: 'right' },
+      { text: 'بريد: {البريد}', at: [0.26, 0.63, 0.68, 0.1], role: 'body', size: 7.5, align: 'right', dir: 'ltr' },
+      { text: '{العنوان}', at: [0.26, 0.74, 0.68, 0.1], role: 'body', size: 7, align: 'right', fit: true }
+    ],
+    codes: [{ at: [0.06, 0.52, 0.18, 0.32], ref: 'الرقم' }]
+  };
+}
+
+function greetingCard(): Layout {
+  return {
+    calm: [0.1, 0.2, 0.8, 0.6],
+    images: [{ at: [0.42, 0.06, 0.16, 0.14], logo: true, fit: 'contain' }],
+    decor: [
+      { t: 'seal', cx: 0.5, cy: 0.13, r: 0.09 },
+      { t: 'divider', cx: 0.5, y: 0.52, w: 0.4 },
+      { t: 'rule', x1: 0.1, x2: 0.9, y: 0.82 }
+    ],
+    texts: [
+      { text: '{الجهة}', at: [0.15, 0.22, 0.7, 0.06], role: 'org', size: 13, fit: true },
+      { text: 'أجمل التهاني والتبريكات', at: [0.1, 0.29, 0.8, 0.12], role: 'headline', size: 36 },
+      { text: 'تتقدّم أسرة {الجهة} بأحرّ التهاني إلى', at: [0.1, 0.43, 0.8, 0.06], role: 'intro', size: 13 },
+      { text: '{الاسم}', at: [0.1, 0.49, 0.8, 0.11], role: 'name', size: 30, fit: true },
+      { text: 'بمناسبة {المناسبة}', at: [0.1, 0.62, 0.8, 0.08], role: 'accent', size: 18, fit: true },
+      { text: 'سائلين المولى دوام التوفيق والنجاح والتألق', at: [0.1, 0.71, 0.8, 0.05], role: 'body', size: 12 },
+      { text: 'التاريخ: {التاريخ}', at: [0.1, 0.85, 0.8, 0.05], role: 'meta', size: 11 }
+    ]
+  };
+}
+
 // ── القائمة ──────────────────────────────────────────────────────────
 
 export const KINDS: KindSpec[] = [
+  // ── شهادات ──
   {
     key: 'thanks',
     title: 'شكر وتقدير',
@@ -401,16 +505,7 @@ export const KINDS: KindSpec[] = [
     ),
     sample: SAMPLE
   },
-  {
-    key: 'participation',
-    title: 'شهادة مشاركة',
-    group: 'شهادات',
-    size: A4L,
-    bleed: 0,
-    family: 'sheet',
-    layout: certificate('شهادة مشاركة', 'تشهد {الجهة} بأنّ', 'قد شارك في {النشاط} المقام بتاريخ {تاريخ النشاط}'),
-    sample: SAMPLE
-  },
+  { key: 'training-cert', title: 'شهادة تدريب وتأهيل', group: 'شهادات', size: A4L, bleed: 0, family: 'sheet', layout: trainingCert, sample: SAMPLE },
   {
     key: 'graduation',
     title: 'شهادة تخرّج',
@@ -421,14 +516,35 @@ export const KINDS: KindSpec[] = [
     layout: certificate('شهادة تخرّج', 'تشهد {الجهة} بأنّ', 'قد أتمّ {المرحلة} بنجاح للعام الدراسي {العام الدراسي}'),
     sample: SAMPLE
   },
+  {
+    key: 'participation',
+    title: 'شهادة مشاركة',
+    group: 'شهادات',
+    size: A4L,
+    bleed: 0,
+    family: 'sheet',
+    layout: certificate('شهادة مشاركة', 'تشهد {الجهة} بأنّ', 'قد شارك في {النشاط} المقام بتاريخ {تاريخ النشاط}'),
+    sample: SAMPLE
+  },
   { key: 'honour', title: 'لوحة الشرف', group: 'شهادات', size: A4P, bleed: 0, family: 'sheet', layout: honour, sample: SAMPLE },
+
+  // ── هويّات ──
   { key: 'student-id', title: 'هويّة طالب', group: 'هويّات', size: CR80L, bleed: 3, family: 'card', layout: studentId, sample: SAMPLE },
   { key: 'staff-id', title: 'هويّة موظف', group: 'هويّات', size: CR80P, bleed: 3, family: 'card', layout: staffId, sample: SAMPLE },
+  { key: 'event-badge', title: 'باج مؤتمر / مشارك', group: 'هويّات', size: CR80P, bleed: 3, family: 'card', layout: eventBadge, sample: SAMPLE },
   { key: 'id-back', title: 'ظهر الهويّة', group: 'هويّات', size: CR80L, bleed: 3, family: 'card', layout: idBack, sample: SAMPLE },
-  { key: 'exam-card', title: 'البطاقة الامتحانية', group: 'مدرسية', size: A6L, bleed: 3, family: 'card', layout: examCard, sample: SAMPLE },
-  { key: 'label', title: 'ملصق دفتر', group: 'مدرسية', size: CARD9x5, bleed: 2, family: 'card', layout: label, sample: SAMPLE },
+
+  // ── أعمال وكروت ──
+  { key: 'business', title: 'بطاقة عمل كلاسيكية', group: 'أعمال وكروت', size: CARD9x5, bleed: 2, family: 'card', layout: businessCard, sample: SAMPLE },
+  { key: 'modern-card', title: 'كرت شخصي حديث مع QR', group: 'أعمال وكروت', size: CARD9x5, bleed: 2, family: 'card', layout: modernBusinessCard, sample: SAMPLE },
+
+  // ── مناسبات ──
   { key: 'invitation', title: 'بطاقة دعوة', group: 'مناسبات', size: A5P, bleed: 3, family: 'sheet', layout: invitation, sample: SAMPLE },
-  { key: 'business', title: 'بطاقة عمل', group: 'أعمال', size: CARD9x5, bleed: 2, family: 'card', layout: businessCard, sample: SAMPLE }
+  { key: 'greeting-card', title: 'بطاقة تهنئة ومباركة', group: 'مناسبات', size: A5L, bleed: 2, family: 'sheet', layout: greetingCard, sample: SAMPLE },
+
+  // ── مدرسية ──
+  { key: 'exam-card', title: 'البطاقة الامتحانية', group: 'مدرسية', size: A6L, bleed: 3, family: 'card', layout: examCard, sample: SAMPLE },
+  { key: 'label', title: 'ملصق دفتر وتغليف', group: 'مدرسية', size: CARD9x5, bleed: 2, family: 'card', layout: label, sample: SAMPLE }
 ];
 
 export const kindOf = (key: string): KindSpec | undefined => KINDS.find((k) => k.key === key);
