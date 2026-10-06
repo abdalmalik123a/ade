@@ -96,7 +96,11 @@ const api: DiwanApi = {
     save: (input: CitizenInput) => invoke('citizens:save', input),
     usage: (id: number) => invoke('citizens:usage', id),
     delete: (id: number) => invoke('citizens:delete', id),
-    exportExcel: (id: number) => invoke('citizens:exportExcel', id)
+    exportExcel: (id: number) => invoke('citizens:exportExcel', id),
+    importPlan: (rows: unknown[], opts: unknown) => invoke('citizens:importPlan', rows, opts),
+    import: (rows: unknown[], opts: unknown) => invoke('citizens:import', rows, opts),
+    importMap: () => invoke('citizens:importMap'),
+    setImportMap: (map: unknown) => invoke('citizens:setImportMap', map)
   },
   attachments: {
     importFile: (citizenId: number, docType: string) =>

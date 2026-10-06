@@ -9,6 +9,7 @@ import type { AuditEntry } from './api';
 export const AUDIT_ENTITIES: { value: string; label: string }[] = [
   { value: 'document', label: 'الكتب' },
   { value: 'transaction', label: 'المعاملات' },
+  { value: 'citizen', label: 'الزبائن' },
   { value: 'backup', label: 'النسخ الاحتياطية' },
   { value: 'content', label: 'حزم المحتوى' },
   { value: 'license', label: 'التفعيل' }
@@ -28,6 +29,8 @@ export function auditLabel(e: Pick<AuditEntry, 'entity' | 'action' | 'detail'>):
       return `معاملة: ${detail}`;
     case 'transaction/link-citizen':
       return 'رُبطت كتب المعاملة بملف المواطن';
+    case 'citizen/import':
+      return `استُورد زبائن من Excel${detail ? ` — ${detail}` : ''}`;
     case 'backup/create':
       return `نسخة احتياطية${detail ? `: ${detail}` : ''}`;
     case 'backup/restore':

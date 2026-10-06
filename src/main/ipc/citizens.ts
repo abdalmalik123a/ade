@@ -13,8 +13,10 @@ import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
 import { readCardBack } from '../services/mrzRead';
 import { grayOf } from '@shared/mrzImage';
 import { importFile } from './files';
-import type { CitizenInput } from '@shared/api';
+import type { CitizenImportOptions, CitizenInput } from '@shared/api';
 import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
+import { cleanRows } from '@shared/citizenImport';
+import { importCitizens, planCitizenImport, readImportMap, saveImportMap } from '../services/citizenImport';
 
 /** خانات الاستمارات الحكومية — تُصدَّر إن مُلئت، والأصلية ولو فارغة. */
 const ADDED_LABELS = new Set(CITIZEN_FIELDS.filter((f) => (ADDED_COLUMNS as readonly string[]).includes(f.column)).map((f) => f.label));
@@ -40,6 +42,16 @@ export function registerCitizenIpc(): void {
   ipcMain.handle('citizens:get', (_e, id: number) => svc.getCitizen(getDb(), id));
   ipcMain.handle('citizens:records', (_e, ids: number[]) => svc.getCitizenRecords(getDb(), Array.isArray(ids) ? ids.slice(0, 2000) : []));
   ipcMain.handle('citizens:save', (_e, input: CitizenInput) => svc.saveCitizen(getDb(), input));
+
+  // استيراد الزبائن من Excel (الموجة ٢): الملف يُقرأ بـ`files:readSheet` نفسه، والخطّة تُعرض قبل الاستيراد.
+  ipcMain.handle('citizens:importPlan', (_e, rows: unknown, opts: CitizenImportOptions) =>
+    planCitizenImport(getDb(), cleanRows(rows), opts ?? {}).report
+  );
+  ipcMain.handle('citizens:import', (_e, rows: unknown, opts: CitizenImportOptions) =>
+    importCitizens(getDb(), cleanRows(rows), opts ?? {})
+  );
+  ipcMain.handle('citizens:importMap', () => readImportMap(getDb()));
+  ipcMain.handle('citizens:setImportMap', (_e, map: unknown) => saveImportMap(getDb(), map));
   ipcMain.handle('citizens:usage', (_e, id: number) => svc.citizenUsage(getDb(), id));
 
   ipcMain.handle('citizens:delete', async (_e, id: number) => {

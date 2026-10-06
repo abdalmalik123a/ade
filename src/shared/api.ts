@@ -8,6 +8,7 @@ import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
+import type { ImportMap, ImportRow } from './citizenImport';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -448,6 +449,33 @@ export type CitizenDetail = Omit<CitizenInput, 'verified'> & {
   documents: CitizenDocumentRow[];
 };
 
+/** استيراد الزبائن من Excel (الموجة ٢) — `shared/citizenImport.ts` و`services/citizenImport.ts`. */
+export type CitizenImportOptions = {
+  /** تصنيفٌ لكلّ المستورَدين — ولا يُغيَّر تصنيف ملفٍّ موجود له تصنيف. */
+  category?: string | null;
+  /** من بالاسم نفسه في السجلّ ولا رقمَ ولا هاتفَ يفرّق بينهما: يُضاف ملفًّا جديدًا لا يُترك. */
+  addSimilar?: boolean;
+  /** اسم الملف — في سجلّ الأحداث. */
+  fileName?: string | null;
+};
+
+export type CitizenImportReport = {
+  added: number;
+  /** ملفّاتٌ موجودة أُكمل فارغها (ولا يُكتب فوق ما فيها). */
+  completed: number;
+  /** موجودةٌ لا جديد فيها. */
+  unchanged: number;
+  /** بالاسم نفسه في السجلّ بلا ما يفرّق — تُترك ما لم يُختر `addSimilar`. */
+  similar: number;
+  noName: number;
+  /** مكرّرٌ في الملف نفسه، دُمج في أوّله. */
+  repeated: number;
+  /** أرقامٌ وطنية بصيغةٍ غير معتادة — تُحفظ كما كُتبت، وتنبيهها في الملف. */
+  unusualIds: number;
+  /** أوّل عشرين من المتشابهين — ليرى المكتب من يُترك. */
+  similarNames: string[];
+};
+
 export type ScannerDevice = { id: string; name: string };
 
 export type CitizenStats = {
@@ -737,6 +765,13 @@ export type DiwanApi = {
     usage(id: number): Promise<number>;
     delete(id: number): Promise<void>;
     exportExcel(id: number): Promise<string | null>;
+    /** استيراد الزبائن من Excel: الخطّة بلا كتابة — تُعرض قبل الاستيراد. */
+    importPlan(rows: ImportRow[], opts: CitizenImportOptions): Promise<CitizenImportReport>;
+    /** الاستيراد قيدًا واحدًا: الجديد يُضاف، والموجود يُكمل فارغه. */
+    import(rows: ImportRow[], opts: CitizenImportOptions): Promise<CitizenImportReport>;
+    /** ربط الأعمدة الذي تذكّره المكتب من ملفّاته السابقة. */
+    importMap(): Promise<ImportMap>;
+    setImportMap(map: ImportMap): Promise<ImportMap>;
   };
   attachments: {
     /** يستورد ملفًا من الحاسوب إلى مخزن التطبيق ويقيّده مستمسكًا. */

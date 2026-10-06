@@ -16,6 +16,7 @@ import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
 import UploadExportDialog from '../components/UploadExportDialog';
+import CitizenImportDialog from '../components/CitizenImportDialog';
 import { readMrz, type MrzResult } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { LIST_LIMITS, limitNote } from '@shared/limits';
@@ -63,6 +64,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
   const [idSheetOpen, setIdSheetOpen] = useState(false);
   /** «صدّر للرفع» (تعميق الموجود ٤): كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع. */
   const [uploadOpen, setUploadOpen] = useState(false);
+  /** استيراد الزبائن من Excel (الموجة ٢). */
+  const [importOpen, setImportOpen] = useState(false);
   const [deskewAttachment, setDeskewAttachment] = useState<Attachment | null>(null);
   /** التقاطٌ بالكاميرا (ج١٢): الكاميرا مفتوحة، ثم اللقطة تُسوّى قبل أن تُحفظ. */
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -287,6 +290,16 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
             >
               <span className="material-symbols-outlined text-[18px]">document_scanner</span>
               <span>ورقة المستمسكات</span>
+            </button>
+            <button
+              className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+              data-act="citizens-import"
+              type="button"
+              title="قائمة زبائن من ملف Excel أو CSV — من له ملفٌّ يُكمل فارغه ولا يتكرّر"
+              onClick={() => setImportOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[18px]">upload_file</span>
+              <span>استورد من Excel</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold transition-all"
@@ -1103,6 +1116,17 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
         </div>
       )}
 
+      {importOpen && (
+        <CitizenImportDialog
+          categories={categories.map((c) => c.name)}
+          onClose={() => setImportOpen(false)}
+          onDone={(message) => {
+            setImportOpen(false);
+            say(message);
+            void reloadList();
+          }}
+        />
+      )}
       {uploadOpen && detail && (
         <UploadExportDialog
           attachments={detail.attachments}
