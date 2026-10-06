@@ -8,7 +8,7 @@
  * ٢. يُنقل ما على الجهاز جانبًا — القاعدة نسخةً متّسقة، والمخزن نقلًا — إلى
  *    `data/before-restore-…`. لا يُحذف.
  * ٣. تُكتب النسخة، وتُفتح القاعدة من جديد وتُرحَّل إلى صيغة هذا الإصدار.
- * ٤. إن تعثّر شيءٌ في ٣ عاد ما نُقل جانبًا إلى مكانه.
+ * ٤. إن تعثّر شيءٌ في ٢ أو ٣ عاد ما نُقل جانبًا إلى مكانه (`services/restoreSwap.ts`).
  * ثم تُعاد الواجهة فتقرأ البيانات الجديدة من أوّلها.
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -24,6 +24,7 @@ import { ensureSearchColumn } from '../services/citizens';
 import { prepareLetterheads } from '../services/letterheads';
 import { prepareTemplates } from '../services/templates';
 import { prepareSearch } from '../services/searchIndex';
+import { swapInBackup } from '../services/restoreSwap';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 
@@ -116,35 +117,8 @@ async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (stor
   const dir = dataDir();
   const aside = join(dir, `before-restore-${stamp()}`);
   mkdirSync(aside, { recursive: true });
-
-  // ما على الجهاز جانبًا: القاعدة نسخةً متّسقة، ثم تُغلق وتُرفع ملفّاتها، والمخزن نقلًا.
-  snapshotDb(join(aside, 'diwan.db'));
-  closeDb();
-  const dbFile = join(dir, 'diwan.db');
-  const store = join(dir, 'store');
-  const moved: [string, string][] = [];
-  const move = (from: string, to: string) => {
-    if (!existsSync(from)) return;
-    renameSync(from, to);
-    moved.push([from, to]);
-  };
-  for (const suffix of ['', '-wal', '-shm']) move(dbFile + suffix, join(aside, `current.db${suffix}`));
-  move(store, join(aside, 'store'));
-
-  try {
-    placeDb(dbFile);
-    mkdirSync(store, { recursive: true });
-    await writeStore(store);
-    reopen();
-  } catch (e) {
-    // تعثّر: يُمحى ما كُتب، ويعود ما نُقل جانبًا إلى مكانه — فالجهاز كما كان.
-    closeDb();
-    for (const f of [dbFile, `${dbFile}-wal`, `${dbFile}-shm`]) if (existsSync(f)) rmSync(f);
-    if (existsSync(store)) rmSync(store, { recursive: true, force: true });
-    for (const [from, to] of moved.reverse()) renameSync(to, from);
-    reopen();
-    throw e;
-  }
+  // ما على الجهاز جانبًا (القاعدة نسخةً متّسقة ثم ملفّاتها، والمخزن نقلًا)، ثم النسخة — وكلّه تحت الحماية.
+  await swapInBackup({ dir, aside, snapshot: snapshotDb, close: closeDb, reopen, placeDb, writeStore });
   return aside;
 }
 
