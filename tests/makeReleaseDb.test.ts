@@ -1,14 +1,14 @@
 /**
- * مولّد `tests/fixtures/release-1.0.0.db` — قاعدة مكتبٍ بالإصدار ١٫٠٫٠ المبيع (خطة Production، ٧٫٣).
+ * مولّد `tests/fixtures/release-X.Y.Z.db` — قاعدة مكتبٍ بالإصدار المبيع (خطة Production، ٧٫٣).
  *
- * يجري بخدمات هذا الإصدار نفسه وترحيلات إقلاعه، مرّةً عند الإصدار — فالقاعدة ما كتبه ١٫٠٫٠ فعلًا — ثم
+ * يجري بخدمات هذا الإصدار نفسه وترحيلات إقلاعه، مرّةً عند الإصدار — فالقاعدة ما كتبه الإصدار فعلًا — ثم
  * تُحفظ ولا تُعاد: كلّ إصدارٍ بعده يفتحها في `tests/releaseDb.test.ts` كما يفتحها إقلاعه. ولكلّ إصدارٍ
- * يُباع قاعدته (`release-X.Y.Z.db`) بالطريقة نفسها.
+ * يُباع قاعدته بالطريقة نفسها، واسمها بإصدار `package.json` وحده — فلا تُكتب قاعدةُ إصدارٍ قديم بشيفرةٍ أحدث.
  *
- *   RELEASE_OUT=tests/fixtures/release-1.0.0.db npx vitest run tests/makeReleaseDb.test.ts
+ *   RELEASE_OUT=tests/fixtures/release-1.1.0.db npx vitest run tests/makeReleaseDb.test.ts
  */
 import { readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { it } from 'vitest';
 import Database from 'better-sqlite3';
 import { addAttachment, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
@@ -26,11 +26,12 @@ import { docFromLegacy, run } from '../src/shared/doc';
 import { normalizePrintRoles } from '../src/shared/printRoles';
 import type { CitizenInput, IssueInput, SheetStyle } from '../src/shared/api';
 
-const VERSION = '1.0.0';
+const { version: VERSION } = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string };
 const STYLE: SheetStyle = { css: '.a4-sheet{font-family:"IBM Plex Sans Arabic"}', bodyClass: 'font-body-md' };
 
 it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', () => {
   const out = process.env['RELEASE_OUT']!;
+  if (basename(out) !== `release-${VERSION}.db`) throw new Error(`القاعدة المبيعة بإصدار الحزمة وحده: release-${VERSION}.db`);
   rmSync(out, { force: true });
   const db = new Database(out);
   db.pragma('journal_mode = DELETE');

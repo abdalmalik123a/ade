@@ -239,7 +239,7 @@ export function applyImportPlan(
         subtitle: null,
         category: choices.category ?? null,
         subjectLine: c.subjectLine,
-        // الظلّ النصّي للبحث والمحرّر القديم؛ والحقيقة في `doc`.
+        // الظلّ النصّي للبحث ولمعاينة البطاقة في المكتبة؛ والحقيقة في `doc`.
         bodyHtml: docText(c.doc),
         letterheadId: shared && c.letterheadKey === shared.key ? letterheadId : null,
         variables: [],

@@ -21,7 +21,8 @@ export function storeDir(...parts: string[]): string {
 }
 
 function sqlFile(name: string): string {
-  // في التطوير الملفات بجانب المصدر؛ بعد الحزم تُنسخ إلى out/main.
+  // تُقرأ من src/main/db في التطوير وبعد الحزم معًا: `files` في package.json يضمّها إلى الحزمة
+  // كما هي (لا تُنسخ إلى out/main). و`__dirname` أوّلًا إن وُضعت يومًا بجانب المبنيّ.
   const candidates = [
     join(__dirname, name),
     join(app.getAppPath(), 'src', 'main', 'db', name)

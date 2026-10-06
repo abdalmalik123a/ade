@@ -127,7 +127,7 @@ export type InlineField = { kind: 'field'; id: Uuid; ref: string };
 export type InlineBreak = { kind: 'break' };
 export type Inline = InlineRun | InlineField | InlineBreak;
 
-// ── الكتل: خمسٌ لا أكثر، وبهنّ تُعبَّر كل ورقة عراقية رسمية ──────────
+// ── الكتل: تسعة أنواع (`Block` أدناه)، وبهنّ تُعبَّر كل ورقة عراقية رسمية ──────────
 
 type BlockBase = { id: Uuid; dir?: Dir };
 

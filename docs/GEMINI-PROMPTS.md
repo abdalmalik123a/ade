@@ -25,7 +25,7 @@
   - src/main/services/zip.ts            (كاتب ZIP وقارئه — استعمله، لا تكتب غيره)
   - src/main/services/templates.ts      (saveTemplate: إن غاب doc بُني من المتن بـdocFromLegacy)
   - src/shared/doc.ts                    (Doc وDocField وmakeField وdocFromLegacy وtokenInlines وnormalizeDoc)
-  - src/shared/template.ts               (legacyFieldMeta: نوع الحقل ودوره من اسمه)
+  - src/shared/template.ts               (legacyFieldMeta: اسم الحقل ومصدره من ملفّ الزبون وإلزامه — من وسمه)
   - src/shared/citizenFields.ts          (citizenSourceOf: الحقل يُملأ من ملفّ الزبون باسمه)
   - src/shared/gender.ts                 (التذكير والتأنيث {مذكّر|مؤنّث} وحقل «الجنس»)
   - src/shared/letterhead.ts، src/main/services/clips.ts

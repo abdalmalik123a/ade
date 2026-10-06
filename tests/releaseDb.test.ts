@@ -2,8 +2,8 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه (`makeReleaseDb.test.ts`) ولا تُعاد. ولكلّ إصدارٍ يُباع بعده
- * قاعدته، ويُضاف فحصها هنا.
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` كتبها ١٫١٫٠ (`makeReleaseDb.test.ts`) — ولا
+ * تُعادان. ولكلّ إصدارٍ يُباع بعدهما قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -50,17 +50,23 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
   return { db, dir, file };
 }
 
-describe('قاعدة ١٫٠٫٠ المبيعة', () => {
+/** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
+const SOLD = ['1.0.0', '1.1.0'] as const;
+
+/** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
+const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
+
+describe.each(SOLD)('قاعدة %s المبيعة', (version) => {
   it('تحمل إصدارها، والإصدار الأحدث يأخذ منها نسخةً قبل الترحيل', () => {
     const dir = mkdtempSync(join(tmpdir(), 'diwan-release-'));
     const file = join(dir, 'diwan.db');
-    copyFileSync(join(__dirname, 'fixtures', 'release-1.0.0.db'), file);
-    expect(readDataVersion(file)).toBe('1.0.0');
-    expect(guardDataVersion({ file, current: '1.0.1', snapshotDir: join(dir, 'before-update') })).toMatchObject({ kind: 'upgrade', from: '1.0.0' });
+    copyFileSync(join(__dirname, 'fixtures', `release-${version}.db`), file);
+    expect(readDataVersion(file)).toBe(version);
+    expect(guardDataVersion({ file, current: nextPatch(version), snapshotDir: join(dir, 'before-update') })).toMatchObject({ kind: 'upgrade', from: version });
   });
 
   it('تُفتح بإقلاع اليوم ولا يضيع منها شيء', () => {
-    const { db } = openRelease('1.0.0');
+    const { db } = openRelease(version);
     expect(listCitizens(db, {}).map((c) => c.fullName).sort()).toEqual(['أحمد كريم جاسم', 'زينب علي حسن الربيعي'].sort());
     expect((db.prepare('SELECT COUNT(*) AS n FROM attachments').get() as { n: number }).n).toBe(1);
     expect(listLetterheads(db).map((l) => l.name)).toEqual(['مديرية تربية الأنبار']);
@@ -73,7 +79,7 @@ describe('قاعدة ١٫٠٫٠ المبيعة', () => {
   });
 
   it('والأرشيف سليمٌ ببصماته وسلسلته، والكتب بأنماطها يوم صدرت', () => {
-    const { db } = openRelease('1.0.0');
+    const { db } = openRelease(version);
     const check = verifyArchive(db);
     expect(check.problems).toEqual([]);
     const first = listDocuments(db, { limit: 100 }).at(-1)!;
@@ -81,14 +87,14 @@ describe('قاعدة ١٫٠٫٠ المبيعة', () => {
   });
 
   it('وإعداداته تُقرأ: أدوار الطابعات والأقسام المخفيّة', () => {
-    const { db } = openRelease('1.0.0');
+    const { db } = openRelease(version);
     const get = (k: string) => (db.prepare('SELECT value FROM settings WHERE key = ?').get(k) as { value: string }).value;
     expect(normalizePrintRoles(JSON.parse(get('printRoles')), null).documents).toEqual({ normal: 'ليزر المكتب', color: 'ملوّنة', dialog: false });
     expect(normalizeHidden(JSON.parse(get('hiddenSections')))).toEqual(['designs']);
   });
 
   it('ويُعمل عليها: يصدر كتابٌ يكمل الترقيم والسلسلة، ويُصدَّر محتواها بمعرّفاته', () => {
-    const { db, dir } = openRelease('1.0.0');
+    const { db, dir } = openRelease(version);
     const input: IssueInput = {
       sheetHtml: '<div class="a4-sheet">بعد التحديث</div>', templateId: null, citizenId: null, authorityId: null, citizenName: 'بعد التحديث',
       nationalId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0,
@@ -97,7 +103,7 @@ describe('قاعدة ١٫٠٫٠ المبيعة', () => {
     const issued = issueDocument(db, input);
     expect(issued.serial).toMatch(/\/9$/);
     expect(verifyArchive(db).problems).toEqual([]);
-    const { pkg } = collectContent(db, join(dir, 'store'), '1.0.1');
+    const { pkg } = collectContent(db, join(dir, 'store'), nextPatch(version));
     expect(pkg.templates[0]!.letterheadUuid).toBe(pkg.letterheads[0]!.uuid);
   });
 });
