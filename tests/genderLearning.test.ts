@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { firstNameKey, guessGender, unsureNames } from '../src/shared/gender';
+import { firstNameKey, guessGender, isUnisexName, unsureNames } from '../src/shared/gender';
 import { learnGenders, learnedGenders } from '../src/main/services/genderMemory';
 import { letterChecks } from '../src/shared/letterDraft';
 import { emptyDoc, paragraph, run } from '../src/shared/doc';
@@ -30,8 +30,8 @@ describe('ما لم يُعرف يُسأل — وما أجاب عنه المكت�
   });
 
   it('وما يعرفه المكتب يغلب القائمة المبنيّة — فهو أعلم ببيته', () => {
-    expect(guessGender('نور علي')?.gender).toBe('أنثى');
-    expect(guessGender('نور علي', { نور: 'ذكر' })).toMatchObject({ gender: 'ذكر', sure: true });
+    expect(guessGender('رسل علي')?.gender).toBe('أنثى');
+    expect(guessGender('رسل علي', { رسل: 'ذكر' })).toMatchObject({ gender: 'ذكر', sure: true });
   });
 
   it('الأسماء التي تُسأل: بلا يقين، بلا تكرار، وما حُسم لا يُسأل', () => {
@@ -40,6 +40,38 @@ describe('ما لم يُعرف يُسأل — وما أجاب عنه المكت�
     expect(unsureNames(names)).toEqual(['غسق حسن', 'نمير علي', 'رفيدة سالم']);
     expect(unsureNames(names, { غسق: 'أنثى', نمير: 'ذكر' })).toEqual(['رفيدة سالم']);
     expect(unsureNames(names, {}, { 'غسق حسن': 'أنثى', 'نمير علي': 'ذكر', 'رفيدة سالم': 'أنثى' })).toEqual([]);
+  });
+});
+
+describe('الاسم الملتبس يُسأل في كلّ مرّة (قرار المالك، ٦ تشرين الأول ٢٠٢٦)', () => {
+  const UNISEX = ['نور', 'ضياء', 'علاء', 'بهاء', 'صفاء', 'رضا', 'تقى', 'أنوار', 'ملاك', 'ولاء', 'غفران', 'نبأ', 'يقين', 'رند'];
+
+  it('الأربعة عشر بلا يقين — وإن كانت في القائمة المبنيّة', () => {
+    for (const n of UNISEX) expect([n, guessGender(`${n} علي حسين`)?.sure]).toEqual([n, false]);
+    // ويبقى الاقتراح كما كان: نور أنثى، وضياء ذكر — يُقلب بضغطة.
+    expect(guessGender('نور علي')?.gender).toBe('أنثى');
+    expect(guessGender('ضياء كاظم')?.gender).toBe('ذكر');
+    expect(unsureNames(['نور علي', 'زينب علي', 'علاء حسين'])).toEqual(['نور علي', 'علاء حسين']);
+  });
+
+  it('وما أجاب عنه المكتب لنورٍ لا يحسم نورًا غيرها', () => {
+    expect(guessGender('نور علي', { نور: 'أنثى' })).toEqual({ gender: 'أنثى', sure: false });
+    expect(unsureNames(['نور علي'], { نور: 'أنثى' })).toEqual(['نور علي']);
+  });
+
+  it('واللقب يحسم، و«… الدين» اسمُ رجل', () => {
+    expect(guessGender('الطالبة نور علي')).toEqual({ gender: 'أنثى', sure: true });
+    expect(guessGender('السيد ضياء كاظم')).toEqual({ gender: 'ذكر', sure: true });
+    expect(guessGender('نور الدين كاظم')).toEqual({ gender: 'ذكر', sure: true });
+    expect(guessGender('علاء الدين حسن', { علاء: 'أنثى' })).toEqual({ gender: 'ذكر', sure: true });
+    expect(isUnisexName('نور الدين كاظم')).toBe(false);
+    expect(isUnisexName('الطالبة نُور')).toBe(true);
+  });
+
+  it('ولا يُحفظ جوابه في ذاكرة المكتب', () => {
+    const db = freshDb();
+    expect(learnGenders(db, [{ name: 'نور علي', gender: 'أنثى' }, { name: 'غسق حسن', gender: 'أنثى' }])).toBe(1);
+    expect(learnedGenders(db)).toEqual({ غسق: 'أنثى' });
   });
 });
 

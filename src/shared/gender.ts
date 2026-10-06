@@ -45,7 +45,8 @@ export function hasChoiceText(text: string): boolean {
 }
 
 /**
- * أسماء نساءٍ شائعة في العراق لا تُعرف بلاحقتها: «زينب» و«مريم» و«نور».
+ * أسماء نساءٍ شائعة في العراق لا تُعرف بلاحقتها: «زينب» و«مريم» و«رسل». وما فيها من الملتبس
+ * (نور، صفاء…) يُقترح أنثى ولا يُحسم (`UNISEX`).
  * والقائمة اقتراحٌ يصحّحه الموظف بضغطة — لا حكم.
  */
 const FEMALE = new Set(
@@ -97,6 +98,29 @@ const FEMALE_FOLDED = new Set([...FEMALE].map((n) => normalizeFold(n)));
 
 const TITLES = /^(السيد|السيدة|الست|الآنسة|الانسة|الطالب|الطالبة|التلميذ|التلميذة|الأستاذ|الاستاذ|الأستاذة|الاستاذة|الدكتور|الدكتورة|الحاج|الحاجة|المرحوم|المرحومة)$/;
 
+const HARAKAT = /[ًٌٍَُِّْ]/g;
+
+/**
+ * أسماءٌ تُسمّى بها البنات والأولاد في العراق: لا تحسمها قائمة، ولا يُحفظ جوابها باسمها الأوّل —
+ * «نور» الأولى أنثى والثاني قد يكون ذكرًا. فتُسأل في كلّ مرّة (قرار المالك، ٦ تشرين الأول ٢٠٢٦)،
+ * إلا ما حسمه اللقب («الطالبة نور») أو «الدين» بعدها («نور الدين» ذكر).
+ */
+const UNISEX = new Set('نور ضياء علاء بهاء صفاء رضا تقى أنوار ملاك ولاء غفران نبأ يقين رند'.split(/\s+/).map((n) => normalizeFold(n)));
+
+/** أوّل الاسم بعد اللقب، وموضعه — أو عدم. */
+function firstName(fullName: string): { words: string[]; at: number } | null {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  const at = words.findIndex((w) => !TITLES.test(w));
+  return at < 0 ? null : { words, at };
+}
+
+/** أهو اسمٌ ملتبس يُسأل عنه دائمًا؟ — أوّله بعد اللقب من الملتبسة، وليس «… الدين». */
+export function isUnisexName(fullName: string): boolean {
+  const f = firstName(fullName);
+  if (!f || f.words[f.at + 1] === 'الدين') return false;
+  return UNISEX.has(normalizeFold(f.words[f.at]!.replace(HARAKAT, '')));
+}
+
 /**
  * مفتاح الاسم فيما تعلّمه المكتب (ج٤): الاسم الأوّل بعد اللقب، مطويًّا — «رُسُل» و«رسل»
  * واحد. و«عبد الله» و«أم البنين» كلمتان تُحفظان معًا.
@@ -116,30 +140,36 @@ export type LearnedGenders = Record<string, Gender>;
 /**
  * اقتراح الجنس من الاسم الأول — للمراجعة لا للحكم.
  *
- * ما تعلّمه المكتب أولًا (سُئل عنه فأجاب)، ثم قائمة الأسماء، ثم اللاحقة: ما انتهى
+ * اللقب يحسم أوّلًا (كتبه الموظف بنفسه)، ثم الأسماء المركّبة («عبد الله»، «أم البنين»،
+ * «نور الدين»)، ثم ما تعلّمه المكتب (سُئل عنه فأجاب)، ثم قائمة الأسماء، ثم اللاحقة: ما انتهى
  * بتاءٍ مربوطة أو «اء» أو ألفٍ مقصورة أنثى في الغالب، إلا أسماء رجالٍ معروفة (حمزة،
- * علاء، مصطفى). ويعود «ذكر» لما سوى ذلك مع `sure: false` — فيُسأل عنه قبل الطباعة.
+ * مصطفى). ويعود «ذكر» لما سوى ذلك مع `sure: false` — فيُسأل عنه قبل الطباعة.
+ * والاسم الملتبس (`UNISEX`) يُقترح ولا يُحسم أبدًا: يُسأل عنه في كلّ مرّة.
  */
 export function guessGender(
   fullName: string,
   learned: LearnedGenders = {}
 ): { gender: Gender; sure: boolean; learned?: boolean } | null {
-  const key = firstNameKey(fullName);
-  if (key && learned[key]) return { gender: learned[key]!, sure: true, learned: true };
-  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  const f = firstName(fullName);
+  if (!f) return null;
+  const { words, at } = f;
   const title = words.find((w) => TITLES.test(w));
-  let first = words.find((w) => !TITLES.test(w));
-  if (!first) return null;
   if (title && FEMALE_TITLE.test(title)) return { gender: 'أنثى', sure: true };
   if (title && MALE_TITLE.test(title)) return { gender: 'ذكر', sure: true };
-  // «عبد الله» و«أم البنين» كلمتان.
-  if (/^(أم|ام)$/.test(first)) return { gender: 'أنثى', sure: true };
-  if (/^(عبد|عبد)$/.test(first)) return { gender: 'ذكر', sure: true };
-  first = first.replace(/[ًٌٍَُِّْ]/g, '');
+  // «عبد الله» و«أم البنين» كلمتان، و«… الدين» اسمُ رجل (نور الدين، علاء الدين، شمس الدين).
+  if (/^(أم|ام)$/.test(words[at]!)) return { gender: 'أنثى', sure: true };
+  if (/^(عبد|عبد)$/.test(words[at]!)) return { gender: 'ذكر', sure: true };
+  if (words[at + 1] === 'الدين') return { gender: 'ذكر', sure: true };
+  const unisex = isUnisexName(fullName);
+  // ما أجاب عنه المكتب لاسمٍ ملتبس كان لصاحبه وحده — فلا يُعتمد لغيره.
+  const key = firstNameKey(fullName);
+  if (key && learned[key] && !unisex) return { gender: learned[key]!, sure: true, learned: true };
+  const first = words[at]!.replace(HARAKAT, '');
   // القائمتان مطويّتان (الهمزة والتاء المربوطة): «احمد» و«أحمد» واحد.
   const folded = normalizeFold(first);
-  if (MALE_FOLDED.has(folded)) return { gender: 'ذكر', sure: true };
-  if (FEMALE_FOLDED.has(folded)) return { gender: 'أنثى', sure: true };
+  const byList: Gender | null = MALE_FOLDED.has(folded) ? 'ذكر' : FEMALE_FOLDED.has(folded) ? 'أنثى' : null;
+  if (unisex) return { gender: byList ?? (/(ة|اء|ى)$/.test(first) ? 'أنثى' : 'ذكر'), sure: false };
+  if (byList) return { gender: byList, sure: true };
   if (/(ة|اء|ى)$/.test(first)) return { gender: 'أنثى', sure: false };
   return { gender: 'ذكر', sure: false };
 }

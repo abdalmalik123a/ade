@@ -2,13 +2,15 @@
  * ما تعلّمه المكتب من التذكير والتأنيث (ج٤).
  *
  * القائمة المبنيّة («زينب» و«مريم» و«حمزة») تعرف الشائع؛ وما سواه يُقترح من لاحقته
- * بلا يقين («رسل»، «نور»، «ضياء» في بعض البيوت). فيُسأل الموظف قبل الطباعة، وجوابه
- * يُحفظ هنا باسم صاحبه الأوّل — فلا يُسأل عن «رسل» ثانيةً في هذا المكتب.
+ * بلا يقين («غسق»، «نمير»). فيُسأل الموظف قبل الطباعة، وجوابه يُحفظ هنا باسم صاحبه
+ * الأوّل — فلا يُسأل عن «غسق» ثانيةً في هذا المكتب.
+ *
+ * **إلا الاسم الملتبس** (نور، ضياء، علاء…): جوابه لصاحبه وحده فلا يُحفظ، ويُسأل عنه في كلّ مرّة.
  *
  * والأحدث يغلب: جوابٌ صحّح ما قبله هو ما يعرفه المكتب الآن.
  */
 import type { Database } from 'better-sqlite3';
-import { firstNameKey, type Gender } from '@shared/gender';
+import { firstNameKey, isUnisexName, type Gender } from '@shared/gender';
 
 export function prepareGenderMemory(db: Database): void {
   db.exec(`CREATE TABLE IF NOT EXISTS name_genders (
@@ -33,7 +35,7 @@ export function learnGenders(db: Database, answers: { name: string; gender: Gend
     let n = 0;
     for (const a of answers) {
       const key = firstNameKey(a.name);
-      if (!key || (a.gender !== 'ذكر' && a.gender !== 'أنثى')) continue;
+      if (!key || isUnisexName(a.name) || (a.gender !== 'ذكر' && a.gender !== 'أنثى')) continue;
       upsert.run(key, a.gender);
       n++;
     }
