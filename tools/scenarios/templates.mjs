@@ -10,28 +10,33 @@ export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  // المحرّر الأوّل: صار احتياطًا منذ ٤ تشرين الأول — وهذا السيناريو يختبره (والجديد في pageEditor.mjs).
-  await page.eval(`await window.diwan.settings.set({ newEditor: false }); return true;`);
 
-  /** يكتب في أوّل سطرٍ على الورقة — الورقة مساحة التأليف الوحيدة. */
+  /** يكتب في أوّل سطرٍ على الورقة كما تكتب لوحة المفاتيح — الورقة مساحة التأليف الوحيدة. */
   const writeBlock = async (text) => {
     await page.eval(`
-      const el = document.querySelector('[data-block]');
-      el.focus();
-      el.textContent = ${JSON.stringify(text)};
-      el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      const ed = document.querySelector('[data-page-editor]');
+      ed.focus();
+      const range = document.createRange();
+      range.selectNodeContents(ed.querySelector(':scope > p'));
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
     `);
+    await wait(200);
+    await page.send('Input.insertText', { text });
     await wait(300);
   };
 
   /** يظلّل مدًى من أوّل سطر ويضغط F4 فيصير متغيّرًا. */
   const fieldify = async (from, to) => {
     await page.eval(`
-      const el = document.querySelector('[data-block]');
-      el.focus();
+      const ed = document.querySelector('[data-page-editor]');
+      ed.focus();
+      const node = document.createTreeWalker(ed.querySelector(':scope > p'), NodeFilter.SHOW_TEXT).nextNode();
       const range = document.createRange();
-      range.setStart(el.firstChild, ${from});
-      range.setEnd(el.firstChild, ${to});
+      range.setStart(node, ${from});
+      range.setEnd(node, ${to});
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
@@ -76,7 +81,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await fieldify(18, 27);
   text = await page.text();
   ok('صار المظلَّل متغيّرًا في لوحة الورقة', text.includes('المتغيّرات على الورقة (1)'));
-  ok('ورُسم صندوقًا في السطر', await page.eval(`return document.querySelectorAll('[data-block] [data-field]').length === 1`));
+  ok('ورُسم صندوقًا في السطر', await page.eval(`return document.querySelectorAll('[data-page-editor] > p [data-field]').length === 1`));
 
   if (shotsDir) await page.shot(join(shotsDir, 'tpl-designer.png'));
 

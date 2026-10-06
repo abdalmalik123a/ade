@@ -1,5 +1,5 @@
 /**
- * سيناريو: التأليف على الورقة نفسها.
+ * سيناريو: التأليف على الورقة نفسها — بالمحرّر الوحيد (ProseMirror).
  *
  * يفتح مصمّم النماذج ويكتب سطرًا على الورقة، ويظلّل كلمةً فيحوّلها حقلًا بـF4،
  * ثم ينسّق: حجمًا لكلمة وتوسيطًا للسطر، ويفتح سطرًا بـEnter ويمحوه بـBackspace
@@ -8,6 +8,7 @@
  * مائية، ويحفظ كليشة ثم النموذج — ويفتّش في القاعدة.
  *
  * ثم يستعمل النموذج في الشبّاك: فالتنسيق الذي لا يصل الورقة التي تُصدَر وهمٌ.
+ * (وكان يختبر المحرّر الأوّل حتى حُذف — الموجة ١، المجموعة ج.)
  */
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -16,8 +17,6 @@ export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  // المحرّر الأوّل: صار احتياطًا منذ ٤ تشرين الأول — وهذا السيناريو يختبره (والجديد في pageEditor.mjs).
-  await page.eval(`await window.diwan.settings.set({ newEditor: false }); return true;`);
   const click = (selector) =>
     page.eval(`
       const el = document.querySelector(${JSON.stringify(selector)});
@@ -27,42 +26,14 @@ export default async function scenario(page, { profile, shotsDir }) {
     `);
   const count = (selector) =>
     page.eval(`return document.querySelectorAll(${JSON.stringify(selector)}).length;`);
+  const ED = '[data-page-editor]';
 
-  /** يكتب في أوّل سطرٍ على الورقة ويُعلم المحرّر. */
-  const writeBlock = async (text) => {
-    const done = await page.eval(`
-      const el = document.querySelector('[data-block]');
-      if (!el) return false;
-      el.focus();
-      el.textContent = ${JSON.stringify(text)};
-      el.dispatchEvent(new InputEvent('input', { bubbles: true }));
-      return true;
-    `);
-    await wait(300);
-    return done;
-  };
-
-  /** يظلّل مدًى في النصّ الأوّل من أوّل سطر — كما يظلّل الكاتب بالفأرة. */
-  const select = async (from, to) => {
-    await page.eval(`
-      const el = document.querySelector('[data-block]');
-      el.focus();
-      const node = el.firstChild;
-      const range = document.createRange();
-      range.setStart(node, ${from});
-      range.setEnd(node, ${to});
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    `);
-    await wait(250);
-  };
-
-  /** يضع المؤشّر في آخر سطرٍ بعينه أو أوّله. */
+  /** يضع المؤشّر في فقرةٍ من الورقة (بترتيبها) — في آخرها أو أوّلها. */
   const caret = async (index, atEnd) => {
     await page.eval(`
-      const el = document.querySelectorAll('[data-block]')[${index}];
-      el.focus();
+      const ed = document.querySelector('${ED}');
+      ed.focus();
+      const el = ed.querySelectorAll(':scope > p')[${index}];
       const range = document.createRange();
       range.selectNodeContents(el);
       range.collapse(${atEnd ? 'false' : 'true'});
@@ -72,12 +43,43 @@ export default async function scenario(page, { profile, shotsDir }) {
     `);
     await wait(250);
   };
+  /** يكتب حيث المؤشّر كما تكتب لوحة المفاتيح. */
+  const type = async (text) => {
+    await page.send('Input.insertText', { text });
+    await wait(300);
+  };
+  /** يظلّل مدًى في النصّ الأوّل من أوّل سطر — كما يظلّل الكاتب بالفأرة. */
+  const select = async (from, to) => {
+    await page.eval(`
+      const ed = document.querySelector('${ED}');
+      ed.focus();
+      const p = ed.querySelector(':scope > p');
+      const node = document.createTreeWalker(p, NodeFilter.SHOW_TEXT).nextNode();
+      const range = document.createRange();
+      range.setStart(node, ${from});
+      range.setEnd(node, ${to});
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    `);
+    await wait(250);
+  };
+  /** يختار قيمةً من قائمة الأدوات عبر مُعيِّن React. */
+  const choose = async (selector, value) => {
+    await page.eval(`
+      const el = document.querySelector(${JSON.stringify(selector)});
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)});
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    `);
+    await wait(350);
+  };
+  const paras = () => count(`${ED} > p`);
 
   // ── الورقة مساحة التأليف ───────────────────────────────────────────
   await page.goto('templates-library-drafts');
   await wait(700);
   await page.eval(`document.querySelector('[data-act="new-blank"]').click(); return true;`);
-  await wait(900);
+  await wait(1200);
 
   let text = await page.text();
   ok('انفتح المصمّم', text.includes('تعريف النموذج'));
@@ -85,7 +87,9 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   await page.type('input[placeholder^="مثال: تأييد"]', 'تأييد استمرار بالخدمة');
   await wait(200);
-  ok('كُتب السطر على الورقة', await writeBlock('نؤيد لكم أن السيد أحمد عادل موظف لدينا'));
+  await caret(0, true);
+  await type('نؤيد لكم أن السيد أحمد عادل موظف لدينا');
+  ok('كُتب السطر على الورقة', (await page.eval(`return document.querySelector('${ED} > p')?.textContent ?? '';`)) === 'نؤيد لكم أن السيد أحمد عادل موظف لدينا');
 
   // ── F4: «أحمد عادل» تبدأ عند ١٨ وتنتهي عند ٢٧ ─────────────────────
   await select(18, 27);
@@ -93,24 +97,20 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   text = await page.text();
   ok('صار المظلَّل متغيّرًا', text.includes('المتغيّرات على الورقة (1)'));
-  ok('ورُسم في السطر صندوقًا لا نصًّا', (await count('[data-block] [data-field]')) === 1);
+  ok('ورُسم في السطر صندوقًا لا نصًّا', (await count(`${ED} > p [data-field]`)) === 1);
   ok(
     'والصندوق لا يُحرَّر — فلا يُكسر بنصف مسح',
-    await page.eval(`return document.querySelector('[data-field]')?.getAttribute('contenteditable') === 'false';`)
+    await page.eval(`return document.querySelector('${ED} [data-field]')?.getAttribute('contenteditable') === 'false';`)
   );
   if (shotsDir) await page.shot(join(shotsDir, 'editor-field.png'));
 
   // ── الحجم: «نؤيد» بحجم ٢٠ ──────────────────────────────────────────
   await select(0, 4);
-  await click('[data-act="size"]');
-  await wait(300);
-  ok('فتحت أداة الحجم قائمتها', (await count('[data-size-opt]')) > 0);
-  await click('[data-size-opt="20"]');
-  await wait(400);
+  await choose('[data-act="size"]', '20');
   ok(
     'وصار المظلَّل بحجم ٢٠ على الورقة',
     await page.eval(`
-      const s = document.querySelector('[data-block] [data-size="20"]');
+      const s = document.querySelector('${ED} > p [data-size="20"]');
       return Boolean(s) && s.textContent === 'نؤيد';
     `)
   );
@@ -118,44 +118,36 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── المحاذاة: توسيط السطر ──────────────────────────────────────────
   await click('[data-act="align-center"]');
   await wait(400);
-  ok(
-    'وتوسّط السطر',
-    await page.eval(`return document.querySelector('[data-block]').style.textAlign === 'center';`)
-  );
+  ok('وتوسّط السطر', await page.eval(`return document.querySelector('${ED} > p').style.textAlign === 'center';`));
 
   // ── Enter سطرٌ جديد، وBackspace في أوّله يمحوه ─────────────────────
   await caret(0, true);
   await page.key('Enter');
   await wait(500);
-  ok('فتح Enter سطرًا جديدًا', (await count('[data-block]')) === 2);
+  ok('فتح Enter سطرًا جديدًا', (await paras()) === 2);
   ok(
     'والمؤشّر فيه لا في الأوّل',
     await page.eval(`
-      const all = [...document.querySelectorAll('[data-block]')];
-      return document.activeElement === all[1];
+      const ps = document.querySelectorAll('${ED} > p');
+      return ps[1].contains(window.getSelection().anchorNode) || window.getSelection().anchorNode === ps[1];
     `)
   );
   ok(
     'والسطر الأوّل بقي كما هو — لم يُبتلع ولم يُكرَّر',
     await page.eval(`
-      const first = document.querySelector('[data-block]');
+      const first = document.querySelector('${ED} > p');
       return first.textContent.includes('نؤيد') && first.textContent.includes('موظف لدينا');
     `)
   );
 
   await page.key('Backspace');
   await wait(500);
-  ok('ومحاه Backspace في أوّله فالتحق بما قبله', (await count('[data-block]')) === 1);
+  ok('ومحاه Backspace في أوّله فالتحق بما قبله', (await paras()) === 1);
 
   await caret(0, true);
   await page.key('Enter');
   await wait(500);
-  await page.eval(`
-    const el = document.activeElement;
-    el.textContent = 'والكتاب صادرٌ بناءً على طلبه';
-    el.dispatchEvent(new InputEvent('input', { bubbles: true }));
-  `);
-  await wait(300);
+  await type('والكتاب صادرٌ بناءً على طلبه');
   ok('وكُتب في السطر الجديد', (await page.text()).includes('والكتاب صادرٌ بناءً على طلبه'));
 
   // ── الجدول بمقاسه ──────────────────────────────────────────────────
@@ -165,51 +157,57 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   ok('فُتح منتقي المقاس', (await count('[data-grid]')) === 64);
   await click('[data-grid="3-3"]');
-  await wait(500);
-  ok('أُدرج جدول ٣×٣ بخلاياه التسع', (await count('table td [contenteditable="true"]')) === 9);
-  ok('وخلاياه تُحرَّر كغيرها', (await page.text()).includes('صفّ عناوين يتكرّر'));
+  await wait(600);
+  ok('أُدرج جدول ٣×٣ بخلاياه التسع', (await count(`${ED} table td`)) === 9);
 
   // ── العمل في الخلايا: محاذاةٌ ودمجٌ وفكّ ───────────────────────────
-  const inCell = (cell, text) =>
-    page.eval(`
-      const el = document.querySelector('[data-cell="${cell}"] [contenteditable]');
-      if (!el) return false;
-      el.focus();
-      ${text === undefined ? '' : `el.textContent = ${JSON.stringify(text)}; el.dispatchEvent(new InputEvent('input', { bubbles: true }));`}
-      const r = document.createRange();
-      r.selectNodeContents(el);
-      r.collapse(false);
-      const s = getSelection();
-      s.removeAllRanges();
-      s.addRange(r);
-      return true;
+  const T = `document.querySelector('${ED} table')`;
+  /** المؤشّر في خليّة (صفّ، عمود) — وفي آخرها، وكتابةٌ فيها إن أُعطيت. */
+  const inCell = async (r, c, value) => {
+    await page.eval(`
+      document.querySelector('${ED}').focus();
+      const p = ${T}.rows[${r}].cells[${c}].querySelector('p');
+      const range = document.createRange();
+      range.selectNodeContents(p);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
     `);
-  await inCell('1-0', 'الاسم');
-  await wait(300);
+    await wait(250);
+    if (value !== undefined) await type(value);
+  };
+  /** يسحب الفأرة من خليّةٍ إلى أخرى فتُحدَّد الخلايا بينهما — والجدول في وسط ما يُرى (المصمّم نافذةٌ تُمرَّر). */
+  const dragCells = async (from, to) => {
+    await page.eval(`${T}.scrollIntoView({ block: 'center' }); return true;`);
+    await wait(300);
+    const at = (r, c) => page.eval(`const b = ${T}.rows[${r}].cells[${c}].getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };`);
+    const a = await at(...from);
+    const b = await at(...to);
+    // مهلةٌ بين الحركات كما تتحرّك يدٌ حقيقية — متلاحقةً بلا مهلة لا يلحق المحرّر ببدء التحديد.
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', clickCount: 1 });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, button: 'left' });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x, y: b.y, button: 'left' });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+    await wait(300);
+  };
+  await inCell(1, 0, 'الاسم');
+  ok('وخلاياه تُحرَّر كغيرها، وأدوات الجدول تظهر فيه', (await page.eval(`return ${T}.rows[1].cells[0].textContent;`)) === 'الاسم' && (await count('[data-act="table-header"]')) === 1);
   await click('[data-act="align-center"]');
   await wait(300);
-  ok(
-    'الخليّة تُوسَّط بأداة الشريط نفسها',
-    await page.eval(`return document.querySelector('[data-cell="1-0"] [contenteditable]').style.textAlign === 'center'`)
-  );
-  await inCell('0-0', 'البيانات');
-  await wait(300);
-  await click('[data-act="cell-merge"]');
+  ok('الخليّة تُوسَّط بأداة الشريط نفسها', await page.eval(`return ${T}.rows[1].cells[0].querySelector('p').style.textAlign === 'center';`));
+  await inCell(0, 0, 'البيانات');
+  await dragCells([0, 0], [0, 1]);
+  await click('[data-act="merge"]');
   await wait(400);
-  ok(
-    'دُمجت الخليّة بجارتها فغطّت عمودين',
-    (await count('[data-cell^="0-"]')) === 2 &&
-      (await page.eval(`return document.querySelector('[data-cell="0-0"]').colSpan === 2`))
-  );
-  await inCell('0-0');
-  await wait(300);
-  await click('[data-act="cell-split"]');
+  ok('دُمجت الخليّة بجارتها فغطّت عمودين', await page.eval(`return ${T}.rows[0].cells.length === 2 && ${T}.rows[0].cells[0].colSpan === 2;`));
+  await inCell(0, 0);
+  await click('[data-act="split"]');
   await wait(400);
-  ok(
-    'وفُكّ الدمج فعادت ثلاثًا وبقي ما كُتب',
-    (await count('[data-cell^="0-"]')) === 3 &&
-      (await page.eval(`return document.querySelector('[data-cell="0-0"]').textContent.includes('البيانات')`))
-  );
+  ok('وفُكّ الدمج فعادت ثلاثًا وبقي ما كُتب', await page.eval(`return ${T}.rows[0].cells.length === 3 && ${T}.rows[0].cells[0].textContent.includes('البيانات');`));
 
   // ── «نسخة منه إلى» — ولا توقيع ولا ختم في القائمة ────────────────
   await click('[data-act="insert"]');
@@ -229,7 +227,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok(
     'وظهرت العلامة المائية خلف المتن على الورقة',
     await page.eval(`
-      const w = document.querySelector('[data-doc-editor] [data-watermark]') || document.querySelector('.paper [data-watermark]') || document.querySelector('[data-watermark]:not(img)');
+      const w = document.querySelector('[data-doc-editor] [data-watermark]');
       return Boolean(w) && w.textContent.includes('مسودة');
     `)
   );
@@ -254,16 +252,16 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('حُفظ النموذج وقُيّد في المكتبة', Boolean(row));
 
   const doc = row?.docJson ? JSON.parse(row.docJson) : null;
-  const paras = (doc?.blocks ?? []).filter((b) => b.kind === 'paragraph');
+  const ps = (doc?.blocks ?? []).filter((b) => b.kind === 'paragraph');
   const textOf = (b) => b.inlines.map((i) => (i.kind === 'run' ? i.text : '')).join('');
 
   ok('وحقلها الذي صنعه F4', doc?.fields?.[0]?.label === 'أحمد عادل');
   ok(
     'والحجم محفوظٌ علامةً على النصّ',
-    paras.some((b) => b.inlines.some((i) => i.kind === 'run' && i.text === 'نؤيد' && i.marks?.size === 20))
+    ps.some((b) => b.inlines.some((i) => i.kind === 'run' && i.text === 'نؤيد' && i.marks?.size === 20))
   );
-  ok('والتوسيط محفوظٌ على السطر', paras[0]?.align === 'center');
-  ok('والسطر الجديد سطرٌ مستقلّ لا ملتصق', paras.some((b) => textOf(b) === 'والكتاب صادرٌ بناءً على طلبه'));
+  ok('والتوسيط محفوظٌ على السطر', ps[0]?.align === 'center');
+  ok('والسطر الجديد سطرٌ مستقلّ لا ملتصق', ps.some((b) => textOf(b) === 'والكتاب صادرٌ بناءً على طلبه'));
   const table = doc?.blocks?.find((b) => b.kind === 'table');
   ok('والجدول بصفوفه الثلاثة وأعمدته', table?.rows?.length === 3 && table?.columns?.length === 3);
   ok('وتوسيط الخليّة محفوظٌ على فقرتها', table?.rows?.[1]?.cells?.[0]?.blocks?.[0]?.align === 'center');
@@ -291,10 +289,7 @@ export default async function scenario(page, { profile, shotsDir }) {
       return Boolean(w) && w.textContent.includes('مسودة');
     `)
   );
-  ok(
-    'والتوسيط فيها',
-    (await count('.a4-sheet [data-body] p[style*="text-align:center"]')) > 0
-  );
+  ok('والتوسيط فيها', (await count('.a4-sheet [data-body] p[style*="text-align:center"]')) > 0);
   ok('والحجم فيها', (await count('.a4-sheet [data-body] span[style*="font-size:20px"]')) > 0);
   ok('والجدول فيها', (await count('.a4-sheet [data-body] table')) === 1);
   if (shotsDir) await page.shot(join(shotsDir, 'service-review.png'));

@@ -38,8 +38,6 @@ export default async function scenario(page, { profile, shotsDir }) {
     readFileSync(join(saveDir, name), { encoding: 'latin1' }).slice(0, len);
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  // المحرّر الأوّل: صار احتياطًا منذ ٤ تشرين الأول — وهذا السيناريو يختبره (والجديد في pageEditor.mjs).
-  await page.eval(`await window.diwan.settings.set({ newEditor: false }); return true;`);
 
   /** نصّ الورقة التي تُطبع — المرسومة خارج الشاشة بقيمها، لا ورقة التحرير. */
   const sheetText = () =>
@@ -141,21 +139,22 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ظهر القسم الثاني على الورقة', withSection.includes('قسم التعليم العام'));
   ok('وبقي القسم الأول معه', withSection.includes('جمهورية العراق'));
 
-  /** يكتب في آخر سطرٍ من الورقة — والمؤشّر في آخره، كما يكتب الموظف. */
+  /** يكتب في آخر سطرٍ من الورقة — والمؤشّر في آخره، كما يكتب الموظف بلوحة المفاتيح. */
   const typeAtEnd = async (value) => {
     await page.eval(`
-      const blocks = [...document.querySelectorAll('[data-screen="editor"] [data-block]')];
-      const el = blocks[blocks.length - 1];
-      el.focus();
+      const ed = document.querySelector('[data-screen="editor"] [data-page-editor]');
+      ed.focus();
+      const ps = [...ed.querySelectorAll(':scope > p')];
       const range = document.createRange();
-      range.selectNodeContents(el);
+      range.selectNodeContents(ps[ps.length - 1] ?? ed);
       range.collapse(false);
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-      document.execCommand('insertText', false, ${JSON.stringify(value)});
       return true;
     `);
+    await wait(200);
+    await page.send('Input.insertText', { text: value });
     await wait(250);
   };
   /** حقلٌ من كتالوج المعاملات يُدرج حيث وقف المؤشّر. */
@@ -194,7 +193,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await typeAtEnd('المدير العام');
   const fieldsNow = await page.eval(`return [...document.querySelectorAll('[data-value-of]')].map((el) => el.getAttribute('data-value-of'));`);
   ok('الحقول على الورقة وقيمها في اللوح', fieldsNow.length === 4 && fieldsNow.includes('رقم الإضبارة'));
-  ok('والحقل على ورقة التحرير صندوقٌ باسمه قبل أن يُملأ', (await page.eval(`return document.querySelector('[data-screen="editor"] [data-block] [data-field]')?.innerText ?? '';`)).includes('الاسم الرباعي'));
+  ok('والحقل على ورقة التحرير صندوقٌ باسمه قبل أن يُملأ', (await page.eval(`return document.querySelector('[data-screen="editor"] [data-page-editor] [data-field]')?.innerText ?? '';`)).includes('الاسم الرباعي'));
 
   // استيراد المواطن من السجل (F2)
   await page.clickText('هات الزبون');

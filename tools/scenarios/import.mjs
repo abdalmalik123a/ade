@@ -24,8 +24,6 @@ export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  // المحرّر الأوّل: صار احتياطًا منذ ٤ تشرين الأول — وهذا السيناريو يختبره (والجديد في pageEditor.mjs).
-  await page.eval(`await window.diwan.settings.set({ newEditor: false }); return true;`);
 
   const source = process.env.DIWAN_TEST_OPEN_FILE;
   ok('مِقْود الاستيراد مهيّأ', Boolean(source) && existsSync(source));
@@ -42,17 +40,16 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('انفتح المصمّم بالنموذج المستورد', text.includes('نموذج مستورد'));
 
   const paper = await page.eval(`
-    const block = document.querySelector('[data-block]');
-    const sheet = block?.closest('div[style*="210mm"]');
+    const sheet = document.querySelector('[data-paper]');
     if (!sheet) return null;
     return {
       width: sheet.getBoundingClientRect().width,
       padding: getComputedStyle(sheet).paddingTop,
       text: sheet.innerText,
-      columns: sheet.querySelectorAll('div[style*="flex:"]').length,
+      columns: sheet.querySelectorAll('[data-page-editor] [data-column]').length,
       hr: [...sheet.querySelectorAll('img')].some((i) => (i.src || '').startsWith('diwan://') && i.style.height === '10px'),
       bold: [...sheet.querySelectorAll('strong')].some((s) => s.textContent.includes('ادارة')),
-      tab: [...sheet.querySelectorAll('[data-block]')].find((b) => b.textContent.includes('مدير المدرسة'))?.style.textIndent
+      tab: [...sheet.querySelectorAll('[data-page-editor] p')].find((b) => b.textContent.includes('مدير المدرسة'))?.style.textIndent
     };
   `);
   ok('الورقة بعرض A4 الحقيقي (٢١٠ ملم)', paper && Math.abs(paper.width - 793.7) < 2);
@@ -136,7 +133,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.eval(`document.querySelector('[data-act="save-head"]').click()`);
   await wait(900);
   const after = await page.eval(`
-    const sheet = document.querySelector('[data-block]')?.closest('div[style*="210mm"]');
+    const sheet = document.querySelector('[data-paper]');
     return {
       offer: !!document.querySelector('[data-head-offer]'),
       head: !!sheet?.querySelector('[data-sheet-head]'),

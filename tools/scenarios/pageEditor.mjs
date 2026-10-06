@@ -62,8 +62,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
   const paraCount = () => page.eval(`return document.querySelectorAll('[data-page-editor] > p').length;`);
 
-  // ── التفعيل من الإعدادات ───────────────────────────────────────────
-  await page.eval(`await window.diwan.settings.set({ newEditor: true }); return true;`);
+  // ── المصمّم بورقةٍ فارغة — والمحرّر الجديد هو الوحيد ──────────────────
   await page.goto('templates-library-drafts');
   await wait(700);
   await click('[data-act="new-blank"]');
@@ -444,9 +443,13 @@ export default async function scenario(page, { profile, shotsDir }) {
     const at = (r, c) => page.eval(`const b = ${T}.rows[${r}].cells[${c}].getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };`);
     const a = await at(...from);
     const b = await at(...to);
+    // مهلةٌ بين الحركات كما تتحرّك يدٌ حقيقية — متلاحقةً بلا مهلة لا يلحق المحرّر ببدء التحديد.
     await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', clickCount: 1 });
+    await wait(50);
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, button: 'left' });
+    await wait(50);
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x, y: b.y, button: 'left' });
+    await wait(50);
     await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', clickCount: 1 });
     await wait(300);
   };

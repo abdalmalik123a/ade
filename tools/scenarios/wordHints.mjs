@@ -31,7 +31,6 @@ export default async function scenario(page, { profile, shotsDir }) {
   const count = (selector) => page.eval(`return document.querySelectorAll(${JSON.stringify(selector)}).length;`);
 
   ok('ملفّ Word للاستيراد', existsSync(process.env.DIWAN_TEST_OPEN_FILE ?? ''));
-  await page.eval(`await window.diwan.settings.set({ newEditor: true }); return true;`);
   await page.goto('templates-library-drafts');
   await wait(700);
   await page.eval(`document.querySelector('[data-act="new-word"]')?.click()`);
