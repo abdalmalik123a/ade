@@ -781,11 +781,25 @@ function isBlock(v: unknown): v is Block {
   return isObj(v) && typeof v.kind === 'string' && BLOCK_KINDS.has(v.kind) && typeof v.id === 'string';
 }
 
+/**
+ * مصدر الحقل في ملف الزبون بأسماء خاناته (`fullName`) — وكانت وسوم النماذج القديمة («{الاسم}») تُرحَّل
+ * بأسماء أعمدة القاعدة (`full_name`)، فلا يملؤها «هات الزبون». يُصحَّح ما حُفظ كذلك عند قراءته.
+ */
+const LEGACY_SOURCE: Record<string, string> = {
+  full_name: 'fullName',
+  national_id: 'nationalId',
+  job_title: 'jobTitle',
+  service_status: 'serviceStatus',
+  birth_place: 'birthPlace',
+  birth_date: 'birthDate'
+};
+
 function normalizeField(raw: Record<string, unknown>): DocField {
   const key = typeof raw.key === 'string' ? raw.key : '';
   return {
     ...makeField({ key }),
     ...raw,
+    ...(typeof raw.source === 'string' && LEGACY_SOURCE[raw.source] ? { source: LEGACY_SOURCE[raw.source] } : {}),
     id: typeof raw.id === 'string' && raw.id ? raw.id : newUuid(),
     key,
     width: typeof raw.width === 'number' && raw.width > 0 ? raw.width : DEFAULT_FIELD_WIDTH,

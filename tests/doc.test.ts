@@ -73,8 +73,21 @@ describe('ترحيل المتن القديم إلى وثيقة', () => {
     ]);
     const name = doc.fields.find((f) => f.key === 'الاسم')!;
     expect(name.label).toBe('الاسم الرباعي واللقب');
-    expect(name.source).toBe('full_name');
+    // اسم خانته في ملف الزبون كما يقرؤه «هات الزبون» — لا اسم عمودها في القاعدة.
+    expect(name.source).toBe('fullName');
     expect(name.required).toBe(true);
+  });
+
+  it('وما رُحّل قديمًا بأسماء الأعمدة يُصحَّح عند قراءته — فيملؤه «هات الزبون»', () => {
+    const doc = normalizeDoc({
+      kind: 'flow',
+      blocks: [paragraph([fieldRef('الاسم'), run(' '), fieldRef('المواليد')])],
+      fields: [
+        { key: 'الاسم', label: 'الاسم', source: 'full_name' },
+        { key: 'المواليد', label: 'المواليد', source: 'birth_date' }
+      ]
+    });
+    expect(doc.fields.map((f) => f.source)).toEqual(['fullName', 'birthDate']);
   });
 
   it('لكل وثيقة وحقل معرّف ثابت — بغيره لا تصدير ولا دمج', () => {

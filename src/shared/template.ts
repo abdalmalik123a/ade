@@ -36,15 +36,18 @@ export const AUTO_TOKENS = [
   { token: 'التاريخ_الهجري', label: 'التاريخ الهجري' }
 ] as const;
 
-/** الحقول التي تأتي من ملف المواطن عند الاستيراد بـ F2. */
+/**
+ * الحقول التي تأتي من ملف المواطن عند الاستيراد بـ F2 — و`field` اسم خانته في الملف (`CitizenDetail`)
+ * كما يقرؤه «هات الزبون»، لا اسم عمودها في القاعدة.
+ */
 export const CITIZEN_TOKENS = [
-  { token: 'الاسم', label: 'الاسم الرباعي واللقب', field: 'full_name' },
-  { token: 'الرقم_الوطني', label: 'الرقم الوطني', field: 'national_id' },
-  { token: 'العنوان_الوظيفي', label: 'العنوان الوظيفي', field: 'job_title' },
+  { token: 'الاسم', label: 'الاسم الرباعي واللقب', field: 'fullName' },
+  { token: 'الرقم_الوطني', label: 'الرقم الوطني', field: 'nationalId' },
+  { token: 'العنوان_الوظيفي', label: 'العنوان الوظيفي', field: 'jobTitle' },
   { token: 'مكان_العمل', label: 'مكان العمل', field: 'workplace' },
-  { token: 'الحالة_الوظيفية', label: 'الحالة الوظيفية', field: 'service_status' },
-  { token: 'محل_الولادة', label: 'محل الولادة', field: 'birth_place' },
-  { token: 'تاريخ_الولادة', label: 'تاريخ الولادة', field: 'birth_date' },
+  { token: 'الحالة_الوظيفية', label: 'الحالة الوظيفية', field: 'serviceStatus' },
+  { token: 'محل_الولادة', label: 'محل الولادة', field: 'birthPlace' },
+  { token: 'تاريخ_الولادة', label: 'تاريخ الولادة', field: 'birthDate' },
   { token: 'العنوان', label: 'العنوان السكني', field: 'address' }
 ] as const;
 

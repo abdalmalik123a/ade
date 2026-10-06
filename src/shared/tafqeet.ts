@@ -125,11 +125,18 @@ type Noun = {
   feminine?: boolean;
 };
 
+/**
+ * «مئتان» مضافةً إلى ما بعدها تفقد نونها كسائر المثنّى: «مئتا ألف»، «مئتا دينار» — لا «مئتان دينار».
+ * وذلك حين تكون المرتبة مئتين بالضبط ويليها معدودها؛ و«مئتان وخمسون» لا يليها شيء.
+ */
+const TWO_HUNDRED_BOUND = 'مئتا';
+
 function counted(n: number, noun: Noun, bound: boolean): string {
   if (n === 1) return noun.one;
   if (n === 2) return bound ? noun.twoBound : noun.two;
   const last = n % 100;
-  const words = convertGroup(n);
+  // المرتبة يليها معدودها دائمًا («مئتا ألف»).
+  const words = n === 200 ? TWO_HUNDRED_BOUND : convertGroup(n);
   if (last >= 3 && last <= 10) return `${words} ${noun.few}`;
   if (last >= 11) return `${words} ${bound ? noun.manyBound : noun.many}`;
   return `${words} ${noun.single}`;
@@ -165,7 +172,8 @@ function numberWords(n: number, bound: boolean, feminine = false): string {
     if (count) chunks.push(counted(count, noun, bound && rest === 0));
   }
   // والمراتب (ألف، مليون) مذكّرةٌ أبدًا؛ التأنيث في ما دون الألف وحده.
-  if (rest) chunks.push(convertGroup(rest, feminine));
+  // و«مئتان» يليها المعدود («مئتا دينار») حين يُضاف إليه.
+  if (rest) chunks.push(bound && rest === 200 ? TWO_HUNDRED_BOUND : convertGroup(rest, feminine));
   return chunks.join(' و');
 }
 

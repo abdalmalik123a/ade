@@ -13,7 +13,7 @@
       "files": 0
     },
     "sampleUuid": "3c87e133-0844-5a20-b15b-db5c22cd9935",
-    "sha256": "a2412c3f94de87c58c268c0238f94c7e80172ddf46cb2c57084b944c4a37c65c"
+    "sha256": "9634fc88a8778ccef90933d2bee3d3558041148bd064f28b45741e13e479d2d4"
   },
   {
     "id": "court-petitions",
@@ -29,7 +29,7 @@
       "files": 0
     },
     "sampleUuid": "a744183e-3140-5522-9399-1441c2f25e6a",
-    "sha256": "d0bcf4cddbd207680f7be95b23c396eab73d728f52b17623e7772620d4458620"
+    "sha256": "2b68657261c9ee7a442ac80e36f80548565369c3d2a4e58e6b8078ad964bdb06"
   },
   {
     "id": "education",
@@ -45,7 +45,7 @@
       "files": 0
     },
     "sampleUuid": "2175bf2e-5021-5312-8eb1-806cb0c91036",
-    "sha256": "b02d6eb8dd410adf52f6a3bdb5e781dafd9738266227069d640efc109ba304f1"
+    "sha256": "9ff285a3f3075a480f324909f1c3fd1d445accc60c891094fcc49f5bc9232abb"
   },
   {
     "id": "general-requests",
