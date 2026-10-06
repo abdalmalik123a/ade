@@ -38,7 +38,7 @@ import { groupDuplicates, stripTatweel } from './blanks';
 import { applyBlankFields } from '@shared/fieldHints';
 import { HEAD_MAX, findSheetHead, splitSheetHead } from '@shared/sheetHead';
 import { importTemplateFile, type ImageSaver } from './import';
-import { excelToDocs } from './excelDoc';
+import { adoptDataFields, excelToDocs } from './excelDoc';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
 import { learned, recordCorrections, type Correction } from './learning';
@@ -193,7 +193,10 @@ export async function planExcelImport(path: string, opts: { saveImage?: ImageSav
   const reason = book.dataSheet ? `من ورقة البيانات «${book.dataSheet}»` : 'من ورقة البيانات';
   const candidates: ImportCandidate[] = book.sheets.map((sheet) => {
     const built = applyBlankFields(sheet.doc, { fillMode: 'hand' });
-    const fromData = sheet.doc.fields.map((f) => ({ value: `${f.key} — ${f.label}`, confidence: 0.95, reason }));
+    // وفراغٌ باسم خانةٍ من البيانات يصير هي — فلا تبقى له خانةٌ تُملأ بالقلم.
+    const { doc, adopted } = adoptDataFields(built.doc, book.dataFields);
+    const kept = new Set(doc.fields.map((f) => f.key));
+    const fromData = [...sheet.doc.fields, ...adopted].map((f) => ({ value: `${f.key} — ${f.label}`, confidence: 0.95, reason }));
     return {
       id: newUuid(),
       file,
@@ -201,13 +204,13 @@ export async function planExcelImport(path: string, opts: { saveImage?: ImageSav
       formCount: 1,
       title: sheet.name,
       subjectLine: null,
-      doc: built.doc,
+      doc,
       headCount: 0,
       letterheadKey: null,
       letterhead: null,
       notes: sheet.notes,
       warnings: [],
-      suggestions: [...fromData, ...built.suggestions]
+      suggestions: [...fromData, ...built.suggestions.filter((s) => kept.has(s.value.split(' — ')[0]!))]
     };
   });
   return {

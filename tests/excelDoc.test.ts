@@ -8,9 +8,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import ExcelJS from 'exceljs';
-import { bookToDocs, excelToDocs, fieldNameOf, gapsToDots } from '../src/main/services/excelDoc';
+import { adoptDataFields, bookToDocs, excelToDocs, fieldNameOf, gapsToDots } from '../src/main/services/excelDoc';
 import { planExcelImport } from '../src/main/services/importFolder';
-import { docText, emptyDoc, type Block, type ColumnsBlock, type ParagraphBlock, type TableBlock } from '../src/shared/doc';
+import { docText, emptyDoc, fieldRef, makeField, paragraph, run, type Block, type ColumnsBlock, type ParagraphBlock, type TableBlock } from '../src/shared/doc';
 
 /** صورة PNG بنقطةٍ واحدة — شعارٌ للاختبار. */
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -71,6 +71,11 @@ async function schoolBook(): Promise<ExcelJS.Workbook> {
   ws.getCell('G14').value = { formula: "'البيانات'!C6", result: 'سالم حسن' } as ExcelJS.CellFormulaValue;
   // تعليمةٌ لمستعمل الملفّ خارج حدود الطباعة.
   ws.getCell('L5').value = 'بعنوان يعني العنوان الوظيفي';
+  // وقيمٌ من ورقة البيانات مكتوبةٌ بلا معادلة: المحافظة في سطر، واسم المدير في توقيعٍ ثانٍ.
+  ws.mergeCells('A12:J12');
+  ws.getCell('A12').value = 'نسخة منه الى مديرية تربية بغداد / قسم الملاك';
+  ws.mergeCells('G16:J16');
+  ws.getCell('G16').value = 'سالم  حسن';
 
   const hidden = book.addWorksheet('معلومات');
   hidden.state = 'hidden';
@@ -105,6 +110,10 @@ describe('أسماء الخانات والفراغات', () => {
     expect(gapsToDots(stamp)).toBe(stamp);
     expect(gapsToDots('((   واقع حال     ))')).toBe('((   واقع حال     ))');
     expect(gapsToDots('لغرض (          ) وحسب')).toMatch(/لغرض \( \.{10} \) وحسب/);
+    // والنقاط في مقطعٍ قبله بخطٍّ آخر جارةٌ كذلك.
+    expect(gapsToDots('     بعنوان', 'باشر السيد / ة    ........')).toBe('     بعنوان');
+    // وقوسٌ فارغٌ مسافاته في مقطعٍ وحده فراغٌ يُملأ — ولو فصلت مسافةٌ بينه وبين القوس.
+    expect(gapsToDots(' '.repeat(30), 'الوثيقة المرقمة (', ' ) ذو العدد')).toMatch(/^ \.{30} $/);
   });
 });
 
@@ -160,6 +169,29 @@ describe('ملفّ Excel كتبًا', () => {
     expect(c.suggestions.find((s) => s.value.startsWith('اسم_المدرسة'))?.reason).toBe('من ورقة البيانات «البيانات»');
     expect(c.doc.fields.find((f) => f.label === 'اسم السيد')).toMatchObject({ fillMode: 'hand' });
     expect(plan.failed).toEqual([{ file: 'معلومات', error: 'ورقةٌ مخفيّة' }]);
+  });
+
+  it('وقيمة ورقة البيانات مكتوبةً بلا معادلة خانتُها — فلا يبقى اسم مديرٍ ولا محافظةٌ في كتب كلّ مدرسة', async () => {
+    const { doc, notes } = bookToDocs(await schoolBook(), save).sheets[0]!;
+    const all = text(doc.blocks);
+    expect(all).not.toMatch(/بغداد|سالم/);
+    expect(all).toContain('نسخة منه الى مديرية تربية {المحافظة} / قسم الملاك');
+    expect(all.match(/\{اسم_مدير_المدرسة\}/g)).toHaveLength(2);
+    expect(notes).toContain('قيمةٌ من ورقة البيانات مكتوبةٌ بلا معادلة صارت خانتها');
+  });
+
+  it('وفراغٌ باسم خانةٍ من البيانات يصيرها — إلا اسمًا لخليّتين', () => {
+    const doc = { ...emptyDoc(), blocks: [paragraph([run('كتاب المديرية العامة لتربية '), fieldRef('المحافظة_2'), run(' في '), fieldRef('العام_الدراسي')])] };
+    doc.fields = [makeField({ key: 'المحافظة_2', label: 'المحافظة', fillMode: 'hand' }), makeField({ key: 'العام_الدراسي', label: 'العام الدراسي', fillMode: 'hand' })];
+    const data = [
+      { key: 'المحافظة', label: 'المحافظة', sample: 'القادسية' },
+      { key: 'العام_الدراسي', label: 'العام الدراسي', sample: '2025' },
+      { key: 'العام_الدراسي_2', label: 'العام الدراسي 2', sample: '2026' }
+    ];
+    const { doc: out, adopted } = adoptDataFields(doc, data);
+    expect(refs(out.blocks[0] as ParagraphBlock)).toEqual(['المحافظة', 'العام_الدراسي']);
+    expect(out.fields.map((f) => `${f.key}:${f.fillMode}`)).toEqual(['المحافظة:printed', 'العام_الدراسي:hand']);
+    expect(adopted).toEqual([{ key: 'المحافظة', label: 'المحافظة' }]);
   });
 
   it('و.xls القديم يُقال له ما يُفعل', async () => {

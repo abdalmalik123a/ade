@@ -162,6 +162,16 @@ export function detectBlanks(line: string): DetectedBlank[] {
   let at = -1;
   for (const b of found) {
     if (b.start < at) continue;
+    // نقاطٌ بعد نقاطٍ لا يفصلها إلا مسافة فراغٌ واحد: «( ........ ........ )» اسمٌ يُكتب مرّة — وكانا فراغين
+    // باسمٍ واحد فيُطبع الاسم مرّتين.
+    const prev = out[out.length - 1];
+    if (prev && b.kind === prev.kind && (b.kind === 'dots' || b.kind === 'underline') && /^[ \t]+$/.test(line.slice(prev.end, b.start))) {
+      prev.end = b.end;
+      prev.raw = line.slice(prev.start, b.end);
+      prev.width = Math.max(MIN_WIDTH, prev.raw.length);
+      at = b.end;
+      continue;
+    }
     out.push(b);
     at = b.end;
   }
@@ -285,6 +295,16 @@ export function suggestFieldName(before: string): Suggestion<string> {
 
   // ٣) «للتلميذ ( )» ← اسم التلميذ.
   const noun = bare(last);
+  // وشخصان في كتابٍ واحد باسمين: «المدير السابق الاستاذ ( ) والمدير الحالي الاستاذ ( )»، و«المسلم الاستاذ / ( )» —
+  // وكانا «اسم الاستاذ» خانةً واحدة يملؤها اسمٌ واحد.
+  if (person(last) && /^(?:و?ال)?(?:مسلم|مستلم)(?:ة)?$/.test(prev)) {
+    return { value: `اسم ${definite(prev.replace(/^و/, ''))}`, confidence: 0.8, reason: 'اسمُ شخص' };
+  }
+  if (person(last) && /^(?:و?ال)?(?:سابق|حالي|جديد|قديم|بديل)(?:ة)?$/.test(prev)) {
+    const role = ws[ws.length - 3];
+    const of = role && /^(?:و|ب|ل|ف)?ال[ء-ي]{2,}$/.test(role) && !person(role) ? definite(role.replace(/^و(?=ال)/, '')) : `ال${noun}`;
+    return { value: `اسم ${of} ${definite(prev.replace(/^و/, ''))}`, confidence: 0.8, reason: 'اسمُ شخص' };
+  }
   if (person(last)) {
     return { value: `اسم ${noun.startsWith('ال') ? noun : `ال${noun}`}`, confidence: 0.85, reason: 'اسمُ شخص' };
   }
@@ -325,14 +345,15 @@ export function suggestFieldName(before: string): Suggestion<string> {
   if (/^عدد(?:ه|ها|هم)$/.test(bare(last))) return { value: 'العدد', confidence: 0.6, reason: '«عددها» عددٌ يُكتب' };
   if (bare(last) === 'تاريخ') return { value: 'التاريخ', confidence: 0.6, reason: '«بتاريخ» تاريخٌ يُكتب' };
 
-  // «الوثيقة الصادرة من ( )»: الجهة التي أصدرتها.
+  // «الوثيقة الصادرة من ( )»: الجهة التي أصدرتها. ولا «جهة» في اسم الخانة: معجم ملف الزبون يقرؤها مكان عمله
+  // (`citizenSourceOf`) — فاسمها «مصدر الوثيقة»، كما تُسمّى خانات الحزم (CATALOG، القاعدة ٧).
   if (/^(?:من|عن)$/.test(last) && /^(?:و?ال)?صادر(?:ة)?$/.test(prev)) {
-    return { value: 'جهة الإصدار', confidence: 0.7, reason: '«الصادرة من» جهةٌ أصدرتها' };
+    return { value: 'مصدر الوثيقة', confidence: 0.7, reason: '«الصادرة من» جهةٌ أصدرتها' };
   }
 
-  // «الى ( )» وحدها، و«بوثيقةٍ معنونة الى ( )»: جهةٌ يُكتب إليها.
+  // «الى ( )» وحدها، و«بوثيقةٍ معنونة الى ( )»: جهةٌ يُكتب إليها — «المرسل إليه» لا «الجهة» للسبب نفسه.
   if (/^(?:الى|إلى|الي)$/.test(last) && (!prev || /^(?:ال)?(?:معنون|مرسل|موجه|مقدم)(?:ة|ه)?$/.test(prev))) {
-    return { value: 'الجهة', confidence: 0.45, reason: '«الى» تليها جهة' };
+    return { value: 'المرسل إليه', confidence: 0.45, reason: '«الى» تليها جهة' };
   }
   // «المديرية العامة لتربية ......»: المحافظة — في كتب المدارس كلّها.
   if (/^(?:ل|لل)تربية$/.test(last)) return { value: 'المحافظة', confidence: 0.6, reason: '«لتربية» تليها المحافظة' };

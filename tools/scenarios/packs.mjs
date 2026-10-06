@@ -226,5 +226,47 @@ export default async function scenario(page, { profile, shotsDir }) {
   const finalTxCount = db((d) => d.prepare('SELECT COUNT(*) AS n FROM transactions').get().n);
   ok('حُفظت معاملة الطالبة وبلغ السجل معاملتين', finalTxCount === 2);
 
+  // ٩) «مخاطبات المدارس الرسمية» (الموجة ٢): ٤٥ كتابًا من برنامج مخاطبات مدرسةٍ في Excel — وكتابٌ منها في الشبّاك
+  //    برأسه أعمدةً، وموضع الشعار فارغ، والخطّ الفاصل من البرنامج.
+  await page.eval(`document.querySelector('[data-act="after-close"]')?.click(); return true;`);
+  await page.goto('templates-library-drafts');
+  await wait(800);
+  await page.eval(`document.querySelector('[data-act="content-import"]').click(); return true;`);
+  await wait(600);
+  ok('وحزمة «مخاطبات المدارس الرسمية» في القائمة', (await page.eval(`return document.querySelector('[data-packs-modal]')?.innerText ?? '';`)).includes('مخاطبات المدارس الرسمية'));
+  await page.eval(`document.querySelector('[data-act="import-bundled-school-letters"]').click(); return true;`);
+  await wait(2500);
+  ok('واستُوردت بكتبها الخمسة والأربعين', (await toast()).includes('أُضيف 45 نموذجًا'));
+  ok('والقاعدة فيها ٥١ نموذجًا (٦ + ٤٥)', db((d) => d.prepare('SELECT COUNT(*) AS n FROM templates').get().n) === 51);
+  await page.key('Escape');
+  await wait(400);
+
+  await page.goto('service-counter');
+  await wait(900);
+  const clickedSchool = await page.eval(`
+    const card = [...document.querySelectorAll('[data-template-card]')].find((c) => c.querySelector('.font-headline-sm')?.textContent?.trim() === 'تبليغ');
+    if (!card) return false;
+    card.click();
+    return true;
+  `);
+  ok('«تبليغ» من الحزمة في الشبّاك', clickedSchool);
+  await wait(400);
+  await page.clickText('املأ');
+  await wait(1200);
+  await fill('اسم المدرسة', 'مدرسة النور');
+  await fill('جنس المدرسة', 'للبنين');
+  await fill('المحافظة', 'بغداد');
+  await fill('اسم مدير المدرسة', 'سالم حسن');
+  await fill('اسم السيد', 'كرار حيدر علي');
+  await page.clickText('راجع الأوراق');
+  await wait(1200);
+  sheetText = await page.eval(`return document.querySelector('.a4-sheet')?.innerText ?? '';`);
+  ok('والورقة بالمدرسة ومحافظتها ومديرها والمبلَّغ', ['مدرسة النور', 'للبنين', 'لتربية بغداد', 'سالم حسن', 'كرار حيدر علي'].every((s) => sheetText.includes(s)));
+  ok('وبلا صورة — والخطّ الفاصل من البرنامج', await page.eval(`
+    const sheet = document.querySelector('.a4-sheet');
+    return Boolean(sheet) && !sheet.querySelector('img') && Boolean(sheet.querySelector('[data-rule]'));
+  `));
+  if (shotsDir) await page.shot(join(shotsDir, 'packs-school-letter.png'));
+
   return steps.join('\n');
 }

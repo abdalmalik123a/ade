@@ -179,10 +179,13 @@ function dataFieldsOf(data: ExcelJS.Worksheet, refs: Set<string>): Map<string, {
  * تبليغ»): ذلك تنسيقٌ لا فراغ. وكذلك ما جاور فراغًا منقوطًا («...... ⎵⎵⎵ ختم المدرسة»: يُبعد الختم عن الفراغ)، وما
  * بين كلامٍ وقوسه («(( واقع حال ⎵⎵⎵ ))»: عنوانٌ في قوسين) — فهو باقٍ كما رُسم.
  */
-export function gapsToDots(text: string): string {
+export function gapsToDots(text: string, prior = '', next = ''): string {
+  // و`prior` و`next` نصّ الخليّة قبل المقطع وبعده: «[٩ نقطة]...... | [١٦ نقطة]⎵⎵⎵⎵⎵ بعنوان» مسافةٌ بجوار نقاطٍ في مقطعٍ
+  // آخر — وكانت تصير فراغًا ثانيًا باسم الأوّل فيُطبع الاسم مرّتين.
   return text.replace(/ {5,}/g, (gap, at: number, all: string) => {
-    const before = all.slice(0, at);
-    const after = all.slice(at + gap.length);
+    // والجيران بلا مسافاتهم: «( ⎵ | [مقطع] ⎵⎵⎵⎵⎵ | ⎵ )» قوسٌ فارغٌ يُملأ ولو فصلت مسافةٌ بينه وبين الفراغ.
+    const before = (prior + all.slice(0, at)).trimEnd();
+    const after = (all.slice(at + gap.length) + next).trimStart();
     if (before.endsWith('/') || after.startsWith('/')) return '   ';
     if (/^\s*[\d٠-٩]+\s*[-.)–]\s*$/.test(before)) return '  ';
     if (/[.…_]{3,}$/.test(before) || /^[.…_]{3,}/.test(after)) return gap;
@@ -207,9 +210,41 @@ type Ctx = {
   ws: ExcelJS.Worksheet;
   data: string | null;
   fields: Map<string, { key: string; label: string; sample: string }>;
+  /** قيم ورقة البيانات نصوصًا تُعرف إن كُتبت في الكتب بلا معادلة — الأطول أوّلًا. */
+  literals: { address: string; re: RegExp }[];
   used: Map<string, DocField>;
   notes: Set<string>;
 };
+
+/**
+ * قيمةٌ من ورقة البيانات مكتوبةٌ في الكتاب بلا معادلة — اسم المدير في توقيعٍ كُتب باليد، و«لتربية القادسية» — خانتُها:
+ * وإلا بقي اسم مدير مدرسةٍ ومحافظتُها في كتب كلّ مدرسة. والقيمة كلمةٌ تامّة (لا جزءُ كلمةٍ أطول)، بخمسة أحرفٍ فأكثر،
+ * ولا رقمًا (العام يُكتب في التواريخ أيضًا).
+ */
+function literalsOf(fields: Map<string, { sample: string }>): Ctx['literals'] {
+  const AR = 'ء-يـ';
+  return [...fields]
+    .filter(([, f]) => (f.sample.match(/[ء-ي]/g) ?? []).length >= 5)
+    .sort((a, b) => b[1].sample.length - a[1].sample.length)
+    .map(([address, f]) => {
+      // المدّ والمسافات المكرّرة لا تمنع المطابقة: «سالم  حسن» و«سالــم» هما هما.
+      const body = [...f.sample.trim()].map((ch) => (/\s/.test(ch) ? '\\s+' : `${ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}ـ*`)).join('');
+      return { address, re: new RegExp(`(?<![${AR}])${body}(?![${AR}])`) };
+    });
+}
+
+/** النصّ قطعًا، وما فيه من قيم ورقة البيانات خاناتُها. */
+function literalInlines(ctx: Ctx, text: string, marks: Marks | undefined): Inline[] {
+  for (const l of ctx.literals) {
+    const m = l.re.exec(text);
+    if (!m) continue;
+    const field = fieldInline(ctx, l.address);
+    if (!field) continue;
+    ctx.notes.add('قيمةٌ من ورقة البيانات مكتوبةٌ بلا معادلة صارت خانتها');
+    return [...literalInlines(ctx, text.slice(0, m.index), marks), field, ...literalInlines(ctx, text.slice(m.index + m[0].length), marks)];
+  }
+  return text ? [run(text, marks)] : [];
+}
 
 function marksOf(font: Partial<ExcelJS.Font> | undefined, basePx: number): Marks | undefined {
   const marks: Marks = {};
@@ -270,19 +305,27 @@ function cellInlines(ctx: Ctx, cell: ExcelJS.Cell, basePx: number): Inline[] {
     ctx.notes.add('معادلاتٌ كُتبت نتيجتها كما حُسبت في Excel');
   }
   if (v && typeof v === 'object' && 'richText' in (v as object)) {
-    const runs = ((v as { richText: { text: string; font?: Partial<ExcelJS.Font> }[] }).richText ?? []).filter((r) => r.text);
+    const runs = ((v as { richText: { text: string; font?: Partial<ExcelJS.Font> }[] }).richText ?? []).filter((r) => r.text).map((r) => ({ ...r }));
+    // مسافات أوّل الخليّة وآخرها إزاحةٌ لا فراغ — ولو كانت مقاطع وحدها: «⎵⎵⎵ | ⎵⎵ جمهورية العراق» تبدأ بالكلمة،
+    // وكانت المسافات في المقطع الثاني تصير نقاطًا وخانة.
+    for (let i = 0; i < runs.length; i++) {
+      runs[i]!.text = runs[i]!.text.replace(/^\s+/, '');
+      if (runs[i]!.text) break;
+    }
+    for (let i = runs.length - 1; i >= 0; i--) {
+      runs[i]!.text = runs[i]!.text.replace(/\s+$/, '');
+      if (runs[i]!.text) break;
+    }
     const out: Inline[] = [];
     runs.forEach((r, i) => {
-      // مسافات أوّل الخليّة وآخرها إزاحةٌ لا فراغ.
-      let text = r.text;
-      if (i === 0) text = text.replace(/^\s+/, '');
-      if (i === runs.length - 1) text = text.replace(/\s+$/, '');
-      if (text) out.push(run(gapsToDots(fixZeros(text, ctx.notes)), marksOf({ ...cell.font, ...r.font }, basePx)));
+      const prior = runs.slice(0, i).map((x) => x.text).join('');
+      const next = runs.slice(i + 1).map((x) => x.text).join('');
+      if (r.text) out.push(...literalInlines(ctx, gapsToDots(fixZeros(r.text, ctx.notes), prior, next), marksOf({ ...cell.font, ...r.font }, basePx)));
     });
     return out;
   }
   const text = cellText(cell).trim();
-  return text ? [run(gapsToDots(fixZeros(text, ctx.notes)), marks)] : [];
+  return text ? literalInlines(ctx, gapsToDots(fixZeros(text, ctx.notes)), marks) : [];
 }
 
 // ── المحاذاة ─────────────────────────────────────────────────────────
@@ -563,6 +606,47 @@ function sheetToDoc(book: ExcelJS.Workbook, ws: ExcelJS.Worksheet, ctx: Omit<Ctx
   return { name: ws.name.trim(), doc, notes: [...c.notes] };
 }
 
+/** مراجع خانةٍ إلى أخرى في الوثيقة كلّها: المتن والأعمدة والجداول والمجموعات. */
+function retarget(blocks: Block[], from: string, to: string): Block[] {
+  const fix = (list: Inline[]) => list.map((i) => (i.kind === 'field' && i.ref === from ? { ...i, ref: to } : i));
+  return blocks.map((b): Block => {
+    switch (b.kind) {
+      case 'paragraph':
+        return { ...b, inlines: fix(b.inlines) };
+      case 'table':
+        return { ...b, rows: b.rows.map((r) => ({ ...r, cells: r.cells.map((c) => ({ ...c, blocks: c.blocks.map((p) => ({ ...p, inlines: fix(p.inlines) })) })) })) };
+      case 'columns':
+        return { ...b, columns: b.columns.map((col) => retarget(col, from, to)) };
+      case 'group':
+        return { ...b, blocks: retarget(b.blocks, from, to) };
+      default:
+        return b;
+    }
+  });
+}
+
+/**
+ * فراغٌ باسم خانةٍ من ورقة البيانات هو هي: «المديرية العامة لتربية ......» المحافظةُ نفسها — تُكتب مرّةً كما تكتبها
+ * ورقة البيانات، لا فراغٌ ثانٍ بجانب خانتها. إلا اسمًا لخليّتين («العام الدراسي» و«العام الدراسي 2»): لا يُدرى أيّهما.
+ */
+export function adoptDataFields(doc: Doc, dataFields: ExcelBook['dataFields']): { doc: Doc; adopted: { key: string; label: string }[] } {
+  const single = new Map(dataFields.filter((f) => !dataFields.some((g) => g !== f && g.label.startsWith(`${f.label} `))).map((f) => [f.label, f]));
+  let out = doc;
+  const adopted: { key: string; label: string }[] = [];
+  for (const f of doc.fields) {
+    const data = single.get(f.label);
+    if (!data || f.key === data.key || f.fillMode !== 'hand') continue;
+    const has = out.fields.some((x) => x.key === data.key);
+    out = {
+      ...out,
+      blocks: retarget(out.blocks, f.key, data.key),
+      fields: out.fields.flatMap((x) => (x.key !== f.key ? [x] : has ? [] : [makeField({ key: data.key, label: data.label, width: Math.max(8, data.sample.length) })]))
+    };
+    if (!has) adopted.push({ key: data.key, label: data.label });
+  }
+  return { doc: out, adopted };
+}
+
 /** كلّ ورقةٍ تُطبع نموذجًا — وورقة البيانات والمخفيّة والفارغة تُترك ويُقال لماذا. */
 export function bookToDocs(book: ExcelJS.Workbook, saveImage?: ImageSaver): ExcelBook {
   const data = dataSheetOf(book);
@@ -578,7 +662,8 @@ export function bookToDocs(book: ExcelJS.Workbook, saveImage?: ImageSaver): Exce
       );
     }
   }
-  const fields = data ? dataFieldsOf(book.getWorksheet(data)!, refs) : new Map();
+  const fields: Map<string, { key: string; label: string; sample: string }> = data ? dataFieldsOf(book.getWorksheet(data)!, refs) : new Map();
+  const literals = literalsOf(fields);
   const sheets: ExcelSheetDoc[] = [];
   const skipped: ExcelBook['skipped'] = [];
   for (const ws of book.worksheets) {
@@ -587,7 +672,7 @@ export function bookToDocs(book: ExcelJS.Workbook, saveImage?: ImageSaver): Exce
       skipped.push({ name: ws.name.trim(), reason: 'ورقةٌ مخفيّة' });
       continue;
     }
-    const sheet = sheetToDoc(book, ws, { data, fields }, saveImage);
+    const sheet = sheetToDoc(book, ws, { data, fields, literals }, saveImage);
     if (sheet) sheets.push(sheet);
     else skipped.push({ name: ws.name.trim(), reason: 'لا نصّ في خلاياها يُطبع — قد يكون كتابها صورةً أو مربّعات نصّ' });
   }

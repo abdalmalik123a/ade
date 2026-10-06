@@ -38,22 +38,23 @@ describe('حزم الجهات الجاهزة (Content Packs)', () => {
     'education',
     'general-requests',
     'higher-education',
-    'housing-mukhtar'
+    'housing-mukhtar',
+    'school-letters'
   ];
 
-  it('فهرس الحزم يحتوي على الحزم الست كاملة وتطابق إحصائياتها الكتالوج', () => {
+  it('فهرس الحزم يحتوي على الحزم السبع كاملة وتطابق إحصائياتها الكتالوج', () => {
     const indexRaw = readFileSync(INDEX_PATH, 'utf8');
     const index = JSON.parse(indexRaw) as BuiltIndexEntry[];
     expect(Array.isArray(index)).toBe(true);
-    expect(index.length).toBe(6);
+    expect(index.length).toBe(7);
 
     const ids = index.map((p) => p.id).sort();
     expect(ids).toEqual(PACK_IDS);
 
-    // إجمالي النماذج 24 والكليشات 21
+    // إجمالي النماذج ٢٤ في الستّ و٤٥ كتابًا مدرسيًّا (الموجة ٢)، والكليشات ٢١
     const totalTemplates = index.reduce((sum, p) => sum + p.counts.templates, 0);
     const totalClips = index.reduce((sum, p) => sum + p.counts.clips, 0);
-    expect(totalTemplates).toBe(24);
+    expect(totalTemplates).toBe(24 + 45);
     expect(totalClips).toBe(21);
   });
 
@@ -158,6 +159,38 @@ describe('حزم الجهات الجاهزة (Content Packs)', () => {
 
     expect(result.sha256).toBe(edu.sha256);
     expect(hash).toBe(edu.sha256);
+  });
+
+  // الحزمة من وثائق جاهزة (`tools/packs/excel.ts`): المعرّفات تُثبَّت في البناء، فالبايتات هي هي.
+  it('وحزمة الوثائق الجاهزة («مخاطبات المدارس الرسمية») تُبنى بالبايتات نفسها', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'diwan-pack-test-'));
+    const result = await buildPack(join(process.cwd(), 'content', 'packs', 'school-letters'), tempDir);
+    const index = JSON.parse(readFileSync(INDEX_PATH, 'utf8')) as BuiltIndexEntry[];
+    expect(result.sha256).toBe(index.find((p) => p.id === 'school-letters')!.sha256);
+  });
+
+  describe('«مخاطبات المدارس الرسمية» — من برنامج مخاطبات مدرسةٍ في Excel', () => {
+    const pkg = () =>
+      JSON.parse(Buffer.from(unzipSync(readFileSync(join(PACKS_DIR, 'school-letters.diwanpack')))['diwan-content.json']!).toString('utf8')) as ContentPackage;
+    const json = () => JSON.stringify(pkg().templates.map((t) => t.doc));
+
+    it('بلا صورة من خارج البرنامج: لا شعار دولة ولا صور مواقع — والخطّ الزخرفي خطٌّ فاصلٌ من البرنامج', () => {
+      const names = Object.keys(unzipSync(readFileSync(join(PACKS_DIR, 'school-letters.diwanpack'))));
+      expect(names).toEqual(['diwan-content.json']);
+      expect(json()).not.toContain('"kind":"image"');
+      expect(json()).toContain('"kind":"rule"');
+    });
+
+    it('وكتبها بأقسامها الثلاثة، ورأسها خاناتٌ لا مدرسةٌ بعينها', () => {
+      const templates = pkg().templates;
+      expect(templates).toHaveLength(45);
+      expect(new Set(templates.map((t) => t.category))).toEqual(new Set(['ملاك المدرسة', 'تلاميذ المدرسة', 'مخاطبات المدرسة']));
+      const tabligh = templates.find((t) => t.title === 'تبليغ')!.doc as Doc;
+      expect(tabligh.fields.map((f) => f.key)).toEqual(expect.arrayContaining(['اسم_المدرسة', 'المحافظة', 'اسم_مدير_المدرسة', 'عدد_كتابكم', 'تاريخ_كتابكم']));
+      // والتاريخ الحرفيّ من كتابٍ حقيقيّ صار خانة.
+      expect(json()).not.toMatch(/20\d\d\/\d{1,2}\/\d{1,2}/);
+      expect((templates.find((t) => t.title === 'واقع حال تلميذ')!.doc as Doc).fields.some((f) => f.key === 'تاريخ_الوثيقة' && f.type === 'date')).toBe(true);
+    });
   });
 
   describe('قواعد التدقيق الإداري الصارم (validateTemplate)', () => {

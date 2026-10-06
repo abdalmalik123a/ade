@@ -10,6 +10,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, w
 import { join, resolve } from 'node:path';
 import {
   docFromLegacy,
+  docText,
   normalizeDoc,
   walkBlocks,
   type Block,
@@ -103,7 +104,13 @@ export type RawPackTemplate = {
   letterheadMode?: LetterheadMode;
   source: string;
   verifiedOn: string;
-  body: string;
+  /** المتن نصًّا بوسوم `{}` — ويُبنى وثيقةً بدالة البرنامج. */
+  body?: string;
+  /**
+   * أو الوثيقة نفسها كما رسمها مستورِدٌ (أعمدةٌ وجداول وخانات) — حزمة «مخاطبات المدارس الرسمية» من برنامج مخاطباتٍ في
+   * Excel (`tools/packs/excel.ts`). وتُثبَّت معرّفاتها هنا كما تُثبَّت معرّفات المتن.
+   */
+  doc?: Doc;
   fields?: Record<string, PackFieldOverride>;
 };
 
@@ -165,9 +172,11 @@ export function validateTemplate(t: RawPackTemplate, packId: string, seenSlugs: 
   // ١) غاب المصدر أو تاريخ التحقق
   if (!t.source || !t.source.trim()) throw new Error(`${name}: غاب المصدر — المبدأ ٥ «الكتاب الرسمي لا يحتمل التخمين»`);
   if (!t.verifiedOn || !t.verifiedOn.trim()) throw new Error(`${name}: غاب تاريخ التحقق`);
+  if (!t.body?.trim() && !t.doc) throw new Error(`${name}: لا متن ولا وثيقة`);
 
-  // ٢) ورد اسم جهة بعينها من قائمة الحظر
-  const fullText = `${t.title} ${t.subtitle ?? ''} ${t.body}`;
+  // ٢) ورد اسم جهة بعينها من قائمة الحظر — والوثيقة الجاهزة بنصّها كلّه (الأعمدة والجداول معه).
+  const body = t.doc ? docText(t.doc) : (t.body ?? '');
+  const fullText = `${t.title} ${t.subtitle ?? ''} ${body}`;
   for (const forbidden of FORBIDDEN_ENTITIES) {
     if (fullText.includes(forbidden)) {
       throw new Error(`${name}: ورد اسم جهةٍ بعينها («${forbidden}») — المبدأ ١ يمنع أسماء الجهات الصريحة، والجهة المخاطبة يجب أن تكون حقلًا`);
@@ -175,8 +184,11 @@ export function validateTemplate(t: RawPackTemplate, packId: string, seenSlugs: 
   }
 
   // ٣) وُجد خيار جنس في المتن بلا حقل «الجنس»
-  const hasGenderChoice = hasChoiceText(t.body) || /\{[^{}|]*\|[^{}]*\}/.test(t.body);
-  const fieldsMap = t.fields ?? {};
+  const hasGenderChoice = hasChoiceText(body) || /\{[^{}|]*\|[^{}]*\}/.test(body);
+  const fieldsMap: Record<string, PackFieldOverride> = {
+    ...Object.fromEntries((t.doc?.fields ?? []).map((f) => [f.key, { source: f.source }])),
+    ...(t.fields ?? {})
+  };
   if (hasGenderChoice && !fieldsMap['الجنس'] && !fieldsMap['gender']) {
     throw new Error(`${name}: وُجد خيار تذكير وتأنيث في المتن بلا حقل «الجنس»`);
   }
@@ -196,30 +208,59 @@ export function validateTemplate(t: RawPackTemplate, packId: string, seenSlugs: 
   }
 }
 
+/**
+ * وثيقةٌ جاهزة بمعرّفاتٍ ثابتة: كلّ معرّفٍ في شجرتها (الكتل والأعمدة والصفوف والخلايا والخانات في السطر) بترتيب
+ * ورودها — فالوثيقة نفسها تُخرج المعرّفات نفسها في كلّ بناء.
+ */
+export function stableDoc(source: Doc, packId: string, slug: string): Doc {
+  const doc = JSON.parse(JSON.stringify(source)) as Doc;
+  doc.id = uuidV5(`${packId}:template:${slug}:doc`);
+  let n = 0;
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (!node || typeof node !== 'object') return;
+    const o = node as Record<string, unknown>;
+    if (typeof o.id === 'string') o.id = uuidV5(`${packId}:template:${slug}:node:${n++}`);
+    for (const v of Object.values(o)) if (v && typeof v === 'object') visit(v);
+  };
+  visit(doc.blocks);
+  for (const f of doc.fields) f.id = uuidV5(`${packId}:template:${slug}:field:${f.key}`);
+  return doc;
+}
+
 /** بناء كائن Doc لكل قالب بدوال البرنامج المعتمدة مع ثبات تام للـ UUIDs */
 export function buildTemplateDoc(t: RawPackTemplate, packId: string): Doc {
-  const doc = docFromLegacy(t.body, legacyFieldMeta);
+  let doc: Doc;
+  if (t.doc) {
+    // الوثيقة الجاهزة بإعداد صفحتها كما رُسمت — إلا ما صرّحت به الحزمة.
+    doc = stableDoc(t.doc, packId, t.slug);
+    if (t.paper) doc.pageSetup.size = t.paper;
+    if (t.orientation) doc.pageSetup.orientation = t.orientation;
+    if (t.letterheadMode) doc.pageSetup.letterheadMode = t.letterheadMode;
+  } else {
+    doc = docFromLegacy(t.body ?? '', legacyFieldMeta);
 
-  // جعل معرّف الوثيقة ثابتًا
-  doc.id = uuidV5(`${packId}:template:${t.slug}:doc`);
+    // جعل معرّف الوثيقة ثابتًا
+    doc.id = uuidV5(`${packId}:template:${t.slug}:doc`);
 
-  // إعداد الصفحة
-  doc.pageSetup.size = t.paper ?? 'A4';
-  doc.pageSetup.orientation = t.orientation ?? 'portrait';
-  doc.pageSetup.letterheadMode = t.letterheadMode ?? 'print';
+    // إعداد الصفحة
+    doc.pageSetup.size = t.paper ?? 'A4';
+    doc.pageSetup.orientation = t.orientation ?? 'portrait';
+    doc.pageSetup.letterheadMode = t.letterheadMode ?? 'print';
 
-  // معرّفات الكتل والأجزاء الداخلية محددة بثبات
-  let blockIdx = 0;
-  for (const b of walkBlocks(doc.blocks)) {
-    b.id = uuidV5(`${packId}:template:${t.slug}:block:${blockIdx}`);
-    let inlineIdx = 0;
-    for (const inl of blockInlines(b)) {
-      if (inl.kind === 'field') {
-        inl.id = uuidV5(`${packId}:template:${t.slug}:inline:${blockIdx}:${inlineIdx}`);
+    // معرّفات الكتل والأجزاء الداخلية محددة بثبات
+    let blockIdx = 0;
+    for (const b of walkBlocks(doc.blocks)) {
+      b.id = uuidV5(`${packId}:template:${t.slug}:block:${blockIdx}`);
+      let inlineIdx = 0;
+      for (const inl of blockInlines(b)) {
+        if (inl.kind === 'field') {
+          inl.id = uuidV5(`${packId}:template:${t.slug}:inline:${blockIdx}:${inlineIdx}`);
+        }
+        inlineIdx++;
       }
-      inlineIdx++;
+      blockIdx++;
     }
-    blockIdx++;
   }
 
   // تطبيق تجاوزات الحقول وتثبيت الـ UUIDs
@@ -268,18 +309,20 @@ export async function buildPack(
     const doc = buildTemplateDoc(t, rawPack.id);
     const uuid = uuidV5(`${rawPack.id}:template:${t.slug}`);
 
-    // استخراج المتغيرات مرتبة
-    const variables: TemplateVariable[] = Object.entries(t.fields ?? {}).map(([key, ov]) => {
-      let src: VariableSource = 'manual';
-      if (AUTO_TOKENS.some((a) => a.token === key)) src = 'auto';
-      else if (ov.source || citizenSourceOf(key) || CITIZEN_TOKENS.some((c) => c.token === key)) src = 'citizen';
-      return {
-        token: key,
-        label: ov.label ?? key.replace(/_/g, ' '),
-        source: src,
-        required: ov.required === true
-      };
-    });
+    // استخراج المتغيرات مرتبة — وللوثيقة الجاهزة من خاناتها: ما صرّحت بمصدره من ملف الزبون، كما يحفظها المحرّر.
+    const variables: TemplateVariable[] = t.doc
+      ? doc.fields.map((f) => ({ token: f.key, label: f.label, source: f.source ? 'citizen' : 'manual', required: f.required }))
+      : Object.entries(t.fields ?? {}).map(([key, ov]) => {
+          let src: VariableSource = 'manual';
+          if (AUTO_TOKENS.some((a) => a.token === key)) src = 'auto';
+          else if (ov.source || citizenSourceOf(key) || CITIZEN_TOKENS.some((c) => c.token === key)) src = 'citizen';
+          return {
+            token: key,
+            label: ov.label ?? key.replace(/_/g, ' '),
+            source: src,
+            required: ov.required === true
+          };
+        });
 
     return {
       uuid,
@@ -288,7 +331,8 @@ export async function buildPack(
       subtitle: t.subtitle?.trim() || null,
       category: t.category.trim(),
       subjectLine: null,
-      bodyHtml: t.body,
+      // الظلّ النصّي للبحث ولمعاينة البطاقة، كما يحفظه «استورد مجلدي»؛ والحقيقة في `doc`.
+      bodyHtml: t.body ?? docText(doc),
       doc,
       letterheadUuid: null,
       variables

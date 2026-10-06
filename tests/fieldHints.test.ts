@@ -165,7 +165,7 @@ describe('الفراغات كلّها خاناتٍ دفعةً واحدة — ل�
   it('وسطرٌ يبدأ بفراغٍ اسمه من آخر السطر قبله — بثقةٍ تُراجَع؛ و«والاطلاع ...... مع التقدير» وقفةٌ لا فراغ', () => {
     const doc = withLines('بموجب الوثيقة الصادرة من', '( .......... ) والمرقمة ( .......... )', 'للتفضل بالعلم والاطلاع ...... مع التقدير');
     const { doc: out, suggestions } = applyBlankFields(doc);
-    expect(out.fields.map((f) => f.label)).toEqual(['جهة الإصدار', 'الرقم']);
+    expect(out.fields.map((f) => f.label)).toEqual(['مصدر الوثيقة', 'الرقم']);
     expect(suggestions[0]!.confidence).toBeLessThanOrEqual(0.5);
     expect(docText(out)).toContain('والاطلاع ...... مع التقدير');
   });

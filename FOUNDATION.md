@@ -1096,10 +1096,12 @@ stitch_/                  التصميم الأوّل — مرجعٌ تاريخ�
 resources/                أيقونة التطبيق، وبيانات القارئ الضوئي (tessdata: ara وeng)، ونموذج فصل الشخص
                           عن خلفيّته (models/: MODNet ٦٫٦ م.ب، ومصدره ورخصته في NOTICE.md)،
                           وحزم الجهات الجاهزة (packs/: بصيغة .diwanpack وفهرسها index.json)
-content/packs/            مصادر حزم الجهات المقروءة بشريًّا (الكتالوج CATALOG.md، وحزم الأقسام كحزمة التربية education/pack.json)
+content/packs/            مصادر حزم الجهات المقروءة بشريًّا (الكتالوج CATALOG.md، وحزم الأقسام كحزمة التربية education/pack.json)،
+                          و«مخاطبات المدارس الرسمية» (school-letters/): وثائق جاهزة من Excel وقرارات مراجعتها curation.json
 tools/
-  packs/                  مترجم ومدقق حزم الجهات الجاهزة (build.ts)
+  packs/                  مترجم ومدقق حزم الجهات الجاهزة (build.ts)، وحزمةٌ من برنامج مخاطبات Excel (excel.ts)
   build-packs.mjs         مشغّل بناء وتجميع حزم المحتوى الجاهزة
+  excel-pack.mjs          مشغّل excel.ts: ملفّ Excel ← pack.json بقرارات curation.json (والملفّ لا يدخل المستودع)
   make-brand.py           صور الهوية: أيقونة «د» بهوية «منتصف الليل»، والشعار بلا سواده، وعلامة MT (يدويًّا، لا مع البناء)
   make-notices.mjs        الإشعارات القانونية من حزم node_modules (مع npm run build)
   keytool/                «أداة مفاتيح ديوان» للمالك وحده (Electron صغير، لا تُحزم مع البرنامج): كلمة سرٍّ تشفّر
