@@ -3,8 +3,8 @@
  *
  * ملفّ Word كتبه مكتب: متنٌ، ومربّع نصّ، وكلمةٌ حمراء، وجدولٌ داخل جدول، وتذييلٌ بالعنوان. فيُفتح من المكتبة:
  * الورقة بمتنها، وبجانبها لوحٌ يقول ما لم يُنقل (مربّع النصّ أوّلًا) ويُغلق. ثم مجلّدٌ بملفّين منه ومن ملفٍّ نظيف:
- * شاشة المراجعة تقول ما لا يُنقل بعدد ملفّاته، وتصدُق أنّ استيراد المجلّد يأخذ النصّ وحده — و«احفظ إحصاء
- * الملفّات» يكتب ملفًّا نصّيًّا بالأعداد بلا اسم ملفٍّ ولا كلمةٍ من المتن.
+ * شاشة المراجعة تقول ما لا يُنقل بعدد ملفّاته — و«احفظ إحصاء الملفّات» يكتب ملفًّا نصّيًّا بالأعداد بلا اسم
+ * ملفٍّ ولا كلمةٍ من المتن. (وكانت تقول إنّ استيراد المجلّد يأخذ النصّ وحده — حتى صار بتنسيقه، `importFolder.ts`.)
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -92,7 +92,8 @@ export default async function scenario(page, { shotsDir }) {
   await wait(4000);
   const census = await page.eval(`return document.querySelector('[data-census]')?.innerText ?? '';`);
   ok('شاشة المراجعة تقول ما لا يُنقل بعدد ملفّاته', census.includes('مربّعات نصّ (2 ملفّ)') && census.includes('تذييل الصفحة'));
-  ok('وتصدُق أنّ استيراد المجلّد يأخذ النصّ وحده — والجداول فيه', census.includes('يأخذ نصّ الملفّات وحده') && census.includes('الجداول (في 2 ملفّ)'));
+  // وكان يقول «يأخذ نصّ الملفّات وحده» — حتى صار المجلّد يُستورد بتنسيقه كالملفّ الواحد.
+  ok('ولا يقول إنّ المجلّد يُستورد نصًّا وحده — صار بتنسيقه', !census.includes('نصّ الملفّات وحده'));
   const fileLosses = await losses('[data-file-losses]');
   ok(`وفي تفصيل الملفّ ما لا يُنقل منه (${JSON.stringify(fileLosses)})`, fileLosses.includes('textbox'));
   if (shotsDir) await page.shot(join(shotsDir, 'word-losses-folder.png'));

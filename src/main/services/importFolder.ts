@@ -4,6 +4,13 @@
  * المكتب لا يملك ٣٠٠ استمارة — يملك ثلاثين نُسخت عشر مرّات، لأن Word لا يفرّق
  * بين الأصل والنسخة. وأكثر ملفاته ترويستها واحدة، فتُستخرج مرّة وتُربط بالجميع.
  *
+ * **وكلّ ملفٍّ بتنسيقه** (الموجة ٢): الورقة كما يرسمها قارئ Word للملفّ الواحد (`docxDoc.ts`) —
+ * جداولها وصورها وعريضها وأحجامها ومحاذاتها — وفراغاتها خاناتٌ بأسمائها كما يقترحها المحرّر
+ * (`applyBlankFields`). وكانت تُبنى من نصّ الملفّ وحده فتسقط الجداول والصور والتنسيق، ويسقط معها رأس
+ * كلّ ملفٍّ لم تشاركه الملفّات الأخرى. والرأس الآن يُكشف قبل الخانات (`findSheetHead`): يتكرّر بين
+ * الملفّات فيصير ترويسةً واحدة بتنسيقه، وفراغاته (العدد والتاريخ) نقاطٌ يملؤها القلم كما كانت في
+ * الترويسة؛ ولا يُفصل عن ورقته إلا حين تُربط بتلك الترويسة — وإلا بقيت الورقة برأسها كما كانت.
+ *
  * **ولا يُحفظ شيء هنا.** تُبنى «خطّة» تُعرض على الموظف في شاشة المراجعة، ثم
  * يُنفَّذ ما قبله — فالبرنامج يقترح وهو يحكم.
  */
@@ -26,7 +33,9 @@ import type {
   ImportOutcome,
   ImportPlan
 } from '@shared/api';
-import { buildBody, groupDuplicates, splitForms, stripTatweel } from './blanks';
+import { groupDuplicates, stripTatweel } from './blanks';
+import { applyBlankFields } from '@shared/fieldHints';
+import { HEAD_MAX, findSheetHead, splitSheetHead } from '@shared/sheetHead';
 import { importTemplateFile, type ImageSaver } from './import';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
@@ -39,9 +48,21 @@ export type { ImportCandidate, ImportChoices, ImportOutcome, ImportPlan };
 /** سقفٌ يمنع مجلدًا ضخمًا من تعليق التطبيق — والباقي يُستورد على دفعات. */
 export const FOLDER_LIMIT = 500;
 
-/** نصّ الترويسة مجرّدًا — بصمتها التي تُعرف بها بين الملفات. */
+/** أسطر نصٍّ مجرّدة: بلا تمديدٍ ولا مسافاتٍ زائدة — فالفرق في المنطوق. */
+const plainLines = (text: string) =>
+  text
+    .split('\n')
+    .map((l) => stripTatweel(l).replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+/** نصّ الترويسة مجرّدًا — بصمتها التي تُعرف بها بين الملفات: أقسامها، أو كتل رأس الورقة إن كانت منه. */
 export function letterheadKey(layout: LetterheadLayout | null): string | null {
-  if (!layout || isLayoutEmpty(layout)) return null;
+  if (!layout) return null;
+  if (layout.sheet?.length) {
+    const text = plainLines(docText({ ...emptyDoc(), blocks: layout.sheet })).join('|');
+    return text ? `ورقة:${text}` : null;
+  }
+  if (isLayoutEmpty(layout)) return null;
   const lines = layout.sections.flatMap((s) =>
     s.blocks.filter((b) => b.kind === 'text').map((b) => stripTatweel(b.value).trim())
   );
@@ -49,11 +70,30 @@ export function letterheadKey(layout: LetterheadLayout | null): string | null {
   return text || null;
 }
 
-function docOf(blocks: ReturnType<typeof buildBody>): Doc {
-  const doc = emptyDoc();
-  doc.blocks = blocks.blocks as Doc['blocks'];
-  doc.fields = blocks.fields;
-  return doc;
+/**
+ * الملف الواحد قد يكون مكتبة: ٣١ استمارةً مدرسية في ملفٍّ واحد، وحدُّ الاستمارة تكرارُ أوّل سطرٍ من رأسها.
+ *
+ * فالكتلة التي نصّها نصّ أوّل كتلةٍ في الورقة بدايةُ استمارةٍ أخرى — وما قبلها من كتلٍ بلا نصّ (الشعار) يتبعها
+ * كما تبع الأولى. وفاصل الصفحة والأسطر الفارغة في آخر كلّ استمارةٍ تُترك.
+ */
+export function formsOf(doc: Doc): Doc[] {
+  const blocks = doc.blocks;
+  const text = (i: number) => plainLines(docText({ ...emptyDoc(), blocks: [blocks[i]!] })).join('|');
+  const first = blocks.findIndex((_, i) => text(i));
+  if (first < 0) return [doc];
+  const marker = text(first);
+  const starts = [0];
+  for (let i = first + 1; i < blocks.length; i++) {
+    const start = i - first;
+    if (text(i) === marker && start > starts[starts.length - 1]!) starts.push(start);
+  }
+  if (starts.length < 2) return [doc];
+  const blank = (b: Doc['blocks'][number]) => b.kind === 'pageBreak' || (b.kind === 'paragraph' && !plainLines(docText({ ...emptyDoc(), blocks: [b] })).length);
+  return starts.map((from, k) => {
+    const part = blocks.slice(from, starts[k + 1] ?? blocks.length);
+    while (part.length > 1 && blank(part[part.length - 1]!)) part.pop();
+    return { ...doc, blocks: part };
+  });
 }
 
 /**
@@ -82,32 +122,33 @@ export async function planFolderImport(
     try {
       const res = await importTemplateFile(join(dir, name), opts.saveImage);
       if (res.scan) scans.push(res.scan);
-      const key = letterheadKey(res.letterhead);
+      if (!res.doc) throw new Error('لم تُقرأ ورقة الملف');
+      // ترويسةٌ في رأس صفحة Word: الورقة لا تحملها، فتُشارك كما كانت ولا يُبحث عن رأسٍ في المتن.
+      const fromHeader = res.letterheadFromHeader ? res.letterhead : null;
+      const forms = formsOf(res.doc);
 
-      // الملف الواحد قد يكون مكتبة: حدُّ الاستمارة تكرارُ ترويستها.
-      const lines = res.body.split('\n');
-      const marker = key ? key.split('|')[0]! : '';
-      const ranges = splitForms(lines, marker);
-
-      ranges.forEach(([from, to], i) => {
-        const built = buildBody(lines.slice(from, to));
-        const doc = docOf(built);
-        if (!docText(doc).trim()) return;
+      forms.forEach((form, i) => {
+        const headCount = fromHeader ? 0 : findSheetHead(form);
+        const head = headCount ? splitSheetHead(form, headCount) : null;
+        // الفراغات خاناتٌ تُملأ بالقلم بعد الطباعة ما لم يقل المكتب غير ذلك — وفراغات الرأس لا تُمسّ.
+        const built = applyBlankFields(form, { from: headCount, fillMode: 'hand' });
+        if (!docText(built.doc).trim()) return;
+        const letterhead = head?.layout ?? fromHeader;
 
         candidates.push({
           id: newUuid(),
           file: name,
           formIndex: i + 1,
-          formCount: ranges.length,
-          title:
-            ranges.length > 1 ? `${res.title} (${i + 1})` : res.title || basename(name, '.docx'),
-          subjectLine: res.subjectLine,
-          doc,
-          letterheadKey: key,
-          letterhead: res.letterhead,
-          notes: built.notes,
-          // هذا المسار يبني وثيقته من النصّ بعدُ — فلا يُقال له «استُورد بتنسيقه».
-          warnings: res.warnings.filter((w) => !w.includes('ورقةً واحدة بتنسيقه')),
+          formCount: forms.length,
+          title: forms.length > 1 ? `${res.title} (${i + 1})` : res.title || basename(name, '.docx'),
+          // سطر «م /» في الورقة نفسها — وسطرُ موضوعٍ فوقها يكرّره (كالملفّ الواحد).
+          subjectLine: null,
+          doc: built.doc,
+          headCount,
+          letterheadKey: letterheadKey(letterhead),
+          letterhead,
+          notes: res.docNotes ?? [],
+          warnings: [],
           suggestions: built.suggestions,
           scan: res.scan
         });
@@ -120,8 +161,9 @@ export async function planFolderImport(
   return {
     candidates,
     sharedLetterhead: findShared(candidates),
+    // المكرّر بمتنه لا برأسه: رأسٌ واحد لكلّ كتب المدرسة لا يجعل الإنذار والتأييد نسختين.
     duplicates: groupDuplicates(
-      candidates.map((c) => ({ id: c.id, text: docText(c.doc) }))
+      candidates.map((c) => ({ id: c.id, text: docText({ ...c.doc, blocks: c.doc.blocks.slice(c.headCount ?? 0) }) }))
     ),
     failed,
     census: censusOf(scans, failed.length)
@@ -238,6 +280,10 @@ export function applyImportPlan(
     }
 
     for (const c of taken) {
+      const linked = letterheadId !== null && shared !== null && c.letterheadKey === shared.key;
+      // الرأس يُفصل حين تُربط الورقة بالترويسة التي صارها وحده — وإلا بقيت برأسها كما كانت في Word.
+      const head = linked ? Math.min(Math.max(0, Math.floor(c.headCount ?? 0)), HEAD_MAX) : 0;
+      const doc = head ? (splitSheetHead(c.doc, head)?.doc ?? c.doc) : c.doc;
       saveTemplate(db, {
         id: null,
         code: null,
@@ -246,10 +292,10 @@ export function applyImportPlan(
         category: choices.category ?? null,
         subjectLine: c.subjectLine,
         // الظلّ النصّي للبحث ولمعاينة البطاقة في المكتبة؛ والحقيقة في `doc`.
-        bodyHtml: docText(c.doc),
-        letterheadId: shared && c.letterheadKey === shared.key ? letterheadId : null,
+        bodyHtml: docText(doc),
+        letterheadId: linked ? letterheadId : null,
         variables: [],
-        doc: c.doc
+        doc
       });
     }
 

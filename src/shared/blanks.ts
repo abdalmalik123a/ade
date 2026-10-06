@@ -235,7 +235,7 @@ export type BuiltField = { field: DocField; suggestion: Suggestion<string> };
  * بدوره ومصدره، فيملؤه F2 ويُقيَّد في الأرشيف باسم صاحبه. وبغيره تبقى الورقة
  * مجهولة الصاحب مهما مُلئت.
  */
-function citizenLink(guess: Suggestion<string>): Partial<DocField> {
+export function citizenLink(guess: Suggestion<string>): Partial<DocField> {
   if (guess.reason === 'اسمُ شخص') return { source: 'fullName', role: 'name' };
   if (/^(?:الرقم الوطني|رقم البطاقة|البطاقة الموحدة)/.test(guess.value)) {
     return { source: 'nationalId', role: 'nationalId' };

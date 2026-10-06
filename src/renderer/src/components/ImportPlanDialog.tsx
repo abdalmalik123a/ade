@@ -225,18 +225,6 @@ export default function ImportPlanDialog({
                   {plan.census.losses.length > 5 ? '…' : ''}
                 </span>
               )}
-              {/* استيراد المجلّد يبني الورقة من نصّها — ويُقال ذلك قبل الحفظ لا بعده. */}
-              <span className="text-on-surface" data-census-folder="">
-                واستيراد المجلّد يأخذ نصّ الملفّات وحده:{' '}
-                {[
-                  plan.census.withTables > 0 ? `الجداول (في ${plan.census.withTables} ملفّ)` : '',
-                  plan.census.withImages > 0 ? `الصور (في ${plan.census.withImages} ملفّ)` : '',
-                  'التنسيق'
-                ]
-                  .filter(Boolean)
-                  .join('، ')}{' '}
-                لا تُنقل هنا — والملفّ الواحد من «استورد ← ملف Word» يُنقل بتنسيقه.
-              </span>
               <div className="flex items-center gap-space-sm">
                 <button
                   className="h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm"

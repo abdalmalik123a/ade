@@ -5,13 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
   applyImportPlan,
+  formsOf,
   letterheadKey,
   planFolderImport,
   type ImportPlan
 } from '../src/main/services/importFolder';
 import { listTemplates, prepareTemplates, templateDoc } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
-import { normalizeDoc } from '../src/shared/doc';
+import { docText, emptyDoc, normalizeDoc, paragraph, run, type Block } from '../src/shared/doc';
 
 const FIXTURE = join(__dirname, 'fixtures', 'school-warning.docx');
 
@@ -43,15 +44,22 @@ describe('مشي المجلد', () => {
     expect(listLetterheads(db)).toEqual([]);
   });
 
-  it('يحمل كل مرشَّح وثيقته كتلًا بحقولها المستنتجة', async () => {
+  it('يحمل كل مرشَّح ورقته بتنسيقها وحقولها المستنتجة — كالملفّ الواحد', async () => {
     const plan = await planFolderImport(officeFolder(['انذار.docx']));
     const c = plan.candidates[0]!;
 
-    expect(c.doc.blocks.length).toBeGreaterThan(5);
-    expect(c.doc.fields.map((f) => f.label)).toContain('اسم التلميذ');
+    // الورقة كما يرسمها قارئ Word: صفّا الرأس أعمدةٌ — وكانت تُبنى من النصّ فتصير أسطرًا.
+    expect(c.doc.blocks.some((b) => b.kind === 'columns')).toBe(true);
+    expect(c.headCount).toBe(4);
+    expect(c.doc.fields.map((f) => f.label)).toEqual(expect.arrayContaining(['اسم التلميذ', 'الصف', 'عدد الغيابات']));
+    // و«التلميذ» في موضعين خانةٌ واحدة تُكتب مرّة.
+    expect(c.doc.fields.filter((f) => f.label === 'اسم التلميذ')).toHaveLength(1);
+    // وفراغ «التاريخ: / / 20» في الرأس لا يصير خانة: الرأس ترويسة، وفراغاته يملؤها القلم.
+    expect(c.doc.fields.map((f) => f.label)).not.toContain('التاريخ');
     // ولكل حقل مستنتَج درجته وسببه — فيراجعه الموظف على بيّنة.
     expect(c.suggestions).toHaveLength(c.doc.fields.length);
-    expect(c.notes.some((n) => n.includes('فقرات فارغة'))).toBe(true);
+    expect(c.suggestions.find((s) => s.value.endsWith('اسم التلميذ'))?.reason).toBe('اسمُ شخص');
+    expect(c.doc.fields.every((f) => f.fillMode === 'hand')).toBe(true);
   });
 
   it('ملفٌ تالف لا يُسقط المجلد كلّه — يُقيَّد ويمضي', async () => {
@@ -109,6 +117,10 @@ describe('تنفيذ ما قبِله الموظف', () => {
   };
 
   const acceptAll = (plan: ImportPlan) => plan.candidates.map((c) => c.id);
+  const savedDocs = (db: ReturnType<typeof freshDb>) =>
+    (db.prepare('SELECT doc_json AS docJson, body_html AS bodyHtml FROM templates').all() as { docJson: string | null; bodyHtml: string }[]).map(
+      (row) => templateDoc(row)
+    );
 
   it('يحفظ المقبول وحده، ولا يحفظ ما تُرك', async () => {
     const { db, plan } = await ready(['أ.docx', 'ب.docx', 'ج.docx']);
@@ -137,9 +149,14 @@ describe('تنفيذ ما قبِله الموظف', () => {
     expect(listLetterheads(db)).toHaveLength(1);
     expect(listLetterheads(db)[0]!.name).toBe('مدرسة الصحوة');
     expect(listTemplates(db).every((t) => t.letterheadId === out.letterheadId)).toBe(true);
+    // والترويسة رأسُ الورقة بتنسيقه (أعمدته)، والرأس فُصل عن الأوراق فلا يُطبع مرّتين.
+    expect(listLetterheads(db)[0]!.layout.sheet?.some((b) => b.kind === 'columns')).toBe(true);
+    const saved = savedDocs(db);
+    expect(saved.every((d) => !docText(d).includes('مدرسة الصحوة الابتدائية'))).toBe(true);
+    expect(saved.every((d) => d.fields.some((f) => f.label === 'اسم التلميذ'))).toBe(true);
   });
 
-  it('وإن رفضها الموظف بقيت البطاقات بلا ترويسة', async () => {
+  it('وإن رفضها الموظف بقيت البطاقات بلا ترويسة — وكلٌّ برأسه كما كان، لا يضيع', async () => {
     const { db, plan } = await ready(['أ.docx', 'ب.docx']);
     const out = applyImportPlan(db, plan, {
       accept: acceptAll(plan),
@@ -149,9 +166,11 @@ describe('تنفيذ ما قبِله الموظف', () => {
     expect(out.letterheadId).toBeNull();
     expect(listLetterheads(db)).toHaveLength(0);
     expect(listTemplates(db).every((t) => t.letterheadId === null)).toBe(true);
+    // وكان الرأس يُستخرج من المتن ثم يضيع إن لم يُربط.
+    expect(savedDocs(db).every((d) => docText(d).includes('مدرسة الصحوة الابتدائية'))).toBe(true);
   });
 
-  it('الوثيقة تُحفظ كتلًا وتعود كما بُنيت — لا مُرحَّلةً من نصّ', async () => {
+  it('الوثيقة تُحفظ بتنسيقها وتعود كما بُنيت — لا مُرحَّلةً من نصّ', async () => {
     const { db, plan } = await ready(['انذار.docx']);
     applyImportPlan(db, plan, { accept: acceptAll(plan), useSharedLetterhead: false });
 
@@ -163,8 +182,8 @@ describe('تنفيذ ما قبِله الموظف', () => {
     expect(row.docJson).not.toBeNull();
     const doc = templateDoc(row);
 
-    // المسافة الرأسية لا تنجو من الترحيل النصّي — فوجودها دليل أن الكتل حُفظت.
-    expect(doc.blocks.some((b) => b.kind === 'spacer')).toBe(true);
+    // الأعمدة لا تنجو من الترحيل النصّي — فوجودها دليل أن الورقة حُفظت بتنسيقها.
+    expect(doc.blocks.some((b) => b.kind === 'columns')).toBe(true);
     expect(doc.fields.map((f) => f.label)).toContain('اسم التلميذ');
     // وعرض الفراغ كما كتبه المكتب.
     expect(Math.max(...doc.fields.map((f) => f.width))).toBeGreaterThan(20);
@@ -180,6 +199,41 @@ describe('تنفيذ ما قبِله الموظف', () => {
 
     expect(listTemplates(db).every((t) => t.category === 'مدارس')).toBe(true);
     expect(listLetterheads(db)[0]!.category).toBe('مدارس');
+  });
+});
+
+describe('الملفّ الواحد مكتبة', () => {
+  const p = (text: string) => paragraph(text ? [run(text)] : []);
+  const logo = (id: string): Block => ({ id, kind: 'image', src: 'seals/logo.png', width: 80, align: 'center' });
+
+  it('تكرارُ أوّل سطرٍ في الورقة حدُّ استمارةٍ أخرى — والشعار قبله يتبعه، وفاصل الصفحة في آخرها يُترك', () => {
+    const doc = {
+      ...emptyDoc(),
+      blocks: [
+        logo('a'),
+        p('مدرسة النور'),
+        p('إنذار'),
+        p('نصّ الأولى'),
+        { id: 'pb', kind: 'pageBreak' } as Block,
+        logo('b'),
+        p('مدرسة النـــور'),
+        p('تأييد'),
+        p('نصّ الثانية'),
+        p('')
+      ]
+    };
+    const forms = formsOf(doc);
+    expect(forms.map((f) => docText(f).split(String.fromCharCode(10)).filter(Boolean))).toEqual([
+      ['مدرسة النور', 'إنذار', 'نصّ الأولى'],
+      ['مدرسة النـــور', 'تأييد', 'نصّ الثانية']
+    ]);
+    expect(forms[1]!.blocks[0]!.kind).toBe('image');
+    expect(forms.every((f) => f.blocks.at(-1)!.kind === 'paragraph' && docText({ ...f, blocks: [f.blocks.at(-1)!] }).trim())).toBe(true);
+  });
+
+  it('وورقةٌ لا يتكرّر أوّلها استمارةٌ واحدة كما هي', () => {
+    const doc = { ...emptyDoc(), blocks: [p('مدرسة النور'), p('نصّ')] };
+    expect(formsOf(doc)).toEqual([doc]);
   });
 });
 

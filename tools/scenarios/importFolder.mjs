@@ -69,12 +69,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
   ok('ولا شيء في القاعدة قبل القبول', read().templates.length === 0);
 
-  // تسمية حقلٍ استنتجه المحرّك بثقة ضعيفة
+  // تسمية حقلٍ استنتجه المحرّك بثقة ضعيفة: «نقص» من «لذا تقرر نقص ......».
   const renamed = await page.eval(`
     const inputs = [...document.querySelectorAll('input[type="text"]')];
-    const el = inputs.find((i) => i.value === 'التقدير');
+    const el = inputs.find((i) => i.value === 'نقص');
     if (!el) return false;
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'ملاحظة الختام');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'الدرجات المنقوصة');
     el.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   `);
@@ -100,15 +100,20 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   const doc = templates[0]?.docJson ? JSON.parse(templates[0].docJson) : null;
   ok('والوثيقة محفوظة كتلًا لا نصًّا', Boolean(doc?.blocks?.length));
+  // وكانت تُبنى من نصّ الملفّ: لا وسطَ ولا حجم ولا هوامش Word.
   ok(
-    'فيها فراغ التوقيع مسافةً رأسية',
-    Boolean(doc?.blocks?.some((b) => b.kind === 'spacer'))
+    'وبتنسيقها: «م/ انذار» وسطٌ بحجمه، وهوامش Word نفسها',
+    Boolean(
+      doc?.blocks?.some((b) => b.kind === 'paragraph' && b.align === 'center' && b.size > 20 && b.inlines.some((i) => i.kind === 'run' && i.text.includes('م/'))) &&
+        doc?.pageSetup?.margins?.top === 12.7
+    )
   );
+  ok('والرأس صار الترويسة فلا يُطبع مرّتين', !JSON.stringify(doc?.blocks ?? []).includes('مدرسة الصحوة'));
   ok(
     'وحقولها بأسمائها وعروضها',
     Boolean(doc?.fields?.some((f) => f.label === 'اسم التلميذ' && f.width > 20))
   );
-  ok('والاسم الذي غيّره الموظف محفوظ', Boolean(doc?.fields?.some((f) => f.label === 'ملاحظة الختام')));
+  ok('والاسم الذي غيّره الموظف محفوظ', Boolean(doc?.fields?.some((f) => f.label === 'الدرجات المنقوصة')));
   ok('والحقول تُملأ باليد بعد الطباعة', Boolean(doc?.fields?.every((f) => f.fillMode === 'hand')));
 
   if (shotsDir) await page.shot(join(shotsDir, 'import-plan-done.png'));
@@ -125,8 +130,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok(
     'بما اقترحه البرنامج وما اختاره هو',
     taughtRows[0]?.kind === 'fieldName' &&
-      taughtRows[0]?.suggested === 'التقدير' &&
-      taughtRows[0]?.chosen === 'ملاحظة الختام'
+      taughtRows[0]?.suggested === 'نقص' &&
+      taughtRows[0]?.chosen === 'الدرجات المنقوصة'
   );
 
   const clickImportFolder = async () => {
@@ -144,9 +149,9 @@ export default async function scenario(page, { profile, shotsDir }) {
     await wait(3000);
     await page.eval(`
       const inputs = [...document.querySelectorAll('input[type="text"]')];
-      const el = inputs.find((i) => i.value === 'التقدير');
+      const el = inputs.find((i) => i.value === 'نقص');
       if (!el) return false;
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'ملاحظة الختام');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'الدرجات المنقوصة');
       el.dispatchEvent(new Event('input', { bubbles: true }));
       return true;
     `);
@@ -171,7 +176,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   const suggestedNow = await page.eval(`
     const inputs = [...document.querySelectorAll('input[type="text"]')];
-    return inputs.some((i) => i.value === 'ملاحظة الختام');
+    return inputs.some((i) => i.value === 'الدرجات المنقوصة');
   `);
   ok('والبرنامج يقترح اسمَ مكتبك من نفسه', suggestedNow);
 

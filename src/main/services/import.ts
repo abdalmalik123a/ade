@@ -437,6 +437,8 @@ export async function importTemplateFile(
 
     // 1) ترويسة صفحة حقيقية إن وُجدت. 2) جدول في رأس المستند. 3) أسطر مكتوبة نصًّا.
     let letterhead = layoutFromHeaderParts(files);
+    // ترويسةٌ في رأس صفحة Word لا في المتن: الورقة المنسّقة لا تحملها — فيأخذها «استورد مجلدي» منها.
+    const letterheadFromHeader = Boolean(letterhead);
     let paras = parseParagraphs(xml);
 
     if (!letterhead) {
@@ -535,7 +537,9 @@ export async function importTemplateFile(
       warnings,
       letterhead,
       doc: formatted.doc,
-      scan
+      scan,
+      letterheadFromHeader,
+      docNotes: formatted.notes
     };
   }
 

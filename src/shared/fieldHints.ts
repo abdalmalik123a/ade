@@ -9,8 +9,18 @@
  *
  * اقتراحٌ لا قرار (الأساس §١٥): لا يُغيَّر شيءٌ حتى يضغط الموظف.
  */
-import { detectBlanks, suggestFieldName } from './blanks';
-import { makeField, walkBlocks, newUuid, type Block, type Doc, type DocField, type Inline, type ParagraphBlock } from './doc';
+import { citizenLink, detectBlanks, suggestFieldName } from './blanks';
+import {
+  makeField,
+  walkBlocks,
+  newUuid,
+  type Block,
+  type Doc,
+  type DocField,
+  type Inline,
+  type ParagraphBlock,
+  type Suggestion
+} from './doc';
 import { fieldFromText } from './docEdit';
 import { guessGender, isChoiceKey } from './gender';
 
@@ -70,41 +80,56 @@ function countIn(texts: string[], needle: string): number {
 /** خاتمة الكتاب — والنقاط بعدها زخرفة. */
 const CLOSING = /(التقدير|الشكر|الاحترام|التحية|التحيات|والسلام)$/;
 
+/** فراغاتٌ باسمٍ واحد، ودرجة الاجتهاد في اسمها وسببه — للمراجعة في «استورد مجلدي». */
+type BlankGroup = { hint: FieldHint; confidence: number; reason: string };
+
 /**
  * الفراغات المنقوطة بأسمائها من الكلام قبلها (`blanks.ts`) — واسمٌ واحد لفراغين خانةٌ واحدة:
  * «ولي امر التلميذ ......» و«غيابات التلميذ ......» اسم التلميذ نفسه، يُكتب مرّة.
+ * و`skip` فقراتٌ لا يُبحث فيها: رأس الورقة الذي يصير ترويسة.
  */
-function blankHints(doc: Doc): FieldHint[] {
-  const byLabel = new Map<string, FieldHint>();
+function blankGroups(doc: Doc, skip: ReadonlySet<string> = new Set()): BlankGroup[] {
+  const byLabel = new Map<string, BlankGroup>();
   for (const p of paragraphs(doc)) {
+    if (skip.has(p.id)) continue;
     let before = '';
     p.inlines.forEach((inline, run) => {
       if (inline.kind !== 'run') return;
       for (const b of detectBlanks(inline.text)) {
         // «مع التقدير .....» زخرفة الخاتمة لا فراغ.
         if (b.kind === 'dots' && !inline.text.slice(b.end).trim() && CLOSING.test((before + inline.text.slice(0, b.start)).trim())) continue;
-        const guess = b.kind === 'date' ? { value: 'التاريخ', reason: '' } : suggestFieldName(before + inline.text.slice(0, b.start));
+        const guess =
+          b.kind === 'date' ? { value: 'التاريخ', confidence: 0.95, reason: 'صيغة «/ / 20»' } : suggestFieldName(before + inline.text.slice(0, b.start));
         // «عدد غياباته ( )» عددُ الغيابات لا «غياباته».
         const counted = (before + inline.text.slice(0, b.start)).trim().match(/عدد\s+(?:ال)?([ء-ي]+?)(?:ه|ها|هم)?$/);
         const label = counted ? `عدد ال${counted[1]}` : guess.value === 'حقل' ? 'خانة' : guess.value;
-        const person = guess.reason === 'اسمُ شخص';
-        const hint = byLabel.get(label) ?? {
-          kind: 'blank' as const,
-          text: b.raw,
-          label,
-          count: 0,
-          field: { label, type: b.type, width: b.width, ...(person ? { source: 'fullName' as const, role: 'name' as const } : {}) },
-          spots: []
+        const group = byLabel.get(label) ?? {
+          hint: {
+            kind: 'blank' as const,
+            text: b.raw,
+            label,
+            count: 0,
+            field: { label, type: b.type, width: b.width, ...citizenLink(guess) },
+            spots: []
+          },
+          confidence: guess.confidence,
+          reason: guess.reason
         };
-        hint.spots!.push({ para: p.id, run, start: b.start, end: b.end, raw: b.raw });
-        hint.count = hint.spots!.length;
-        hint.field = { ...hint.field, width: Math.max(hint.field?.width ?? 0, b.width) };
-        byLabel.set(label, hint);
+        group.hint.spots!.push({ para: p.id, run, start: b.start, end: b.end, raw: b.raw });
+        group.hint.count = group.hint.spots!.length;
+        group.hint.field = { ...group.hint.field, width: Math.max(group.hint.field?.width ?? 0, b.width) };
+        // اسمٌ واحد من مواضع عدّة: أضعف اجتهادٍ فيها درجته — فلا يُخفى موضعٌ مشكوك.
+        group.confidence = Math.min(group.confidence, guess.confidence);
+        byLabel.set(label, group);
       }
       before += inline.text;
     });
   }
   return [...byLabel.values()];
+}
+
+function blankHints(doc: Doc): FieldHint[] {
+  return blankGroups(doc).map((g) => g.hint);
 }
 
 // ── النصّ المكتوب ────────────────────────────────────────────────────────
@@ -283,8 +308,13 @@ function mapParagraphs(blocks: Block[], fn: (p: ParagraphBlock) => ParagraphBloc
   });
 }
 
-/** الفراغات بأعيانها خانةٌ واحدة — ومن آخر المقطع إلى أوّله فلا تتزحزح المواضع. */
+/** الفراغات بأعيانها خانةٌ واحدة. */
 function replaceSpots(blocks: Block[], spots: Spot[], ref: string): Block[] {
+  return replaceAllSpots(blocks, spots.map((s) => ({ ...s, ref })));
+}
+
+/** الفراغات بأعيانها، لكلٍّ خانته — في مرّةٍ واحدة، فلا يُزحزح استبدالٌ مواضع ما بعده في المقطع نفسه. */
+function replaceAllSpots(blocks: Block[], spots: (Spot & { ref: string })[]): Block[] {
   return mapParagraphs(blocks, (p) => {
     const mine = spots.filter((s) => s.para === p.id);
     if (!mine.length) return p;
@@ -300,7 +330,7 @@ function replaceSpots(blocks: Block[], spots: Spot[], ref: string): Block[] {
         // الورقة تغيّرت منذ الاقتراح: لا يُستبدل ما لم يعد فراغًا.
         if (inline.text.slice(c.start, c.end) !== c.raw) continue;
         if (c.start > at) out.push({ ...inline, text: inline.text.slice(at, c.start) });
-        out.push({ kind: 'field', id: newUuid(), ref });
+        out.push({ kind: 'field', id: newUuid(), ref: c.ref });
         at = c.end;
       }
       if (at < inline.text.length) out.push({ ...inline, text: inline.text.slice(at) });
@@ -324,4 +354,33 @@ export function applyHint(doc: Doc, hint: FieldHint): Doc {
   }
   const blocks = hint.spots ? replaceSpots(doc.blocks, hint.spots, key) : replaceInBlocks(doc.blocks, hint.text, key);
   return { ...doc, blocks, fields };
+}
+
+/**
+ * الفراغات كلّها خاناتٍ دفعةً واحدة — لـ«استورد مجلدي» (الموجة ٢): ما يقترحه المحرّر للملفّ الواحد بضغطة
+ * يُطبَّق على مئات الملفّات بلا ضغطة، ولكلّ خانةٍ اقتراحٌ بدرجته وسببه تُراجَع به (`value`: «المفتاح — الاسم»
+ * كما يكتبه `buildBody`). و`from` أوّل كتلةٍ يُبحث فيها: ما قبلها رأسٌ يصير ترويسة، وفراغاته (العدد والتاريخ)
+ * تبقى نقاطًا يملؤها القلم.
+ */
+export function applyBlankFields(
+  doc: Doc,
+  opts: { from?: number; fillMode?: DocField['fillMode'] } = {}
+): { doc: Doc; suggestions: Suggestion<string>[] } {
+  const skip = new Set(
+    walkBlocks(doc.blocks.slice(0, opts.from ?? 0)).flatMap((b) =>
+      b.kind === 'paragraph' ? [b.id] : b.kind === 'table' ? b.rows.flatMap((r) => r.cells.flatMap((c) => c.blocks.map((p) => p.id))) : []
+    )
+  );
+  const fields = [...doc.fields];
+  const spots: (Spot & { ref: string })[] = [];
+  const suggestions: Suggestion<string>[] = [];
+  for (const g of blankGroups(doc, skip)) {
+    // كما يصنعها F4: مفتاحٌ فريد من اسمها، وعرضها أعرض فراغاتها.
+    const field = fieldFromText({ ...doc, fields }, g.hint.text, { ...g.hint.field, ...(opts.fillMode ? { fillMode: opts.fillMode } : {}) });
+    if (!field) continue;
+    fields.push(field);
+    for (const s of g.hint.spots!) spots.push({ ...s, ref: field.key });
+    suggestions.push({ value: `${field.key} — ${g.hint.label}`, confidence: g.confidence, reason: g.reason });
+  }
+  return { doc: { ...doc, blocks: replaceAllSpots(doc.blocks, spots), fields }, suggestions };
 }

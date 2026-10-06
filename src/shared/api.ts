@@ -533,6 +533,11 @@ export type ImportCandidate = {
   suggestions: Suggestion<string>[];
   /** ما في ملفّ Word ولا يُنقل إلى الورقة (الموجة ٢) — `shared/wordLosses.ts`. */
   scan?: WordScan;
+  /**
+   * كم كتلةً من أعلى الورقة رأسُها (`findSheetHead`) — يُفصل ترويسةً حين تُربط البطاقة بالترويسة المشتركة
+   * وحده، وإلا بقيت الورقة برأسها كما كانت في Word.
+   */
+  headCount?: number;
 };
 
 export type ImportPlan = {
@@ -649,6 +654,10 @@ export type ImportedTemplate = {
   doc?: Doc | null;
   /** ما في ملفّ Word ولا يُنقل إلى الورقة — يُعرض بجانبها (الموجة ٢). */
   scan?: WordScan;
+  /** الترويسة من رأس صفحة Word لا من المتن — فالورقة المنسّقة لا تحملها. */
+  letterheadFromHeader?: boolean;
+  /** ملاحظات قارئ الورقة المنسّقة وحده (لا تنظيف النصّ). */
+  docNotes?: string[];
 };
 
 export type TemplateStats = {
