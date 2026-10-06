@@ -5,7 +5,7 @@
  * `mode=fillcard` — فتأخذ خطوطها وأنماطها وجسرها كما هي، ولا شبكة.
  */
 import { join } from 'node:path';
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { hardenWindow } from './harden';
 
 let card: BrowserWindow | null = null;
@@ -26,7 +26,8 @@ export async function openFillCard(citizenId: number): Promise<void> {
         sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
-        spellcheck: false
+        spellcheck: false,
+        devTools: !app.isPackaged
       }
     });
     hardenWindow(card, 'fillCard');

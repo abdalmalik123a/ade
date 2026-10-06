@@ -8,7 +8,7 @@
  * - **وواجهةٌ سقطت** (نفاد ذاكرةٍ أو عطل) تُعاد تحميلًا فلا تبقى نافذةٌ بيضاء — ويُقيَّد السبب؛ وإن تكرّر
  *   السقوط ثلاثًا في دقيقةٍ وقف الإعادة وقيل للموظف.
  */
-import { app, dialog, session, shell, type BrowserWindow, type WebContents } from 'electron';
+import { app, dialog, Menu, session, shell, type BrowserWindow, type WebContents } from 'electron';
 import { logError } from './errorLog';
 
 const ALLOWED_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write']);
@@ -20,6 +20,10 @@ export function hardenSession(): void {
   app.on('web-contents-created', (_e, contents) => {
     contents.on('will-attach-webview', (event) => event.preventDefault());
   });
+  // المثبّت بلا قائمة Electron الافتراضية: كانت مخفيّةً تظهر بـAlt ومفاتيحها حيّة — Ctrl+R يعيد
+  // تحميل الشاشة فيضيع ما لم يُحفظ، وCtrl+Shift+I يفتح أدوات المطوّر، وCtrl+W يغلق النافذة.
+  // والنسخ واللصق والتراجع تبقى: يتولّاها Chromium في الحقول لا القائمة (جُرّب على Electron ٤٤).
+  if (app.isPackaged) Menu.setApplicationMenu(null);
 }
 
 /** يفتح رابط ويبٍ في متصفّح الجهاز — وما ليس رابط ويب لا يُفتح. */
@@ -35,6 +39,9 @@ export function openExternalSafe(url: string): void {
 /** نافذةٌ تحمل الواجهة: لا تنقّل، ولا نوافذ، والروابط إلى المتصفّح، والسقوط يُعاد. */
 export function hardenWindow(win: BrowserWindow, label: string): void {
   const contents: WebContents = win.webContents;
+  // وأدوات المطوّر مغلقةٌ في المثبّت (`devTools: !app.isPackaged` في النافذة) — وإن فُتحت بطريقٍ ما أُغلقت.
+  // والمِقْود لا يحتاجها: يتّصل بمنفذ البروتوكول، وذلك يبقى (جُرّب).
+  if (app.isPackaged) contents.on('devtools-opened', () => contents.closeDevTools());
   contents.setWindowOpenHandler(({ url }) => {
     openExternalSafe(url);
     return { action: 'deny' };

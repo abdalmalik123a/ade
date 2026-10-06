@@ -85,7 +85,9 @@ function createWindow(): void {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
-      spellcheck: false
+      spellcheck: false,
+      // أدوات المطوّر للتطوير وحده (`harden.ts`).
+      devTools: !app.isPackaged
     }
   });
   hardenWindow(mainWindow, 'main');
