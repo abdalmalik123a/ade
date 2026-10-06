@@ -54,6 +54,57 @@ describe('فراغات ملفّ Word خاناتٌ مقترحة', () => {
   });
 });
 
+describe('الجنسان بشرطة، والعبارة الثابتة لا تُقلب (الموجة ٢)', () => {
+  const genderAll = (doc: Doc) => {
+    let d = doc;
+    for (let guard = 0; guard < 50; guard++) {
+      const h = fieldHints(d).find((x) => x.kind === 'gender');
+      if (!h) break;
+      d = applyHint(d, h);
+    }
+    return d;
+  };
+
+  it('«السيد / ة» و«باشر /ة» و«احيلـ / ت» و«بذمته/ا» خياراتٌ للجنسين — ولا تبقى الشرطة', () => {
+    const d = genderAll(withLines('باشر /ة الســـيد /ة ( ...... ) بالدوام', 'وقد احيلـ  / ت الى التقاعد ولا شيء بذمته/ا'));
+    const text = docText(d);
+    expect(text).toContain('{باشر|باشرت} {السيد|السيدة} (');
+    expect(text).toContain('{احيل|احيلت} الى التقاعد');
+    expect(text).toContain('{بذمته|بذمتها}');
+    expect(text).not.toMatch(/\/\s*[ةتا]/);
+  });
+
+  it('و«نسخة منه الى» و«الموظف المختص» و«بناءً عليه» ليست لصاحب العلاقة — وكانت «اقبلها كلّها» تقلبها', () => {
+    const d = genderAll(withLines('نؤيد بأن التلميذ / ة مستمر وبناءً عليه زود بالكتاب بناءً على طلبه', 'يراجع الموظف المختص', 'نسخة منه الى :'));
+    const text = docText(d);
+    expect(text).toContain('{التلميذ|التلميذة} {مستمر|مستمرة}');
+    expect(text).toContain('{طلبه|طلبها}');
+    expect(text).toContain('وبناءً عليه زود');
+    expect(text).toContain('يراجع الموظف المختص');
+    expect(text).toContain('نسخة منه الى');
+  });
+
+  it('و«السيد» قبل خانة اسم صاحب العلاقة له، و«السيد المدير المحترم» للجهة — و«تبليغه» لصاحب العلاقة', () => {
+    const d: Doc = {
+      ...emptyDoc(),
+      blocks: [
+        paragraph([run('السيد المدير المحترم')]),
+        paragraph([run('نرفق ورقة التبليغ الخاصة بالسيد '), fieldRef('اسم_السيد'), run(' بعد ان تم تبليغه واعادته اليكم')])
+      ],
+      fields: [makeField({ key: 'اسم_السيد', label: 'اسم السيد', role: 'name', source: 'fullName' })]
+    };
+    const text = docText(genderAll(d));
+    expect(text).toContain('السيد المدير المحترم');
+    expect(text).toContain('{بالسيد|بالسيدة} {اسم_السيد} بعد ان تم {تبليغه|تبليغها} واعادته');
+  });
+
+  it('وضمير الجنس الآخر في كتابٍ مكتوبٍ للمذكّر لاسمٍ غيره: «المدرسة التي تخرج منها التلميذ»', () => {
+    const text = docText(genderAll(withLines('المدرسة الابتدائية التي تخرج منها التلميذ ( ...... ) وبناءً على طلبه')));
+    expect(text).toContain('التي تخرج منها {التلميذ|التلميذة}');
+    expect(text).toContain('{طلبه|طلبها}');
+  });
+});
+
 describe('النصّ المكتوب خاناتٌ مقترحة', () => {
   const doc = () =>
     withLines(

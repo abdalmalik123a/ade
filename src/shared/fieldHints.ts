@@ -67,10 +67,13 @@ function runTexts(doc: Doc): string[] {
   return paragraphs(doc).flatMap((p) => p.inlines.flatMap((i) => (i.kind === 'run' ? [i.text] : [])));
 }
 
-function countIn(texts: string[], needle: string): number {
+/** موضعٌ يُترك: الكلمة فيه جزءُ عبارةٍ ثابتة لا تخصّ صاحب العلاقة. */
+type Skip = (text: string, at: number, word: string) => boolean;
+
+function countIn(texts: string[], needle: string, skip?: Skip): number {
   let n = 0;
   for (const t of texts) {
-    for (let at = t.indexOf(needle); at >= 0; at = t.indexOf(needle, at + needle.length)) if (wholeAt(t, at, needle.length)) n++;
+    for (let at = t.indexOf(needle); at >= 0; at = t.indexOf(needle, at + needle.length)) if (wholeAt(t, at, needle.length) && !skip?.(t, at, needle)) n++;
   }
   return n;
 }
@@ -233,7 +236,7 @@ function matches(texts: string[], re: RegExp, group = 0): string[] {
  * وضمير الغائب («غياباته» ← «غياباتها») بقائمةٍ لا بقاعدة: كلماتٌ كثيرة آخرها هاءٌ أصلية
  * («توجيه»، «انتباه») — وما فات القائمة يكشفه «جرّب باسمٍ آخر».
  */
-const GENDER_PAIRS: [string, string][] = [
+const SUBJECT_PAIRS: [string, string][] = [
   ['المذكور', 'المذكورة'],
   ['الطالب', 'الطالبة'],
   ['التلميذ', 'التلميذة'],
@@ -246,14 +249,66 @@ const GENDER_PAIRS: [string, string][] = [
   ['مستمر', 'مستمرة'],
   ['ملتزم', 'ملتزمة'],
   ['ابنه', 'ابنته'],
-  ['ابننا', 'ابنتنا'],
-  ...(
-    'له عنه منه عليه لديه بحقه اسمه عمره ولده غياباته وانذاره انذاره وحثه حثه دوامه خدمته عمله راتبه ' +
-    'اجازته إجازته تأييده تاييده مسؤوليته وظيفته درجته معدله نتيجته تولده سكنه طلبه بطلبه'
-  )
-    .split(/\s+/)
-    .map((w): [string, string] => [w, w === 'له' ? 'لها' : `${w}ا`])
+  ['ابننا', 'ابنتنا']
 ];
+// وما تكتبه المدارس عن صاحب العلاقة (الموجة ٢): «تبليغه»، «تزويده بالوثيقة»، «صورته»، «فحصه ومعالجته»…
+const PRONOUN_PAIRS: [string, string][] = (
+  'له عنه منه عليه لديه بحقه اسمه عمره ولده غياباته وانذاره انذاره وحثه حثه دوامه خدمته عمله راتبه ' +
+  'اجازته إجازته تأييده تاييده مسؤوليته وظيفته درجته معدله نتيجته تولده سكنه طلبه بطلبه ' +
+  'تبليغه تزويده صورته فحصه معالجته احالته إحالته مباشرته انفكاكه تخرجه غيابه تغيبه انقطاعه استمراره'
+)
+  .split(/\s+/)
+  .map((w): [string, string] => [w, w === 'له' ? 'لها' : `${w}ا`]);
+const GENDER_PAIRS: [string, string][] = [...SUBJECT_PAIRS, ...PRONOUN_PAIRS];
+
+/** «السيد» قبل خانة اسم صاحب العلاقة له لا للجهة المخاطَبة: «بالسيد ( {الاسم} ) بعنوان…». */
+const TITLE_BEFORE_NAME = /(?:^|[^ء-ي])((?:و|ب|ل|ف)?(?:ال)?سيد)\s*\(?\s*$/;
+
+/**
+ * عبارةٌ ثابتة كلمتُها ليست لصاحب العلاقة — فلا يقلبها التأنيث: «نسخة منه الى» نسخةٌ من الكتاب، و«بناءً عليه»، و«الموظف
+ * المختص». وكانت «اقبلها كلّها» تكتب «نسخة منها» في كتاب امرأة. والكلمة قبل شرطة الجنسين («التلميذ / ة») لخيار الشرطة.
+ */
+const FIXED: { word: string; before?: RegExp; after?: RegExp }[] = [
+  { word: 'منه', before: /نسخ[ةه]\s*$/ },
+  { word: 'عليه', before: /بناء[ًاٌ]*\s*$/ },
+  { word: 'الموظف', after: /^\s*المختص/ }
+];
+const SLASH_AFTER = /^ـ*\s*\/\s*(?:ة|ت|ها|ا)(?![ء-ي])/;
+const notSubjectAt: Skip = (text, at, word) =>
+  SLASH_AFTER.test(text.slice(at + word.length)) ||
+  FIXED.some((f) => f.word === word && (f.before?.test(text.slice(0, at)) ?? true) && (f.after?.test(text.slice(at + word.length)) ?? true));
+
+/** أفعالٌ ماضية تكتبها المدارس «/ة» وتأنيثها بالتاء: «باشر /ة» ← باشرت. */
+const SLASH_VERBS = new Set(
+  'باشر انقطع انفك تغيب غاب التحق نقل حضر تخرج نجح رسب قدم وقع تعهد سافر عاد استلم سلم حصل احيل أحيل اكمل أكمل'.split(' ')
+);
+
+/**
+ * الجنسان بشرطة كما تكتبهما المدارس: «السيد / ة» و«احيلـ / ت» و«بذمته/ا» — خيارٌ للجنسين بدل الشرطة، فيُطبع كلٌّ لصاحبه.
+ */
+function slashChoices(texts: string[]): { text: string; male: string; female: string }[] {
+  const found = new Map<string, { text: string; male: string; female: string }>();
+  for (const t of texts) {
+    for (const m of t.matchAll(/([ء-يـ]+?)ـ*\s*\/\s*(ة|ت|ها|ا)(?![ء-ي])/g)) {
+      const word = stripTatweel(m[1]!);
+      if ((word.match(/[ء-ي]/g) ?? []).length < 2) continue;
+      const mark = m[2]!;
+      const stem = word.replace(/^[وف](?=[ء-ي]{3})/, '');
+      const female =
+        mark === 'ت'
+          ? `${word}ت`
+          : mark === 'ا'
+            ? word.endsWith('ه') ? `${word}ا` : ''
+            : mark === 'ها'
+              ? word.endsWith('ه') ? `${word.slice(0, -1)}ها` : ''
+              : SLASH_VERBS.has(stem)
+                ? `${word}ت`
+                : `${word}ة`;
+      if (female && !found.has(m[0])) found.set(m[0], { text: m[0], male: word, female });
+    }
+  }
+  return [...found.values()];
+}
 
 /** الخيار الذي يكشفه «جرّب باسمٍ آخر»: كلمة المذكّر حين يُختار المؤنّث، والعكس. */
 export function wrongGenderWords(gender: 'ذكر' | 'أنثى'): string[] {
@@ -265,7 +320,7 @@ export function fieldHints(doc: Doc): FieldHint[] {
   const texts = runTexts(doc);
   const hints: FieldHint[] = [];
   const push = (h: Omit<FieldHint, 'count'>) => {
-    const count = countIn(texts, h.text);
+    const count = countIn(texts, h.text, h.kind === 'gender' ? notSubjectAt : undefined);
     if (count > 0 && !hints.some((x) => x.text === h.text)) hints.push({ ...h, count });
   };
 
@@ -287,13 +342,43 @@ export function fieldHints(doc: Doc): FieldHint[] {
   for (const y of matches(texts, YEAR_RE)) push({ kind: 'year', text: y, label: 'العام الدراسي', field: { label: 'العام الدراسي', width: 11 } });
   for (const d of matches(texts, DATE_RE)) push({ kind: 'date', text: d, label: 'التاريخ', field: { label: 'التاريخ', type: 'date', width: 12 } });
 
-  // الصياغة مع الجنس — لكتابٍ له صاحب علاقة: اسمٌ مقترح، أو فراغٌ لاسم شخص، أو خانة اسم.
+  // الجنسان بشرطة («السيد / ة») قالهما الكتاب صراحةً — فيُقترحان خيارًا ولو لم يُعرف صاحب العلاقة، وقبل الكلمة وحدها.
+  for (const s of slashChoices(texts)) push({ kind: 'gender', text: s.text, label: `${s.text} ← ${s.male}/${s.female}`, key: `${s.male}|${s.female}` });
+
+  // الصياغة مع الجنس — لكتابٍ له صاحب علاقة: اسمٌ مقترح، أو فراغٌ لاسم شخص، أو خانة اسم — أو جنسان قالهما الكتاب
+  // بشرطة أو بخيار.
   const hasSubject =
-    hints.some((h) => h.kind === 'name' || (h.kind === 'blank' && h.field?.role === 'name')) ||
-    doc.fields.some((f) => f.role === 'name' || f.source === 'fullName');
+    hints.some((h) => h.kind === 'name' || h.kind === 'gender' || (h.kind === 'blank' && h.field?.role === 'name')) ||
+    doc.fields.some((f) => f.role === 'name' || f.source === 'fullName' || isChoiceKey(f.key));
   if (hasSubject) {
-    for (const [m, f] of GENDER_PAIRS) {
+    for (const [m, f] of SUBJECT_PAIRS) {
       for (const word of [m, f]) push({ kind: 'gender', text: word, label: `${word} ← ${m}/${f}`, key: `${m}|${f}` });
+    }
+    // والكتاب مكتوبٌ لجنسٍ واحد — المذكّر غالبًا: فضمير الجنس الآخر فيه لاسمٍ غيره («المدرسة التي تخرج منها التلميذ»)
+    // لا لصاحب العلاقة؛ ويُقترح ضمير جنس الكتاب وحده.
+    const feminine = SUBJECT_PAIRS.some(([, f]) => countIn(texts, f) > 0) && !SUBJECT_PAIRS.some(([m]) => countIn(texts, m) > 0);
+    // وبواو العطف: «فحصه ومعالجته».
+    for (const [m, f] of PRONOUN_PAIRS.flatMap(([m, f]): [string, string][] => [[m, f], [`و${m}`, `و${f}`]])) {
+      const word = feminine ? f : m;
+      push({ kind: 'gender', text: word, label: `${word} ← ${m}/${f}`, key: `${m}|${f}` });
+    }
+    // و«السيد» قبل خانة اسم صاحب العلاقة — بمواضعها، فـ«السيد المدير المحترم» يبقى. ولصاحب علاقةٍ واحد: في «التسليم
+    // بين المدير السابق والحالي» شخصان، وخيار الجنس واحد.
+    const named = new Set(doc.fields.filter((f) => f.role === 'name' || f.source === 'fullName').map((f) => f.key));
+    const byWord = new Map<string, Spot[]>();
+    for (const p of named.size === 1 ? paragraphs(doc) : []) {
+      p.inlines.forEach((inline, run) => {
+        const next = p.inlines[run + 1];
+        if (inline.kind !== 'run' || next?.kind !== 'field' || !named.has(next.ref)) return;
+        const m = TITLE_BEFORE_NAME.exec(inline.text);
+        if (!m) return;
+        const start = m.index + m[0].length - m[0].replace(/^[^ء-ي]/, '').length;
+        const end = start + m[1]!.length;
+        byWord.set(m[1]!, [...(byWord.get(m[1]!) ?? []), { para: p.id, run, start, end, raw: m[1]! }]);
+      });
+    }
+    for (const [word, spots] of byWord) {
+      if (!hints.some((x) => x.text === word)) hints.push({ kind: 'gender', text: word, label: `${word} ← ${word}/${word}ة`, key: `${word}|${word}ة`, count: spots.length, spots });
     }
   }
   return hints;
@@ -302,12 +387,15 @@ export function fieldHints(doc: Doc): FieldHint[] {
 // ── التطبيق ──────────────────────────────────────────────────────────────
 
 /** يستبدل النصّ في كلّ مواضعه بعقدة خانة — في الفقرات والجداول والأعمدة والمجموعات. */
-function replaceInBlocks(blocks: Block[], text: string, ref: string): Block[] {
+function replaceInBlocks(blocks: Block[], text: string, ref: string, skip?: Skip): Block[] {
   const inlines = (list: Inline[]): Inline[] => {
     const out: Inline[] = [];
-    const next = (s: string, from: number) => {
-      let at = s.indexOf(text, from);
-      while (at >= 0 && !wholeAt(s, at, text.length)) at = s.indexOf(text, at + 1);
+    // المواضع في نصّ المقطع كاملًا — فتُرى العبارة حول الكلمة («نسخة منه») قبل أن يُقطع.
+    const spots = (s: string) => {
+      const at: number[] = [];
+      for (let i = s.indexOf(text); i >= 0; i = s.indexOf(text, i + 1)) {
+        if (wholeAt(s, i, text.length) && !skip?.(s, i, text) && (!at.length || i >= at[at.length - 1]! + text.length)) at.push(i);
+      }
       return at;
     };
     for (const i of list) {
@@ -315,19 +403,18 @@ function replaceInBlocks(blocks: Block[], text: string, ref: string): Block[] {
         out.push(i);
         continue;
       }
-      let rest = i.text;
-      let at = next(rest, 0);
-      if (at < 0) {
+      const found = spots(i.text);
+      if (!found.length) {
         out.push(i);
         continue;
       }
-      while (at >= 0) {
-        if (at > 0) out.push({ ...i, text: rest.slice(0, at) });
+      let from = 0;
+      for (const at of found) {
+        if (at > from) out.push({ ...i, text: i.text.slice(from, at) });
         out.push({ kind: 'field', id: newUuid(), ref });
-        rest = rest.slice(at + text.length);
-        at = next(rest, 0);
+        from = at + text.length;
       }
-      if (rest) out.push({ ...i, text: rest });
+      if (from < i.text.length) out.push({ ...i, text: i.text.slice(from) });
     }
     return out;
   };
@@ -396,7 +483,9 @@ export function applyHint(doc: Doc, hint: FieldHint): Doc {
   } else if (!fields.some((f) => f.key === key)) {
     fields = [...fields, makeField({ key, label: key })];
   }
-  const blocks = hint.spots ? replaceSpots(doc.blocks, hint.spots, key) : replaceInBlocks(doc.blocks, hint.text, key);
+  const blocks = hint.spots
+    ? replaceSpots(doc.blocks, hint.spots, key)
+    : replaceInBlocks(doc.blocks, hint.text, key, hint.kind === 'gender' ? notSubjectAt : undefined);
   return { ...doc, blocks, fields };
 }
 

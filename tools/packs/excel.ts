@@ -16,7 +16,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { citizenSourceOf } from '../../src/shared/citizenFields';
-import { docText, makeField, newUuid, paragraph, run, type Block, type Doc, type FieldType, type ImageBlock, type Inline } from '../../src/shared/doc';
+import { docText, makeField, newUuid, paragraph, run, type Block, type Doc, type FieldType, type ImageBlock, type Inline, type TableCell } from '../../src/shared/doc';
+import { applyHint, fieldHints } from '../../src/shared/fieldHints';
+import { docHasChoices, GENDER_KEY } from '../../src/shared/gender';
 import { excelToDocs } from '../../src/main/services/excelDoc';
 import { planExcelImport } from '../../src/main/services/importFolder';
 import { stableDoc, type RawPack, type RawPackTemplate } from './build';
@@ -44,6 +46,12 @@ export type Curation = {
     category: string;
     /** نصٌّ حرفيّ يصير خانة: «في 2022/8/25 والمعنونة» تاريخٌ من كتابٍ حقيقيّ. */
     literal?: { text: string; key: string; label: string; type?: FieldType }[];
+    /**
+     * خلايا جدولٍ فارغة خاناتٌ تُكتب باليد أو تُطبع (قال المالك: «الاثنين»): عمودٌ بعنوانه، وكلّ صفٍّ باسمه من عمود
+     * `rowLabel` (أو أوّل خليّةٍ فيها كلام). و`rows` اسم الصفّ ← اسم خانته، أو «=مفتاح» خانةٍ في الكتاب نفسها. و`total`
+     * خانة صفّ المجموع: تُجمع من خانات العمود ما لم تُكتب.
+     */
+    cells?: { column: string; rowLabel: string; type?: FieldType; rows: Record<string, string>; total?: string }[];
   }[];
 };
 
@@ -68,6 +76,67 @@ function curateImages(blocks: Block[], actionOf: (img: ImageBlock) => ImageActio
         return inColumn ? [paragraph([])] : [];
     }
   });
+}
+
+const cellText = (c: TableCell) => c.blocks.map((p) => p.inlines.map((i) => (i.kind === 'run' ? i.text : i.kind === 'field' ? `{${i.ref}}` : '')).join('')).join(' ').trim();
+
+/** خلايا الجدول الفارغة في عمودٍ خاناتٌ بأسماء صفوفها — انظر `cells` في `Curation`. */
+function cellsToFields(doc: Doc, op: NonNullable<Curation['sheets'][number]['cells']>[number]): { doc: Doc; made: number } {
+  let made = 0;
+  const fields = [...doc.fields];
+  const keys: string[] = [];
+  const blocks = doc.blocks.map((b): Block => {
+    if (b.kind !== 'table' || !b.rows.length) return b;
+    // أين يبدأ كلّ عمود — بحساب الدمج الأفقي.
+    const starts = (cells: TableCell[]) => {
+      let at = 0;
+      return cells.map((c) => {
+        const s = at;
+        at += c.colSpan ?? 1;
+        return s;
+      });
+    };
+    const head = b.rows[0]!.cells;
+    const hs = starts(head);
+    const col = hs[head.findIndex((c) => same(cellText(c), op.column))];
+    const lab = hs[head.findIndex((c) => same(cellText(c), op.rowLabel))];
+    if (col === undefined || lab === undefined) return b;
+    const rows = b.rows.map((r, ri) => {
+      if (ri === 0) return r;
+      const s = starts(r.cells);
+      const name = cellText(r.cells[s.indexOf(lab)] ?? { id: '', blocks: [] }) || (r.cells.map(cellText).find(Boolean) ?? '');
+      const at = s.indexOf(col);
+      const target = r.cells[at];
+      const label = op.total && same(name, op.total) ? op.total : op.rows[name.trim()];
+      if (!target || cellText(target) || !label) return r;
+      let key: string;
+      if (label.startsWith('=')) key = label.slice(1);
+      else {
+        key = label.replace(/\s+/g, '_');
+        if (!fields.some((f) => f.key === key)) fields.push(makeField({ key, label, type: op.type ?? 'text', fillMode: 'hand', width: 10 }));
+        if (!(op.total && same(name, op.total))) keys.push(key);
+      }
+      made++;
+      const cells = r.cells.map((c, ci) => (ci === at ? { ...c, blocks: [paragraph([{ kind: 'field' as const, id: newUuid(), ref: key }], { align: 'center' })] } : c));
+      return { ...r, cells };
+    });
+    return { ...b, rows };
+  });
+  // المجموع يُجمع من خانات عموده ما لم يُكتب بيد.
+  const total = op.total ? fields.find((f) => f.key === op.total!.replace(/\s+/g, '_')) : undefined;
+  if (total && keys.length) total.sumOf = keys;
+  return { doc: { ...doc, blocks, fields }, made };
+}
+
+/** التذكير والتأنيث كما في البرنامج: كلّ ما يقترحه («اقبلها كلّها») — وشرطة المدرسة «السيد / ة» خيارٌ للجنسين. */
+function genderize(doc: Doc): Doc {
+  let out = doc;
+  for (let guard = 0; guard < 200; guard++) {
+    const hint = fieldHints(out).find((h) => h.kind === 'gender');
+    if (!hint) break;
+    out = applyHint(out, hint);
+  }
+  return out;
 }
 
 /** نصٌّ حرفيّ في الوثيقة خانةٌ — أوّل موضعٍ له في المتن أو الأعمدة أو الجداول. */
@@ -138,6 +207,13 @@ export async function buildExcelPack(xlsx: string, packDir: string): Promise<{ t
       if (!out.found) throw new Error(`«${entry.title}»: لا يوجد «${lit.text}» في الورقة — راجع «literal» في curation.json`);
       doc = { ...out.doc, fields: [...out.doc.fields, makeField({ key: lit.key, label: lit.label, type: lit.type ?? 'text', fillMode: 'hand', width: 12 })] };
     }
+    for (const op of entry.cells ?? []) {
+      const out = cellsToFields(doc, op);
+      if (!out.made) throw new Error(`«${entry.title}»: لا خلايا فارغة في عمود «${op.column}» — راجع «cells» في curation.json`);
+      doc = out.doc;
+    }
+    // والتذكير والتأنيث كما في البرنامج — والخيار يحتاج «الجنس» في الشبّاك (CATALOG، القاعدة ٦).
+    doc = genderize(doc);
     // لا خانةٌ يقرؤها معجم ملف الزبون مكانَ عمله (CATALOG، القاعدة ٧).
     const risky = doc.fields.filter((f) => !f.source && citizenSourceOf(f.key) === 'workplace').map((f) => f.key);
     if (risky.length) throw new Error(`«${entry.title}»: خاناتٌ يملؤها الشبّاك من مكان عمل الزبون (${risky.join('، ')}) — سمّها بغير ذلك`);
@@ -147,7 +223,8 @@ export async function buildExcelPack(xlsx: string, packDir: string): Promise<{ t
       category: entry.category,
       source: curation.source,
       verifiedOn: curation.verifiedOn,
-      doc: stableDoc(doc, curation.id, entry.slug)
+      doc: stableDoc(doc, curation.id, entry.slug),
+      ...(docHasChoices(doc) ? { fields: { [GENDER_KEY]: { label: 'الجنس', type: 'choice' as const, choices: ['ذكر', 'أنثى'] } } } : {})
     });
   }
   const unused = curation.sheets.filter((s) => !plan.candidates.some((c) => same(s.sheet, c.title))).map((s) => s.sheet);

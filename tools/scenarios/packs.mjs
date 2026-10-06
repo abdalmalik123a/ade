@@ -266,7 +266,32 @@ export default async function scenario(page, { profile, shotsDir }) {
     const sheet = document.querySelector('.a4-sheet');
     return Boolean(sheet) && !sheet.querySelector('img') && Boolean(sheet.querySelector('[data-rule]'));
   `));
+  // «كما في البرنامج خيار التذكير والتأنيث» (المالك): الاسم مذكّرٌ يقينًا فيُطبع للمذكّر.
+  ok('وبصيغة المذكّر من اسمه: «بالسيد» و«تبليغه»', sheetText.includes('بالسيد كرار حيدر علي') && sheetText.includes('تبليغه') && !sheetText.includes('بالسيدة'));
   if (shotsDir) await page.shot(join(shotsDir, 'packs-school-letter.png'));
+  await page.clickText('احفظ بلا طباعة');
+  await wait(1500);
+  await page.eval(`document.querySelector('[data-act="after-close"]')?.click(); return true;`);
+  await wait(500);
+
+  // «صرف مكافأة لجنة الحانوت»: «يكتب باليد، وإن شاء بالطباعة» — المبلغ المكتوب يُطبع، والمجموع يُجمع منه.
+  const clickedReward = await page.eval(`
+    const card = [...document.querySelectorAll('[data-template-card]')].find((c) => c.querySelector('.font-headline-sm')?.textContent?.trim() === 'صرف مكافأة لجنة الحانوت');
+    if (!card) return false;
+    card.click();
+    return true;
+  `);
+  ok('«صرف مكافأة لجنة الحانوت» في الشبّاك', clickedReward);
+  await wait(400);
+  await page.clickText('املأ');
+  await wait(1200);
+  const typed = (await fill('مبلغ المدير', '50000')) && (await fill('مبلغ المعاون', '40000'));
+  ok('ومبالغه خاناتٌ في ورقة التعبئة', typed);
+  await page.clickText('راجع الأوراق');
+  await wait(1200);
+  sheetText = await page.eval(`return document.querySelector('.a4-sheet')?.innerText ?? '';`);
+  ok('والمبلغان يُطبعان والمجموع يُجمع منهما (٩٠٠٠٠)', sheetText.includes('50000') && sheetText.includes('40000') && /90000|٩٠٠٠٠/.test(sheetText));
+  if (shotsDir) await page.shot(join(shotsDir, 'packs-reward.png'));
 
   return steps.join('\n');
 }

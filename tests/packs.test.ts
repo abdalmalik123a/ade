@@ -191,6 +191,28 @@ describe('حزم الجهات الجاهزة (Content Packs)', () => {
       expect(json()).not.toMatch(/20\d\d\/\d{1,2}\/\d{1,2}/);
       expect((templates.find((t) => t.title === 'واقع حال تلميذ')!.doc as Doc).fields.some((f) => f.key === 'تاريخ_الوثيقة' && f.type === 'date')).toBe(true);
     });
+
+    // قال المالك: «كما في البرنامج خيار التذكير والتأنيث».
+    it('والتذكير والتأنيث كما في البرنامج: شرطة المدرسة خيار، و«نسخة منه» تبقى — والكتاب بشخصين بلا خيار', () => {
+      const templates = pkg().templates;
+      const keys = (title: string) => (templates.find((t) => t.title === title)!.doc as Doc).fields.filter((f) => f.key.includes('|')).map((f) => f.key);
+      expect(keys('تبليغ')).toEqual(expect.arrayContaining(['بالسيد|بالسيدة', 'تبليغه|تبليغها']));
+      expect(keys('براءة ذمة متقاعد')).toEqual(expect.arrayContaining(['السيد|السيدة', 'احيل|احيلت', 'بذمته|بذمتها']));
+      expect(keys('تسليم واستلام بين المديرين (جرد)')).toEqual([]);
+      expect(json()).not.toMatch(/[ء-ي]\s*\/\s*[ةت](?![ء-ي])/);
+      expect(json()).not.toContain('"ref":"منه|منها"');
+    });
+
+    // وقال: «يكتب باليد، وإن شاء يكتب بالطباعة — الاثنين».
+    it('و«صرف مكافأة لجنة الحانوت»: الأسماء والمبالغ خاناتٌ تُكتب أو تُترك للقلم، والمجموع يُجمع منها', () => {
+      const doc = pkg().templates.find((t) => t.title === 'صرف مكافأة لجنة الحانوت')!.doc as Doc;
+      const total = doc.fields.find((f) => f.key === 'المجموع')!;
+      expect(total).toMatchObject({ fillMode: 'hand', type: 'number' });
+      expect(total.sumOf).toEqual(['مبلغ_المدير', 'مبلغ_المعاون', 'مبلغ_العضو', 'مبلغ_العضو_الإداري', 'مبلغ_ممثل_مجلس_الآباء']);
+      expect(doc.fields.filter((f) => f.key.startsWith('اسم_') && f.fillMode === 'hand')).toHaveLength(4);
+      // واسم المدير في الجدول خانة اسمه في التوقيع.
+      expect(JSON.stringify(doc.blocks.filter((b) => b.kind === 'table'))).toContain('"ref":"اسم_مدير_المدرسة"');
+    });
   });
 
   describe('قواعد التدقيق الإداري الصارم (validateTemplate)', () => {
