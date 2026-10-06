@@ -3,14 +3,16 @@
  * لا يُقاطَع الموظف، والجرس يدلّه).
  *
  * ما موعده اليوم من الطلبات وما تأخّر، وما جهز ينتظر صاحبه، ومسوداتٌ لم تصدر ومعاملاتٌ عُلّقت، وطباعةٌ انقطعت أمس،
- * ونسخةٌ احتياطية طال عهدها. كلّها من القاعدة ولا شيء يُخمَّن.
+ * ونسخةٌ احتياطية طال عهدها، وملخّص الأسبوع. كلّها من القاعدة ولا شيء يُخمَّن.
  */
 import type { Database } from 'better-sqlite3';
-import type { TodayAgenda } from '@shared/api';
+import type { TodayAgenda, WeekSummary, WorkCounts } from '@shared/api';
 import type { Order } from '@shared/orders';
-import { BACKUP_REMIND_DAYS, daysSince } from '@shared/dates';
+import { normalizeFold } from '@shared/arabic';
+import { BACKUP_REMIND_DAYS, daysSince, isoDate, weekStart } from '@shared/dates';
 import { listOrders } from './orders';
 import { listDrafts } from './templates';
+import { workBetween } from './workLog';
 
 const localToday = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -24,6 +26,60 @@ export function parkedCount(db: Database): number {
   } catch {
     return 0;
   }
+}
+
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+/** بداية يومٍ محلّي بصيغة أوقات القاعدة (UTC) — فيُقارَن بالفهرس، لا بدالّةٍ على كلّ صفّ في أرشيفٍ كبير. */
+const dbStamp = (d: Date) => d.toISOString().slice(0, 19).replace('T', ' ');
+
+/** الزبائن في مدّة: أسماء الكتب الصادرة (لا المُبطَلة) والطلبات المسلّمة — والاسم الواحد مرّة وإن تكرّر. */
+function customersBetween(db: Database, from: Date, to: Date): number {
+  const names = new Set<string>();
+  const add = (rows: unknown[]) => {
+    for (const r of rows as { name: string | null }[]) {
+      const key = normalizeFold(r.name ?? '');
+      if (key) names.add(key);
+    }
+  };
+  add(db.prepare("SELECT citizen_name AS name FROM documents WHERE status != 'void' AND issued_at >= ? AND issued_at < ?").all(dbStamp(from), dbStamp(to)));
+  add(
+    db
+      .prepare(
+        `SELECT COALESCE(a.name, o.customer) AS name FROM orders o LEFT JOIN authorities a ON a.id = o.authority_id
+         WHERE o.status = 'delivered' AND o.delivered_at >= ? AND o.delivered_at < ?`
+      )
+      .all(dbStamp(from), dbStamp(to))
+  );
+  return names.size;
+}
+
+const countsBetween = (db: Database, from: Date, to: Date): WorkCounts => ({
+  customers: customersBetween(db, from, to),
+  ...workBetween(db, isoDate(from), isoDate(to))
+});
+
+/**
+ * الملخّص الأسبوعي (الموجة ٢): هذا الأسبوع من السبت، والذي قبله للمقارنة. ونقطةٌ على الجرس حين يبدأ أسبوعٌ وفي الذي قبله
+ * عمل، حتى يُفتح الجرس فيه (`markWeekSeen`) — فمكتبٌ جديدٌ لا شيء عنده لا يُدعى إلى ملخّصٍ فارغ.
+ */
+export function weekSummary(db: Database, now: Date = new Date()): WeekSummary {
+  const start = weekStart(now);
+  const lastWeek = countsBetween(db, addDays(start, -7), start);
+  const from = isoDate(start);
+  const seen = (db.prepare("SELECT value FROM settings WHERE key = 'weekSeen'").get() as { value: string } | undefined)?.value;
+  return {
+    from,
+    thisWeek: countsBetween(db, start, addDays(start, 7)),
+    lastWeek,
+    unseen: lastWeek.customers + lastWeek.sheets + lastWeek.files > 0 && seen !== from
+  };
+}
+
+/** فُتح الجرس: رُئي ملخّص هذا الأسبوع. */
+export function markWeekSeen(db: Database, now: Date = new Date()): void {
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES ('weekSeen', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')"
+  ).run(isoDate(weekStart(now)));
 }
 
 export function todayAgenda(
@@ -57,6 +113,7 @@ export function todayAgenda(
     pendingPrints: pendingPrints.map((p) => ({ id: p.id, label: p.label, sent: p.sent, total: p.total })),
     lastBackupAt,
     backupDue,
-    autoBackupError: auto.lastError
+    autoBackupError: auto.lastError,
+    week: weekSummary(db, now)
   };
 }

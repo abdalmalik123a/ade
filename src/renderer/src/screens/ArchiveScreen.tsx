@@ -11,7 +11,7 @@
  * (د٣): يبقى برقمه وبصمته ولا يُعاد طبعه.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { localStamp } from '@shared/dates';
+import { localStamp, weekStart } from '@shared/dates';
 import { LIST_LIMITS, limitNote } from '@shared/limits';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
@@ -39,18 +39,15 @@ function iso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** حدود المدة. الأسبوع يبدأ بالسبت — أوّل أيام الدوام الرسمي. */
+/** حدود المدة. الأسبوع يبدأ بالسبت (`weekStart`) — كالملخّص الأسبوعي في «التنبيهات». */
 function rangeOf(period: Period, from: string, to: string): { from: string | null; to: string | null } {
   const now = new Date();
   const today = iso(now);
   switch (period) {
     case 'today':
       return { from: today, to: today };
-    case 'week': {
-      const start = new Date(now);
-      start.setDate(now.getDate() - ((now.getDay() + 1) % 7));
-      return { from: iso(start), to: today };
-    }
+    case 'week':
+      return { from: iso(weekStart(now)), to: today };
     case 'month':
       return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
     case 'year':
@@ -62,16 +59,20 @@ function rangeOf(period: Period, from: string, to: string): { from: string | nul
   }
 }
 
+/** طلب مدّةٍ من خارج الشاشة — ملخّص الأسبوع في «التنبيهات» يفتح «هذا الأسبوع». ويُنفَّذ مرّةً لكلّ مفتاح. */
+let periodRequestSeen = 0;
+
 type Props = {
   /** ما كُتب في البحث الشامل — يصل هنا فيُبحث في الأرشيف كلّه. */
   query?: string;
+  request?: { key: number; period: Period } | null;
   onOpenInEditor?: (documentId: number) => void;
   onOpenCitizen?: (citizenId: number) => void;
   onOpenTemplate?: (templateId: number) => void;
   onChanged?: () => void;
 };
 
-export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor, onOpenCitizen, onOpenTemplate, onChanged }: Props) {
+export default function ArchiveScreen({ query: globalQuery = '', request = null, onOpenInEditor, onOpenCitizen, onOpenTemplate, onChanged }: Props) {
   const [today, setToday] = useState<ArchiveStats | null>(null);
   const [stats, setStats] = useState<PeriodStats | null>(null);
   const [rows, setRows] = useState<DocumentRow[]>([]);
@@ -95,6 +96,13 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
     setQuery(globalQuery);
     if (globalQuery.trim()) setPeriod('all');
   }, [globalQuery]);
+
+  useEffect(() => {
+    if (!request || request.key === periodRequestSeen) return;
+    periodRequestSeen = request.key;
+    setQuery('');
+    setPeriod(request.period);
+  }, [request?.key]);
 
   const range = rangeOf(period, customFrom, customTo);
   const label = PERIODS.find((p) => p.value === period)?.label ?? '';

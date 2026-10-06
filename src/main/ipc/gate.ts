@@ -7,7 +7,10 @@
  * فلا تُقفل بيانات أحد. وورقة معايرة الطابعة إعدادٌ لا إنتاج.
  */
 import { ipcMain } from 'electron';
+import { now } from '../clock';
 import { getDb } from '../db';
+import { recordWork, workOf } from '../services/workLog';
+import { isoDate } from '@shared/dates';
 import { produced } from '@shared/overview';
 import { requireProductive } from './license';
 
@@ -23,6 +26,15 @@ function markFirstWork(out: unknown): void {
     getDb().prepare("INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('firstWorkAt', ?, datetime('now'))").run(new Date().toISOString());
   } catch {
     worked = false;
+  }
+}
+
+/** ما خرج — أوراقٌ طُبعت وملفّاتٌ حُفظت — يُعدّ لليوم (الملخّص الأسبوعي). والعدّ لا يُفشل العمل نفسه. */
+function countWork(channel: string, args: unknown[], out: unknown): void {
+  try {
+    recordWork(getDb(), isoDate(now()), workOf(channel, args, out));
+  } catch {
+    // عدٌّ فاته عمل خيرٌ من عملٍ يُرفض بسببه.
   }
 }
 
@@ -61,6 +73,7 @@ export function installProductiveGate(): void {
       requireProductive();
       const out: unknown = await listener(event, ...args);
       markFirstWork(out);
+      countWork(channel, args, out);
       return out;
     });
   }) as typeof ipcMain.handle;

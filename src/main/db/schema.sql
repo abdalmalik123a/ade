@@ -316,3 +316,13 @@ CREATE TABLE IF NOT EXISTS question_bank (
   used_at     TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_question_bank_subject ON question_bank(subject, grade);
+
+-- ما خرج من المكتب كلّ يوم (الملخّص الأسبوعي، الموجة ٢): أوراقٌ طُبعت وملفّاتٌ حُفظت — أعدادٌ وحدها، لا اسمٌ ولا محتوى.
+-- تقيّدها بوّابة الإنتاج بعد أن يتمّ العمل (`services/workLog.ts`)؛ فالسجلّ يعرف الكتب وحدها، والصور ونسخ الهويات
+-- وملفّات PDF لم تكن تُعدّ في مكان.
+CREATE TABLE IF NOT EXISTS work_days (
+  day   TEXT NOT NULL,                     -- YYYY-MM-DD بالتوقيت المحلي
+  kind  TEXT NOT NULL,                     -- sheets | files
+  n     INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, kind)
+);

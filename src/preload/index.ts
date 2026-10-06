@@ -124,7 +124,8 @@ const api: DiwanApi = {
     others: (query) => invoke('search:others', query)
   },
   today: {
-    agenda: () => invoke('today:agenda')
+    agenda: () => invoke('today:agenda'),
+    weekSeen: () => invoke('today:weekSeen')
   },
   service: {
     parked: () => invoke('service:parked'),

@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { hostname, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { app, ipcMain } from 'electron';
+import { now } from '../clock';
 import { dataDir, getDb } from '../db';
 import { OWNER_PUBLIC_KEY } from '../license/ownerKey';
 import { dayNumber, deviceCode, evaluate, readKey, type LicensePayload, type LicenseState } from '../services/license';
@@ -29,19 +30,6 @@ import { formatGregorian } from '@shared/dates';
 const DEVELOPER_PHONE = DEVELOPER.phoneDisplay;
 
 const test = (name: string): string | undefined => (app.isPackaged ? undefined : process.env[name]);
-/** الوقت — وتحت المِقْود من ملفٍّ يغيّره السيناريو وهو يعمل («بعد أسبوعين»)، في غير المثبّت وحده. */
-function now(): Date {
-  const file = test('DIWAN_TEST_NOW_FILE');
-  if (file) {
-    try {
-      const t = new Date(readFileSync(file, 'utf8').trim());
-      if (!Number.isNaN(t.getTime())) return t;
-    } catch {
-      // لا ملف: الوقت الحقيقي.
-    }
-  }
-  return new Date();
-}
 const publicKey = (): string => test('DIWAN_TEST_LICENSE_PUBKEY') ?? OWNER_PUBLIC_KEY;
 /** مفتاح المالك العامّ — للتفعيل وللتحديث «أ+» (وتحت المِقْود مفتاح الاختبار، في غير المثبّت وحده). */
 export const ownerPublicKey = publicKey;

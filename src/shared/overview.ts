@@ -115,7 +115,7 @@ export const OVERVIEW_STEPS: OverviewStep[] = [
   }),
   at('service', '[data-act="notifications"]', '[data-act="notifications"]', {
     title: 'التنبيهات',
-    body: 'الطلبات المتأخّرة وما موعده اليوم، والمسودات والمعاملات المعلّقة، وتذكير النسخة الاحتياطية — وفيها هذه النظرة متى أردتها.'
+    body: 'الطلبات المتأخّرة وما موعده اليوم، والمسودات والمعاملات المعلّقة، وتذكير النسخة الاحتياطية، وملخّص الأسبوع — وفيها هذه النظرة متى أردتها.'
   }),
   at('settings', RAIL.settings, RAIL.settings),
   at('service', null, null, {

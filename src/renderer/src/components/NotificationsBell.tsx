@@ -2,29 +2,45 @@
  * «التنبيهات» في الشريط العلوي (د٧): ما ينتظر المكتب — الطلبات المتأخّرة وما موعده اليوم وما جهز ينتظر صاحبه (ومعه «انسخ
  * رسالة: طلبكم جاهز»، د٨)، والمسودات والمعاملات المعلّقة، والنسخة الاحتياطية إن طال عهدها. وكانت نافذةً تُقاطع الموظف كلّ
  * صباح عند الإقلاع؛ فصارت جرسًا برقمه يُفتح متى شاء (بقرار المالك ٦ تشرين الأول). وكلّ سطرٍ يقود إلى مكانه، وفي أسفله
- * «نظرة عامة على ديوان».
+ * «نظرة عامة على ديوان». وفي أعلاه **الملخّص الأسبوعي** (الموجة ٢): الزبائن والأوراق المطبوعة والملفّات، هذا الأسبوع
+ * والذي قبله — لا يزيد الرقم، وفي أوّل كلّ أسبوعٍ نقطةٌ بلا رقم حتى يُفتح.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { AgendaOrder, TodayAgenda } from '@shared/api';
+import type { AgendaOrder, TodayAgenda, WorkCounts } from '@shared/api';
 import { agendaCount, readyMessage } from '@shared/agenda';
 import { sinceText } from '@shared/dates';
 import type { RouteKey } from '@shared/routes';
+
+const nf = new Intl.NumberFormat('en-US');
+const busy = (w: WorkCounts) => w.customers + w.sheets + w.files > 0;
+const WEEK_COLUMNS: { key: keyof WorkCounts; label: string }[] = [
+  { key: 'customers', label: 'زبائن' },
+  { key: 'sheets', label: 'أوراق طُبعت' },
+  { key: 'files', label: 'ملفّات' }
+];
 
 export default function NotificationsBell({
   agenda,
   officeName,
   onNavigate,
-  onOverview
+  onOverview,
+  onWeek
 }: {
   agenda: TodayAgenda | null;
   officeName: string;
   onNavigate: (route: RouteKey) => void;
   onOverview: () => void;
+  /** الملخّص يفتح «السجلّ» على هذا الأسبوع. */
+  onWeek: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
+  // أسبوعٌ رُئي ملخّصه هنا — إلى أن تقرأ التنبيهات ما حفظته القاعدة.
+  const [seenWeek, setSeenWeek] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const count = agendaCount(agenda);
+  const week = agenda?.week ?? null;
+  const dot = Boolean(week?.unseen) && seenWeek !== week?.from;
 
   // يُغلق بالنقر خارجه وبـEsc — كقائمة «قنواتنا».
   useEffect(() => {
@@ -42,6 +58,14 @@ export default function NotificationsBell({
   const go = (route: RouteKey) => {
     setOpen(false);
     onNavigate(route);
+  };
+
+  const toggle = () => {
+    if (!open && dot && week) {
+      setSeenWeek(week.from);
+      void window.diwan.today.weekSeen().catch(() => undefined);
+    }
+    setOpen((v) => !v);
   };
 
   const orderLine = (o: AgendaOrder, late: boolean) => (
@@ -65,11 +89,13 @@ export default function NotificationsBell({
         className="relative h-10 w-10 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface flex items-center justify-center shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
         data-act="notifications"
         data-count={count}
-        title="التنبيهات — ما ينتظرك"
+        title={dot ? 'التنبيهات — ملخّص الأسبوع الماضي جاهز' : 'التنبيهات — ما ينتظرك'}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
       >
         <span className="material-symbols-outlined text-[22px]">notifications</span>
+        {/* ملخّص الأسبوع الماضي لم يُرَ: نقطةٌ لا رقم — ليس عملًا ينتظر. */}
+        {dot && <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-secondary ring-2 ring-surface-container-lowest" data-week-dot="" />}
         {/* كشارة «قيد العمل» في السكّة: بحجمها وأرقامها. */}
         {count > 0 && (
           <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-on-error text-[11px] font-bold flex items-center justify-center" data-badge="">
@@ -89,6 +115,40 @@ export default function NotificationsBell({
           </div>
 
           <div className="flex-1 overflow-y-auto p-space-md flex flex-col gap-space-md">
+            {week && (busy(week.thisWeek) || busy(week.lastWeek)) && (
+              <button
+                className="rounded-xl bg-surface-container-low hover:bg-surface-container-high p-space-sm text-right"
+                data-week-summary=""
+                title="افتح «السجلّ» على هذا الأسبوع"
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onWeek();
+                }}
+              >
+                <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-x-space-sm gap-y-0.5 items-baseline">
+                  <span />
+                  {WEEK_COLUMNS.map((c) => (
+                    <span key={c.key} className="text-center font-label-sm text-label-sm text-on-surface-variant">
+                      {c.label}
+                    </span>
+                  ))}
+                  <span className="font-label-md text-label-md text-on-surface font-semibold">هذا الأسبوع</span>
+                  {WEEK_COLUMNS.map((c) => (
+                    <b key={c.key} className="text-center font-headline-sm text-headline-sm text-on-surface tabular" data-week-this={c.key}>
+                      {nf.format(week.thisWeek[c.key])}
+                    </b>
+                  ))}
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">الأسبوع الماضي</span>
+                  {WEEK_COLUMNS.map((c) => (
+                    <span key={c.key} className="text-center font-label-md text-label-md text-on-surface-variant tabular" data-week-last={c.key}>
+                      {nf.format(week.lastWeek[c.key])}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            )}
+
             {empty && <span className="font-label-md text-label-md text-on-surface-variant">لا شيء ينتظرك — كلّ شيءٍ في وقته.</span>}
 
             {a && (a.overdue.length > 0 || a.dueToday.length > 0) && (

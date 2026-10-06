@@ -49,6 +49,11 @@ export function isoDate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** أوّل الأسبوع: السبت منتصف الليل — أوّل أيّام الدوام بعد الجمعة (لـ«السجلّ» والملخّص الأسبوعي معًا). */
+export function weekStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 1) % 7));
+}
+
 /**
  * تقويم حقل التاريخ. من المكاتب ما يكتب بالهجري (العقود الشرعية والأوقاف)، ومنها
  * بالميلادي — ومنها بالاثنين معًا: «… م الموافق … هـ».

@@ -163,6 +163,8 @@ export default function App() {
    * «التنبيهات» و«؟» متى أُريدت — في مكانها (`stay`): الموظف قد يكون في وسط كتابٍ أو ملفّ، فلا تغادر صفحته.
    */
   const [overview, setOverview] = useState<{ stay: boolean; after?: () => void } | null>(null);
+  /** ملخّص الأسبوع في «التنبيهات» يفتح «السجلّ» على هذا الأسبوع. */
+  const [archiveRequest, setArchiveRequest] = useState<{ key: number; period: 'week' } | null>(null);
 
   // العدّادات تتغيّر بإصدار كتاب أو إضافة نموذج.
   const navigate = useCallback(
@@ -296,6 +298,7 @@ export default function App() {
         return (
           <ArchiveScreen
             query={search}
+            request={archiveRequest}
             onOpenInEditor={(id) => void repeatDocument(id)}
             onOpenCitizen={(id) => {
               setCitizenFocus({ key: Date.now(), citizenId: id });
@@ -428,7 +431,16 @@ export default function App() {
             <>
               {/* «؟» الصفحة حتى أوّل عملٍ يخرج من المكتب، ثم يختفي من الصفحات كلّها. */}
               {!counts.worked && <PageHelp route={route} onOverview={startOverview} />}
-              <NotificationsBell agenda={agenda} officeName={settings?.officeName ?? ''} onNavigate={navigate} onOverview={startOverview} />
+              <NotificationsBell
+                agenda={agenda}
+                officeName={settings?.officeName ?? ''}
+                onNavigate={navigate}
+                onOverview={startOverview}
+                onWeek={() => {
+                  setArchiveRequest({ key: Date.now(), period: 'week' });
+                  navigate('archive');
+                }}
+              />
             </>
           }
           context={

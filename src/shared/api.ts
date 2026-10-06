@@ -194,7 +194,18 @@ export type TodayAgenda = {
   backupDue: boolean;
   /** النسخة التلقائية الأخيرة لم تُؤخذ — ولماذا (فلاشةٌ غير موصولة…). */
   autoBackupError?: string | null;
+  /** الملخّص الأسبوعي (الموجة ٢). */
+  week: WeekSummary;
 };
+
+/** ما خرج من المكتب في مدّة: زبائن من الكتب الصادرة والطلبات المسلّمة، وأوراقٌ طُبعت، وملفّاتٌ حُفظت — بلا مال. */
+export type WorkCounts = { customers: number; sheets: number; files: number };
+
+/**
+ * الملخّص الأسبوعي في «التنبيهات» — والأسبوع من السبت كما في «السجلّ». و`unseen`: بدأ أسبوعٌ وفي الذي قبله عمل، ولم يُفتح
+ * الجرس بعدُ فيه — فنقطةٌ على الجرس بلا رقم.
+ */
+export type WeekSummary = { from: string; thisWeek: WorkCounts; lastWeek: WorkCounts; unseen: boolean };
 
 export type AutoBackupStatus = {
   dir: string | null;
@@ -877,6 +888,8 @@ export type DiwanApi = {
   /** «التنبيهات» (د٧). */
   today: {
     agenda(): Promise<TodayAgenda>;
+    /** فُتح الجرس: ملخّص الأسبوع رُئي — فلا نقطة عليه حتى الأسبوع القادم. */
+    weekSeen(): Promise<void>;
   };
   /** الشبّاك: المعاملات المعلّقة محفوظةً في القاعدة — شكلها في `ServiceScreen` (`Parked`). */
   service: {
