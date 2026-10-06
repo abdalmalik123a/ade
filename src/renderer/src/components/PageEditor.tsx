@@ -23,18 +23,17 @@ import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, chainCommands, selectAll, splitBlockAs, toggleMark } from 'prosemirror-commands';
 import { history, redo, undo, undoDepth } from 'prosemirror-history';
 import { gapCursor } from 'prosemirror-gapcursor';
+import { addRowAfter, addRowBefore, deleteRow, deleteTable, goToNextCell, splitCell, tableEditing } from 'prosemirror-tables';
 import {
-  addColumnAfter,
-  addRowAfter,
-  deleteColumn,
-  deleteRow,
-  deleteTable,
-  goToNextCell,
-  isInTable,
-  mergeCells,
-  splitCell,
-  tableEditing
-} from 'prosemirror-tables';
+  addColumnKeepWidths,
+  deleteColumnKeepWidths,
+  mergeCellsInRow,
+  resizeColumnBy,
+  selectionSpansRows,
+  tableState,
+  toggleHeaderRow,
+  toggleTableBorders
+} from '@shared/docPmTable';
 import { liftListItem, sinkListItem, splitListItem, wrapInList } from 'prosemirror-schema-list';
 import { blocksToPm, docSchema, pmBlocks } from '@shared/docPm';
 import {
@@ -521,7 +520,10 @@ class TableView implements NodeView {
     const cols = (this.node.attrs.columns as number[] | null) ?? [];
     const total = cols.reduce((a, b) => a + b, 0) || 1;
     this.colgroup.innerHTML = cols.map((w) => `<col style="width:${((w / total) * 100).toFixed(2)}%">`).join('');
-    this.dom.className = this.node.attrs.borders === false ? 'pm-table pm-noborder' : 'pm-table';
+    // صفّ العناوين عريضٌ كما يطبعه `docHtml` (رأسٌ `th`) — وكان يُطبع عريضًا ولا يُرى في المحرّر.
+    this.dom.className = ['pm-table', this.node.attrs.borders === false && 'pm-noborder', this.node.attrs.header && 'pm-header']
+      .filter(Boolean)
+      .join(' ');
   }
   update(node: PMNode) {
     if (node.type !== this.node.type) return false;
@@ -612,6 +614,13 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const paperRef = useRef<HTMLDivElement | null>(null);
   const headRef = useRef<HTMLDivElement | null>(null);
   const [pages, setPages] = useState(1);
+  /** كلمةٌ عابرة في سطر الحال — لما لا يُفعل ولماذا (دمجٌ رأسيّ). */
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [customMargins, setCustomMargins] = useState(false);
 
   const [trying, setTrying] = useState(false);
@@ -970,7 +979,8 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const curAlign = state ? (paragraphValue(state, 'align') as Align | undefined) : undefined;
   const curLh = state ? (paragraphValue(state, 'lineHeight') as number | null | undefined) : undefined;
   const curIndent = state ? paragraphValue(state, 'indent') : undefined;
-  const inTable = state ? isInTable(state) : false;
+  /** الجدول الذي فيه المؤشّر — حدوده وصفّ عناوينه، وهل التحديد يعبر صفوفه. */
+  const table = state ? tableState(state) : null;
   const selChars = state && !state.selection.empty ? state.doc.textBetween(state.selection.from, state.selection.to, ' ').length : 0;
 
   const pageH = page.h * MM_PX;
@@ -1077,15 +1087,40 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
               <span className="font-label-sm text-label-sm">خانة</span>
             </Tool>
 
-            {inTable && (
+            {table && (
               <>
                 <ToolSep />
-                <Tool act="row-add" icon="table_rows" title="صفٌّ بعد هذا" onRun={() => run_(addRowAfter)} />
-                <Tool act="col-add" icon="view_column" title="عمودٌ بعد هذا" onRun={() => run_(addColumnAfter)} />
+                {/* أوامر الجدول تحفظ ما تصنعه في الوثيقة (`shared/docPmTable.ts`): الأوزان مع الأعمدة، ولا دمج رأسيّ. */}
+                <Tool act="row-above" icon="add_row_above" title="صفٌّ فوق هذا" onRun={() => run_(addRowBefore)} />
+                <Tool act="row-add" icon="add_row_below" title="صفٌّ تحت هذا" onRun={() => run_(addRowAfter)} />
+                <Tool act="col-right" icon="add_column_right" title="عمودٌ يمين هذا — بعرضه" onRun={() => run_(addColumnKeepWidths('before'))} />
+                <Tool act="col-add" icon="add_column_left" title="عمودٌ يسار هذا — بعرضه" onRun={() => run_(addColumnKeepWidths('after'))} />
                 <Tool act="row-del" icon="remove_road" title="احذف الصفّ" onRun={() => run_(deleteRow)} />
-                <Tool act="col-del" icon="splitscreen_left" title="احذف العمود" onRun={() => run_(deleteColumn)} />
-                <Tool act="merge" icon="call_merge" title="ادمج الخلايا المحدَّدة" onRun={() => run_(mergeCells)} />
+                <Tool act="col-del" icon="splitscreen_left" title="احذف العمود" onRun={() => run_(deleteColumnKeepWidths)} />
+                <Tool act="col-wider" icon="width_wide" title="وسّع العمود" onRun={() => run_(resizeColumnBy(0.5))} />
+                <Tool act="col-narrower" icon="width_normal" title="ضيّق العمود" onRun={() => run_(resizeColumnBy(-0.5))} />
+                <Tool
+                  act="merge"
+                  icon="call_merge"
+                  title={table.spansRows ? 'تُدمج خلايا الصفّ الواحد — الدمج الرأسي لا تحفظه الورقة' : 'ادمج الخلايا المحدَّدة'}
+                  onRun={() => {
+                    const view = viewRef.current;
+                    if (view && selectionSpansRows(view.state)) {
+                      setNotice('الدمج الرأسي لا تحفظه الورقة ولا يُطبع — تُدمج خلايا الصفّ الواحد');
+                      return;
+                    }
+                    run_(mergeCellsInRow);
+                  }}
+                />
                 <Tool act="split" icon="call_split" title="افصل الخليّة" onRun={() => run_(splitCell)} />
+                <Tool
+                  act="table-borders"
+                  icon={table.borders ? 'border_clear' : 'border_all'}
+                  title={table.borders ? 'أخفِ حدود الجدول — لجدولٍ يرتّب الرأس أو التواقيع لا يُرى' : 'أظهر حدود الجدول'}
+                  active={!table.borders}
+                  onRun={() => run_(toggleTableBorders)}
+                />
+                <Tool act="table-header" icon="title" title="صفّ عناوين يتكرّر في أعلى كلّ صفحة" active={table.header} onRun={() => run_(toggleHeaderRow)} />
                 <Tool act="table-del" icon="delete" title="احذف الجدول كلّه" onRun={() => run_(deleteTable)} />
               </>
             )}
@@ -1247,6 +1282,11 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
               {pagesLabel(pages)}
             </span>
           </div>
+          {notice && (
+            <div className="px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm" data-editor-notice="" role="status">
+              {notice}
+            </div>
+          )}
         </div>
 
         {/* الورقة بمقاسها الحقيقي وهوامشها، وصفحاتها كما تقسمها الطابعة (`pageFlow.ts`). */}

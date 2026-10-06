@@ -213,6 +213,10 @@ table th {
   padding: 2px 4px;
   vertical-align: top;
 }
+/* صفّ العناوين عريضٌ كما تطبعه الورقة (`th` في docHtml). */
+.pm-page .pm-header tr:first-child td {
+  font-weight: 700;
+}
 .pm-page .pm-noborder td {
   border-color: transparent;
   outline: 1px dashed rgb(0 0 0 / 0.15);

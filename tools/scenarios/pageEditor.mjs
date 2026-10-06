@@ -417,5 +417,82 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ولقطة الشاشة تُلصق صورةً محفوظة بعرضها (٣٠٠) — بعد صورة Word لا مكانها', shot.length === 2 && shot.some((s) => s.src.startsWith('diwan://store/images/') && s.w === 300));
   if (shotsDir) await page.shot(join(shotsDir, 'page-editor-paste.png'));
 
+  // ── الجدول: ما تصنعه أدواته يُحفظ (الموجة ١، المجموعة ب) ─────────────────
+  await click(`${ed} [data-act="insert"]`);
+  await wait(400);
+  await click('[data-act="ins-table"]');
+  await wait(300);
+  await click('[data-grid="3-3"]');
+  await wait(700);
+  /** آخر جدولٍ على الورقة — الذي أُدرج الآن. */
+  const T = `[...document.querySelectorAll('${ed} [data-page-editor] table')].at(-1)`;
+  /** المؤشّر في خليّةٍ بصفّها وعمودها. */
+  const caretIn = (r, c) =>
+    page.eval(`
+      const p = ${T}.rows[${r}].cells[${c}].querySelector('p');
+      document.querySelector('${ed} [data-page-editor]').focus();
+      const range = document.createRange();
+      range.setStart(p, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    `);
+  /** يسحب الفأرة من خليّةٍ إلى أخرى — فتُحدَّد الخلايا بينهما كما يحدّدها الكاتب. */
+  const dragCells = async (from, to) => {
+    const at = (r, c) => page.eval(`const b = ${T}.rows[${r}].cells[${c}].getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };`);
+    const a = await at(...from);
+    const b = await at(...to);
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', clickCount: 1 });
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, button: 'left' });
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x, y: b.y, button: 'left' });
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+    await wait(300);
+  };
+  const widths = () => page.eval(`return [...${T}.querySelectorAll('col')].map((c) => Math.round(parseFloat(c.style.width)));`);
+  ok('أُدرج جدولٌ ٣×٣ وصفّ عناوينه عريضٌ كما يُطبع', (await page.eval(`return ${T}.rows.length === 3 && ${T}.classList.contains('pm-header');`)));
+  await caretIn(0, 1);
+  await click('[data-act="col-wider"]');
+  await wait(300);
+  await click('[data-act="col-add"]');
+  await wait(400);
+  ok('«أوسع» ثم «عمودٌ يسار هذا» بعرضه: الأوزان ١، ١٫٥، ١٫٥، ١ — لا تُصفَّر', JSON.stringify(await widths()) === JSON.stringify([20, 30, 30, 20]));
+  await click('[data-act="table-borders"]');
+  await click('[data-act="table-header"]');
+  await wait(300);
+  ok('وتُخفى حدوده ويُطفأ صفّ عناوينه', await page.eval(`return ${T}.classList.contains('pm-noborder') && !${T}.classList.contains('pm-header');`));
+  await dragCells([1, 0], [2, 0]);
+  await click('[data-act="merge"]');
+  await wait(400);
+  ok(
+    '«ادمج» رأسيًّا لا يدمج، ويقول لماذا — فالورقة لا تحفظه',
+    (await page.eval(`return document.querySelector('${ed} [data-editor-notice]')?.innerText ?? '';`)).includes('الدمج الرأسي') &&
+      (await page.eval(`return [...${T}.rows].map((r) => r.cells.length).join(',');`)) === '4,4,4'
+  );
+  await dragCells([0, 0], [0, 1]);
+  await click('[data-act="merge"]');
+  await wait(400);
+  ok('ودمج خليّتين في الصفّ الواحد يُدمج', await page.eval(`return ${T}.rows[0].cells.length === 3 && ${T}.rows[0].cells[0].colSpan === 2;`));
+  await click(`${ed} [data-act="save"]`);
+  await wait(1200);
+  {
+    const d = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+    const draft = d.prepare('SELECT values_json AS v FROM drafts ORDER BY id DESC LIMIT 1').get();
+    d.close();
+    const savedDoc = draft ? JSON.parse(JSON.parse(draft.v).__doc) : null;
+    const tables = (savedDoc?.blocks ?? []).filter((b) => b.kind === 'table');
+    const t = tables.at(-1);
+    ok(
+      'والمسودة تحفظ ما صُنع: الأوزان، والحدود المخفيّة، وبلا صفّ عناوين، والدمج الأفقي',
+      JSON.stringify(t?.columns) === JSON.stringify([1, 1.5, 1.5, 1]) &&
+        t?.borders === false &&
+        t?.header === false &&
+        t?.rows?.[0]?.cells?.[0]?.colSpan === 2 &&
+        t?.rows?.map((r) => r.cells.length).join(',') === '3,4,4'
+    );
+  }
+  if (shotsDir) await page.shot(join(shotsDir, 'page-editor-table.png'));
+
   return steps.join('\n');
 }
