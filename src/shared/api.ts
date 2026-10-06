@@ -9,6 +9,7 @@ import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
 import type { ImportMap, ImportRow } from './citizenImport';
+import type { WordCensus, WordScan } from './wordLosses';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
 export type PdfOpened = {
@@ -530,6 +531,8 @@ export type ImportCandidate = {
   notes: string[];
   warnings: string[];
   suggestions: Suggestion<string>[];
+  /** ما في ملفّ Word ولا يُنقل إلى الورقة (الموجة ٢) — `shared/wordLosses.ts`. */
+  scan?: WordScan;
 };
 
 export type ImportPlan = {
@@ -537,6 +540,8 @@ export type ImportPlan = {
   sharedLetterhead: { key: string; layout: LetterheadLayout; count: number } | null;
   duplicates: { ids: string[]; confidence: number }[];
   failed: { file: string; error: string }[];
+  /** إحصاء المجلّد: ما لا يُنقل بعدد ملفّاته، والخطوط والجداول والصور — بلا أسماءٍ ولا نصوص. */
+  census?: WordCensus;
 };
 
 export type ImportChoices = {
@@ -642,6 +647,8 @@ export type ImportedTemplate = {
    * المكاتب لا تفصل رأس الكتاب عن متنه. (`.xml` لا يحمله.)
    */
   doc?: Doc | null;
+  /** ما في ملفّ Word ولا يُنقل إلى الورقة — يُعرض بجانبها (الموجة ٢). */
+  scan?: WordScan;
 };
 
 export type TemplateStats = {
@@ -925,6 +932,11 @@ export type DiwanApi = {
     readPaper(png: Uint8Array, dpi: number | null): Promise<OcrLine[]>;
     /** يقرأ مجلدًا ويبني خطّة — ولا يمسّ القاعدة. */
     planFolder(): Promise<ImportPlan | null>;
+    /**
+     * إحصاء آخر مجلّدٍ قُرئ نصًّا في ملفّ يُرسل — أعدادٌ وأسماء خطوطٍ وحدها. يعود بمساره، أو `null` إن أُلغي
+     * أو لم يُقرأ مجلّد. (الإحصاء من العملية الرئيسة نفسها، لا ممّا ترسله الواجهة.)
+     */
+    saveCensus(): Promise<string | null>;
     /** ينفّذ ما قبِله الموظف من الخطّة. */
     applyImport(plan: ImportPlan, choices: ImportChoices): Promise<ImportOutcome>;
     export(id: number): Promise<string | null>;

@@ -4,6 +4,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { reconcileVariables, type TemplateVariable } from '@shared/template';
 import { stripTatweel, cleanLine } from './blanks';
 import { docxToDoc } from './docxDoc';
+import { scanWord } from './wordScan';
 import type { ImportedTemplate } from '@shared/api';
 import {
   emptyLayout,
@@ -427,6 +428,8 @@ export async function importTemplateFile(
       };
     }
     const formatted = docxToDoc(files, saveImage);
+    // وما في الملف ولا يُنقل إلى الورقة — يُعرض بجانبها ويُجمع في إحصاء المجلّد (الموجة ٢).
+    const scan = scanWord(files);
     const warnings: string[] = [
       'استُورد الملف ورقةً واحدة بتنسيقه — ظلّل ما يتغيّر واضغط F4',
       ...formatted.notes
@@ -531,7 +534,8 @@ export async function importTemplateFile(
       body,
       warnings,
       letterhead,
-      doc: formatted.doc
+      doc: formatted.doc,
+      scan
     };
   }
 

@@ -13,7 +13,11 @@ import { renameField, unfield, type Doc, type Suggestion } from '@shared/doc';
 import { isLayoutEmpty } from '@shared/letterhead';
 import type { ImportChoices, ImportPlan } from '@shared/api';
 import { similarityBucket } from '@shared/learningKeys';
+import { WORD_LOSSES, lossesOf } from '@shared/wordLosses';
 import LetterheadView from './LetterheadView';
+import { WordLossList } from './WordLosses';
+
+const LOSS_LABEL = new Map(WORD_LOSSES.map((l) => [l.key, l.label]));
 
 export type ImportPlanDialogProps = {
   plan: ImportPlan;
@@ -95,6 +99,17 @@ export default function ImportPlanDialog({
   const [useShared, setUseShared] = useState(Boolean(plan.sharedLetterhead));
   const [sharedName, setSharedName] = useState('ترويسة المكتب');
   const [category, setCategory] = useState('');
+  /** أين حُفظ إحصاء المجلّد — أو سبب تعذّره. */
+  const [censusSaved, setCensusSaved] = useState<string | null>(null);
+
+  async function saveCensus() {
+    try {
+      const path = await window.diwan.templates.saveCensus();
+      if (path) setCensusSaved(`حُفظ الإحصاء في ${path} — أرسله إلى المطوّر`);
+    } catch {
+      setCensusSaved('تعذّر حفظ الإحصاء');
+    }
+  }
   /** ما تعلّمه البرنامج من هذا المكتب — يُعرض هنا حيث تُراجَع الاقتراحات. */
   const [taught, setTaught] = useState<{ total: number; habits: number } | null>(null);
 
@@ -198,6 +213,44 @@ export default function ImportPlanDialog({
             لا يُحفظ إلا ما تختاره. راجع الأسماء المستنتجة — والنقطة الحمراء علامةُ
             اجتهادٍ ضعيف.
           </span>
+          {plan.census && plan.census.files > 0 && (
+            <div className="flex flex-col gap-1 pt-space-xs border-t border-outline-variant/60 font-label-sm text-label-sm text-on-surface-variant" data-census="">
+              {plan.census.losses.length > 0 && (
+                <span data-census-losses="">
+                  ما في الملفّات ولا يُنقل:{' '}
+                  {plan.census.losses
+                    .slice(0, 5)
+                    .map((l) => `${LOSS_LABEL.get(l.key)} (${l.files} ملفّ)`)
+                    .join('، ')}
+                  {plan.census.losses.length > 5 ? '…' : ''}
+                </span>
+              )}
+              {/* استيراد المجلّد يبني الورقة من نصّها — ويُقال ذلك قبل الحفظ لا بعده. */}
+              <span className="text-on-surface" data-census-folder="">
+                واستيراد المجلّد يأخذ نصّ الملفّات وحده:{' '}
+                {[
+                  plan.census.withTables > 0 ? `الجداول (في ${plan.census.withTables} ملفّ)` : '',
+                  plan.census.withImages > 0 ? `الصور (في ${plan.census.withImages} ملفّ)` : '',
+                  'التنسيق'
+                ]
+                  .filter(Boolean)
+                  .join('، ')}{' '}
+                لا تُنقل هنا — والملفّ الواحد من «استورد ← ملف Word» يُنقل بتنسيقه.
+              </span>
+              <div className="flex items-center gap-space-sm">
+                <button
+                  className="h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm"
+                  data-act="save-census"
+                  title="أعدادٌ وأسماء خطوطٍ وحدها — لا اسم ملفٍّ ولا شيء من نصوصه"
+                  type="button"
+                  onClick={() => void saveCensus()}
+                >
+                  احفظ إحصاء الملفّات
+                </button>
+                {censusSaved && <span data-census-saved="">{censusSaved}</span>}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 flex">
@@ -280,6 +333,12 @@ export default function ImportPlanDialog({
                           {n}
                         </span>
                       ))}
+                    </div>
+                  )}
+
+                  {c.scan && lossesOf(c.scan).length > 0 && (
+                    <div className="rounded-lg bg-surface-container-low p-space-xs text-on-surface-variant" data-file-losses="">
+                      <WordLossList scan={c.scan} />
                     </div>
                   )}
 

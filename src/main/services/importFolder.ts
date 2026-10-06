@@ -32,6 +32,7 @@ import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
 import { learned, recordCorrections, type Correction } from './learning';
 import { similarityBucket } from '@shared/learningKeys';
+import { censusOf, type WordScan } from '@shared/wordLosses';
 
 export type { ImportCandidate, ImportChoices, ImportOutcome, ImportPlan };
 
@@ -74,10 +75,13 @@ export async function planFolderImport(
 
   const candidates: ImportCandidate[] = [];
   const failed: ImportPlan['failed'] = [];
+  /** ما في كلّ ملفٍّ ولا يُنقل — للإحصاء: ملفٌّ واحد ولو كان فيه عدّة استمارات. */
+  const scans: WordScan[] = [];
 
   for (const name of names) {
     try {
       const res = await importTemplateFile(join(dir, name), opts.saveImage);
+      if (res.scan) scans.push(res.scan);
       const key = letterheadKey(res.letterhead);
 
       // الملف الواحد قد يكون مكتبة: حدُّ الاستمارة تكرارُ ترويستها.
@@ -104,7 +108,8 @@ export async function planFolderImport(
           notes: built.notes,
           // هذا المسار يبني وثيقته من النصّ بعدُ — فلا يُقال له «استُورد بتنسيقه».
           warnings: res.warnings.filter((w) => !w.includes('ورقةً واحدة بتنسيقه')),
-          suggestions: built.suggestions
+          suggestions: built.suggestions,
+          scan: res.scan
         });
       });
     } catch (e) {
@@ -118,7 +123,8 @@ export async function planFolderImport(
     duplicates: groupDuplicates(
       candidates.map((c) => ({ id: c.id, text: docText(c.doc) }))
     ),
-    failed
+    failed,
+    census: censusOf(scans, failed.length)
   };
 }
 

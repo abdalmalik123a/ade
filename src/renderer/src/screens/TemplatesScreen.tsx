@@ -20,6 +20,7 @@ import type {
 } from '@shared/api';
 import { renderBody } from '@shared/template';
 import type { Doc } from '@shared/doc';
+import type { WordScan } from '@shared/wordLosses';
 import {
   isLayoutEmpty,
   normalizeLayout, mmToPx, type Letterhead } from '@shared/letterhead';
@@ -73,6 +74,8 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     initial: TemplateDetail | null;
     /** ورقة Word المستوردة بتنسيقها — تُفتح كما هي. */
     doc?: Doc | null;
+    /** ما في ملفّ Word ولم يُنقل إليها (الموجة ٢). */
+    wordScan?: WordScan | null;
   }>({
     open: false,
     initial: null
@@ -164,7 +167,8 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
         issuedThisMonth: 0,
         variables: []
       } as unknown as TemplateDetail,
-      doc: imported.doc ?? null
+      doc: imported.doc ?? null,
+      wordScan: imported.scan ?? null
     });
     // الترويسة لم تُفصل عن ورقةٍ مستوردةٍ بتنسيقها، فلا يُذكر استخراجها.
     const notes = imported.doc
@@ -683,6 +687,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
         <TemplateDesigner
           initial={designer.initial}
           initialDoc={designer.doc ?? null}
+          wordScan={designer.wordScan ?? null}
           letterheads={letterheads}
           categories={categories.map((c) => c.name)}
           onClose={() => setDesigner({ open: false, initial: null })}

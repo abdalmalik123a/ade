@@ -256,6 +256,7 @@ const api: DiwanApi = {
     pickPaper: () => invoke('templates:pickPaper'),
     readPaper: (png: Uint8Array, dpi: number | null) => invoke('templates:readPaper', png, dpi),
     planFolder: () => invoke('templates:planFolder'),
+    saveCensus: () => invoke('templates:saveCensus'),
     applyImport: (plan: unknown, choices: unknown) =>
       invoke('templates:applyImport', plan, choices),
     export: (id: number) => invoke('templates:export', id)

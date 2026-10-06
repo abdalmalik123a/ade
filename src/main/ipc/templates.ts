@@ -15,7 +15,11 @@ import type { Addressing, RevisionKind } from '@shared/api';
 /** نوع القطعة يصل من الواجهة ويُبنى منه اسم جدول — فلا يُقبل إلا المعروف. */
 const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
 const isKind = (k: unknown): k is RevisionKind => KINDS.includes(k as RevisionKind);
-import { pickFolderPath, pickOpenPath } from './files';
+import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
+import { censusText, type WordCensus } from '@shared/wordLosses';
+
+/** إحصاء آخر مجلّدٍ قُرئ — يُحفظ منه، لا ممّا ترسله الواجهة. */
+let lastCensus: WordCensus | null = null;
 import { imageMeta } from '../services/imageSize';
 import { recognizeLayout } from '../services/ocr';
 import {
@@ -151,8 +155,29 @@ export function registerTemplateIpc(): void {
     });
     if (!dir) return null;
     const plan = await planFolderImport(dir, { saveImage: storeLetterheadImage });
+    lastCensus = plan.census ?? null;
     // والعادةُ تُطبَّق بعد القواعد: ما سمّاه مكتبك مرارًا يُقترح باسمه.
     return applyHabits(getDb(), plan);
+  });
+
+  /**
+   * إحصاء آخر مجلّدٍ قُرئ ملفًّا نصّيًّا يُرسل إلى المطوّر (الموجة ٢): بها يُعرف ما يُضاف إلى المحرّر أوّلًا من
+   * عمل المكاتب. أعدادٌ وأسماء خطوطٍ وحدها — لا اسم ملفٍّ ولا كلمة من متنه (`censusText`).
+   */
+  ipcMain.handle('templates:saveCensus', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win || !lastCensus) return null;
+    const date = new Date().toLocaleDateString('en-CA');
+    const path = await pickSavePath(win, {
+      title: 'احفظ إحصاء ملفات Word',
+      defaultName: `إحصاء ملفات Word ${date}.txt`,
+      filterName: 'ملف نصّي',
+      ext: 'txt'
+    });
+    if (!path) return null;
+    // بعلامة الترميز وأسطر ويندوز: فيفتحه «المفكّرة» بالعربية.
+    await writeFile(path, `﻿${censusText(lastCensus).replace(/\n/g, '\r\n')}`, 'utf8');
+    return path;
   });
 
   /** ما تعلّمه البرنامج من هذا المكتب — يُعرض، فالتعلّم لا يكون صامتًا. */

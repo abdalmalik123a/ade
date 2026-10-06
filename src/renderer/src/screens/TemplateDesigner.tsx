@@ -23,6 +23,8 @@ import AddressingPicker from '../components/AddressingPicker';
 import RevisionsMenu from '../components/RevisionsMenu';
 import { errorText } from '../lib/errors';
 import SpellingPanel from '../components/SpellingPanel';
+import WordLossPanel from '../components/WordLosses';
+import type { WordScan } from '@shared/wordLosses';
 import { docSpelling, fixDocSpelling } from '@shared/spelling';
 
 const inputCls =
@@ -32,6 +34,8 @@ export type DesignerProps = {
   initial: TemplateDetail | null;
   /** ورقة Word المستوردة بتنسيقها — تُفتح كما هي، ورأسها فيها. */
   initialDoc?: Doc | null;
+  /** ما في ملفّ Word ولم يُنقل إلى الورقة (الموجة ٢) — لوحٌ فوقها يُغلق. */
+  wordScan?: WordScan | null;
   letterheads: Letterhead[];
   categories: string[];
   onClose: () => void;
@@ -42,6 +46,7 @@ export type DesignerProps = {
 export default function TemplateDesigner({
   initial,
   initialDoc = null,
+  wordScan = null,
   letterheads,
   categories,
   onClose,
@@ -60,6 +65,8 @@ export default function TemplateDesigner({
       : (initial?.letterheadId ?? letterheads.find((l) => l.isDefault)?.id ?? null)
   );
   const [variables, setVariables] = useState<TemplateVariable[]>(initial?.variables ?? []);
+  /** لوح «ما لم يُنقل من Word» أُغلق. */
+  const [lossesSeen, setLossesSeen] = useState(false);
 
   /**
    * نموذج مستورد يأتي مملوءًا بلا سجلّ في القاعدة (id = 0): يُحرَّر كالجديد
@@ -407,6 +414,7 @@ export default function TemplateDesigner({
         <div className="flex-1 flex overflow-hidden">
           {/* لوح التحرير */}
           <div className="w-[360px] shrink-0 overflow-y-auto p-space-md bg-surface-container-lowest">
+            {wordScan && !lossesSeen && <WordLossPanel scan={wordScan} onClose={() => setLossesSeen(true)} />}
             <section className="bg-surface-container-low rounded-xl p-space-md space-y-space-sm">
               <h3 className="font-headline-sm text-headline-sm text-on-surface">تعريف النموذج</h3>
               <div className="grid grid-cols-2 gap-space-sm">
