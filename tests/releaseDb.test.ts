@@ -2,8 +2,8 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` كتبها ١٫١٫٠ (`makeReleaseDb.test.ts`) — ولا
- * تُعادان. ولكلّ إصدارٍ يُباع بعدهما قاعدته، ويُضاف إصداره إلى `SOLD`.
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` و`release-1.2.0.db` كتبها إصدارهما
+ * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +15,10 @@ import { documentStyle, issueDocument, listDocuments, prepareDocuments, verifyAr
 import { listDrafts, listTemplates, prepareTemplates } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { listClips, prepareClips } from '../src/main/services/clips';
-import { prepareClients } from '../src/main/services/clients';
+import { listClients, prepareClients } from '../src/main/services/clients';
+import { listOrders, saveOrder } from '../src/main/services/orders';
+import { weekSummary } from '../src/main/services/today';
+import { workBetween } from '../src/main/services/workLog';
 import { prepareLearning } from '../src/main/services/learning';
 import { prepareSearch } from '../src/main/services/searchIndex';
 import { collectContent } from '../src/main/services/contentPack';
@@ -51,7 +54,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
@@ -105,5 +108,27 @@ describe.each(SOLD)('قاعدة %s المبيعة', (version) => {
     expect(verifyArchive(db).problems).toEqual([]);
     const { pkg } = collectContent(db, join(dir, 'store'), nextPatch(version));
     expect(pkg.templates[0]!.letterheadUuid).toBe(pkg.letterheads[0]!.uuid);
+  });
+});
+
+describe('ما جاء به ١٫٢٫٠ (الموجة ٢)', () => {
+  it('قاعدته: ملفّ المدرسة، وطلبٌ بما تركه الزبون، والطبعة حين تمّت، وعدّاد ما خرج', () => {
+    const { db } = openRelease('1.2.0');
+    expect(listClients(db).find((c) => c.name === 'مدرسة الرافدين')).toMatchObject({ schoolGender: 'للبنين', governorate: 'الأنبار' });
+    expect(listOrders(db, {}).map((o) => [o.title, o.received])).toEqual(
+      expect.arrayContaining([['هويّات الطلبة', 'قائمة الأسماء وصور الطلبة'], ['صور شخصية', 'صورة الهوية']])
+    );
+    // كتابٌ واحد طُبع — والسبعة الباقية حُفظت بلا طباعة: لا نسخ لها
+    expect(db.prepare('SELECT COUNT(DISTINCT document_id) AS docs, SUM(copies) AS copies FROM document_prints').get()).toEqual({ docs: 1, copies: 1 });
+    expect(workBetween(db, '2026-10-03', '2026-10-10')).toEqual({ sheets: 17, files: 2 });
+    expect(weekSummary(db, new Date(2026, 9, 7, 10)).thisWeek).toMatchObject({ sheets: 17, files: 2 });
+  });
+
+  it('وقاعدة ١٫١٫٠ تُفتح بأعمدته الجديدة: الطلب بما تركه الزبون، والعدّاد', () => {
+    const { db } = openRelease('1.1.0');
+    const o = saveOrder(db, { id: null, clientId: null, customer: 'سالم حسن', title: 'هويّة', received: 'صورتان' });
+    expect(o.received).toBe('صورتان');
+    expect(listOrders(db, { query: String(o.id) }).map((x) => x.id)).toEqual([o.id]);
+    expect(workBetween(db, '2026-01-01', '2027-01-01')).toEqual({ sheets: 0, files: 0 });
   });
 });

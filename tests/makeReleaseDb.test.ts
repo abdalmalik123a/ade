@@ -14,7 +14,9 @@ import Database from 'better-sqlite3';
 import { addAttachment, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
 import { prepareLetterheads, saveLetterhead } from '../src/main/services/letterheads';
 import { prepareTemplates, saveDraft, saveTemplate } from '../src/main/services/templates';
-import { issueBatch, issueDocument, issueTransaction, prepareDocuments, voidDocument } from '../src/main/services/documents';
+import { issueBatch, issueDocument, issueTransaction, prepareDocuments, recordPrint, voidDocument } from '../src/main/services/documents';
+import { saveOrder, setOrderStatus } from '../src/main/services/orders';
+import { recordWork } from '../src/main/services/workLog';
 import { prepareClips, saveClip } from '../src/main/services/clips';
 import { prepareClients, saveClient } from '../src/main/services/clients';
 import { prepareLearning } from '../src/main/services/learning';
@@ -70,7 +72,7 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   });
   saveDraft(db, { id: null, templateId: t.id, citizenId: zainab.id, title: 'مسودة زينب', values: { الاسم: 'زينب علي حسن الربيعي' }, bodyHtml: '<p>مسودة</p>' });
   saveClip(db, { id: null, title: 'ختام', body: 'مع وافر الشكر والتقدير.', category: null });
-  saveClient(db, { id: null, name: 'مدرسة الرافدين', kind: 'مدرسة' });
+  const school = saveClient(db, { id: null, name: 'مدرسة الرافدين', kind: 'مدرسة', schoolGender: 'للبنين', governorate: 'الأنبار', principal: 'سالم حسن' });
   saveQuestion(db, { item: { id: 'q1', inlines: [run('ما عاصمة العراق؟')], score: 5 }, subject: 'اجتماعيات', grade: 'الخامس' });
 
   const doc = (name: string, patch: Partial<IssueInput> = {}): IssueInput => ({
@@ -80,7 +82,9 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
     gregorianDate: '2 تشرين الأول 2026', hijriDate: null, operator: 'مشغّل 01', printer: 'ليزر المكتب', serialPrefix: 'م',
     serialYear: 2026, letterheadId: lh.id, style: STYLE, ...patch
   });
-  issueDocument(db, doc('زينب علي حسن الربيعي', { citizenId: zainab.id, nationalId: '199011112222' }));
+  const printed = issueDocument(db, doc('زينب علي حسن الربيعي', { citizenId: zainab.id, nationalId: '199011112222' }));
+  // ١٫٢٫٠: الطبعة تُقيَّد حين تتمّ — وما سواها حُفظ بلا طباعة.
+  recordPrint(db, printed.id, { copies: 1, printer: 'ليزر المكتب', operator: 'مشغّل 01' });
   const wrong = issueDocument(db, doc('اسمٌ خاطئ'));
   voidDocument(db, wrong.id, 'صدر باسمٍ خاطئ', 'مشغّل 01');
   const sheet = (n: string) => ({ sheetHtml: `<div class="a4-sheet">${n}</div>`, templateId: null, letterheadId: null, authorityId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0 });
@@ -88,11 +92,24 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   issueTransaction(db, tx('أحمد كريم جاسم'));
   issueBatch(db, [tx('سالم'), tx('ليلى')]);
 
+  // ١٫٢٫٠: طلبٌ بوصل استلامه وما تركه الزبون، وآخر سُلّم، وعدّاد ما خرج.
+  saveOrder(db, { id: null, clientId: school.id, title: 'هويّات الطلبة', quantity: 40, dueDate: '2026-10-10', received: 'قائمة الأسماء وصور الطلبة' });
+  const done = saveOrder(db, { id: null, clientId: null, customer: 'أحمد كريم جاسم', phone: '07701234567', title: 'صور شخصية', received: 'صورة الهوية' });
+  setOrderStatus(db, done.id, 'delivered');
+  recordWork(db, '2026-10-03', { sheets: 12, files: 2 });
+  recordWork(db, '2026-10-04', { sheets: 5, files: 0 });
+
   const setting = db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   setting.run('officeName', 'مكتب الاختبار');
   setting.run('printRoles', JSON.stringify(normalizePrintRoles({ documents: { normal: 'ليزر المكتب', color: 'ملوّنة', dialog: false } }, null)));
   setting.run('hiddenSections', JSON.stringify(['designs']));
   setting.run('sidebarPinned', 'false');
+  setting.run('schoolFiles', 'true');
+  setting.run('receiptSlip', 'true');
+  setting.run('officePhone', '07801112233');
+  setting.run('officeAddress', 'الرمادي — شارع المعارض');
+  setting.run('firstWorkAt', '2026-10-02T09:00:00.000Z');
+  setting.run('weekSeen', '2026-10-03');
   stampDataVersion(db, VERSION);
   db.close();
 });
