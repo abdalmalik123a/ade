@@ -344,11 +344,6 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
 
     const id = Number(info.lastInsertRowid);
 
-    db.prepare(
-      `INSERT INTO document_prints (document_id, copies, printer, reason, operator)
-       VALUES (?, ?, ?, 'إصدار أول', ?)`
-    ).run(id, Math.max(1, input.copies), input.printer, input.operator);
-
     if (input.templateId !== null) {
       db.prepare('UPDATE templates SET print_count = print_count + 1 WHERE id = ?').run(
         input.templateId
@@ -711,6 +706,23 @@ export function logAudit(
     detail,
     operator
   );
+}
+
+/**
+ * الطباعة تُقيَّد حين تتمّ فعلًا (الموجة ٢): الأولى «إصدار أول» بنسخها، وما بعدها إعادةٌ طبق الأصل. وكانت الأولى تُقيَّد
+ * مع الإصدار — فكتابٌ حُفظ بلا طباعة أو فشلت طباعته كان يُعدّ في «السجلّ» نسخًا مطبوعة.
+ */
+export function recordPrint(
+  db: Database,
+  id: number,
+  opts: { copies: number; printer: string | null; operator: string | null }
+): void {
+  if (db.prepare('SELECT 1 FROM document_prints WHERE document_id = ? LIMIT 1').get(id)) return recordReprint(db, id, opts);
+  assertNotVoid(db, id);
+  db.prepare(
+    `INSERT INTO document_prints (document_id, copies, printer, reason, operator)
+     VALUES (?, ?, ?, 'إصدار أول', ?)`
+  ).run(id, Math.max(1, opts.copies), opts.printer, opts.operator);
 }
 
 /** إعادة الطباعة تُقيَّد ولا تُنشئ رقمًا جديدًا — الكتاب واحد ونسخه تُعدّ. */

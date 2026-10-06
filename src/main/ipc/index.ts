@@ -37,6 +37,8 @@ import type {
  *  لا محتوى إداري مبرمَج — ولا نموذج ولا جهة ولا مواطن. */
 const DEFAULTS: OfficeSettings = {
   officeName: '',
+  officePhone: '',
+  officeAddress: '',
   operatorName: '',
   defaultPrinter: null,
   printRoles: normalizePrintRoles(undefined, null),
@@ -49,7 +51,8 @@ const DEFAULTS: OfficeSettings = {
   lastBackupAt: null,
   hijriOffset: 0,
   counterCards: normalizeCounterCards(undefined),
-  schoolFiles: false
+  schoolFiles: false,
+  receiptSlip: false
 };
 
 function readSettings(): OfficeSettings {
@@ -62,6 +65,8 @@ function readSettings(): OfficeSettings {
   const defaultPrinter = map.get('defaultPrinter') ?? DEFAULTS.defaultPrinter;
   return {
     officeName: map.get('officeName') ?? DEFAULTS.officeName,
+    officePhone: map.get('officePhone') ?? DEFAULTS.officePhone,
+    officeAddress: map.get('officeAddress') ?? DEFAULTS.officeAddress,
     operatorName: map.get('operatorName') ?? DEFAULTS.operatorName,
     defaultPrinter,
     printRoles: normalizePrintRoles(parseJson(map.get('printRoles')), defaultPrinter),
@@ -77,7 +82,8 @@ function readSettings(): OfficeSettings {
     hijriOffset: clampHijriOffset(map.get('hijriOffset') ?? DEFAULTS.hijriOffset),
     // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
     counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
-    schoolFiles: map.get('schoolFiles') === 'true'
+    schoolFiles: map.get('schoolFiles') === 'true',
+    receiptSlip: map.get('receiptSlip') === 'true'
   };
 }
 

@@ -30,6 +30,9 @@ import type { TemplateInput, TemplateVariable } from './template';
 
 export type OfficeSettings = {
   officeName: string;
+  /** هاتف المكتب وعنوانه — يُطبعان على وصل الاستلام (الموجة ٢). */
+  officePhone: string;
+  officeAddress: string;
   operatorName: string;
   /** الطابعة الافتراضية القديمة — يأخذها كلّ دورٍ لم يُحفظ بعد (`printRoles`). */
   defaultPrinter: string | null;
@@ -72,6 +75,11 @@ export type OfficeSettings = {
    * جنسها ومحافظتها ومديرها، وفي الشبّاك «هات المدرسة» يملأ كتبها، والعام الدراسي من التاريخ (`shared/schoolFile.ts`).
    */
   schoolFiles: boolean;
+  /**
+   * «وصل الاستلام» للطلبات (الموجة ٢) — مطفأٌ في الأصل (قرار المالك: «لا يأخذه أحدٌ عادةً… خيارًا يُفعل ولا يُفعل»): في
+   * الطلب خانة «ما تركه الزبون عندنا» و«سجّل واطبع الوصل»، وعلى بطاقته «الوصل» (`shared/receipt.ts`).
+   */
+  receiptSlip: boolean;
 };
 
 export type SidebarCounts = {

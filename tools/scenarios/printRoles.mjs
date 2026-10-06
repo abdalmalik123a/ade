@@ -122,8 +122,14 @@ export default async function scenario(page, { profile }) {
   const first = printed().filter((l) => l.printer === LASER);
   ok('ثلاثة طلبات إلى «عادي» وحده، بلا نافذة ويندوز لكلّ ورقة', first.length === 3 && first.every((l) => l.silent) && !printed().some((l) => l.printer === COLOR));
   ok('وبأنماط الكتب يوم صدرت', first.every((l) => l.style));
-  const issued = db((d) => d.prepare(`SELECT d.citizen_name AS name, p.printer FROM documents d JOIN document_prints p ON p.document_id = d.id ORDER BY d.id`).all());
-  ok('صدرت الثلاثة وقُيّدت طبعتها الأولى على الطابعة المختارة', issued.length === 3 && issued.every((r) => r.printer === LASER));
+  // والطبعة تُقيَّد حين تتمّ (الموجة ٢): الأوليان على الطابعة المختارة، والثالثة لم تُطبع بعد.
+  const issued = db((d) =>
+    d.prepare(`SELECT d.citizen_name AS name, (SELECT p.printer FROM document_prints p WHERE p.document_id = d.id) AS printer FROM documents d ORDER BY d.id`).all()
+  );
+  ok(
+    'صدرت الثلاثة، وقُيّدت طبعة ما طُبع منها وحده على الطابعة المختارة',
+    issued.length === 3 && issued[0].printer === LASER && issued[1].printer === LASER && issued[2].printer === null
+  );
   ok('والدفعة في السجلّ على القرص — تُستأنف ولو أُغلق البرنامج', (await page.eval(`return (await window.diwan.output.pendingJobs()).map((j) => j.sent);`)).join() === '2');
 
   await page.eval(`document.querySelector('[data-act="print-resume"]').click(); return true;`);
@@ -132,6 +138,7 @@ export default async function scenario(page, { profile }) {
   ok('«أكمل الطباعة» أرسل الثالثة وحدها', after.length === 4 && after[3].text.includes(NAMES[2]) && !after[3].text.includes(NAMES[0]));
   ok('وقال «طُبعت 3 من 3» وأغلق الشريط', !(await page.eval(`return Boolean(document.querySelector('[data-print-run]'));`)) && (await page.text()).includes('طُبعت 3 من 3'));
   ok('ولم يبقَ ما يُستأنف', (await page.eval(`return (await window.diwan.output.pendingJobs()).length;`)) === 0);
+  ok('والثالثة قُيّدت طبعتها حين طُبعت', db((d) => d.prepare('SELECT COUNT(*) AS n FROM document_prints WHERE printer = ?').get(LASER).n) === 3);
 
   // ── «اسأل عند كل طباعة»: الإلغاء لا يُصدر، والاختيار يطبع عليه ──────
   await setRoles({ documents: { normal: LASER, color: null, dialog: true } });

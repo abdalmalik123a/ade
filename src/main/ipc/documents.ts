@@ -134,6 +134,8 @@ export function registerDocumentIpc(): void {
         silent: Boolean(input.printer) && !input.printDialog,
         parent: w
       });
+      // تُقيَّد الطبعة حين تتمّ — لا مع الإصدار.
+      if (result.ok) svc.recordPrint(db, issued.id, { copies: input.copies, printer: input.printer ?? null, operator: input.operator ?? null });
 
       return {
         id: issued.id,
@@ -261,7 +263,7 @@ export function registerDocumentIpc(): void {
   /**
    * أوراقٌ صدرت تُطبع على طابعةٍ اختارها الموظف (خطة Production، ٢٫٣): ورقةً ورقة بسجلٍّ على
    * القرص، بلا حوار — فتُعرف نتيجة كلّ ورقة، ويُستأنف ما لم يُطبع ولو انقطعت الكهرباء — وبأنماط
-   * الكتب يوم صدرت. وهي الطبعة الأولى لا إعادةٌ تُقيَّد: «إصدار أول» قُيّد مع الكتاب.
+   * الكتب يوم صدرت. وكلّ كتابٍ تُقيَّد طبعته حين يُرسل (`docIds`): الأولى «إصدار أول»، و«أعد الطبع» إعادةٌ طبق الأصل.
    */
   ipcMain.handle(
     'documents:printIssued',
@@ -278,6 +280,7 @@ export function registerDocumentIpc(): void {
         page: { w: 210, h: 297 },
         duplex: false,
         pages: docs.map((d) => forPrint(d.bodyHtml, req.mode ?? 'full')),
+        docIds: docs.map((d) => d.id),
         // أوراق المهمّة الواحدة صدرت معًا فأنماطها واحدة.
         styleHash: svc.documentStyleHash(db, docs[0]!.id)
       });
@@ -330,8 +333,8 @@ export function registerDocumentIpc(): void {
 
   // ── الطباعة الكبيرة بسجلٍّ يُستأنف بعد انقطاع الكهرباء ─────────────
   const journal = () => printJournal(join(app.getPath('userData'), 'print-jobs'));
-  const sendSheet = (e: Electron.IpcMainInvokeEvent) => (pages: string[], job: PrintJob) =>
-    printSheet({
+  const sendSheet = (e: Electron.IpcMainInvokeEvent) => async (pages: string[], job: PrintJob, sheet: number) => {
+    const out = await printSheet({
       sheetHtml: pages.join(''),
       deviceName: job.printer,
       silent: true,
@@ -340,6 +343,20 @@ export function registerDocumentIpc(): void {
       duplex: job.duplex,
       style: svc.styleByHash(getDb(), job.styleHash)
     });
+    // أوراق «السجلّ»: تُقيَّد طبعة كلّ كتابٍ حين يُرسل — ولو بعد استئنافٍ من حيث انقطعت.
+    if (out.ok && job.docIds) {
+      const db = getDb();
+      const operator = (db.prepare("SELECT value FROM settings WHERE key = 'operatorName'").get() as { value: string } | undefined)?.value ?? null;
+      for (const id of job.docIds.slice(sheet * job.perSheet, (sheet + 1) * job.perSheet)) {
+        try {
+          svc.recordPrint(db, id, { copies: 1, printer: job.printer, operator });
+        } catch {
+          // الورقة طُبعت؛ وتقييدها لا يوقف الدفعة.
+        }
+      }
+    }
+    return out;
+  };
   const progress = (e: Electron.IpcMainInvokeEvent, id: string) => (sent: number, total: number) => {
     if (!e.sender.isDestroyed()) e.sender.send('print:progress', { id, sent, total });
   };

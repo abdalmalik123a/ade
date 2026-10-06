@@ -29,6 +29,8 @@ import {
   type OrderStatus
 } from '@shared/orders';
 import { errorText } from '../lib/errors';
+import { choosePrinter } from '../lib/printChoice';
+import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
 
 const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -67,10 +69,12 @@ export type OrdersScreenProps = {
 };
 
 export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onResumeParked }: OrdersScreenProps) {
-  /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨). */
-  const [officeName, setOfficeName] = useState('');
+  /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨)؛ ووصل الاستلام إن شغّله المكتب، بهاتفه وعنوانه (الموجة ٢). */
+  const [office, setOffice] = useState<ReceiptOffice & { receipt: boolean }>({ receipt: false, name: '', phone: '', address: '' });
   useEffect(() => {
-    void window.diwan.settings.get().then((s) => setOfficeName(s.officeName ?? ''));
+    void window.diwan.settings
+      .get()
+      .then((s) => setOffice({ receipt: s.receiptSlip, name: s.officeName ?? '', phone: s.officePhone ?? '', address: s.officeAddress ?? '' }));
   }, []);
   const [tab, setTab] = useState<'open' | 'delivered'>('open');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -100,6 +104,18 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
     setToast(text);
     window.setTimeout(() => setToast(null), 3000);
   };
+
+  /** وصل الاستلام على طابعة «الكتب والمعاملات»: نسختان على ورقة — للزبون وللمكتب (`shared/receipt.ts`). */
+  async function printReceipt(order: Order) {
+    const pick = await choosePrinter('documents', { allowSystem: true });
+    if (!pick) return;
+    try {
+      const out = await window.diwan.output.print({ sheetHtml: receiptSheet(order, office), printer: pick.printer, copies: 1, silent: !pick.system });
+      say(out.ok ? `طُبع وصل الاستلام رقم ${order.id} — نسختان: للزبون وللمكتب` : `لم يُطبع الوصل${out.reason && out.reason !== 'cancelled' ? `: ${out.reason}` : ''}`);
+    } catch (e) {
+      say(errorText(e, 'تعذّرت طباعة الوصل'));
+    }
+  }
 
   async function move(order: Order, status: OrderStatus) {
     await window.diwan.orders.setStatus(order.id, status);
@@ -224,9 +240,10 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
                         onMove={(s) => void move(o, s)}
                         onOpenDesign={() => onOpenDesign(o)}
                         onCopyReady={() => {
-                          void window.diwan.ui.copyText(readyMessage(o, officeName));
+                          void window.diwan.ui.copyText(readyMessage(o, office.name));
                           say(`نُسخت رسالة «طلبكم جاهز» لـ${o.customer} — الصقها في محادثته`);
                         }}
+                        onReceipt={office.receipt ? () => void printReceipt(o) : undefined}
                       />
                     ))}
                     {list.length + extra === 0 && (
@@ -285,12 +302,14 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
         <OrderDialog
           order={editing === 'new' ? null : editing}
           today={today}
+          receipt={office.receipt}
           onClose={() => setEditing(null)}
-          onSaved={(saved, created) => {
+          onSaved={(saved, created, receipt) => {
             setEditing(null);
             void reload();
             onChanged?.();
             say(created ? `سُجّل الطلب: ${saved.title}` : 'حُفظ الطلب');
+            if (receipt) void printReceipt(saved);
           }}
           onDeleted={() => {
             setEditing(null);
@@ -354,7 +373,8 @@ function OrderCard({
   onEdit,
   onMove,
   onOpenDesign,
-  onCopyReady
+  onCopyReady,
+  onReceipt
 }: {
   order: Order;
   today: string;
@@ -363,6 +383,8 @@ function OrderCard({
   onOpenDesign: () => void;
   /** رسالة «طلبكم جاهز» تُنسخ ليلصقها الموظف في واتساب الزبون — لا تُرسل من البرنامج. */
   onCopyReady: () => void;
+  /** وصل الاستلام — لمكتبٍ شغّله من الإعدادات. */
+  onReceipt?: () => void;
 }) {
   const due = dueLabel(order.dueDate, today);
   const info = statusOf(order.status);
@@ -429,6 +451,17 @@ function OrderCard({
             انسخ رسالة: طلبكم جاهز
           </button>
         )}
+        {onReceipt && (
+          <button
+            className="h-8 w-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
+            data-act="print-receipt"
+            title="اطبع وصل الاستلام — نسختان: للزبون وللمكتب"
+            type="button"
+            onClick={onReceipt}
+          >
+            <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+          </button>
+        )}
         {order.status !== 'waiting' && order.status !== 'ready' && (
           <button
             className="h-8 w-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
@@ -448,14 +481,17 @@ function OrderCard({
 function OrderDialog({
   order,
   today,
+  receipt,
   onClose,
   onSaved,
   onDeleted
 }: {
   order: Order | null;
   today: string;
+  /** المكتب شغّل وصل الاستلام: خانة «ما تركه الزبون عندنا» و«واطبع الوصل». */
+  receipt: boolean;
   onClose: () => void;
-  onSaved: (o: Order, created: boolean) => void;
+  onSaved: (o: Order, created: boolean, receipt: boolean) => void;
   onDeleted: () => void;
 }) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -468,6 +504,7 @@ function OrderDialog({
   const [title, setTitle] = useState(order?.title ?? '');
   const [quantity, setQuantity] = useState(order?.quantity ? String(order.quantity) : '');
   const [dueDate, setDueDate] = useState(order?.dueDate ?? '');
+  const [received, setReceived] = useState(order?.received ?? '');
   const [templateId, setTemplateId] = useState<number | null>(order?.templateId ?? null);
   const [batchText, setBatchText] = useState(order?.batchText ?? '');
   const [notes, setNotes] = useState(order?.notes ?? '');
@@ -482,7 +519,7 @@ function OrderDialog({
 
   const rows = batchText.split(/\r?\n/).filter((l) => l.trim()).length;
 
-  async function save() {
+  async function save(printReceipt = false) {
     setError(null);
     try {
       let cid = who === 'client' ? clientId : null;
@@ -499,9 +536,11 @@ function OrderDialog({
         templateId,
         batchText,
         notes,
+        // وما لم يُعرض لا يُرسل: مكتبٌ أطفأ الوصل لا يمحو ما كُتب قبل.
+        received: receipt ? received : undefined,
         status: order ? status : undefined
       };
-      onSaved(await window.diwan.orders.save(input), !order);
+      onSaved(await window.diwan.orders.save(input), !order, printReceipt);
     } catch (e) {
       setError(errorText(e, 'تعذّر حفظ الطلب'));
     }
@@ -621,6 +660,19 @@ function OrderDialog({
             </select>
           </label>
 
+          {receipt && (
+            <label className="flex flex-col gap-1">
+              <span className="font-label-md text-label-md text-on-surface font-semibold">ما تركه الزبون عندنا</span>
+              <input
+                className={input}
+                data-order-received=""
+                placeholder="مثال: هوية موحّدة و٤ صور — يُكتب في وصل الاستلام"
+                value={received}
+                onChange={(e) => setReceived(e.target.value)}
+              />
+            </label>
+          )}
+
           <label className="flex flex-col gap-1">
             <span className="flex items-center justify-between">
               <span className="font-label-md text-label-md text-on-surface font-semibold">
@@ -693,6 +745,17 @@ function OrderDialog({
             <button className="h-10 px-space-md rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-high" type="button" onClick={onClose}>
               إلغاء
             </button>
+            {receipt && (
+              <button
+                className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1"
+                data-act="save-order-receipt"
+                type="button"
+                onClick={() => void save(true)}
+              >
+                <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                {order ? 'احفظ واطبع الوصل' : 'سجّل واطبع الوصل'}
+              </button>
+            )}
             <button
               className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
               data-act="save-order"

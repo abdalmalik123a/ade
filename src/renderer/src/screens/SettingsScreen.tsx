@@ -131,6 +131,16 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                 <span className="font-label-sm text-label-sm text-on-surface-variant">اسم المكتب</span>
                 <input className={input} data-setting="officeName" value={settings.officeName} onChange={(e) => patch({ officeName: e.target.value })} />
               </label>
+              <div className="grid grid-cols-2 gap-space-sm">
+                <label className="flex flex-col gap-1">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">هاتف المكتب</span>
+                  <input className={input} data-setting="officePhone" dir="ltr" value={settings.officePhone} onChange={(e) => patch({ officePhone: e.target.value })} />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">عنوان المكتب</span>
+                  <input className={input} data-setting="officeAddress" value={settings.officeAddress} onChange={(e) => patch({ officeAddress: e.target.value })} />
+                </label>
+              </div>
               <label className="flex flex-col gap-1">
                 <span className="font-label-sm text-label-sm text-on-surface-variant">اسم المشغّل — يُقيَّد مع كل كتاب</span>
                 <input className={input} data-setting="operatorName" value={settings.operatorName} onChange={(e) => patch({ operatorName: e.target.value })} />
@@ -271,6 +281,29 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               <p className="font-label-sm text-label-sm text-on-surface-variant">
                 جنس المدرسة ومحافظتها واسم مديرها تُكتب مرّةً في «الجهات»، وفي الشبّاك «هات المدرسة» يملأ بها الكتب — والعام الدراسي
                 يُكتب وحده من التاريخ ({academicYearText(new Date())}). ومطفأٌ ما لم يحتجه المكتب.
+              </p>
+            </section>
+
+            {/* ── وصل الاستلام (الموجة ٢) ─────────────────────────────────── */}
+            <section className={card} data-receipt-setting="">
+              {title('receipt_long', 'وصل الاستلام')}
+              <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+                <input
+                  checked={settings.receiptSlip}
+                  className="w-4 h-4 accent-secondary"
+                  data-setting="receiptSlip"
+                  type="checkbox"
+                  onChange={(e) => {
+                    const receiptSlip = e.target.checked;
+                    setSettings((cur) => (cur ? { ...cur, receiptSlip } : cur));
+                    void window.diwan.settings.set({ receiptSlip }).then(() => onChanged?.());
+                  }}
+                />
+                وصلٌ للزبون الذي يترك طلبه ويعود
+              </label>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                في «قيد العمل»: خانة «ما تركه الزبون عندنا» و«سجّل واطبع الوصل»، وزرّ الوصل على كلّ طلب. نسختان على ورقة A4 — للزبون
+                وللمكتب تُرفق بما تركه — باسم المكتب وهاتفه وعنوانه، بلا مبالغ. ومطفأٌ ما لم يحتجه المكتب.
               </p>
             </section>
 

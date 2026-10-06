@@ -12,6 +12,7 @@ import {
   listAudit,
   listDocuments,
   prepareDocuments,
+  recordPrint,
   recordReprint,
   verifyArchive,
   voidDocument
@@ -71,8 +72,10 @@ describe('إبطال كتابٍ صادر', () => {
   it('والمُبطَل لا يُعاد طبعه — ولا يُستهلك رقمه لغيره', () => {
     const db = freshDb();
     const a = issueDocument(db, issue('أحمد'));
+    recordPrint(db, a.id, { copies: 1, printer: null, operator: null });
     voidDocument(db, a.id, 'خطأ', null);
     expect(() => recordReprint(db, a.id, { copies: 1, printer: null, operator: null })).toThrow(/مُبطَل/);
+    expect(() => recordPrint(db, a.id, { copies: 1, printer: null, operator: null })).toThrow(/مُبطَل/);
     const b = issueDocument(db, issue('زينب'));
     expect(b.serial).toBe('م/2026/2');
     expect(getDocument(db, a.id)?.printedCopies).toBe(1);

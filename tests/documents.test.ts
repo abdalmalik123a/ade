@@ -14,6 +14,7 @@ import {
   peekSerial,
   periodStats,
   prepareDocuments,
+  recordPrint,
   recordReprint,
   reserveSerial
 } from '../src/main/services/documents';
@@ -142,17 +143,24 @@ describe('إصدار الكتاب', () => {
     expect(peekSerial(db, 'م', 2026)).toBe('م/2026/1');
   });
 
-  it('يقيّد الإصدار الأول في سجل الطباعة وفي سجل التدقيق', () => {
+  it('الإصدار يُقيَّد في سجلّ التدقيق — والطبعة حين تتمّ: الأولى «إصدار أول» بنسخها، وما بعدها إعادة', () => {
     const db = freshDb();
     const result = issueDocument(db, input({ copies: 3 }));
+    const prints = () => db.prepare('SELECT reason, copies FROM document_prints WHERE document_id = ? ORDER BY id').all(result.id);
+    // حُفظ ولم يُطبع بعد: لا نسخة له (وكان «إصدار أول» يُقيَّد مع الإصدار ولو لم يُطبع)
+    expect(prints()).toEqual([]);
+    expect(getDocument(db, result.id)?.printedCopies).toBe(0);
 
-    const prints = db
-      .prepare('SELECT reason, copies FROM document_prints WHERE document_id = ?')
-      .all(result.id) as { reason: string; copies: number }[];
-    expect(prints).toEqual([{ reason: 'إصدار أول', copies: 3 }]);
+    recordPrint(db, result.id, { copies: 3, printer: 'HP', operator: null });
+    expect(prints()).toEqual([{ reason: 'إصدار أول', copies: 3 }]);
+    recordPrint(db, result.id, { copies: 1, printer: 'HP', operator: null }); // «أعد الطبع»
+    expect(prints()).toEqual([
+      { reason: 'إصدار أول', copies: 3 },
+      { reason: 'إعادة طباعة طبق الأصل', copies: 1 }
+    ]);
 
-    const audit = db.prepare("SELECT action FROM audit_log WHERE entity = 'document'").all();
-    expect(audit).toHaveLength(1);
+    const audit = db.prepare("SELECT action FROM audit_log WHERE entity = 'document' ORDER BY id").all();
+    expect(audit).toEqual([{ action: 'issue' }, { action: 'reprint' }]);
   });
 
   it('يزيد عدّاد طباعة النموذج الذي صدر عنه', () => {
@@ -218,6 +226,7 @@ describe('إعادة الطباعة', () => {
   it('تُقيَّد ولا تُنشئ رقمًا جديدًا', () => {
     const db = freshDb();
     const result = issueDocument(db, input({ copies: 1 }));
+    recordPrint(db, result.id, { copies: 1, printer: 'HP', operator: 'مشغّل 01' });
     recordReprint(db, result.id, { copies: 2, printer: 'HP', operator: 'مشغّل 01' });
 
     expect(peekSerial(db, 'م', 2026)).toBe('م/2026/2'); // رقم واحد استُهلك فقط
@@ -269,15 +278,17 @@ describe('المؤشرات والتقارير', () => {
   it('تعدّ الكتب والمخدومين والنسخ المطبوعة فعلًا — ولا مال فيها (المال صامت)', () => {
     const db = freshDb();
     const a = issueDocument(db, input({ citizenName: 'أحمد', fee: 1000, copies: 2 }));
-    issueDocument(db, input({ citizenName: 'أحمد', fee: 500 }));
-    issueDocument(db, input({ citizenName: 'زينب', fee: 250 }));
+    recordPrint(db, a.id, { copies: 2, printer: null, operator: null });
+    issueDocument(db, input({ citizenName: 'أحمد', fee: 500 })); // حُفظ بلا طباعة: لا نسخة
+    const c = issueDocument(db, input({ citizenName: 'زينب', fee: 250 }));
+    recordPrint(db, c.id, { copies: 1, printer: null, operator: null });
     recordReprint(db, a.id, { copies: 4, printer: null, operator: null });
 
     const stats = periodStats(db);
     expect(stats.issued).toBe(3);
     expect(stats).not.toHaveProperty('revenue');
     expect(stats.citizens).toBe(2); // أحمد مرّتان يُعدّ مرّة
-    expect(stats.printedCopies).toBe(2 + 1 + 1 + 4);
+    expect(stats.printedCopies).toBe(2 + 1 + 4);
     expect(stats.byType[0]).toEqual({ name: 'تأييد استمرار بالخدمة', count: 3 });
     expect(stats.byDay).toHaveLength(1);
   });
@@ -303,8 +314,10 @@ describe('المؤشرات والتقارير', () => {
   it('المدة تُقصي ما خرج عنها من التقرير', () => {
     const db = freshDb();
     const old = issueDocument(db, input({ fee: 9000 }));
+    recordPrint(db, old.id, { copies: 1, printer: null, operator: null });
     backdate(db, old.id, '2025-12-31');
-    issueDocument(db, input({ fee: 1000 }));
+    const fresh = issueDocument(db, input({ fee: 1000 }));
+    recordPrint(db, fresh.id, { copies: 1, printer: null, operator: null });
 
     const stats = periodStats(db, { from: '2026-01-01' });
     expect(stats.issued).toBe(1);

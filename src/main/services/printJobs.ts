@@ -45,6 +45,8 @@ export type PrintJob = {
   createdAt: string;
   /** أنماط الكتب يوم صدرت — لأوراقٍ من الأرشيف (`sheet_styles`)، فتُستأنف بها كما بدأت. */
   styleHash?: string | null;
+  /** كتب «السجلّ» صفحةً صفحة — فتُقيَّد طبعةُ كلٍّ حين تُرسل، ولو بعد استئناف. */
+  docIds?: number[];
 };
 
 export type PrintJournal = {
@@ -131,14 +133,14 @@ export async function runJob(
   journal: PrintJournal,
   id: string,
   from: number,
-  printOne: (pages: string[], job: PrintJob) => Promise<{ ok: boolean; reason?: string }>,
+  printOne: (pages: string[], job: PrintJob, sheet: number) => Promise<{ ok: boolean; reason?: string }>,
   onProgress?: (sent: number, total: number) => void
 ): Promise<{ ok: boolean; sent: number; total: number; reason?: string }> {
   const job = journal.get(id);
   if (!job) return { ok: false, sent: 0, total: 0, reason: 'لا دفعة بهذا الرقم' };
   journal.markSent(id, from);
   for (let sheet = from; sheet < job.total; sheet++) {
-    const out = await printOne(journal.sheetPages(id, sheet), job);
+    const out = await printOne(journal.sheetPages(id, sheet), job, sheet);
     if (!out.ok) return { ok: false, sent: sheet, total: job.total, reason: out.reason };
     journal.markSent(id, sheet + 1);
     onProgress?.(sheet + 1, job.total);

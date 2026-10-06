@@ -52,6 +52,14 @@ describe('سجلّ الطباعة الكبيرة', () => {
     expect(printJournal(dir).pending()).toEqual([]);
   });
 
+  it('وكلّ ورقةٍ تُرسل برقمها — فتُقيَّد طبعة كتابها حين تُرسل، ولو بعد استئناف', async () => {
+    const journal = printJournal(fresh());
+    const job = journal.create({ label: 'x', printer: 'P', page: { w: 210, h: 297 }, duplex: false, pages: pages(3), docIds: [11, 12, 13] });
+    const seen: number[] = [];
+    await runJob(journal, job.id, 1, async (_p, j, sheet) => (seen.push(j.docIds![sheet]!), { ok: true }));
+    expect(seen).toEqual([12, 13]);
+  });
+
   it('على الوجهين: الورقة وجهٌ وظهر معًا، لا يُفصلان', async () => {
     const journal = printJournal(fresh());
     const job = journal.create({ label: 'x', printer: 'P', page: { w: 210, h: 297 }, duplex: true, pages: pages(4) });

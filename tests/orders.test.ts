@@ -110,6 +110,24 @@ describe('الطلبات — بلا مبالغ', () => {
     saveOrder(db, { id: null, clientId: null, customer: 'x', title: '3', dueDate: '2026-09-30' });
     expect(orderCounts(db, '2026-09-25')).toEqual({ open: 3, dueToday: 1, overdue: 1 });
   });
+
+  it('وما تركه الزبون عندنا يُحفظ لوصله — وحفظٌ لا يرسله (والوصل مطفأ) لا يمحوه', () => {
+    const db = freshDb();
+    const o = saveOrder(db, { id: null, clientId: null, customer: 'سالم حسن', title: 'هويّة', received: ' هوية موحّدة و٤ صور ' });
+    expect(o.received).toBe('هوية موحّدة و٤ صور');
+    expect(saveOrder(db, { id: o.id, clientId: null, customer: 'سالم حسن', title: 'هويّة ملوّنة' }).received).toBe('هوية موحّدة و٤ صور');
+    expect(saveOrder(db, { id: o.id, clientId: null, customer: 'سالم حسن', title: 'هويّة', received: '' }).received).toBeNull();
+  });
+
+  it('ورقم الوصل وحده يجد طلبه — بالأرقام العربية والهندية وبعلامة #', () => {
+    const db = freshDb();
+    saveOrder(db, { id: null, clientId: null, customer: 'زينب', title: 'صور' });
+    const o = saveOrder(db, { id: null, clientId: null, customer: 'سالم حسن', title: 'هويّة', received: 'جواز السفر' });
+    for (const q of [String(o.id), `#${o.id}`, String(o.id).replace(/\d/g, (x) => '٠١٢٣٤٥٦٧٨٩'[Number(x)]!)])
+      expect(listOrders(db, { status: 'open', query: q }).map((x) => x.id)).toEqual([o.id]);
+    // وما تركه يُبحث فيه كذلك
+    expect(listOrders(db, { status: 'open', query: 'جواز' }).map((x) => x.id)).toEqual([o.id]);
+  });
 });
 
 describe('الموعد بكلام الموظف', () => {

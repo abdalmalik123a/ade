@@ -26,6 +26,7 @@ type Row = {
   template_id: number | null;
   template_title: string | null;
   batch_text: string | null;
+  received?: string | null;
   created_at: string;
   updated_at: string;
   delivered_at: string | null;
@@ -54,6 +55,7 @@ function toOrder(r: Row): Order {
     templateId: r.template_id,
     templateTitle: r.template_title,
     batchText: r.batch_text,
+    received: r.received ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     deliveredAt: r.delivered_at
@@ -61,6 +63,13 @@ function toOrder(r: Row): Order {
 }
 
 const clean = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
+
+/** أعمدةٌ أُضيفت بعد الأساس — فقاعدة المكتب القائمة لا تسقط. */
+export function prepareOrders(db: Database): void {
+  const cols = (db.prepare('PRAGMA table_info(orders)').all() as { name: string }[]).map((c) => c.name);
+  // ما تركه الزبون عندنا — لوصل الاستلام (الموجة ٢).
+  if (!cols.includes('received')) db.exec('ALTER TABLE orders ADD COLUMN received TEXT');
+}
 
 export type OrderFilter = { status?: 'open' | OrderStatus; clientId?: number; query?: string };
 
@@ -70,6 +79,7 @@ export type OrderFilter = { status?: 'open' | OrderStatus; clientId?: number; qu
  */
 export function listOrders(db: Database, filter: OrderFilter = {}): Order[] {
   prepareClients(db);
+  prepareOrders(db);
   const where: string[] = [];
   const args: unknown[] = [];
   if (filter.status === 'open') where.push(`o.status IN ('new','waiting','working','ready')`);
@@ -88,7 +98,11 @@ export function listOrders(db: Database, filter: OrderFilter = {}): Order[] {
   const rows = db.prepare(`${SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ${order}`).all(...args) as Row[];
   const q = normalizeFold((filter.query ?? '').trim());
   const out = rows.map(toOrder);
-  return q ? out.filter((o) => normalizeFold(`${o.title} ${o.customer} ${o.notes ?? ''}`).includes(q)) : out;
+  // ورقمُ وصل الاستلام وحده («123» أو «#123») يجد طلبه — حين يعود الزبون بوصله.
+  const number = /^#?\d+$/.test(q) ? Number(q.replace('#', '')) : null;
+  return q
+    ? out.filter((o) => o.id === number || normalizeFold(`${o.title} ${o.customer} ${o.notes ?? ''} ${o.received ?? ''}`).includes(q))
+    : out;
 }
 
 export function getOrder(db: Database, id: number): Order | null {
@@ -98,6 +112,7 @@ export function getOrder(db: Database, id: number): Order | null {
 
 export function saveOrder(db: Database, input: OrderInput): Order {
   prepareClients(db);
+  prepareOrders(db);
   const title = input.title.trim();
   if (!title) throw new Error('اكتب ما طُلب — مثال: ٤٠٠ هويّة للصفّ الخامس');
   if (!input.clientId && !clean(input.customer)) throw new Error('لمن الطلب؟ اختر جهةً أو اكتب اسم الزبون');
@@ -121,16 +136,17 @@ export function saveOrder(db: Database, input: OrderInput): Order {
       `UPDATE orders SET authority_id = ?, customer = ?, phone = ?, title = ?, quantity = ?, due_date = ?,
          notes = ?, template_id = ?, batch_text = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(...values, input.id);
+    if (input.received !== undefined) db.prepare('UPDATE orders SET received = ? WHERE id = ?').run(clean(input.received), input.id);
     if (input.status) setOrderStatus(db, input.id, status);
     return getOrder(db, input.id)!;
   }
   const id = Number(
     db
       .prepare(
-        `INSERT INTO orders (authority_id, customer, phone, title, quantity, due_date, notes, template_id, batch_text, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO orders (authority_id, customer, phone, title, quantity, due_date, notes, template_id, batch_text, status, received)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(...values, status).lastInsertRowid
+      .run(...values, status, clean(input.received)).lastInsertRowid
   );
   return getOrder(db, id)!;
 }

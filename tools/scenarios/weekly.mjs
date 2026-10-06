@@ -74,6 +74,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(900);
   const period = await page.eval(`return document.querySelector('[data-period-stats]')?.textContent ?? '';`);
   ok(`وضغطةٌ تفتح «السجلّ» على هذا الأسبوع — بكتابيه (${period})`, period.startsWith('هذا الأسبوع: 2 من الكتب الصادرة'));
+  // والمحفوظ بلا طباعة لا نسخة له في «السجلّ» — النسختان للكتاب الذي طُبع وحده (وكانت ٤).
+  ok('و«النسخ المطبوعة» فيه ما طُبع فعلًا', period.includes('2 من النسخ المطبوعة'));
 
   // ── بعد أسبوع ────────────────────────────────────────────────────────
   writeFileSync(CLOCK, new Date(Date.now() + 7 * 864e5).toISOString());

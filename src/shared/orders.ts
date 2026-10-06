@@ -79,6 +79,8 @@ export type Order = {
   templateId: number | null;
   templateTitle: string | null;
   batchText: string | null;
+  /** ما تركه الزبون عندنا («هوية موحّدة و٤ صور») — يُكتب في وصل الاستلام (الموجة ٢). */
+  received: string | null;
   createdAt: string;
   updatedAt: string;
   deliveredAt: string | null;
@@ -96,6 +98,8 @@ export type OrderInput = {
   notes?: string | null;
   templateId?: number | null;
   batchText?: string | null;
+  /** وما لم يُرسَل يبقى كما كان — فحفظٌ من مكانٍ لا يعرفه لا يمحوه. */
+  received?: string | null;
 };
 
 export type OrderCounts = { open: number; dueToday: number; overdue: number };
