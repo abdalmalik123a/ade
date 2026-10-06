@@ -1,12 +1,13 @@
-/**
- * أفي «ما ينتظرك اليوم» ما يُقال؟ — وإلا فلا لوحة: المكتب يبدأ عمله بلا حاجز (د٧).
- *
- * والطباعة المنقطعة لا تُعدّ هنا: لها حوارها عند الإقلاع («أتستأنف؟»)، فلا تُقال مرّتين.
- */
 import type { TodayAgenda } from './api';
 
-export function agendaHasItems(a: TodayAgenda): boolean {
-  return a.overdue.length + a.dueToday.length + a.ready.length + a.drafts > 0 || a.backupDue || Boolean(a.autoBackupError);
+/**
+ * رقم «التنبيهات» في الشريط العلوي: ما ينتظر عملًا — الطلبات المتأخّرة وما موعده اليوم وما جهز، والنسخة الاحتياطية إن
+ * طال عهدها أو لم تُؤخذ التلقائية. والمسودات والمعلّقات تُعرض فيها ولا تُعدّ: عملٌ جارٍ لا تذكيرٌ يُلحّ — وإلا بقي الرقم
+ * قائمًا أبدًا فلا يُنظر إليه.
+ */
+export function agendaCount(a: TodayAgenda | null): number {
+  if (!a) return 0;
+  return a.overdue.length + a.dueToday.length + a.ready.length + (a.backupDue ? 1 : 0) + (a.autoBackupError ? 1 : 0);
 }
 
 /**

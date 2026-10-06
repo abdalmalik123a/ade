@@ -1,5 +1,5 @@
 /**
- * «ما ينتظرك اليوم» (د٧)، ورسالة «طلبكم جاهز» (د٨).
+ * «التنبيهات» (د٧ — وكانت «ما ينتظرك اليوم» عند الإقلاع)، ورسالة «طلبكم جاهز» (د٨).
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
@@ -8,7 +8,7 @@ import { saveOrder, setOrderStatus } from '../src/main/services/orders';
 import { issueDocument, prepareDocuments } from '../src/main/services/documents';
 import { saveDraft } from '../src/main/services/templates';
 import { todayAgenda } from '../src/main/services/today';
-import { agendaHasItems, readyMessage } from '../src/shared/agenda';
+import { agendaCount, readyMessage } from '../src/shared/agenda';
 import { daysSince, sinceText } from '../src/shared/dates';
 
 const NOW = new Date(2026, 8, 27, 9, 0); // ٢٧ أيلول ٢٠٢٦ صباحًا
@@ -20,11 +20,12 @@ function office() {
   return db;
 }
 
-describe('ما ينتظرك اليوم', () => {
-  it('مكتبٌ لا شيء فيه: لا لوحة', () => {
+describe('التنبيهات', () => {
+  it('مكتبٌ لا شيء فيه: لا رقم على الجرس', () => {
     const a = todayAgenda(office(), [], NOW);
-    expect(a).toMatchObject({ overdue: [], dueToday: [], ready: [], drafts: 0, backupDue: false });
-    expect(agendaHasItems(a)).toBe(false);
+    expect(a).toMatchObject({ overdue: [], dueToday: [], ready: [], drafts: 0, parked: 0, backupDue: false });
+    expect(agendaCount(a)).toBe(0);
+    expect(agendaCount(null)).toBe(0); // قبل أن تُقرأ
   });
 
   it('المتأخّر أوّلًا بموعده، وما موعده اليوم، وما جهز', () => {
@@ -42,13 +43,15 @@ describe('ما ينتظرك اليوم', () => {
     expect(a.dueToday.map((o) => o.title)).toEqual(['صور']);
     // الجاهز ليس «متأخّرًا» ولو فات موعده: هو ينتظر صاحبه لا المكتب
     expect(a.ready).toEqual([{ id: r.id, customer: 'حسن', title: 'ملصق', dueDate: '2026-09-26', phone: '0770' }]);
-    expect(agendaHasItems(a)).toBe(true);
+    expect(agendaCount(a)).toBe(4); // متأخّران وموعد اليوم وجاهز — والمُسلَّم لا يُعدّ
   });
 
   it('والمسودات، والنسخة الاحتياطية إن طال عهدها وفي الأرشيف كتب', () => {
     const db = office();
     saveDraft(db, { id: null, templateId: null, citizenId: null, title: 'كتاب', values: {}, bodyHtml: '<p>x</p>' });
     expect(todayAgenda(db, [], NOW).drafts).toBe(1);
+    // المسودة تُعرض في الجرس ولا تُعدّ: عملٌ جارٍ لا تذكيرٌ يُلحّ
+    expect(agendaCount(todayAgenda(db, [], NOW))).toBe(0);
     expect(todayAgenda(db, [], NOW).backupDue).toBe(false); // لا كتب بعد
 
     issueDocument(db, {
@@ -57,6 +60,7 @@ describe('ما ينتظرك اليوم', () => {
       gregorianDate: '27 أيلول 2026', hijriDate: null, operator: null, printer: null, serialPrefix: 'م', serialYear: 2026, letterheadId: null
     });
     expect(todayAgenda(db, [], NOW).backupDue).toBe(true); // لم تُؤخذ قطّ
+    expect(agendaCount(todayAgenda(db, [], NOW))).toBe(1);
     const set = (iso: string) =>
       db.prepare("INSERT INTO settings (key, value) VALUES ('lastBackupAt', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(iso);
     set(new Date(2026, 8, 24).toISOString());
@@ -65,10 +69,21 @@ describe('ما ينتظرك اليوم', () => {
     expect(todayAgenda(db, [], NOW).backupDue).toBe(true); // قبل تسعة
   });
 
-  it('والطباعة المنقطعة لها حوارها — لا تفتح اللوحة وحدها', () => {
+  it('والمعاملات المعلّقة في الشبّاك تُعرض ولا تُعدّ — وما فسد منها لا شيء', () => {
+    const db = office();
+    const park = (value: string) =>
+      db.prepare("INSERT INTO settings (key, value) VALUES ('parkedTransactions', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(value);
+    park(JSON.stringify([{ id: 'p1' }, { id: 'p2' }]));
+    expect(todayAgenda(db, [], NOW).parked).toBe(2);
+    expect(agendaCount(todayAgenda(db, [], NOW))).toBe(0);
+    park('{not json');
+    expect(todayAgenda(db, [], NOW).parked).toBe(0);
+  });
+
+  it('والطباعة المنقطعة لها حوارها عند الإقلاع — لا تُعدّ على الجرس', () => {
     const a = todayAgenda(office(), [{ id: 'job-1', label: 'شهادات', sent: 12, total: 30 }], NOW);
     expect(a.pendingPrints).toHaveLength(1);
-    expect(agendaHasItems(a)).toBe(false);
+    expect(agendaCount(a)).toBe(0);
   });
 });
 

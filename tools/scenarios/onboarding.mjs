@@ -43,6 +43,11 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1200);
 
   ok('وأُغلق المعالج', !(await page.eval(`return Boolean(document.querySelector('[data-onboarding]'));`)));
+  // «نظرة عامة على ديوان» مرّةً بعد المعالج — شرحٌ يُتخطّى بضغطة (الموجة ٢؛ تفصيلها في overview.mjs).
+  ok('ثم «نظرة عامة على ديوان» — و«تخطَّ» فيها', await page.eval(`return Boolean(document.querySelector('[data-overview] [data-act="overview-skip"]'));`));
+  await click('[data-act="overview-skip"]');
+  await wait(600);
+  ok('تُتخطّى إلى وجهة المعالج', !(await page.eval(`return Boolean(document.querySelector('[data-overview]'));`)));
   ok('وفُتح الشبّاك بلا بطاقة الأسئلة', await page.eval(`return Boolean(document.querySelector('[data-screen="service"] [data-card="photos"]')) && !document.querySelector('[data-screen="service"] [data-card="papers"]');`));
 
   const db = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });

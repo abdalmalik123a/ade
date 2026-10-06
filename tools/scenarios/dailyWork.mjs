@@ -3,7 +3,7 @@
  *
  * التذكير والتأنيث (ج٤): دفعةٌ فيها «غسق» — لا يُعرف جنسها من اسمها — تُسأل قبل أن
  * تصدر، ويُحفظ الجواب فلا تُسأل ثانيةً؛ وكتابٌ واحد لاسمٍ مجهول لا يصدر حتى يُحسم.
- * و«ما ينتظرك اليوم» (د٧) عند الإقلاع — مرّةً في اليوم — ومعها «طلبكم جاهز» (د٨).
+ * و«التنبيهات» (د٧): جرسٌ برقمه في الشريط العلوي بدل نافذة الإقلاع — ومعها «طلبكم جاهز» (د٨).
  */
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -122,31 +122,33 @@ export default async function scenario(page, { profile }) {
   d.close();
   ok('وحُفظ جوابه كذلك', learned?.gender === 'ذكر');
 
-  // ── «ما ينتظرك اليوم» عند الإقلاع ───────────────────────────────────
+  // ── «التنبيهات» في الشريط العلوي (وكانت نافذةً عند الإقلاع — بقرار المالك ٦ تشرين الأول) ──
   const today = new Date().toLocaleDateString('en-CA');
   await page.eval(`
     const s = window.diwan.orders.save;
     await s({ id: null, clientId: null, customer: 'مدرسة النور', title: 'هويّات الطلبة', dueDate: ${JSON.stringify(today)} });
     const r = await s({ id: null, clientId: null, customer: 'أبو حسن', title: 'ملصق المحل', phone: '07701234567' });
     await window.diwan.orders.setStatus(r.id, 'ready');
-    try { localStorage.removeItem('diwan.todaySeen'); } catch {}
     location.reload();
     return true;`).catch(() => undefined);
   await wait(3000);
-  ok('عند الإقلاع: «ما ينتظرك اليوم»', await page.eval(`return Boolean(document.querySelector('[data-today]'));`));
-  const panel = await page.eval(`return document.querySelector('[data-today]')?.innerText ?? '';`);
+  ok('لا نافذة تُقاطع عند الإقلاع', !(await page.eval(`return Boolean(document.querySelector('[data-notifications]'));`)));
+  const bell = await page.eval(`
+    const a = await window.diwan.today.agenda();
+    return { shown: Number(document.querySelector('[data-act="notifications"]')?.dataset.count), due: a.overdue.length + a.dueToday.length + a.ready.length + (a.backupDue ? 1 : 0) + (a.autoBackupError ? 1 : 0) };`);
+  ok('والجرس برقم ما ينتظر عملًا', bell.shown >= 3 && bell.shown === bell.due);
+  await page.eval(`document.querySelector('[data-act="notifications"]').click(); return true;`);
+  await wait(300);
+  const panel = await page.eval(`return document.querySelector('[data-notifications]')?.innerText ?? '';`);
   ok('فيه ما موعده اليوم', panel.includes('1 موعدها اليوم') && panel.includes('هويّات الطلبة'));
   ok('وما جهز ينتظر صاحبه — ومعه رسالته', panel.includes('1 جاهزة تنتظر أصحابها') && panel.includes('انسخ رسالة: طلبكم جاهز'));
   ok('والنسخة الاحتياطية وفي الأرشيف كتب لم تُنسخ', panel.includes('آخر نسخة احتياطية: لم يحدث بعد'));
-  await page.eval(`document.querySelector('[data-today] [data-act="copy-ready"]').click(); return true;`);
+  await page.eval(`document.querySelector('[data-notifications] [data-act="copy-ready"]').click(); return true;`);
   await wait(300);
-  ok('«انسخ رسالة» تُنسخ', (await page.eval(`return document.querySelector('[data-today] [data-act="copy-ready"]').innerText;`)) === 'نُسخت');
-  await page.eval(`document.querySelector('[data-act="today-close"]').click(); return true;`);
-  await wait(300);
-  ok('و«ابدأ العمل» يغلقها', !(await page.eval(`return Boolean(document.querySelector('[data-today]'));`)));
-  await page.eval(`location.reload(); return true;`).catch(() => undefined);
-  await wait(3000);
-  ok('ولا تعود في اليوم نفسه', !(await page.eval(`return Boolean(document.querySelector('[data-today]'));`)));
+  ok('«انسخ رسالة» تُنسخ', (await page.eval(`return document.querySelector('[data-notifications] [data-act="copy-ready"]').innerText;`)) === 'نُسخت');
+  await page.eval(`document.querySelector('[data-notifications] [data-today-backup]').click(); return true;`);
+  await wait(700);
+  ok('و«آخر نسخة احتياطية» تقود إلى الإعدادات', !(await page.eval(`return Boolean(document.querySelector('[data-notifications]'));`)) && (await page.eval(`return Boolean(document.querySelector('[data-act="open-settings"][aria-current="page"]'));`)));
 
   // ── وفي الطلبات نفسها ───────────────────────────────────────────────
   await page.goto('orders-board');

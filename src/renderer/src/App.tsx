@@ -27,14 +27,13 @@ import ErrorBar from './components/ErrorBar';
 import { ToolNavProvider, useCustomerName } from './components/ToolFrame';
 import ResumePrintDialog from './components/ResumePrintDialog';
 import PrintChooser from './components/PrintChooser';
-import TodayPanel from './components/TodayPanel';
-import { agendaHasItems } from '@shared/agenda';
+import NotificationsBell from './components/NotificationsBell';
+import PageHelp from './components/PageHelp';
+import Overview from './components/Overview';
+import { overviewSteps } from '@shared/overview';
 import { setHijriOffset } from '@shared/dates';
 import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
-
-/** يومُ آخر عرضٍ لـ«ما ينتظرك اليوم» — تفضيلٌ لهذا الجهاز لا بيانات. */
-const TODAY_SEEN = 'diwan.todaySeen';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import { flushBeforeClose } from './lib/beforeClose';
 
@@ -62,7 +61,8 @@ export default function App() {
    */
   const [route, setRoute] = useState<RouteKey>('service');
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 }, pending: 0 });
+  // و`worked` قبل أن تُقرأ العدّادات: لا يظهر «؟» لحظةً لمكتبٍ عمل.
+  const [counts, setCounts] = useState<SidebarCounts>({ templates: 0, issuedToday: 0, orders: { open: 0, dueToday: 0, overdue: 0 }, pending: 0, worked: true });
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [version, setVersion] = useState<string | null>(null);
 
@@ -130,6 +130,8 @@ export default function App() {
     setCounts(c);
     setPrinters(p);
     void window.diwan.license.status().then(setLicense).catch(() => undefined);
+    // «التنبيهات» تُقرأ مع العدّادات: بعد كلّ انتقالٍ وإصدار.
+    void window.diwan.today.agenda().then(setAgenda).catch(() => undefined);
     // حجم الواجهة الذي اختاره المكتب — يُطبَّق عند كل إقلاع.
     window.diwan.ui.setZoom(s.uiScale);
     // وإزاحة الهجري: كلّ تاريخٍ هجريّ يُكتب بعدها يأخذها (الشبّاك والمحرّر وأداة التاريخ).
@@ -151,36 +153,16 @@ export default function App() {
   }, []);
 
   /**
-   * «ما ينتظرك اليوم» (د٧): مرّةً في اليوم عند الإقلاع، بعد معالج البداية، وإن كان
-   * فيه ما يُقال. والطباعة المنقطعة لها حوارها — فتُترك اللوحة إلى إقلاعٍ بعده.
+   * «التنبيهات» (د٧) في الشريط العلوي: جرسٌ برقمه يُفتح متى شاء الموظف — وكانت نافذة «ما ينتظرك اليوم» تُقاطعه كلّ صباح
+   * عند الإقلاع (بقرار المالك ٦ تشرين الأول).
    */
   const [agenda, setAgenda] = useState<TodayAgenda | null>(null);
-  const onboarded = settings?.onboarded ?? false;
-  useEffect(() => {
-    if (!onboarded) return;
-    const day = new Date().toLocaleDateString('en-CA');
-    let seen: string | null = null;
-    try {
-      seen = localStorage.getItem(TODAY_SEEN);
-    } catch {
-      // التخزين راحةٌ لا شرط: بغيره تُعرض اللوحة، وتُغلق بضغطة.
-    }
-    if (seen === day) return;
-    void window.diwan.today
-      .agenda()
-      .then((a) => {
-        if (agendaHasItems(a) && a.pendingPrints.length === 0) setAgenda(a);
-      })
-      .catch(() => undefined);
-  }, [onboarded]);
-  const closeAgenda = () => {
-    setAgenda(null);
-    try {
-      localStorage.setItem(TODAY_SEEN, new Date().toLocaleDateString('en-CA'));
-    } catch {
-      // انظر أعلاه.
-    }
-  };
+
+  /**
+   * «نظرة عامة على ديوان» (الموجة ٢): مرّةً بعد معالج البداية تمرّ على الصفحات ثم وجهته (`after`: «استورد مجلدي»…). ومن
+   * «التنبيهات» و«؟» متى أُريدت — في مكانها (`stay`): الموظف قد يكون في وسط كتابٍ أو ملفّ، فلا تغادر صفحته.
+   */
+  const [overview, setOverview] = useState<{ stay: boolean; after?: () => void } | null>(null);
 
   // العدّادات تتغيّر بإصدار كتاب أو إضافة نموذج.
   const navigate = useCallback(
@@ -190,6 +172,9 @@ export default function App() {
     },
     [refresh]
   );
+
+  /** النظرة العامة من «التنبيهات» أو «؟» — في مكانها. */
+  const startOverview = () => setOverview({ stay: true });
 
   const openEditor = useCallback(
     (patch: Partial<EditorTarget>) => {
@@ -400,8 +385,13 @@ export default function App() {
               window.diwan.ui.setZoom(s.uiScale);
             });
             // «ابدأ جاهزًا»: المكتبة تفتح استيرادها مباشرة — المجلّد أو الحزمة (المرحلة ٥).
-            if (action) setLibraryRequest({ key: Date.now(), action });
-            if (go) navigate(go);
+            const start = () => {
+              if (action) setLibraryRequest({ key: Date.now(), action });
+              if (go) navigate(go);
+            };
+            // أكمل المعالج: النظرة العامة مرّةً ثم وجهته. ومن تخطّاه لم يُرد إرشادًا — والنظرة في «التنبيهات».
+            if (go) setOverview({ stay: false, after: start });
+            else start();
           }}
         />
       )}
@@ -434,6 +424,13 @@ export default function App() {
           onOpenTemplate={(id) => openEditor({ templateId: id })}
           license={license}
           onLicense={() => navigate('settings')}
+          tools={
+            <>
+              {/* «؟» الصفحة حتى أوّل عملٍ يخرج من المكتب، ثم يختفي من الصفحات كلّها. */}
+              {!counts.worked && <PageHelp route={route} onOverview={startOverview} />}
+              <NotificationsBell agenda={agenda} officeName={settings?.officeName ?? ''} onNavigate={navigate} onOverview={startOverview} />
+            </>
+          }
           context={
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
             route === 'editor' ? (
@@ -526,8 +523,16 @@ export default function App() {
       {/* «على أيّ طابعة؟» — تسأله الشاشات حين للدور طابعتان أو طلب المكتب أن يُسأل. */}
       <PrintChooser />
 
-      {agenda && (
-        <TodayPanel agenda={agenda} officeName={settings?.officeName ?? ''} onClose={closeAgenda} onNavigate={navigate} />
+      {overview && (
+        <Overview
+          steps={overviewSteps(counts.worked, overview.stay)}
+          onNavigate={overview.stay ? undefined : navigate}
+          onClose={() => {
+            const after = overview.after;
+            setOverview(null);
+            after?.();
+          }}
+        />
       )}
 
     </>

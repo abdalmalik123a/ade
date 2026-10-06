@@ -18,6 +18,7 @@ import { registerCameraIpc } from './camera';
 import { registerQuestionIpc } from './questions';
 import { registerPhotoIpc } from './photos';
 import { orderCounts } from '../services/orders';
+import { parkedCount } from '../services/today';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
@@ -207,15 +208,10 @@ export function registerIpc(): void {
       .get() as { n: number };
     // قيد العمل كلّه: الطلبات، والمسودات، والمعلّقات (مخزونةً في الإعدادات).
     const drafts = db.prepare('SELECT COUNT(*) AS n FROM drafts').get() as { n: number };
-    const parkedRow = db.prepare("SELECT value FROM settings WHERE key = 'parkedTransactions'").get() as { value: string } | undefined;
-    let parked = 0;
-    try {
-      const list = JSON.parse(parkedRow?.value ?? '[]') as unknown;
-      parked = Array.isArray(list) ? list.length : 0;
-    } catch {
-      parked = 0;
-    }
-    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db), pending: drafts.n + parked };
+    // أوّل عملٍ خرج من المكتب (بوّابة الإنتاج، `ipc/gate.ts`) — أو كتبٌ صدرت قبلها: فيختفي «؟» الصفحات.
+    const worked =
+      Boolean(db.prepare("SELECT 1 FROM settings WHERE key = 'firstWorkAt'").get()) || Boolean(db.prepare('SELECT 1 FROM documents LIMIT 1').get());
+    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db), pending: drafts.n + parkedCount(db), worked };
   });
 
   ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));

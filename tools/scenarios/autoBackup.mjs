@@ -3,7 +3,7 @@
  *
  * تُفعَّل مشفّرةً إلى مجلّد (فلاشةٍ مصنوعة)، و«خذها الآن» تكتب القاعدة ومرآة المخزن، والتالية
  * بلا تغييرٍ لا تكتب شيئًا. ثم يُسترجع منها: بكلمتها يُرى ما فيها، ثم تحلّ محلّ البيانات فيعود
- * ما كان قبل آخر تعديل. ثم «فلاشةٌ نُزعت»: تُقال في الإعدادات وفي «ما ينتظرك اليوم». ثم يُغلق
+ * ما كان قبل آخر تعديل. ثم «فلاشةٌ نُزعت»: تُقال في الإعدادات وفي «التنبيهات». ثم يُغلق
  * البرنامج فتُؤخذ نسخته قبل أن يُغلق.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
@@ -86,7 +86,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   const status = await page.eval(`return document.querySelector('[data-auto-status]')?.innerText ?? '';`);
   ok(`الفلاشة غير الموصولة تُقال في الإعدادات (${status.slice(0, 50)}…)`, status.includes('لم تُؤخذ الأخيرة') && status.includes('فلاشة'));
   const agenda = await page.eval(`return window.diwan.today.agenda();`);
-  ok('وفي «ما ينتظرك اليوم» عند الفتح التالي', Boolean(agenda.autoBackupError?.includes('فلاشة')));
+  ok('وفي «التنبيهات» عند الفتح التالي', Boolean(agenda.autoBackupError?.includes('فلاشة')));
   renameSync(`${USB}-away`, USB);
 
   // ── الإغلاق يأخذ نسخته ────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 /**
- * «ما ينتظرك اليوم» عند الإقلاع (د٧).
+ * «التنبيهات» في الشريط العلوي (د٧ — وكانت نافذةً عند الإقلاع كلّ صباح، فصارت جرسًا برقمه بقرار المالك ٦ تشرين الأول:
+ * لا يُقاطَع الموظف، والجرس يدلّه).
  *
- * صاحب المكتب يفتح البرنامج صباحًا: ما موعده اليوم من الطلبات وما تأخّر، وما جهز
- * ينتظر صاحبه، ومسوداتٌ لم تصدر، وطباعةٌ انقطعت أمس، ونسخةٌ احتياطية طال عهدها.
- * كلّها من القاعدة ولا شيء يُخمَّن — وما لا شيء فيه لا يُعرض.
+ * ما موعده اليوم من الطلبات وما تأخّر، وما جهز ينتظر صاحبه، ومسوداتٌ لم تصدر ومعاملاتٌ عُلّقت، وطباعةٌ انقطعت أمس،
+ * ونسخةٌ احتياطية طال عهدها. كلّها من القاعدة ولا شيء يُخمَّن.
  */
 import type { Database } from 'better-sqlite3';
 import type { TodayAgenda } from '@shared/api';
@@ -14,6 +14,17 @@ import { listDrafts } from './templates';
 
 const localToday = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** المعاملات المعلّقة في الشبّاك — مخزونةٌ في الإعدادات، وما فسد منها لا شيء. */
+export function parkedCount(db: Database): number {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'parkedTransactions'").get() as { value: string } | undefined;
+  try {
+    const list = JSON.parse(row?.value ?? '[]') as unknown;
+    return Array.isArray(list) ? list.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export function todayAgenda(
   db: Database,
@@ -42,6 +53,7 @@ export function todayAgenda(
     dueToday: dueToday.map(pick),
     ready: ready.map(pick),
     drafts: listDrafts(db).length,
+    parked: parkedCount(db),
     pendingPrints: pendingPrints.map((p) => ({ id: p.id, label: p.label, sent: p.sent, total: p.total })),
     lastBackupAt,
     backupDue,

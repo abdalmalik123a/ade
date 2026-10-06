@@ -7,7 +7,24 @@
  * فلا تُقفل بيانات أحد. وورقة معايرة الطابعة إعدادٌ لا إنتاج.
  */
 import { ipcMain } from 'electron';
+import { getDb } from '../db';
+import { produced } from '@shared/overview';
 import { requireProductive } from './license';
+
+/**
+ * أوّل عملٍ خرج من المكتب — كتابٌ أو طباعةٌ أو ملفّ: يُقيَّد مرّةً فيختفي «؟» الصفحات (الموجة ٢، بقرار المالك: «بعد
+ * التنصيب وعمل معاملةٍ أو شيءٍ ما تختفي الأزرار»). وتقييده لا يُفشل العمل نفسه.
+ */
+let worked = false;
+function markFirstWork(out: unknown): void {
+  if (worked || !produced(out)) return;
+  worked = true;
+  try {
+    getDb().prepare("INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES ('firstWorkAt', ?, datetime('now'))").run(new Date().toISOString());
+  } catch {
+    worked = false;
+  }
+}
 
 export const PRODUCTIVE_CHANNELS = [
   'documents:issue',
@@ -40,9 +57,11 @@ export function installProductiveGate(): void {
   ipcMain.handle = ((channel: string, listener: Parameters<typeof ipcMain.handle>[1]) => {
     registered.add(channel);
     if (!gated.has(channel)) return handle(channel, listener);
-    return handle(channel, (event, ...args) => {
+    return handle(channel, async (event, ...args) => {
       requireProductive();
-      return listener(event, ...args);
+      const out: unknown = await listener(event, ...args);
+      markFirstWork(out);
+      return out;
     });
   }) as typeof ipcMain.handle;
 }

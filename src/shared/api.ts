@@ -81,6 +81,8 @@ export type SidebarCounts = {
   orders: OrderCounts;
   /** ما سوى الطلبات في «قيد العمل»: المسودات والمعاملات المعلّقة (المرحلة ٣). */
   pending: number;
+  /** خرج من المكتب عملٌ بعد — كتابٌ أو طباعةٌ أو ملفّ (`ipc/gate.ts`): فلا «؟» في أعلى الصفحات. */
+  worked: boolean;
 };
 
 /** Electron 44 لم يعد يعطي isDefault/status مباشرة — يُستخرجان من options الخاصة بالنظام. */
@@ -173,16 +175,18 @@ export type FieldSuggestion = {
   reason: string;
 };
 
-/** طلبٌ في «ما ينتظرك اليوم» — ما يُعرض ويُنسخ في رسالته. */
+/** طلبٌ في «التنبيهات» — ما يُعرض ويُنسخ في رسالته. */
 export type AgendaOrder = { id: number; customer: string; title: string; dueDate: string | null; phone: string | null };
 
-/** «ما ينتظرك اليوم» عند الإقلاع (د٧). */
+/** «التنبيهات» في الشريط العلوي (د٧ — وكانت «ما ينتظرك اليوم» عند الإقلاع). */
 export type TodayAgenda = {
   overdue: AgendaOrder[];
   dueToday: AgendaOrder[];
   /** جاهزةٌ تنتظر أصحابها — ومعها «انسخ رسالة: طلبكم جاهز» (د٨). */
   ready: AgendaOrder[];
   drafts: number;
+  /** معاملاتٌ عُلّقت في الشبّاك تنتظر صاحبها (قيد العمل). */
+  parked: number;
   /** طباعةٌ انقطعت: ما أُرسل من أوراقها ومجموعها. */
   pendingPrints: { id: string; label: string; sent: number; total: number }[];
   lastBackupAt: string | null;
@@ -870,7 +874,7 @@ export type DiwanApi = {
   fillCard: {
     open(citizenId: number): Promise<void>;
   };
-  /** «ما ينتظرك اليوم» (د٧). */
+  /** «التنبيهات» (د٧). */
   today: {
     agenda(): Promise<TodayAgenda>;
   };

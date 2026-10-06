@@ -24,6 +24,8 @@ export type HeaderProps = {
   /** المدّة التجريبية: أيّامها الباقية، أو أنّها انتهت — وضغطةٌ تفتح «التفعيل». والمفعَّل لا يُرى شيئًا. */
   license?: LicenseStatus | null;
   onLicense?: () => void;
+  /** «التنبيهات» و«؟» الصفحة (الموجة ٢) — في طرف الشريط. */
+  tools?: ReactNode;
 };
 
 type Results = { query: string; documents: DocumentRow[]; others: SearchHits | null };
@@ -34,7 +36,8 @@ export default function Header({
   onOpenTemplate,
   context,
   license,
-  onLicense
+  onLicense,
+  tools
 }: HeaderProps) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState('');
@@ -242,6 +245,7 @@ export default function Header({
               : `${license.status === 'subscribed' ? 'ينتهي الاشتراك' : 'تجريبية'} — بقي ${license.daysLeft} ${license.daysLeft === 1 ? 'يوم' : license.daysLeft <= 10 ? 'أيام' : 'يومًا'}`}
           </button>
         )}
+        {tools}
       </div>
     </header>
   );
