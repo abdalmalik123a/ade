@@ -541,6 +541,8 @@ export type ImportCandidate = {
 };
 
 export type ImportPlan = {
+  /** من مجلّد ملفّات Word (الأصل)، أو من أوراق ملفّ Excel — فتُقال المراجعة بلغته. */
+  source?: 'folder' | 'excel';
   candidates: ImportCandidate[];
   sharedLetterhead: { key: string; layout: LetterheadLayout; count: number } | null;
   duplicates: { ids: string[]; confidence: number }[];
@@ -941,6 +943,8 @@ export type DiwanApi = {
     readPaper(png: Uint8Array, dpi: number | null): Promise<OcrLine[]>;
     /** يقرأ مجلدًا ويبني خطّة — ولا يمسّ القاعدة. */
     planFolder(): Promise<ImportPlan | null>;
+    /** «كتب من ملف Excel»: كلّ ورقةٍ بطاقة في المراجعة نفسها — ولا يُحفظ شيء قبل القبول. */
+    planExcel(): Promise<ImportPlan | null>;
     /**
      * إحصاء آخر مجلّدٍ قُرئ نصًّا في ملفّ يُرسل — أعدادٌ وأسماء خطوطٍ وحدها. يعود بمساره، أو `null` إن أُلغي
      * أو لم يُقرأ مجلّد. (الإحصاء من العملية الرئيسة نفسها، لا ممّا ترسله الواجهة.)

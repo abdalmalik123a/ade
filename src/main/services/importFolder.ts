@@ -38,6 +38,7 @@ import { groupDuplicates, stripTatweel } from './blanks';
 import { applyBlankFields } from '@shared/fieldHints';
 import { HEAD_MAX, findSheetHead, splitSheetHead } from '@shared/sheetHead';
 import { importTemplateFile, type ImageSaver } from './import';
+import { excelToDocs } from './excelDoc';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
 import { learned, recordCorrections, type Correction } from './learning';
@@ -177,6 +178,44 @@ export async function planFolderImport(
     ),
     failed,
     census: censusOf(scans, failed.length)
+  };
+}
+
+/**
+ * «كتب من ملف Excel» (الموجة ٢): كلّ ورقةٍ بطاقة، بالمراجعة نفسها والحفظ نفسه (`applyImportPlan`).
+ *
+ * وخانات ورقة البيانات اقتراحٌ واثق باسم بيانها («اسم المدرسة»، «المحافظة») — فيخدم النموذج كلّ مدرسة —
+ * وفراغات المسافات خاناتٌ بأسمائها تُملأ بالقلم كفراغات Word. وما لم يُستورد من الأوراق يُقال بسببه.
+ */
+export async function planExcelImport(path: string, opts: { saveImage?: ImageSaver } = {}): Promise<ImportPlan> {
+  const book = await excelToDocs(path, opts.saveImage);
+  const file = basename(path);
+  const reason = book.dataSheet ? `من ورقة البيانات «${book.dataSheet}»` : 'من ورقة البيانات';
+  const candidates: ImportCandidate[] = book.sheets.map((sheet) => {
+    const built = applyBlankFields(sheet.doc, { fillMode: 'hand' });
+    const fromData = sheet.doc.fields.map((f) => ({ value: `${f.key} — ${f.label}`, confidence: 0.95, reason }));
+    return {
+      id: newUuid(),
+      file,
+      formIndex: 1,
+      formCount: 1,
+      title: sheet.name,
+      subjectLine: null,
+      doc: built.doc,
+      headCount: 0,
+      letterheadKey: null,
+      letterhead: null,
+      notes: sheet.notes,
+      warnings: [],
+      suggestions: [...fromData, ...built.suggestions]
+    };
+  });
+  return {
+    source: 'excel',
+    candidates,
+    sharedLetterhead: null,
+    duplicates: groupDuplicates(candidates.map((c) => ({ id: c.id, text: docText(c.doc) }))),
+    failed: book.skipped.map((s) => ({ file: s.name, error: s.reason }))
   };
 }
 

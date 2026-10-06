@@ -61,8 +61,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   const hub = await page.eval(`return [...document.querySelectorAll('[data-new-template] [data-act]')].map((b) => b.dataset.act).join(',');`);
   // والعقود الجاهزة حُذفت بقرار المالك (٢٩ أيلول ٢٠٢٦) — يحلّ محلّها ملفّ مستنداتٍ يُستورد.
   ok(
-    `والمكتبة: ورقةٌ فارغة، و«استورد» بـWord ومجلّده وصورة الورقة والاستمارة وPhotoshop والحزمة — بلا باب العقود (${hub})`,
-    hub === 'new-blank,import-menu,new-word,new-folder,new-photo,new-form-image,new-design-import,content-import'
+    `والمكتبة: ورقةٌ فارغة، و«استورد» بـWord ومجلّده وكتب Excel وصورة الورقة والاستمارة وPhotoshop والحزمة — بلا باب العقود (${hub})`,
+    hub === 'new-blank,import-menu,new-word,new-folder,new-excel,new-photo,new-form-image,new-design-import,content-import'
   );
   ok('بلا زرّ إضافةٍ مكرّر', !(await page.text()).includes('إضافة نموذج'));
   ok('والمسودات ليست في المكتبة — هي في «قيد العمل»', !(await page.text()).includes('مسودات'));

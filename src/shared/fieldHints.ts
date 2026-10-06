@@ -9,7 +9,7 @@
  *
  * اقتراحٌ لا قرار (الأساس §١٥): لا يُغيَّر شيءٌ حتى يضغط الموظف.
  */
-import { citizenLink, detectBlanks, suggestFieldName } from './blanks';
+import { citizenLink, detectBlanks, nearText, stripTatweel, suggestDateName, suggestFieldName, trailingText } from './blanks';
 import {
   makeField,
   walkBlocks,
@@ -77,8 +77,14 @@ function countIn(texts: string[], needle: string): number {
 
 // ── الفراغات ─────────────────────────────────────────────────────────────
 
-/** خاتمة الكتاب — والنقاط بعدها زخرفة. */
-const CLOSING = /(التقدير|الشكر|الاحترام|التحية|التحيات|والسلام)$/;
+/** خاتمة الكتاب و«المحترم» بعد المخاطَب — والنقاط بعدها زخرفة. */
+const CLOSING = /(التقدير|الشكر|الاحترام|التحية|التحيات|والسلام|المحترم|المحترمة|المحترمين|المحترمون)$/;
+/**
+ * و«للتفضل بالعلم والاطلاع ...... مع التقدير» و«ولكم الأمر ...... مع فائق الشكر»: النقاط قبل الخاتمة وقفةٌ لا
+ * فراغ — ونقاطٌ قصيرة قبلها كذلك («في / / 20 .... للتفضل بالعلم»).
+ */
+const CLOSING_LEAD = /(?:الاطلاع|بالعلم|للعلم|للتفضل|يلزم|بموجبه|الامر|الأمر)$/;
+const CLOSING_NEXT = /^\s*(?:(?:لل|ل)?(?:تفضل|اطلاع|علم)|و?لكم|و?مع)[^.…_]{0,40}?(?:التقدير|الشكر|الاحترام|التحية|التحيات)/;
 
 /** ما يلي «العدد» ولا يُعدّ: «كتابكم ذو العدد في …» عددُ الكتاب لا عدد شيء. */
 const NOT_COUNTED = new Set(['في', 'من', 'على', 'الى', 'إلى', 'عن', 'لدى', 'مع']);
@@ -93,9 +99,17 @@ type BlankGroup = { hint: FieldHint; confidence: number; reason: string };
  */
 function blankGroups(doc: Doc, skip: ReadonlySet<string> = new Set()): BlankGroup[] {
   const byLabel = new Map<string, BlankGroup>();
+  // آخر كلامٍ في الفقرة السابقة: سطر Excel جزءٌ من جملةٍ قبله («…بموجب الوثيقة الصادرة من ⏎ ( ...... ) والمرقمة»)،
+  // وخليّة الجدول عنوانها في الخليّة قبلها.
+  let carried = '';
+  let lone = 0;
   for (const p of paragraphs(doc)) {
-    if (skip.has(p.id)) continue;
+    if (skip.has(p.id)) {
+      carried = '';
+      continue;
+    }
     let before = '';
+    let lastLabel = '';
     p.inlines.forEach((inline, run) => {
       if (inline.kind !== 'run') {
         // كسر السطر (وخانةٌ قائمة) حدٌّ بين كلامين: خليّةٌ فيها «مدير المدرسة ⏎ التوقيع: ....» اسم فراغها
@@ -106,16 +120,33 @@ function blankGroups(doc: Doc, skip: ReadonlySet<string> = new Set()): BlankGrou
       for (const b of detectBlanks(inline.text)) {
         // اسم الفراغ من سطره، وإلا من السطر قبله — وفراغٌ قبله حدٌّ كذلك: «المحافظة ...... قضاء ......» اسم
         // الثاني «قضاء» لا نقاط الأوّل.
-        const context = (before + inline.text.slice(0, b.start)).replace(/[.…_]{3,}|\(\s*\)/g, '\n');
-        const near = context.split('\n').filter((l) => /[ء-ي]/.test(l)).pop() ?? '';
-        // «مع التقدير .....» زخرفة الخاتمة لا فراغ.
-        if (b.kind === 'dots' && !inline.text.slice(b.end).trim() && CLOSING.test(near.trim())) continue;
-        const guess = b.kind === 'date' ? { value: 'التاريخ', confidence: 0.95, reason: 'صيغة «/ / 20»' } : suggestFieldName(near);
+        const context = before + inline.text.slice(0, b.start);
+        const own = nearText(context);
+        const near = own || carried;
+        // «مع التقدير .....» زخرفة الخاتمة لا فراغ — و«والاطلاع ...... مع التقدير» وقفةٌ قبلها. والمدّ لا يُخفيها:
+        // «والتقديـــر .....» خاتمةٌ كذلك.
+        const after = stripTatweel(inline.text.slice(b.end));
+        const closing =
+          (!after.trim() && CLOSING.test(stripTatweel(near).trim())) ||
+          (CLOSING_NEXT.test(after) && (CLOSING_LEAD.test(stripTatweel(own).trim()) || b.raw.length <= 5));
+        if (b.kind === 'dots' && closing) continue;
+        let guess = b.kind === 'date' ? suggestDateName(own ? context : near, lastLabel) : suggestFieldName(near);
+        let fromPrev = !own && Boolean(carried);
+        // «في ......» أوّل السطر: ما يُسمّيه في آخر السطر قبله («حصل على درجة ⏎ في ......»).
+        if (b.kind !== 'date' && own && guess.value === 'حقل' && carried) {
+          guess = suggestFieldName(`${carried} ${own}`);
+          fromPrev = true;
+        }
+        if (fromPrev && guess.value !== 'حقل') guess = { ...guess, confidence: Math.min(guess.confidence, 0.5), reason: `${guess.reason} — من السطر قبله` };
         // «عدد غياباته ( )» عددُ الغيابات لا «غياباته» — و«ذو العدد في …» ليس عددًا.
         const countedMatch = near.trim().match(/عدد\s+(?:ال)?([ء-ي]+?)(?:ه|ها|هم)?$/);
         const counted = countedMatch && !NOT_COUNTED.has(countedMatch[1]!) ? countedMatch : null;
         const label = counted ? `عدد ال${counted[1]}` : guess.value === 'حقل' ? 'خانة' : guess.value;
-        const group = byLabel.get(label) ?? {
+        lastLabel = label;
+        // فراغٌ بلا اسم خانةٌ وحده — وكانت فراغات الورقة المجهولة خانةً واحدة يملؤها قولٌ واحد. و«التاريخ» بلا
+        // ما يميّزه يلتقي بما كلامه قبله مثله وحده: تاريخ الكتاب في رأسه غير «بتاريخ / /» في متنه.
+        const groupKey = label === 'خانة' ? `خانة ${++lone}` : label === 'التاريخ' ? `التاريخ ${own.trim().replace(/\s+/g, ' ')}` : label;
+        const group = byLabel.get(groupKey) ?? {
           hint: {
             kind: 'blank' as const,
             text: b.raw,
@@ -132,10 +163,11 @@ function blankGroups(doc: Doc, skip: ReadonlySet<string> = new Set()): BlankGrou
         group.hint.field = { ...group.hint.field, width: Math.max(group.hint.field?.width ?? 0, b.width) };
         // اسمٌ واحد من مواضع عدّة: أضعف اجتهادٍ فيها درجته — فلا يُخفى موضعٌ مشكوك.
         group.confidence = Math.min(group.confidence, guess.confidence);
-        byLabel.set(label, group);
+        byLabel.set(groupKey, group);
       }
       before += inline.text;
     });
+    carried = trailingText(before);
   }
   return [...byLabel.values()];
 }

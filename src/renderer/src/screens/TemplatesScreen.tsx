@@ -248,6 +248,26 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     }
   }
 
+  /**
+   * «كتب من ملف Excel» (الموجة ٢): برنامج مخاطباتٍ في Excel — ورقةٌ لكلّ كتاب — يُراجَع كالمجلّد ثم يُحفظ.
+   */
+  async function importExcel() {
+    setBusy(true);
+    try {
+      const found = await window.diwan.templates.planExcel();
+      if (!found) return;
+      if (found.candidates.length === 0) {
+        say(found.failed.length ? `لا ورقة فيها كتابٌ يُطبع من ${found.failed.length}` : 'لا أوراق فيها كتب', 'warn');
+        return;
+      }
+      setPlan(found);
+    } catch (e) {
+      say(errorText(e, 'تعذّرت قراءة ملف Excel'), 'warn');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function applyPlan(edited: ImportPlan, choices: ImportChoices) {
     setBusy(true);
     try {
@@ -455,6 +475,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
                 [
                   { act: 'new-word', icon: 'description', label: 'ملفّ Word', hint: 'بتنسيقه كما رُسم في Word', run: () => void importTemplate() },
                   { act: 'new-folder', icon: 'folder_open', label: 'مجلّد ملفّات Word', hint: 'ملفات المكتب كلّها دفعةً واحدة', run: () => void importFolder() },
+                  { act: 'new-excel', icon: 'table_view', label: 'كتب من ملف Excel', hint: 'كلّ ورقةٍ كتاب، وبيانات المدرسة خانات', run: () => void importExcel() },
                   { act: 'new-photo', icon: 'document_scanner', label: 'صورة ورقة', hint: 'تُقرأ على هذا الجهاز — والتواقيع والأختام لا تُنقل', run: () => setPaperOpen(true) },
                   { act: 'new-form-image', icon: 'dynamic_form', label: 'صورة استمارة', hint: 'صورة الدائرة كما هي، والخانات فوقها', run: () => setFormOpen(true) },
                   { act: 'new-design-import', icon: 'layers', label: 'تصميم من Photoshop أو PDF', hint: 'شهادة أو بطاقة بطبقاتها — في التصاميم', run: () => onImportDesign?.() },

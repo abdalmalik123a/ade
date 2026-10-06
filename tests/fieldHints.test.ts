@@ -143,6 +143,40 @@ describe('الفراغات كلّها خاناتٍ دفعةً واحدة — ل�
     expect(labels.some((l) => l.includes('المدرسة') || l.includes('.') || l === 'عدد الفي')).toBe(false);
   });
 
+  it('وتاريخ الكتاب غير تاريخ كتابهم وتاريخ الميلاد — وفراغان بلا اسمٍ خانتان لا خانة', () => {
+    const doc: Doc = {
+      ...emptyDoc(),
+      blocks: [
+        paragraph([run('التاريخ   /   /   20')]),
+        paragraph([run('كتابكم ذو العدد .......... في   /   /   نرفق لكم')]),
+        paragraph([run('قبل التلميذ ........ من مواليد   /   /   بتاريخ   /   /   ')]),
+        paragraph([run('1- .......... 2- ..........')])
+      ]
+    };
+    const { doc: out } = applyBlankFields(doc);
+    const labels = out.fields.map((f) => f.label);
+    expect(labels).toEqual(expect.arrayContaining(['التاريخ', 'عدد كتابكم', 'تاريخ كتابكم', 'تاريخ الميلاد']));
+    // «التاريخ» في الرأس و«بتاريخ» في المتن تاريخان.
+    expect(labels.filter((l) => l === 'التاريخ')).toHaveLength(2);
+    expect(labels.filter((l) => l === 'خانة')).toHaveLength(2);
+    expect(new Set(out.fields.map((f) => f.key)).size).toBe(out.fields.length);
+  });
+
+  it('وسطرٌ يبدأ بفراغٍ اسمه من آخر السطر قبله — بثقةٍ تُراجَع؛ و«والاطلاع ...... مع التقدير» وقفةٌ لا فراغ', () => {
+    const doc = withLines('بموجب الوثيقة الصادرة من', '( .......... ) والمرقمة ( .......... )', 'للتفضل بالعلم والاطلاع ...... مع التقدير');
+    const { doc: out, suggestions } = applyBlankFields(doc);
+    expect(out.fields.map((f) => f.label)).toEqual(['جهة الإصدار', 'الرقم']);
+    expect(suggestions[0]!.confidence).toBeLessThanOrEqual(0.5);
+    expect(docText(out)).toContain('والاطلاع ...... مع التقدير');
+  });
+
+  it('والنقاط بعد «المحترم» وبعد خاتمةٍ ممدودة وقبل «مع فائق الشكر» زخرفةٌ — والمدّ لا يُخفيها', () => {
+    const doc = withLines('السيد مدير المدرسة المحترم  ....', 'ولكـم الامــــر ...... مع فائق الشكـر والتقديـر ......', 'يرجى تزويدنا باسم ............ مع التقدير');
+    const labels = applyBlankFields(doc).doc.fields.map((f) => f.label);
+    // الفراغ الوحيد: «تزويدنا باسم ......» — النقاط قبل الخاتمة فراغٌ إن لم يسبقها كلام الخاتمة.
+    expect(labels).toEqual(['الاسم']);
+  });
+
   it('وما قبل `from` رأسٌ لا يُمسّ — فراغاته تبقى نقاطًا', () => {
     const before = doc();
     const { doc: out } = applyBlankFields(before, { from: 1 });

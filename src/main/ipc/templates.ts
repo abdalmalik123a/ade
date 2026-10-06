@@ -17,14 +17,12 @@ const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
 const isKind = (k: unknown): k is RevisionKind => KINDS.includes(k as RevisionKind);
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 import { censusText, type WordCensus } from '@shared/wordLosses';
-
-/** إحصاء آخر مجلّدٍ قُرئ — يُحفظ منه، لا ممّا ترسله الواجهة. */
-let lastCensus: WordCensus | null = null;
 import { imageMeta } from '../services/imageSize';
 import { recognizeLayout } from '../services/ocr';
 import {
   applyHabits,
   applyImportPlan,
+  planExcelImport,
   planFolderImport,
   type ImportChoices,
   type ImportOutcome,
@@ -36,6 +34,9 @@ import { learned, learningStats, recordCorrection, suggestCategory, type Correct
 
 /** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
 const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 'clip'];
+
+/** إحصاء آخر مجلّدٍ قُرئ — يُحفظ منه، لا ممّا ترسله الواجهة. */
+let lastCensus: WordCensus | null = null;
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
@@ -157,6 +158,25 @@ export function registerTemplateIpc(): void {
     const plan = await planFolderImport(dir, { saveImage: storeLetterheadImage });
     lastCensus = plan.census ?? null;
     // والعادةُ تُطبَّق بعد القواعد: ما سمّاه مكتبك مرارًا يُقترح باسمه.
+    return applyHabits(getDb(), plan);
+  });
+
+  /**
+   * «كتب من ملف Excel» (الموجة ٢): برنامج مخاطباتٍ في Excel — ورقةٌ لكلّ كتاب وورقة بياناتٍ تملؤها — بطاقاتٌ
+   * في المراجعة نفسها. يُقرأ ولا يُحفظ شيء حتى يقبل الموظف.
+   */
+  ipcMain.handle('templates:planExcel', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const file = await pickOpenPath(win, {
+      title: 'اختر ملف Excel فيه كتب المكتب',
+      buttonLabel: 'اقرأ الملف',
+      filterName: 'Excel',
+      extensions: ['xlsx']
+    });
+    if (!file) return null;
+    const plan = await planExcelImport(file, { saveImage: storeLetterheadImage });
+    lastCensus = null;
     return applyHabits(getDb(), plan);
   });
 

@@ -194,6 +194,8 @@ export default function ImportPlanDialog({
   }
 
   const files = new Set(plan.candidates.map((c) => c.file)).size;
+  /** من أوراق ملفّ Excel لا من مجلّد ملفّات Word — فتُقال المراجعة بلغته. */
+  const excel = plan.source === 'excel';
   const shared = plan.sharedLetterhead;
 
   return (
@@ -203,10 +205,10 @@ export default function ImportPlanDialog({
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-xs shrink-0">
           <div className="flex items-center justify-between">
             <span className="font-headline-sm text-headline-sm text-on-surface">
-              مراجعة ما وجدناه في مجلدك
+              {excel ? 'مراجعة ما وجدناه في ملف Excel' : 'مراجعة ما وجدناه في مجلدك'}
             </span>
             <span className="font-label-md text-label-md text-on-surface-variant">
-              {files} ملفًا ← {plan.candidates.length} بطاقة
+              {excel ? `${plan.candidates.length} ورقة` : `${files} ملفًا`} ← {plan.candidates.length} بطاقة
             </span>
           </div>
           <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -286,7 +288,7 @@ export default function ImportPlanDialog({
             {plan.failed.length > 0 && (
               <div className="mt-space-sm p-space-sm rounded-lg bg-error-container text-on-error-container flex flex-col gap-1">
                 <span className="font-label-md text-label-md font-semibold">
-                  {plan.failed.length} ملفًا لم يُقرأ
+                  {plan.failed.length} {excel ? 'ورقةً لم تُستورد' : 'ملفًا لم يُقرأ'}
                 </span>
                 {plan.failed.map((f) => (
                   <span key={f.file} className="font-label-sm text-label-sm">
