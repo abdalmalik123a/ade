@@ -129,6 +129,20 @@ describe('الفراغات كلّها خاناتٍ دفعةً واحدة — ل�
     expect(suggestions.find((s) => s.value.endsWith('— التاريخ'))?.confidence).toBe(0.95);
   });
 
+  it('وسطور الخليّة لا تلتصق في اسم فراغها، ونقاط فراغٍ قبله ليست من اسمه، و«ذو العدد في» ليس عددًا', () => {
+    const doc: Doc = {
+      ...emptyDoc(),
+      blocks: [
+        paragraph([run('مدير المدرسة'), { kind: 'break' }, run('التوقيع: ..............')]),
+        paragraph([run('المحافظة .............. قضاء ..............')]),
+        paragraph([run('كتابكم ذو العدد في .............. نرفق لكم')])
+      ]
+    };
+    const labels = applyBlankFields(doc).doc.fields.map((f) => f.label);
+    expect(labels).toEqual(expect.arrayContaining(['التوقيع', 'المحافظة', 'قضاء']));
+    expect(labels.some((l) => l.includes('المدرسة') || l.includes('.') || l === 'عدد الفي')).toBe(false);
+  });
+
   it('وما قبل `from` رأسٌ لا يُمسّ — فراغاته تبقى نقاطًا', () => {
     const before = doc();
     const { doc: out } = applyBlankFields(before, { from: 1 });

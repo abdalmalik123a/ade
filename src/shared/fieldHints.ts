@@ -80,6 +80,9 @@ function countIn(texts: string[], needle: string): number {
 /** خاتمة الكتاب — والنقاط بعدها زخرفة. */
 const CLOSING = /(التقدير|الشكر|الاحترام|التحية|التحيات|والسلام)$/;
 
+/** ما يلي «العدد» ولا يُعدّ: «كتابكم ذو العدد في …» عددُ الكتاب لا عدد شيء. */
+const NOT_COUNTED = new Set(['في', 'من', 'على', 'الى', 'إلى', 'عن', 'لدى', 'مع']);
+
 /** فراغاتٌ باسمٍ واحد، ودرجة الاجتهاد في اسمها وسببه — للمراجعة في «استورد مجلدي». */
 type BlankGroup = { hint: FieldHint; confidence: number; reason: string };
 
@@ -94,14 +97,23 @@ function blankGroups(doc: Doc, skip: ReadonlySet<string> = new Set()): BlankGrou
     if (skip.has(p.id)) continue;
     let before = '';
     p.inlines.forEach((inline, run) => {
-      if (inline.kind !== 'run') return;
+      if (inline.kind !== 'run') {
+        // كسر السطر (وخانةٌ قائمة) حدٌّ بين كلامين: خليّةٌ فيها «مدير المدرسة ⏎ التوقيع: ....» اسم فراغها
+        // «التوقيع» — وكان السطران يلتصقان فيصير «…المدرسةالتوقيع».
+        before += '\n';
+        return;
+      }
       for (const b of detectBlanks(inline.text)) {
+        // اسم الفراغ من سطره، وإلا من السطر قبله — وفراغٌ قبله حدٌّ كذلك: «المحافظة ...... قضاء ......» اسم
+        // الثاني «قضاء» لا نقاط الأوّل.
+        const context = (before + inline.text.slice(0, b.start)).replace(/[.…_]{3,}|\(\s*\)/g, '\n');
+        const near = context.split('\n').filter((l) => /[ء-ي]/.test(l)).pop() ?? '';
         // «مع التقدير .....» زخرفة الخاتمة لا فراغ.
-        if (b.kind === 'dots' && !inline.text.slice(b.end).trim() && CLOSING.test((before + inline.text.slice(0, b.start)).trim())) continue;
-        const guess =
-          b.kind === 'date' ? { value: 'التاريخ', confidence: 0.95, reason: 'صيغة «/ / 20»' } : suggestFieldName(before + inline.text.slice(0, b.start));
-        // «عدد غياباته ( )» عددُ الغيابات لا «غياباته».
-        const counted = (before + inline.text.slice(0, b.start)).trim().match(/عدد\s+(?:ال)?([ء-ي]+?)(?:ه|ها|هم)?$/);
+        if (b.kind === 'dots' && !inline.text.slice(b.end).trim() && CLOSING.test(near.trim())) continue;
+        const guess = b.kind === 'date' ? { value: 'التاريخ', confidence: 0.95, reason: 'صيغة «/ / 20»' } : suggestFieldName(near);
+        // «عدد غياباته ( )» عددُ الغيابات لا «غياباته» — و«ذو العدد في …» ليس عددًا.
+        const countedMatch = near.trim().match(/عدد\s+(?:ال)?([ء-ي]+?)(?:ه|ها|هم)?$/);
+        const counted = countedMatch && !NOT_COUNTED.has(countedMatch[1]!) ? countedMatch : null;
         const label = counted ? `عدد ال${counted[1]}` : guess.value === 'حقل' ? 'خانة' : guess.value;
         const group = byLabel.get(label) ?? {
           hint: {

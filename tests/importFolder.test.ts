@@ -13,6 +13,7 @@ import {
 import { listTemplates, prepareTemplates, templateDoc } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { docText, emptyDoc, normalizeDoc, paragraph, run, type Block } from '../src/shared/doc';
+import { strToU8, zipSync } from 'fflate';
 
 const FIXTURE = join(__dirname, 'fixtures', 'school-warning.docx');
 
@@ -50,12 +51,11 @@ describe('مشي المجلد', () => {
 
     // الورقة كما يرسمها قارئ Word: صفّا الرأس أعمدةٌ — وكانت تُبنى من النصّ فتصير أسطرًا.
     expect(c.doc.blocks.some((b) => b.kind === 'columns')).toBe(true);
-    expect(c.headCount).toBe(4);
-    expect(c.doc.fields.map((f) => f.label)).toEqual(expect.arrayContaining(['اسم التلميذ', 'الصف', 'عدد الغيابات']));
+    // ملفٌّ وحده لا يشاركه أحدٌ رأسَه: يبقى الرأس في ورقته، وفراغه («التاريخ: / / 20») خانةٌ كالباقي.
+    expect(c.headCount).toBe(0);
+    expect(c.doc.fields.map((f) => f.label)).toEqual(expect.arrayContaining(['اسم التلميذ', 'الصف', 'عدد الغيابات', 'التاريخ']));
     // و«التلميذ» في موضعين خانةٌ واحدة تُكتب مرّة.
     expect(c.doc.fields.filter((f) => f.label === 'اسم التلميذ')).toHaveLength(1);
-    // وفراغ «التاريخ: / / 20» في الرأس لا يصير خانة: الرأس ترويسة، وفراغاته يملؤها القلم.
-    expect(c.doc.fields.map((f) => f.label)).not.toContain('التاريخ');
     // ولكل حقل مستنتَج درجته وسببه — فيراجعه الموظف على بيّنة.
     expect(c.suggestions).toHaveLength(c.doc.fields.length);
     expect(c.suggestions.find((s) => s.value.endsWith('اسم التلميذ'))?.reason).toBe('اسمُ شخص');
@@ -87,6 +87,36 @@ describe('الترويسة الواحدة تُكتشف', () => {
     expect(letterheadKey(plan.sharedLetterhead!.layout)).toContain('مدرسة الصحوة الابتدائية');
     // وكلّها تشير إلى البصمة نفسها.
     expect(new Set(plan.candidates.map((c) => c.letterheadKey)).size).toBe(1);
+    // والرأس المشترك ترويسة: فراغه «التاريخ: / / 20» يبقى نقاطًا يملؤها القلم، لا خانةً في الورقة.
+    expect(plan.candidates.every((c) => c.headCount === 4)).toBe(true);
+    expect(plan.candidates.every((c) => !c.doc.fields.some((f) => f.label === 'التاريخ'))).toBe(true);
+  });
+
+  it('ورأسٌ لا يتكرّر يبقى في ورقته — فكتابٌ ابتلع رأسُه متنَه لا يُترك بلا خانات ولا يصير «نسخة»', async () => {
+    // كتابان من مدرسةٍ واحدة كما تُخرجها برامج Excel: لا سطر فارغًا بعد الرأس، فالكاشف يعدّ المتن رأسًا —
+    // وبصمتا الرأسين تختلفان بمتنيهما، فلا رأس مشتركًا.
+    const p = (text: string) => `<w:p><w:r><w:t xml:space="preserve">${text}</w:t></w:r></w:p>`;
+    const letter = (subject: string, body: string) =>
+      zipSync({
+        'word/document.xml': strToU8(
+          `<?xml version="1.0" encoding="UTF-8"?><w:document><w:body>` +
+            `<w:tbl><w:tblPr><w:tblBorders><w:top w:val="nil"/></w:tblBorders></w:tblPr><w:tr><w:tc>${p('مدرسة النور الابتدائية')}</w:tc><w:tc>${p('العدد:')}</w:tc></w:tr></w:tbl>` +
+            `${p('الى / المديرية العامة للتربية')}${p(subject)}${p(body)}` +
+            `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:body></w:document>`
+        )
+      });
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-folder-'));
+    writeFileSync(join(dir, '01 - تبليغ.docx'), letter('م/ تبليغ', 'نرفق لكم ورقة التبليغ الخاصة بالسيد ......................'));
+    writeFileSync(join(dir, '02 - طلب حاجة.docx'), letter('م/ طلب حاجة', 'نرجو تزويدنا بما يلزم للصف ................'));
+
+    const plan = await planFolderImport(dir);
+    expect(plan.sharedLetterhead).toBeNull();
+    expect(plan.candidates.map((c) => c.headCount)).toEqual([0, 0]);
+    // فراغ متن كلٍّ منهما خانة — وكانت تبقى نقاطًا لأنها «في الرأس».
+    expect(plan.candidates.map((c) => c.doc.fields.length)).toEqual([1, 1]);
+    expect(plan.duplicates).toEqual([]);
+    // والعنوان بلا ترقيم المكتب.
+    expect(plan.candidates.map((c) => c.title)).toEqual(['تبليغ', 'طلب حاجة']);
   });
 
   it('وملفٌ واحد لا ترويسةَ مشتركة له', async () => {

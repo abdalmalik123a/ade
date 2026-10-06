@@ -193,10 +193,17 @@ export function suggestFieldName(before: string): Suggestion<string> {
   // ١) «الاسم: .......» — العنوان معلنٌ بنقطتيه.
   const colon = text.match(/([^\s:؛،][^:؛،]{0,30}?)\s*[:：]\s*$/);
   if (colon) {
-    return { value: colon[1]!.trim(), confidence: 0.95, reason: 'عنوانٌ منتهٍ بنقطتين' };
+    let value = colon[1]!.trim();
+    // الثلاثون حرفًا قد تبدأ في وسط كلمة: «…رقم البطاقة التموينية الإلكترونية:» لا «م البطاقة…».
+    const at = text.length - colon[0].length;
+    if (at > 0 && /[ء-ي]/.test(text[at - 1]!)) value = value.replace(/^\S+\s*/, '');
+    // وجملةٌ قبل النقطتين («نود إعلامكم بأن المواطن:») ليست عنوانًا: يُسمّى الفراغ من آخرها.
+    if (value && words(value).length <= 3) return { value, confidence: 0.95, reason: 'عنوانٌ منتهٍ بنقطتين' };
+    if (value) return suggestFieldName(value);
   }
 
-  const ws = words(text);
+  // كلمةٌ بأقلّ من حرفين («/ة»، «20»، «ل») ليست اسمًا: يُسمّى الفراغ بما قبلها.
+  const ws = words(text).filter((w) => (w.match(/[ء-ي]/g) ?? []).length >= 2);
   const last = ws[ws.length - 1] ?? '';
   const prev = ws[ws.length - 2] ?? '';
 

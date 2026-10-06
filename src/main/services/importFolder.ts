@@ -30,6 +30,7 @@ import { isLayoutEmpty, type LetterheadLayout } from '@shared/letterhead';
 import type {
   ImportCandidate,
   ImportChoices,
+  ImportedTemplate,
   ImportOutcome,
   ImportPlan
 } from '@shared/api';
@@ -113,11 +114,13 @@ export async function planFolderImport(
     .sort()
     .slice(0, limit);
 
-  const candidates: ImportCandidate[] = [];
   const failed: ImportPlan['failed'] = [];
   /** ما في كلّ ملفٍّ ولا يُنقل — للإحصاء: ملفٌّ واحد ولو كان فيه عدّة استمارات. */
   const scans: WordScan[] = [];
 
+  // ── الأولى: كلّ ملفٍّ أوراقُه ورأسُ كلٍّ منها كما يُكشف ──
+  type Form = { file: string; res: ImportedTemplate; index: number; count: number; doc: Doc; headCount: number; letterheadKey: string | null; letterhead: LetterheadLayout | null };
+  const forms: Form[] = [];
   for (const name of names) {
     try {
       const res = await importTemplateFile(join(dir, name), opts.saveImage);
@@ -125,42 +128,49 @@ export async function planFolderImport(
       if (!res.doc) throw new Error('لم تُقرأ ورقة الملف');
       // ترويسةٌ في رأس صفحة Word: الورقة لا تحملها، فتُشارك كما كانت ولا يُبحث عن رأسٍ في المتن.
       const fromHeader = res.letterheadFromHeader ? res.letterhead : null;
-      const forms = formsOf(res.doc);
-
-      forms.forEach((form, i) => {
-        const headCount = fromHeader ? 0 : findSheetHead(form);
-        const head = headCount ? splitSheetHead(form, headCount) : null;
-        // الفراغات خاناتٌ تُملأ بالقلم بعد الطباعة ما لم يقل المكتب غير ذلك — وفراغات الرأس لا تُمسّ.
-        const built = applyBlankFields(form, { from: headCount, fillMode: 'hand' });
-        if (!docText(built.doc).trim()) return;
-        const letterhead = head?.layout ?? fromHeader;
-
-        candidates.push({
-          id: newUuid(),
-          file: name,
-          formIndex: i + 1,
-          formCount: forms.length,
-          title: forms.length > 1 ? `${res.title} (${i + 1})` : res.title || basename(name, '.docx'),
-          // سطر «م /» في الورقة نفسها — وسطرُ موضوعٍ فوقها يكرّره (كالملفّ الواحد).
-          subjectLine: null,
-          doc: built.doc,
-          headCount,
-          letterheadKey: letterheadKey(letterhead),
-          letterhead,
-          notes: res.docNotes ?? [],
-          warnings: [],
-          suggestions: built.suggestions,
-          scan: res.scan
-        });
+      const parts = formsOf(res.doc);
+      parts.forEach((doc, index) => {
+        const headCount = fromHeader ? 0 : findSheetHead(doc);
+        const letterhead = (headCount ? splitSheetHead(doc, headCount)?.layout : null) ?? fromHeader;
+        forms.push({ file: name, res, index, count: parts.length, doc, headCount, letterheadKey: letterheadKey(letterhead), letterhead });
       });
     } catch (e) {
       failed.push({ file: name, error: e instanceof Error ? e.message : String(e) });
     }
   }
 
+  // ── الثانية: الرأس رأسٌ إن تكرّر بين الملفّات وحده ──
+  // رأسٌ لا يتكرّر قد يكون ابتلع الكتاب نفسه: كتابٌ لا سطر فارغًا بين رأسه ومتنه يُعدّ متنُه رأسًا — فتبقى
+  // فراغاته نقاطًا، ويصير كلّ كتابٍ من الدائرة «نسخةً» من غيره. فيبقى في ورقته، وتُبحث فيه الفراغات كلّها.
+  const shared = findShared(forms);
+  const candidates: ImportCandidate[] = [];
+  for (const f of forms) {
+    const headCount = shared && f.letterheadKey === shared.key ? f.headCount : 0;
+    // الفراغات خاناتٌ تُملأ بالقلم بعد الطباعة ما لم يقل المكتب غير ذلك — وفراغات الرأس المشترك لا تُمسّ.
+    const built = applyBlankFields(f.doc, { from: headCount, fillMode: 'hand' });
+    if (!docText(built.doc).trim()) continue;
+    candidates.push({
+      id: newUuid(),
+      file: f.file,
+      formIndex: f.index + 1,
+      formCount: f.count,
+      title: titleOf(f.res.title, f.file, f.index, f.count),
+      // سطر «م /» في الورقة نفسها — وسطرُ موضوعٍ فوقها يكرّره (كالملفّ الواحد).
+      subjectLine: null,
+      doc: built.doc,
+      headCount,
+      letterheadKey: f.letterheadKey,
+      letterhead: f.letterhead,
+      notes: f.res.docNotes ?? [],
+      warnings: [],
+      suggestions: built.suggestions,
+      scan: f.res.scan
+    });
+  }
+
   return {
     candidates,
-    sharedLetterhead: findShared(candidates),
+    sharedLetterhead: shared,
     // المكرّر بمتنه لا برأسه: رأسٌ واحد لكلّ كتب المدرسة لا يجعل الإنذار والتأييد نسختين.
     duplicates: groupDuplicates(
       candidates.map((c) => ({ id: c.id, text: docText({ ...c.doc, blocks: c.doc.blocks.slice(c.headCount ?? 0) }) }))
@@ -170,8 +180,19 @@ export async function planFolderImport(
   };
 }
 
+/**
+ * عنوان البطاقة: ما استُنتج من نصّها — إلا أن يكون أرقامًا أو أقلّ من كلمة («1 9» من خليّةٍ في أعلاها)،
+ * فاسمُ الملفّ. وبلا ترقيم المكتب في أوّله: «06 - طلب تنسيب» عنوانه «طلب تنسيب».
+ */
+export function titleOf(found: string, file: string, index: number, count: number): string {
+  const unnumbered = (s: string) => s.replace(/^\s*\d+\s*[-–_.]\s*/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
+  const fromText = unnumbered(found ?? '');
+  const title = (fromText.match(/[ء-ي]/g) ?? []).length >= 3 ? fromText : unnumbered(basename(file, extname(file))) || fromText;
+  return count > 1 ? `${title} (${index + 1})` : title;
+}
+
 /** الترويسة الأكثر تكرارًا إن تكرّرت — وإلا فلكلّ ملف ترويسته. */
-function findShared(candidates: ImportCandidate[]): ImportPlan['sharedLetterhead'] {
+function findShared(candidates: { letterheadKey: string | null; letterhead: LetterheadLayout | null }[]): ImportPlan['sharedLetterhead'] {
   const counts = new Map<string, { layout: LetterheadLayout; count: number }>();
   for (const c of candidates) {
     if (!c.letterheadKey || !c.letterhead) continue;
