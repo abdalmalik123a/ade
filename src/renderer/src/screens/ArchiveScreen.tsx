@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { localStamp } from '@shared/dates';
+import { LIST_LIMITS, limitNote } from '@shared/limits';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
@@ -156,6 +157,8 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
   }, [toast]);
 
   const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  /** القائمة بلغت حدّها: يُقال ذلك تحتها لا يُظنّ أنها كلّ ما في الأرشيف. */
+  const capNote = limitNote(rows.length, LIST_LIMITS.documents, 'كتاب', 'الأحدث أوّلًا؛ ضيّق المدّة أو ابحث بالاسم أو الرقم لترى غيرها');
   const toggle = (id: number) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -395,6 +398,11 @@ export default function ArchiveScreen({ query: globalQuery = '', onOpenInEditor,
               {nf.format(rows.length)} كتابًا
             </span>
           </div>
+          {capNote && (
+            <p className="mx-space-md mb-space-sm font-label-sm text-label-sm text-on-surface-variant" data-list-limit="">
+              {capNote}
+            </p>
+          )}
 
           {/* تدقيق الكتاب المحدَّد: بصمته، وما طُبع منه، وتاريخه في السجلّ — وإبطاله */}
           {detail && (

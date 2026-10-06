@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
 import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
 import { canonicalNationalId } from '@shared/idChecks';
+import { LIST_LIMITS } from '@shared/limits';
 import { digitsOf, indexRow, matchIds, unindexRow } from './searchIndex';
 import type {
   Attachment,
@@ -85,7 +86,7 @@ export function listCitizens(
   db: Database,
   opts: { query?: string; category?: string | null; limit?: number } = {}
 ): CitizenSummary[] {
-  const limit = opts.limit ?? 300;
+  const limit = opts.limit ?? LIST_LIMITS.citizens;
   const category = opts.category ?? null;
   const q = (opts.query ?? '').trim();
 

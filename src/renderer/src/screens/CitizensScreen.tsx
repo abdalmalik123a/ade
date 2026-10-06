@@ -18,6 +18,7 @@ import MultiCardDialog from '../components/MultiCardDialog';
 import UploadExportDialog from '../components/UploadExportDialog';
 import { readMrz, type MrzResult } from '@shared/mrz';
 import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
+import { LIST_LIMITS, limitNote } from '@shared/limits';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
 
@@ -226,6 +227,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
   }
 
   const field = (v: string | null) => v || '—';
+  /** القائمة بلغت حدّها: يُقال ذلك فوقها لا يُظنّ أنها كلّ الملفّات. */
+  const capNote = limitNote(items.length, LIST_LIMITS.citizens, 'ملف', 'اكتب الاسم أو الرقم أو اختر صنفًا لتجد غيرها');
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
@@ -889,6 +892,11 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
               </div>
             ) : (
               <div className="flex flex-col gap-space-xs max-h-[560px] overflow-y-auto">
+                {capNote && (
+                  <p className="font-label-sm text-label-sm text-on-surface-variant px-space-xs" data-list-limit="">
+                    {capNote}
+                  </p>
+                )}
                 {items.map((c) => (
                   <button
                     key={c.id}

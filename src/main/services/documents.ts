@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { normalizeFold } from '@shared/arabic';
 import { canonicalNationalId } from '@shared/idChecks';
+import { LIST_LIMITS } from '@shared/limits';
 import { touchLetterhead } from './letterheads';
 import { digitsOf, indexRow, matchIds } from './searchIndex';
 import type {
@@ -763,7 +764,7 @@ export type ListOptions = {
 
 export function listDocuments(db: Database, opts: ListOptions = {}): DocumentRow[] {
   prepareDocuments(db);
-  const limit = opts.limit ?? 500;
+  const limit = opts.limit ?? LIST_LIMITS.documents;
   const from = opts.from ?? null;
   const to = opts.to ?? null;
   const q = (opts.query ?? '').trim();

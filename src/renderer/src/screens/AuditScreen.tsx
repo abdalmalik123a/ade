@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { localStamp } from '@shared/dates';
+import { LIST_LIMITS, limitNote } from '@shared/limits';
 import type { AuditEntry } from '@shared/api';
 import { AUDIT_ENTITIES, auditLabel } from '@shared/auditLabels';
 import { errorText } from '../lib/errors';
@@ -22,7 +23,7 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
 
   const load = useCallback(async () => {
     try {
-      setEntries(await window.diwan.audit.list({ entity, query, limit: 500 }));
+      setEntries(await window.diwan.audit.list({ entity, query, limit: LIST_LIMITS.audit }));
     } catch (e) {
       setError(errorText(e, 'تعذّرت قراءة سجلّ التدقيق'));
     }
@@ -33,6 +34,8 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
     return () => clearTimeout(t);
   }, [load, query]);
 
+  /** السجلّ بلغ حدّه: يُقال ذلك تحته لا يُظنّ أنه كلّ ما جرى. */
+  const capNote = limitNote(entries.length, LIST_LIMITS.audit, 'حدث', 'الأحدث أوّلًا؛ اختر نوعًا أو ابحث برقم الصادر لترى غيرها');
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-audit="">
@@ -113,6 +116,11 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
               </tbody>
             </table>
           </div>
+          {capNote && (
+            <p className="p-space-sm font-label-sm text-label-sm text-on-surface-variant" data-list-limit="">
+              {capNote}
+            </p>
+          )}
         </section>
       </div>
     </main>
