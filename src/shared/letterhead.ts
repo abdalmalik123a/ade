@@ -56,6 +56,11 @@ export function asksLetterNumber(layout: LetterheadLayout | null): boolean {
   return layout.sections.some((s) => s.blocks.some((b) => b.kind === 'field' && b.value.includes('رقم_الصادر')));
 }
 
+/** أتطبع الترويسة التاريخ الهجري (`{التاريخ_الهجري}`) في أيّ موضعٍ منها؟ — فيُقيَّد في السجلّ معه. */
+export function printsHijri(layout: LetterheadLayout | null): boolean {
+  return Boolean(layout) && JSON.stringify(layout).includes('التاريخ_الهجري');
+}
+
 export type LetterheadRegistry = {
   show: boolean;
   mode: RegistryMode;

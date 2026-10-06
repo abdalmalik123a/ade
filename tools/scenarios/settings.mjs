@@ -67,6 +67,19 @@ export default async function scenario(page, { profile }) {
     d.close();
     return r?.value ?? null;
   };
+
+  // ── إزاحة الهجري: الميلادي هو الأصل، والهجري يُطابَق يدويًّا (قرار ٦ تشرين الأول) ──────
+  const hijriPreview = () => page.eval(`return document.querySelector('[data-hijri-preview]')?.innerText ?? '';`);
+  const before = await hijriPreview();
+  ok('إزاحة التاريخ الهجري في الإعدادات، والأصل «كما هو»', before.includes('هـ') && (await page.eval(`return document.querySelector('[data-hijri="0"]')?.className.includes('bg-primary-container') ?? false;`)));
+  await page.eval(`document.querySelector('[data-hijri="1"]').click(); return true;`);
+  await wait(500);
+  const after = await hijriPreview();
+  ok('«+١» تزيح الهجري يومًا في المعاينة — والميلادي كما هو', after !== before && after.split('—')[0] === before.split('—')[0]);
+  ok('وتُحفظ فورًا بلا «حفظ»', setting('hijriOffset') === '1');
+  await page.eval(`document.querySelector('[data-hijri="0"]').click(); return true;`);
+  await wait(400);
+  ok('و«كما هو» تعيده', setting('hijriOffset') === '0');
   ok('وخيارها في الإعدادات', (await page.text()).includes('لم يختر المكتب بعد'));
   // أوّل إشعالٍ في ترويسةٍ يصير تفضيل المكتب
   await page.goto('header-seal-configuration');

@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isDateField, mergeFields, type Doc, type DocField } from '@shared/doc';
 import { normalizeFold } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
-import { asksLetterNumber, normalizeLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
   Attachment,
   CitizenInput,
@@ -393,7 +393,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     serialPrefix: settings?.serialPrefix ?? 'م',
     serialYear: settings?.serialYear ?? new Date().getFullYear(),
     gregorianDate: formatGregorian(new Date()),
-    hijriDate: null
+    // الهجري يُقيَّد إن طبعته الترويسة — فالسجلّ يقول ما على الورقة.
+    hijriDate: loaded.some((l) => printsHijri(l.layout)) ? formatHijri(new Date()) : null
   });
 
   async function issue(print: boolean) {

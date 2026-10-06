@@ -29,6 +29,7 @@ import ResumePrintDialog from './components/ResumePrintDialog';
 import PrintChooser from './components/PrintChooser';
 import TodayPanel from './components/TodayPanel';
 import { agendaHasItems } from '@shared/agenda';
+import { setHijriOffset } from '@shared/dates';
 import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
 
@@ -131,6 +132,8 @@ export default function App() {
     void window.diwan.license.status().then(setLicense).catch(() => undefined);
     // حجم الواجهة الذي اختاره المكتب — يُطبَّق عند كل إقلاع.
     window.diwan.ui.setZoom(s.uiScale);
+    // وإزاحة الهجري: كلّ تاريخٍ هجريّ يُكتب بعدها يأخذها (الشبّاك والمحرّر وأداة التاريخ).
+    setHijriOffset(s.hijriOffset);
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,9 @@
 /**
  * التاريخان الميلادي والهجري — التصميم يعرضهما جنبًا إلى جنب في سجل الصادر.
- * التقويم أم القرى هو المعتمد رسميًا في المراسلات، ومتاح داخل Intl بلا أي حزمة.
+ *
+ * **الميلادي هو الأصل** في كتب العراق ودوائره، والهجري يُضاف لمن يحتاجه (قرار المالك، ٦ تشرين
+ * الأول ٢٠٢٦). والهجري يُحسب بتقويم أمّ القرى — متاحٌ في Intl بلا حزمة — وبداية الشهر في العراق
+ * تُعلَن بالرؤية فقد تخالفه بيوم: فيُزاح بإعداد المكتب (`hijriOffset`، من −٢ إلى +٢ يومًا).
  */
 
 const AR_MONTHS = [
@@ -13,13 +16,28 @@ export function formatGregorian(date: Date): string {
   return `${date.getDate()} ${AR_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-/** 12 جمادى الأولى 1446 */
-export function formatHijri(date: Date): string {
+/** إزاحة الهجري بالأيام: عددٌ صحيح من −٢ إلى +٢، وما سواه صفر. */
+export function clampHijriOffset(value: unknown): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.max(-2, Math.min(2, n)) : 0;
+}
+
+let hijriOffsetDays = 0;
+
+/** إزاحة المكتب — تُضبط عند الإقلاع وكلّما غيّرها من الإعدادات (App.tsx). */
+export function setHijriOffset(days: number): void {
+  hijriOffsetDays = clampHijriOffset(days);
+}
+
+/** 12 جمادى الأولى 1446 — بإزاحة المكتب ما لم تُعطَ غيرها. */
+export function formatHijri(date: Date, offsetDays: number = hijriOffsetDays): string {
+  // اليوم نفسه منتصف نهاره، مزاحًا بالأيام — فلا تقلبه ساعةٌ عند منتصف الليل.
+  const day = offsetDays ? new Date(date.getFullYear(), date.getMonth(), date.getDate() + offsetDays, 12) : date;
   const parts = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
-  }).formatToParts(date);
+  }).formatToParts(day);
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((p) => p.type === type)?.value ?? '';
   return `${get('day')} ${get('month')} ${get('year')}`;

@@ -13,7 +13,12 @@ import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
 import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
+import { formatGregorian, formatHijri } from '@shared/dates';
 import { UI_SCALES } from '../shell/Onboarding';
+
+/** إزاحة الهجري بالأيام — يُختار منها ما يطابق ما أُعلن في العراق. */
+const HIJRI_OFFSETS = [-2, -1, 0, 1, 2] as const;
+const indic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 import BackupPanel from '../components/BackupPanel';
 import ArchiveIntegrity from '../components/ArchiveIntegrity';
 import LicenseCard from '../components/LicenseCard';
@@ -160,6 +165,37 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="flex flex-col gap-1" data-hijri-offset="">
+                <div className="flex items-center justify-between gap-space-sm">
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">إزاحة التاريخ الهجري</span>
+                  <div className="flex p-0.5 rounded-lg bg-surface-container-low">
+                    {HIJRI_OFFSETS.map((d) => (
+                      <button
+                        key={d}
+                        className={`h-8 px-2.5 rounded-md font-label-md text-label-md tabular ${
+                          (settings.hijriOffset ?? 0) === d
+                            ? 'bg-primary-container text-on-primary font-semibold'
+                            : 'text-on-surface-variant hover:bg-surface-container-high'
+                        }`}
+                        data-hijri={d}
+                        title={d === 0 ? 'كما يحسبه تقويم أمّ القرى' : `${d > 0 ? 'بعده' : 'قبله'} ${d === 1 || d === -1 ? 'بيوم' : 'بيومين'}`}
+                        type="button"
+                        onClick={() => {
+                          // يُطبَّق ويُحفظ فورًا كحجم الخطّ — والواجهة تأخذه من ساعتها (App.tsx).
+                          setSettings((cur) => (cur ? { ...cur, hijriOffset: d } : cur));
+                          void window.diwan.settings.set({ hijriOffset: d }).then(() => onChanged?.());
+                        }}
+                      >
+                        {d === 0 ? 'كما هو' : `${d > 0 ? '+' : '−'}${indic(Math.abs(d))}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <span className="font-label-sm text-label-sm text-on-surface-variant" data-hijri-preview="">
+                  اليوم {formatGregorian(new Date())} م — {formatHijri(new Date(), settings.hijriOffset ?? 0)} هـ. الميلادي هو الأصل،
+                  والهجري يُحسب بأمّ القرى فيُزاح يومًا أو يومين ليطابق ما يُعلن في العراق.
+                </span>
               </div>
             </section>
 

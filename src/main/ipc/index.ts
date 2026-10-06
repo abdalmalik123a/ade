@@ -24,6 +24,7 @@ import { archiveStats } from '../services/documents';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
 import { normalizeCounterCards } from '@shared/counterCards';
+import { clampHijriOffset } from '@shared/dates';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -45,6 +46,7 @@ const DEFAULTS: OfficeSettings = {
   printOffsets: {},
   basmala: null,
   lastBackupAt: null,
+  hijriOffset: 0,
   counterCards: normalizeCounterCards(undefined),
   newEditor: true
 };
@@ -71,6 +73,7 @@ function readSettings(): OfficeSettings {
     basmala: map.has('basmala') ? map.get('basmala') === 'true' : DEFAULTS.basmala,
     // اليدويّة في القاعدة، والتلقائيّة بجانبها — والتذكير بآخرهما.
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
+    hijriOffset: clampHijriOffset(map.get('hijriOffset') ?? DEFAULTS.hijriOffset),
     // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
     counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
     // الأصل الجديد منذ ٤ تشرين الأول — ومن أطفأه بنفسه يبقى على اختياره.
