@@ -1,118 +1,20 @@
 /**
- * التنسيق على الورقة: Enter وBackspace، والحجم والمحاذاة، والجدول، والعلامة
- * المائية — وكلّها يجب أن تخرج في الطباعة كما رُئيت، لأن محرّك الرسم واحد.
+ * التنسيق على الورقة: الحجم والمحاذاة، وأوزان أعمدة الجدول، والعلامة المائية — وكلّها يجب أن تخرج
+ * في الطباعة كما رُئيت، لأن محرّك الرسم واحد. (وEnter وBackspace وأوامر الجدول صارت لـProseMirror
+ * بعد حذف المحرّر الأوّل: `docPmTable.test.ts` وسيناريوهات المحرّر.)
  */
 import { describe, expect, it } from 'vitest';
-import {
-  FIELD_CHAR,
-  makeTable,
-  mergeWithPrevious,
-  paragraphText,
-  resizeColumn,
-  splitParagraph
-} from '../src/shared/docEdit';
-import {
-  docFromLegacy,
-  emptyDoc,
-  normalizeDoc,
-  paragraph,
-  run,
-  type ImageBlock,
-  type ParagraphBlock,
-  type TableBlock
-} from '../src/shared/doc';
+import { makeTable } from '../src/shared/docEdit';
+import { emptyDoc, normalizeDoc, paragraph, run, type ImageBlock } from '../src/shared/doc';
 import { renderDocHtml, watermarkHtml } from '../src/shared/docHtml';
 
-const para = (doc: ReturnType<typeof emptyDoc>, i = 0) => doc.blocks[i] as ParagraphBlock;
-
-describe('Enter: الفقرة تنشطر عند المؤشّر', () => {
-  it('ما بعد المؤشّر سطرٌ جديد، والحقل ينتقل معه ولا يضيع', () => {
-    const doc = docFromLegacy('نؤيد أن {الاسم} موظف');
-    const res = splitParagraph(doc, para(doc).id, 8, 8)!;
-
-    expect(res.doc.blocks).toHaveLength(2);
-    expect(paragraphText(para(res.doc, 0).inlines)).toBe('نؤيد أن ');
-    expect(paragraphText(para(res.doc, 1).inlines)).toBe(`${FIELD_CHAR} موظف`);
-    expect(res.doc.blocks[1]!.id).toBe(res.id);
-    // الحقل ما زال مستعملًا في المتن، فلا يسقط من شاشة الإدخال.
-    expect(res.doc.fields.map((f) => f.key)).toEqual(['الاسم']);
-  });
-
-  it('السطر الجديد يرث محاذاة سابقه ومسافته البادئة', () => {
-    const doc = emptyDoc();
-    doc.blocks = [paragraph([run('العنوان')], { align: 'center', indent: 20 })];
-    const res = splitParagraph(doc, doc.blocks[0]!.id, 7, 7)!;
-    const next = para(res.doc, 1);
-    expect(next.align).toBe('center');
-    expect(next.indent).toBe(20);
-  });
-
-  it('ما ظُلِّل يُحذف كما في Word', () => {
-    const doc = emptyDoc();
-    doc.blocks = [paragraph([run('أبجدهوز')])];
-    const res = splitParagraph(doc, doc.blocks[0]!.id, 2, 5)!;
-    expect(paragraphText(para(res.doc, 0).inlines)).toBe('أب');
-    expect(paragraphText(para(res.doc, 1).inlines)).toBe('وز');
-  });
-
-  it('التنسيق يبقى على شطري النصّ', () => {
-    const doc = emptyDoc();
-    doc.blocks = [paragraph([run('كبيرٌ عريض', { bold: true, size: 20 })])];
-    const res = splitParagraph(doc, doc.blocks[0]!.id, 5, 5)!;
-    const tail = para(res.doc, 1).inlines[0];
-    expect(tail).toMatchObject({ kind: 'run', marks: { bold: true, size: 20 } });
-  });
-
-  it('لا يُشطر ما ليس فقرة', () => {
-    const doc = emptyDoc();
-    doc.blocks = [makeTable(2, 2)];
-    expect(splitParagraph(doc, doc.blocks[0]!.id, 0, 0)).toBeNull();
-  });
-});
-
-describe('Backspace في أوّل السطر: يلتحق بما قبله', () => {
-  it('يدمج السطرين، ويعيد موضع الالتحام ليقف المؤشّر فيه', () => {
-    const doc = emptyDoc();
-    doc.blocks = [paragraph([run('نؤيد ')]), paragraph([run('بأنّ')])];
-    const res = mergeWithPrevious(doc, doc.blocks[1]!.id)!;
-    expect(res.doc.blocks).toHaveLength(1);
-    expect(paragraphText(para(res.doc).inlines)).toBe('نؤيد بأنّ');
-    expect(res.id).toBe(doc.blocks[0]!.id);
-    expect(res.at).toBe(5);
-  });
-
-  it('السطر الأوّل لا يلتحق بشيء', () => {
-    const doc = emptyDoc();
-    doc.blocks = [paragraph([run('أ')])];
-    expect(mergeWithPrevious(doc, doc.blocks[0]!.id)).toBeNull();
-  });
-
-  it('ولا يُسكب نصٌّ في جدول', () => {
-    const doc = emptyDoc();
-    doc.blocks = [makeTable(2, 2), paragraph([run('بعد الجدول')])];
-    expect(mergeWithPrevious(doc, doc.blocks[1]!.id)).toBeNull();
-  });
-});
-
 describe('الجدول: أعمدةٌ بأوزانٍ نسبية', () => {
-  it('يتّسع العمود ويضيق، ولا ينكمش حتى يختفي', () => {
+  it('أوزانه تخرج في الطباعة عرضًا نسبيًّا', () => {
     const doc = emptyDoc();
-    doc.blocks = [makeTable(2, 3)];
-    const id = doc.blocks[0]!.id;
-
-    const wider = resizeColumn(doc, id, 1, 0.5);
-    expect((wider.blocks[0] as TableBlock).columns).toEqual([1, 1.5, 1]);
-
-    let narrow = doc;
-    for (let i = 0; i < 10; i++) narrow = resizeColumn(narrow, id, 0, -0.5);
-    expect((narrow.blocks[0] as TableBlock).columns[0]).toBe(0.4);
-  });
-
-  it('وأوزانه تخرج في الطباعة عرضًا نسبيًّا', () => {
-    const doc = emptyDoc();
-    doc.blocks = [makeTable(1, 2)];
-    const id = doc.blocks[0]!.id;
-    const html = renderDocHtml(resizeColumn(doc, id, 0, 2), {}, { paragraphs: 'blocks' });
+    const table = makeTable(1, 2);
+    table.columns = [3, 1];
+    doc.blocks = [table];
+    const html = renderDocHtml(doc, {}, { paragraphs: 'blocks' });
     expect(html).toContain('width:75%');
     expect(html).toContain('width:25%');
   });

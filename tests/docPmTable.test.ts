@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { EditorState, TextSelection, type Command } from 'prosemirror-state';
-import { CellSelection, TableMap, mergeCells, tableEditing } from 'prosemirror-tables';
+import { CellSelection, TableMap, mergeCells, splitCell, tableEditing } from 'prosemirror-tables';
 import { blocksToPm, pmBlocks } from '../src/shared/docPm';
 import { makeTable } from '../src/shared/docEdit';
 import {
@@ -100,6 +100,32 @@ describe('الأعمدة تحفظ أوزانها', () => {
     // الخلايا الجديدة تأخذ معرّفاتها حين تُحفظ أوّل مرّة (وفي المحرّر من إضافة المعرّفات الفريدة).
     const once = pmBlocks(s.doc);
     expect(pmBlocks(blocksToPm(once))).toEqual(once);
+  });
+});
+
+describe('العمود والخليّة المدموجة', () => {
+  // كانت على عمليّات المحرّر الأوّل (cells.test.ts) وحُذفت معه؛ وهي هنا على أوامر المحرّر الجديد.
+  const merged = () => run(cells(editor(), [0, 0], [0, 1]), mergeCellsInRow)!;
+
+  it('عمودٌ يُضاف داخل خليّةٍ مدموجة فتتّسع له ولا تنشقّ', () => {
+    const t = saved(run(inCell(merged(), 1, 0), addColumnKeepWidths('after'))!);
+    expect(t.columns).toEqual([1, 1, 3, 1]);
+    expect(t.rows[0]!.cells.map((c) => c.colSpan ?? 1)).toEqual([3, 1]);
+    expect(t.rows.slice(1).every((r) => r.cells.length === 4)).toBe(true);
+  });
+
+  it('وحذف عمودٍ تحت خليّةٍ مدموجة يضيّقها ولا يحذفها', () => {
+    const t = saved(run(inCell(merged(), 1, 1), deleteColumnKeepWidths)!);
+    expect(t.columns).toEqual([1, 1]);
+    expect(t.rows[0]!.cells.map((c) => c.colSpan ?? 1)).toEqual([1, 1]);
+    expect(t.rows.slice(1).every((r) => r.cells.length === 2)).toBe(true);
+  });
+
+  it('وفكّ الدمج يعيد الخلايا', () => {
+    const t = saved(run(inCell(merged(), 0, 0), splitCell)!);
+    expect(t.rows[0]!.cells).toHaveLength(3);
+    expect(t.rows[0]!.cells[0]!.colSpan).toBeUndefined();
+    expect(t.columns).toEqual([1, 3, 1]);
   });
 });
 

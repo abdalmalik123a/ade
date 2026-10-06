@@ -62,8 +62,8 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 
   const save = () => {
     if (!settings) return;
-    // بطاقات الشبّاك والمحرّر تُحفظ لحظة تغييرها — فلا يُعيدها الحفظ.
-    const { counterCards: _cards, newEditor: _newEditor, ...office } = settings;
+    // بطاقات الشبّاك تُحفظ لحظة تغييرها — فلا يُعيدها الحفظ.
+    const { counterCards: _cards, ...office } = settings;
     void window.diwan.settings.set(office).then((saved) => {
       setSettings(saved);
       setDirty(false);
@@ -230,29 +230,6 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                 void window.diwan.settings.set(next).then(() => onChanged?.());
               }}
             />
-
-            {/* ── المحرّر ────────────────────────────────────────────────── */}
-            <section className={card} data-editor-setting="">
-              {title('edit_document', 'المحرّر')}
-              <label className="flex items-start gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
-                <input
-                  checked={settings.newEditor}
-                  className="w-4 h-4 mt-1 accent-secondary"
-                  data-setting="newEditor"
-                  type="checkbox"
-                  onChange={(e) => {
-                    const next = { newEditor: e.target.checked };
-                    setSettings((cur) => (cur ? { ...cur, ...next } : cur));
-                    void window.diwan.settings.set(next).then(() => onChanged?.());
-                  }}
-                />
-                <span>
-                  المحرّر الجديد — تحديدٌ بالحرف عبر الفقرات وCtrl+A، والتنسيق على ما حُدِّد، واللصق من Word بتنسيقه، والصفحات
-                  كما تُطبع.{' '}
-                  <span className="text-on-surface-variant">هو الأصل؛ وإطفاؤه يعيد المحرّر الأوّل احتياطًا.</span>
-                </span>
-              </label>
-            </section>
 
             {/* ── البيانات والنسخ الاحتياطية ─────────────────────────────── */}
             <ArchiveIntegrity card={card} />

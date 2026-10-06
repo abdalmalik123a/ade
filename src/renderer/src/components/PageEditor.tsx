@@ -1,16 +1,17 @@
 /**
- * المحرّر الجديد — الورقة وثيقةٌ واحدة (خطّة الترقية، المرحلة ١: المحرّر يساوي Word).
+ * المحرّر — الورقة وثيقةٌ واحدة (خطّة الترقية، المرحلة ١: المحرّر يساوي Word).
  *
- * المحرّر الأوّل (`DocEditor`) جعل كلّ كتلةٍ مساحة تحريرٍ وحدها، فلا يُحدَّد النصّ عبر
- * الفقرات ولا يُنسَّق دفعةً واحدة — وهذا أكثر ما شكا منه الموظفون. وهنا ProseMirror:
- * التحديد بالحرف أينما امتدّ وCtrl+A، والتنسيق على المحدَّد، والتراجع واللصق من Word
- * بتنسيقه، والكتابة العربية — من مكتبةٍ مجرَّبة لا من كودٍ يُكتب لها.
+ * المحرّر الأوّل جعل كلّ كتلةٍ مساحة تحريرٍ وحدها، فلا يُحدَّد النصّ عبر الفقرات ولا
+ * يُنسَّق دفعةً واحدة — وهذا أكثر ما شكا منه الموظفون. وهنا ProseMirror: التحديد بالحرف
+ * أينما امتدّ وCtrl+A، والتنسيق على المحدَّد، والتراجع واللصق من Word بتنسيقه، والكتابة
+ * العربية — من مكتبةٍ مجرَّبة لا من كودٍ يُكتب لها.
  *
  * **والوثيقة لا تتغيّر.** ما يُحفظ `Doc` بكتلها كما كان (`shared/docPm.ts` جسرٌ في
- * الاتجاهين)، والحقل عقدةٌ ذرّية: تُحذف كلّها أو تبقى، ولا يُكتب داخلها. والخصائص هي
- * خصائص `DocEditor` نفسها، فيحلّ محلّه في الشاشتين بلا أن تتغيّرا.
+ * الاتجاهين)، والحقل عقدةٌ ذرّية: تُحذف كلّها أو تبقى، ولا يُكتب داخلها. وأوامر الجدول
+ * تحفظ ما تصنعه (`shared/docPmTable.ts`).
  *
- * ويُبنى بجانب الأوّل حتى يثبت: الإعدادات تختار بينهما (`newEditor`).
+ * بُني بجانب الأوّل حتى ثبت في الميدان (٤ تشرين الأول ٢٠٢٦)، ثم صار المحرّر الوحيد وحُذف الأوّل
+ * (الموجة ١، المجموعة ج). وأدواته المشتركة — الشريط وقائمة الإدراج ولوحة الحقول — في `editorKit.tsx`.
  */
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
@@ -64,9 +65,9 @@ import {
   SIZES,
   Tool,
   ToolSep,
-  type DocEditorProps,
+  type EditorProps,
   type MenuClip
-} from './DocEditor';
+} from './editorKit';
 import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
 import FieldHints from './FieldHints';
 import { wrongGenderWords } from '@shared/fieldHints';
@@ -117,7 +118,7 @@ export type HeadChoice = {
   onEdit?: () => void;
 };
 
-export type PageEditorProps = DocEditorProps & { head?: HeadChoice };
+export type PageEditorProps = EditorProps & { head?: HeadChoice };
 
 const S = docSchema;
 const N = S.nodes as Record<string, NonNullable<(typeof S.nodes)[string]>>;

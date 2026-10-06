@@ -47,8 +47,7 @@ const DEFAULTS: OfficeSettings = {
   basmala: null,
   lastBackupAt: null,
   hijriOffset: 0,
-  counterCards: normalizeCounterCards(undefined),
-  newEditor: true
+  counterCards: normalizeCounterCards(undefined)
 };
 
 function readSettings(): OfficeSettings {
@@ -75,9 +74,7 @@ function readSettings(): OfficeSettings {
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
     hijriOffset: clampHijriOffset(map.get('hijriOffset') ?? DEFAULTS.hijriOffset),
     // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
-    counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
-    // الأصل الجديد منذ ٤ تشرين الأول — ومن أطفأه بنفسه يبقى على اختياره.
-    newEditor: map.has('newEditor') ? map.get('newEditor') === 'true' : DEFAULTS.newEditor
+    counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections'))))
   };
 }
 

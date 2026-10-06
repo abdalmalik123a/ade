@@ -33,8 +33,8 @@ import { isCombo, shortcut } from '@shared/shortcuts';
 import { errorText } from '../lib/errors';
 import AddressingPicker from '../components/AddressingPicker';
 import DateTools from '../components/DateTools';
-import DocEditor, { type DocEditorApi } from '../components/DocEditor';
 import PageEditor, { type HeadChoice } from '../components/PageEditor';
+import type { EditorApi } from '../components/editorKit';
 import { printedPages } from '../components/pageFlow';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
@@ -120,7 +120,7 @@ function EditorScreen(
   /** فقراتٌ كُتبت حرفيًّا في ثلاثة كتبٍ فأكثر — يُقترح حفظها كليشة بعد الإصدار (د١٢). */
   const [repeated, setRepeated] = useState<{ text: string; count: number }[]>([]);
 
-  const api = useRef<DocEditorApi | null>(null);
+  const api = useRef<EditorApi | null>(null);
   const printRef = useRef<HTMLDivElement | null>(null);
   const dirty = useRef(false);
 
@@ -1082,11 +1082,7 @@ function EditorScreen(
 
           <div className="flex-1 min-h-0">
             {view === 'edit' ? (
-              settings?.newEditor ? (
-                <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} head={headChoice} header={head} values={effective} onChange={setDoc} />
-              ) : (
-                <DocEditor apiRef={api} aside={null} clips={clips} doc={doc} header={head} values={effective} onChange={setDoc} />
-              )
+              <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} head={headChoice} header={head} values={effective} onChange={setDoc} />
             ) : (
               <div className="h-full overflow-auto flex justify-center py-space-lg bg-surface-dim/40" data-preview="">
                 <div style={{ zoom: 0.85 }} className="w-fit">

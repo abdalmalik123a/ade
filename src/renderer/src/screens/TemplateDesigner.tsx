@@ -4,9 +4,8 @@
  * المتغيّرات تُشتقّ من المتن نفسه لا من قائمة منفصلة — فلا يمكن أن تتعارض
  * القائمة مع ما هو مكتوب فعلًا. يكتب الموظف {الاسم} فيظهر المتغيّر تلقائيًا.
  */
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import DocEditor from '../components/DocEditor';
-import PageEditor, { type HeadChoice, type PageEditorProps } from '../components/PageEditor';
+import { useEffect, useMemo, useState } from 'react';
+import PageEditor, { type HeadChoice } from '../components/PageEditor';
 import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
 import { normalizeFold } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
@@ -49,13 +48,6 @@ export default function TemplateDesigner({
   onSaved,
   onDeleted
 }: DesignerProps) {
-  // المحرّر الجديد أو الأوّل — بإعداد المكتب، حتى يثبت الجديد (خطّة الترقية، المرحلة ١).
-  const [newEditor, setNewEditor] = useState(false);
-  useEffect(() => {
-    void window.diwan.settings.get().then((s) => setNewEditor(s.newEditor));
-  }, []);
-  // الأوّل لا يعرف شريط الترويسة (`head`) فيتركه.
-  const Editor: ComponentType<PageEditorProps> = newEditor ? PageEditor : DocEditor;
   const [code, setCode] = useState(initial?.code ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? '');
@@ -720,7 +712,7 @@ export default function TemplateDesigner({
 
           {/* الورقة هي مساحة التأليف الوحيدة؛ المتغيّرات ترافقها في اللوح الجانبي. */}
           <div className="flex-1 min-w-0">
-            <Editor
+            <PageEditor
               clips={clips}
               doc={doc}
               head={headChoice}
