@@ -47,7 +47,8 @@ const DEFAULTS: OfficeSettings = {
   basmala: null,
   lastBackupAt: null,
   hijriOffset: 0,
-  counterCards: normalizeCounterCards(undefined)
+  counterCards: normalizeCounterCards(undefined),
+  schoolFiles: false
 };
 
 function readSettings(): OfficeSettings {
@@ -74,7 +75,8 @@ function readSettings(): OfficeSettings {
     lastBackupAt: lastAnyBackup(map.get('lastBackupAt') ?? null),
     hijriOffset: clampHijriOffset(map.get('hijriOffset') ?? DEFAULTS.hijriOffset),
     // ومكتبٌ أخفى أقسامًا في الإصدار السابق: تُخفى بطاقاتها أوّل مرّة.
-    counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections'))))
+    counterCards: normalizeCounterCards(parseJson(map.get('counterCards')), normalizeHidden(parseJson(map.get('hiddenSections')))),
+    schoolFiles: map.get('schoolFiles') === 'true'
   };
 }
 

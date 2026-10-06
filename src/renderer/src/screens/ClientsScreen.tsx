@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { dominantColor, paletteFrom } from '@shared/designKit';
 import { dueLabel, localToday, statusOf, type Client, type Order } from '@shared/orders';
+import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFile';
 import { errorText } from '../lib/errors';
 
 const KINDS = ['مدرسة', 'روضة', 'إعدادية', 'ثانوية', 'دائرة', 'مديرية', 'شركة', 'جامعة', 'مركز'];
@@ -32,8 +33,18 @@ export type ClientsScreenProps = {
   onChanged?: () => void;
 };
 
-type Draft = { name: string; kind: string; phone: string; address: string; color: string; notes: string };
-const EMPTY: Draft = { name: '', kind: '', phone: '', address: '', color: '', notes: '' };
+type Draft = {
+  name: string;
+  kind: string;
+  phone: string;
+  address: string;
+  color: string;
+  notes: string;
+  schoolGender: string;
+  governorate: string;
+  principal: string;
+};
+const EMPTY: Draft = { name: '', kind: '', phone: '', address: '', color: '', notes: '', schoolGender: '', governorate: '', principal: '' };
 
 export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenProps) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -44,6 +55,8 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** «ملفّ المدارس» مفعّلٌ في الإعدادات — فيُعرض للمدرسة ملفّها. */
+  const [schoolFiles, setSchoolFiles] = useState(false);
 
   const current = typeof selected === 'number' ? (clients.find((c) => c.id === selected) ?? null) : null;
 
@@ -51,6 +64,9 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
   useEffect(() => {
     void reload();
   }, [reload]);
+  useEffect(() => {
+    void window.diwan.settings.get().then((s) => setSchoolFiles(s.schoolFiles));
+  }, []);
 
   useEffect(() => {
     setError(null);
@@ -62,7 +78,10 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
         phone: current.phone ?? '',
         address: current.address ?? '',
         color: current.color ?? '',
-        notes: current.notes ?? ''
+        notes: current.notes ?? '',
+        schoolGender: current.schoolGender ?? '',
+        governorate: current.governorate ?? '',
+        principal: current.principal ?? ''
       });
     else if (selected === 'new') setDraft(EMPTY);
     if (typeof selected === 'number') void window.diwan.orders.list({ clientId: selected }).then(setOrders);
@@ -250,6 +269,62 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                   />
                 </label>
               </div>
+
+              {/* ملفّ المدرسة (الموجة ٢): خيارٌ من الإعدادات — يُكتب مرّةً ويملأ كتبها في الشبّاك. */}
+              {schoolFiles && (SCHOOL_KINDS.includes(draft.kind) || draft.schoolGender || draft.governorate || draft.principal) && (
+                <div className="rounded-xl bg-surface-container-low p-space-md space-y-space-sm" data-school-file="">
+                  <h2 className="font-body-md text-body-md text-on-surface font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">school</span>
+                    ملفّ المدرسة — يملأ كتبها في الشبّاك بـ«هات المدرسة»
+                  </h2>
+                  <div className="grid grid-cols-2 gap-space-md">
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-md text-label-md text-on-surface font-semibold">جنس المدرسة — كما يُطبع تحت اسمها</span>
+                      <input
+                        className={input}
+                        data-school-gender=""
+                        value={draft.schoolGender}
+                        onChange={(e) => setDraft({ ...draft, schoolGender: e.target.value })}
+                      />
+                      <span className="flex flex-wrap gap-1">
+                        {SCHOOL_GENDERS.map((g) => (
+                          <button
+                            key={g}
+                            className={`h-7 px-3 rounded-full font-label-sm text-label-sm ${draft.schoolGender === g ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
+                            data-school-gender-chip={g}
+                            type="button"
+                            onClick={() => setDraft({ ...draft, schoolGender: g })}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </span>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="font-label-md text-label-md text-on-surface font-semibold">المحافظة أو المديرية — كما تُكتب بعد «لتربية»</span>
+                      <input
+                        className={input}
+                        data-school-governorate=""
+                        placeholder="مثال: بغداد الكرخ الأولى"
+                        value={draft.governorate}
+                        onChange={(e) => setDraft({ ...draft, governorate: e.target.value })}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 col-span-2">
+                      <span className="font-label-md text-label-md text-on-surface font-semibold">اسم مدير المدرسة — يُطبع في التوقيع</span>
+                      <input
+                        className={input}
+                        data-school-principal=""
+                        value={draft.principal}
+                        onChange={(e) => setDraft({ ...draft, principal: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <p className="font-label-sm text-label-sm text-on-surface-variant">
+                    والعام الدراسي يُكتب وحده من التاريخ ({academicYearText(new Date())})، واسم المدرسة اسم الجهة أعلاه كما يُطبع.
+                  </p>
+                </div>
+              )}
 
               {error && <p className="font-label-md text-label-md text-error">{error}</p>}
 

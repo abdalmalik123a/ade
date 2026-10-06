@@ -44,6 +44,8 @@ import { COUNTER_CARDS, cardMatches, normalizeCounterCards, type CounterCard } f
 import InboxPanel, { type InboxOpen } from '../components/InboxPanel';
 import { seasonOf } from '@shared/seasons';
 import { formValues } from '@shared/imageForm';
+import { applySchool, hasSchoolFields, SCHOOL_KINDS, schoolSlotOf, schoolValues } from '@shared/schoolFile';
+import type { Client } from '@shared/orders';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
@@ -129,6 +131,10 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
+  /** «هات المدرسة» (ملفّ المدارس، الموجة ٢): المدارس من «الجهات»، وما ملأه آخر اختيار — فتبديلها يبدّل قيمها. */
+  const [schoolPicker, setSchoolPicker] = useState(false);
+  const [schools, setSchools] = useState<Client[]>([]);
+  const schoolFilled = useRef<Record<string, string>>({});
 
   /** رسالة الزبون من واتساب تُلصق كما هي فتتوزّع على الحقول. */
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -273,6 +279,33 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     } finally {
       setBusy(false);
     }
+  }
+
+  /** «ملفّ المدارس» مفعّلٌ، وفي الأوراق خانةٌ من ملفّ المدرسة — فيُعرض «هات المدرسة». */
+  const schoolOn = Boolean(settings?.schoolFiles) && hasSchoolFields(fields);
+  const schoolNameKey = useMemo(() => fields.find((f) => schoolSlotOf(f.key, f.source) === 'name')?.key ?? null, [fields]);
+  useEffect(() => {
+    if (schoolOn) void window.diwan.clients.list().then(setSchools);
+  }, [schoolOn]);
+
+  // والعام الدراسي يُكتب وحده من التاريخ (والخيار مفعّل) — في خانته الفارغة، فما كتبه الموظف لا يُمسّ.
+  useEffect(() => {
+    if (!settings?.schoolFiles || step !== 'fill') return;
+    const year = schoolValues(fields, null, new Date());
+    if (!Object.keys(year).length) return;
+    setValues((prev) => {
+      const missing = Object.entries(year).filter(([key]) => !prev[key]?.trim());
+      return missing.length ? { ...prev, ...Object.fromEntries(missing) } : prev;
+    });
+  }, [fields, settings?.schoolFiles, step]);
+
+  /** ملفّ المدرسة يملأ خاناتها — وما كتبه الموظف بيده لا يُطمس، وما ملأته مدرسةٌ سابقة يُستبدل. */
+  function useSchool(school: Client, base: Record<string, string> = values, filled: Record<string, string> = schoolFilled.current) {
+    const out = applySchool(base, schoolValues(fields, school, new Date()), filled);
+    schoolFilled.current = out.filled;
+    setValues(out.values);
+    setSchoolPicker(false);
+    say(`مُلئت بيانات ${school.name}`);
   }
 
   /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه من الحقول. */
@@ -553,6 +586,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setPicked([]);
     setLoaded([]);
     setValues({});
+    schoolFilled.current = {};
     setLetterNo('');
     setGenderByHand(false);
     setCitizenId(null);
@@ -1133,6 +1167,18 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                   <span className="material-symbols-outlined text-[18px] text-secondary">badge</span>
                   هات الزبون
                 </button>
+                {schoolOn && (
+                  <button
+                    className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+                    data-act="pick-school"
+                    title="اسم المدرسة وجنسها ومحافظتها ومديرها من ملفّها في «الجهات»"
+                    type="button"
+                    onClick={() => setSchoolPicker(true)}
+                  >
+                    <span className="material-symbols-outlined text-[18px] text-secondary">school</span>
+                    هات المدرسة
+                  </button>
+                )}
                 <button
                   className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
                   data-act="whatsapp-paste"
@@ -1263,11 +1309,16 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         <input
                           className="flex-1 min-w-0 h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                           type="text"
+                          // واسم المدرسة يقترح مدارس «الجهات»: اختيار إحداها يملأ بقيّة ملفّها.
+                          list={schoolOn && f.key === schoolNameKey ? 'diwan-schools' : undefined}
                           placeholder={effective[f.key] && !values[f.key] ? effective[f.key] : undefined}
                           value={values[f.key] ?? ''}
-                          onChange={(e) =>
-                            setValues((prev) => ({ ...prev, [f.key]: e.target.value }))
-                          }
+                          onChange={(e) => {
+                            const typed = e.target.value;
+                            const school = schoolOn && f.key === schoolNameKey ? schools.find((s) => s.name === typed.trim()) : undefined;
+                            if (school) useSchool(school, { ...values, [f.key]: typed }, { ...schoolFilled.current, [f.key]: typed });
+                            else setValues((prev) => ({ ...prev, [f.key]: typed }));
+                          }}
                         />
                         )}
                         {isDateField(f) && (
@@ -1521,6 +1572,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       </div>
 
       {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
+      {schoolPicker && <SchoolPicker schools={schools} onClose={() => setSchoolPicker(false)} onPick={(s) => useSchool(s)} />}
+      {schoolOn && (
+        <datalist id="diwan-schools">
+          {schools.map((s) => (
+            <option key={s.id} value={s.name} />
+          ))}
+        </datalist>
+      )}
 
       {mergePicker && (
         <CitizenMultiPicker
@@ -1622,6 +1681,58 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         </div>
       )}
     </main>
+  );
+}
+
+/** «هات المدرسة» (ملفّ المدارس): جهات المكتب والمدارسُ أوّلها، ويُبحث فيها بالاسم. */
+function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; onClose: () => void; onPick: (school: Client) => void }) {
+  const [query, setQuery] = useState('');
+  const q = normalizeFold(query.trim());
+  const isSchool = (c: Client) => SCHOOL_KINDS.includes(c.kind ?? '') || Boolean(c.schoolGender || c.governorate || c.principal);
+  const rows = schools.filter((c) => !q || normalizeFold(c.name).includes(q)).sort((a, b) => Number(isSchool(b)) - Number(isSchool(a)));
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
+      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm" data-school-picker="">
+        <span className="font-headline-sm text-headline-sm text-on-surface">هات المدرسة</span>
+        <input
+          autoFocus
+          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+          placeholder="اسم المدرسة"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
+          {rows.length === 0 ? (
+            <span className="py-space-md text-center font-label-md text-label-md text-on-surface-variant">
+              {schools.length ? 'لا مدرسة بهذا الاسم' : 'أضف المدارس في «الجهات» بملفّاتها — مرّةً واحدة'}
+            </span>
+          ) : (
+            rows.map((c) => (
+              <button
+                key={c.id}
+                className="min-h-10 px-3 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between gap-space-sm"
+                data-school-pick={c.id}
+                type="button"
+                onClick={() => onPick(c)}
+              >
+                <span>{c.name}</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+                  {[c.schoolGender, c.governorate, c.principal].filter(Boolean).join(' · ') || c.kind || ''}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+        <button
+          className="h-9 self-end px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+          type="button"
+          onClick={onClose}
+        >
+          إغلاق
+        </button>
+      </div>
+    </div>
   );
 }
 

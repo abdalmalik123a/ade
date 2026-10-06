@@ -14,6 +14,7 @@ import { measureFromOffset, offsetFromMeasure } from '@shared/calibration';
 import { normalizeLayout } from '@shared/letterhead';
 import { SHORTCUTS } from '@shared/shortcuts';
 import { formatGregorian, formatHijri } from '@shared/dates';
+import { academicYearText } from '@shared/schoolFile';
 import { UI_SCALES } from '../shell/Onboarding';
 
 /** إزاحة الهجري بالأيام — يُختار منها ما يطابق ما أُعلن في العراق. */
@@ -248,6 +249,30 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               onChange={(basmala) => setSettings((cur) => (cur ? { ...cur, basmala } : cur))}
               say={say}
             />
+
+            {/* ── ملفّ المدارس (الموجة ٢) ─────────────────────────────────── */}
+            <section className={card} data-school-files-setting="">
+              {title('school', 'ملفّ المدارس')}
+              <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
+                <input
+                  checked={settings.schoolFiles}
+                  className="w-4 h-4 accent-secondary"
+                  data-setting="schoolFiles"
+                  type="checkbox"
+                  onChange={(e) => {
+                    const schoolFiles = e.target.checked;
+                    // يُطبَّق ويُحفظ فورًا كحجم الخطّ — تغييرٌ يُرى لا يحتاج «حفظ».
+                    setSettings((cur) => (cur ? { ...cur, schoolFiles } : cur));
+                    void window.diwan.settings.set({ schoolFiles }).then(() => onChanged?.());
+                  }}
+                />
+                مكتبٌ يخدم مدارس: لكلّ مدرسةٍ ملفّها يملأ كتبها
+              </label>
+              <p className="font-label-sm text-label-sm text-on-surface-variant">
+                جنس المدرسة ومحافظتها واسم مديرها تُكتب مرّةً في «الجهات»، وفي الشبّاك «هات المدرسة» يملأ بها الكتب — والعام الدراسي
+                يُكتب وحده من التاريخ ({academicYearText(new Date())}). ومطفأٌ ما لم يحتجه المكتب.
+              </p>
+            </section>
 
             <div className="lg:col-span-2">
               <button

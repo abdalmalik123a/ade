@@ -42,6 +42,13 @@ export type Client = {
   logo: string | null;
   letterheads: number;
   openOrders: number;
+  /**
+   * ملفّ المدرسة (`shared/schoolFile.ts`، خيارٌ من الإعدادات): جنسها كما يُطبع تحت اسمها («المختلطة»)، ومحافظتها أو
+   * مديريتها، واسم مديرها — يملأ كتبها في الشبّاك بـ«هات المدرسة».
+   */
+  schoolGender: string | null;
+  governorate: string | null;
+  principal: string | null;
 };
 
 export type ClientInput = {
@@ -52,6 +59,9 @@ export type ClientInput = {
   address?: string | null;
   color?: string | null;
   notes?: string | null;
+  schoolGender?: string | null;
+  governorate?: string | null;
+  principal?: string | null;
 };
 
 export type Order = {

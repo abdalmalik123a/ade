@@ -14,6 +14,16 @@ describe('الجهات', () => {
     expect(() => saveClient(db, { id: c.id, name: 'x', color: 'أزرق' })).toThrow('اللون');
   });
 
+  it('وملفّ المدرسة يُحفظ — وحفظٌ لا يرسله (والخيار مطفأ) لا يمحوه', () => {
+    const db = freshDb();
+    const c = saveClient(db, { id: null, name: 'مدرسة النور', kind: 'مدرسة', schoolGender: 'المختلطة', governorate: 'بابل', principal: 'سالم حسن' });
+    expect(c).toMatchObject({ schoolGender: 'المختلطة', governorate: 'بابل', principal: 'سالم حسن' });
+    // شاشةٌ لا تعرف ملفّ المدرسة تحفظ الهاتف وحده.
+    expect(saveClient(db, { id: c.id, name: 'مدرسة النور', kind: 'مدرسة', phone: '0770' })).toMatchObject({ phone: '0770', principal: 'سالم حسن' });
+    // ويُمحى حين يُرسل فارغًا.
+    expect(saveClient(db, { id: c.id, name: 'مدرسة النور', principal: ' ' }).principal).toBeNull();
+  });
+
   it('وشعارها شعارٌ مربوطٌ بها يحلّ محلّ سابقه', () => {
     const db = freshDb();
     const c = saveClient(db, { id: null, name: 'ثانوية المتميزين' });
