@@ -26,6 +26,7 @@
   "build": {
     "appId": "iq.diwan.bureau",
     "productName": "Diwan",
+    "afterPack": "tools/afterPack.cjs",
     "directories": {
       "output": "release",
       "buildResources": "resources"

@@ -7,14 +7,38 @@
  *
  * وصورة الزبون لا تغادر هذه العملية إلى أيّ مكان: تدخل بكسلاتٍ وتخرج قناعًا.
  */
-import { InferenceSession, Tensor } from 'onnxruntime-node';
+import type { InferenceSession } from 'onnxruntime-node';
 import { decontaminate, modelInput, modelSize, sharpenAlpha, upsampleAlpha } from '@shared/portraitMask';
+
+type Ort = typeof import('onnxruntime-node');
+
+/**
+ * مكتبة ONNX تُحمَّل عند أوّل صورةٍ لا عند إقلاع البرنامج (مراجعة ٧ ت١).
+ *
+ * ملحقها الأصلي يستورد مكتبات مايكروسوفت (VC++ 2015-2022). وكان `import` علويًّا في أوّل سطور العملية
+ * الرئيسة قبل أن يُركَّب معالج الأخطاء، فجهازٌ بلا تلك المكتبات يُسقط **البرنامج كلّه** عند الإقلاع
+ * بنافذة خطأٍ إنكليزية — لمجرّد ميزةٍ واحدة. الآن تتعطّل «إزالة الخلفية» وحدها برسالةٍ عربية تُقال لماذا.
+ * (والمثبّت يحمل تلك الملفات بجوار الملحق، فهذا خطّ الدفاع الثاني لا الأوّل.)
+ */
+let ortLoad: Promise<Ort> | null = null;
+export function loadOrt(): Promise<Ort> {
+  ortLoad ??= import('onnxruntime-node').catch((e: unknown) => {
+    ortLoad = null; // المحاولة التالية تعيد المحاولة (قد يكون المستخدم ثبّتها الآن)
+    const why = e instanceof Error ? e.message.split('\n')[0]!.slice(0, 160) : String(e).slice(0, 160);
+    console.error('[portrait] تعذّر تحميل onnxruntime-node', e);
+    throw new Error(
+      'تعذّر تشغيل مكتبة إزالة الخلفية على هذا الجهاز — غالبًا لأنّ «Microsoft Visual C++ Redistributable» (x64) غير مثبّتة. ' +
+        `ثبّتها مجانًا من موقع مايكروسوفت ثم أعد فتح ديوان، وباقي الأدوات تعمل كما هي. (${why})`
+    );
+  });
+  return ortLoad;
+}
 
 let cached: { path: string; session: Promise<InferenceSession> } | null = null;
 
 function session(modelPath: string): Promise<InferenceSession> {
   if (!cached || cached.path !== modelPath) {
-    const pending = InferenceSession.create(modelPath, { executionProviders: ['cpu'], graphOptimizationLevel: 'all' });
+    const pending = loadOrt().then((ort) => ort.InferenceSession.create(modelPath, { executionProviders: ['cpu'], graphOptimizationLevel: 'all' }));
     // فشل التحميل لا يُحفظ: المحاولة التالية تعيده.
     pending.catch(() => (cached = null));
     cached = { path: modelPath, session: pending };
@@ -25,6 +49,7 @@ function session(modelPath: string): Promise<InferenceSession> {
 /** قناع النموذج (٠..٢٥٥) بمقاس الصورة — قبل الشدّ إلى الحوافّ. */
 export async function matte(modelPath: string, pixels: Uint8Array | Uint8ClampedArray, width: number, height: number, order: 'rgba' | 'bgra' = 'rgba'): Promise<Uint8Array> {
   const s = await session(modelPath);
+  const { Tensor } = await loadOrt();
   const size = modelSize(width, height);
   const input = new Tensor('float32', modelInput(pixels, width, height, size.w, size.h, order), [1, 3, size.h, size.w]);
   const out = await s.run({ [s.inputNames[0]!]: input });
