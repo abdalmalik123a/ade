@@ -187,6 +187,15 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   box = await paperBox();
   ok('والفولسكاب ٢١٠×٣٣٠', box.w === 210 && box.sheetH === 330);
+  // المقاسات الشائعة في العراق (قرار ٨ ت١: «يشمل الأغلب»)
+  for (const [size, w, h] of [['A3', 297, 420], ['A6', 105, 148], ['LT', 216, 279], ['LG', 216, 356]]) {
+    await choose('[data-act="page-size"]', size);
+    await wait(300);
+    box = await paperBox();
+    ok(`و${size} ${w}×${h}`, box.w === w && box.sheetH === h);
+  }
+  await choose('[data-act="page-size"]', 'FS');
+  await wait(300);
   await click('[data-margins="custom"]');
   await wait(200);
   ok('و«مخصّصة» تفتح أرقام الجوانب الأربعة', (await page.eval(`return document.querySelectorAll('[data-margin]').length;`)) === 4);

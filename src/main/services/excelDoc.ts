@@ -584,7 +584,8 @@ function sheetToDoc(book: ExcelJS.Workbook, ws: ExcelJS.Worksheet, ctx: Omit<Ctx
   // ── الصفحة ──
   const doc = emptyDoc();
   const ps = ws.pageSetup ?? {};
-  const SIZES: Record<number, PageSize> = { 9: 'A4', 11: 'A5', 5: 'FS', 14: 'FS' };
+  // رموز Excel: 1 Letter · 5 Legal · 8 A3 · 9 A4 · 11 A5 · 14 Folio · 70 A6. وLegal يبقى فولسكاب كما كان.
+  const SIZES: Record<number, PageSize> = { 1: 'LT', 8: 'A3', 9: 'A4', 11: 'A5', 5: 'FS', 14: 'FS', 70: 'A6' };
   const inch = (v: number | undefined, fallback: number) => Math.max(5, Math.round(((v ?? fallback) * 25.4) * 10) / 10);
   doc.pageSetup = {
     ...doc.pageSetup,

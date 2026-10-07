@@ -13,6 +13,7 @@
  */
 import { strFromU8 } from 'fflate';
 import {
+  PAGE_MM,
   emptyDoc,
   newUuid,
   paragraph,
@@ -28,7 +29,8 @@ import {
   type PageSetup,
   type ParagraphBlock,
   type TableBlock,
-  type TableCell
+  type TableCell,
+  type PageSize
 } from '@shared/doc';
 import { APPLY_THRESHOLD, fixZeroPeriods } from './blanks';
 
@@ -833,6 +835,30 @@ function convertTable(tbl: XNode, ctx: Ctx): TableBlock {
 
 // ── الصفحة ───────────────────────────────────────────────────────────
 
+/**
+ * مقاس الورقة من أبعاد Word (بالتويب): أقرب المقاسات المعروفة، بتفاوت ٤٥٠ تويبًا (نحو ٨ ملم) في الجهتين —
+ * فالفولسكاب بعرض ٢١٠ أو ٢١٦ (Word يسمّيه Folio ٨٫٥×١٣) يُقرأ فولسكاب. وخارج ذلك: القاعدة القديمة
+ * (قصيرُه A5، وطويلُه ٣٣ سم فولسكاب) وإلا A4.
+ */
+const TWIPS_PER_MM = 1440 / 25.4;
+export function sizeOfTwips(w: number, h: number): PageSize {
+  const short = Math.min(w, h);
+  const long = Math.max(w, h);
+  let best: PageSize | null = null;
+  let bestGap = Infinity;
+  for (const [size, mm] of Object.entries(PAGE_MM) as [PageSize, { w: number; h: number }][]) {
+    const dShort = Math.abs(short - mm.w * TWIPS_PER_MM);
+    const dLong = Math.abs(long - mm.h * TWIPS_PER_MM);
+    if (dShort > 450 || dLong > 450) continue;
+    if (dShort + dLong < bestGap) {
+      best = size;
+      bestGap = dShort + dLong;
+    }
+  }
+  if (best) return best;
+  return Math.abs(short - 8391) < 300 ? 'A5' : Math.abs(long - 18720) < 400 ? 'FS' : 'A4';
+}
+
 function pageSetupFrom(sect: XNode | undefined): { setup: PageSetup; widthTw: number } {
   const pgSz = kid(sect, 'w:pgSz');
   const mar = kid(sect, 'w:pgMar');
@@ -845,11 +871,10 @@ function pageSetupFrom(sect: XNode | undefined): { setup: PageSetup; widthTw: nu
     bottom: twToMm(m('w:bottom', 1134)),
     left: twToMm(m('w:left', 1134))
   };
-  const short = Math.min(w, h);
   return {
     setup: {
       // والفولسكاب بطوله ٣٣ سم (١٨٧٠٩) — ومنه ما كُتب ١٣ إنشًا (١٨٧٢٠)، فيُقرأ فولسكاب ٢١٠×٣٣٠.
-      size: Math.abs(short - 8391) < 300 ? 'A5' : Math.abs(Math.max(w, h) - 18720) < 400 ? 'FS' : 'A4',
+      size: sizeOfTwips(w, h),
       orientation: w > h ? 'landscape' : 'portrait',
       margins,
       // الرأس أسطرٌ في أعلى الورقة هنا (كما يُصنع في Word) — فلا ترويسة تُطبع فوقه.

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { unzipSync, strToU8, zipSync } from 'fflate';
-import { docxToDoc, parseXml } from '../src/main/services/docxDoc';
+import { docxToDoc, parseXml, sizeOfTwips } from '../src/main/services/docxDoc';
 import type { Block, ColumnsBlock, ImageBlock, Inline, ParagraphBlock, TableBlock } from '../src/shared/doc';
 
 const FIXTURE = join(__dirname, 'fixtures', 'warning-letter.docx');
@@ -255,5 +255,25 @@ describe('قارئ XML', () => {
     expect(a).toMatchObject({ name: 'a', attrs: { x: '1' } });
     expect(a.kids.map((k) => k.name)).toEqual(['b', 'c']);
     expect(a.kids[0]!.text).toBe('ن & ص');
+  });
+});
+
+describe('مقاس ورقة Word (قرار ٨ ت١: يشمل الأغلب)', () => {
+  it('أقرب مقاسٍ معروف في الاتجاهين، بتفاوتٍ لا يتجاوز نحو ٨ ملم', () => {
+    expect(sizeOfTwips(11906, 16838)).toBe('A4');
+    expect(sizeOfTwips(16838, 11906)).toBe('A4'); // أفقي
+    expect(sizeOfTwips(8391, 11906)).toBe('A5');
+    expect(sizeOfTwips(11906, 18709)).toBe('FS'); // F4: ٢١٠×٣٣٠
+    expect(sizeOfTwips(12240, 18720)).toBe('FS'); // Folio في Word: ٨٫٥×١٣ إنش
+    expect(sizeOfTwips(16838, 23811)).toBe('A3');
+    expect(sizeOfTwips(5953, 8391)).toBe('A6');
+    expect(sizeOfTwips(12240, 15840)).toBe('LT');
+    expect(sizeOfTwips(12240, 20160)).toBe('LG');
+  });
+
+  it('وخارج المقاسات المعروفة القاعدة القديمة: قصيرُه A5، وطويلُه ٣٣ سم فولسكاب، وإلا A4', () => {
+    expect(sizeOfTwips(9000, 9000)).toBe('A4');
+    expect(sizeOfTwips(8391, 13000)).toBe('A5');
+    expect(sizeOfTwips(10000, 18720)).toBe('FS');
   });
 });

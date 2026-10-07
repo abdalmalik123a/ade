@@ -117,18 +117,26 @@ export default async function scenario(page, { profile }) {
   ok(`الورقة تحمل مقاسها: أفقي = ${land.attr}`, land.attr === '297x210');
   ok(`وأرشيف الأفقيّ لا يُقصّ (${land.archive})`, land.archive?.[0] === 842 && land.archive?.[1] === 595);
 
+  // المقاسات الشائعة الأخرى (قرار ٨ ت١): A3 وLetter
+  const a3 = await issueAs('A3', 'A3', 'portrait');
+  ok(`الورقة تحمل مقاسها: A3 = ${a3.attr}`, a3.attr === '297x420');
+  ok(`وأرشيف A3 ٢٩٧×٤٢٠ (${a3.archive})`, a3.archive?.[0] === 842 && a3.archive?.[1] === 1191);
+  const letter = await issueAs('Letter', 'LT', 'portrait');
+  ok(`الورقة تحمل مقاسها: Letter = ${letter.attr}`, letter.attr === '216x279');
+  ok(`وأرشيف Letter (${letter.archive})`, Math.abs((letter.archive?.[0] ?? 0) - 612) <= 1 && Math.abs((letter.archive?.[1] ?? 0) - 791) <= 2);
+
   // A5
   const a5 = await issueAs('A5', 'A5', 'portrait');
   ok(`الورقة تحمل مقاسها: A5 = ${a5.attr}`, a5.attr === '148x210');
   ok(`وأرشيف A5 ١٤٨×٢١٠ لا ركنٌ من A4 (${a5.archive})`, a5.archive?.[0] === 420 && a5.archive?.[1] === 595);
 
   // «أعد الطبع» من الأرشيف: بمقاس كلٍّ، وبلا مقاسٍ يُكتب في السجلّ
-  for (const one of [a4, fs, land, a5]) {
+  for (const one of [a4, fs, land, a3, letter, a5]) {
     await page.eval(`return window.diwan.documents.reprint([${one.id}], 1, 'طابعة الاختبار').then(() => true);`);
   }
   await wait(1500);
   const pages = printed().map((l) => l.page);
-  ok(`وإعادة الطبع بمقاس كلّ كتاب (${pages.join('، ')})`, pages.join(',') === '210x297,210x330,297x210,148x210');
+  ok(`وإعادة الطبع بمقاس كلّ كتاب (${pages.join('، ')})`, pages.join(',') === '210x297,210x330,297x210,297x420,216x279,148x210');
 
   // تصدير PDF من السجلّ بمقاس الكتاب
   const exported = await page.eval(`return window.diwan.documents.exportPdf(${fs.id});`);

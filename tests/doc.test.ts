@@ -306,6 +306,20 @@ describe('قراءة وثيقة محفوظة', () => {
     expect(doc.pageSetup.orientation).toBe('portrait');
   });
 
+  it('المقاسات الشائعة في العراق: A3 وA6 وLetter وLegal مع الثلاثة الأولى (قرار ٨ ت١)', () => {
+    const at = (size: string, orientation = 'portrait') =>
+      pageMm(normalizeDoc({ pageSetup: { size, orientation } }).pageSetup);
+    expect(at('A4')).toEqual({ w: 210, h: 297 });
+    expect(at('FS')).toEqual({ w: 210, h: 330 });
+    expect(at('A3')).toEqual({ w: 297, h: 420 });
+    expect(at('A6')).toEqual({ w: 105, h: 148 });
+    expect(at('LT')).toEqual({ w: 216, h: 279 });
+    expect(at('LG', 'landscape')).toEqual({ w: 356, h: 216 });
+    // وما لا يُعرف يعود A4، ولا يمرّ اسمٌ من سلسلة النموذج الأوّل (`constructor`).
+    expect(at('A0')).toEqual({ w: 210, h: 297 });
+    expect(at('constructor')).toEqual({ w: 210, h: 297 });
+  });
+
   it('الورقة الأفقية تقلب مقاسها', () => {
     expect(pageMm({ ...emptyDoc().pageSetup, orientation: 'landscape' })).toEqual({ w: 297, h: 210 });
   });

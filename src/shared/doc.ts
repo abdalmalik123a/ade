@@ -275,7 +275,7 @@ export type Block =
 // ── الصفحة ───────────────────────────────────────────────────────────
 
 /** `FS` الفولسكاب (F4): ٢١٠×٣٣٠ ملم — ورق الدوائر والمحاكم الطويل (حجة الإعالة، الاتفاقيات). مقاسه بقرار المالك ٤ تشرين الأول. */
-export type PageSize = 'A4' | 'A5' | 'FS';
+export type PageSize = 'A4' | 'A5' | 'FS' | 'A3' | 'A6' | 'LT' | 'LG';
 export type Orientation = 'portrait' | 'landscape';
 /**
  * ما فوق المتن. `print` ترويسةٌ رسمية من المكتبة، و`lines` أسطرٌ تُكتب في أعلى الورقة
@@ -311,11 +311,19 @@ export type PageSetup = {
 export const PAGE_MM: Record<PageSize, { w: number; h: number }> = {
   A4: { w: 210, h: 297 },
   A5: { w: 148, h: 210 },
-  FS: { w: 210, h: 330 }
+  FS: { w: 210, h: 330 },
+  // المقاسات الشائعة في العراق غير الثلاثة: شهاداتٌ ولوحات على A3، وبطاقاتٌ وإيصالات على A6،
+  // وورقٌ أمريكيّ (Letter وLegal) تأتي به الطابعات والمطابع (قرار المالك ٨ ت١: «يشمل الأغلب»).
+  A3: { w: 297, h: 420 },
+  A6: { w: 105, h: 148 },
+  LT: { w: 216, h: 279 },
+  LG: { w: 216, h: 356 }
 };
 
+export const isPageSize = (v: unknown): v is PageSize => typeof v === 'string' && Object.prototype.hasOwnProperty.call(PAGE_MM, v);
+
 /** أسماء المقاسات كما يقولها المكتب. */
-export const PAGE_NAMES: Record<PageSize, string> = { A4: 'A4', A5: 'A5', FS: 'فولسكاب' };
+export const PAGE_NAMES: Record<PageSize, string> = { A4: 'A4', A5: 'A5', FS: 'فولسكاب', A3: 'A3', A6: 'A6', LT: 'Letter', LG: 'Legal' };
 
 /**
  * الهوامش بثلاث درجات (قرار ٣ تشرين الأول): ما يختاره الموظف بكلمة لا بأربعة أرقام.
@@ -696,7 +704,7 @@ function normalizePage(raw: unknown): PageSetup {
   if (!isObj(raw)) return base;
   const v = raw as Partial<PageSetup>;
   return {
-    size: v.size === 'A5' || v.size === 'FS' ? v.size : 'A4',
+    size: isPageSize(v.size) ? v.size : 'A4',
     orientation: v.orientation === 'landscape' ? 'landscape' : 'portrait',
     margins: { ...base.margins, ...(isObj(v.margins) ? (v.margins as PageSetup['margins']) : {}) },
     letterheadMode:
