@@ -72,6 +72,23 @@ describe('محرك التفقيط المالي بالدينار العراقي (
     expect(tafqeet('0.25')).toBe('فقط مئتان وخمسون فلسًا لا غير');
   });
 
+  it('والغامض لا يُفقَّط: «25.000» ألفٌ أم دينارٌ بثلاث خانات؟ (مراجعة ٧ ت١)', () => {
+    // كانت تُقرأ ٢٥ بصمتٍ فيُطبع «خمسة وعشرون دينارًا» على عقدٍ مبلغه خمسةٌ وعشرون ألفًا.
+    expect(parseAmount('25.000')).toBeNull();
+    expect(parseAmount('٢٥.٠٠٠')).toBeNull();
+    expect(parseAmount('1.500')).toBeNull();
+    expect(tafqeet('25.000')).toBe('');
+    // الصريح يبقى: فاصلة الآلاف، وبلا نقطة، وأقلّ من ثلاث خاناتٍ أو أكثر منها، والفاصلة العشرية العربية.
+    expect(parseAmount('25,000')).toBe(25000);
+    expect(parseAmount('25000')).toBe(25000);
+    expect(parseAmount('1,500.000')).toBe(1500);
+    expect(parseAmount('250.5')).toBe(250.5);
+    expect(parseAmount('250.50')).toBe(250.5);
+    expect(parseAmount('25.1234')).toBe(25.1234);
+    expect(parseAmount('٢٥٫٠٠٠')).toBe(25);
+    expect(parseAmount('1.500.000')).toBe(1500000);
+  });
+
   it('وما ليس مبلغًا لا يُفقَّط: التاريخ والهاتف', () => {
     expect(parseAmount('2026/01/15')).toBeNull();
     expect(parseAmount('07701234567')).toBeNull();
