@@ -191,5 +191,45 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('القاعدة خالية من النماذج بعد الحذف', count.n === 0);
   ok('لم تبقَ متغيّرات يتيمة', vars.n === 0);
 
+  // ── نموذجٌ مربوطٌ بترويسة يُفتح من المكتبة في المحرّر ومعه رأس الجهة (مراجعة ٧ ت١) ──
+  // كانت دالّة فتح النموذج تقرأ قائمة الترويسات من حالة الشاشة وقت إنشائها وهي فارغة،
+  // فيُفتح بلا ترويسته. وهذا ما لم يلتقطه سيناريو: نماذجها كلّها بلا ترويسة.
+  const lhLine = 'مديرية تربية الاختبار';
+  await page.eval(`
+    const block = { id: 'b1', kind: 'text', value: ${JSON.stringify(lhLine)}, align: 'center', size: 16, bold: true };
+    const sec = (id, blocks) => ({ id, blocks, weight: 1 });
+    const layout = {
+      margins: { top: 20, right: 20, bottom: 20, left: 20 }, columns: 1,
+      sections: [sec('s1', [block]), sec('s2', []), sec('s3', [])],
+      divider: true, registry: { show: false, mode: 'manual' },
+      basmala: { show: false, text: 'بسم الله الرحمن الرحيم', size: 14, align: 'center' }, font: 'naskh'
+    };
+    const lh = await window.diwan.letterheads.save({ id: null, name: 'ترويسة الاختبار', authorityId: null, layout });
+    await window.diwan.templates.save({
+      id: null, code: null, title: 'نموذج بترويسة محفوظة', subtitle: null, category: null, subjectLine: null,
+      bodyHtml: '<p>متن النموذج</p>', letterheadId: lh.id, variables: []
+    });
+    return true;
+  `);
+  // المكتبة لا تُحدَّث بما حُفظ من خلف ظهرها: نغادرها ونعود لتُجلب القائمة من جديد.
+  await page.goto('smart-editor-a4-preview');
+  await wait(600);
+  await page.goto('templates-library-drafts');
+  await wait(1200);
+  await page.eval(`
+    const btn = [...document.querySelectorAll('button')].find((b) => {
+      if (!b.textContent.includes('فتح في المحرر')) return false;
+      let el = b;
+      for (let i = 0; i < 8 && el; i++, el = el.parentElement) if (el.innerText?.includes('نموذج بترويسة محفوظة')) return true;
+      return false;
+    });
+    btn?.click();
+    return true;`);
+  await wait(1800);
+  const openedHead = await page.eval(`
+    const h = document.querySelector('[data-screen="editor"] [data-letter-sheet] [data-letterhead]');
+    return h ? h.innerText : null;`);
+  ok('النموذج المربوط بترويسة يُفتح في المحرّر ومعه رأس الجهة', typeof openedHead === 'string' && openedHead.includes(lhLine));
+
   return steps.join('\n');
 }

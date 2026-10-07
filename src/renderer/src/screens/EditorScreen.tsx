@@ -160,12 +160,13 @@ function EditorScreen(
   const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
 
   /** ترويسةٌ من المكتبة تُنسخ إلى الكتاب؛ وكتابٌ فارغٌ يأخذ هوامشها معها. */
-  function applyLetterhead(found: Letterhead | null, blank = false) {
+  /** `keepMargins`: نموذجٌ يُفتح بهوامشه المحفوظة — فلا تطمسها هوامش ترويسته. */
+  function applyLetterhead(found: Letterhead | null, blank = false, keepMargins = false) {
     setLetterheadId(found?.id ?? null);
     setLayoutDirty(false);
     const next = found ? normalizeLayout(found.layout) : emptyLayout();
     setLayout(next);
-    if (found && (blank || !docText(doc).trim())) {
+    if (found && !keepMargins && (blank || !docText(doc).trim())) {
       setDocState((d) => ({ ...d, pageSetup: { ...d.pageSetup, margins: { ...next.margins } } }));
     }
   }
@@ -193,7 +194,12 @@ function EditorScreen(
     if (!detail) return;
     setDoc(tdoc ?? blankLetter());
     setDocType(detail.title);
-    if (detail.letterheadId) applyLetterhead(letterheads.find((l) => l.id === detail.letterheadId) ?? null);
+    if (detail.letterheadId) {
+      // القائمة تُجلب هنا لا من حالة الشاشة: تُنادى هذه الدالّة من أوّل تصيير وحالتها فارغة،
+      // فكان النموذج المربوط بترويسةٍ يُفتح بلا رأس الجهة (مراجعة ٧ ت١).
+      const lhs = await window.diwan.letterheads.list();
+      applyLetterhead(lhs.find((l) => l.id === detail.letterheadId) ?? null, false, true);
+    }
     setToast(`فُتح النموذج «${detail.title}» — اكتب على الورقة واملأ قيمه من الجانب`);
   }
 
