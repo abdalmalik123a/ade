@@ -68,6 +68,19 @@ describe('الاسم الملتبس يُسأل في كلّ مرّة (قرار ا
     expect(isUnisexName('الطالبة نُور')).toBe(true);
   });
 
+  it('واللقب بعد الاسم الأوّل لا يحسم: «السيد» و«الحاج» من اسم الأب (مراجعة ٧ ت١)', () => {
+    // كان أيّ لقبٍ في أيّ موضع يحسم «يقينًا»: فاطمة السيد حسن تخرج ذكرًا فلا يُسأل عنها فتُطبع «الطالب».
+    expect(guessGender('فاطمة السيد حسن')).toEqual({ gender: 'أنثى', sure: true });
+    expect(guessGender('أحمد الحاجة سعاد')).toEqual({ gender: 'ذكر', sure: true });
+    // وغير المعروف أو الملتبس يُسأل عنه ولو جاء بعده لقب.
+    expect(guessGender('نور الحاج علي')?.sure).toBe(false);
+    expect(guessGender('غسق السيد حسن')?.sure).toBe(false);
+    expect(unsureNames(['نور الحاج علي', 'غسق السيد حسن', 'فاطمة السيد حسن'])).toEqual(['نور الحاج علي', 'غسق السيد حسن']);
+    // واللقب يحسم متى سبق، ولو تعدّدت الألقاب.
+    expect(guessGender('الحاجة السيدة نور علي')).toEqual({ gender: 'أنثى', sure: true });
+    expect(guessGender('الدكتور السيد ضياء كاظم')).toEqual({ gender: 'ذكر', sure: true });
+  });
+
   it('ولا يُحفظ جوابه في ذاكرة المكتب', () => {
     const db = freshDb();
     expect(learnGenders(db, [{ name: 'نور علي', gender: 'أنثى' }, { name: 'غسق حسن', gender: 'أنثى' }])).toBe(1);

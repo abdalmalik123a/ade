@@ -153,9 +153,11 @@ export function guessGender(
   const f = firstName(fullName);
   if (!f) return null;
   const { words, at } = f;
-  const title = words.find((w) => TITLES.test(w));
-  if (title && FEMALE_TITLE.test(title)) return { gender: 'أنثى', sure: true };
-  if (title && MALE_TITLE.test(title)) return { gender: 'ذكر', sure: true };
+  // اللقب يحسم إن سبق الاسم الأوّل فقط («الطالبة نور»). وبعده جزءٌ من اسم الأب أو الجدّ:
+  // «فاطمة السيد حسن» اسمها فاطمة، و«نور الحاج علي» ملتبسٌ يُسأل عنه (مراجعة ٧ ت١).
+  const lead = words.slice(0, at);
+  if (lead.some((w) => FEMALE_TITLE.test(w))) return { gender: 'أنثى', sure: true };
+  if (lead.some((w) => MALE_TITLE.test(w))) return { gender: 'ذكر', sure: true };
   // «عبد الله» و«أم البنين» كلمتان، و«… الدين» اسمُ رجل (نور الدين، علاء الدين، شمس الدين).
   if (/^(أم|ام)$/.test(words[at]!)) return { gender: 'أنثى', sure: true };
   if (/^(عبد|عبد)$/.test(words[at]!)) return { gender: 'ذكر', sure: true };
