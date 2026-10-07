@@ -194,6 +194,21 @@ describe('ملفّ Excel كتبًا', () => {
     expect(adopted).toEqual([{ key: 'المحافظة', label: 'المحافظة' }]);
   });
 
+  it('التاريخ يومًا والخطأ فراغًا — لا «Thu Mar 09 …» ولا «[object Object]» (مراجعة ٧ ت١)', () => {
+    const book = new ExcelJS.Workbook();
+    const ws = book.addWorksheet('تبليغ');
+    ws.views = [{ rightToLeft: true }];
+    ws.getCell('A1').value = 'تاريخ المباشرة:';
+    ws.getCell('B1').value = new Date(Date.UTC(2015, 2, 9));
+    ws.getCell('A2').value = 'التاريخ المحسوب:';
+    ws.getCell('B2').value = { formula: 'B1', result: new Date(Date.UTC(2015, 2, 9)) } as ExcelJS.CellFormulaValue;
+    ws.getCell('A3').value = 'القسمة:';
+    ws.getCell('B3').value = { formula: '1/0', result: { error: '#DIV/0!' } } as unknown as ExcelJS.CellFormulaValue;
+    const all = text(bookToDocs(book, save).sheets[0]!.doc.blocks);
+    expect(all.match(/2015\/03\/09/g)).toHaveLength(2);
+    expect(all).not.toMatch(/GMT|Mar 09|\[object Object\]|#DIV/);
+  });
+
   it('و.xls القديم يُقال له ما يُفعل', async () => {
     await expect(excelToDocs('قديم.xls')).rejects.toThrow(/احفظه بها/);
   });

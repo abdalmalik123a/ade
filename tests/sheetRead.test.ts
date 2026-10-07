@@ -13,7 +13,7 @@ describe('قائمةٌ من Excel', () => {
     const book = new ExcelJS.Workbook();
     const sheet = book.addWorksheet('الصف');
     sheet.addRow(['الاسم', 'الصف', 'الرقم', 'تاريخ الميلاد']);
-    sheet.addRow(['زينب علي', 'الخامس', 2026001, new Date(2015, 2, 9)]);
+    sheet.addRow(['زينب علي', 'الخامس', 2026001, new Date(Date.UTC(2015, 2, 9))]);
     sheet.addRow([]);
     sheet.addRow([{ richText: [{ text: 'أحمد ' }, { text: 'كريم' }] }, 'السادس', { formula: '1+1', result: 2 }]);
     await book.xlsx.writeFile(file);

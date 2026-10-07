@@ -42,6 +42,7 @@ import {
 } from '@shared/doc';
 import type { ImageSaver } from './import';
 import { APPLY_THRESHOLD, fixZeroPeriods } from './blanks';
+import { cellText as cellValueText } from './cellText';
 
 /** خلايا مدموجة أو خليّةٌ واحدة: أرقام الصفوف والأعمدة من ١، والحدّان داخلان. */
 type Range = { top: number; left: number; bottom: number; right: number };
@@ -131,13 +132,9 @@ export function fieldNameOf(label: string): string {
   return picked.length === 1 && !name.startsWith('ال') && /^[ء-ي]/.test(name) ? `ال${name}` : name;
 }
 
-/** نصّ الخليّة كما يُرى — والدمج يُقرأ من خليّته الأولى. */
+/** نصّ الخليّة كما يُرى — والدمج يُقرأ من خليّته الأولى. (قارئٌ واحد مع القوائم: `cellText.ts`.) */
 function cellText(cell: ExcelJS.Cell): string {
-  try {
-    return (cell.text ?? '').replace(/\s+$/g, '');
-  } catch {
-    return '';
-  }
+  return cellValueText(cell).replace(/\s+$/g, '');
 }
 
 /**
