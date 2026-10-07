@@ -94,6 +94,17 @@ export default function BackupPanel({
     }
   }
 
+  /** القرص الموصول ليس الذي اعتُمد: يرضى به المكتب (فلاشته الجديدة) ثم تُؤخذ النسخة إليه. */
+  async function adoptAuto() {
+    setNote(null);
+    try {
+      setAuto(await window.diwan.backup.autoAdopt());
+      await runAuto();
+    } catch (e) {
+      setNote({ text: errorText(e, 'تعذّر اعتماد القرص'), tone: 'warn' });
+    }
+  }
+
   async function stopAuto() {
     setAuto(await window.diwan.backup.autoSet({ dir: null }));
     setNote({ text: 'أُوقفت النسخة التلقائية — وما أُخذ منها باقٍ في مجلّده', tone: 'ok' });
@@ -176,6 +187,17 @@ export default function BackupPanel({
               <span className={`font-label-md text-label-md ${auto.lastError ? 'text-error font-semibold' : 'text-on-surface-variant'}`} data-auto-status="">
                 {auto.lastError ? `لم تُؤخذ الأخيرة: ${auto.lastError}` : `آخر نسخة تلقائية: ${sinceText(auto.lastAt)}`}
               </span>
+              {auto.foreign && (
+                <button
+                  className="h-9 rounded-lg bg-error text-on-error font-label-md text-label-md disabled:opacity-40"
+                  data-act="auto-backup-adopt"
+                  disabled={busy !== null}
+                  type="button"
+                  onClick={() => void adoptAuto()}
+                >
+                  اعتمد هذه الفلاشة
+                </button>
+              )}
               <div className="flex gap-space-xs">
                 <button
                   className="flex-1 h-9 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"

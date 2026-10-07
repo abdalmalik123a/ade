@@ -223,6 +223,8 @@ export type AutoBackupStatus = {
   canEncrypt: boolean;
   lastAt: string | null;
   lastError: string | null;
+  /** القرص الموصول ليس الذي اعتُمد للنسخ — فلم يُكتب عليه شيء، ويُعتمد بضغطة (مراجعة ٧ ت١). */
+  foreign: boolean;
 };
 
 /** ما في النسخة الاحتياطية — يُعرض قبل أن يوافق المكتب على استرجاعها. */
@@ -922,6 +924,8 @@ export type DiwanApi = {
     /** `password`: نصٌّ كلمةٌ جديدة، و`null` بلا تشفير، وغيابه يُبقي ما كان. و`dir: null` يوقفها. */
     autoSet(config: { dir: string | null; keep?: number; password?: string | null }): Promise<AutoBackupStatus>;
     autoRun(): Promise<{ dbChanged: boolean; filesCopied: number; bytesCopied: number; snapshots: number; root: string } | null>;
+    /** يرضى المكتب بالقرص الموصول الآن قرصَ النسخ بعد أن رُفض لأنّه غير الذي اعتُمد. */
+    autoAdopt(): Promise<AutoBackupStatus>;
     /** الاسترجاع من مجلّد النسخة التلقائية — كالحزمة: يُفحص، ثم يُرى، ثم يُوافق عليه. */
     mirrorPick(): Promise<{ path: string; encrypted: boolean; lastAt: string | null; snapshots: MirrorSnapshot[] } | null>;
     /** `snapshot`: نسخة القاعدة المختارة من المجلّد — وبلا اختيارٍ آخرها. */

@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { MIRROR, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
+import { ForeignMirrorError, MIRROR, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
 
 function office() {
   const base = mkdtempSync(join(tmpdir(), 'diwan-auto-'));
@@ -21,8 +21,8 @@ function office() {
     store,
     usb,
     setDb: (text: string) => (db = Buffer.from(text)),
-    run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z', appVersion?: string) =>
-      runAutoBackup({ target: usb, storeRoot: store, snapshotDb: (f) => writeFileSync(f, db), password, keep, now: new Date(at), appVersion })
+    run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z', appVersion?: string, expectId?: string | null) =>
+      runAutoBackup({ target: usb, storeRoot: store, snapshotDb: (f) => writeFileSync(f, db), password, keep, now: new Date(at), appVersion, expectId })
   };
 }
 
@@ -120,5 +120,52 @@ describe('اختيار النسخة عند الاسترجاع (خطة Production
     const manifest = JSON.parse(readFileSync(join(o.usb, MIRROR, 'manifest.json'), 'utf8')) as { versions: Record<string, string> };
     expect(Object.values(manifest.versions).sort()).toEqual(['1.0.1', '1.0.2']);
     expect(mirrorSnapshots(o.usb)).toHaveLength(2);
+  });
+});
+
+describe('المرآة لها هويّة — فلاشة غريبة بحرف فلاشة النسخ لا يُكتب عليها شيء (مراجعة ٧ ت١)', () => {
+  it('الأولى تكتب هويّةً وتعيدها، وبها تتوالى النسخ', () => {
+    const o = office();
+    const first = o.run();
+    expect(first.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(JSON.parse(readFileSync(join(first.root, 'manifest.json'), 'utf8')).id).toBe(first.id);
+    expect(o.run(null, 3, '2026-09-28T11:00:00Z', undefined, first.id).id).toBe(first.id);
+  });
+
+  it('قرصٌ آخر بالمسار نفسه — فارغٌ أو فيه مرآةٌ أخرى — يُرفض ولا يُصنع عليه مجلّد', () => {
+    const o = office();
+    const id = o.run().id;
+    // فلاشة زبون دخلت بحرف فلاشة النسخ: لا مرآة عليها.
+    const foreign = mkdtempSync(join(tmpdir(), 'diwan-foreign-'));
+    writeFileSync(join(foreign, 'ملف الزبون.docx'), 'x');
+    const attempt = () =>
+      runAutoBackup({ target: foreign, storeRoot: o.store, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id });
+    expect(attempt).toThrow(ForeignMirrorError);
+    expect(attempt).toThrow(/لم يُكتب عليه شيء/);
+    expect(readdirSync(foreign)).toEqual(['ملف الزبون.docx']);
+    // ومرآةُ مكتبٍ آخر بهويّةٍ أخرى كذلك.
+    const other = office();
+    other.run();
+    const manifestOf = () => readFileSync(join(other.usb, MIRROR, 'manifest.json'), 'utf8');
+    const before = manifestOf();
+    expect(() => runAutoBackup({ target: other.usb, storeRoot: o.store, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id })).toThrow(ForeignMirrorError);
+    expect(manifestOf()).toBe(before);
+  });
+
+  it('وبلا هويّةٍ معتمدة اعتمادٌ أوّل: مجلّدٌ فارغ، أو مرآةٌ قديمة بلا هويّة تُكتب لها هويّة', () => {
+    const o = office();
+    const first = o.run();
+    // مرآةٌ من إصدارٍ سبق هذا: نزع الهويّة من ملفّها.
+    const file = join(first.root, 'manifest.json');
+    const old = JSON.parse(readFileSync(file, 'utf8'));
+    delete old.id;
+    writeFileSync(file, JSON.stringify(old));
+    const adopted = o.run(null, 3, '2026-09-28T11:00:00Z');
+    expect(adopted.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(JSON.parse(readFileSync(file, 'utf8')).id).toBe(adopted.id);
+    // ومن اعتمد هويّةً ثم فقد القرص هويّته لا يُكتب عليه كأنّه جديد.
+    delete old.id;
+    writeFileSync(file, JSON.stringify(old));
+    expect(() => o.run(null, 3, '2026-09-28T12:00:00Z', undefined, adopted.id)).toThrow(ForeignMirrorError);
   });
 });

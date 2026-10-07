@@ -12,7 +12,7 @@
  * والمجلّد يُسترجع منه كما تُسترجع الحزمة: تُفحص قاعدته ويراها المكتب، ثم تحلّ محلّ
  * البيانات (ipc/backup.ts).
  */
-import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -27,6 +27,11 @@ const CHECK = 'diwan-auto-backup';
 type Manifest = {
   app: 'diwan';
   version: 1;
+  /**
+   * هويّة هذه المرآة — تُكتب أوّل مرّة وتُحفظ نسختها في إعدادات المكتب. فمجلّدٌ آخر بالمسار نفسه (فلاشة زبونٍ
+   * دخلت بحرف فلاشة النسخ) لا يحمل هويّتها فيُرفض بدل أن تُكتب قاعدة المكتب وصور هويّات الناس عليه (مراجعة ٧ ت١).
+   */
+  id?: string;
   encrypted: boolean;
   /** ملح المفتاح، ونصٌّ معروفٌ مشفَّر يُعرف به أنّ الكلمة تفتح هذا المجلّد. */
   salt?: string;
@@ -109,8 +114,21 @@ function walk(root: string): string[] {
 
 const stamp = (d: Date) => d.toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
+/** قرصٌ غير الذي اعتُمد للنسخ — لا يُكتب عليه شيء، ويُعتمد بضغطةٍ من المكتب إن كان قرصه الجديد. */
+export class ForeignMirrorError extends Error {
+  readonly foreign = true;
+  constructor(why: string) {
+    super(
+      `${why} — لم يُكتب عليه شيء. أهي فلاشةٌ أخرى بحرف فلاشة النسخ؟ ` +
+        'وإن كانت فلاشتك الجديدة فاضغط «اعتمد هذه الفلاشة» في «الإعدادات ← النسخ الاحتياطي».'
+    );
+  }
+}
+
 export type AutoBackupResult = {
   root: string;
+  /** هويّة المرآة — يحفظها المُنادي ويُعيدها في المرّة التالية (`expectId`). */
+  id: string;
   /** كُتبت نسخةٌ جديدة من القاعدة — أم لم تتغيّر منذ آخر مرّة. */
   dbChanged: boolean;
   filesCopied: number;
@@ -131,15 +149,22 @@ export function runAutoBackup(opts: {
   now?: Date;
   /** إصدار البرنامج — يُكتب مع كلّ نسخةٍ من القاعدة، فلا يُسترجع في إصدارٍ أقدم منه. */
   appVersion?: string;
+  /** هويّة المرآة التي اعتُمدت من قبل: ما لم يحملها القرص الموصول رُفض. وبلا قيمةٍ فهو اعتمادٌ أوّل. */
+  expectId?: string | null;
 }): AutoBackupResult {
   if (!existsSync(opts.target)) {
     throw new Error(`مجلّد النسخة التلقائية غير موجود: ${opts.target} — أهي فلاشةٌ غير موصولة؟`);
   }
   const root = mirrorRoot(opts.target);
-  mkdirSync(root, { recursive: true });
   let manifest = readManifest(root);
+  if (opts.expectId) {
+    // قبل أيّ كتابة — حتى لا يُنشأ مجلّد النسخ على قرصٍ ليس قرصنا.
+    if (!manifest) throw new ForeignMirrorError(`لا نسخة تلقائية لديوان على ${opts.target}`);
+    if (manifest.id !== opts.expectId) throw new ForeignMirrorError(`على ${opts.target} نسخةٌ تلقائية لديوان أخرى غير التي اعتمدتَها`);
+  }
+  mkdirSync(root, { recursive: true });
   if (!manifest) {
-    manifest = { app: 'diwan', version: 1, encrypted: Boolean(opts.password) };
+    manifest = { app: 'diwan', version: 1, id: randomUUID(), encrypted: Boolean(opts.password) };
     if (opts.password) {
       const salt = randomBytes(16);
       manifest.salt = salt.toString('base64');
@@ -149,6 +174,8 @@ export function runAutoBackup(opts: {
     // مجلّدٌ واحدٌ لا يخلط المشفّر بغيره: فالاسترجاع منه يعرف ما فيه.
     throw new Error(manifest.encrypted ? 'في المجلّد نسخةٌ مشفّرة — والتلقائية بلا كلمة' : 'في المجلّد نسخةٌ غير مشفّرة — اختر مجلّدًا آخر للنسخة المشفّرة');
   }
+  // مرآةٌ قديمة بلا هويّة (قبل هذا الإصدار) تُعتمد الآن: تُكتب هويّتها فتُحفظ نسختها عند المُنادي.
+  manifest.id ??= randomUUID();
   const key = keyFor(manifest, opts.password);
   const now = opts.now ?? new Date();
 
@@ -196,7 +223,7 @@ export function runAutoBackup(opts: {
 
   manifest.lastAt = now.toISOString();
   writeAtomic(join(root, MANIFEST), JSON.stringify(manifest, null, 2));
-  return { root, dbChanged, filesCopied, bytesCopied, snapshots: Math.min(snapshots.length, Math.max(1, opts.keep)) };
+  return { root, id: manifest.id, dbChanged, filesCopied, bytesCopied, snapshots: Math.min(snapshots.length, Math.max(1, opts.keep)) };
 }
 
 /** أمشفّرٌ هذا المجلّد — ليُسأل عن كلمته قبل الفحص. ويُرفض ما ليس نسخةً من ديوان. */

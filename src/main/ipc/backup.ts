@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
 import { closeDb, dataDir, getDb } from '../db';
 import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBackup, writeBackup, type OpenedBackup } from '../services/backup';
-import { mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
+import { ForeignMirrorError, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { stampDataVersion } from '../services/dataVersion';
 import { logAudit, prepareDocuments } from '../services/documents';
 import { ensureSearchColumn } from '../services/citizens';
@@ -128,20 +128,38 @@ async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (stor
 // أُخذت آخر مرّة، ولماذا لم تُؤخذ) في ملفٍّ بجانبها لا فيها: فلو كُتب في القاعدة لتغيّرت
 // كلّ مرّة، فصارت كلّ نسخةٍ «جديدة» ولو لم يُعمل شيء.
 
-type AutoState = { lastAt: string | null; lastError: string | null };
+type AutoState = {
+  lastAt: string | null;
+  lastError: string | null;
+  foreign: boolean;
+  /**
+   * هويّة المرآة التي كتبنا عليها آخر مرّة، والمجلّد الذي كانت فيه (مراجعة ٧ ت١). في هذا الملف لا في القاعدة:
+   * فلو كُتبت في القاعدة لتغيّرت بعد أوّل نسخةٍ فأُخذت نسخةٌ ثانيةٌ بلا عملٍ جديد؛ ولا ينقلب الاسترجاعُ بنسخةٍ قديمة
+   * إلى فقدها. وهي صالحةٌ لمجلّدها وحده — فمجلّدٌ آخر يختاره المكتب اعتمادٌ جديد.
+   */
+  mirrorId: string | null;
+  mirrorDir: string | null;
+};
 const stateFile = () => join(dataDir(), 'auto-backup.json');
 
 export function autoBackupState(): AutoState {
   try {
     const s = JSON.parse(readFileSync(stateFile(), 'utf8')) as Partial<AutoState>;
-    return { lastAt: s.lastAt ?? null, lastError: s.lastError ?? null };
+    return {
+      lastAt: s.lastAt ?? null,
+      lastError: s.lastError ?? null,
+      foreign: s.foreign === true,
+      mirrorId: s.mirrorId ?? null,
+      mirrorDir: s.mirrorDir ?? null
+    };
   } catch {
-    return { lastAt: null, lastError: null };
+    return { lastAt: null, lastError: null, foreign: false, mirrorId: null, mirrorDir: null };
   }
 }
 
-function saveAutoState(s: AutoState): void {
-  writeFileSync(stateFile(), JSON.stringify(s));
+/** يدمج ما تغيّر في حال النسخة التلقائية — فلا تضيع هويّة المرآة بكتابة الباقي. */
+function saveAutoState(patch: Partial<AutoState>): void {
+  writeFileSync(stateFile(), JSON.stringify({ ...autoBackupState(), ...patch }));
 }
 
 function readSetting(key: string): string | null {
@@ -159,7 +177,9 @@ function autoStatus(): AutoBackupStatus {
     keep: Number(readSetting('autoBackupKeep')) || 10,
     encrypted: Boolean(readSetting('autoBackupSecret')),
     canEncrypt: safeStorage.isEncryptionAvailable(),
-    ...autoBackupState()
+    lastAt: autoBackupState().lastAt,
+    lastError: autoBackupState().lastError,
+    foreign: autoBackupState().foreign
   };
 }
 
@@ -175,6 +195,7 @@ export const autoBackupConfigured = () => Boolean(readSetting('autoBackupDir'));
 export function runConfiguredAutoBackup(): AutoBackupResult | null {
   const status = autoStatus();
   if (!status.dir) return null;
+  const state = autoBackupState();
   try {
     const r = runAutoBackup({
       target: status.dir,
@@ -182,12 +203,14 @@ export function runConfiguredAutoBackup(): AutoBackupResult | null {
       snapshotDb,
       password: autoPassword(),
       keep: status.keep,
-      appVersion: app.getVersion()
+      appVersion: app.getVersion(),
+      // قرصٌ غير الذي اعتُمد لا يُكتب عليه (مراجعة ٧ ت١)؛ ويُعتمد قرصٌ جديد بـ«اعتمد هذه الفلاشة».
+      expectId: state.mirrorDir === status.dir ? state.mirrorId : null
     });
-    saveAutoState({ lastAt: new Date().toISOString(), lastError: null });
+    saveAutoState({ lastAt: new Date().toISOString(), lastError: null, foreign: false, mirrorId: r.id, mirrorDir: status.dir });
     return r;
   } catch (e) {
-    saveAutoState({ lastAt: status.lastAt, lastError: e instanceof Error ? e.message : String(e) });
+    saveAutoState({ lastAt: status.lastAt, lastError: e instanceof Error ? e.message : String(e), foreign: e instanceof ForeignMirrorError });
     throw e;
   }
 }
@@ -212,9 +235,12 @@ export function registerBackupIpc(): void {
   ipcMain.handle('backup:autoSet', (_e, config: { dir: string | null; keep?: number; password?: string | null }) => {
     if (!config.dir) {
       for (const k of ['autoBackupDir', 'autoBackupSecret', 'autoBackupKeep']) unsetSetting(k);
+      saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
       return autoStatus();
     }
     if (!existsSync(config.dir)) throw new Error('المجلّد غير موجود — أهي فلاشةٌ غير موصولة؟');
+    // مجلّدٌ جديدٌ يختاره المكتب بنفسه اعتمادٌ له: تُنسى هويّة السابق، فتُكتب هويّةٌ للجديد عند أوّل نسخة.
+    if (readSetting('autoBackupDir') !== config.dir) saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
     setting('autoBackupDir', config.dir);
     if (config.keep) setting('autoBackupKeep', String(Math.max(1, Math.min(60, Math.round(config.keep)))));
     if (config.password === null) unsetSetting('autoBackupSecret');
@@ -227,6 +253,12 @@ export function registerBackupIpc(): void {
   });
 
   ipcMain.handle('backup:autoRun', () => runConfiguredAutoBackup());
+
+  /** «اعتمد هذه الفلاشة»: يرضى المكتب بالقرص الموصول الآن — تُنسى الهويّة القديمة فتُكتب هويّةُ الجديد عند أوّل نسخة. */
+  ipcMain.handle('backup:autoAdopt', () => {
+    saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
+    return autoStatus();
+  });
 
   ipcMain.handle('backup:mirrorPick', async (e) => {
     const w = win(e);

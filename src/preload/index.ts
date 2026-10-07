@@ -147,6 +147,7 @@ const api: DiwanApi = {
     autoPickDir: () => invoke('backup:autoPickDir'),
     autoSet: (config) => invoke('backup:autoSet', config),
     autoRun: () => invoke('backup:autoRun'),
+    autoAdopt: () => invoke('backup:autoAdopt'),
     mirrorPick: () => invoke('backup:mirrorPick'),
     mirrorInspect: (path, password, snapshot) => invoke('backup:mirrorInspect', path, password ?? null, snapshot ?? null),
     mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null)
