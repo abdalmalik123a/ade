@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { BrowserWindow } from 'electron';
 import { fitCanvasText } from '@shared/canvasFit';
+import { pageOfSheetHtml } from '@shared/sheetPage';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 
@@ -140,7 +141,8 @@ async function withRenderWindow<T>(
     style?: SheetStyle | null;
   } = {}
 ): Promise<T> {
-  const page = opts.page ?? A4;
+  // مقاسٌ لم يُذكر يُقرأ من الورقة نفسها (`data-page`) قبل أن يكون A4.
+  const page = opts.page ?? pageOfSheetHtml(sheetHtml) ?? A4;
   const win = new BrowserWindow({
     show: false,
     width: opts.width,
@@ -236,7 +238,7 @@ export type PrintRequest = {
  * وطابعةٌ يبدأ اسمها بـ«معطّلة» تُرفض دائمًا، و«تتوقّف» تقف مرّةً واحدة عند ورقتها الثالثة (نفد
  * الورق) — ليُختبر ما يُقال حين لا تُطبع ورقة، والاستئناف من حيث وقفت.
  */
-function testPrintLog(req: PrintRequest): { ok: boolean; reason?: string } | null {
+function testPrintLog(req: PrintRequest, page: PageMm): { ok: boolean; reason?: string } | null {
   const file = process.env['DIWAN_TEST_PRINT_LOG'];
   if (!file) return null;
   const printer = req.deviceName ?? null;
@@ -249,7 +251,7 @@ function testPrintLog(req: PrintRequest): { ok: boolean; reason?: string } | nul
     // لا سجلّ بعد.
   }
   const text = req.sheetHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
-  appendFileSync(file, `${JSON.stringify({ printer, silent: req.silent ?? false, style: Boolean(req.style), text })}\n`, 'utf8');
+  appendFileSync(file, `${JSON.stringify({ printer, silent: req.silent ?? false, style: Boolean(req.style), page: `${page.w}x${page.h}`, text })}\n`, 'utf8');
   if (printer?.startsWith('معطّلة')) return { ok: false, reason: 'الطابعة لا تستجيب' };
   if (printer?.startsWith('تتوقّف') && before === 2) return { ok: false, reason: 'نفد الورق' };
   return { ok: true };
@@ -303,10 +305,11 @@ export function calibrationSheet(): string {
 }
 
 export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reason?: string }> {
-  const logged = testPrintLog(req);
+  // مقاس الورقة: ما طُلب، وإلا ما كُتب في الورقة نفسها، وإلا A4 — فكتابٌ على الفولسكاب لا يخرج على A4.
+  const page = req.page ?? pageOfSheetHtml(req.sheetHtml) ?? A4;
+  const logged = testPrintLog(req, page);
   if (logged) return logged;
   const silent = req.silent ?? false;
-  const page = req.page ?? A4;
   const { landscape, pageSize } = pageSizeOf(page);
   try {
     return await printWith(req, silent, page, landscape, pageSize);
@@ -352,7 +355,8 @@ function printWith(
 }
 
 /** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية) — وبأنماط الكتاب يوم صدر إن أُعطيت. */
-export async function renderPdf(sheetHtml: string, page: PageMm = A4, style: SheetStyle | null = null): Promise<Buffer> {
+export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: SheetStyle | null = null): Promise<Buffer> {
+  const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
   const { landscape, pageSize } = pageSizeOf(page);
   return withRenderWindow(
     sheetHtml,
@@ -440,7 +444,8 @@ function withDensity(png: Buffer, dpi: number): Buffer {
  * الدقّتين، وcaptureBeyondViewport ليخرج ما تحت حافة النافذة أيضًا — فتُرسم
  * الصفحة من جديد بالمقاس الكبير، وتبقى الحروف حادّة لا ممطوطة.
  */
-export async function renderPng(sheetHtml: string, dpi = 300, page: PageMm = A4): Promise<Buffer> {
+export async function renderPng(sheetHtml: string, dpi = 300, pageIn?: PageMm): Promise<Buffer> {
+  const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
   const width = Math.round((page.w / 25.4) * 96); // 794 لـA4 — الورقة بمقاسها على الشاشة
   const height = Math.round((page.h / 25.4) * 96); // 1123
   // النسبة تُشتقّ من البكسلات المطلوبة لا من الدقّة وحدها، فيخرج المقاس مضبوطًا.

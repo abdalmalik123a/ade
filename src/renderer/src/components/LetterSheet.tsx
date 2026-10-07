@@ -15,6 +15,7 @@ import { pageMm } from '@shared/doc';
 import { pageCss, renderDocHtml, watermarkHtml } from '@shared/docHtml';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
+import { sheetPageAttr } from '@shared/sheetPage';
 import type { LetterheadLayout } from '@shared/letterhead';
 import LetterheadView from './LetterheadView';
 
@@ -69,6 +70,7 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
         ref={sheetRef}
         className={`a4-sheet bg-white text-black shadow-lg ${className}`}
         data-letter-sheet=""
+        data-page={sheetPageAttr({ w, h })}
         data-form={doc.meta.form ? '' : undefined}
         style={{ width: `${w}mm`, height: `${h}mm`, position: 'relative', overflow: 'hidden' }}
       >
@@ -94,7 +96,8 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
     />
   );
   return (
-    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" style={sheetStyle(doc)}>
+    // `data-page`: مقاس الورقة يرافق علاماتها فتُطبع وتُؤرشف وتُعاد طباعتها بمقاسها (`shared/sheetPage.ts`).
+    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} style={sheetStyle(doc)}>
       <style>{pageCss(doc)}</style>
       <div dangerouslySetInnerHTML={{ __html: watermarkHtml(doc) }} />
       {doc.pageSetup.repeatLetterhead && head ? (

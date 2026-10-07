@@ -21,6 +21,9 @@ import { valuesOnlySheet } from '@shared/docHtml';
 /** `full` الورقة كما رُئيت، و`values` القيم وحدها على استمارةٍ مطبوعةٍ مسبقًا. */
 type PrintMode = 'full' | 'values';
 
+/** مهمّةُ طباعةٍ مقاسُها من كلّ ورقةٍ لا للمهمّة كلّها. */
+const PER_SHEET_PAGE = { w: 0, h: 0 };
+
 /** والأرشيف يقيّد الورقة كاملةً أبدًا — «القيم وحدها» طريقةُ طباعةٍ لا صورةُ الكتاب. */
 const forPrint = (sheetHtml: string, mode: PrintMode) => (mode === 'values' ? valuesOnlySheet(sheetHtml) : sheetHtml);
 import type {
@@ -277,7 +280,8 @@ export function registerDocumentIpc(): void {
       const job = journal().create({
         label: req.label ?? `${docs.length} ورقة — ${docs[0]!.serial}`,
         printer: req.printer,
-        page: { w: 210, h: 297 },
+        // ٠×٠: لكلّ ورقةٍ مقاسها (`sendSheet`) — فمعاملةٌ فيها فولسكاب وA4 لا تُطبع كلّها على مقاسٍ واحد.
+        page: PER_SHEET_PAGE,
         duplex: false,
         pages: docs.map((d) => forPrint(d.bodyHtml, req.mode ?? 'full')),
         docIds: docs.map((d) => d.id),
@@ -339,7 +343,8 @@ export function registerDocumentIpc(): void {
       deviceName: job.printer,
       silent: true,
       parent: win(e),
-      page: job.page,
+      // مهمّةٌ بلا مقاسٍ صريح تقرأه من الورقة نفسها (`data-page`)، وإلا فمقاس المهمّة.
+      page: job.page.w > 0 && job.page.h > 0 ? job.page : undefined,
       duplex: job.duplex,
       style: svc.styleByHash(getDb(), job.styleHash)
     });
