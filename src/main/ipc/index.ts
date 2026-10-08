@@ -214,12 +214,12 @@ export function registerIpc(): void {
     const issuedToday = db
       .prepare("SELECT COUNT(*) AS n FROM documents WHERE date(issued_at,'localtime') = date('now','localtime')")
       .get() as { n: number };
-    // قيد العمل كلّه: الطلبات، والمسودات، والمعلّقات (مخزونةً في الإعدادات).
-    const drafts = db.prepare('SELECT COUNT(*) AS n FROM drafts').get() as { n: number };
+    // رقم «قيد العمل» على السكّة: الطلبات والمعلّقات (مخزونةً في الإعدادات) — لا المسودّات (د٢، قرار المالك:
+    // «تُحذف ولا تُعدّ في رقم السكّة كالجرس»): كلّ طباعةٍ تجريبية تترك واحدةً، فيعلو رقمٌ لا ينزل فيُتجاهل.
     // أوّل عملٍ خرج من المكتب (بوّابة الإنتاج، `ipc/gate.ts`) — أو كتبٌ صدرت قبلها: فيختفي «؟» الصفحات.
     const worked =
       Boolean(db.prepare("SELECT 1 FROM settings WHERE key = 'firstWorkAt'").get()) || Boolean(db.prepare('SELECT 1 FROM documents LIMIT 1').get());
-    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db), pending: drafts.n + parkedCount(db), worked };
+    return { templates: templates.n, issuedToday: issuedToday.n, orders: orderCounts(db), pending: parkedCount(db), worked };
   });
 
   ipcMain.handle('archive:stats', (): ArchiveStats => archiveStats(getDb()));

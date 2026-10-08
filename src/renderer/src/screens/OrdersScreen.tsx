@@ -30,6 +30,7 @@ import {
 } from '@shared/orders';
 import { errorText } from '../lib/errors';
 import { useToast } from '../kit/useToast';
+import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
 
@@ -95,7 +96,29 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
     setParked((p as Parked[]).filter((x) => !q || x.label.includes(q)));
   }, [tab, query]);
 
-  // وعدّاد السكّة يتبع ما قُرئ هنا: مسودةٌ حُفظت لحظة مغادرة المحرّر تُعدّ.
+  /**
+   * مسودّةٌ تُحذف بسؤال (د٢): كلّ جلسة محرّرٍ لا تنتهي بـ«اطبع» (طباعة تجريبية، PDF، Word) تترك مسودّةً دائمة —
+   * فتُحذف هنا بما فيها. والمعلّقة لا تُحذف من هنا: يستأنفها الشبّاك أو يلغيها.
+   */
+  const deleteDraft = async (d: DraftRow) => {
+    const ok = await confirmAction({
+      title: 'أتحذف المسودّة؟',
+      message: `«${d.title || 'كتابٌ بلا عنوان'}» — يضيع ما كُتب فيها، ولا يُمسّ ما صدر.`,
+      confirm: 'احذفها',
+      danger: true
+    });
+    if (!ok) return;
+    try {
+      await window.diwan.drafts.delete(d.id);
+      await reload();
+      onChanged?.();
+      say('حُذفت المسودّة');
+    } catch (e) {
+      say(errorText(e, 'تعذّر حذف المسودّة'), 'warn');
+    }
+  };
+
+  // وعدّاد السكّة يتبع ما قُرئ هنا: معاملةٌ عُلّقت لحظة مغادرة الشبّاك تُعدّ.
   useEffect(() => {
     void reload().then(() => onChanged?.());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,6 +234,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
                           title={d.title || 'كتابٌ بلا عنوان'}
                           when={localStamp(d.updatedAt)}
                           onRun={() => onOpenDraft?.(d.id)}
+                          onDelete={() => void deleteDraft(d)}
                         />
                       ))}
                     {col.key === 'customer' &&
@@ -334,7 +358,8 @@ function PendingCard({
   when,
   action,
   act,
-  onRun
+  onRun,
+  onDelete
 }: {
   kind: string;
   icon: string;
@@ -344,6 +369,8 @@ function PendingCard({
   action: string;
   act: string;
   onRun: () => void;
+  /** المسودّة وحدها تُحذف من هنا (د٢). */
+  onDelete?: () => void;
 }) {
   return (
     <article className="rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)]" data-pending={act}>
@@ -356,9 +383,22 @@ function PendingCard({
       </div>
       <div className="font-body-md text-body-md text-on-surface font-semibold truncate">{title}</div>
       {sub && <div className="font-label-sm text-label-sm text-on-surface-variant truncate">{sub}</div>}
-      <button className="w-full h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
-        {action}
-      </button>
+      <div className="flex items-center gap-1">
+        <button className="flex-1 h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
+          {action}
+        </button>
+        {onDelete && (
+          <button
+            className="w-8 h-8 shrink-0 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center"
+            data-act="delete-draft"
+            title="احذف المسودّة"
+            type="button"
+            onClick={onDelete}
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+        )}
+      </div>
     </article>
   );
 }

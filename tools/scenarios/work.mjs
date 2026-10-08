@@ -69,7 +69,25 @@ export default async function scenario(page) {
   const yours = await column('yours', 'resume-draft');
   ok('المعلّقة في «ينتظر الزبون» بلا يد', waiting.some((t) => t.includes('علي حسن كاظم')));
   ok('والمسودة في «عليك أن تكمله»', yours.some((t) => t.includes('زينب علي')));
-  ok('والسكّة تعدّها على «قيد العمل»', (await page.eval(`return Number(document.querySelector('[data-dest="work"] [data-badge]')?.innerText ?? 0);`)) >= 2);
+  // د٢ (قرار المالك): المسودّات لا تُعدّ في رقم السكّة — المعلّقة وحدها هنا (ولا طلبات).
+  const badge = await page.eval(`return Number(document.querySelector('[data-dest="work"] [data-badge]')?.innerText ?? 0);`);
+  ok(`والسكّة تعدّ المعلّقة على «قيد العمل» لا المسودّة (${badge})`, badge === 1);
+
+  // ── د٢: المسودّة تُحذف بسؤالها ───────────────────────────────────
+  const draftCard = `[...document.querySelectorAll('[data-column="yours"] [data-pending="resume-draft"]')].find((c) => c.innerText.includes('زينب علي'))`;
+  ok('للمسودّة زرّ حذف', await page.eval(`return Boolean(${draftCard}?.querySelector('[data-act="delete-draft"]'));`));
+  await page.eval(`${draftCard}.querySelector('[data-act="delete-draft"]').click(); return true;`);
+  await sleep(500);
+  ok('ويسأل قبل الحذف', (await page.eval(`return document.querySelector('[data-confirm]')?.innerText ?? '';`)).includes('أتحذف المسودّة'));
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="no"]').click(); return true;`);
+  await sleep(500);
+  ok('و«لا» تُبقيها', (await column('yours', 'resume-draft')).some((t) => t.includes('زينب علي')));
+  const draftsBefore = await page.eval(`return (await window.diwan.drafts.list()).length;`);
+  await page.eval(`${draftCard}.querySelector('[data-act="delete-draft"]').click(); return true;`);
+  await sleep(500);
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="yes"]').click(); return true;`);
+  await sleep(900);
+  ok('و«احذفها» تحذفها من «قيد العمل» ومن القاعدة', !(await column('yours', 'resume-draft')).some((t) => t.includes('زينب علي')) && (await page.eval(`return (await window.diwan.drafts.list()).length;`)) === draftsBefore - 1);
 
   // ── «استأنف» يعيدها إلى الشبّاك من حيث تُركت ───────────────────────
   await page.eval(`[...document.querySelectorAll('[data-column="customer"] [data-pending="resume-parked"]')].find((c) => c.innerText.includes('علي حسن كاظم')).querySelector('[data-act="resume-parked"]').click(); return true;`);

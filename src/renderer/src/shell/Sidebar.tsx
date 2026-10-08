@@ -34,7 +34,7 @@ export type SidebarProps = {
 
 export default function Sidebar({ active, onNavigate, counts, version, onAbout, officeName }: SidebarProps) {
   const here = destinationOf(active);
-  /** العدّاد على «قيد العمل»: ما ينتظر كلّه (طلباتٌ ومسوداتٌ ومعلّقات) — والمتأخّر وما موعده اليوم بلون التنبيه. */
+  /** العدّاد على «قيد العمل»: الطلبات المفتوحة والمعاملات المعلّقة — لا المسودّات (د٢) — والمتأخّر وما موعده اليوم بلون التنبيه. */
   const badge = (d: Destination) => {
     if (d.key !== 'work') return null;
     const { dueToday, overdue } = counts.orders;
