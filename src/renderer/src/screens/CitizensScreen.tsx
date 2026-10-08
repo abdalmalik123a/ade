@@ -472,7 +472,6 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
                     >
                       <span className="material-symbols-outlined text-[18px]">output</span>
                       <span>إدراج في محرر الكتب</span>
-                      <span className="font-code-sm text-code-sm opacity-70">Ctrl+Enter</span>
                     </button>
                     <button
                       className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-colors"

@@ -65,6 +65,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ظهر التصنيف كمرشّح', text.includes('تربية وتعليم (1)'));
   ok('الخزنة فارغة', text.includes('لا مستمسكات لهذا الملف'));
   ok('لا كتب صادرة له', text.includes('لم يصدر أي كتاب لهذا المواطن بعد'));
+  // د٧: وسم «Ctrl+Enter» على «إدراج في محرر الكتب» بلا معالج — حُذف (لكلّ اختصارٍ زرّ، ولا وسمٌ بلا اختصار).
+  ok('ولا وسم «Ctrl+Enter» بلا اختصار على «إدراج في محرر الكتب»', !text.includes('Ctrl+Enter'));
 
   if (shotsDir) await page.shot(join(shotsDir, 'citizens-file.png'));
 

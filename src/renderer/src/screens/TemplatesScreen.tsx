@@ -115,21 +115,6 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     void reload(active);
   }, [active, reload]);
 
-  // Ctrl+Enter — فتح أول نموذج ظاهر في المحرر، كما يعلن التصميم على البطاقات.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'Enter' && !designer.open) {
-        const first = visible[0];
-        if (first) {
-          e.preventDefault();
-          onOpenInEditor?.(first.id);
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
   const visible = items
     .filter((t) => {
       // يتسامح مع الهمزة والتاء المربوطة: «اجازة» تجد «إجازة».

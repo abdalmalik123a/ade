@@ -120,6 +120,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   ok('مسح البحث يعيد النتائج', (await page.text()).includes('تأييد استمرار بالخدمة'));
 
+  // د٧: لا اختصار يفتح نموذجًا بعينه (قرار المالك) — Ctrl+Enter في المكتبة لا يفتح أوّل نموذج.
+  await page.eval(`document.activeElement?.blur(); return true;`);
+  await page.key('Enter', { ctrl: true });
+  await wait(700);
+  ok('وCtrl+Enter في المكتبة لا يفتح شيئًا', await page.eval(`return Boolean(document.querySelector('[data-new-template]')) && !document.querySelector('.ProseMirror');`));
+
   // ── المعاينة بالحجم الكامل ──────────────────────────────────────
   await page.eval(`document.querySelector('button[title="معاينة بالحجم الكامل A4"]')?.click()`);
   await wait(500);
