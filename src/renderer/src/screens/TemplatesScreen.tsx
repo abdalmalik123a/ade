@@ -321,7 +321,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     setBusy(true);
     try {
       const path = await window.diwan.templates.export(id);
-      if (path) say(path.endsWith('.docx') ? 'صُدّر مستند Word' : 'صُدّر النموذج — يُستورد ثانيةً');
+      if (path) say('صُدّر مستند Word');
     } catch (e) {
       say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
@@ -901,7 +901,7 @@ function TemplateCard({
           <div className="flex flex-col gap-1">
             <button
               className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
-              title="تصدير النموذج (XML للاسترجاع أو Word للمشاركة)"
+              title="صدّره مستند Word — للمشاركة والطباعة خارج المكتب"
               type="button"
               onClick={onExport}
             >
@@ -1004,7 +1004,7 @@ function TemplateCard({
           </button>
           <button
             className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
-            title="تصدير النموذج (XML للاسترجاع أو Word للمشاركة)"
+            title="صدّره مستند Word — للمشاركة والطباعة خارج المكتب"
             type="button"
             onClick={onExport}
           >

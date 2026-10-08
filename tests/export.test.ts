@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { templateToDocx, templateToXml } from '../src/main/services/export';
+import { templateToDocx } from '../src/main/services/export';
 import { importTemplateFile, parseTemplateXml } from '../src/main/services/import';
 import { getTemplate, saveTemplate } from '../src/main/services/templates';
 import type { TemplateInput } from '../src/shared/template';
@@ -28,49 +28,59 @@ function tpl(over: Partial<TemplateInput> = {}): TemplateInput {
   };
 }
 
-describe('تصدير النموذج واسترجاعه', () => {
-  it('الدورة كاملة: تصدير ثم استيراد يعيد النموذج كما كان', () => {
-    const db = freshDb();
-    const saved = saveTemplate(db, tpl());
-    const xml = templateToXml(getTemplate(db, saved.id)!);
-    const parsed = parseTemplateXml(xml);
+/**
+ * ملفّ XML كما كان ديوان يكتبه قبل د٩ (حُذف تصديره، وبقي قارئه لما صُدّر قبله) — ثابتٌ هنا بصيغته
+ * حرفًا بحرف، فلا يتغيّر القارئ عمّا يقرؤه المكتب.
+ */
+const OLD_XML = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<template>',
+  '  <code>DIW-1</code>',
+  '  <title>تأييد استمرار بالخدمة</title>',
+  '  <subtitle>موجَّه إلى المصارف</subtitle>',
+  '  <category>كتب التأييد</category>',
+  '  <subject>تأييد استمرار</subject>',
+  '  <body>نؤيد بأن {الاسم} برقم {الرقم_الوطني} مستمر بالخدمة.\nمع التقدير.</body>',
+  '  <variables>',
+  '    <variable token="الاسم" label="الاسم الرباعي" source="citizen" required="true"/>',
+  '    <variable token="الرقم_الوطني" label="الرقم الوطني" source="citizen" required="false"/>',
+  '  </variables>',
+  '</template>',
+  ''
+].join('\n');
 
+describe('ملفّات XML القديمة تُقرأ (التصدير إليها حُذف — د٩)', () => {
+  it('يُقرأ النموذج كما صُدّر', () => {
+    const parsed = parseTemplateXml(OLD_XML);
     expect(parsed.code).toBe('DIW-1');
     expect(parsed.title).toBe('تأييد استمرار بالخدمة');
     expect(parsed.subtitle).toBe('موجَّه إلى المصارف');
     expect(parsed.category).toBe('كتب التأييد');
     expect(parsed.subjectLine).toBe('تأييد استمرار');
     expect(parsed.body).toBe(tpl().bodyHtml);
+    expect(parsed.body.split('\n')).toHaveLength(2);
   });
 
-  it('يحفظ المتغيّرات بمصادرها وإلزاميتها — وإلا ضاع معنى النموذج', () => {
-    const db = freshDb();
-    const saved = saveTemplate(db, tpl());
-    const parsed = parseTemplateXml(templateToXml(getTemplate(db, saved.id)!));
-
+  it('بمتغيّراته ومصادرها وإلزاميتها — وإلا ضاع معنى النموذج', () => {
+    const parsed = parseTemplateXml(OLD_XML);
     expect(parsed.variables).toHaveLength(2);
-    expect(parsed.variables[0]).toEqual({
-      token: 'الاسم',
-      label: 'الاسم الرباعي',
-      source: 'citizen',
-      required: true
-    });
+    expect(parsed.variables[0]).toEqual({ token: 'الاسم', label: 'الاسم الرباعي', source: 'citizen', required: true });
     expect(parsed.variables[1]?.required).toBe(false);
   });
 
-  it('يهرّب المحارف الخاصة فلا يكسر XML', () => {
-    const db = freshDb();
-    const saved = saveTemplate(db, tpl({ title: 'أ & ب <ج>', bodyHtml: 'نص "مقتبس" & رمز' }));
-    const parsed = parseTemplateXml(templateToXml(getTemplate(db, saved.id)!));
+  it('والمحارف المهرَّبة تعود كما كانت', () => {
+    const xml = OLD_XML.replace('<title>تأييد استمرار بالخدمة</title>', '<title>أ &amp; ب &lt;ج&gt;</title>').replace(
+      /<body>[\s\S]*<\/body>/,
+      '<body>نص &quot;مقتبس&quot; &amp; رمز</body>'
+    );
+    const parsed = parseTemplateXml(xml);
     expect(parsed.title).toBe('أ & ب <ج>');
     expect(parsed.body).toBe('نص "مقتبس" & رمز');
   });
 
-  it('يحفظ أسطر المتن كما هي', () => {
-    const db = freshDb();
-    const saved = saveTemplate(db, tpl());
-    const parsed = parseTemplateXml(templateToXml(getTemplate(db, saved.id)!));
-    expect(parsed.body.split('\n')).toHaveLength(2);
+  it('والتصدير لم يعد يكتب XML: لا كاتب له في الوحدة', async () => {
+    const mod = (await import('../src/main/services/export')) as Record<string, unknown>;
+    expect(mod.templateToXml).toBeUndefined();
   });
 });
 

@@ -146,8 +146,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الأزرار الجديدة على البطاقة ────────────────────────────────
   ok('زرّ الحذف ظاهر على البطاقة',
     await page.eval(`return !!document.querySelector('button[title="حذف النموذج"]')`));
-  ok('زرّ التصدير ظاهر على البطاقة',
-    await page.eval(`return !!document.querySelector('button[title^="تصدير النموذج"]')`));
+  ok('زرّ التصدير ظاهر على البطاقة — مستند Word',
+    await page.eval(`return !!document.querySelector('button[title^="صدّره مستند Word"]')`));
+  // د٩: XML «للاسترجاع» حُذف من التصدير (كان يُسقط الجداول والصور) — والنموذج كاملًا ينتقل بحزمة المحتوى.
+  ok('ولا XML في التصدير', await page.eval(`return ![...document.querySelectorAll('button[title]')].some((b) => b.title.includes('XML'));`));
   // الطرق الثلاث (§٦) باقية ومعها صورة الورقة — فيُسأل عن كلٍّ باسمه لا بالعدد. وباب العقود
   // حُذف بقرار المالك (٢٩ أيلول ٢٠٢٦): كانت تُحفظ ووسوم HTML نصٌّ في متنها.
   ok(

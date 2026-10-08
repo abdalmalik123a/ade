@@ -6,45 +6,10 @@ import { docToDocx } from './docDocx';
 import { templateDoc } from './templates';
 
 /**
- * تصدير النموذج إلى ملف يعيش خارج التطبيق.
- *
- * صيغتان لغرضين مختلفين:
- *  - XML: صيغة المشروع نفسها، تُستورد ثانيةً بلا فقد — وهي «للمستقبل».
- *  - DOCX: للمشاركة والطباعة خارج المكتب. التوليد برمجي وصامت بلا Word.
+ * تصدير النموذج إلى ملف يعيش خارج التطبيق: مستند Word للمشاركة والطباعة خارج المكتب، والتوليد برمجي
+ * وصامت بلا Word. وكان معه XML «للاسترجاع» — يكتب المتن والمتغيّرات ويُسقط الجداول والصور، فحُذف (د٩):
+ * النموذج كاملًا ينتقل بحزمة المحتوى. وقارئ XML في الاستيراد باقٍ لملفّاتٍ صُدّرت قبل ذلك.
  */
-
-const esc = (s: string) =>
-  s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-
-const node = (name: string, value: string | null) =>
-  value ? `  <${name}>${esc(value)}</${name}>\n` : '';
-
-export function templateToXml(t: TemplateDetail): string {
-  const vars = t.variables
-    .map(
-      (v) =>
-        `    <variable token="${esc(v.token)}" label="${esc(v.label)}" ` +
-        `source="${v.source}" required="${v.required ? 'true' : 'false'}"/>\n`
-    )
-    .join('');
-
-  return (
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    '<template>\n' +
-    node('code', t.code) +
-    node('title', t.title) +
-    node('subtitle', t.subtitle) +
-    node('category', t.category) +
-    node('subject', t.subjectLine) +
-    `  <body>${esc(t.bodyHtml)}</body>\n` +
-    (vars ? `  <variables>\n${vars}  </variables>\n` : '') +
-    '</template>\n'
-  );
-}
 
 export async function templateToDocx(
   t: TemplateDetail,

@@ -6,7 +6,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
 import { importTemplateFile } from '../services/import';
-import { templateToDocx, templateToXml } from '../services/export';
+import { templateToDocx } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
 import { listRevisions, revisionPayload } from '../services/revisions';
@@ -226,7 +226,7 @@ export function registerTemplateIpc(): void {
       applyImportPlan(getDb(), plan, choices)
   );
 
-  /** تصدير نموذج واحد — الصيغة تُستنتج من الامتداد الذي يختاره المكتب في الحوار. */
+  /** تصدير نموذج واحد مستندَ Word (د٩: حُذف XML — النموذج كاملًا ينتقل بحزمة المحتوى). */
   ipcMain.handle('templates:export', async (e, id: number) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
@@ -236,32 +236,23 @@ export function registerTemplateIpc(): void {
 
     const safe = t.title.replace(/[\/:*?"<>|]/g, '-').slice(0, 60);
     const result = await dialog.showSaveDialog(win, {
-      title: 'تصدير النموذج',
-      defaultPath: `${safe}.xml`,
-      filters: [
-        { name: 'نموذج ديوان (يُستورد ثانيةً)', extensions: ['xml'] },
-        { name: 'مستند Word', extensions: ['docx'] }
-      ]
+      title: 'تصدير النموذج مستند Word',
+      defaultPath: `${safe}.docx`,
+      filters: [{ name: 'مستند Word', extensions: ['docx'] }]
     });
     if (result.canceled || !result.filePath) return null;
 
-    if (result.filePath.toLowerCase().endsWith('.docx')) {
-      const letterhead = t.letterheadId
-        ? getLetterhead(db, t.letterheadId)
-        : getDefaultLetterhead(db);
-      // صور الوثيقة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
-      const image = (src: string) => {
-        if (src.includes('..')) return null;
-        try {
-          return readFileSync(join(storeDir(), src));
-        } catch {
-          return null;
-        }
-      };
-      await writeFile(result.filePath, await templateToDocx(t, letterhead, image));
-    } else {
-      await writeFile(result.filePath, templateToXml(t), 'utf8');
-    }
+    const letterhead = t.letterheadId ? getLetterhead(db, t.letterheadId) : getDefaultLetterhead(db);
+    // صور الوثيقة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
+    const image = (src: string) => {
+      if (src.includes('..')) return null;
+      try {
+        return readFileSync(join(storeDir(), src));
+      } catch {
+        return null;
+      }
+    };
+    await writeFile(result.filePath, await templateToDocx(t, letterhead, image));
     return result.filePath;
   });
 
