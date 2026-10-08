@@ -34,6 +34,9 @@ describe('مكتبة ONNX تُحمَّل عند الحاجة لا عند الإ�
     // ولا تُحفظ المحاولة الفاشلة: قد يثبّتها المستخدم الآن، فتُعاد المحاولة لا الإخفاق نفسه.
     const again = loadOrt();
     await expect(again).rejects.toThrow(/Visual C\+\+/);
-    expect(again).not.toBe(loadOrt());
+    const third = loadOrt();
+    expect(again).not.toBe(third);
+    // ولا يبقى رفضُ هذه الثالثة بلا من يلتقطه (وعدٌ مرفوضٌ غير ممسوك يُحسب خطأً في الاختبار كلّه).
+    await expect(third).rejects.toThrow(/Visual C\+\+/);
   });
 });

@@ -3,6 +3,7 @@ import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'elec
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, dataDir, storeDir } from './db';
 import { sweepTransient } from './services/transient';
+import { recoverIncompleteRestore } from './services/restoreSwap';
 import { guardDataVersion, stampDataVersion } from './services/dataVersion';
 import { rememberStartup } from './ipc/update';
 import { registerIpc } from './ipc';
@@ -178,6 +179,32 @@ app.whenReady().then(() => {
 
   // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.
   try {
+    // استرجاعٌ تعثّر في الجلسة السابقة ولم تعد قاعدته إلى مكانها: تُعاد من مجلّد الأصل قبل أن يُفتح شيء —
+    // فلا تُنشأ قاعدةٌ فارغة بدلها (مراجعة ٧ ت١).
+    const recovery = recoverIncompleteRestore(dataDir());
+    if (recovery.state === 'failed') {
+      dialog.showErrorBox(
+        'تعذّرت إعادة بيانات المكتب',
+        `تعثّر استرجاعٌ سابق فلم تعد قاعدة بيانات المكتب إلى مكانها، وتعذّرت إعادتها الآن:\n\n${recovery.reason}\n\n` +
+          `بياناتك الأصلية سليمةٌ في: ${recovery.aside ?? 'مجلّد «before-restore-…» داخل مجلّد بيانات ديوان'}\n` +
+          'لم يُنشأ شيءٌ جديد حتى لا تُفتح قاعدةٌ فارغة. أغلق ديوان وأرسل هذه الرسالة إلى المطوّر.'
+      );
+      app.quit();
+      return;
+    }
+    if (recovery.state === 'recovered') {
+      logError('restore', new Error(`أُعيدت قاعدة المكتب من ${recovery.aside} بعد استرجاعٍ متعثّر`));
+      if (!recovery.storeBack) {
+        void dialog.showMessageBox({
+          type: 'warning',
+          title: 'عادت بيانات المكتب',
+          message: 'عادت قاعدة بيانات المكتب بعد استرجاعٍ متعثّر، لكنّ مجلّد الملفّات (المستمسكات والصور) بقي جانبًا.',
+          detail: `انقل المجلّد «store» من: ${recovery.aside}\nإلى مجلّد بيانات ديوان — أو أرسل هذه الرسالة إلى المطوّر.`,
+          buttons: ['حسنًا'],
+          noLink: true
+        });
+      }
+    }
     // إصدارٌ أقدم لا يفتح بيانات أحدث، والتحديث يأخذ نسخةً قبل الترحيل (خطة Production، ٧٫٢).
     const guard = guardDataVersion({
       file: join(dataDir(), 'diwan.db'),

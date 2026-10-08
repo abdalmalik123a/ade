@@ -9,7 +9,7 @@
  *
  * والجهاز يُعطى بعمليّاته (`SwapOps`) — فيُختبر كلّ موضع تعثّرٍ بلا Electron (`tests/restoreSwap.test.ts`).
  */
-import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type SwapOps = {
@@ -30,9 +30,32 @@ export type SwapOps = {
   /** النقل والنسخ — يُعطيان في الاختبار ليتعثّرا حيث يُراد. */
   rename?: (from: string, to: string) => void;
   copy?: (from: string, to: string) => void;
+  /**
+   * القاعدة لم تعد إلى مكانها فلا تُفتح قاعدةٌ فارغة: يُقفل `getDb()` برسالةٍ (مراجعة ٧ ت١). فأيّ نداءٍ تالٍ كان
+   * يُنشئ `diwan.db` فارغًا — فإن تابع المكتب العمل أيّامًا انشطرت السلسلة وتكرّر الترقيم.
+   */
+  lock?: (reason: string) => void;
+  /** ويُكتب أثرٌ يبقى بعد إغلاق البرنامج فلا يُنشأ البديل الفارغ في الإقلاع القادم (`recoverIncompleteRestore`). */
+  markIncomplete?: (info: { aside: string; reason: string }) => void;
 };
 
+/** أثر استرجاعٍ لم تعد قاعدته: في مجلّد البيانات، يبقى حتى تعود القاعدة. */
+export const INCOMPLETE_MARKER = 'restore-incomplete.json';
+
 const DB_SUFFIXES = ['', '-wal', '-shm'] as const;
+
+/**
+ * سببُ التعثّر لمن يقرؤه المكتب: ملفٌّ ممسوكٌ أو ممنوع (EBUSY وEPERM وEACCES) كان يظهر إنكليزيًّا خامًا في واجهةٍ
+ * عربية؛ فيُقال ما يُفعل، ويلحقه الأصل بين قوسين للمطوّر.
+ */
+function describeFailure(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  const code = (e as { code?: unknown } | null)?.code;
+  if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES' || /\b(EBUSY|EPERM|EACCES)\b/.test(msg)) {
+    return `ملفٌّ في بيانات المكتب مفتوحٌ في برنامجٍ آخر (عارض صور أو مضادّ فيروسات أو نافذة مستكشف) — أغلقه وأعد المحاولة. [${msg}]`;
+  }
+  return msg;
+}
 
 export async function swapInBackup(o: SwapOps): Promise<void> {
   const rename = o.rename ?? renameSync;
@@ -89,14 +112,111 @@ export async function swapInBackup(o: SwapOps): Promise<void> {
         }
       }
     }
+    const reason = e instanceof Error ? e.message : String(e);
     // القاعدة في مكانها تُفتح؛ وإن لم تعد فلا تُفتح — فتحُها يُنشئ قاعدةً فارغة توهم بضياع كلّ شيء.
     if (existsSync(dbFile)) o.reopen();
+    else {
+      const lockMessage =
+        `قاعدة بيانات المكتب لم تعد إلى مكانها بعد استرجاعٍ متعثّر (${describeFailure(e)}) — أُوقف كلّ شيءٍ حتى لا تُفتح قاعدةٌ فارغة. ` +
+        `بياناتك الأصلية سليمةٌ في: ${o.aside}. يُعاد فتح ديوان فيحاول إعادتها بنفسه؛ فإن لم يفعل فأغلقه وافتحه من جديد.`;
+      try {
+        o.markIncomplete?.({ aside: o.aside, reason });
+      } catch {
+        // القفل قائمٌ في هذه الجلسة، ومجلّد الأصل مذكورٌ في الرسالة — فتعذّر الأثر لا يُضيع شيئًا.
+      }
+      o.lock?.(lockMessage);
+      throw new Error(lockMessage);
+    }
     if (stuck.length) {
-      const reason = e instanceof Error ? e.message : String(e);
       throw new Error(
-        `تعذّر الاسترجاع (${reason})، ولم يعد كلّ شيءٍ إلى مكانه. بيانات المكتب الأصلية سليمةٌ في: ${o.aside} — لا تحذفه، وأغلق البرنامج وأرسل هذه الرسالة إلى المطوّر.`
+        `تعذّر الاسترجاع (${describeFailure(e)})، ولم يعد كلّ شيءٍ إلى مكانه. بيانات المكتب الأصلية سليمةٌ في: ${o.aside} — لا تحذفه، وأغلق البرنامج وأرسل هذه الرسالة إلى المطوّر.`
       );
     }
-    throw e;
+    throw new Error(`تعذّر الاسترجاع فبقيت بيانات المكتب كما كانت: ${describeFailure(e)}`);
   }
+}
+
+/** يُكتب أثر الاسترجاع غير المكتمل: ما نُقل جانبًا ولماذا. */
+export function writeIncompleteMarker(dir: string, info: { aside: string; reason: string }): void {
+  writeFileSync(join(dir, INCOMPLETE_MARKER), JSON.stringify({ ...info, at: new Date().toISOString() }, null, 2));
+}
+
+export type Recovery =
+  | { state: 'none' }
+  /** `storeBack`: هل عاد مجلّد الملفّات (المستمسكات) إلى مكانه؟ وإلا بقي جانبًا في `aside/store`. */
+  | { state: 'recovered'; aside: string; storeBack: boolean }
+  | { state: 'failed'; aside: string | null; reason: string };
+
+const usable = (file: string): boolean => {
+  try {
+    return statSync(file).size > 0;
+  } catch {
+    return false;
+  }
+};
+
+/** مجلّد ما كتبه الاسترجاع المتعثّر قبل أن يتعثّر — يُركَن جانبًا ولا يُحذف. */
+const PARTIAL_STORE = 'store-الاسترجاع-المتعثّر';
+
+/**
+ * في الإقلاع: استرجاعٌ سابقٌ لم تعد قاعدته إلى مكانها (ملفٌّ كان ممسوكًا ورفض ويندوز نقله) — فتُعاد الآن من
+ * النسخة المتّسقة التي أُخذت قبل الاسترجاع (`aside/diwan.db`)، أو من الملفّات الأصلية (`current.db…`).
+ *
+ * لا يُنشأ بديلٌ فارغ أبدًا: إن تعذّرت الإعادة بقي الأثر وأُغلق البرنامج برسالة. ولا يُحذف شيءٌ جانبًا.
+ * وقاعدةٌ عادت بيد المطوِّر قبل الإقلاع تُنهي الأثر وحده.
+ */
+export function recoverIncompleteRestore(dir: string): Recovery {
+  const marker = join(dir, INCOMPLETE_MARKER);
+  if (!existsSync(marker)) return { state: 'none' };
+  const dbFile = join(dir, 'diwan.db');
+  if (existsSync(dbFile)) {
+    try {
+      rmSync(marker, { force: true });
+    } catch {
+      // الأثر يبقى ويُحاول إنهاؤه في الإقلاع القادم.
+    }
+    return { state: 'none' };
+  }
+  let aside: string | null = null;
+  try {
+    aside = (JSON.parse(readFileSync(marker, 'utf8')) as { aside?: string }).aside ?? null;
+  } catch {
+    aside = null;
+  }
+  if (!aside || !existsSync(aside)) {
+    return { state: 'failed', aside, reason: 'مجلّد الأصل المنقول جانبًا غير موجود' };
+  }
+  try {
+    const snapshot = join(aside, 'diwan.db');
+    const current = join(aside, 'current.db');
+    if (usable(snapshot)) {
+      copyFileSync(snapshot, dbFile);
+    } else if (usable(current)) {
+      for (const suffix of DB_SUFFIXES) if (existsSync(current + suffix)) copyFileSync(current + suffix, dbFile + suffix);
+    } else {
+      return { state: 'failed', aside, reason: 'لا قاعدة سليمة في مجلّد الأصل' };
+    }
+  } catch (e) {
+    // نصفُ قاعدةٍ منسوخة لا تبقى في مكانها: تُمحى لتُعاد المحاولة كاملةً، فلا تُفتح مبتورة.
+    for (const suffix of DB_SUFFIXES) rmSync(dbFile + suffix, { force: true });
+    return { state: 'failed', aside, reason: e instanceof Error ? e.message : String(e) };
+  }
+  // المخزن الأصلي جانبًا يعود؛ وما كتبه الاسترجاع المتعثّر في مكانه يُركَن بجانبه.
+  let storeBack = true;
+  const asideStore = join(aside, 'store');
+  if (existsSync(asideStore)) {
+    const store = join(dir, 'store');
+    try {
+      if (existsSync(store)) renameSync(store, join(aside, PARTIAL_STORE));
+      renameSync(asideStore, store);
+    } catch {
+      storeBack = false;
+    }
+  }
+  try {
+    rmSync(marker, { force: true });
+  } catch {
+    // القاعدة عادت؛ والأثر الباقي يُنهى في الإقلاع القادم لأنّها في مكانها.
+  }
+  return { state: 'recovered', aside, storeBack };
 }

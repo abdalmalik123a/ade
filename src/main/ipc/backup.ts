@@ -14,8 +14,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, safeStorage } from 'electron';
-import { closeDb, dataDir, getDb } from '../db';
+import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
+import { closeDb, dataDir, dbLocked, getDb, lockDb } from '../db';
 import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBackup, writeBackup, type OpenedBackup } from '../services/backup';
 import { ForeignMirrorError, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { stampDataVersion } from '../services/dataVersion';
@@ -24,7 +24,7 @@ import { ensureSearchColumn } from '../services/citizens';
 import { prepareLetterheads } from '../services/letterheads';
 import { prepareTemplates } from '../services/templates';
 import { prepareSearch } from '../services/searchIndex';
-import { swapInBackup } from '../services/restoreSwap';
+import { swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 
@@ -118,8 +118,46 @@ async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (stor
   const aside = join(dir, `before-restore-${stamp()}`);
   mkdirSync(aside, { recursive: true });
   // ما على الجهاز جانبًا (القاعدة نسخةً متّسقة ثم ملفّاتها، والمخزن نقلًا)، ثم النسخة — وكلّه تحت الحماية.
-  await swapInBackup({ dir, aside, snapshot: snapshotDb, close: closeDb, reopen, placeDb, writeStore });
+  try {
+    await swapInBackup({
+      dir,
+      aside,
+      snapshot: snapshotDb,
+      close: closeDb,
+      reopen,
+      placeDb,
+      writeStore,
+      // لم تعد القاعدة إلى مكانها: تُقفل فلا تُفتح فارغة، ويبقى أثرٌ يعيدها الإقلاعُ التالي (مراجعة ٧ ت١).
+      lock: lockDb,
+      markIncomplete: (info) => writeIncompleteMarker(dir, info)
+    });
+  } catch (e) {
+    if (dbLocked()) relaunchAfterStuckRestore();
+    throw e;
+  }
   return aside;
+}
+
+/**
+ * القاعدة مقفلةٌ ولا عمل يمضي بلا قاعدة: يُقال للمكتب ثم يُعاد فتح البرنامج، فيُعيد الإقلاعُ بياناتِه الأصلية بنفسه.
+ * (والجواب إلى الواجهة يصلها قبلُ، برسالة التعثّر.) وإن تعذّرت الإعادة في الإقلاع أُغلق البرنامج برسالتها — لا حلقة.
+ */
+function relaunchAfterStuckRestore(): void {
+  void dialog
+    .showMessageBox({
+      type: 'warning',
+      title: 'تعثّر الاسترجاع',
+      message: 'تعثّر الاسترجاع ولم تعد بيانات المكتب إلى مكانها بعد.',
+      detail: 'بياناتك الأصلية سليمةٌ ومحفوظة. سيُعاد فتح ديوان الآن فيُعيدها بنفسه — فإن ظهرت رسالةٌ أخرى فأرسلها إلى المطوّر.',
+      buttons: ['حسنًا'],
+      noLink: true
+    })
+    .then(() => {
+      // القفل الواحد يُرفع، وإلا رُفضت النسخة الجديدة بحجّة أنّ البرنامج مفتوح.
+      app.releaseSingleInstanceLock();
+      app.relaunch();
+      app.exit(0);
+    });
 }
 
 // ── النسخة التلقائية عند الإغلاق (تعميق الموجود ٢) ───────────────────────
@@ -189,7 +227,14 @@ function autoPassword(): string | null {
   return secret ? safeStorage.decryptString(Buffer.from(secret, 'base64')) : null;
 }
 
-export const autoBackupConfigured = () => Boolean(readSetting('autoBackupDir'));
+/** يُسأل عنه في بدء الإغلاق: وقاعدةٌ مقفلة (استرجاعٌ متعثّر) لا تحبس النافذة فلا تُغلق. */
+export const autoBackupConfigured = (): boolean => {
+  try {
+    return Boolean(readSetting('autoBackupDir'));
+  } catch {
+    return false;
+  }
+};
 
 /** تُؤخذ النسخة إلى مجلّدها — ويُحفظ حالها نجحت أو لم تنجح. */
 export function runConfiguredAutoBackup(): AutoBackupResult | null {

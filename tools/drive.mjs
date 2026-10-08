@@ -11,6 +11,8 @@
  *   كائنًا ما كان: خطأٌ يُبلع صامتًا هو ما لا يراه الموظف ولا نحن.
  * - `afterRestart` في السيناريو: يُقتل التطبيق فجأةً بعد السيناريو (كانقطاع الكهرباء)
  *   ثم يُشغَّل على الملف الشخصي نفسه، فيُتفقَّد ما بقي.
+ * - `betweenRestarts({ profile })` في السيناريو: بعد القتل وقبل الفتح الثاني، والبرنامج مغلق — يُصنع فيه ما لا
+ *   يُصنع والقاعدة مفتوحة (ملفٌّ غاب من مكانه، أثرٌ تركه استرجاعٌ متعثّر…).
  * - `DIWAN_EXE`: يُشغَّل التطبيق المُثبَّت (المبني بـelectron-builder) لا نسخة التطوير.
  * - `appDir` في السيناريو: تطبيقٌ آخر من المشروع بدل ديوان — «أداة مفاتيح ديوان» (tools/keytool)، ومبنيّةً
  *   بـ`DIWAN_KEYTOOL_EXE`.
@@ -304,6 +306,7 @@ if (process.argv[2]) {
     });
     // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
     if (mod.afterRestart) {
+      if (mod.betweenRestarts) await mod.betweenRestarts({ profile });
       const again = await drive(mod.afterRestart, { userDataDir: profile, keepProfile: true, shotsDir: process.env.SHOT_DIR, env, keepOnboarding: true });
       out = [out, again].filter((x) => typeof x === 'string').join('\n');
     }

@@ -5,6 +5,12 @@ import Database from 'better-sqlite3';
 import { configureConnection } from './pragmas';
 
 let db: Database.Database | null = null;
+/**
+ * سببُ قفل القاعدة: استرجاعٌ تعثّر ولم تعد قاعدة المكتب إلى مكانها (`services/restoreSwap.ts`). فكلّ فتحٍ بعده كان
+ * يُنشئ `diwan.db` فارغًا — فإن تابع المكتب العمل عليه انشطرت السلسلة وتكرّر الترقيم. فيُرفض الفتح بالرسالة نفسها
+ * حتى يُغلق البرنامج، ويُعيد الإقلاعُ التالي القاعدة من مجلّد الأصل (`recoverIncompleteRestore`).
+ */
+let locked: string | null = null;
 
 /** مجلد بيانات المكتب. كل شيء يبقى على الجهاز — التطبيق «محلي». */
 export function dataDir(): string {
@@ -34,6 +40,7 @@ function sqlFile(name: string): string {
 }
 
 export function getDb(): Database.Database {
+  if (locked) throw new Error(locked);
   if (db) return db;
 
   const file = join(dataDir(), 'diwan.db');
@@ -47,6 +54,14 @@ export function getDb(): Database.Database {
 
   return db;
 }
+
+/** يُغلق القاعدة ويمنع فتحها ثانيةً في هذه الجلسة — والرسالة هي ما يُقال لمن يطلبها. */
+export function lockDb(reason: string): void {
+  closeDb();
+  locked = reason;
+}
+
+export const dbLocked = (): boolean => locked !== null;
 
 export function closeDb(): void {
   if (db) {
