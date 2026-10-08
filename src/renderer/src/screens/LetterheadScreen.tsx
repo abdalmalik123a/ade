@@ -24,6 +24,7 @@ import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterheadView from '../components/LetterheadView';
 import RevisionsMenu from '../components/RevisionsMenu';
 import { confirmAction } from '../kit/ask';
+import { useLeaveGuard } from '../kit/useLeaveGuard';
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
@@ -50,6 +51,8 @@ export default function LetterheadScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [layout, setLayout] = useState<LetterheadLayout>(emptyLayout);
   const [dirty, setDirty] = useState(false);
+  // لا مسودّة للترويسة: ما عُدِّل ولم يُحفظ يضيع بالانتقال أو بـ«ترويسة جديدة» أو بإغلاق البرنامج (ج٣).
+  const leave = useLeaveGuard({ label: 'الترويسة', dirty, save });
   const [saving, setSaving] = useState(false);
   const [seals, setSeals] = useState<Seal[]>([]);
 
@@ -124,6 +127,17 @@ export default function LetterheadScreen() {
     setDirty(false);
   }
 
+  /** ترويسةٌ أخرى من القائمة: تحلّ محلّ ما على الشاشة، فيُسأل عمّا لم يُحفظ أوّلًا. */
+  async function open(item: Letterhead) {
+    if (!(await leave())) return;
+    load(item);
+  }
+
+  async function startFresh() {
+    if (!(await leave())) return;
+    startNew();
+  }
+
   function startNew() {
     setAuthorityId(null);
     setCurrentId(null);
@@ -144,10 +158,10 @@ export default function LetterheadScreen() {
   }
 
   /** حفظ الترويسة: تحديثًا للجارية، أو باسمٍ جديد إن كانت بلا معرّف. */
-  async function save() {
+  async function save(): Promise<boolean> {
     if (!name.trim()) {
       say('سمِّ الترويسة أولًا', 'warn');
-      return;
+      return false;
     }
     setSaving(true);
     try {
@@ -162,8 +176,10 @@ export default function LetterheadScreen() {
       setCurrentId(saved.id);
       setDirty(false);
       say('حُفظت الترويسة');
+      return true;
     } catch (e) {
       say(e instanceof Error ? e.message : 'تعذّر الحفظ', 'warn');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -204,6 +220,7 @@ export default function LetterheadScreen() {
 
   /** «نسخة منها»: مستقلّة تُعدَّل دون المساس بالأصل — كما في مكتبة النماذج. */
   async function duplicate(id: number) {
+    if (!(await leave())) return;
     const copy = await window.diwan.letterheads.duplicate(id);
     if (!copy) {
       say('تعذّر النسخ', 'warn');
@@ -313,7 +330,7 @@ export default function LetterheadScreen() {
                     <button
                       className="font-label-sm text-label-sm text-secondary font-semibold hover:underline"
                       type="button"
-                      onClick={startNew}
+                      onClick={() => void startFresh()}
                     >
                       + ترويسة جديدة
                     </button>
@@ -388,7 +405,7 @@ export default function LetterheadScreen() {
                       <button
                         className="flex-1 min-w-0 text-right font-label-md text-label-md truncate"
                         type="button"
-                        onClick={() => load(item)}
+                        onClick={() => void open(item)}
                       >
                         {item.name}
                         {item.isDefault && (
@@ -487,13 +504,16 @@ export default function LetterheadScreen() {
                     id={currentId}
                     kind="letterhead"
                     onRestore={(p, revision) => {
-                      // تُحمَّل للمراجعة ولا تُكتب: الحفظ يعتمدها نسخةً جديدة.
-                      setName(p.name);
-                      setCategory(p.category ?? '');
-                      setAuthorityId(p.authorityId);
-                      setLayout(normalizeLayout(p.layout));
-                      setDirty(true);
-                      say(`حُمّلت النسخة ${revision} — احفظ لتعتمدها`);
+                      // تُحمَّل للمراجعة ولا تُكتب: الحفظ يعتمدها نسخةً جديدة. وهي تحلّ محلّ ما على الشاشة.
+                      void (async () => {
+                        if (!(await leave())) return;
+                        setName(p.name);
+                        setCategory(p.category ?? '');
+                        setAuthorityId(p.authorityId);
+                        setLayout(normalizeLayout(p.layout));
+                        setDirty(true);
+                        say(`حُمّلت النسخة ${revision} — احفظ لتعتمدها`);
+                      })();
                     }}
                   />
                 )}

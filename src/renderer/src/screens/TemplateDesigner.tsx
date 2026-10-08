@@ -22,6 +22,7 @@ import LetterheadView from '../components/LetterheadView';
 import AddressingPicker from '../components/AddressingPicker';
 import RevisionsMenu from '../components/RevisionsMenu';
 import { errorText } from '../lib/errors';
+import { useLeaveGuard } from '../kit/useLeaveGuard';
 import SpellingPanel from '../components/SpellingPanel';
 import WordLossPanel from '../components/WordLosses';
 import type { WordScan } from '@shared/wordLosses';
@@ -89,10 +90,36 @@ export default function TemplateDesigner({
   const [spellOpen, setSpellOpen] = useState(false);
   const spelling = useMemo(() => docSpelling(doc), [doc]);
 
+  // ── ما لم يُحفظ (ج٣) ─────────────────────────────────────────────────
+  // × و«إلغاء» والانتقال وإغلاق البرنامج تسأل عمّا عُدِّل ولم يُحفظ: توقيعُ ما في المصمّم مقابل توقيعه حين فُتح. والنموذج المستورد من Word لا أصل له في القاعدة، فهو غير محفوظ منذ فُتح.
+  const signature = useMemo(
+    () => JSON.stringify([code, title, subtitle, category, subjectLine, letterheadId, variables, doc]),
+    [code, title, subtitle, category, subjectLine, letterheadId, variables, doc]
+  );
+  const [baseline, setBaseline] = useState<string | null>(null);
+  /** يُرفع عند التركيب وبعد وصول وثيقة النموذج المحفوظة: يُسجَّل توقيعها أصلًا لا تعديلًا. */
+  const [rebase, setRebase] = useState(true);
+  useEffect(() => {
+    if (!rebase) return;
+    setBaseline(signature);
+    setRebase(false);
+  }, [rebase, signature]);
+  const dirty = (!editing && Boolean(initialDoc)) || (baseline !== null && signature !== baseline);
+  const leave = useLeaveGuard({ label: 'مصمّم النماذج', dirty, save });
+
+  async function closeDesigner() {
+    if (!(await leave())) return;
+    onClose();
+  }
+
   // وثيقة النموذج المحفوظة كتلًا — وإلا رُحّلت من متنه النصّي.
   useEffect(() => {
     if (!initial || initial.id <= 0) return;
-    void window.diwan.templates.doc(initial.id).then((d) => d && setDoc(d));
+    void window.diwan.templates.doc(initial.id).then((d) => {
+      if (!d) return;
+      setDoc(d);
+      setRebase(true);
+    });
   }, [initial]);
 
   /** الشعارات المرفوعة — منها تُختار العلامة المائية الصورية. */
@@ -258,16 +285,16 @@ export default function TemplateDesigner({
     }
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     setError(null);
     if (!title.trim()) {
       setError('عنوان النموذج مطلوب');
-      return;
+      return false;
     }
     const text = docText(doc);
     if (!text.trim()) {
       setError('متن النموذج فارغ');
-      return;
+      return false;
     }
     setSaving(true);
     try {
@@ -290,8 +317,10 @@ export default function TemplateDesigner({
         void window.diwan.learning.record({ kind: 'category', input: normalizeFold(title), suggested: catSuggest.value, chosen });
       }
       onSaved();
+      return true;
     } catch (e) {
       setError(errorText(e, 'تعذّر الحفظ'));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -304,6 +333,8 @@ export default function TemplateDesigner({
   }
 
   async function importFile() {
+    // يحلّ محلّ ما على الورقة: يُسأل عمّا لم يُحفظ أوّلًا.
+    if (!(await leave())) return;
     const imported = await window.diwan.templates.importFile();
     if (!imported) return;
     setTitle(imported.title);
@@ -404,7 +435,7 @@ export default function TemplateDesigner({
               className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
               title="إغلاق"
               type="button"
-              onClick={onClose}
+              onClick={() => void closeDesigner()}
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -799,7 +830,7 @@ export default function TemplateDesigner({
             <button
               className="px-space-md h-9 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
               type="button"
-              onClick={onClose}
+              onClick={() => void closeDesigner()}
             >
               إلغاء
             </button>

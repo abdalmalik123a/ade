@@ -42,6 +42,7 @@ import {
   type TextOverlay
 } from '@shared/pdfEdit';
 import { errorText } from '../lib/errors';
+import { useLeaveGuard } from '../kit/useLeaveGuard';
 import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
 import { fitJpeg, reencode, rememberLimit, savedLimit, toJpeg, TOP_DPI } from '../lib/fitImage';
 
@@ -263,12 +264,26 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   }
 
   const dirty = pages !== committed.current.pages || overlays !== committed.current.overlays;
+
+  // ── ما لم يُخرَج منه (ج٣) ────────────────────────────────────────────
+  // جلسةٌ ضُمّت فيها ملفّات أو عُدِّلت صفحاتها ولم تُحفظ ملفًّا ولم تذهب إلى ملفّ الزبون: تضيع بالانتقال أو بـ«ابدأ من جديد».
+  // وملفٌّ واحد فُتح ولم يُمسّ، أو ما أُخرج للتوّ، ليس عملًا يضيع.
+  const [baseline, setBaseline] = useState<Snap>({ pages: [], overlays: [] });
+  const baselinePending = useRef(false);
+  useEffect(() => {
+    if (!baselinePending.current) return;
+    baselinePending.current = false;
+    setBaseline({ pages, overlays });
+  }, [pages, overlays]);
+  const unsaved = pages.length > 0 && (pages !== baseline.pages || overlays !== baseline.overlays);
   const canUndo = past.current.length > 0 || dirty;
   const canRedo = future.current.length > 0 && !dirty;
 
   // ── الفتح والدمج والمسح ─────────────────────────────────────────────
-  async function add(opened: PdfOpened[]): Promise<PageRef[]> {
+  async function add(opened: PdfOpened[], fromFile = true): Promise<PageRef[]> {
     const loaded = await Promise.all(opened.map(loadSource));
+    // أوّل ما يُفتح من ملفٍّ على القرص هو الأصل (لا يضيع)؛ والصفحة الممسوحة لا أصل لها.
+    if (fromFile && latest.current.pages.length === 0) baselinePending.current = true;
     setSources((s) => ({ ...s, ...Object.fromEntries(loaded.map((l) => [l.id, l])) }));
     const added: PageRef[] = loaded.flatMap((src) => src.pages.map((_, index) => ({ id: newId('p'), source: src.id, index, rotate: 0 as Rotation })));
     setPages((p) => [...p, ...added]);
@@ -307,7 +322,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   async function scan() {
     setBusy('يُمسح… ضع الورقة في الماسح');
     try {
-      const [page] = await add([await window.diwan.pdf.scan()]);
+      const [page] = await add([await window.diwan.pdf.scan()], false);
       if (page) setCurrent(page.id);
       say('أُضيفت الصفحة الممسوحة — ضع التالية واضغط «امسح» مرّةً أخرى');
     } catch (e) {
@@ -613,7 +628,10 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   async function run<T>(label: string, work: () => Promise<T>): Promise<T | null> {
     setBusy(label);
     try {
-      return await work();
+      const out = await work();
+      // ما خرج ملفًّا أو صار في ملفّ الزبون: لا تُسأل الجلسة بعده (ج٣).
+      if (out) setBaseline(latest.current);
+      return out;
     } catch (e) {
       say(errorText(e, 'تعذّر إتمام العملية'), 'warn');
       return null;
@@ -746,6 +764,18 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     if (out) say(`حُفظت ${toIndic(out.files.length)} صورة في ${out.folder}`);
   }
 
+  const leave = useLeaveGuard({
+    label: 'ملف PDF',
+    dirty: unsaved,
+    save: async () => Boolean(await saveAs(plan, name || 'ملف معدّل'))
+  });
+
+  /** «أغلق الملف وابدأ من جديد»: يمحو الجلسة، فيُسأل عمّا لم يُحفظ أوّلًا. */
+  async function startOver() {
+    if (!(await leave())) return;
+    reset();
+  }
+
   // ── لوحة المفاتيح: Delete يحذف العنصر المحدَّد، وCtrl+Z يتراجع ─────
   // (ما في الدالّتين مراجعُ وضوابطُ حالة — فلا يضرّها أن تكون من رسمٍ سابق.)
   useEffect(() => {
@@ -827,7 +857,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
                 <span className="material-symbols-outlined text-[18px]">photo_library</span>صفحاتٌ صورًا
               </button>
               <div className="flex-1" />
-              <button className={btn} data-act="pdf-reset" title="أغلق الملف وابدأ من جديد" type="button" onClick={reset}>
+              <button className={btn} data-act="pdf-reset" title="أغلق الملف وابدأ من جديد" type="button" onClick={() => void startOver()}>
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </>

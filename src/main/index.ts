@@ -55,17 +55,20 @@ ipcMain.on('app:requestClose', (e) => BrowserWindow.fromWebContents(e.sender)?.c
 /**
  * ما لم يُحفظ في الواجهة ولا تحرسه مسودّةٌ (ج١): تقول الواجهة اسم الشاشة (الترويسة، الأسئلة…)، فيسأل إغلاق النافذة
  * بنافذة ويندوز قبل أن يبدأ. وما تحرسه مسودّةٌ أو معلّقة (المحرّر، والشبّاك) لا تقوله — فلا يُسأل عنه.
- * وللمِقْود جوابٌ جاهز (`DIWAN_TEST_CLOSE_ANSWER`: `leave` أو `stay`): حوار النظام لا يُضغط آليًّا.
+ * وللمِقْود أجوبةٌ جاهزة (`DIWAN_TEST_CLOSE_ANSWER`: `stay,leave` — بالترتيب، وآخرها يتكرّر): حوار النظام لا يُضغط آليًّا.
  */
 let unsavedLabel: string | null = null;
+const closeAnswers = (process.env['DIWAN_TEST_CLOSE_ANSWER'] ?? '')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
 ipcMain.on('app:unsaved', (e, label: unknown) => {
   if (!mainWindow || e.sender !== mainWindow.webContents) return;
   unsavedLabel = typeof label === 'string' && label.trim() ? label.trim().slice(0, 80) : null;
 });
 
 async function mayCloseWithUnsaved(label: string): Promise<boolean> {
-  const forced = process.env['DIWAN_TEST_CLOSE_ANSWER'];
-  if (forced) return forced === 'leave';
+  if (closeAnswers.length) return (closeAnswers.length > 1 ? closeAnswers.shift() : closeAnswers[0]) === 'leave';
   if (!mainWindow) return true;
   const answer = await dialog.showMessageBox(mainWindow, {
     type: 'warning',

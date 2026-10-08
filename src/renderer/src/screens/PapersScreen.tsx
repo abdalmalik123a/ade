@@ -57,6 +57,7 @@ import QuestionBankPanel from '../components/QuestionBankPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import OmrPanel from '../components/OmrPanel';
 import { confirmAction } from '../kit/ask';
+import { useLeaveGuard } from '../kit/useLeaveGuard';
 import type { OmrSpec } from '@shared/omr';
 
 const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
@@ -440,6 +441,23 @@ function PapersScreenInner(
   const written = useMemo(() => flatten(items).filter((it) => textOf(it.inlines).trim()), [items]);
   const title = paperTitle(head);
 
+  // ── ما لم يُحفظ (ج٣) ─────────────────────────────────────────────────
+  // لا مسودّة تلقائية لورقة الأسئلة (قراره: بعد أوّل بيع)، فالانتقال و«ورقة جديدة» و«افتح محفوظة» وإغلاق البرنامج
+  // تسأل عمّا كُتب ولم يُحفظ. والحالة توقيعُ ما تحمله الورقة مقابل توقيع آخر حفظٍ أو فتحٍ أو ورقةٍ جديدة.
+  const signature = useMemo(() => JSON.stringify([head, items, pick ?? null, dir, numerals, omr]), [head, items, pick, dir, numerals, omr]);
+  const signatureNow = useRef(signature);
+  signatureNow.current = signature;
+  /** توقيع آخر حالةٍ حُفظت أو فُتحت؛ و`''` ورقةٌ لم تُحفظ قطّ (الدور الثاني). */
+  const [baseline, setBaseline] = useState<string | null>(null);
+  /** يُرفع حين تُفتح ورقةٌ أو تُبدأ: يُسجَّل توقيعها بعد أن تُرسم بحالتها الجديدة (وعند التركيب مرّةً). */
+  const [rebase, setRebase] = useState(true);
+  useEffect(() => {
+    if (!rebase) return;
+    setBaseline(signature);
+    setRebase(false);
+  }, [rebase, signature]);
+  const dirty = baseline !== null && signature !== baseline;
+
   // ── تحريرُ الشجرة ──────────────────────────────────────────────────
   const patchItem = useCallback((id: string, patch: Partial<ListItem>) => {
     setItems((prev) => mapTree(prev, id, (it) => ({ ...it, ...patch })));
@@ -515,11 +533,12 @@ function PapersScreenInner(
   );
 
   // ── الحفظ والطباعة ─────────────────────────────────────────────────
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
     if (!written.length) {
       say('اكتب نصّ سؤالٍ واحدٍ على الأقل قبل الحفظ', 'warn');
-      return;
+      return false;
     }
+    const savedSignature = signatureNow.current;
     setBusy(true);
     try {
       const saved = await window.diwan.templates.save({
@@ -536,15 +555,20 @@ function PapersScreenInner(
         doc: omr.key.length ? { ...doc, meta: { ...doc.meta, omr } } : doc
       });
       setPaperId(saved.id);
+      setBaseline(savedSignature);
       await loadPapers();
       onChanged?.();
       say('حُفظت الورقة في قسم الأسئلة');
+      return true;
     } catch (e) {
       say(errorText(e, 'تعذّر حفظ الورقة'), 'warn');
+      return false;
     } finally {
       setBusy(false);
     }
   }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say]);
+
+  const leave = useLeaveGuard({ label: 'أوراق الأسئلة', dirty, save });
 
   /** ما خرج آخر مرّة — يقوله شريط الإخراج، ومنه «أعد الطبع» بالنسخ نفسها (المرحلة ٥). */
   const [after, setAfter] = useState<Outcome | null>(null);
@@ -604,6 +628,7 @@ function PapersScreenInner(
 
   const openPaper = useCallback(
     async (id: number) => {
+      if (!(await leave())) return;
       try {
         const loaded = await window.diwan.templates.doc(id);
         const list = questionsOf(loaded);
@@ -615,26 +640,30 @@ function PapersScreenInner(
         setOmr(loaded.meta.omr ?? newOmr());
         setOmrEpoch((n) => n + 1);
         setPaperId(id);
+        setRebase(true);
         say('فُتحت الورقة');
       } catch (e) {
         say(errorText(e, 'تعذّر فتح الورقة'), 'warn');
       }
     },
-    [say]
+    [say, leave]
   );
 
-  const fresh = useCallback(() => {
+  const fresh = useCallback(async () => {
+    if (!(await leave())) return;
     setHead(emptyHead());
     setItems([newQuestion()]);
     setPick(undefined);
     setOmr(newOmr());
     setOmrEpoch((n) => n + 1);
     setPaperId(null);
+    setRebase(true);
     say('ورقة جديدة');
-  }, [say]);
+  }, [say, leave]);
 
   /** «الدور الثاني» من البنك (د٩) — ورقةٌ جديدة لا تُكتب فوق الأولى. */
   async function secondRoundPaper() {
+    if (!(await leave())) return;
     const bank = await window.diwan.bank.list({ subject: head['المادة'] || null, grade: head['الصف'] || null });
     const { picks, missing } = secondRound(items, bank);
     if (!picks.length) {
@@ -644,6 +673,8 @@ function PapersScreenInner(
     setItems(picks.map((p) => freshCopy(p.item)));
     setHead((h) => roundTwoHead(h));
     setPaperId(null);
+    // ورقةٌ جديدة لم تُحفظ قطّ — فتبقى «غير محفوظة» حتى تُحفظ باسمها.
+    setBaseline('');
     for (const p of picks) void window.diwan.bank.used(p.id);
     say(
       missing.length
@@ -675,7 +706,7 @@ function PapersScreenInner(
             <button
               className="h-8 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               type="button"
-              onClick={fresh}
+              onClick={() => void fresh()}
             >
               <span className="material-symbols-outlined text-[18px]">note_add</span>
               ورقة جديدة

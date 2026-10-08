@@ -42,6 +42,7 @@ import LetterSheet, { gapAfter } from '../components/LetterSheet';
 import SpellingPanel from '../components/SpellingPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import { onBeforeClose } from '../lib/beforeClose';
+import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { describeRole } from '@shared/printRoles';
 
@@ -123,6 +124,8 @@ function EditorScreen(
   const api = useRef<EditorApi | null>(null);
   const printRef = useRef<HTMLDivElement | null>(null);
   const dirty = useRef(false);
+  /** الورقة كما جاءت من نموذجٍ أو مسودّةٍ — فما يختلف عنها كتبه الموظف بيده (ج٣). */
+  const baseDoc = useRef<Doc | null>(null);
 
   const setDoc = useCallback((next: Doc | ((d: Doc) => Doc)) => {
     dirty.current = true;
@@ -192,7 +195,9 @@ function EditorScreen(
     if (id === null) return;
     const [detail, tdoc] = await Promise.all([window.diwan.templates.get(id), window.diwan.templates.doc(id)]);
     if (!detail) return;
-    setDoc(tdoc ?? blankLetter());
+    const opened = tdoc ?? blankLetter();
+    baseDoc.current = opened;
+    setDoc(opened);
     setDocType(detail.title);
     if (detail.letterheadId) {
       // القائمة تُجلب هنا لا من حالة الشاشة: تُنادى هذه الدالّة من أوّل تصيير وحالتها فارغة،
@@ -215,6 +220,7 @@ function EditorScreen(
       setError('تعذّرت قراءة الكتاب المحفوظ — فُتح فارغًا');
       return;
     }
+    baseDoc.current = saved.doc;
     setDocState(saved.doc);
     setValues(saved.values);
     setRegistry(keepNumber ? saved.registry : { ...saved.registry, number: '' });
@@ -411,6 +417,25 @@ function EditorScreen(
 
   // ── المسودات ─────────────────────────────────────────────────────────
   const hasContent = Boolean(docText(doc).trim() || ownerName);
+  /** كُتب على الورقة شيءٌ بيد الموظف: متنٌ عُدِّل، أو قيمٌ مُلئت، أو صاحب علاقة. */
+  const edited = hasContent && (doc !== baseDoc.current || Object.values(values).some((v) => v.trim()) || ownerName !== '');
+
+  /**
+   * نموذجٌ آخر من القائمة أو من البحث يحلّ محلّ الورقة (ج٣): كان يمحو الكتاب ويكتب فوق مسودّته بعد ثوانٍ بلا سؤال.
+   * فإن كُتب على الورقة شيءٌ سُئل الموظف أوّلًا. (والنموذج الذي يُفتح من المكتبة على ورقةٍ لم يُكتب عليها لا يسأل.)
+   */
+  async function switchTemplate(id: number | null) {
+    if (id !== null && edited) {
+      const ok = await confirmAction({
+        title: 'استبدال الكتاب الحالي بنموذجٍ آخر؟',
+        message: 'يُمحى ما كُتب على هذه الورقة، وتُكتب فوق مسودّتها.',
+        confirm: 'استبدله',
+        danger: true
+      });
+      if (!ok) return;
+    }
+    await loadTemplate(id);
+  }
   const savedLetter = () => ({ doc, values, registry, layout, docType, owner });
   const saveDraft = useCallback(
     async (silent: boolean) => {
@@ -712,7 +737,7 @@ function EditorScreen(
               className={inputCls}
               data-editor-template=""
               value={activeTemplate ?? ''}
-              onChange={(e) => void loadTemplate(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => void switchTemplate(e.target.value ? Number(e.target.value) : null)}
             >
               <option value="">{templates.length === 0 ? '— لا نماذج في المكتبة بعد —' : '— كتابٌ جديد، أو اختر نموذجًا —'}</option>
               {templates.map((t) => (
@@ -1079,7 +1104,7 @@ function EditorScreen(
             </button>
           </div>
 
-          {tool === 'find' && <FindReplaceBar doc={doc} templates={templates} onChange={setDoc} onOpenTemplate={(id) => void loadTemplate(id)} />}
+          {tool === 'find' && <FindReplaceBar doc={doc} templates={templates} onChange={setDoc} onOpenTemplate={(id) => void switchTemplate(id)} />}
           {tool === 'symbols' && (
             <div className="px-space-md py-space-sm bg-surface-container-low border-b border-outline-variant/40">
               <SymbolPalette onPick={(s) => api.current?.insertText(s)} />
