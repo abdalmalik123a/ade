@@ -29,6 +29,7 @@ import {
   type OrderStatus
 } from '@shared/orders';
 import { errorText } from '../lib/errors';
+import { useToast } from '../kit/useToast';
 import { choosePrinter } from '../lib/printChoice';
 import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
 
@@ -80,7 +81,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Order | 'new' | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, say } = useToast(3000);
   const today = localToday();
 
   const [drafts, setDrafts] = useState<DraftRow[]>([]);
@@ -99,11 +100,6 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
     void reload().then(() => onChanged?.());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload]);
-
-  const say = (text: string) => {
-    setToast(text);
-    window.setTimeout(() => setToast(null), 3000);
-  };
 
   /** وصل الاستلام على طابعة «الكتب والمعاملات»: نسختان على ورقة — للزبون وللمكتب (`shared/receipt.ts`). */
   async function printReceipt(order: Order) {
@@ -322,7 +318,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
 
       {toast && (
         <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-secondary font-label-md text-label-md">
-          {toast}
+          {toast.text}
         </div>
       )}
     </main>

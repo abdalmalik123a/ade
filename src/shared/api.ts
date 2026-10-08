@@ -730,6 +730,11 @@ export type DiwanApi = {
     closeReady(): void;
     /** إغلاق النافذة كزرّ الإغلاق: على مرحلتيه (`window.close()` يُوجَّه إليه). */
     requestClose(): void;
+    /**
+     * اسم الشاشة التي فيها عملٌ لم يُحفظ ولا تحرسه مسودّةٌ (`null` إن لم يبقَ): فيسأل إغلاق البرنامج بنافذة ويندوز
+     * «ابقَ أم أغلق بلا حفظ؟» قبل أن يبدأ (ج١).
+     */
+    setUnsaved(label: string | null): void;
   };
   counts: {
     sidebar(): Promise<SidebarCounts>;

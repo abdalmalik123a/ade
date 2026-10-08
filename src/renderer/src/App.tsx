@@ -36,6 +36,8 @@ import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import { flushBeforeClose } from './lib/beforeClose';
+import ConfirmHost from './kit/ConfirmHost';
+import { canLeaveAll, hasUnsaved, onUnsavedLabel } from './kit/leaveGuard';
 
 /** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
 type EditorTarget = {
@@ -166,11 +168,27 @@ export default function App() {
   /** ملخّص الأسبوع في «التنبيهات» يفتح «السجلّ» على هذا الأسبوع. */
   const [archiveRequest, setArchiveRequest] = useState<{ key: number; period: 'week' } | null>(null);
 
+  // «ما لم يُحفظ» في الشاشات التي لا تحرسها مسودّة يصل العملية الرئيسة، فيسأل إغلاق البرنامج (ج١).
+  useEffect(() => onUnsavedLabel((label) => window.diwan.ui.setUnsaved(label)), []);
+
+  const routeNow = useRef<RouteKey>(route);
+  routeNow.current = route;
+
   // العدّادات تتغيّر بإصدار كتاب أو إضافة نموذج.
   const navigate = useCallback(
     (key: RouteKey) => {
-      setRoute(key);
-      void refresh();
+      const go = () => {
+        setRoute(key);
+        void refresh();
+      };
+      // مغادرة شاشةٍ فيها عملٌ لم يُحفظ ولا تحرسه مسودّة: يُسأل الموظف أوّلًا (ج١).
+      if (key !== routeNow.current && hasUnsaved()) {
+        void canLeaveAll().then((ok) => {
+          if (ok) go();
+        });
+        return;
+      }
+      go();
     },
     [refresh]
   );
@@ -531,6 +549,9 @@ export default function App() {
 
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
+
+      {/* أسئلة «أتحذف؟» و«اترك بلا حفظ؟» من أيّ مكان (kit/ask.ts). */}
+      <ConfirmHost />
 
       {/* «على أيّ طابعة؟» — تسأله الشاشات حين للدور طابعتان أو طلب المكتب أن يُسأل. */}
       <PrintChooser />

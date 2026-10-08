@@ -53,6 +53,34 @@ app.on('second-instance', bringToFront);
 ipcMain.on('app:requestClose', (e) => BrowserWindow.fromWebContents(e.sender)?.close());
 
 /**
+ * ما لم يُحفظ في الواجهة ولا تحرسه مسودّةٌ (ج١): تقول الواجهة اسم الشاشة (الترويسة، الأسئلة…)، فيسأل إغلاق النافذة
+ * بنافذة ويندوز قبل أن يبدأ. وما تحرسه مسودّةٌ أو معلّقة (المحرّر، والشبّاك) لا تقوله — فلا يُسأل عنه.
+ * وللمِقْود جوابٌ جاهز (`DIWAN_TEST_CLOSE_ANSWER`: `leave` أو `stay`): حوار النظام لا يُضغط آليًّا.
+ */
+let unsavedLabel: string | null = null;
+ipcMain.on('app:unsaved', (e, label: unknown) => {
+  if (!mainWindow || e.sender !== mainWindow.webContents) return;
+  unsavedLabel = typeof label === 'string' && label.trim() ? label.trim().slice(0, 80) : null;
+});
+
+async function mayCloseWithUnsaved(label: string): Promise<boolean> {
+  const forced = process.env['DIWAN_TEST_CLOSE_ANSWER'];
+  if (forced) return forced === 'leave';
+  if (!mainWindow) return true;
+  const answer = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: 'تعديلاتٌ لم تُحفظ',
+    message: `في «${label}» تعديلاتٌ لم تُحفظ.`,
+    detail: 'إن أُغلق ديوان الآن ضاعت.',
+    buttons: ['ابقَ في ديوان', 'أغلق بلا حفظ'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true
+  });
+  return answer.response === 1;
+}
+
+/**
  * مقاس النافذة من شاشة الجهاز (خطة Production، ٣٫١): كانت ١٦٠٠×١٠٠٠ وحدّها الأدنى ١٢٨٠×٨٠٠ — أكبر
  * من شاشة حاسوبٍ محمول بـ١٣٦٦×٧٦٨، فيقع أسفلها تحت شريط المهامّ ولا يُصغَّر. فتأخذ مساحة العمل إن
  * ضاقت، وحدّها الأدنى ١٠٢٤×٦٤٠ (أو الشاشة إن كانت أصغر).
@@ -110,10 +138,23 @@ function createWindow(): void {
   // لا تجيب لا تحبسه: بعد مهلةٍ يمضي.
   let closing = false;
   let closed = false;
+  /** وافق الموظف على ترك ما لم يُحفظ. */
+  let leaveAgreed = false;
   mainWindow.on('close', (e) => {
     if (closed) return;
     e.preventDefault();
     if (closing) return;
+    if (unsavedLabel !== null && !leaveAgreed) {
+      // سؤالٌ واحد في وقته: إغلاقاتٌ أخرى أثناءه تُتجاهل، و«ابقَ» يُبقي النافذة حيث هي.
+      closing = true;
+      void mayCloseWithUnsaved(unsavedLabel).then((leave) => {
+        closing = false;
+        if (!leave) return;
+        leaveAgreed = true;
+        mainWindow?.close();
+      });
+      return;
+    }
     closing = true;
     const backup = autoBackupConfigured();
     let went = false;
@@ -141,6 +182,14 @@ function createWindow(): void {
     const timer = setTimeout(go, 3000);
     ipcMain.on('app:closeReady', go);
     mainWindow?.webContents.send('app:closing', { backup });
+  });
+
+  // واجهةٌ أُعيد تحميلها أو سقطت عمليّتها لا تُبقي «ما لم يُحفظ» من جلستها: وإلا سأل الإغلاقُ عن شاشةٍ لم تعد.
+  mainWindow.webContents.on('did-start-loading', () => {
+    unsavedLabel = null;
+  });
+  mainWindow.webContents.on('render-process-gone', () => {
+    unsavedLabel = null;
   });
 
   // تسجيل أخطاء الواجهة لسرعة التشخيص

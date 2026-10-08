@@ -28,7 +28,8 @@ const api: DiwanApi = {
       return () => ipcRenderer.removeListener('app:closing', handler);
     },
     closeReady: () => ipcRenderer.send('app:closeReady'),
-    requestClose: () => ipcRenderer.send('app:requestClose')
+    requestClose: () => ipcRenderer.send('app:requestClose'),
+    setUnsaved: (label: string | null) => ipcRenderer.send('app:unsaved', label)
   },
   counts: {
     sidebar: () => invoke('counts:sidebar')

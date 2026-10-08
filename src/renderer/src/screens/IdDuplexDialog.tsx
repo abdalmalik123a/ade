@@ -18,6 +18,7 @@ import {
 import DeskewModal from './DeskewModal';
 import { WATERMARK_PRESETS, purposeWatermark } from '@shared/watermark';
 import { errorText } from '../lib/errors';
+import { useToast } from '../kit/useToast';
 import { choosePrinter } from '../lib/printChoice';
 import { PrinterNote } from '../components/OutputBar';
 import { useToolNav } from '../components/ToolFrame';
@@ -53,12 +54,8 @@ export default function IdDuplexDialog({
   const [wmOpacity, setWmOpacity] = useState(0.22);
   const [busy, setBusy] = useState(false);
   const [deskewTarget, setDeskewTarget] = useState<'front' | 'back' | null>(null);
-  const [toast, setToast] = useState<{ text: string; warn?: boolean } | null>(null);
-
-  const say = (text: string, warn = false) => {
-    setToast({ text, warn });
-    window.setTimeout(() => setToast(null), 3200);
-  };
+  const { toast, say: sayTone } = useToast(3200);
+  const say = (text: string, warn = false) => sayTone(text, warn ? 'warn' : 'ok');
 
   const cardSize = useMemo(() => {
     const std = STANDARD_CARD_SIZES.find((s) => s.key === sizeKey);
@@ -609,7 +606,7 @@ export default function IdDuplexDialog({
             {toast && (
               <span
                 className={`text-xs px-2.5 py-1 rounded-md font-semibold ${
-                  toast.warn ? 'bg-error-container text-on-error-container' : 'bg-primary/10 text-secondary'
+                  toast.tone === 'warn' ? 'bg-error-container text-on-error-container' : 'bg-primary/10 text-secondary'
                 }`}
               >
                 {toast.text}

@@ -10,6 +10,7 @@ import { dominantColor, paletteFrom } from '@shared/designKit';
 import { dueLabel, localToday, statusOf, type Client, type Order } from '@shared/orders';
 import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFile';
 import { errorText } from '../lib/errors';
+import { useToast } from '../kit/useToast';
 
 const KINDS = ['مدرسة', 'روضة', 'إعدادية', 'ثانوية', 'دائرة', 'مديرية', 'شركة', 'جامعة', 'مركز'];
 
@@ -53,7 +54,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const { toast, say } = useToast(3000);
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** «ملفّ المدارس» مفعّلٌ في الإعدادات — فيُعرض للمدرسة ملفّها. */
   const [schoolFiles, setSchoolFiles] = useState(false);
@@ -88,11 +89,6 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
     else setOrders([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, current?.id]);
-
-  const say = (t: string) => {
-    setToast(t);
-    window.setTimeout(() => setToast(null), 3000);
-  };
 
   async function save() {
     setError(null);
@@ -410,7 +406,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
 
       {toast && (
         <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-secondary font-label-md text-label-md">
-          {toast}
+          {toast.text}
         </div>
       )}
     </main>
