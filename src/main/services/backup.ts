@@ -219,9 +219,20 @@ export async function openBackup(path: string, password: string | null, workDir:
   }
 }
 
+/** الأعلى من إصدارين، وما ليس رقم إصدارٍ يُتجاهل. */
+function higherVersion(a: string | null, b: string | null): string | null {
+  const valid = (v: string | null): v is string => typeof v === 'string' && /^\d+(\.\d+)*(-[\w.]+)?$/.test(v.trim());
+  if (!valid(a)) return valid(b) ? b : null;
+  if (!valid(b)) return a;
+  return compareVersions(a, b) >= 0 ? a : b;
+}
+
 /**
  * ما في النسخة — يُعرض قبل الموافقة: أسليمةٌ هي، وكم فيها، وإلى متى تصل، ومن أيّ إصدار.
  * تُفتح القاعدة للقراءة وحدها.
+ *
+ * والإصدار هو الأعلى من وصف النسخة وختم قاعدتها (`settings.appVersion`، آخر إصدارٍ فتحها): القاعدة تحمل ما يعرفه
+ * الإقلاع حارسًا، ووصفٌ تالف أو أرشيفٌ رُكّب بيد يُدخل بياناتٍ أحدث ثم يرفضها الإقلاع فيُحبس المكتب عن بياناته.
  */
 export function inspectDbFile(file: string, files: number, meta: { appVersion: string; createdAt: string | null } | null, currentVersion: string): BackupSummary {
   let db: Database.Database | null = null;
@@ -235,6 +246,10 @@ export function inspectDbFile(file: string, files: number, meta: { appVersion: s
     }
     const count = (table: string) => (db!.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
     const last = db.prepare("SELECT MAX(datetime(issued_at, 'localtime')) AS at FROM documents").get() as { at: string | null };
+    const stamped = has('settings')
+      ? ((db.prepare("SELECT value FROM settings WHERE key = 'appVersion'").get() as { value: string } | undefined)?.value ?? null)
+      : null;
+    const version = higherVersion(meta?.appVersion ?? null, stamped);
     return {
       ok: integrity === 'ok',
       integrity,
@@ -243,9 +258,9 @@ export function inspectDbFile(file: string, files: number, meta: { appVersion: s
       templates: count('templates'),
       files,
       lastIssuedAt: last.at,
-      appVersion: meta?.appVersion ?? null,
+      appVersion: version,
       createdAt: meta?.createdAt ?? null,
-      fromNewer: Boolean(meta?.appVersion && compareVersions(meta.appVersion, currentVersion) > 0)
+      fromNewer: Boolean(version && compareVersions(version, currentVersion) > 0)
     };
   } catch (e) {
     if (e instanceof Error && e.message.includes('ديوان')) throw e;

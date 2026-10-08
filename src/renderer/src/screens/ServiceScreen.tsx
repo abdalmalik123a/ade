@@ -706,19 +706,27 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       say(`نماذج معاملة ${p.label} حُذفت منذ عُلّقت — لا تُستأنف`, 'warn');
       return;
     }
+    // الزبون الذي عُلّقت له قد يُحذف منذ ذاك (أو يُستبدل السجلّ باسترجاع): لا يُقيَّد كتابٌ بمفتاحٍ لا وجود له
+    // فيفشل القيد بخطأ قاعدةٍ لا يفهمه الموظف.
+    const owner = p.citizenId === null ? null : await window.diwan.citizens.get(p.citizenId).catch(() => null);
+    const ownerGone = p.citizenId !== null && !owner;
     setParked((list) => [...list.filter((x) => x.key !== key), ...(current ? [current] : [])]);
     await goFill(p.picked);
     setStep(p.step);
     setPicked(p.picked);
     setValues(p.values);
     setLetterNo(p.letterNo);
-    setCitizenId(p.citizenId);
+    setCitizenId(ownerGone ? null : p.citizenId);
     setMerge(p.merge);
     setNames(p.names);
     setValuesOnly(p.valuesOnly);
     setGenderByHand(p.genderByHand);
     setAt(0);
-    say(found < p.picked.length ? `استُؤنفت معاملة ${p.label} — وحُذف من نماذجها ما لم يعد في المكتبة` : `استُؤنفت معاملة ${p.label}`);
+    const notes = [
+      found < p.picked.length ? 'وحُذف من نماذجها ما لم يعد في المكتبة' : '',
+      ownerGone ? 'والزبون الذي عُلّقت له لم يعد في السجلّ فلا تُربط به' : ''
+    ].filter(Boolean);
+    say(`استُؤنفت معاملة ${p.label}${notes.length ? ` — ${notes.join('، ')}` : ''}`, ownerGone ? 'warn' : 'ok');
   }
 
   // «استأنف» من قيد العمل: القائمة من القاعدة (قد عُلّقت عند الإغلاق بعد أن قُرئت هنا) ثم الاستئناف.

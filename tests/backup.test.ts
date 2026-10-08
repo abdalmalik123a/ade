@@ -15,9 +15,10 @@ import type { IssueInput } from '../src/shared/api';
 
 const text = (s: string) => new TextEncoder().encode(s);
 
-/** قاعدة مكتبٍ فيها كتابان — في ملف. */
-function officeDb(dir: string): string {
+/** قاعدة مكتبٍ فيها كتابان — في ملف. و`stamp` ختم الإصدار الذي فتحها آخر مرّة (`settings.appVersion`). */
+function officeDb(dir: string, stamp: string | null = null): string {
   const db = freshDb();
+  if (stamp !== null) db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('appVersion', ?, datetime('now'))").run(stamp);
   prepareDocuments(db);
   const input = (name: string): IssueInput => ({
     sheetHtml: `<p>نؤيد أن ${name} مستمر</p>`,
@@ -176,6 +177,27 @@ describe('الفحص قبل الاسترجاع', () => {
     expect(() => assertRestorable(newer, '1.9.3')).toThrow(/إصدارٍ أحدث \(1\.10\.0\)/);
     expect(inspectDbFile(file, 0, { appVersion: '1.2.0', createdAt: null }, '1.9.3').fromNewer).toBe(false);
     expect(inspectDbFile(file, 0, null, '1.9.3').fromNewer).toBe(false);
+  });
+
+  it('والحكم من القاعدة نفسها: ختمُها الأحدث يُحبس ولو قال الوصف أقدم — أو غاب الوصف', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
+    const file = officeDb(dir, '1.10.0');
+    // وصفٌ يقول 1.2.0 والقاعدة خُتمت بـ1.10.0 (أرشيفٌ رُكّب بيد، أو وصفٌ عُبث به).
+    const lying = inspectDbFile(file, 0, { appVersion: '1.2.0', createdAt: null }, '1.9.3');
+    expect(lying).toMatchObject({ fromNewer: true, appVersion: '1.10.0' });
+    expect(() => assertRestorable(lying, '1.9.3')).toThrow(/إصدارٍ أحدث \(1\.10\.0\)/);
+    // ولا وصف أصلًا (نسخةٌ قديمة): ختم القاعدة وحده يحكم.
+    expect(inspectDbFile(file, 0, null, '1.9.3')).toMatchObject({ fromNewer: true, appVersion: '1.10.0' });
+    // والوصف الأحدث يحكم كما كان ولو كان ختم القاعدة أقدم.
+    expect(inspectDbFile(officeDb(dir, '1.0.0'), 0, { appVersion: '1.10.0', createdAt: null }, '1.9.3')).toMatchObject({
+      fromNewer: true,
+      appVersion: '1.10.0'
+    });
+    // ختمٌ لا يُقرأ رقمًا يُتجاهل، وختمٌ أقدم لا يرفع شيئًا.
+    expect(inspectDbFile(officeDb(dir, 'تالف'), 0, null, '1.9.3')).toMatchObject({ fromNewer: false, appVersion: null });
+    expect(inspectDbFile(officeDb(dir, '1.2.0'), 0, null, '1.9.3')).toMatchObject({ fromNewer: false, appVersion: '1.2.0' });
+    // ومثله إصدارٌ يساوي الجاري يُسترجع.
+    expect(inspectDbFile(officeDb(dir, '1.9.3'), 0, null, '1.9.3').fromNewer).toBe(false);
   });
 
   it('وقاعدةٌ معطوبة لا تُسترجع', () => {

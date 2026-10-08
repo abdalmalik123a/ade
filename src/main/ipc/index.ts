@@ -6,6 +6,7 @@ import { registerContentIpc } from './content';
 import { registerLicenseIpc } from './license';
 import { registerUpdateIpc } from './update';
 import { assertGateComplete, installProductiveGate } from './gate';
+import { installErrorTranslation } from './errors';
 import { registerFileIpc } from './files';
 import { registerInboxIpc } from './inbox';
 import { registerDesignIpc } from './designs';
@@ -142,7 +143,8 @@ function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
 }
 
 export function registerIpc(): void {
-  // قبل أيّ قناة: ما يُنتج ورقةً أو ملفًّا يمرّ بالمدّة التجريبية (ipc/gate.ts).
+  // قبل أيّ قناة: خطأ القاعدة يصل الواجهةَ عربيًّا (ipc/errors.ts)، وما يُنتج ورقةً أو ملفًّا يمرّ بالمدّة التجريبية (ipc/gate.ts).
+  installErrorTranslation();
   installProductiveGate();
   registerLetterheadIpc();
   registerFileIpc();
