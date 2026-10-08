@@ -38,6 +38,8 @@ export default function IdDuplexDialog({
 }: Props) {
   // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
   const scanTransient = useTransientScans();
+  // الخطّافات كلّها قبل `return null` أدناه: كان هذا بعده، فيتغيّر عددها بين تصييرٍ وتصيير (ج٥).
+  const { printRoles } = useToolNav();
   const [sizeKey, setSizeKey] = useState('id1');
   const [mode, setMode] = useState<IdDuplexLayoutMode>('stacked');
   const [frontSrc, setFrontSrc] = useState<string | null>(null);
@@ -121,8 +123,6 @@ export default function IdDuplexDialog({
     setFrontSrc(backSrc);
     setBackSrc(temp);
   }
-
-  const { printRoles } = useToolNav();
 
   async function handlePrint() {
     if (pagesHtml.length === 0) {
