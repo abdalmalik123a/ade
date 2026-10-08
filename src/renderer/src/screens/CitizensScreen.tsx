@@ -22,6 +22,7 @@ import { CITIZEN_FIELDS, type CitizenTextKey } from '@shared/citizenSchema';
 import { LIST_LIMITS, limitNote } from '@shared/limits';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import { confirmAction } from '../kit/ask';
 
 const nf = new Intl.NumberFormat('en-US');
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
@@ -782,12 +783,22 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
                                 title="حذف المستمسك"
                                 tone="error"
                                 onClick={() =>
-                                  void withBusy(`del-${a.id}`, async () => {
-                                    await window.diwan.attachments.delete(a.id);
-                                    await reloadDetail(detail.id);
-                                    await reloadList();
-                                    say('حُذف المستمسك');
-                                  })
+                                  void (async () => {
+                                    // مسحٌ لزبونٍ ذهب يضيع بلا رجعة (ج٢).
+                                    const ok = await confirmAction({
+                                      title: `حذف المستمسك «${a.docType}»؟`,
+                                      message: `يُمحى من ملف «${detail.fullName}»، وتُمحى صورته من المخزن إن لم يبقَ لها استعمال. لا رجعة بعد الحذف.`,
+                                      confirm: 'احذفه نهائيًّا',
+                                      danger: true
+                                    });
+                                    if (!ok) return;
+                                    await withBusy(`del-${a.id}`, async () => {
+                                      await window.diwan.attachments.delete(a.id);
+                                      await reloadDetail(detail.id);
+                                      await reloadList();
+                                      say('حُذف المستمسك');
+                                    });
+                                  })()
                                 }
                               />
                             </div>

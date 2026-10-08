@@ -51,6 +51,7 @@ import { SCREEN_DPI } from '@shared/canvas';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
+import { useToast } from '../kit/useToast';
 import mark from '../assets/brand/mt-mark.png';
 
 type Step = 'pick' | 'fill' | 'review';
@@ -128,7 +129,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [letterNo, setLetterNo] = useState('');
   const [at, setAt] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'warn' } | null>(null);
+  const { toast, say, dismiss } = useToast(3200);
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
   /** «هات المدرسة» (ملفّ المدارس، الموجة ٢): المدارس من «الجهات»، وما ملأه آخر اختيار — فتبديلها يبدّل قيمها. */
@@ -145,19 +146,6 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [names, setNames] = useState('');
 
   const sheets = useRef(new Map<number, HTMLDivElement | null>());
-  const toastTimer = useRef<number | null>(null);
-
-  /**
-   * رسالةٌ تُعرض ثوانيَ ثم تختفي.
-   *
-   * ويُلغى مؤقّت السابقة أولًا — وإلا محا مؤقّتٌ قديم رسالةً جديدة بعد لحظة
-   * من ظهورها، فيظنّ الموظف أن الإصدار لم يقل شيئًا.
-   */
-  const say = (text: string, tone: 'ok' | 'warn' = 'ok') => {
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    setToast({ text, tone });
-    toastTimer.current = window.setTimeout(() => setToast(null), 3200);
-  };
 
   // النماذج والترويسات والإعدادات تُقرأ عند كل عودةٍ إلى الشبّاك — فما أُضيف في
   // المكتبة يظهر — والمعاملة الجارية لا تُمسّ.
@@ -729,6 +717,43 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     say(`استُؤنفت معاملة ${p.label}${notes.length ? ` — ${notes.join('، ')}` : ''}`, ownerGone ? 'warn' : 'ok');
   }
 
+  /** آخر `resume` — فـ«تراجع» يُنادى بعد ثوانٍ، ولا يقرأ حالةً قديمة. */
+  const resumeNow = useRef(resume);
+  resumeNow.current = resume;
+
+  /**
+   * «ألغِ المعاملة»: تُمحى فورًا — وتبقى ثوانيَ يُتراجع عنها: زرّها ملاصقٌ لـ«علّق» وقد يُنقر بالخطأ (ج٢).
+   * و«تراجع» يستأنفها بما استأنفت به المعلّقة: ما في الشبّاك الآن إن كان فيه عملٌ يُعلَّق مكانها فلا يضيع.
+   */
+  function discardTransaction() {
+    const gone = snapshot();
+    reset();
+    say('أُلغيت المعاملة — لم يُقيَّد شيء', 'ok', {
+      label: 'تراجع',
+      run: () => {
+        dismiss();
+        void resumeNow.current(gone.key, [gone]);
+      }
+    });
+  }
+
+  /** × على معاملةٍ معلّقة: تُحذف فورًا وتعود بـ«تراجع» إلى مكانها في الصفّ. */
+  function dropParked(p: Parked) {
+    const index = parked.findIndex((x) => x.key === p.key);
+    setParked((list) => list.filter((x) => x.key !== p.key));
+    say(`أُلغيت المعاملة المعلّقة «${p.label}»`, 'ok', {
+      label: 'تراجع',
+      run: () => {
+        dismiss();
+        setParked((list) => {
+          if (list.some((x) => x.key === p.key)) return list;
+          const at = index < 0 ? list.length : Math.min(index, list.length);
+          return [...list.slice(0, at), p, ...list.slice(at)];
+        });
+      }
+    });
+  }
+
   // «استأنف» من قيد العمل: القائمة من القاعدة (قد عُلّقت عند الإغلاق بعد أن قُرئت هنا) ثم الاستئناف.
   useEffect(() => {
     if (!resumeRequest) return;
@@ -1021,7 +1046,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         className="h-9 px-2 text-on-surface-variant hover:text-error"
                         title="ألغِ المعاملة المعلّقة"
                         type="button"
-                        onClick={() => setParked((list) => list.filter((x) => x.key !== p.key))}
+                        onClick={() => dropParked(p)}
                       >
                         <span className="material-symbols-outlined text-[16px]">close</span>
                       </button>
@@ -1472,10 +1497,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               title="زبونٌ عدل عن طلبه: تُمحى المعاملة ويُفتح الشبّاك نظيفًا — ولا يُقيَّد شيء"
               type="button"
               disabled={busy}
-              onClick={() => {
-                reset();
-                say('أُلغيت المعاملة — لم يُقيَّد شيء');
-              }}
+              onClick={discardTransaction}
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
               ألغِ المعاملة
@@ -1686,6 +1708,16 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
           }`}
         >
           {toast.text}
+          {toast.action && (
+            <button
+              className="mr-space-md underline font-bold"
+              data-act="toast-action"
+              type="button"
+              onClick={toast.action.run}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </main>

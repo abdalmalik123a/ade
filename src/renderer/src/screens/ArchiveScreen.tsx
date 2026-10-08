@@ -16,12 +16,15 @@ import { LIST_LIMITS, limitNote } from '@shared/limits';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import { confirmAction } from '../kit/ask';
 import BackupDialog from '../components/BackupDialog';
 import { auditLabel } from '@shared/auditLabels';
 
 const COLUMNS = ['رقم الصادر', 'صاحب العلاقة', 'نوع الكتاب', 'الجهة', 'التاريخ والنسخ'];
 
 const nf = new Intl.NumberFormat('en-US');
+/** فوق هذا العدد من الكتب تسأل «طباعة المحدّدة» قبل أن تُرسلها كلّها إلى الطابعة. */
+const BULK_PRINT_CONFIRM = 10;
 
 type Period = 'today' | 'week' | 'month' | 'year' | 'all' | 'custom';
 
@@ -188,6 +191,15 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
   }
 
   const reprint = async (ids: number[]) => {
+    // «المحدّدة» حتى خمسمئة كتاب بنقرة (ج٢): فوق عشرة يُسأل، وتُقيَّد طبعاتها في السجلّ.
+    if (ids.length > BULK_PRINT_CONFIRM) {
+      const ok = await confirmAction({
+        title: `طباعة ${nf.format(ids.length)} كتابًا؟`,
+        message: 'تُرسل كلّها إلى الطابعة، وتُقيَّد طبعاتها في السجلّ.',
+        confirm: 'اطبعها'
+      });
+      if (!ok) return;
+    }
     const pick = await choosePrinter('documents');
     if (!pick) return;
     await run('print', async () => {

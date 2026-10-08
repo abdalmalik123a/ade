@@ -56,6 +56,7 @@ import type { Outcome } from '../components/OutputBar';
 import QuestionBankPanel from '../components/QuestionBankPanel';
 import SymbolPalette from '../components/SymbolPalette';
 import OmrPanel from '../components/OmrPanel';
+import { confirmAction } from '../kit/ask';
 import type { OmrSpec } from '@shared/omr';
 
 const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
@@ -893,6 +894,14 @@ function PapersScreenInner(
                     title="احذف الورقة"
                     type="button"
                     onClick={async () => {
+                      // ورقةُ أسئلةٍ محفوظة بنقرة: تُمحى ونسخها السابقة (ج٢).
+                      const ok = await confirmAction({
+                        title: `حذف الورقة «${p.title}»؟`,
+                        message: 'تُمحى ورقة الأسئلة المحفوظة ونسخها السابقة. لا رجعة بعد الحذف.',
+                        confirm: 'احذفها نهائيًّا',
+                        danger: true
+                      });
+                      if (!ok) return;
                       await window.diwan.templates.delete(p.id);
                       if (paperId === p.id) setPaperId(null);
                       await loadPapers();

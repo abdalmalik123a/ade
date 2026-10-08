@@ -23,6 +23,7 @@ import type { Client } from '@shared/orders';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterheadView from '../components/LetterheadView';
 import RevisionsMenu from '../components/RevisionsMenu';
+import { confirmAction } from '../kit/ask';
 
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : null);
 
@@ -171,6 +172,14 @@ export default function LetterheadScreen() {
   /** حذف الترويسة الجارية، ثم العودة إلى الافتراضية أو أول ما في المكتبة. */
   async function remove() {
     if (currentId === null) return;
+    // حذفٌ نهائيّ بنقرة: تضيع معه نسخها السابقة، وتبقى النماذج المربوطة بها بلا ترويسة (ج٢).
+    const ok = await confirmAction({
+      title: `حذف الترويسة «${name.trim() || 'بلا اسم'}»؟`,
+      message: 'تضيع معها نسخها السابقة، وتبقى النماذج المربوطة بها بلا ترويسة. والكتب التي صدرت لا تتغيّر. لا رجعة بعد الحذف.',
+      confirm: 'احذفها نهائيًّا',
+      danger: true
+    });
+    if (!ok) return;
     await window.diwan.letterheads.delete(currentId);
     const items = await reload();
     const first = items.find((x) => x.isDefault) ?? items[0];
@@ -218,6 +227,8 @@ export default function LetterheadScreen() {
   }
 
   async function deleteSeal(id: number) {
+    const seal = seals.find((s) => s.id === id);
+    if (!(await confirmAction({ title: `حذف الشعار «${seal?.name.trim() || 'بلا اسم'}» من المكتبة؟`, message: 'لا رجعة بعد الحذف.', confirm: 'احذفه', danger: true }))) return;
     await window.diwan.seals.delete(id);
     await reload();
     say('حُذف');
@@ -245,6 +256,8 @@ export default function LetterheadScreen() {
   }
 
   async function deleteClip(id: number) {
+    const clip = clipsList.find((c) => c.id === id);
+    if (!(await confirmAction({ title: `حذف الكليشة «${clip?.title.trim() || 'بلا عنوان'}»؟`, message: 'تضيع معها نسخها السابقة. لا رجعة بعد الحذف.', confirm: 'احذفها نهائيًّا', danger: true }))) return;
     await window.diwan.clips.delete(id);
     await reloadClips();
     say('حُذفت الكليشة');
@@ -500,6 +513,8 @@ export default function LetterheadScreen() {
                 </button>
                 <button
                   className="h-9 px-3 rounded-lg text-error hover:bg-error-container transition-colors font-label-md text-label-md disabled:opacity-40"
+                  data-act="delete-letterhead"
+                  title="حذف الترويسة"
                   type="button"
                   disabled={currentId === null}
                   onClick={() => void remove()}
