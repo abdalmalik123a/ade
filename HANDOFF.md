@@ -28,6 +28,9 @@
 
 ## ٢ — كيف تعمل (أوامر وعادات)
 
+على جهازٍ جديد (ويندوز، Node 24 وnpm 11 يوم التسليم): `git clone -b packs https://github.com/abdalmalik123a/ade.git` ثم `npm install` (يُركّب better-sqlite3 لـElectron عبر `postinstall`) ثم `npm run build`.
+المستودع **خاصّ**؛ والمالك يدخله بحسابه. وأدوات المالك ومفتاحه الخاصّ **ليست فيه** ولا تُطلب.
+
 ```bash
 npm run typecheck            # ثلاثة مشاريع tsconfig
 npx vitest run               # الوحدة. تأمّل سطر Errors في الخلاصة: «Errors 1 error» وعدٌ مرفوضٌ بلا التقاط (يُحسب فشلًا)
