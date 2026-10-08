@@ -331,6 +331,7 @@ export default function App() {
           <CitizensScreen
             focus={citizenFocus}
             onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
+            onRepeatDocument={(id) => void repeatDocument(id)}
             onChanged={() => void refresh()}
           />
         );

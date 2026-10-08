@@ -34,12 +34,14 @@ type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 type Props = {
   onInsertIntoEditor?: (citizenId: number) => void;
+  /** «كرّره» على كتابٍ صدر لهذا الزبون: نموذجه بقيمه برقمٍ جديد — كما في الأرشيف (د١). */
+  onRepeatDocument?: (documentId: number) => void;
   onChanged?: () => void;
   /** ملفٌّ يُفتح من خارج الشاشة — مواطنٌ وُجد في البحث الشامل. `key` يعيد فتحه ولو تكرّر. */
   focus?: { key: number; citizenId: number } | null;
 };
 
-export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = null }: Props) {
+export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, onChanged, focus = null }: Props) {
   const [stats, setStats] = useState<CitizenStats | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [items, setItems] = useState<CitizenSummary[]>([]);
@@ -89,6 +91,20 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setToast(null), 3400);
   }, []);
+
+  /** كتابٌ صدر لهذا الزبون يُعاد طبعه كما خرج — برقمه نفسه، كما في الأرشيف (د١). */
+  async function reprintDocument(id: number) {
+    const pick = await choosePrinter('documents');
+    if (!pick) return;
+    try {
+      const r = await window.diwan.documents.reprint([id], 1, pick.printer);
+      if (r.printed) say('أُعيدت طباعته — وقُيّدت الطبعة في السجلّ');
+      else if (r.voided) say('هذا الكتاب مُبطَل — لا يُعاد طبعه', 'warn');
+      else say('تعذّرت إعادة الطباعة', 'warn');
+    } catch (e) {
+      say(errorText(e, 'تعذّرت إعادة الطباعة'), 'warn');
+    }
+  }
 
   const reloadList = useCallback(async () => {
     const [s, c, list] = await Promise.all([
@@ -845,15 +861,29 @@ export default function CitizensScreen({ onInsertIntoEditor, onChanged, focus = 
                               </td>
                               <td className="p-space-sm font-mono text-label-sm">{d.issuedDate}</td>
                               <td className="p-space-sm">
-                                <button
-                                  className="px-space-sm h-8 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
-                                  type="button"
-                                  title="ينشئ الكتاب نفسه برقم صادر جديد وتأريخ اليوم"
-                                  onClick={() => onInsertIntoEditor?.(detail.id)}
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">replay</span>
-                                  <span>تكرار المعاملة</span>
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  {/* الكتاب نفسه بقيمه — لا ورقةٌ فارغة باسم الزبون (د١): كان يمرّر رقم الزبون. */}
+                                  <button
+                                    className="px-space-sm h-8 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+                                    data-act="repeat-document"
+                                    type="button"
+                                    title="كرّره: الكتاب نفسه بقيمه برقم صادر جديد وتأريخ اليوم — والأصل يبقى في السجلّ كما خرج"
+                                    onClick={() => onRepeatDocument?.(d.id)}
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">replay</span>
+                                    <span>كرّره</span>
+                                  </button>
+                                  <button
+                                    className="px-space-sm h-8 rounded-lg text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+                                    data-act="reprint-document"
+                                    type="button"
+                                    title="أعد طبعه كما صدر — برقمه نفسه، وتُقيَّد الطبعة في السجلّ"
+                                    onClick={() => void reprintDocument(d.id)}
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">print</span>
+                                    <span>أعد الطبع</span>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}

@@ -19,7 +19,8 @@ export async function prepare() {
   mkdirSync(FOLDER, { recursive: true });
   copyFileSync(FIXTURE, join(FOLDER, 'انذار.docx'));
   copyFileSync(FIXTURE, join(FOLDER, 'تأييد.docx'));
-  return { DIWAN_TEST_OPEN_DIR: FOLDER };
+  // «أعد الطبع» من ملفّ الزبون (د١): الطلب يُكتب سطرًا في السجلّ بدل الطابعة.
+  return { DIWAN_TEST_OPEN_DIR: FOLDER, DIWAN_TEST_PRINT_LOG: join(FOLDER, 'print.log') };
 }
 
 export default async function scenario(page, { profile, shotsDir }) {
@@ -317,6 +318,30 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('فيُفتح كتاب الشبّاك في الشبّاك لا في المحرّر', (await page.eval(`return document.querySelector('[data-screen="service"]')?.offsetParent !== null;`)) && (await page.text()).includes('بيانات صاحب العلاقة'));
   ok('بقيم معاملته الأولى ليبدّل ما يلزم', (await firstValue()) === 'أحمد عادل كريم الموسوي' && Boolean(lastDoc));
   await page.eval(`document.querySelector('[data-act="park"]').click(); return true;`);
+  await wait(500);
+
+  // ── د١: «كرّره» و«أعد الطبع» من ملفّ الزبون — الكتاب نفسه، لا ورقةٌ فارغة باسمه ──
+  // طابعةٌ مباشرة لدور الكتب، فلا يُسأل عنها عند «أعد الطبع».
+  await page.eval(`
+    const s = await window.diwan.settings.get();
+    await window.diwan.settings.set({ printRoles: { ...s.printRoles, documents: { normal: 'طابعة الاختبار', color: null, dialog: false } } });
+    return true;
+  `);
+  await page.goto('citizens-identity-records');
+  await wait(900);
+  await page.clickText('كريم حسن علي');
+  await wait(900);
+  const rowButtons = await page.eval(`return [...document.querySelectorAll('[data-act="repeat-document"], [data-act="reprint-document"]')].map((b) => b.dataset.act).join(',');`);
+  ok(`في ملفّ الزبون لكلّ كتابٍ «كرّره» و«أعد الطبع» (${rowButtons})`, rowButtons === 'repeat-document,reprint-document');
+  const printsBefore = existsSync(join(FOLDER, 'print.log')) ? readFileSync(join(FOLDER, 'print.log'), 'utf8').split('\n').filter(Boolean).length : 0;
+  await page.eval(`document.querySelector('[data-act="reprint-document"]').click(); return true;`);
+  await wait(2500);
+  const printsAfter = existsSync(join(FOLDER, 'print.log')) ? readFileSync(join(FOLDER, 'print.log'), 'utf8').split('\n').filter(Boolean).length : 0;
+  ok(`و«أعد الطبع» يطبعه كما صدر (${printsBefore} ← ${printsAfter} طلب طباعة)`, printsAfter === printsBefore + 1 && (await page.text()).includes('أُعيدت طباعته'));
+  await page.eval(`document.querySelector('[data-act="repeat-document"]').click(); return true;`);
+  await wait(1500);
+  ok('و«كرّره» يفتح كتابه في الشبّاك بقيمه — لا محرّرًا فارغًا', (await page.eval(`return document.querySelector('[data-screen="service"]')?.offsetParent !== null;`)) && (await firstValue()) === 'كريم حسن علي');
+  await page.eval(`document.querySelector('[data-act="park"]')?.click(); return true;`);
   await wait(500);
 
   rmSync(FOLDER, { recursive: true, force: true });
