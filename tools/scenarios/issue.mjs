@@ -371,7 +371,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('البحث المتساهل يجد الكتاب', (await page.text()).includes(doc?.serial ?? '—'));
   await page.type('input[placeholder^="ابحث برقم الصادر"]', 'لا وجود له');
   await wait(700);
-  ok('البحث الخائب يبلّغ بصدق', (await page.text()).includes('لا كتاب يطابق البحث اليوم'));
+  ok('البحث الخائب يبلّغ بصدق — في السجلّ كلّه لا اليوم وحده', (await page.text()).includes('لا كتاب يطابق هذا البحث في السجلّ كلّه'));
 
   if (shotsDir) await page.shot(join(shotsDir, 'archive.png'));
 
@@ -389,6 +389,30 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('هذه السنة');
   await wait(800);
   ok('مدّة السنة تشمل الكتاب', (await page.text()).includes(doc?.serial ?? '—'));
+
+  // د١١: البحث بنصٍّ لا تقيّده الفترة — مدّةٌ مخصّصة في الماضي لا كتاب فيها، والكتاب يُوجد بالبحث.
+  await page.eval(`document.querySelector('[data-period="custom"]').click(); return true;`);
+  await wait(400);
+  await page.eval(`
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    for (const el of document.querySelectorAll('[data-archive] input[type="date"]')) {
+      set.call(el, '2020-01-01');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    return true;
+  `);
+  await wait(800);
+  ok('مدّةٌ في الماضي لا كتاب فيها', !(await page.text()).includes(doc?.serial ?? '—'));
+  await page.type('input[placeholder^="ابحث برقم الصادر"]', 'احمد');
+  await wait(800);
+  ok('والبحث بنصٍّ يجد الكتاب في السجلّ كلّه دون تغيير المدّة', (await page.text()).includes(doc?.serial ?? '—'));
+  ok('ويقول ذلك بجانب النتائج', (await page.eval(`return document.querySelector('[data-search-all]')?.innerText ?? '';`)).includes('السجلّ كلّه'));
+  await page.type('input[placeholder^="ابحث برقم الصادر"]', '');
+  await wait(800);
+  ok('ومسح البحث يعيد المدّة', !(await page.text()).includes(doc?.serial ?? '—') && !(await page.eval(`return Boolean(document.querySelector('[data-search-all]'));`)));
+  await page.clickText('هذه السنة');
+  await wait(600);
 
   await page.clickText('مدة مخصّصة');
   await wait(600);

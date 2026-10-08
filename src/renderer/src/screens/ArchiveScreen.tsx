@@ -109,13 +109,16 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
 
   const range = rangeOf(period, customFrom, customTo);
   const label = PERIODS.find((p) => p.value === period)?.label ?? '';
+  // ما دام في خانة البحث نصّ يُبحث في السجلّ كلّه (د١١): من يكتب رقمًا أو اسمًا يطلب كتابًا قد صدر قبل
+  // سنة، وكان أوّل بحثٍ من السكّة يفشل لأنّ الفترة «اليوم». ومسح النصّ يعيد الفترة. وأرقام المدّة تبقى للفترة.
+  const searching = query.trim() !== '';
 
   const load = useCallback(async () => {
     try {
       const [t, s, list] = await Promise.all([
         window.diwan.archive.stats(),
         window.diwan.documents.stats({ from: range.from, to: range.to }),
-        window.diwan.documents.list({ from: range.from, to: range.to, query })
+        window.diwan.documents.list(searching ? { from: null, to: null, query } : { from: range.from, to: range.to, query })
       ]);
       setToday(t);
       setStats(s);
@@ -337,6 +340,11 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
               {label}: <b className="tabular">{nf.format(stats?.issued ?? 0)}</b> من الكتب الصادرة ·{' '}
               <b className="tabular">{nf.format(stats?.citizens ?? 0)}</b> مخدومًا ·{' '}
               <b className="tabular">{nf.format(stats?.printedCopies ?? 0)}</b> من النسخ المطبوعة
+              {searching && (
+                <span className="ms-space-sm text-secondary font-semibold" data-search-all="">
+                  · البحث في السجلّ كلّه — امسح البحث لتعود إلى «{label}»
+                </span>
+              )}
             </span>
             <div className="flex items-center gap-space-xs flex-wrap">
               <button
@@ -528,9 +536,7 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
                         <span className="material-symbols-outlined text-[40px]">{query ? 'manage_search' : 'inbox'}</span>
                         <span className="font-body-md text-body-md">
                           {query
-                            ? period === 'today'
-                              ? 'لا كتاب يطابق البحث اليوم'
-                              : 'لا كتاب يطابق هذا البحث في المدة المختارة'
+                            ? 'لا كتاب يطابق هذا البحث في السجلّ كلّه'
                             : period === 'today'
                               ? 'لم يصدر أي كتاب اليوم'
                               : 'لا كتب في المدة المختارة'}
