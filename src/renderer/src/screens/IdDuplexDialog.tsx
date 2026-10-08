@@ -6,6 +6,7 @@
  * والطباعة بوجهين متطابقين، أو صفحة واحدة للدوائر الرسمية.
  */
 import { useMemo, useState } from 'react';
+import { useTransientScans } from '../lib/transientScans';
 import type { Attachment } from '@shared/api';
 import {
   STANDARD_CARD_SIZES,
@@ -34,6 +35,8 @@ export default function IdDuplexDialog({
   citizenName,
   attachments = []
 }: Props) {
+  // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
+  const scanTransient = useTransientScans();
   const [sizeKey, setSizeKey] = useState('id1');
   const [mode, setMode] = useState<IdDuplexLayoutMode>('stacked');
   const [frontSrc, setFrontSrc] = useState<string | null>(null);
@@ -105,7 +108,7 @@ export default function IdDuplexDialog({
   async function scanSide(side: 'front' | 'back') {
     setBusy(true);
     try {
-      const src = await window.diwan.scanner.scanImage(300);
+      const src = await scanTransient(300);
       if (side === 'front') setFrontSrc(src);
       else setBackSrc(src);
       setDeskewTarget(side);

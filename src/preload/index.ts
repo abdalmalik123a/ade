@@ -314,6 +314,7 @@ const api: DiwanApi = {
     import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback)
   },
   files: {
+    discardTransient: (paths: string[]) => invoke('files:discardTransient', paths),
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),
     storeImage: (bytes: Uint8Array) => invoke('files:storeImage', bytes),
     storeImageUrl: (url: string) => invoke('files:storeImageUrl', url),

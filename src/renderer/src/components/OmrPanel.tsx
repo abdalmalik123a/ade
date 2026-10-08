@@ -10,6 +10,7 @@
  * تُقال ولا تُصحَّح.
  */
 import { useMemo, useState } from 'react';
+import { useTransientScans } from '../lib/transientScans';
 import { CHOICE_LETTERS, gradeOmr, omrCapacity, omrSheetHtml, parseKey, readOmr, type OmrGrade, type OmrSpec } from '@shared/omr';
 import type { PixelData } from '@shared/deskew';
 import { itemAnalysis, itemNote } from '@shared/examAnalysis';
@@ -51,6 +52,8 @@ export default function OmrPanel({
   lines: string[];
   onSay: (text: string, tone?: 'ok' | 'warn') => void;
 }) {
+  // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
+  const scanTransient = useTransientScans();
   const [keyText, setKeyText] = useState(() => spec.key.map((k) => (k >= 0 ? CHOICE_LETTERS[k] : '-')).join(' '));
   const [copies, setCopies] = useState(30);
   const [results, setResults] = useState<Result[]>([]);
@@ -94,7 +97,7 @@ export default function OmrPanel({
   async function fromScanner() {
     setBusy(true);
     try {
-      const src = await window.diwan.scanner.scanImage(200);
+      const src = await scanTransient(200);
       await grade([{ name: `مسح ${toIndic(results.length + 1)}`, src }]);
     } catch (e) {
       onSay(e instanceof Error ? e.message : 'تعذّر المسح', 'warn');

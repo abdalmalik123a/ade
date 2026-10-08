@@ -299,6 +299,7 @@ export function registerCitizenIpc(): void {
   // ── الماسح والتعرّف ────────────────────────────────────────────────
   ipcMain.handle('scanner:list', () => listScanners());
   // مسحٌ لا يُقيَّد مستمسكًا لأحد: وجهُ هويةٍ وظهرُها يُستنسخان والزبون واقف.
-  ipcMain.handle('scanner:scanImage', async (_e, dpi: number) => (await scanPage({ dpi: dpi || 300 })).relativePath);
+  // عابر: يُحذف حين يُغلق الحوار الذي مسحه ويُكنس عند الإقلاع (`services/transient.ts`) — لا يبقى وجه هويّةٍ في المخزن.
+  ipcMain.handle('scanner:scanImage', async (_e, dpi: number) => (await scanPage({ dpi: dpi || 300, transient: true })).relativePath);
   ipcMain.handle('scanner:ocrAvailable', () => ocrAvailable());
 }

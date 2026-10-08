@@ -26,6 +26,7 @@ import Database from 'better-sqlite3';
 import type { BackupSummary } from '@shared/api';
 import { compareVersions } from '@shared/version';
 import { ZipWriter, extractEntry, fileSink, readZipIndex, safeInnerPath, type Sink, type ZipEntry } from './zip';
+import { TRANSIENT_DIR } from './transient';
 
 /** بداية النسخة المشفّرة — بها تُعرف قبل أن يُسأل عن كلمة مرورها. */
 const MAGIC = Buffer.from('DIWANENC', 'ascii');
@@ -78,14 +79,19 @@ async function encryptingSink(path: string, password: string): Promise<Sink & { 
   };
 }
 
-/** ملفّات المخزن نسبيّةً إليه. */
+/**
+ * ملفّات المخزن نسبيّةً إليه — بلا ما هو عابر: مسوح الهويّات في `tmp/`، وكتاباتٌ انقطعت (`*.part`).
+ * فصور هويّات الزبائن لا تنتقل إلى الفلاشة بلا سجلٍّ يدلّ عليها (مراجعة ٧ ت١).
+ */
 function walkStore(root: string): string[] {
   const out: string[] = [];
   if (!existsSync(root)) return out;
   const visit = (dir: string, prefix: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) visit(join(dir, entry.name), `${prefix}${entry.name}/`);
-      else out.push(`${prefix}${entry.name}`);
+      if (entry.isDirectory()) {
+        if (prefix === '' && entry.name === TRANSIENT_DIR) continue;
+        visit(join(dir, entry.name), `${prefix}${entry.name}/`);
+      } else if (!entry.name.endsWith('.part')) out.push(`${prefix}${entry.name}`);
     }
   };
   visit(root, '');

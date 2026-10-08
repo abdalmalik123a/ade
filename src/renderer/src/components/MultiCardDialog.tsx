@@ -6,6 +6,7 @@
  * كلّ مقصوصٍ قبل الحفظ، ويُسمّى، ويُترك ما لا يُراد.
  */
 import { useState } from 'react';
+import { useTransientScans } from '../lib/transientScans';
 import { detectCards, matchBacks, padRect, type Rect } from '@shared/multiCard';
 
 type Page = { img: HTMLImageElement; rects: Rect[] };
@@ -46,6 +47,8 @@ export default function MultiCardDialog({
   onSaved: (count: number) => void;
   onClose: () => void;
 }) {
+  // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
+  const scanTransient = useTransientScans();
   const [fronts, setFronts] = useState<Page | null>(null);
   const [backs, setBacks] = useState<Page | null>(null);
   const [names, setNames] = useState<string[]>([]);
@@ -57,7 +60,7 @@ export default function MultiCardDialog({
     setBusy(side);
     setNote(null);
     try {
-      const rel = how === 'scan' ? await window.diwan.scanner.scanImage(300) : await window.diwan.files.pickImage('scans');
+      const rel = how === 'scan' ? await scanTransient(300) : await window.diwan.files.pickImage('scans');
       if (!rel) return;
       const page = await loadPage(rel);
       if (side === 'fronts') {

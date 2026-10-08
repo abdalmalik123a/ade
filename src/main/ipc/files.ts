@@ -6,6 +6,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
 import { sheetToText } from '../services/sheetRead';
+import { discardTransient } from '../services/transient';
 
 /**
  * كل تعامل مع الملفات يمرّ من هنا.
@@ -179,6 +180,9 @@ export function registerFileIpc(): void {
       return null;
     }
   });
+
+  /** الواجهة تحذف مسوحها العابرة حين يُغلق الحوار الذي مسحها — `tmp/` وحدها، وغيرها يُتجاهل. */
+  ipcMain.handle('files:discardTransient', (_e, paths: string[]) => discardTransient(storeDir(), Array.isArray(paths) ? paths : []));
 
   ipcMain.handle('files:pickImage', async (e, bucket: string): Promise<string | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);

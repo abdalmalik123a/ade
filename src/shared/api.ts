@@ -1154,6 +1154,8 @@ export type DiwanApi = {
     } | null>;
   };
   files: {
+    /** يحذف المسوح العابرة (`tmp/…`) حين يُغلق الحوار الذي مسحها — وغيرها يُتجاهل. */
+    discardTransient(paths: string[]): Promise<number>;
     pickImage(bucket: string): Promise<string | null>;
     /** صورةٌ أُلصقت محفوظةً في المخزن — ومسارها، أو `null` إن لم تكن صورةً معروفة. */
     storeImage(bytes: Uint8Array): Promise<string | null>;

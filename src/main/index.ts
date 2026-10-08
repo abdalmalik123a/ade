@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, dataDir, storeDir } from './db';
+import { sweepTransient } from './services/transient';
 import { guardDataVersion, stampDataVersion } from './services/dataVersion';
 import { rememberStartup } from './ipc/update';
 import { registerIpc } from './ipc';
@@ -194,6 +195,12 @@ app.whenReady().then(() => {
     }
     rememberStartup(guard);
     getDb();
+    // مسوح الهويّات العابرة وكتاباتٌ انقطعت: لا شيء من جلسةٍ سابقة قيد الاستعمال (مراجعة ٧ ت١).
+    try {
+      sweepTransient(storeDir());
+    } catch {
+      // الكنس لا يوقف الإقلاع.
+    }
     registerIpc();
     // الفهارس تُطابَق جداولها (وتُبنى أوّل مرّة على قاعدة مكتبٍ قائمة). ولا تُسقط
     // الإقلاع إن تعذّرت: البحث يعود إلى المسح (services/searchIndex.ts).

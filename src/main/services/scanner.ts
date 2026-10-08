@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { join } from 'node:path';
 import { copyFile, unlink } from 'node:fs/promises';
 import { storeDir } from '../db';
+import { TRANSIENT_DIR } from './transient';
 import type { ScannerDevice } from '@shared/api';
 
 /**
@@ -68,6 +69,11 @@ export type ScanOptions = {
   /** المطلوب — والماسح قد يقرّبه، فيعود في `ScanResult` ما طُبِّق. */
   dpi?: number;
   color?: boolean;
+  /**
+   * مسحٌ عابر (وجه هويّةٍ يُستنسخ والزبون واقف): يُكتب في `store/tmp/` فيُحذف حين يُغلق حوارُه ويُكنس عند
+   * الإقلاع ولا يدخل نسخةً احتياطية (`services/transient.ts`). وبدونه مستمسكٌ يُقيَّد في `attachments/`.
+   */
+  transient?: boolean;
 };
 
 export type ScanResult = { relativePath: string; dpi: number; format: string };
@@ -88,7 +94,8 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   const dpi = options.dpi ?? 300;
   const intent = options.color === false ? 2 : 1; // 1 = ملوّن، 2 = تدرّج رمادي
   const name = `scan-${Date.now()}.png`;
-  const target = join(storeDir('attachments'), name);
+  const folder = options.transient ? TRANSIENT_DIR : 'attachments';
+  const target = join(storeDir(folder), name);
   const transfer = `${target}.part`;
   // مسارٌ في نصٍّ بين علامتين مفردتين في PowerShell: لا يُهرَّب فيه إلا العلامة نفسها.
   const lit = (p: string) => p.replace(/'/g, "''");
@@ -98,7 +105,7 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   if (process.env.DIWAN_TEST_SCAN_FILE === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
   if (process.env.DIWAN_TEST_SCAN_FILE) {
     await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
-    return { relativePath: `attachments/${name}`, dpi, format: 'PNG' };
+    return { relativePath: `${folder}/${name}`, dpi, format: 'PNG' };
   }
 
   const script = `
@@ -175,7 +182,7 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
     throw new Error('لم يكتمل المسح الضوئي');
   }
 
-  return { relativePath: `attachments/${name}`, dpi: Number(done[1]) || dpi, format: 'PNG' };
+  return { relativePath: `${folder}/${name}`, dpi: Number(done[1]) || dpi, format: 'PNG' };
 }
 
 /**

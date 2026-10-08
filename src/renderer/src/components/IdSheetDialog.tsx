@@ -6,6 +6,7 @@
  * والبطاقة في ركنها، فتُفتح التسوية لتُقصّ بمقاسها قبل أن تُصفّ — كما في «صانع الهويات».
  */
 import { useMemo, useState } from 'react';
+import { useTransientScans } from '../lib/transientScans';
 import type { Attachment } from '@shared/api';
 import { STANDARD_CARD_SIZES, type IdColorFilter } from '@shared/idCardDuplex';
 import { defaultSlots, fillFromAttachments, idSheetHtml, type SheetSlot } from '@shared/idSheet';
@@ -32,6 +33,8 @@ export default function IdSheetDialog({
   citizenName?: string;
   attachments?: Attachment[];
 }) {
+  // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
+  const scanTransient = useTransientScans();
   const [slots, setSlots] = useState<SheetSlot[]>(() => fillFromAttachments(defaultSlots(), attachments));
   const [colorFilter, setColorFilter] = useState<IdColorFilter>('color');
   const [cutMarks, setCutMarks] = useState(true);
@@ -63,7 +66,7 @@ export default function IdSheetDialog({
   async function scan(i: number) {
     setBusy(true);
     try {
-      set(i, { src: await window.diwan.scanner.scanImage(300) });
+      set(i, { src: await scanTransient(300) });
       setDeskew(i);
     } catch (e) {
       setNote({ text: errorText(e, 'تعذّر المسح'), warn: true });

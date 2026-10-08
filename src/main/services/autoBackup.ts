@@ -16,6 +16,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, 
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { TRANSIENT_DIR } from './transient';
 
 /** اسم المجلّد داخل ما يختاره المكتب — لاتينيٌّ فلا يتعثّر في فلاشةٍ بنظام ملفّاتٍ قديم. */
 export const MIRROR = 'Diwan-Backup';
@@ -104,8 +105,11 @@ function walk(root: string): string[] {
   if (!existsSync(root)) return out;
   const visit = (dir: string, prefix: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (e.isDirectory()) visit(join(dir, e.name), `${prefix}${e.name}/`);
-      else if (!e.name.endsWith('.part')) out.push(`${prefix}${e.name}`);
+      if (e.isDirectory()) {
+        // مسوح الهويّات العابرة لا تدخل المرآة (`services/transient.ts`).
+        if (prefix === '' && e.name === TRANSIENT_DIR) continue;
+        visit(join(dir, e.name), `${prefix}${e.name}/`);
+      } else if (!e.name.endsWith('.part')) out.push(`${prefix}${e.name}`);
     }
   };
   visit(root, '');
