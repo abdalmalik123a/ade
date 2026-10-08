@@ -494,6 +494,7 @@ export default function App() {
               repeat={repeatRequest}
               resumeRequest={resumeRequest}
               customerRequest={customerRequest}
+              onOpenActivation={() => navigate('settings')}
               settingsKey={settings}
               onIssued={() => void refresh()}
               onOpenTool={(t, citizenId) => {

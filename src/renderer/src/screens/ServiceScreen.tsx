@@ -52,6 +52,7 @@ import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
 import { useToast } from '../kit/useToast';
+import { errorText } from '../lib/errors';
 import mark from '../assets/brand/mt-mark.png';
 
 type Step = 'pick' | 'fill' | 'review';
@@ -79,6 +80,8 @@ export type ServiceScreenProps = {
   onOpenTool?: (target: CounterCard['target'], citizenId: number | null) => void;
   /** ملفٌّ من «الملفّات» يُفتح في أداته — ويُرفض بخطأٍ يقوله اللوح. */
   onOpenFile?: (file: InboxFile, as: InboxOpen) => Promise<void>;
+  /** «افتح التفعيل» على رسالة انتهاء المدّة (د١٠): الشبّاك لا ينتقل بنفسه، فتُمرَّر من App. */
+  onOpenActivation?: () => void;
   /** «استأنف» من قيد العمل: معاملةٌ معلّقة بمفتاحها (المرحلة ٣). */
   resumeRequest?: { key: number; parkedKey: number } | null;
   /** «شيءٌ آخر لنفس الزبون» من أداة: يعود الزبون، وتُملأ حقوله من ملفّه حين يُختار ما يريده. */
@@ -114,7 +117,7 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
+export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, onOpenActivation, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
   const [items, setItems] = useState<TemplateSummary[]>([]);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
@@ -130,6 +133,31 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [at, setAt] = useState(0);
   const [busy, setBusy] = useState(false);
   const { toast, say, dismiss } = useToast(3200);
+  /**
+   * خطأٌ يُقال بالعربية ويبقى حتى يغلقه الموظف (د١٠): كانت رسالة الإصدار تُعرض خامًا (قد تبدأ بـ«Error invoking
+   * remote method») وتختفي بعد ثلاث ثوانٍ — ورسالة انتهاء المدّة طويلة. ومعها «افتح التفعيل».
+   */
+  const sayError = useCallback(
+    (e: unknown, fallback: string) => {
+      const text = errorText(e, fallback);
+      const expired = text.includes('الإعدادات ← التفعيل');
+      say(
+        text,
+        'warn',
+        expired && onOpenActivation
+          ? {
+              label: 'افتح التفعيل',
+              run: () => {
+                dismiss();
+                onOpenActivation();
+              }
+            }
+          : undefined,
+        { sticky: true }
+      );
+    },
+    [say, dismiss, onOpenActivation]
+  );
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
   /** «هات المدرسة» (ملفّ المدارس، الموجة ٢): المدارس من «الجهات»، وما ملأه آخر اختيار — فتبديلها يبدّل قيمها. */
@@ -462,7 +490,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         await printIssued(out.documents.map((d) => d.id), pick.printer, mode, label);
       }
     } catch (e) {
-      say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
+      sayError(e, 'تعذّر الإصدار');
     } finally {
       setBusy(false);
     }
@@ -500,7 +528,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         id: r?.id,
         sent: r?.sent ?? from,
         total,
-        reason: e instanceof Error ? e.message : String(e),
+        reason: errorText(e, 'تعذّرت الطباعة'),
         running: false
       }));
     } finally {
@@ -618,7 +646,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       // «شيءٌ آخر لنفس الزبون» بعدها يحمل ملفّه الجديد — فتعرفه الأداة التي يُفتح لها (المرحلة ٥).
       setAfter((a) => (a?.customer ? { ...a, customer: { ...a.customer, citizenId: saved.id } } : a));
     } catch (e) {
-      say(e instanceof Error ? e.message : 'تعذّر الحفظ في السجل', 'warn');
+      sayError(e, 'تعذّر الحفظ في السجل');
     }
   }
 
@@ -836,7 +864,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       reset();
       if (pick) await printIssued(ids, pick.printer, mode, label);
     } catch (e) {
-      say(e instanceof Error ? e.message : 'تعذّر الإصدار', 'warn');
+      sayError(e, 'تعذّر الإصدار');
     } finally {
       setBusy(false);
     }
@@ -1701,7 +1729,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-space-md py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[min(90vw,48rem)] px-space-md py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
             toast.tone === 'warn'
               ? 'bg-error-container text-on-error-container'
               : 'bg-primary-container text-on-primary'
@@ -1716,6 +1744,18 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               onClick={toast.action.run}
             >
               {toast.action.label}
+            </button>
+          )}
+          {toast.sticky && (
+            <button
+              aria-label="أغلق الرسالة"
+              className="mr-space-sm align-middle w-7 h-7 rounded-full hover:bg-black/10 inline-flex items-center justify-center"
+              data-act="toast-close"
+              title="أغلق"
+              type="button"
+              onClick={dismiss}
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           )}
         </div>

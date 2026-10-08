@@ -9,14 +9,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type ToastAction = { label: string; run: () => void };
 
-export type Toast = { text: string; tone: 'ok' | 'warn'; action?: ToastAction };
+/** `sticky`: تبقى حتى يغلقها الموظف (د١٠) — خطأٌ طويلٌ يُقرأ لا يختفي بعد ثوانٍ. */
+export type Toast = { text: string; tone: 'ok' | 'warn'; action?: ToastAction; sticky?: boolean };
 
 /** رسالةٌ فيها زرّ تبقى هذه المدّة على الأقل — ثوانيَ يتسع لها قرار الموظف. */
 const ACTION_MS = 8000;
 
 export function useToast(ms = 3200): {
   toast: Toast | null;
-  say: (text: string, tone?: Toast['tone'], action?: ToastAction) => void;
+  say: (text: string, tone?: Toast['tone'], action?: ToastAction, opts?: { sticky?: boolean }) => void;
   dismiss: () => void;
 } {
   const [toast, setToast] = useState<Toast | null>(null);
@@ -28,9 +29,10 @@ export function useToast(ms = 3200): {
   }, []);
 
   const say = useCallback(
-    (text: string, tone: Toast['tone'] = 'ok', action?: ToastAction) => {
+    (text: string, tone: Toast['tone'] = 'ok', action?: ToastAction, opts?: { sticky?: boolean }) => {
       clear();
-      setToast({ text, tone, action });
+      setToast({ text, tone, action, sticky: opts?.sticky === true });
+      if (opts?.sticky) return;
       timer.current = window.setTimeout(() => {
         timer.current = null;
         setToast(null);

@@ -81,6 +81,42 @@ export default async function scenario(page) {
   await wait(2500);
   ok('والشريط العلوي يقول إنها انتهت', (await pill()).includes('انتهت المدّة التجريبية'));
 
+  // ── د١٠: في الشبّاك — الرفض بالعربية، يبقى حتى يُغلق، ومعه «افتح التفعيل» ─────────
+  await page.eval(`
+    await window.diwan.templates.save({ id: null, code: null, title: 'تأييد اختبار المدّة', subtitle: null, category: 'اختبار',
+      subjectLine: null, letterheadId: null, bodyHtml: 'نؤيد بأن {الاسم} موظفٌ لدينا.',
+      variables: [{ token: 'الاسم', label: 'الاسم', source: 'citizen', required: true }] });
+    return true;
+  `);
+  await page.goto('templates-library-drafts');
+  await wait(400);
+  await page.goto('service-counter');
+  await wait(900);
+  await page.clickText('تأييد اختبار المدّة', 'button');
+  await wait(300);
+  await page.clickText('املأ (1)');
+  await wait(1200);
+  await page.eval(`
+    const input = [...document.querySelectorAll('[data-screen="service"] label')]
+      .find((l) => (l.textContent ?? '').trim().startsWith('الاسم'))?.querySelector('input[type="text"]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'سالم حسن علي');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await wait(300);
+  await page.clickText('راجع الأوراق', 'button');
+  await wait(1200);
+  await page.clickText('احفظ بلا طباعة');
+  await wait(1500);
+  const toastText = () => page.eval(`return document.querySelector('[data-act="toast-close"]')?.parentElement?.innerText ?? '';`);
+  const said = await toastText();
+  ok(`الشبّاك يقول الرفض بالعربية بلا إنكليزية (${said.slice(0, 40)}…)`, said.includes('انتهت المدّة التجريبية') && !/Error|invoking/i.test(said));
+  await wait(4500);
+  ok('ويبقى بعد ثوانٍ حتى يُغلق', (await toastText()).includes('انتهت المدّة التجريبية'));
+  await page.eval(`document.querySelector('[data-act="toast-action"]').click(); return true;`);
+  await wait(900);
+  ok('و«افتح التفعيل» ينقل إلى التفعيل في الإعدادات', await page.eval(`return Boolean(document.querySelector('[data-license]'));`));
+
   // ── إرجاع الساعة لا يعيدها ─────────────────────────────────────────
   await at('2026-10-05T09:00:00');
   ok('وإرجاع ساعة الجهاز لا يعيد المدّة', (await status()).status === 'expired' && (await tryIssue()).includes('انتهت'));
