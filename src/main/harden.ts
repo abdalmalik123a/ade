@@ -10,6 +10,7 @@
  */
 import { app, dialog, Menu, session, shell, type BrowserWindow, type WebContents } from 'electron';
 import { logError } from './errorLog';
+import { contextMenuItems } from './contextMenu';
 
 const ALLOWED_PERMISSIONS = new Set(['media', 'clipboard-sanitized-write']);
 
@@ -55,6 +56,12 @@ export function hardenWindow(win: BrowserWindow, label: string): void {
   });
   contents.on('will-redirect', (event, url) => {
     if (url.split('#')[0]!.split('?')[0] !== home()) event.preventDefault();
+  });
+  // قائمة النقر بالزرّ الأيمن (د٦): قصّ ونسخ ولصق وتحديد الكلّ — بأدوار Electron، لا «فحص العنصر».
+  contents.on('context-menu', (_e, params) => {
+    const items = contextMenuItems(params);
+    if (!items.length || win.isDestroyed()) return;
+    Menu.buildFromTemplate(items.map((i) => ({ role: i.role, label: i.label, enabled: i.enabled }))).popup({ window: win });
   });
 
   const crashes: number[] = [];
