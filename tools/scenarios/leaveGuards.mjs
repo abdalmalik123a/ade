@@ -286,7 +286,60 @@ export default async function scenario(page) {
   await choose('discard');
   ok('وتبدأ الجلسة نظيفة', await page.eval(`return Boolean(document.querySelector('[data-pdf-empty]'));`));
 
-  // ── ٧) إغلاق البرنامج بعملٍ غير محفوظ: «ابقَ» ثم «أغلق» ──────────────────
+  // ── ٧) ملف المواطن: Esc يغلق أعلى ما هو مفتوح ويسأل عمّا كُتب (ج٤) ────────
+  const formOpen = () => page.eval(`return Boolean(document.querySelector('[data-citizen-form]'));`);
+  const nameField = (value) =>
+    page.eval(`
+      const l = [...document.querySelectorAll('label')].find((x) => x.textContent.trim().startsWith('الاسم الرباعي واللقب'));
+      const input = l?.parentElement?.querySelector('input');
+      if (!input) return null;
+      ${value === undefined ? '' : `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', { bubbles: true }));`}
+      return input.value;
+    `);
+  const citizenNames = () =>
+    page.eval(`const r = await window.diwan.citizens.list({}); return (Array.isArray(r) ? r : (r.rows ?? [])).map((c) => c.fullName);`);
+
+  await page.goto('citizens-identity-records');
+  await wait(900);
+  await page.clickText('إضافة ملف مواطن');
+  await wait(500);
+  ok('انفتح نموذج الملف', await formOpen());
+  await page.key('Escape');
+  await wait(500);
+  ok('Esc على نموذجٍ لم يُكتب فيه شيء يغلقه بلا سؤال', !(await formOpen()) && (await dialog()) === null);
+
+  await page.clickText('إضافة ملف مواطن');
+  await wait(500);
+  await nameField('مواطنٌ كُتب ولم يُحفظ');
+  await wait(300);
+  await page.clickText('لصق ذكي من واتساب');
+  await wait(500);
+  await page.key('Escape');
+  await wait(500);
+  ok('Esc على لصق واتساب يغلقه وحده ويبقى النموذج بما كُتب', (await formOpen()) && (await dialog()) === null && (await nameField()) === 'مواطنٌ كُتب ولم يُحفظ');
+  await page.key('Escape');
+  await wait(500);
+  q = await dialog();
+  ok(`ثم Esc على نموذجٍ كُتب فيه شيءٌ يسأل (${q?.title})`, Boolean(q) && q.title.includes('ملف المواطن') && q.choices.join() === 'stay,discard,save');
+  await page.key('Escape');
+  await wait(500);
+  ok('وEsc على السؤال نفسه تعني «ابقَ»: النموذج باقٍ بما كُتب', (await dialog()) === null && (await formOpen()) && (await nameField()) === 'مواطنٌ كُتب ولم يُحفظ');
+  await page.clickText('إلغاء');
+  await wait(500);
+  await choose('discard');
+  ok('و«اترك بلا حفظ» تغلقه ولم يُحفظ مواطن', !(await formOpen()) && (await citizenNames()).length === 0);
+
+  await page.clickText('إضافة ملف مواطن');
+  await wait(500);
+  await nameField('مواطنٌ حُفظ بالسؤال');
+  await wait(300);
+  await page.key('Escape');
+  await wait(500);
+  await choose('save');
+  await wait(900);
+  ok('و«احفظ ثم اترك» تحفظ الملف وتغلق', !(await formOpen()) && (await citizenNames()).join() === 'مواطنٌ حُفظ بالسؤال');
+
+  // ── ٨) إغلاق البرنامج بعملٍ غير محفوظ: «ابقَ» ثم «أغلق» ──────────────────
   await page.goto('header-seal-configuration');
   await wait(900);
   await dirtyLetterhead('ترويسة الإغلاق');

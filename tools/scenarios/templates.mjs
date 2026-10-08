@@ -108,6 +108,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('يمنع تكرار الكود', (await page.text()).includes('مستعمل في نموذج آخر'));
   await page.clickText('إلغاء');
   await wait(300);
+  // ما كُتب ولم يُحفظ يسأل عنه الإغلاق (ج٣/ج٤): يُترك.
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="discard"]')?.click(); return true;`);
+  await wait(400);
 
   // ── البحث والترشيح ──────────────────────────────────────────────
   await page.type('input[placeholder^="ابحث في النماذج"]', 'لا يوجد هذا');

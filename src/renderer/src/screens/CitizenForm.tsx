@@ -4,10 +4,11 @@
  * الخانات من تعريفٍ واحد (`citizenSchema.ts`) بأبوابها الأربعة: الهوية، والبطاقات
  * والأرقام، والسكن والاتصال، والعمل والدراسة — وما تسأل عنه الاستمارات الحكومية فيها.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CitizenDetail, CitizenInput } from '@shared/api';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { errorText } from '../lib/errors';
+import { useLeaveGuard } from '../kit/useLeaveGuard';
 import CameraCapture from '../components/CameraCapture';
 import { nationalIdHint, phoneHint } from '@shared/idChecks';
 import { CITIZEN_FIELDS, CITIZEN_GROUPS } from '@shared/citizenSchema';
@@ -60,16 +61,37 @@ export default function CitizenForm({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [whatsappOpen, setWhatsappOpen] = useState(false);
+  /** الصورة الشخصية بالكاميرا (ج١٢): إطار ٤×٦ في وسط الصورة، يُحفظ في المخزن. */
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   useEffect(() => setError(null), [form.fullName, form.nationalId]);
 
+  // ما كُتب في الملف ولم يُحفظ (ج٤): توقيعُ الخانات مقابل توقيعها حين فُتح النموذج.
+  const [opened] = useState(() => JSON.stringify(form));
+  const dirty = JSON.stringify(form) !== opened;
+  const leave = useLeaveGuard({ label: 'ملف المواطن', dirty, save });
+
+  async function close() {
+    if (!(await leave())) return;
+    onClose();
+  }
+
+  // Esc يغلق أعلى ما هو مفتوح: لصق واتساب أو الكاميرا أوّلًا، ثم النموذج — وهذا يسأل إن كُتب فيه شيء. وكان يغلق النموذج كلَّه
+  // ويُضيع ما كُتب لمن ضغطه ليغلق اللصق.
+  const escape = useRef<() => void>(() => undefined);
+  escape.current = () => {
+    if (whatsappOpen) setWhatsappOpen(false);
+    else if (cameraOpen) setCameraOpen(false);
+    else void close();
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      escape.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const set = (key: keyof CitizenInput, value: string | boolean | null) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -79,27 +101,26 @@ export default function CitizenForm({
     if (picked) set('photoPath', picked);
   }
 
-  /** الصورة الشخصية بالكاميرا (ج١٢): إطار ٤×٦ في وسط الصورة، يُحفظ في المخزن. */
-  const [cameraOpen, setCameraOpen] = useState(false);
-
-  async function save() {
+  async function save(): Promise<boolean> {
     if (!form.fullName.trim()) {
       setError('اسم المواطن مطلوب');
-      return;
+      return false;
     }
     setSaving(true);
     try {
       const saved = await window.diwan.citizens.save(form);
       onSaved(saved.id);
+      return true;
     } catch (e) {
       setError(errorText(e, 'تعذّر الحفظ'));
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px]" data-citizen-form="">
       <div className="w-[min(980px,94vw)] h-[min(760px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-space-sm">
@@ -124,7 +145,7 @@ export default function CitizenForm({
               className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
               title="إغلاق (Esc)"
               type="button"
-              onClick={onClose}
+              onClick={() => void close()}
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -308,7 +329,7 @@ export default function CitizenForm({
             <button
               className="px-space-md h-9 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
               type="button"
-              onClick={onClose}
+              onClick={() => void close()}
             >
               إلغاء
             </button>

@@ -78,6 +78,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('يمنع تكرار الرقم الوطني', (await page.text()).includes('مسجَّل لمواطن آخر'));
   await page.clickText('إلغاء');
   await wait(400);
+  // ما كُتب ولم يُحفظ يسأل عنه الإغلاق (ج٣/ج٤): يُترك.
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="discard"]')?.click(); return true;`);
+  await wait(400);
 
   // ── البحث العربي المطبَّع ────────────────────────────────────────
   await page.type('input[placeholder^="ابحث بالاسم"]', 'احمد');
