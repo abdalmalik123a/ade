@@ -17,7 +17,9 @@ import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } fro
 import type { FieldSuggestion } from '@shared/api';
 import { readPsd } from '../services/psd';
 import { writePng } from '../services/png';
-import { storeDir } from '../db';
+import { getDb, storeDir } from '../db';
+import { libraryFonts } from '@shared/fonts';
+import { listFaces } from '../services/fonts';
 import { pickOpenPath } from './files';
 
 const DESIGN_FILTERS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'docx', 'psd', 'pdf'];
@@ -137,7 +139,8 @@ export function registerDesignIpc(): void {
       if (!path) return null;
 
       const bytes = await readFile(path);
-      const imported = readDesign(bytes, basename(path));
+      // «خطوط ديوان» كلّها — فخطٌّ أضافه المكتب يُطابَق في Photoshop (DESIGNS.md ١٫٥).
+      const imported = readDesign(bytes, basename(path), libraryFonts(listFaces(getDb())).map((f) => f.family));
       const warnings = [...imported.warnings];
 
       // Photoshop يأتي بخلفيته ممحوّةً منها العناصر؛ وإن تعذّرت سُطّح هنا كما هو.

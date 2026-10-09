@@ -335,6 +335,43 @@ describe('ما يصير عنصرًا', () => {
   });
 });
 
+describe('psdDesign: الخطّ من «خطوط ديوان» (DESIGNS.md ١٫٥)', () => {
+  const withFont = (font: string) =>
+    layeredPsd({
+      w: 60,
+      h: 40,
+      composite: () => [255, 255, 255],
+      layers: [
+        { name: 'BG', rect: { top: 0, left: 0, bottom: 40, right: 60 }, color: () => [255, 255, 255] },
+        {
+          name: 'Title',
+          rect: { top: 10, left: 10, bottom: 20, right: 50 },
+          color: () => [0, 0, 0],
+          text: tysh('شهادة', `/EngineDict << /StyleRun << /RunArray [ << /StyleSheet << /StyleSheetData << /Font 0 /FontSize 5.0 >> >> >> ] >> >> ${fontSet(font)}`)
+        }
+      ]
+    });
+  const fontOf = (out: ReturnType<typeof psdDesign>) => out.elements.find((e) => e.kind === 'text')?.font;
+
+  it('ما في المكتبة باسمه: «Amiri-Bold» هي أميري المحزوم — ولا تنبيه', () => {
+    const out = psdDesign(withFont('Amiri-Bold'), 'شهادة.psd');
+    expect(fontOf(out)).toBe("'Amiri', serif");
+    expect(out.warnings.join(' ')).not.toContain('ليست في خطوط ديوان');
+  });
+
+  it('وما ليس فيها يبقى باسمه وبعده أقرب المحزوم — ويُقال في التقرير', () => {
+    const out = psdDesign(withFont('SakkalMajalla-Bold'), 'شهادة.psd');
+    expect(fontOf(out)).toBe("'Sakkal Majalla', 'Cairo', 'IBM Plex Sans Arabic', sans-serif");
+    expect(out.warnings.join(' ')).toContain('خطوطٌ ليست في خطوط ديوان: Sakkal Majalla');
+  });
+
+  it('وما أضافه المكتب إلى المكتبة يُطابَق', () => {
+    const out = psdDesign(withFont('SakkalMajalla-Bold'), 'شهادة.psd', ['Amiri', 'Sakkal Majalla']);
+    expect(fontOf(out)).toBe("'Sakkal Majalla', serif");
+    expect(out.warnings.join(' ')).not.toContain('ليست في خطوط ديوان');
+  });
+});
+
 describe('psdDesign: الخلفية ممحوّة، والنصّ عنصرٌ بشكله', () => {
   it('صورةٌ تُقرأ بلا النصّ، والنصّ عنصرٌ بلونه وحجمه نسبةً', async () => {
     const bg = [30, 40, 90];

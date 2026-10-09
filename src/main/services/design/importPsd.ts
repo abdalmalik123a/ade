@@ -6,6 +6,7 @@ import { clampBox, type Box } from '@shared/canvas';
 import { tokenInlines, type Inline } from '@shared/doc';
 import { fieldFromLayerName } from '@shared/design/layerFields';
 import { FONT } from '@shared/design/kit/styles';
+import { BUNDLED_FONTS, cleanFamily, familyFromPostScript, matchFamily, stackOf } from '@shared/fonts';
 import { writePng } from '../png';
 import { readPsd } from '../psd';
 import { eraseLayers, parsePsdLayers, psdItems, type PsdItem, type Rect } from '../psdLayers';
@@ -14,13 +15,10 @@ import type { DesignImport } from './importTypes';
 // ── Photoshop ────────────────────────────────────────────────────────
 
 /**
- * خطّ النصّ من اسم خطّه في Photoshop — إلى أقرب ما عندنا محزومًا.
- *
- * فخطوط القوالب (Poppins، Montserrat…) ليست عندنا ولا تُحزم بلا ترخيصها؛
- * والعائلة أهمّ من الاسم: نسخٌ لما كان نسخًا، وكوفيٌّ لما كان كوفيًّا، والباقي
- * القاهرة — وحروفها اللاتينية هندسيّةٌ كخطوط هذه القوالب.
+ * أقرب ما عندنا محزومًا لخطٍّ ليس في المكتبة — بعائلته لا باسمه: نسخٌ لما كان نسخًا، وكوفيٌّ لما كان كوفيًّا، والباقي
+ * القاهرة (وحروفها اللاتينية هندسيّةٌ كخطوط قوالب Photoshop: Poppins وMontserrat…).
  */
-function fontFor(name: string | null): string {
+function nearestBundled(name: string | null): string {
   const n = (name ?? '').toLowerCase();
   if (/ruq|رقعة/.test(n)) return FONT.ruqaa;
   if (/kufi|كوفي/.test(n)) return FONT.kufiText;
@@ -28,6 +26,20 @@ function fontFor(name: string | null): string {
     return FONT.naskh;
   }
   return FONT.cairo;
+}
+
+/**
+ * خطّ النصّ من اسم خطّه في Photoshop (DESIGNS.md ١٫٥): **من «خطوط ديوان» إن كان فيها** (المحزوم وما أضافه المكتب)،
+ * وإلا **باسمه** وبعده أقرب المحزوم — فيُرسم بالبديل حتى يُضاف، ويُقال اسمه في التقرير وعند اختيار النصّ (لا بديلٌ صامت).
+ */
+function fontFor(name: string | null, families: string[], missing: Set<string>): string {
+  if (!name) return FONT.cairo;
+  const match = matchFamily(name, families);
+  if (match) return stackOf(match);
+  const family = cleanFamily(familyFromPostScript(name));
+  if (!family) return nearestBundled(name);
+  missing.add(family);
+  return `'${family}', ${nearestBundled(name)}`;
 }
 
 const ARABIC = /[؀-ۿ]/;
@@ -63,7 +75,9 @@ function textBox(item: Extract<PsdItem, { kind: 'text' }>, W: number, H: number)
  * وكلُّ ما صار عنصرًا يُمحى من الخلفية (`psdLayers.eraseLayers`) — وإلا ظهر
  * الاسم مرّتين: المطبوعُ في الصورة، والمحرَّرُ فوقه بخطٍّ آخر.
  */
-export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
+/** `families`: «خطوط ديوان» — المحزوم وحده إن لم يُعطَ (الاختبار)، وفي البرنامج ما أضافه المكتب معه. */
+export function psdDesign(bytes: Uint8Array, name: string, families: string[] = BUNDLED_FONTS.map((f) => f.family)): DesignImport {
+  const missingFonts = new Set<string>();
   const read = readPsd(bytes);
   // ملفٌّ لا يُقرأ يُقال — لا لوحةٌ فارغة تسأل عن مقاس ملفٍّ لم يُفتح.
   if (!read) throw new Error('تعذّر قراءة ملف Photoshop — قد يكون تالفًا أو مقطوعًا');
@@ -107,7 +121,7 @@ export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
       bold: item.style.bold,
       italic: item.style.italic || undefined,
       dir: arabic ? 'rtl' : 'ltr',
-      font: fontFor(item.style.font),
+      font: fontFor(item.style.font, families, missingFonts),
       letterSpacing: item.style.tracking || undefined,
       fit: item.single ? 'shrink' : undefined,
       vAlign: item.single ? undefined : 'top',
@@ -115,6 +129,9 @@ export function psdDesign(bytes: Uint8Array, name: string): DesignImport {
     };
   });
 
+  if (missingFonts.size) {
+    warnings.push(`خطوطٌ ليست في خطوط ديوان: ${[...missingFonts].join('، ')} — تُرسم ببديلٍ حتى تُضاف من «المكتبة ← الخطوط»`);
+  }
   if (items.length) {
     const texts = items.filter((i) => i.kind === 'text').length;
     warnings.push(`صار ${texts} نصًّا${items.length > texts ? ' والصورة والرمز' : ''} عناصرَ تُحرَّر، ومُحيت من الخلفية`);

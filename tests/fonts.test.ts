@@ -12,7 +12,9 @@ import {
   cleanFamily,
   familyOf,
   fontFaceCss,
+  familyFromPostScript,
   libraryFonts,
+  matchFamily,
   missingFamilies,
   stackOf,
   suggestFor,
@@ -128,6 +130,19 @@ describe('سجلّ خطوط ديوان', () => {
     expect(suggestFor('Arial')).toBe('Cairo');
     expect(suggestFor('PT Bold Kufi')).toBe('Noto Kufi Arabic');
     expect(suggestFor('خط مجهول')).toBe('Noto Naskh Arabic');
+  });
+
+  it('الاسم التقنيّ (Photoshop) إلى عائلته، ويُطابَق في المكتبة بلا مسافاتٍ ولا حالةٍ ولا لاحقة الوجه', () => {
+    expect(familyFromPostScript('SakkalMajalla-Bold')).toBe('Sakkal Majalla');
+    expect(familyFromPostScript('Arial-BoldMT')).toBe('Arial');
+    expect(familyFromPostScript('TimesNewRomanPS-BoldMT')).toBe('Times New Roman');
+    expect(familyFromPostScript('NotoKufiArabic-Regular')).toBe('Noto Kufi Arabic');
+    expect(familyFromPostScript('Amiri')).toBe('Amiri');
+    const lib = ['Amiri', 'Noto Kufi Arabic', 'Sakkal Majalla'];
+    expect(matchFamily('Amiri-Bold', lib)).toBe('Amiri');
+    expect(matchFamily('NotoKufiArabic-Bold', lib)).toBe('Noto Kufi Arabic');
+    expect(matchFamily('sakkal majalla', lib)).toBe('Sakkal Majalla');
+    expect(matchFamily('Poppins-SemiBold', lib)).toBeUndefined();
   });
 
   it('المكتبة: المحزوم ثم المستورد بأوزانه، ولا يُكرَّر المحزوم', () => {

@@ -8,6 +8,8 @@ import type { DesignEditor } from '../editor/useDesignEditor';
 import TablePanel from './TablePanel';
 import ImageShapePanel from './ImageShapePanel';
 import PathPanel from './PathPanel';
+import FontSelect from '../../components/FontSelect';
+import { familyOf, stackOf } from '@shared/fonts';
 import PaintPanel from './PaintPanel';
 import GradientControl, { gradientFrom } from './GradientControl';
 
@@ -40,6 +42,16 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
             data-element-text
             value={textOf(single.inlines)}
             onChange={(e) => patchElement(single.id, { inlines: inlinesOf(e.target.value) })}
+          />
+          {/* الخطّ من «خطوط ديوان» (DESIGNS.md ١٫٥) — والغائب في التصميم يُقال باسمه ويُضاف من Windows بضغطة. */}
+          <FontSelect
+            act="element-font"
+            blank="خطّ التصميم"
+            className={SELECT}
+            title="خطّ هذا النصّ"
+            used={ed.canvas.elements.flatMap((el) => (el.kind === 'text' || el.kind === 'table' ? [familyOf(el.font)] : []))}
+            value={familyOf(single.font) || null}
+            onChange={(family) => patchElement(single.id, { font: family ? stackOf(family) : undefined })}
           />
           <div className="flex items-center gap-space-sm flex-wrap">
             <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">

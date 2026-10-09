@@ -150,6 +150,31 @@ export function missingFamilies(used: Iterable<string>, available: Iterable<stri
   return out;
 }
 
+/** لاحقة الوجه بعد الشرطة في الاسم التقنيّ: «-Bold» و«-Regular» و«-BoldMT»… */
+const PS_STYLE = /^(regular|bold|italic|light|medium|semibold|demibold|extrabold|black|heavy|thin|book|roman|oblique|condensed|mt|ps)+$/i;
+const compact = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+/**
+ * عائلةٌ من اسمٍ تقنيّ (PostScript) كما يكتبه Photoshop — «SakkalMajalla-Bold» ← «Sakkal Majalla». وإن لم تُفرَّق
+ * كلماته فُرّقت عند كلّ حرفٍ كبير.
+ */
+export function familyFromPostScript(name: string): string {
+  // الوجه بعد الشرطة وحده (فـ«Roman» في «TimesNewRoman» من الاسم)، ثم «MT» و«PS» في آخر الاسم.
+  const dash = name.lastIndexOf('-');
+  const base = (dash > 0 && PS_STYLE.test(name.slice(dash + 1)) ? name.slice(0, dash) : name).replace(/(MT|PS)+$/, '');
+  return cleanFamily(base.includes(' ') ? base : base.replace(/([a-z])([A-Z])/g, '$1 $2'));
+}
+
+/**
+ * عائلةٌ في المكتبة يطابقها اسمٌ من ملفٍّ مستورد (Photoshop وغيره) — بلا اعتبارٍ للمسافات والحالة ولاحقة الوجه:
+ * «Amiri-Bold» هي «Amiri»، و«SakkalMajalla» هي «Sakkal Majalla». وعدمٌ إن لم تكن فيها.
+ */
+export function matchFamily(name: string, families: Iterable<string>): string | undefined {
+  const wanted = [compact(name), compact(familyFromPostScript(name))];
+  for (const f of families) if (wanted.includes(compact(f))) return f;
+  return undefined;
+}
+
 /** المكتبة كلّها: المحزوم ثم المستورد بعائلاته (وجوهٌ تُجمع أوزانها). */
 export function libraryFonts(imported: ImportedFace[]): LibraryFont[] {
   const byFamily = new Map<string, LibraryFont>();

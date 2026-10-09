@@ -35,12 +35,13 @@ export { imageDesign } from './design/importImage';
 
 // ── الباب الواحد ─────────────────────────────────────────────────────
 
-export function readDesign(bytes: Uint8Array, name: string): DesignImport {
+/** `fonts`: «خطوط ديوان» يطابقها استيراد Photoshop (DESIGNS.md ١٫٥). */
+export function readDesign(bytes: Uint8Array, name: string, fonts?: string[]): DesignImport {
   switch (extname(name).toLowerCase()) {
     case '.docx':
       return wordDesign(bytes, name);
     case '.psd':
-      return psdDesign(bytes, name);
+      return psdDesign(bytes, name, fonts);
     case '.pdf':
       return pdfDesign(bytes, name);
     default:

@@ -3,6 +3,8 @@
  */
 import type { TableElement } from '@shared/canvas';
 import { toHexColor } from '../editor/kit';
+import FontSelect from '../../components/FontSelect';
+import { familyOf, stackOf } from '@shared/fonts';
 
 const SMALL = 'h-7 px-2 rounded bg-surface-container-low hover:bg-surface-container-high font-label-xs text-label-xs text-on-surface';
 const NUMBER = 'w-14 h-7 px-1 rounded bg-surface-container-lowest border border-outline-variant text-center tabular font-label-xs text-label-xs';
@@ -47,6 +49,14 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
 
       {/* إعدادات المظهر والخط */}
       <div className="flex items-center gap-space-sm flex-wrap p-2 bg-surface-container-low rounded-lg border border-outline-variant/60">
+        <FontSelect
+          act="table-font"
+          blank="خطّ التصميم"
+          className={SMALL}
+          title="خطّ الجدول — من «خطوط ديوان»"
+          value={familyOf(table.font) || null}
+          onChange={(family) => patch({ font: family ? stackOf(family) : undefined })}
+        />
         <label className="flex items-center gap-1 font-label-xs text-label-xs text-on-surface-variant">
           الخط
           <input className={NUMBER} inputMode="numeric" value={table.fontSize ?? 10} onChange={(e) => patch({ fontSize: Number(e.target.value) || table.fontSize })} />
