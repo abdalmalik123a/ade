@@ -6,6 +6,93 @@
   "author": "MADA TECH",
   "license": "UNLICENSED",
   "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "npm run typecheck && npm run notices && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder --win",
+    "release": "npm run dist && node tools/release.mjs",
+    "postinstall": "electron-builder install-app-deps",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "brand": "python tools/make-brand.py",
+    "notices": "node tools/make-notices.mjs",
+    "license": "node tools/license/keygen.mjs",
+    "keytool": "node tools/keytool/sync-key.mjs && electron-builder --win --config tools/keytool/electron-builder.json",
+    "packs": "node tools/build-packs.mjs"
+  },
+  "build": {
+    "appId": "iq.diwan.bureau",
+    "productName": "Diwan",
+    "copyright": "Copyright © 2026 MADA TECH",
+    "publish": null,
+    "afterPack": "tools/afterPack.cjs",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "src/main/db/*.sql",
+      "!node_modules/better-sqlite3/{deps,src,build}/**",
+      "!node_modules/better-sqlite3/prebuilds/{darwin,linux,linuxmusl}-*.node",
+      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node",
+      "!node_modules/onnxruntime-node/bin/napi-v6/{darwin,linux}/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
+      "!node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll",
+      "!node_modules/onnxruntime-node/{script,node_modules}/**",
+      "!node_modules/{global-agent,adm-zip}/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/tessdata",
+        "to": "tessdata"
+      },
+      {
+        "from": "resources/models",
+        "to": "models"
+      },
+      {
+        "from": "resources/packs",
+        "to": "packs"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "asarUnpack": [
+      "**/*.node",
+      "**/onnxruntime-node/bin/**/*.dll"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "diwan-${version}-setup.${ext}",
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "language": "1025",
+      "shortcutName": "ديوان",
+      "createDesktopShortcut": true
+    }
+  },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
     "docx": "^9.1.0",
@@ -14,5 +101,46 @@
     "onnxruntime-node": "^1.30.0",
     "pdf-lib": "^1.17.1",
     "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@fontsource/amiri": "^5.3.0",
+    "@fontsource/aref-ruqaa": "^5.3.0",
+    "@fontsource/cairo": "^5.3.0",
+    "@fontsource/el-messiri": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.1.0",
+    "@fontsource/ibm-plex-sans-arabic": "^5.1.0",
+    "@fontsource/lalezar": "^5.3.0",
+    "@fontsource/noto-kufi-arabic": "^5.3.0",
+    "@fontsource/noto-naskh-arabic": "^5.3.0",
+    "@fontsource/reem-kufi": "^5.3.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "esbuild": "^0.28.2",
+    "material-symbols": "^0.27.0",
+    "pdfjs-dist": "^6.3.289",
+    "postcss": "^8.4.49",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-gapcursor": "^1.4.1",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.12",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-transform": "^1.12.2",
+    "prosemirror-view": "^1.42.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.0",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.0"
   }
 }
