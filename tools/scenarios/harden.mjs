@@ -6,6 +6,9 @@
  * والإشعارات القانونية.
  */
 import { join } from 'node:path';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 
 export default async function scenario(page, { shotsDir }) {
   const steps = [];
@@ -55,6 +58,20 @@ export default async function scenario(page, { shotsDir }) {
   await page.eval(`document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return true;`);
   await wait(200);
   ok('وتُغلق قائمتها بالنقر خارجها', !(await page.eval(`return Boolean(document.querySelector('[data-channels-menu]'));`)));
+
+  // ── و٥: صورة Word الملصوقة ملفٌّ محلّيّ في المجلّد المؤقّت وحده، والمخزن لا يُخرج منه ──
+  const clipDir = join(tmpdir(), `msohtmlclip-diwan-${Date.now()}`);
+  mkdirSync(clipDir, { recursive: true });
+  const clip = join(clipDir, 'clip_image001.png');
+  copyFileSync(join(import.meta.dirname, '..', '..', 'tests', 'fixtures', 'card-back-fake.png'), clip);
+  const stored = await page.eval(`return window.diwan.files.storeImageUrl(${JSON.stringify(pathToFileURL(clip).href)});`);
+  ok(`صورة Word من المجلّد المؤقّت تُحفظ في المخزن («${stored}»)`, typeof stored === 'string' && stored.startsWith('images/'));
+  const refused = await page.eval(`return Promise.all(['file://server/share/x.png', 'file:////server/share/x.png', 'file:///C:/Windows/win.ini'].map((u) => window.diwan.files.storeImageUrl(u)));`);
+  ok('ورابطٌ بمضيف أو مسار شبكة أو ملفٌّ خارج المؤقّت يُرفض', refused.every((r) => r === null));
+  const served = await page.eval(`return fetch('diwan://store/${stored}').then((r) => r.status, () => 'خطأ');`);
+  const escaped = await page.eval(`return fetch('diwan://store/..%5Cdata%5Cdiwan.db').then((r) => r.status, () => 'خطأ');`);
+  ok(`والمخزن يعطي ملفّه (${served}) ولا يُخرج منه (${escaped})`, served === 200 && escaped === 403);
+  rmSync(clipDir, { recursive: true, force: true });
 
   // واجهةٌ تسقط تُعاد.
   await page.send('Page.crash').catch(() => undefined);

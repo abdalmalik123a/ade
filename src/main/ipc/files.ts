@@ -1,12 +1,26 @@
 import { createHash } from 'node:crypto';
-import { copyFile, readdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
 import { sheetToText } from '../services/sheetRead';
 import { discardTransient } from '../services/transient';
+import { isInside, pastedImagePath } from '../services/localPaths';
+
+/** حيث يضع Word صور ما يُنسخ منه (المجلّد المؤقّت)، والمخزن. */
+const pasteRoots = (): string[] => [tmpdir(), storeDir()];
+
+/** الجذر محلولًا (الاسم الطويل لا المختصر `ADMINI~1`) — وإلا فكما هو. */
+function realRoot(root: string): string {
+  try {
+    return realpathSync.native(root);
+  } catch {
+    return root;
+  }
+}
 
 /**
  * كل تعامل مع الملفات يمرّ من هنا.
@@ -167,9 +181,16 @@ export function registerFileIpc(): void {
    * النسخ قائمًا — فتُنسخ إلى المخزن. وما ليس ملفًّا محلّيًّا ولا صورةً معروفة يعود `null`.
    */
   ipcMain.handle('files:storeImageUrl', async (_e, url: unknown): Promise<string | null> => {
-    if (typeof url !== 'string' || !/^file:/i.test(url)) return null;
+    if (typeof url !== 'string') return null;
+    // ملفٌّ محلّيٌّ في المجلّد المؤقّت أو المخزن وحده (و٥) — لا رابطٌ بمضيف ولا مسار شبكة: قراءته كانت ترسل
+    // بصمة دخول الموظف إلى ذلك الجهاز. ويُحسم ذلك قبل أيّ لمسٍ للقرص.
+    const path = pastedImagePath(url, pasteRoots());
+    if (!path) return null;
     try {
-      const bytes = await readFile(fileURLToPath(url));
+      // والمحلول الحقيقي داخلها أيضًا: وصلةٌ في المجلّد المؤقّت لا تُخرج القراءة منه.
+      const real = await realpath(path);
+      if (!pasteRoots().some((root) => isInside(realRoot(root), real))) return null;
+      const bytes = await readFile(real);
       if (bytes.length === 0 || bytes.length > PASTE_MAX) return null;
       const ext = imageExt(bytes);
       if (!ext) return null;

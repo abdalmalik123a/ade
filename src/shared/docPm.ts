@@ -232,7 +232,8 @@ const nodes: Record<string, NodeSpec> = {
         tag: 'img[src]',
         getAttrs: (el) => {
           const src = dom(el).getAttribute('src') ?? '';
-          if (!/^(file:|data:image\/)/i.test(src)) return false;
+          // و`file:` ملفٌّ على قرصٍ محلّيّ (`file:///C:/…`) وحده — لا مضيفٌ ولا مسار شبكة (و٥؛ والقناة تتحقّق أيضًا).
+          if (!/^(file:\/\/\/[a-z]:\/|data:image\/)/i.test(src)) return false;
           return { src, width: Math.min(640, Number(dom(el).getAttribute('width')) || 140) };
         }
       }

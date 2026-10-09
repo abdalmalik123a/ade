@@ -15,6 +15,7 @@ import { shutdownOcr } from './services/ocr';
 import { closePortrait } from './services/portrait';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
+import { resolveStorePath } from './services/localPaths';
 import { PALETTE } from '@shared/theme';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
@@ -220,11 +221,18 @@ app.whenReady().then(() => {
   protocol.handle('diwan', (request) => {
     const url = new URL(request.url);
     if (url.hostname !== 'store') return new Response('not found', { status: 404 });
-    const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    if (rel.includes('..')) return new Response('forbidden', { status: 403 });
+    let rel: string;
+    try {
+      rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+    } catch {
+      return new Response('forbidden', { status: 403 });
+    }
+    // محلولًا داخل المخزن (و٥): لا «..» ولا مسارٌ مطلق ولا مسار شبكة.
+    const file = resolveStorePath(storeDir(), rel);
+    if (!file) return new Response('forbidden', { status: 403 });
     // رأس CORS: الواجهة تقرأ بكسلات الشعار لتستخرج لون الجهة، ولوحةٌ رُسمت عليها
     // صورةٌ من أصلٍ آخر بلا هذا الرأس تُقفَل فلا تُقرأ. والمخزن محلّيٌّ للقراءة وحدها.
-    return net.fetch(pathToFileURL(join(storeDir(), rel)).toString()).then((res) => {
+    return net.fetch(pathToFileURL(file).toString()).then((res) => {
       const headers = new Headers(res.headers);
       headers.set('Access-Control-Allow-Origin', '*');
       return new Response(res.body, { status: res.status, headers });
