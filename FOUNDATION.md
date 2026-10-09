@@ -1242,6 +1242,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
     svgClean.ts           تعقيم SVG بقائمة سماح: لا شيفرة ولا روابط خارجية، بلا DOM (٠٫٨)
     shapes.ts             أشكال القصّ والإطار الثمانية مساراتٍ من الصندوق، واللون الآمن (١٫١)
     pathPresets.ts        مكتبة الأشكال الحرّة: ١٧ شكلًا في مربّع ٠..١٠٠ بصناديقها الافتراضية (١٫٢)
+    paint.ts              الطلاء المشترك: التدرّج (CSS وSVG) والمنقّط والمتقطّع — والشفافية في render/box (١٫٣)
     kit/                  التصاميم الجاهزة: الأنواع الستّة عشر (catalog وlayouts/ وsample) والأنماط الخمسة (نمطٌ في ملفّ
                           بـstyles/) واللوحات والزخرفة المحسوبة (ornaments وcolor)
   fonts/                  «خطوط ديوان» (DESIGNS.md ٠٫٧): المحزوم التسعة بتراخيصها، والاسم النظيف، وسلسلة الخطّ، والغائب
@@ -1362,6 +1363,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           وDesignModals، وkit.ts ما يشتركن فيه
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
                           وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
+                          وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣)
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

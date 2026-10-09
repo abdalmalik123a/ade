@@ -7,6 +7,7 @@ import type { Box, PathElement } from '../model/types';
 import { mmToPx } from '../model/units';
 import { boxStyle } from '../render/box';
 import { cssColor } from '../shapes';
+import { isGradient, normalizeDash, normalizePaint, paintId, svgDash, svgGradient } from '../paint';
 import type { KindSpec } from './types';
 
 /** أوامر المسار وأرقامه وحدها — ولا شيء يكسر السمة. */
@@ -38,21 +39,27 @@ export const PATH_KIND: KindSpec<PathElement> = {
       dir: b.dir,
       d,
       ...(typeof raw.preset === 'string' && raw.preset ? { preset: raw.preset.slice(0, 40) } : {}),
-      ...(raw.fill !== undefined && raw.fill !== 'none' ? { fill: cssColor(raw.fill, '#1f3a8a') } : {}),
+      ...(normalizePaint(raw.fill, '#1f3a8a') !== undefined ? { fill: normalizePaint(raw.fill, '#1f3a8a') } : {}),
       ...(raw.stroke !== undefined && raw.stroke !== 'none' ? { stroke: cssColor(raw.stroke, '#333333') } : {}),
       ...(width ? { strokeWidth: width } : {}),
       ...(raw.evenodd === true ? { evenodd: true } : {}),
+      ...(normalizeDash(raw.dash) ? { dash: normalizeDash(raw.dash) } : {}),
       ...(raw.flipX === true ? { flipX: true } : {}),
       ...(raw.flipY === true ? { flipY: true } : {})
     };
   },
   render(el, { canvas, opts }) {
     const flip = el.flipX || el.flipY ? ` transform="translate(${el.flipX ? 100 : 0} ${el.flipY ? 100 : 0}) scale(${el.flipX ? -1 : 1} ${el.flipY ? -1 : 1})"` : '';
-    const stroke = el.stroke ? ` stroke="${el.stroke}" stroke-width="${mmToPx(el.strokeWidth ?? 0.5, opts.dpi)}" vector-effect="non-scaling-stroke" stroke-linejoin="round"` : '';
+    const sw = mmToPx(el.strokeWidth ?? 0.5, opts.dpi);
+    const stroke = el.stroke ? ` stroke="${el.stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke" stroke-linejoin="round"${svgDash(el.dash, sw)}` : '';
     const rule = el.evenodd ? ' fill-rule="evenodd"' : '';
+    // التدرّج تعريفٌ بمعرّف العنصر — ومنه يُملأ.
+    const gid = paintId(el.id, 'fill');
+    const defs = isGradient(el.fill) ? `<defs>${svgGradient(gid, el.fill)}</defs>` : '';
+    const fill = el.fill === undefined ? 'none' : isGradient(el.fill) ? `url(#${gid})` : el.fill;
     return (
       `<svg style="${boxStyle(el, canvas, opts.dpi)};overflow:visible" viewBox="0 0 100 100" preserveAspectRatio="none">` +
-      `<path d="${el.d}" fill="${el.fill ?? 'none'}"${rule}${stroke}${flip}/></svg>`
+      `${defs}<path d="${el.d}" fill="${fill}"${rule}${stroke}${flip}/></svg>`
     );
   },
   keys: () => []

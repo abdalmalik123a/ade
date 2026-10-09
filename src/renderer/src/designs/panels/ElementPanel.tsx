@@ -8,6 +8,8 @@ import type { DesignEditor } from '../editor/useDesignEditor';
 import TablePanel from './TablePanel';
 import ImageShapePanel from './ImageShapePanel';
 import PathPanel from './PathPanel';
+import PaintPanel from './PaintPanel';
+import GradientControl, { gradientFrom } from './GradientControl';
 
 const SELECT = 'h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
@@ -65,9 +67,16 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
               value={toHexColor(single.color)}
               onChange={(e) => patchElement(single.id, { color: e.target.value })}
             />
+            <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+              <input checked={Boolean(single.gradient)} data-act="text-gradient-on" type="checkbox" onChange={(e) => patchElement(single.id, { gradient: e.target.checked ? gradientFrom(single.color) : undefined })} />
+              تدرّج
+            </label>
+            {single.gradient && <GradientControl act="text-gradient" value={single.gradient} onChange={(gradient) => patchElement(single.id, { gradient })} />}
           </div>
         </>
       )}
+
+      {single.kind === 'shape' && <PaintPanel el={single} patch={(p) => patchElement(single.id, p)} />}
 
       {(single.kind === 'image' || single.kind === 'barcode') && (
         <label className="flex flex-col gap-1">
@@ -109,6 +118,22 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
       )}
 
       {single.kind === 'table' && <TablePanel table={single} patch={(p) => patchElement(single.id, p)} />}
+
+      {/* الشفافية لكلّ عنصر (DESIGNS.md ١٫٣) */}
+      <label className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+        الشفافية
+        <input
+          className="flex-1"
+          data-act="opacity"
+          max={100}
+          min={5}
+          step={5}
+          type="range"
+          value={Math.round((single.opacity ?? 1) * 100)}
+          onChange={(e) => patchElement(single.id, { opacity: Number(e.target.value) >= 100 ? undefined : Number(e.target.value) / 100 })}
+        />
+        <span className="w-10 tabular">{Math.round((single.opacity ?? 1) * 100)}٪</span>
+      </label>
     </div>
   );
 }

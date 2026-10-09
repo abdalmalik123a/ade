@@ -18,5 +18,6 @@ export function boxStyle(el: CanvasElement, canvas: Canvas, dpi: number): string
     `z-index:${el.z}`
   ];
   if (el.rotate) parts.push(`transform:rotate(${-el.rotate}deg)`);
+  if (el.opacity !== undefined && el.opacity < 1) parts.push(`opacity:${el.opacity}`);
   return parts.join(';');
 }

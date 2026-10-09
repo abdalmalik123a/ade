@@ -42,7 +42,7 @@ export default async function scenario(page) {
   ok('وتُسمّى باسمها في الطبقات', (await page.eval(`return [...document.querySelectorAll('[data-layer]')].some((b) => b.innerText.includes('موجة سفلية'));`)));
   ok('ولوحة خصائصها تظهر', await has('[data-panel="path"]'));
 
-  await setValue('input[data-act="path-fill"]', '#c9a45c');
+  await setValue('input[data-act="paint-fill-color"]', '#c9a45c');
   await wait(300);
   await click('[data-act="path-flip-y"]');
   await wait(300);

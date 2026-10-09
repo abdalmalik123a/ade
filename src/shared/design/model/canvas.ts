@@ -85,7 +85,11 @@ function normalizeElement(raw: unknown, index: number): CanvasElement | null {
     rotate: typeof raw.rotate === 'number' ? raw.rotate : undefined,
     dir: raw.dir === 'ltr' ? 'ltr' : 'rtl'
   };
-  return spec ? spec.normalize(raw, base) : legacy!(raw, base);
+  const el = spec ? spec.normalize(raw, base) : legacy!(raw, base);
+  // الشفافية خاصّيةٌ مشتركة (DESIGNS.md ١٫٣): تُقوَّم هنا لكلّ نوع، و١ (الغياب) لا يُكتب.
+  const opacity = typeof raw.opacity === 'number' && Number.isFinite(raw.opacity) ? Math.min(1, Math.max(0, raw.opacity)) : 1;
+  if (el && opacity < 1) el.opacity = Math.round(opacity * 100) / 100;
+  return el;
 }
 
 function normalizeBackground(raw: unknown): Background {

@@ -16,6 +16,7 @@
  */
 import type { Align, Dir, Inline, Uuid } from '../../doc';
 import type { ImageShape } from '../shapes';
+import type { Dash, Gradient, Paint } from '../paint';
 
 /** ملّمٌ — وهو وحدة القياس الوحيدة في اللوحة. */
 export type Mm = number;
@@ -37,6 +38,8 @@ export type ElementBase = {
   locked?: boolean;
   /** اسمٌ يُرى في قائمة الطبقات. */
   name?: string;
+  /** الشفافية ٠..١ (DESIGNS.md ١٫٣) — وغيابها ١. */
+  opacity?: number;
 };
 
 export type VAlign = 'top' | 'middle' | 'bottom';
@@ -70,10 +73,12 @@ export type TextElement = ElementBase & {
   wordSpacing?: number;
   /** تباعد الحروف بوحدة em — كما يكتبه Photoshop في «Tracking» للعناوين المتباعدة. */
   letterSpacing?: number;
+  /** النصّ متدرّج اللون (DESIGNS.md ١٫٣) — العنوان الذهبيّ؛ و`color` لونه حيث لا يُرسم التدرّج. */
+  gradient?: Gradient;
 };
 
 /** إطار الصورة على حدّ شكلها (DESIGNS.md ١٫١): بالملّم، حلقةً أو حلقتين بينهما فسحة. */
-export type ImageFrame = { color: string; width: Mm; rings?: 1 | 2; gap?: Mm };
+export type ImageFrame = { color: string; width: Mm; rings?: 1 | 2; gap?: Mm; dash?: Dash };
 
 /** صورةٌ ثابتة، أو صورةُ حقلٍ من سجل المستمسكات والماسح (`ref`). */
 export type ImageElement = ElementBase & {
@@ -102,10 +107,12 @@ export type BarcodeElement = ElementBase & {
 export type ShapeElement = ElementBase & {
   kind: 'shape';
   shape: 'rect' | 'ellipse' | 'line';
-  fill?: string;
+  /** لونٌ أو تدرّج (DESIGNS.md ١٫٣). */
+  fill?: Paint;
   stroke?: string;
   strokeWidth?: number;
   radius?: number;
+  dash?: Dash;
 };
 
 export type TableCell = {
@@ -145,11 +152,13 @@ export type PathElement = ElementBase & {
   d: string;
   /** من أيّ شكلٍ في المكتبة جاء — للاسم في الطبقات. */
   preset?: string;
-  fill?: string;
+  /** لونٌ أو تدرّج (DESIGNS.md ١٫٣). */
+  fill?: Paint;
   stroke?: string;
   /** بالملّم — ولا يتمدّد مع الصندوق. */
   strokeWidth?: Mm;
   evenodd?: boolean;
+  dash?: Dash;
   flipX?: boolean;
   flipY?: boolean;
 };

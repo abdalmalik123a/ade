@@ -22,8 +22,8 @@ const STEPS: Record<number, (raw: Raw) => Raw> = {};
 
 /**
  * أدنى صيغةِ حزمةٍ تحمل التصميم كما رُسم (DESIGNS.md ٣٫٥): **١** لما يرسمه كلّ إصدار، و**٢** لما لا يرسمه ما قبل
- * المرحلة ١ — الشكل الحرّ (١٫٢) والصورة المقصوصة بشكلٍ أو بإطار (١٫١). فالحزمة ترتفع صيغتها بما تحمل وحده، والإصدار
- * الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا صامتًا.
+ * المرحلة ١ — الشكل الحرّ (١٫٢)، والصورة المقصوصة بشكلٍ أو بإطار (١٫١)، والتدرّج والشفافية والخطّ المنقّط (١٫٣). فالحزمة
+ * ترتفع صيغتها بما تحمل وحده، والإصدار الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا أو تدرّجًا صامتًا.
  */
 export function designPackLevel(doc: unknown): number {
   if (typeof doc !== 'object' || doc === null) return 1;
@@ -34,6 +34,8 @@ export function designPackLevel(doc: unknown): number {
     for (const el of elements as Raw[]) {
       if (el?.kind === 'path') return 2;
       if (el?.kind === 'image' && (el.shape !== undefined || el.frame !== undefined)) return 2;
+      if (typeof el?.opacity === 'number' && el.opacity < 1) return 2;
+      if (el?.dash !== undefined || el?.gradient !== undefined || (el?.fill !== null && typeof el?.fill === 'object')) return 2;
     }
   }
   return 1;

@@ -14,6 +14,8 @@ import { prepareLetterheads, saveLetterhead } from '../src/main/services/letterh
 import { getTemplate, prepareTemplates, saveTemplate } from '../src/main/services/templates';
 import { readZipIndex } from '../src/main/services/zip';
 import { normalizeLayout } from '../src/shared/letterhead';
+import type { Doc } from '../src/shared/doc';
+import { designPackLevel } from '../src/shared/canvas';
 
 const LOGO = 'letterheads/0123456789abcdef0123456789abcdef.png';
 const STAMP = 'designs/fedcba9876543210fedcba9876543210.png';
@@ -147,12 +149,17 @@ describe('حزمة المحتوى', () => {
     expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(1);
     const design = (element: Record<string, unknown>) => ({
       id: null, code: null, title: `تصميم ${String(element.kind)}`, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [],
-      doc: { id: 'd', schemaVersion: 2, kind: 'canvas', issuing: 'print-only', blocks: [], fields: [], meta: {}, canvas: { size: { w: 90, h: 50 }, bleed: 0, cropMarks: false, background: { kind: 'none' }, elements: [{ id: 'e', box: { x: 0, y: 0, w: 1, h: 1 }, z: 1, ...element }] } }
+      doc: { id: 'd', schemaVersion: 2, kind: 'canvas', issuing: 'print-only', blocks: [], fields: [], meta: {}, canvas: { size: { w: 90, h: 50 }, bleed: 0, cropMarks: false, background: { kind: 'none' }, elements: [{ id: 'e', box: { x: 0, y: 0, w: 1, h: 1 }, z: 1, ...element }] } } as unknown as Doc
     });
     saveTemplate(a.db, design({ kind: 'image', src: '', fit: 'cover' }));
     expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(1);
     saveTemplate(a.db, design({ kind: 'path', d: 'M0 0 H100 V100 Z' }));
     expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(2);
+    // والتدرّج والشفافية والخطّ المنقّط (١٫٣) كذلك — الأقدم يُسقطها صامتًا.
+    for (const el of [{ kind: 'shape', shape: 'rect', fill: { type: 'linear', angle: 0, stops: [] } }, { kind: 'shape', shape: 'line', dash: 'dotted' }, { kind: 'text', inlines: [], opacity: 0.5 }]) {
+      expect(designPackLevel({ canvas: { elements: [el] } })).toBe(2);
+    }
+    expect(designPackLevel({ canvas: { elements: [{ kind: 'text', inlines: [], opacity: 1 }] } })).toBe(1);
 
     const b = office();
     const pack = join(b.dir, 'future.diwanpack');

@@ -9,6 +9,7 @@ import { mmToPx, ptToPx } from '../model/units';
 import { isObj } from '../model/box';
 import type { Box, TextElement } from '../model/types';
 import { boxStyle } from '../render/box';
+import { cssGradient, normalizeGradient } from '../paint';
 import type { KindSpec, RenderCtx } from './types';
 
 export function textElement(patch: Partial<TextElement> & { box: Box }): TextElement {
@@ -128,11 +129,13 @@ function render(el: TextElement, { canvas, values, fields, opts }: RenderCtx): s
   ]
     .filter(Boolean)
     .join(';');
+  // النصّ المتدرّج (DESIGNS.md ١٫٣): التدرّج خلفيةُ الأسطر مقصوصةً بحروفها — متّجهٌ في PDF.
+  const paint = el.gradient ? `;background:${cssGradient(el.gradient)};-webkit-background-clip:text;background-clip:text;color:transparent` : '';
   if (el.fit === 'shrink') {
     // سطرٌ واحد يُقاس: `data-fit` أقصى حجمٍ مسموح، والقياس يختار ما يسع تحته.
-    return `<div dir="${el.dir ?? 'rtl'}" data-fit="${max.toFixed(2)}" style="${style}"><span style="white-space:nowrap">${inner}</span></div>`;
+    return `<div dir="${el.dir ?? 'rtl'}" data-fit="${max.toFixed(2)}" style="${style}"><span style="white-space:nowrap${paint}">${inner}</span></div>`;
   }
-  return `<div dir="${el.dir ?? 'rtl'}" style="${style}"><span style="width:100%">${inner}</span></div>`;
+  return `<div dir="${el.dir ?? 'rtl'}" style="${style}"><span style="width:100%${paint}">${inner}</span></div>`;
 }
 
 export const TEXT_KIND: KindSpec<TextElement> = {
@@ -160,7 +163,8 @@ export const TEXT_KIND: KindSpec<TextElement> = {
       lineHeight: typeof raw.lineHeight === 'number' ? raw.lineHeight : undefined,
       fit: raw.fit === 'shrink' ? 'shrink' : undefined,
       wordSpacing: typeof raw.wordSpacing === 'number' ? raw.wordSpacing : undefined,
-      letterSpacing: typeof raw.letterSpacing === 'number' ? raw.letterSpacing : undefined
+      letterSpacing: typeof raw.letterSpacing === 'number' ? raw.letterSpacing : undefined,
+      ...(normalizeGradient(raw.gradient) ? { gradient: normalizeGradient(raw.gradient) } : {})
     };
   },
   render,

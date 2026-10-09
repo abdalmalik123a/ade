@@ -68,6 +68,17 @@ export default function ImageShapePanel({ image, patch }: { image: ImageElement;
               <input className={NUM} data-act="image-frame-width" inputMode="decimal" title="سُمك الإطار بالملّم" value={frame.width} onChange={(e) => setFrame({ width: Number(e.target.value) || frame.width })} />
               ملم
             </label>
+            <select
+              className="h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+              data-act="image-frame-dash"
+              title="نقش الإطار"
+              value={frame.dash ?? 'solid'}
+              onChange={(e) => setFrame({ dash: e.target.value === 'solid' ? undefined : (e.target.value as 'dashed' | 'dotted') })}
+            >
+              <option value="solid">متّصل</option>
+              <option value="dashed">متقطّع</option>
+              <option value="dotted">منقّط</option>
+            </select>
             {frame.rings === 2 && (
               <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
                 فسحة

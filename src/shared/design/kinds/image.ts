@@ -7,6 +7,7 @@ import type { Box, ImageElement, ImageFrame } from '../model/types';
 import { mmToPx } from '../model/units';
 import { boxStyle } from '../render/box';
 import { cssColor, isImageShape, shapePath } from '../shapes';
+import { normalizeDash, svgDash } from '../paint';
 import type { ElementCommon, KindSpec } from './types';
 
 export function imageElement(patch: Partial<ImageElement> & { box: Box }): ImageElement {
@@ -36,6 +37,8 @@ function normalizeFrame(raw: unknown): { frame?: ImageFrame } {
   if (typeof f.width !== 'number' || !Number.isFinite(f.width) || f.width <= 0) return {};
   const width = Math.min(10, Math.max(0.1, f.width));
   const frame: ImageFrame = { color: cssColor(f.color, '#ffffff'), width };
+  const dash = normalizeDash(f.dash);
+  if (dash) frame.dash = dash;
   if (f.rings === 2) {
     frame.rings = 2;
     frame.gap = typeof f.gap === 'number' && Number.isFinite(f.gap) ? Math.min(10, Math.max(0, f.gap)) : 1.5;
@@ -51,7 +54,7 @@ function shapedImage(el: ImageElement, href: string, w: number, h: number, dpi: 
   const shape = el.shape ?? 'rect';
   const sw = el.frame ? mmToPx(el.frame.width, dpi) : 0;
   const gap = el.frame?.rings === 2 ? mmToPx(el.frame.gap ?? 1.5, dpi) : 0;
-  const ring = (inset: number) => `<path d="${shapePath(shape, w, h, inset, el.radius)}" fill="none" stroke="${el.frame!.color}" stroke-width="${sw}"/>`;
+  const ring = (inset: number) => `<path d="${shapePath(shape, w, h, inset, el.radius)}" fill="none" stroke="${el.frame!.color}" stroke-width="${sw}"${svgDash(el.frame!.dash, sw)}/>`;
   const inner = el.frame?.rings === 2 ? sw + gap + sw / 2 : sw / 2;
   const clip = shapePath(shape, w, h, el.frame ? inner : 0, el.radius);
   const rings = el.frame ? `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="position:absolute;inset:0;overflow:visible">${ring(inner)}${el.frame.rings === 2 ? ring(sw / 2) : ''}</svg>` : '';
