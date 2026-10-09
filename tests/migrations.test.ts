@@ -6,6 +6,7 @@ import { listTemplates, prepareTemplates, saveTemplate } from '../src/main/servi
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { prepareDocuments } from '../src/main/services/documents';
 import { listClips, prepareClips } from '../src/main/services/clips';
+import { listOrders, prepareOrders } from '../src/main/services/orders';
 
 /**
  * قاعدة مكتبٍ قائمة — كما هي على جهازه لا كما تُنشأ اليوم.
@@ -78,6 +79,18 @@ describe('قاعدة المكتب القائمة لا تسقط بعمودٍ جد
     );
     expect(cols).toContain('transaction_id');
     expect(cols).toContain('letterhead_id');
+  });
+
+  it('والطلبات تقوم على قاعدة بلا ربط الزبون (د٨) — ويُضاف العمود بلا فقد', () => {
+    // الجدول في schema.sql كما بُني أوّل مرّة — وأعمدته اللاحقة (الوصل، والزبون) تضيفها prepareOrders.
+    const db = agedDb([]);
+    db.prepare("INSERT INTO orders (customer, title, status) VALUES ('سالم حسن', 'صور', 'new')").run();
+    // القراءة نفسها تُرحِّل — والطلب القديم بلا ملفّ.
+    expect(listOrders(db, { status: 'open' })).toMatchObject([{ customer: 'سالم حسن', citizenId: null }]);
+    expect((db.prepare('PRAGMA table_info(orders)').all() as { name: string }[]).map((c) => c.name)).toContain('citizen_id');
+    prepareOrders(db);
+    prepareOrders(db);
+    expect(listOrders(db, { status: 'open' })).toHaveLength(1);
   });
 
   it('والكليشات تقوم على قاعدة بلا جدولها', () => {

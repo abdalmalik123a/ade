@@ -33,6 +33,7 @@ import { useToast } from '../kit/useToast';
 import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
+import CitizenMultiPicker from '../components/CitizenMultiPicker';
 
 const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -68,9 +69,17 @@ export type OrdersScreenProps = {
   onOpenDraft?: (draftId: number) => void;
   /** «استأنف»: معاملةٌ معلّقة تُفتح في الشبّاك من حيث تُركت. */
   onResumeParked?: (parkedKey: number) => void;
+  /**
+   * بطاقة «طلبٌ يُسلَّم لاحقًا» في الشبّاك (د٨): طلبٌ جديد يُفتح مباشرةً — لا القائمة — ومعه زبون الشبّاك إن كان.
+   * ويُنفَّذ مرّةً بمفتاحه: الشاشة تُركَّب من جديد كلّما فُتحت.
+   */
+  request?: { key: number; citizenId: number | null } | null;
 };
 
-export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onResumeParked }: OrdersScreenProps) {
+/** الطلب الجديد من الشبّاك يُفتح مرّةً لا كلّ رجوع. */
+let orderRequestSeen = 0;
+
+export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onResumeParked, request = null }: OrdersScreenProps) {
   /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨)؛ ووصل الاستلام إن شغّله المكتب، بهاتفه وعنوانه (الموجة ٢). */
   const [office, setOffice] = useState<ReceiptOffice & { receipt: boolean }>({ receipt: false, name: '', phone: '', address: '' });
   useEffect(() => {
@@ -82,6 +91,14 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Order | 'new' | null>(null);
+  /** زبون الشبّاك للطلب الجديد (د٨) — اسمه وهاتفه من ملفّه. */
+  const [newFor, setNewFor] = useState<number | null>(null);
+  useEffect(() => {
+    if (!request || request.key === orderRequestSeen) return;
+    orderRequestSeen = request.key;
+    setNewFor(request.citizenId);
+    setEditing('new');
+  }, [request?.key]);
   const { toast, say } = useToast(3000);
   const today = localToday();
 
@@ -199,7 +216,10 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
               className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5"
               data-act="new-order"
               type="button"
-              onClick={() => setEditing('new')}
+              onClick={() => {
+            setNewFor(null);
+            setEditing('new');
+          }}
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
               طلب جديد
@@ -321,6 +341,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
       {editing && (
         <OrderDialog
           order={editing === 'new' ? null : editing}
+          initialCitizenId={editing === 'new' ? newFor : null}
           today={today}
           receipt={office.receipt}
           onClose={() => setEditing(null)}
@@ -516,6 +537,7 @@ function OrderCard({
 
 function OrderDialog({
   order,
+  initialCitizenId = null,
   today,
   receipt,
   onClose,
@@ -523,6 +545,8 @@ function OrderDialog({
   onDeleted
 }: {
   order: Order | null;
+  /** طلبٌ جديد لزبونٍ من السجلّ (من الشبّاك). */
+  initialCitizenId?: number | null;
   today: string;
   /** المكتب شغّل وصل الاستلام: خانة «ما تركه الزبون عندنا» و«واطبع الوصل». */
   receipt: boolean;
@@ -532,7 +556,7 @@ function OrderDialog({
 }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [designs, setDesigns] = useState<TemplateSummary[]>([]);
-  const [who, setWho] = useState<'client' | 'person'>(order && !order.clientId ? 'person' : 'client');
+  const [who, setWho] = useState<'client' | 'person'>((order && !order.clientId) || (!order && initialCitizenId) ? 'person' : 'client');
   const [clientId, setClientId] = useState<number | null>(order?.clientId ?? null);
   const [newClient, setNewClient] = useState('');
   const [customer, setCustomer] = useState(order && !order.clientId ? order.customer : '');
@@ -547,6 +571,29 @@ function OrderDialog({
   const [status, setStatus] = useState<OrderStatus>(order?.status ?? 'new');
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** ملفّ الزبون الفرد في السجلّ (د٨): اسمه وهاتفه يُملآن منه ويبقيان قابلين للتعديل. بلا مال. */
+  const [citizenId, setCitizenId] = useState<number | null>(order?.citizenId ?? initialCitizenId ?? null);
+  const [citizenName, setCitizenName] = useState('');
+  const [picking, setPicking] = useState(false);
+
+  /** يُملأ الاسم والهاتف من الملفّ — وما كُتب باليد في الهاتف لا يُمحى بملفٍّ بلا هاتف. */
+  async function linkCitizen(id: number, fill: boolean) {
+    const c = await window.diwan.citizens.get(id);
+    if (!c) return;
+    setCitizenId(id);
+    setCitizenName(c.fullName);
+    if (fill) {
+      setWho('person');
+      setCustomer(c.fullName);
+      if (c.phone) setPhone(c.phone);
+    }
+  }
+  useEffect(() => {
+    // طلبٌ جديد لزبون الشبّاك: يُملأ منه؛ وطلبٌ قائمٌ مربوط: يُقال اسم ملفّه وحده.
+    if (!order && initialCitizenId) void linkCitizen(initialCitizenId, true);
+    else if (order?.citizenId) void linkCitizen(order.citizenId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     void window.diwan.clients.list().then(setClients);
@@ -564,6 +611,7 @@ function OrderDialog({
       const input: OrderInput = {
         id: order?.id ?? null,
         clientId: cid,
+        citizenId: who === 'person' ? citizenId : null,
         customer: who === 'person' ? customer : null,
         phone,
         title,
@@ -634,9 +682,37 @@ function OrderDialog({
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-space-sm">
-                <input className={input} data-order-customer="" placeholder="اسم الزبون" value={customer} onChange={(e) => setCustomer(e.target.value)} />
-                <input className={input} placeholder="هاتفه" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <div className="space-y-space-xs">
+                <div className="grid grid-cols-2 gap-space-sm">
+                  <input className={input} data-order-customer="" placeholder="اسم الزبون" value={customer} onChange={(e) => setCustomer(e.target.value)} />
+                  <input className={input} data-order-phone="" placeholder="هاتفه" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                {citizenId ? (
+                  <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant" data-order-citizen={citizenId}>
+                    <span className="material-symbols-outlined text-[16px] text-secondary">badge</span>
+                    مربوطٌ بملفّ <span className="font-semibold text-on-surface">{citizenName || '…'}</span> في الزبائن
+                    <button
+                      className="ms-1 h-7 px-2 rounded-lg hover:bg-surface-container-high"
+                      data-act="order-unlink-citizen"
+                      title="فكّ الربط — ويبقى الاسم والهاتف كما كُتبا"
+                      type="button"
+                      onClick={() => setCitizenId(null)}
+                    >
+                      فكّ الربط
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="h-8 px-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm text-on-surface flex items-center gap-1"
+                    data-act="order-pick-citizen"
+                    title="يملأ الاسم والهاتف من ملفّه، ويبقيان قابلين للتعديل"
+                    type="button"
+                    onClick={() => setPicking(true)}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">person_search</span>
+                    من سجلّ الزبائن
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -803,6 +879,18 @@ function OrderDialog({
           </div>
         </div>
       </div>
+      {picking && (
+        <CitizenMultiPicker
+          single
+          confirmLabel="اربطه بالطلب"
+          title="لمن الطلب؟"
+          onClose={() => setPicking(false)}
+          onPick={(ids) => {
+            setPicking(false);
+            if (ids[0]) void linkCitizen(ids[0], true);
+          }}
+        />
+      )}
     </div>
   );
 }

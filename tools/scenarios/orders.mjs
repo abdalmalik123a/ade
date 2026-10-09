@@ -205,5 +205,36 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(800);
   ok('ويُسجَّل لزبونٍ فرد باسمه', (await page.eval(`return document.querySelector('[data-order]')?.innerText ?? '';`)).includes('أبو علي'));
 
+  // ── د٨: الطلب يُربط بملفّ الزبون — اسمه وهاتفه منه، بلا مال ────────────
+  await page.eval(`await window.diwan.citizens.save({ id: null, fullName: 'سالم حسن علي', phone: '07701112222', verified: false }); return true;`);
+  await click('[data-act="new-order"]');
+  await wait(500);
+  await click('[data-who="person"]');
+  await wait(200);
+  await click('[data-act="order-pick-citizen"]');
+  await wait(700);
+  await page.eval(`document.querySelector('[data-picker-row="سالم حسن علي"] input').click(); return true;`);
+  await wait(200);
+  await click('[data-act="picker-confirm"]');
+  await wait(700);
+  const filled = await page.eval(`return { name: document.querySelector('input[data-order-customer]')?.value, phone: document.querySelector('input[data-order-phone]')?.value, linked: Boolean(document.querySelector('[data-order-citizen]')) };`);
+  ok(`«من سجلّ الزبائن» يملأ الاسم والهاتف ويقول الربط (${filled.name} · ${filled.phone})`, filled.name === 'سالم حسن علي' && filled.phone === '07701112222' && filled.linked);
+  await page.type('input[data-order-title]', 'صور شخصية');
+  await click('[data-act="save-order"]');
+  await wait(800);
+  const conn3 = db();
+  const linked = conn3.prepare("SELECT o.citizen_id AS c, z.id AS z FROM orders o JOIN citizens z ON z.full_name = 'سالم حسن علي' WHERE o.title = 'صور شخصية'").get();
+  conn3.close();
+  ok('ويُحفظ الطلب مربوطًا بملفّه', Boolean(linked) && linked.c === linked.z);
+
+  // ── بطاقة الشبّاك تفتح طلبًا جديدًا لا القائمة ─────────────────────
+  await page.goto('service-counter');
+  await wait(900);
+  await page.eval(`document.querySelector('[data-screen="service"] [data-card="order"]').click(); return true;`);
+  await wait(1200);
+  ok('وبطاقة «طلبٌ يُسلَّم لاحقًا» في الشبّاك تفتح طلبًا جديدًا مباشرةً', await page.eval(`return Boolean(document.querySelector('[data-order-dialog]')) && document.querySelector('[data-order-dialog]').innerText.includes('طلب جديد');`));
+  await page.eval(`document.querySelector('[data-order-dialog] button')?.click(); return true;`);
+  await wait(400);
+
   return steps.join('\n');
 }

@@ -290,6 +290,15 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── الإطار الواحد (المرحلة ٥): أداةٌ تُفتح لزبون الشبّاك تقوله، و«شيءٌ آخر لنفس الزبون» يعود به ──
   await page.eval(`document.querySelector('[data-act="same-customer"]').click(); return true;`);
   await wait(500);
+  // د٨: «طلبٌ يُسلَّم لاحقًا» لزبون الشبّاك الحاضر — طلبٌ جديد باسمه وملفّه، لا قائمة الطلبات.
+  await page.eval(`document.querySelector('[data-screen="service"] [data-card="order"]').click(); return true;`);
+  await wait(1500);
+  const orderFor = await page.eval(`return { name: document.querySelector('input[data-order-customer]')?.value ?? '', linked: document.querySelector('[data-order-citizen]')?.innerText ?? '' };`);
+  ok(`وبطاقة الطلب تفتح طلبًا جديدًا لزبون الشبّاك (${orderFor.name})`, orderFor.name === 'كريم حسن علي' && orderFor.linked.includes('كريم حسن علي'));
+  await page.eval(`document.querySelector('[data-order-dialog] button')?.click(); return true;`);
+  await wait(400);
+  await page.goto('service-counter');
+  await wait(900);
   await page.eval(`document.querySelector('[data-screen="service"] [data-card="photos"]')?.click(); return true;`);
   await wait(1200);
   const head = await page.eval(`return document.querySelector('[data-tool-customer]')?.innerText ?? '';`);

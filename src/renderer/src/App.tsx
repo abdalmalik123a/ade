@@ -97,6 +97,8 @@ export default function App() {
   const [wordIncoming, setWordIncoming] = useState<WordIncoming | null>(null);
   /** «استأنف» من قيد العمل: معاملةٌ معلّقة تُفتح في الشبّاك (المرحلة ٣). */
   const [resumeRequest, setResumeRequest] = useState<{ key: number; parkedKey: number } | null>(null);
+  /** طلبٌ جديد من بطاقة الشبّاك (د٨) — بزبون الشبّاك الحاضر إن كان. */
+  const [orderRequest, setOrderRequest] = useState<{ key: number; citizenId: number | null } | null>(null);
   /** الزبون الذي فُتحت له الأداة من الشبّاك (المرحلة ٥ — ن٢)، وعودته إليه بـ«شيءٌ آخر لنفس الزبون». */
   const [toolCustomer, setToolCustomer] = useState<number | null>(null);
   const [customerRequest, setCustomerRequest] = useState<{ key: number; citizenId: number } | null>(null);
@@ -347,6 +349,7 @@ export default function App() {
       case 'orders':
         return (
           <OrdersScreen
+            request={orderRequest}
             onChanged={() => void refresh()}
             onOpenDraft={(id) => openEditor({ draftId: id })}
             onResumeParked={(parkedKey) => {
@@ -501,6 +504,11 @@ export default function App() {
                 setToolCustomer(citizenId);
                 if ('route' in t) {
                   if (t.route === 'editor') openEditor({});
+                  // «طلبٌ يُسلَّم لاحقًا» (د٨): طلبٌ جديد مباشرةً، ومعه زبون الشبّاك إن كان — لا قائمة الطلبات.
+                  else if (t.route === 'orders') {
+                    setOrderRequest({ key: Date.now(), citizenId });
+                    navigate('orders');
+                  }
                   else navigate(t.route);
                 } else if (t.dialog === 'id-copy') setIdDuplexOpen(true);
                 else setIdSheetOpen(true);

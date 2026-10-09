@@ -3,6 +3,8 @@ import { freshDb } from './helpers';
 import { deleteClient, getClient, listClients, prepareClients, saveClient, setClientLogo } from '../src/main/services/clients';
 import { deleteOrder, listOrders, orderCounts, saveOrder, setOrderStatus } from '../src/main/services/orders';
 import { dueLabel, localToday, statusOf } from '../src/shared/orders';
+import { deleteCitizen, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
+import type { CitizenInput } from '../src/shared/api';
 
 describe('الجهات', () => {
   it('تُحفظ بهاتفها ولونها، والاسم لا يتكرّر ولو اختلفت همزته', () => {
@@ -127,6 +129,28 @@ describe('الطلبات — بلا مبالغ', () => {
       expect(listOrders(db, { status: 'open', query: q }).map((x) => x.id)).toEqual([o.id]);
     // وما تركه يُبحث فيه كذلك
     expect(listOrders(db, { status: 'open', query: 'جواز' }).map((x) => x.id)).toEqual([o.id]);
+  });
+
+  it('والطلب يُربط بملفّ الزبون (د٨): يبقى ما لم يُرسل، والجهة تفكّه، وحذف الزبون يفكّه ولا يحذف الطلب', () => {
+    const db = freshDb();
+    ensureSearchColumn(db);
+    const c = saveCitizen(db, { id: null, fullName: 'سالم حسن علي', phone: '07700000000', verified: false } as CitizenInput);
+    const o = saveOrder(db, { id: null, clientId: null, citizenId: c.id, customer: 'سالم حسن علي', phone: '07700000000', title: 'صور شخصية' });
+    expect(o.citizenId).toBe(c.id);
+    expect(listOrders(db, { citizenId: c.id }).map((x) => x.id)).toEqual([o.id]);
+    // حفظٌ لا يرسل الزبون (من مكانٍ لا يعرفه) لا يفكّه.
+    expect(saveOrder(db, { id: o.id, clientId: null, customer: 'سالم حسن علي', phone: '07700000000', title: 'صور شخصية ٤' }).citizenId).toBe(c.id);
+    // وحذف الزبون يفكّ الربط — والطلب باقٍ باسمه وهاتفه.
+    deleteCitizen(db, c.id);
+    const after = listOrders(db, { status: 'open' }).find((x) => x.id === o.id);
+    expect(after).toMatchObject({ citizenId: null, customer: 'سالم حسن علي', phone: '07700000000' });
+    // وطلبٌ صار لجهةٍ لا يبقى مربوطًا بشخص.
+    const c2 = saveCitizen(db, { id: null, fullName: 'زينب علي', verified: false } as CitizenInput);
+    const school = saveClient(db, { id: null, name: 'مدرسة النور' });
+    const o2 = saveOrder(db, { id: null, clientId: null, citizenId: c2.id, customer: 'زينب علي', title: 'هويّات' });
+    expect(saveOrder(db, { id: o2.id, clientId: school.id, title: 'هويّات' }).citizenId).toBeNull();
+    // وطلبٌ جديدٌ لجهةٍ لا يُربط بشخصٍ ولو أُرسل.
+    expect(saveOrder(db, { id: null, clientId: school.id, citizenId: c2.id, title: 'شهادات' }).citizenId).toBeNull();
   });
 });
 

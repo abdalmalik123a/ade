@@ -8,6 +8,7 @@ import type { Order } from '../src/shared/orders';
 const ORDER: Order = {
   id: 128,
   clientId: null,
+  citizenId: null,
   customer: 'سالم حسن',
   clientLogo: null,
   phone: '07701234567',

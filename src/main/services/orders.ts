@@ -13,6 +13,7 @@ import { prepareClients } from './clients';
 type Row = {
   id: number;
   authority_id: number | null;
+  citizen_id?: number | null;
   client_name: string | null;
   client_logo: string | null;
   customer: string | null;
@@ -44,6 +45,7 @@ function toOrder(r: Row): Order {
   return {
     id: r.id,
     clientId: r.authority_id,
+    citizenId: r.citizen_id ?? null,
     customer: r.client_name ?? r.customer ?? 'زبون',
     clientLogo: r.client_logo,
     phone: r.phone ?? r.client_phone,
@@ -69,9 +71,11 @@ export function prepareOrders(db: Database): void {
   const cols = (db.prepare('PRAGMA table_info(orders)').all() as { name: string }[]).map((c) => c.name);
   // ما تركه الزبون عندنا — لوصل الاستلام (الموجة ٢).
   if (!cols.includes('received')) db.exec('ALTER TABLE orders ADD COLUMN received TEXT');
+  // ملفّ الزبون الفرد (د٨): حذفُ الزبون يفكّ الربط ولا يحذف الطلب.
+  if (!cols.includes('citizen_id')) db.exec('ALTER TABLE orders ADD COLUMN citizen_id INTEGER REFERENCES citizens(id) ON DELETE SET NULL');
 }
 
-export type OrderFilter = { status?: 'open' | OrderStatus; clientId?: number; query?: string };
+export type OrderFilter = { status?: 'open' | OrderStatus; clientId?: number; citizenId?: number; query?: string };
 
 /**
  * المفتوحة بموعدها الأقرب أولًا — والمتأخّر فوق الكل، وما لا موعد له في آخرها.
@@ -90,6 +94,10 @@ export function listOrders(db: Database, filter: OrderFilter = {}): Order[] {
   if (filter.clientId) {
     where.push('o.authority_id = ?');
     args.push(filter.clientId);
+  }
+  if (filter.citizenId) {
+    where.push('o.citizen_id = ?');
+    args.push(filter.citizenId);
   }
   const order =
     filter.status === 'delivered' || filter.status === 'cancelled'
@@ -137,16 +145,20 @@ export function saveOrder(db: Database, input: OrderInput): Order {
          notes = ?, template_id = ?, batch_text = ?, updated_at = datetime('now') WHERE id = ?`
     ).run(...values, input.id);
     if (input.received !== undefined) db.prepare('UPDATE orders SET received = ? WHERE id = ?').run(clean(input.received), input.id);
+    // والجهة تُغني عن الزبون الفرد: طلبٌ صار لجهةٍ لا يبقى مربوطًا بملفّ شخص.
+    if (input.citizenId !== undefined || input.clientId) {
+      db.prepare('UPDATE orders SET citizen_id = ? WHERE id = ?').run(input.clientId ? null : (input.citizenId ?? null), input.id);
+    }
     if (input.status) setOrderStatus(db, input.id, status);
     return getOrder(db, input.id)!;
   }
   const id = Number(
     db
       .prepare(
-        `INSERT INTO orders (authority_id, customer, phone, title, quantity, due_date, notes, template_id, batch_text, status, received)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO orders (authority_id, customer, phone, title, quantity, due_date, notes, template_id, batch_text, status, received, citizen_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(...values, status, clean(input.received)).lastInsertRowid
+      .run(...values, status, clean(input.received), input.clientId ? null : (input.citizenId ?? null)).lastInsertRowid
   );
   return getOrder(db, id)!;
 }

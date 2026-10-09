@@ -67,6 +67,8 @@ export type ClientInput = {
 export type Order = {
   id: number;
   clientId: number | null;
+  /** ملفّ الزبون الفرد في السجلّ (د٨) — اسمه وهاتفه يُملآن منه ويبقيان قابلين للتعديل. بلا مال. */
+  citizenId: number | null;
   /** اسم الجهة إن كانت، وإلا اسم الزبون الفرد. */
   customer: string;
   clientLogo: string | null;
@@ -89,6 +91,8 @@ export type Order = {
 export type OrderInput = {
   id: number | null;
   clientId: number | null;
+  /** وما لم يُرسَل يبقى كما كان (كـ`received`). */
+  citizenId?: number | null;
   customer?: string | null;
   phone?: string | null;
   title: string;
