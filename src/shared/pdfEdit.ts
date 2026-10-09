@@ -273,14 +273,28 @@ export const SIZE_LIMITS: readonly { bytes: number; label: string }[] = [
   { bytes: 100 * KB, label: '١٠٠ ك.ب' }
 ];
 
+const indic = (s: string) => s.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!).replace('.', '٫');
+
 /** «٨٤٠ ك.ب»، «١٫٢ ميغا» — حجمٌ يقرؤه الموظف. */
 export function sizeText(bytes: number): string {
-  const indic = (s: string) => s.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!).replace('.', '٫');
   if (bytes >= MB) return `${indic((Math.round(bytes / (MB / 10)) / 10).toString())} ميغا`;
   return `${indic(Math.max(1, Math.round(bytes / KB)).toString())} ك.ب`;
 }
 
 export type RasterStep = { dpi: number; quality: number };
+
+/** دون هذه الدقّة قد ترفض الجهة الملفّ (هـ٢): حروفه تتكسّر عند التكبير. */
+export const LOW_DPI = 75;
+
+/**
+ * ما يُقال عن ملفٍّ صارت صفحاته صورًا ليبلغ حدّه (هـ٢): بالدقّة التي بلغها — فملفٌّ «نجح» في ١٠٠ ك.ب بدقّة ٥٠
+ * كانت تُرفضه الجهة والموظف لا يعلم. ودون `LOW_DPI` تحذيرٌ وما يُجرَّب.
+ */
+export function rasterNote(dpi: number, gray: boolean): string {
+  const at = `صفحاته صورٌ بدقّة ${indic(String(dpi))}`;
+  if (dpi >= LOW_DPI) return at;
+  return `${at} — دقّةٌ منخفضة قد ترفضها الجهة؛ ${gray ? '' : 'جرّب «أبيض وأسود» أو '}قسّمه أجزاءً`;
+}
 
 /**
  * درجات تصغير الملف صورًا — من الأجود إلى الأصغر. ١٥٠ نقطة تُقرأ وتُطبع، و٥٠ آخر ما يُقرأ

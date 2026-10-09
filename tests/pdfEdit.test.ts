@@ -15,9 +15,11 @@ import {
   imagePage,
   layerHtml,
   numberingText,
+  LOW_DPI,
   pageTokens,
   parseRanges,
   RASTER_STEPS,
+  rasterNote,
   shownToUser,
   SIZE_LIMITS,
   sizeText,
@@ -186,6 +188,16 @@ describe('الحجم للرفع', () => {
     expect(tried.length).toBe(RASTER_STEPS.findIndex((s) => size(s) <= 100_000) + 1);
   });
 
+  it('والملفّ صورًا يُقال بالدقّة التي بلغها، وتحذيرٌ دون ٧٥ وما يُجرَّب (هـ٢)', () => {
+    expect(rasterNote(150, false)).toBe('صفحاته صورٌ بدقّة ١٥٠');
+    expect(rasterNote(LOW_DPI, false)).toBe('صفحاته صورٌ بدقّة ٧٥');
+    expect(rasterNote(72, false)).toBe('صفحاته صورٌ بدقّة ٧٢ — دقّةٌ منخفضة قد ترفضها الجهة؛ جرّب «أبيض وأسود» أو قسّمه أجزاءً');
+    // وما صار رماديًّا لا يُقال له «جرّب أبيض وأسود».
+    expect(rasterNote(50, true)).toBe('صفحاته صورٌ بدقّة ٥٠ — دقّةٌ منخفضة قد ترفضها الجهة؛ قسّمه أجزاءً');
+    // ودرجات التصغير تنزل دون الحدّ — فالتحذير يُبلغ فعلًا.
+    expect(RASTER_STEPS.some((s) => s.dpi < LOW_DPI)).toBe(true);
+  });
+
   it('وإن لم تبلغه درجةٌ عاد بأصغر ما بلغ؛ وبلا حدٍّ تكفي الأولى', async () => {
     const none = await fitSearch(10, RASTER_STEPS, async (s) => ({ size: s.dpi * 100, value: 'x' }));
     expect(none).toEqual({ smallest: 5000 });
@@ -343,7 +355,8 @@ describe('البناء كما يُرى', () => {
       '%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [] /Count 0 >> endobj\n' +
         'trailer << /Root 1 0 R /Encrypt << /Filter /Standard /V 1 /R 2 >> >>\n%%EOF'
     );
-    await expect(inspectPdf(encrypted)).rejects.toThrow('محميٌّ بكلمة مرور');
+    // قاموس تشفيرٍ ناقص لا يُعرف قفله — فيُقال بالاحتمالين (هـ٢؛ والمقيَّد والمحميّ بملفّاتٍ حقيقية في `pdfLock.test.ts`).
+    await expect(inspectPdf(encrypted)).rejects.toThrow('مقيَّدٌ أو محميّ');
   });
 });
 

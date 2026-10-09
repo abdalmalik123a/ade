@@ -37,6 +37,7 @@ import {
   type PtBox,
   type Rotation
 } from '@shared/pdfEdit';
+import { lockedMessage, pdfLock } from './pdfLock';
 
 export type PdfSource =
   | { kind: 'pdf'; name: string; bytes: Uint8Array }
@@ -48,13 +49,14 @@ export type LayerRenderer = (html: string, pageMm: { w: number; h: number }) => 
 /** والأصل (`x`، `y`) لصندوق القصّ: به تُحسب مواضع حقول الاستمارة من الصفحة. */
 export type PageInfo = { width: number; height: number; rotation: Rotation; x?: number; y?: number };
 
-/** رسالةٌ يفهمها الموظف لملفٍّ لا يُفتح — محميٌّ أو تالف. */
-function openError(e: unknown): Error {
+/**
+ * رسالةٌ يفهمها الموظف لملفٍّ لا يُفتح — مشفَّرٌ أو تالف. والمشفَّر نوعان (هـ٢): ما يطلب كلمة مرور، وما قيّده ناشره
+ * ويُفتح في أيّ قارئ (أكثر ملفّات الجهات) — وكان كلاهما «محميٌّ بكلمة مرور».
+ */
+async function openError(e: unknown, bytes: Uint8Array): Promise<Error> {
   const name = e instanceof Error ? e.constructor.name : '';
   const text = e instanceof Error ? e.message : String(e);
-  if (name === 'EncryptedPDFError' || /encrypt/i.test(text)) {
-    return new Error('الملف محميٌّ بكلمة مرور — لا يُفتح بدونها');
-  }
+  if (name === 'EncryptedPDFError' || /encrypt/i.test(text)) return new Error(lockedMessage(await pdfLock(bytes)));
   return new Error('تعذّر فتح الملف — ليس PDF صالحًا، أو هو تالفٌ أو مقطوع');
 }
 
@@ -62,7 +64,7 @@ export async function loadPdf(bytes: Uint8Array): Promise<PDFDocument> {
   try {
     return await PDFDocument.load(bytes, { updateMetadata: false });
   } catch (e) {
-    throw openError(e);
+    throw await openError(e, bytes);
   }
 }
 

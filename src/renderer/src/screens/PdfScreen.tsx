@@ -27,7 +27,9 @@ import {
   parseRanges,
   pdfOverhead,
   PDF_FONTS,
+  LOW_DPI,
   RASTER_STEPS,
+  rasterNote,
   shownSize,
   SIZE_LIMITS,
   sizeText,
@@ -131,6 +133,9 @@ function shownPt(src: Src, ref: PageRef): { w: number; h: number } {
   const s = shownSize(info, totalRotation(info.rotation, ref.rotate));
   return ref.crop ? { w: s.w * ref.crop.w, h: s.h * ref.crop.h } : s;
 }
+
+/** الملفّ كما يُحفظ: صفحاته صورٌ أم صُغّرت صوره — والدقّة التي بلغها إن صار صورًا (هـ٢). */
+type Made = { bytes: Uint8Array; raster: boolean; shrunk?: boolean; dpi?: number; gray?: boolean };
 
 type Drag = { id: string; mode: 'move' | 'resize'; x: number; y: number; box: FracBox; target: 'overlay' | 'crop' };
 
@@ -645,7 +650,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
    * (أو طُلب «أبيض وأسود») صارت صفحاته صورًا بأجود درجةٍ تبلغه. وما لم تبلغه درجةٌ يُقال
    * بأصغر ما بلغ — ولا يُحفظ ملفٌّ يرفضه الموقع.
    */
-  async function produce(sub: PdfPlan): Promise<{ bytes: Uint8Array; raster: boolean; shrunk?: boolean }> {
+  async function produce(sub: PdfPlan): Promise<Made> {
     const bytes = await window.diwan.pdf.build(sub);
     if (!gray && (!limit || bytes.length <= limit)) return { bytes, raster: false };
     if (!gray) {
@@ -670,11 +675,14 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     if ('smallest' in fit) {
       throw new Error(`لم يبلغ الملف ${sizeText(limit)} — أصغر ما بلغه ${sizeText(fit.smallest)}. ${gray ? '' : 'جرّب «أبيض وأسود»، أو '}قسّمه أجزاءً`);
     }
-    return { bytes: fit.value, raster: true };
+    // والدقّة التي بلغها تُقال (هـ٢) — وكانت تُهمل فيُرفض ملفٌّ «نجح».
+    return { bytes: fit.value, raster: true, dpi: fit.step.dpi, gray };
   }
 
-  const madeNote = (m: { bytes: Uint8Array; raster: boolean; shrunk?: boolean }) =>
-    `${sizeText(m.bytes.length)}${m.raster ? '، صفحاته صورٌ' : m.shrunk ? '، صُغّرت صوره ونصّه باقٍ' : ''}`;
+  const madeNote = (m: Made) =>
+    `${sizeText(m.bytes.length)}${m.raster ? `، ${rasterNote(m.dpi ?? TOP_DPI, m.gray === true)}` : m.shrunk ? '، صُغّرت صوره ونصّه باقٍ' : ''}`;
+  /** ملفٌّ دقّته دون ما تقبله الجهات غالبًا يُقال بلون التنبيه. */
+  const madeTone = (m: Made) => (m.raster && (m.dpi ?? TOP_DPI) < LOW_DPI ? 'warn' : 'ok');
 
   async function saveAs(sub: PdfPlan, fileName: string) {
     return run('يُبنى الملف…', async () => {
@@ -686,7 +694,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
 
   async function save() {
     const out = await saveAs(plan, name || 'ملف معدّل');
-    if (out) say(`حُفظ ملفًّا جديدًا (${madeNote(out.made)}): ${out.path} — والأصل كما هو`);
+    if (out) say(`حُفظ ملفًّا جديدًا (${madeNote(out.made)}): ${out.path} — والأصل كما هو`, madeTone(out.made));
   }
 
   /** الملف الجاهز في ملفّ الزبون الذي فُتحت له الأداة (المرحلة ٥) — بحدّه كما في الحفظ. */
@@ -705,7 +713,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       await window.diwan.attachments.addFromDataUrl(who.id, name || 'ملف PDF', dataUrl);
       return made;
     });
-    if (done) say(`صار في ملفّ ${who.name || 'الزبون'} (${madeNote(done)})`);
+    if (done) say(`صار في ملفّ ${who.name || 'الزبون'} (${madeNote(done)})`, madeTone(done));
   }
 
   /** الصفحات المحدَّدة ملفًّا جديدًا وحدها — بطبقاتها. */
@@ -714,7 +722,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     if (!ids.length) return;
     const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays };
     const out = await saveAs(sub, `${name || 'ملف'} — صفحات`);
-    if (out) say(`حُفظت ${pagesWord(ids.length)} ملفًّا جديدًا (${madeNote(out.made)})`);
+    if (out) say(`حُفظت ${pagesWord(ids.length)} ملفًّا جديدًا (${madeNote(out.made)})`, madeTone(out.made));
   }
 
   /** «1-3، 4-6»: كلُّ مجموعةٍ ملفّ؛ وفارغةً: كلُّ صفحةٍ ملفّ. */

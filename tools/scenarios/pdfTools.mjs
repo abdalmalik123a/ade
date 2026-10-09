@@ -325,6 +325,8 @@ export default async function scenario(page, { shotsDir }) {
   if (grayFile) {
     const out = await inspect(grayFile);
     ok(`و«أبيض وأسود» بالحدّ نفسه: صفحاته صورٌ لا نصّ فيها (${statSync(grayFile).size} بايت)`, statSync(grayFile).size <= 1_000_000 && out.length === 5 && out.every((p) => !p.text.trim()) && grayToast.includes('صفحاته صور'));
+    // هـ٢: والدقّة التي بلغها تُقال بأرقامها — لا «صفحاته صورٌ» وحدها.
+    ok(`ويقول الدقّة التي بلغها («${grayToast.match(/بدقّة [٠-٩]+/)?.[0] ?? '—'}»)`, /صفحاته صورٌ بدقّة [٠-٩]+/.test(grayToast));
   } else ok(`حُفظ الملف الرمادي (${grayToast})`, false);
   await click('[data-pdf-gray]');
   await wait(200);
