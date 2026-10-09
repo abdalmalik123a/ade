@@ -312,6 +312,16 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   ok('ورُسم الباركود قضبانًا', drawn);
 
+  // هـ٣: مكتبة الرسومات بلا شعار دولةٍ ولا فئةٍ فارغة — المكتب يستورد شعار جهته صورةً.
+  await click('button[data-add="clipart"]');
+  await wait(400);
+  const clipartText = await page.text();
+  ok('وانفتحت مكتبة الرسومات برسوماتها', clipartText.includes('مكتبة الرسومات') && clipartText.includes('قبعة تخرج'));
+  ok('ولا شعار جمهورية العراق فيها ولا فئة «وطنية ورسمية»', !clipartText.includes('شعار جمهورية العراق') && !clipartText.includes('وطنية ورسمية'));
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'close' && b.closest('.fixed'))?.click()`);
+  await wait(300);
+  ok('وتُغلق', !(await page.text()).includes('مكتبة الرسومات'));
+
   // المقابض تظهر على المحدَّد وحده
   const grips = await page.eval(`return document.querySelectorAll('[data-grip]').length;`);
   ok('وللمحدَّد ثمانيةُ مقابض', grips === 8);

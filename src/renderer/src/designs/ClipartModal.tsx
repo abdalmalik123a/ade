@@ -11,8 +11,7 @@ const CATEGORIES = [
   'الكل',
   'دينية وإسلامية',
   'شخصيات وأطفال',
-  'تكريم وشهادات',
-  'وطنية ورسمية'
+  'تكريم وشهادات'
 ] as const;
 
 export default function ClipartModal({ isOpen, onClose, onSelect }: ClipartModalProps) {
