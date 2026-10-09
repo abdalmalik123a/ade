@@ -211,7 +211,7 @@ export default function App() {
     async (id: number) => {
       const src = await window.diwan.documents.repeatSource(id);
       if (src?.kind === 'counter' && src.templateIds.length > 0) {
-        setRepeatRequest({ key: Date.now(), serial: src.serial, templateIds: src.templateIds, values: src.values });
+        setRepeatRequest({ key: Date.now(), id, serial: src.serial, templateIds: src.templateIds, values: src.values });
         navigate('service');
       } else {
         openEditor({ documentId: id });

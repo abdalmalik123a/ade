@@ -90,7 +90,8 @@ export type ServiceScreenProps = {
   settingsKey?: unknown;
 };
 
-export type RepeatRequest = { key: number; serial: string; templateIds: number[]; values: Record<string, string> };
+/** «كرّره»: نماذج كتابٍ صدر بقيمه — و`id` الكتاب الأصل، فيُبطَل إن اختار الموظف (د٤). */
+export type RepeatRequest = { key: number; id: number; serial: string; templateIds: number[]; values: Record<string, string> };
 
 /**
  * معاملةٌ معلّقة: زبونٌ ذهب ليجلب مستمسكًا، والمكتب يخدم غيره حتى يعود — ولو عاد غدًا:
@@ -171,6 +172,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [valuesOnly, setValuesOnly] = useState(false);
   /** النسخ عند الشبّاك (د٣): «ثلاث نسخ» ضغطةٌ واحدة لا ثلاث عمليات — والأصل ١، ويعود إليه للزبون التالي. */
   const [copies, setCopies] = useState(1);
+  /**
+   * «نسخة عن …» (د٤): الكتاب الأصل، و«وأبطل الأصل» — **غير مؤشَّرة افتراضيًّا** — بسببها. فإن أُشِّرت أُبطل الأصل بعد
+   * نجاح إصدار هذه النسخة: كتابٌ خاطئ يُصحَّح بخطوةٍ واحدة لا بتكرارٍ ثم إبطالٍ في الأرشيف وسببٍ يُكتب مرّتين.
+   */
+  const [repeatOf, setRepeatOf] = useState<{ id: number; serial: string; voidIt: boolean; reason: string } | null>(null);
   /** الدمج: سطرٌ لكل اسم، ولكلٍّ معاملتُه وأوراقُه. */
   const [merge, setMerge] = useState(false);
   const [names, setNames] = useState('');
@@ -471,6 +477,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       const customer = { values: { ...values }, citizenId: out.citizenId ?? citizenId, genderByHand };
       const label = `معاملة ${citizenName} — ${out.documents[0]?.serial ?? ''}`;
       const n = copies;
+      const original = repeatOf?.voidIt ? repeatOf : null;
       setAfter({
         outcome: { what: papersWithCopies(out.documents.length, n), printer: pick?.printer ?? null, serial: out.documents[0]?.serial ?? '' },
         ids: out.documents.map((d) => d.id),
@@ -490,6 +497,17 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       if (out.citizenId === null) offerToRegistry(out.transactionId);
       else setNewCitizen(null);
       reset();
+      if (original) {
+        try {
+          await window.diwan.documents.void(original.id, original.reason.trim() || 'خطأ في الكتابة', settings?.operatorName || null);
+          say(`صدرت النسخة الصحيحة ${out.documents[0]?.serial ?? ''}، وأُبطل الأصل ${original.serial} بسببه`);
+          // وشريط ما خرج يقوله ثابتًا — فرسالة الطباعة بعده لا تمحوه.
+          setAfter((a) => (a ? { ...a, outcome: { ...a.outcome, what: `${a.outcome.what} — وأُبطل الأصل ${original.serial}` } } : a));
+        } catch (e) {
+          // الإصدار تمّ؛ والإبطال يُقال وحده — ويُبطَل الأصل من الأرشيف.
+          sayError(e, `صدرت النسخة، وتعذّر إبطال الأصل ${original.serial} — أبطله من الأرشيف`);
+        }
+      }
       if (pick) {
         await printIssued(out.documents.map((d) => d.id), pick.printer, mode, label, n);
       }
@@ -619,6 +637,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setMerge(false);
     setValuesOnly(false);
     setCopies(1);
+    setRepeatOf(null);
     setAt(0);
   }
 
@@ -669,6 +688,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setPicked(repeat.templateIds);
     void goFill(repeat.templateIds).then(() => {
       setValues(repeat.values);
+      setRepeatOf({ id: repeat.id, serial: repeat.serial, voidIt: false, reason: 'خطأ في الكتابة' });
       say(`نسخة عن ${repeat.serial} — بدّل ما يلزم ثم اطبع، والأصل يبقى في السجلّ كما خرج`);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1505,6 +1525,39 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
             ))}
           </div>
         </div>
+
+        {/* «نسخة عن …» (د٤): والأصل يبقى كما خرج — إلا أن يُختار إبطاله بسببه. */}
+        {repeatOf && step !== 'pick' && !merge && (
+          <div
+            className="shrink-0 px-space-lg py-space-xs bg-tertiary-container text-on-tertiary-container flex flex-wrap items-center gap-space-sm font-label-md text-label-md"
+            data-repeat-of={repeatOf.serial}
+          >
+            <span className="material-symbols-outlined text-[18px]">content_copy</span>
+            <span>
+              نسخة عن <b className="tabular">{repeatOf.serial}</b> برقمٍ جديد — والأصل يبقى في السجلّ كما خرج.
+            </span>
+            <label className="flex items-center gap-1 cursor-pointer" title="بعد أن تصدر هذه النسخة يُبطَل الأصل بسببه — ولا يُحذف ولا يُعاد طبعه">
+              <input
+                checked={repeatOf.voidIt}
+                className="w-4 h-4 accent-secondary"
+                data-act="void-original"
+                type="checkbox"
+                onChange={(e) => setRepeatOf({ ...repeatOf, voidIt: e.target.checked })}
+              />
+              وأبطل الأصل لأنّه صدر خطأً
+            </label>
+            {repeatOf.voidIt && (
+              <input
+                aria-label="سبب الإبطال"
+                className="h-8 w-56 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+                data-void-reason=""
+                placeholder="سبب الإبطال"
+                value={repeatOf.reason}
+                onChange={(e) => setRepeatOf({ ...repeatOf, reason: e.target.value })}
+              />
+            )}
+          </div>
+        )}
 
         {/* شريط القرار */}
         <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-sm">

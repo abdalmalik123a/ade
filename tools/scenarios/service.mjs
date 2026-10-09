@@ -326,8 +326,49 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('زرّ «كرّره» في الأرشيف', repeated);
   ok('فيُفتح كتاب الشبّاك في الشبّاك لا في المحرّر', (await page.eval(`return document.querySelector('[data-screen="service"]')?.offsetParent !== null;`)) && (await page.text()).includes('بيانات صاحب العلاقة'));
   ok('بقيم معاملته الأولى ليبدّل ما يلزم', (await firstValue()) === 'أحمد عادل كريم الموسوي' && Boolean(lastDoc));
-  await page.eval(`document.querySelector('[data-act="park"]').click(); return true;`);
-  await wait(500);
+
+  // ── د٤: «نسخة عن …» و«وأبطل الأصل» — غير مؤشَّرة افتراضيًّا ────────────────
+  const originalSerial = await page.eval(`return document.querySelector('[data-repeat-of]')?.getAttribute('data-repeat-of') ?? '';`);
+  ok(`لافتة «نسخة عن ${originalSerial}» وخانة «وأبطل الأصل» غير مؤشَّرة`, Boolean(originalSerial) && (await page.eval(`return document.querySelector('[data-act="void-original"]')?.checked === false;`)));
+  const statusOf = (serial) => {
+    const c = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+    const r = c.prepare('SELECT status, void_reason AS reason FROM documents WHERE serial = ?').get(serial);
+    c.close();
+    return r;
+  };
+  // بلا الخانة: تصدر النسخة والأصل صحيحٌ كما هو.
+  await page.clickText('راجع الأوراق');
+  await wait(1000);
+  await page.clickText('احفظ بلا طباعة');
+  await wait(1500);
+  ok('وبلا الخانة تصدر النسخة والأصل يبقى صحيحًا', statusOf(originalSerial)?.status === 'issued');
+  // بالخانة وسببها: تصدر النسخة ثم يُبطَل الأصل بسببه.
+  await page.goto('transactions-archive-ledger');
+  await wait(900);
+  await page.eval(`
+    const row = [...document.querySelectorAll('[data-archive] tr')].find((r) => r.innerText.includes(${JSON.stringify(originalSerial)}));
+    row.querySelector('button[title^="كرّره"]').click();
+    return true;
+  `);
+  await wait(1500);
+  await page.eval(`document.querySelector('[data-act="void-original"]').click(); return true;`);
+  await wait(300);
+  await page.eval(`
+    const el = document.querySelector('[data-void-reason]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'الاسم كُتب خطأً');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await wait(300);
+  await page.clickText('راجع الأوراق');
+  await wait(1000);
+  await page.clickText('احفظ بلا طباعة');
+  await wait(2000);
+  const voided = statusOf(originalSerial);
+  ok(`وبالخانة تصدر النسخة ويُبطَل الأصل بسببه (${voided?.status} · ${voided?.reason})`, voided?.status === 'void' && voided?.reason === 'الاسم كُتب خطأً');
+  ok('وشريط ما خرج يقول الإبطال', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes(`وأُبطل الأصل ${originalSerial}`));
+  const check = await page.eval(`return await window.diwan.documents.verify();`);
+  ok(`والأرشيف سليم بعد الإبطال (${check.checked} كتابًا)`, check.problems.length === 0);
 
   // ── د١: «كرّره» و«أعد الطبع» من ملفّ الزبون — الكتاب نفسه، لا ورقةٌ فارغة باسمه ──
   // طابعةٌ مباشرة لدور الكتب، فلا يُسأل عنها عند «أعد الطبع».
