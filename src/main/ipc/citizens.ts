@@ -6,7 +6,7 @@ import { zipSync } from 'fflate';
 import ExcelJS from 'exceljs';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/citizens';
-import { listScanners, removeStoreFile, scanPage } from '../services/scanner';
+import { listScanners, removeStoreFile, scanDpi, scanPage } from '../services/scanner';
 import { printSheet } from '../services/render';
 import { unreferenced } from '../services/storeRefs';
 import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
@@ -161,7 +161,8 @@ export function registerCitizenIpc(): void {
   ipcMain.handle(
     'attachments:scan',
     async (_e, citizenId: number, docType: string, dpi: number) => {
-      const scan = await scanPage({ dpi });
+      // الدقّة رقمًا محصورًا عند حدّ القناة (و٢) — لا تمرّ إلى الماسح كما جاءت.
+      const scan = await scanPage({ dpi: scanDpi(dpi) });
       const bytes = await readFile(absolute(scan.relativePath));
       return svc.addAttachment(getDb(), {
         citizenId,
@@ -300,6 +301,6 @@ export function registerCitizenIpc(): void {
   ipcMain.handle('scanner:list', () => listScanners());
   // مسحٌ لا يُقيَّد مستمسكًا لأحد: وجهُ هويةٍ وظهرُها يُستنسخان والزبون واقف.
   // عابر: يُحذف حين يُغلق الحوار الذي مسحه ويُكنس عند الإقلاع (`services/transient.ts`) — لا يبقى وجه هويّةٍ في المخزن.
-  ipcMain.handle('scanner:scanImage', async (_e, dpi: number) => (await scanPage({ dpi: dpi || 300, transient: true })).relativePath);
+  ipcMain.handle('scanner:scanImage', async (_e, dpi: number) => (await scanPage({ dpi: scanDpi(dpi), transient: true })).relativePath);
   ipcMain.handle('scanner:ocrAvailable', () => ocrAvailable());
 }

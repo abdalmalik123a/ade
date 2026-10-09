@@ -28,13 +28,28 @@ const PS = [
 ] as const;
 
 
-async function ps(script: string): Promise<string> {
+/** وقيم السكربت متغيّراتُ بيئةٍ لا نصٌّ فيه (و٢): فلا قيمةٌ تُقرأ أمرًا، ولا علامةٌ في مسارٍ تكسره. */
+async function ps(script: string, env: Record<string, string> = {}): Promise<string> {
   const { stdout } = await run(PS[0], [...PS.slice(1), script], {
     windowsHide: true,
     maxBuffer: 16 * 1024 * 1024,
-    timeout: 120_000
+    timeout: 120_000,
+    env: { ...process.env, ...env }
   });
   return stdout.trim();
+}
+
+/** حدود دقّة المسح، وافتراضها لما ليس رقمًا. */
+export const SCAN_DPI_RANGE = { min: 50, max: 1200, fallback: 300 } as const;
+
+/**
+ * الدقّة رقمًا صحيحًا محصورًا (و٢) — عند حدّ القناة وفي الماسح كليهما: وكانت تُلصق نصًّا في سكربت PowerShell
+ * كما جاءت من الواجهة. وما ليس رقمًا موجبًا (`"300; calc"`، `NaN`، صفر) يصير الافتراض.
+ */
+export function scanDpi(raw: unknown): number {
+  const n = typeof raw === 'number' || (typeof raw === 'string' && /^\s*\d+(\.\d+)?\s*$/.test(raw)) ? Math.round(Number(raw)) : NaN;
+  if (!Number.isFinite(n) || n <= 0) return SCAN_DPI_RANGE.fallback;
+  return Math.min(SCAN_DPI_RANGE.max, Math.max(SCAN_DPI_RANGE.min, n));
 }
 
 /** قائمة الماسحات الموصولة. الفراغ ليس خطأً — قد لا يكون ثمّة ماسح. */
@@ -79,46 +94,22 @@ export type ScanOptions = {
 export type ScanResult = { relativePath: string; dpi: number; format: string };
 
 /**
- * يمسح ورقة واحدة ويحفظها في مخزن التطبيق.
- * يعيد المسار النسبي ليُعرض عبر مخطط diwan:// لا عبر file://.
- *
- * وما تعلّمناه من ماسحٍ حقيقي (كانون MF3010، أيلول ٢٠٢٦):
- * - **نوع المسح (ملوّن/رمادي) يُضبط قبل الدقّة**: ضبطه يعيدها إلى افتراضيّها — فكان كلّ مسحٍ
- *   بـ١٥٠ نقطة ولو طُلبت ٦٠٠. والدقّة تُقرأ بعد ضبطها ويُعاد ما طُبِّق فعلًا، فإن قرّبها ماسحٌ
- *   إلى ما يدعمه لم يُحسب مقاس الورقة خطأً.
- * - **المساحة لا تتبع الدقّة**: تبقى ٨٥٠×١١٦٩ نقطة فيُمسح ثلث الزجاج بدقّة ٣٠٠. فتُضبط على
- *   الزجاج كلّه (مقاسه من الجهاز بأجزاء الألف من الإنش).
- * - **لا PNG فيه**: BMP وحده. فيُطلب ما يدعمه ويُحوَّل PNG.
+ * سكربت المسح ثابتٌ لا يُبنى من قيم (و٢): الجهاز والنوع والدقّة والمسارات تصله متغيّراتِ بيئة (`scanEnv`) —
+ * وكانت تُلصق فيه نصًّا، فدقّةٌ مثل «300; calc» من الواجهة أمرٌ ثانٍ، وعلامةٌ مفردة مائلة (’) في اسم حساب ويندوز
+ * يقرؤها PowerShell علامة اقتباسٍ فتكسر المسار.
  */
-export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
-  const dpi = options.dpi ?? 300;
-  const intent = options.color === false ? 2 : 1; // 1 = ملوّن، 2 = تدرّج رمادي
-  const name = `scan-${Date.now()}.png`;
-  const folder = options.transient ? TRANSIENT_DIR : 'attachments';
-  const target = join(storeDir(folder), name);
-  const transfer = `${target}.part`;
-  // مسارٌ في نصٍّ بين علامتين مفردتين في PowerShell: لا يُهرَّب فيه إلا العلامة نفسها.
-  const lit = (p: string) => p.replace(/'/g, "''");
-
-  // للسيناريوهات وحدها: صورةٌ جاهزة بدل الماسح، أو «none» ماسحٌ غائب — فالسيناريو لا يتبع
-  // ما وُصل بجهاز الاختبار (ماسحٌ موصول مسح بطاقةً حقيقية في سيناريو «بلا ماسح»).
-  if (process.env.DIWAN_TEST_SCAN_FILE === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
-  if (process.env.DIWAN_TEST_SCAN_FILE) {
-    await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
-    return { relativePath: `${folder}/${name}`, dpi, format: 'PNG' };
-  }
-
-  const script = `
+export const SCAN_SCRIPT = `
     $ErrorActionPreference = 'Stop'
+    $dpi = [int]$env:DIWAN_SCAN_DPI
+    $intent = [int]$env:DIWAN_SCAN_INTENT
+    $target = $env:DIWAN_SCAN_TARGET
+    $transfer = $env:DIWAN_SCAN_PART
     $dm = New-Object -ComObject WIA.DeviceManager
     $devices = @($dm.DeviceInfos | Where-Object { $_.Type -eq 1 })
     if ($devices.Count -eq 0) { Write-Output 'NO_DEVICE'; exit 0 }
-    ${
-      options.deviceId
-        ? `$info = $devices | Where-Object { $_.DeviceID -eq '${options.deviceId.replace(/'/g, "''")}' } | Select-Object -First 1
-           if (-not $info) { $info = $devices[0] }`
-        : '$info = $devices[0]'
-    }
+    $info = $null
+    if ($env:DIWAN_SCAN_DEVICE) { $info = $devices | Where-Object { $_.DeviceID -eq $env:DIWAN_SCAN_DEVICE } | Select-Object -First 1 }
+    if (-not $info) { $info = $devices[0] }
     $device = $info.Connect()
     $bedW = 0; $bedH = 0
     foreach ($p in $device.Properties) {
@@ -136,9 +127,9 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
       $p.Value = $value
     }
     # النوع أوّلًا: ضبطه يعيد الدقّة إلى افتراضيّها (١٥٠) — فكان كلّ مسحٍ بـ١٥٠ أيًّا كان المطلوب.
-    Set-WiaProp $item 6146 ${intent}
-    Set-WiaProp $item 6147 ${dpi}   # أفقي
-    Set-WiaProp $item 6148 ${dpi}   # عمودي
+    Set-WiaProp $item 6146 $intent
+    Set-WiaProp $item 6147 $dpi   # أفقي
+    Set-WiaProp $item 6148 $dpi   # عمودي
     $real = (Get-WiaProp $item 6147).Value
     Set-WiaProp $item 6149 0
     Set-WiaProp $item 6150 0
@@ -148,21 +139,58 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
     $format = $png
     if (-not (@($item.Formats) -contains $png)) { $format = @($item.Formats)[0] }
     $image = $item.Transfer($format)
-    $image.SaveFile('${lit(transfer)}')
+    $image.SaveFile($transfer)
     if ($image.FormatID -eq $png) {
-      Move-Item -LiteralPath '${lit(transfer)}' -Destination '${lit(target)}' -Force
+      Move-Item -LiteralPath $transfer -Destination $target -Force
     } else {
       Add-Type -AssemblyName System.Drawing
-      $bitmap = [System.Drawing.Image]::FromFile('${lit(transfer)}')
-      try { $bitmap.Save('${lit(target)}', [System.Drawing.Imaging.ImageFormat]::Png) } finally { $bitmap.Dispose() }
-      Remove-Item -LiteralPath '${lit(transfer)}' -Force
+      $bitmap = [System.Drawing.Image]::FromFile($transfer)
+      try { $bitmap.Save($target, [System.Drawing.Imaging.ImageFormat]::Png) } finally { $bitmap.Dispose() }
+      Remove-Item -LiteralPath $transfer -Force
     }
     Write-Output "OK $real"
   `;
 
+/** قيم المسح متغيّراتِ بيئة لـ`SCAN_SCRIPT` — الدقّة محصورةٌ (`scanDpi`) والنوع ١ أو ٢ وحدهما. */
+export function scanEnv(options: ScanOptions, target: string): Record<string, string> {
+  return {
+    DIWAN_SCAN_DPI: String(scanDpi(options.dpi)),
+    DIWAN_SCAN_INTENT: options.color === false ? '2' : '1', // 1 = ملوّن، 2 = تدرّج رمادي
+    DIWAN_SCAN_DEVICE: options.deviceId ?? '',
+    DIWAN_SCAN_TARGET: target,
+    DIWAN_SCAN_PART: `${target}.part`
+  };
+}
+
+/**
+ * يمسح ورقة واحدة ويحفظها في مخزن التطبيق.
+ * يعيد المسار النسبي ليُعرض عبر مخطط diwan:// لا عبر file://.
+ *
+ * وما تعلّمناه من ماسحٍ حقيقي (كانون MF3010، أيلول ٢٠٢٦):
+ * - **نوع المسح (ملوّن/رمادي) يُضبط قبل الدقّة**: ضبطه يعيدها إلى افتراضيّها — فكان كلّ مسحٍ
+ *   بـ١٥٠ نقطة ولو طُلبت ٦٠٠. والدقّة تُقرأ بعد ضبطها ويُعاد ما طُبِّق فعلًا، فإن قرّبها ماسحٌ
+ *   إلى ما يدعمه لم يُحسب مقاس الورقة خطأً.
+ * - **المساحة لا تتبع الدقّة**: تبقى ٨٥٠×١١٦٩ نقطة فيُمسح ثلث الزجاج بدقّة ٣٠٠. فتُضبط على
+ *   الزجاج كلّه (مقاسه من الجهاز بأجزاء الألف من الإنش).
+ * - **لا PNG فيه**: BMP وحده. فيُطلب ما يدعمه ويُحوَّل PNG.
+ */
+export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
+  const dpi = scanDpi(options.dpi);
+  const name = `scan-${Date.now()}.png`;
+  const folder = options.transient ? TRANSIENT_DIR : 'attachments';
+  const target = join(storeDir(folder), name);
+
+  // للسيناريوهات وحدها: صورةٌ جاهزة بدل الماسح، أو «none» ماسحٌ غائب — فالسيناريو لا يتبع
+  // ما وُصل بجهاز الاختبار (ماسحٌ موصول مسح بطاقةً حقيقية في سيناريو «بلا ماسح»).
+  if (process.env.DIWAN_TEST_SCAN_FILE === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
+  if (process.env.DIWAN_TEST_SCAN_FILE) {
+    await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
+    return { relativePath: `${folder}/${name}`, dpi, format: 'PNG' };
+  }
+
   let output: string;
   try {
-    output = await ps(script);
+    output = await ps(SCAN_SCRIPT, scanEnv(options, target));
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (/0x80210015|WIA_ERROR_DEVICE_NOT_AVAILABLE/i.test(message)) {
