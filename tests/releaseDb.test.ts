@@ -2,7 +2,7 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.4.0.db` كتبها إصدارها
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.4.1.db` كتبها إصدارها
  * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -59,7 +59,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
