@@ -5,6 +5,7 @@ import { emptyDoc, newUuid, type Doc } from '../../doc';
 import { KINDS, LEGACY_KINDS, kindSpec } from '../kinds/registry';
 import type { ElementCommon } from '../kinds/types';
 import { SIZE_PRESETS } from './units';
+import { CANVAS_VERSION, migrateCanvas } from './version';
 import { clampBox, isObj, num } from './box';
 import type { Background, Box, Canvas, CanvasElement, CanvasSize } from './types';
 
@@ -37,6 +38,7 @@ export function canvasText(canvas: Canvas, values: Record<string, string> = {}):
 
 export function emptyCanvas(size: CanvasSize, bleed = 0): Canvas {
   return {
+    v: CANVAS_VERSION,
     size: { ...size },
     bleed,
     cropMarks: bleed > 0,
@@ -102,12 +104,15 @@ function normalizeBackground(raw: unknown): Background {
 }
 
 /** لوحةٌ قُرئت من القرص: ما فسد منها يُردّ إلى حدّه ولا يُسقط الورقة كلّها. */
-export function normalizeCanvas(raw: unknown): Canvas {
+export function normalizeCanvas(input: unknown): Canvas {
   const fallback = SIZE_PRESETS[1]!.size;
-  if (!isObj(raw)) return emptyCanvas(fallback);
+  if (!isObj(input)) return emptyCanvas(fallback);
+  // الترحيل على الخام قبل التقويم (DESIGNS.md ٣٫٥) — وما حُفظ قبل الرقم إصداره ١.
+  const { raw, version } = migrateCanvas(input);
   const size = isObj(raw.size) ? (raw.size as unknown as CanvasSize) : fallback;
   const bleed = Math.max(0, num(raw.bleed, 0));
   return {
+    v: version,
     size: { w: Math.max(1, num(size.w, fallback.w)), h: Math.max(1, num(size.h, fallback.h)) },
     bleed,
     cropMarks: raw.cropMarks === true,

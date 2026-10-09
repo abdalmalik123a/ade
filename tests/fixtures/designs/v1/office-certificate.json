@@ -1,0 +1,389 @@
+{
+ "doc": {
+  "id": "960da076-e13c-4096-b65b-77eba3f2e879",
+  "schemaVersion": 1,
+  "kind": "canvas",
+  "issuing": "print-only",
+  "pageSetup": {
+   "size": "A4",
+   "orientation": "portrait",
+   "margins": {
+    "top": 20,
+    "right": 20,
+    "bottom": 20,
+    "left": 20
+   },
+   "letterheadMode": "print",
+   "repeatLetterhead": false,
+   "pageNumbers": false,
+   "numerals": "arabic"
+  },
+  "blocks": [],
+  "fields": [
+   {
+    "id": "fd1bfe85-267d-478e-ba05-d581d64c7aa4",
+    "label": "الدورة",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "الدورة"
+   },
+   {
+    "id": "fd94b4fa-26d7-4dbf-a612-db7800a5be3d",
+    "label": "الاسم",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "الاسم"
+   },
+   {
+    "id": "1db62fc4-d0a2-4d15-a29b-d186646b833e",
+    "label": "الرقم",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "الرقم"
+   },
+   {
+    "id": "0aa6c28f-1c49-4059-bade-b6685f8665a3",
+    "label": "الصورة",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "الصورة"
+   },
+   {
+    "id": "2fca6a80-7d37-4749-beac-4494ec932ad1",
+    "label": "درجة العربية",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "درجة العربية"
+   },
+   {
+    "id": "4a573398-80d1-4986-8adb-7b7bda54fd4f",
+    "label": "درجة الرياضيات",
+    "type": "text",
+    "required": false,
+    "width": 14,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "درجة الرياضيات"
+   }
+  ],
+  "meta": {
+   "title": "شهادة دورة",
+   "category": "تصاميم"
+  },
+  "canvas": {
+   "v": 1,
+   "size": {
+    "w": 148,
+    "h": 210
+   },
+   "bleed": 3,
+   "cropMarks": true,
+   "background": {
+    "kind": "image",
+    "src": "designs/0123456789abcdef.png",
+    "dpi": 300
+   },
+   "elements": [
+    {
+     "id": "00000000-0000-4000-8000-000000000001",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "run",
+       "text": "شهادة "
+      },
+      {
+       "kind": "field",
+       "id": "2b18b6bb-291f-4a94-9e6d-571930b49d8f",
+       "ref": "الدورة"
+      }
+     ],
+     "align": "center",
+     "vAlign": "middle",
+     "size": 22,
+     "color": "#7a1e2c",
+     "z": 1,
+     "dir": "rtl",
+     "box": {
+      "x": 0.1,
+      "y": 0.05,
+      "w": 0.8,
+      "h": 0.08
+     },
+     "bold": true,
+     "font": "'Amiri', serif"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000002",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "field",
+       "id": "66c54142-8080-4828-8c54-ae7c5e19cdaa",
+       "ref": "الاسم"
+      }
+     ],
+     "align": "right",
+     "vAlign": "bottom",
+     "size": 18,
+     "color": "#111111",
+     "z": 2,
+     "dir": "rtl",
+     "box": {
+      "x": 0.1,
+      "y": 0.2,
+      "w": 0.8,
+      "h": 0.06
+     },
+     "fit": "shrink",
+     "letterSpacing": 0.05,
+     "wordSpacing": 0.2
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000003",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "field",
+       "id": "7ee63cee-4480-4aec-86ed-84d20024db07",
+       "ref": "الرقم"
+      }
+     ],
+     "align": "left",
+     "vAlign": "middle",
+     "size": 14,
+     "color": "#111111",
+     "z": 3,
+     "dir": "ltr",
+     "box": {
+      "x": 0.6,
+      "y": 0.3,
+      "w": 0.3,
+      "h": 0.05
+     },
+     "italic": true,
+     "lineHeight": 1.2,
+     "rotate": 8
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000004",
+     "kind": "image",
+     "src": "",
+     "fit": "cover",
+     "z": 4,
+     "box": {
+      "x": 0.06,
+      "y": 0.35,
+      "w": 0.25,
+      "h": 0.3
+     },
+     "ref": "الصورة",
+     "radius": 50
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000005",
+     "kind": "image",
+     "src": "designs/logo.png",
+     "fit": "contain",
+     "z": 5,
+     "box": {
+      "x": 0.7,
+      "y": 0.85,
+      "w": 0.2,
+      "h": 0.1
+     },
+     "locked": true,
+     "name": "الشعار"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000006",
+     "kind": "barcode",
+     "symbology": "code128",
+     "value": "",
+     "z": 6,
+     "box": {
+      "x": 0.35,
+      "y": 0.7,
+      "w": 0.3,
+      "h": 0.08
+     },
+     "ref": "الرقم"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000007",
+     "kind": "barcode",
+     "symbology": "seal",
+     "value": "{الاسم} {الرقم}",
+     "z": 7,
+     "box": {
+      "x": 0.05,
+      "y": 0.85,
+      "w": 0.12,
+      "h": 0.1
+     }
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000008",
+     "kind": "shape",
+     "shape": "line",
+     "z": 8,
+     "box": {
+      "x": 0.05,
+      "y": 0.5,
+      "w": 0.9,
+      "h": 0.003
+     },
+     "stroke": "#c9a45c",
+     "strokeWidth": 2
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000009",
+     "kind": "shape",
+     "shape": "ellipse",
+     "z": 9,
+     "box": {
+      "x": 0.4,
+      "y": 0.4,
+      "w": 0.2,
+      "h": 0.12
+     },
+     "fill": "#fef3c7",
+     "stroke": "#92400e"
+    },
+    {
+     "id": "00000000-0000-4000-8000-000000000010",
+     "kind": "table",
+     "z": 10,
+     "dir": "rtl",
+     "columns": [
+      {
+       "title": "ت",
+       "widthPercent": 15,
+       "align": "center"
+      },
+      {
+       "title": "المادة",
+       "widthPercent": 55,
+       "align": "right"
+      },
+      {
+       "title": "الدرجة",
+       "widthPercent": 30,
+       "align": "center"
+      }
+     ],
+     "rows": [
+      [
+       {
+        "text": "١"
+       },
+       {
+        "text": "العربية"
+       },
+       {
+        "text": "{درجة العربية}"
+       }
+      ],
+      [
+       {
+        "text": "٢"
+       },
+       {
+        "text": "الرياضيات",
+        "bold": true
+       },
+       {
+        "text": "",
+        "field": "درجة الرياضيات"
+       }
+      ]
+     ],
+     "headerBg": "#f1f5f9",
+     "headerColor": "#0f172a",
+     "borderColor": "#cbd5e1",
+     "borderWidth": 1,
+     "fontSize": 10,
+     "headerFontSize": 11,
+     "stripe": true,
+     "box": {
+      "x": 0.08,
+      "y": 0.55,
+      "w": 0.84,
+      "h": 0.12
+     }
+    }
+   ]
+  },
+  "backCanvas": {
+   "v": 1,
+   "size": {
+    "w": 148,
+    "h": 210
+   },
+   "bleed": 3,
+   "cropMarks": true,
+   "background": {
+    "kind": "color",
+    "color": "#f8fafc"
+   },
+   "elements": [
+    {
+     "id": "00000000-0000-4000-8000-000000000011",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "run",
+       "text": "ظهر — "
+      },
+      {
+       "kind": "field",
+       "id": "4fe40a35-2cd8-439f-a04a-4d494eadf53d",
+       "ref": "الرقم"
+      }
+     ],
+     "align": "center",
+     "vAlign": "middle",
+     "size": 14,
+     "color": "#111111",
+     "z": 1,
+     "dir": "rtl",
+     "box": {
+      "x": 0.1,
+      "y": 0.45,
+      "w": 0.8,
+      "h": 0.1
+     }
+    }
+   ]
+  }
+ },
+ "values": {
+  "الدورة": "الحاسوب",
+  "الاسم": "سالم حسن علي",
+  "الرقم": "2026-0457",
+  "الصورة": "attachments/abc.jpg",
+  "درجة العربية": "91",
+  "درجة الرياضيات": "88"
+ }
+}

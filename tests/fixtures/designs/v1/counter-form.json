@@ -1,0 +1,188 @@
+{
+ "doc": {
+  "id": "3c8b3bd8-aade-4d7c-8ed5-4666c28b4c42",
+  "schemaVersion": 1,
+  "kind": "canvas",
+  "issuing": "registered",
+  "pageSetup": {
+   "size": "A4",
+   "orientation": "portrait",
+   "margins": {
+    "top": 20,
+    "right": 20,
+    "bottom": 20,
+    "left": 20
+   },
+   "letterheadMode": "print",
+   "repeatLetterhead": false,
+   "pageNumbers": false,
+   "numerals": "arabic"
+  },
+  "blocks": [],
+  "fields": [
+   {
+    "id": "3a53a0f7-4c9c-4f61-828a-e40c19634320",
+    "label": "الاسم الرباعي",
+    "type": "text",
+    "required": false,
+    "width": 37,
+    "fillMode": "printed",
+    "role": "name",
+    "source": "fullName",
+    "key": "الاسم"
+   },
+   {
+    "id": "fd56362e-9f55-4ff8-9bc3-5bb080b91d08",
+    "label": "تاريخ الولادة",
+    "type": "date",
+    "required": false,
+    "width": 17,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "التولد"
+   },
+   {
+    "id": "862dde5c-0d6c-4dd6-a757-b1d681b93f30",
+    "label": "متزوج",
+    "type": "bool",
+    "required": false,
+    "width": 4,
+    "fillMode": "printed",
+    "role": null,
+    "source": null,
+    "key": "متزوج"
+   },
+   {
+    "id": "f4b44b45-4ab0-43f7-b7a7-5c8a255f1c5d",
+    "label": "الصورة",
+    "type": "text",
+    "required": false,
+    "width": 9,
+    "fillMode": "printed",
+    "role": null,
+    "source": "photoPath",
+    "key": "صورة"
+   }
+  ],
+  "meta": {
+   "title": "استمارة",
+   "form": true
+  },
+  "canvas": {
+   "v": 1,
+   "size": {
+    "w": 210,
+    "h": 297
+   },
+   "bleed": 0,
+   "cropMarks": false,
+   "background": {
+    "kind": "image",
+    "src": "forms/0123456789abcdef.png",
+    "dpi": 250
+   },
+   "elements": [
+    {
+     "id": "ce44af7b-4cff-46e7-bc7e-c941d20de721",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "field",
+       "id": "الاسم-el",
+       "ref": "الاسم"
+      }
+     ],
+     "align": "right",
+     "vAlign": "bottom",
+     "size": 14,
+     "color": "#000000",
+     "z": 1,
+     "dir": "rtl",
+     "box": {
+      "x": 0.19047619047619047,
+      "y": 0.16835016835016836,
+      "w": 0.6190476190476191,
+      "h": 0.026936026936026935
+     },
+     "name": "الاسم الرباعي",
+     "bold": true,
+     "fit": "shrink"
+    },
+    {
+     "id": "664b65d3-4c0e-40bd-ad62-7b79f8862c59",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "field",
+       "id": "التولد-el",
+       "ref": "التولد"
+      }
+     ],
+     "align": "right",
+     "vAlign": "bottom",
+     "size": 14,
+     "color": "#000000",
+     "z": 1,
+     "dir": "rtl",
+     "box": {
+      "x": 0.5238095238095238,
+      "y": 0.21885521885521886,
+      "w": 0.2857142857142857,
+      "h": 0.026936026936026935
+     },
+     "name": "تاريخ الولادة",
+     "bold": true,
+     "fit": "shrink"
+    },
+    {
+     "id": "43366169-9336-43ec-8b90-e46612aaf897",
+     "kind": "text",
+     "inlines": [
+      {
+       "kind": "field",
+       "id": "متزوج-el",
+       "ref": "متزوج"
+      }
+     ],
+     "align": "center",
+     "vAlign": "middle",
+     "size": 9.5,
+     "color": "#000000",
+     "z": 1,
+     "dir": "rtl",
+     "box": {
+      "x": 0.20952380952380953,
+      "y": 0.26936026936026936,
+      "w": 0.02857142857142857,
+      "h": 0.020202020202020204
+     },
+     "name": "متزوج",
+     "bold": true,
+     "fit": "shrink"
+    },
+    {
+     "id": "9bf0acac-7306-47ad-bdc5-c79dfc6f7195",
+     "kind": "image",
+     "src": "",
+     "fit": "cover",
+     "z": 1,
+     "box": {
+      "x": 0.7857142857142857,
+      "y": 0.10101010101010101,
+      "w": 0.14285714285714285,
+      "h": 0.13468013468013468
+     },
+     "ref": "صورة",
+     "name": "الصورة"
+    }
+   ]
+  }
+ },
+ "values": {
+  "الاسم": "سالم حسن علي الربيعي",
+  "التولد": "2001-03-14",
+  "متزوج": "✓",
+  "صورة": "attachments/abc.jpg"
+ }
+}

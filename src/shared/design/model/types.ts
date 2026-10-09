@@ -140,6 +140,8 @@ export type Background =
   | { kind: 'css'; style: string };
 
 export type Canvas = {
+  /** إصدار النموذج (`version.ts`) — وما حُفظ قبله إصداره ١. */
+  v?: number;
   size: CanvasSize;
   bleed: Mm;
   cropMarks: boolean;
