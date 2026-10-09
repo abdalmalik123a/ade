@@ -16,6 +16,8 @@ export type SizePreset = {
   size: CanvasSize;
   /** ما يُطبع على ورقٍ يُقصّ — فالنزف أصلٌ فيه. */
   bleed: boolean;
+  /** للشاشة لا للورق (DESIGNS.md ١٫٧): بالبكسل كما يطلبه المنشور والستوري — والملّم منه على ٩٦ نقطة، فيُحفظ صورةً بمقاسه تمامًا. */
+  px?: { w: number; h: number };
 };
 
 /**
@@ -33,7 +35,11 @@ export const SIZE_PRESETS: SizePreset[] = [
   { key: 'business-card', label: 'كرت عمل / شخصي (90 × 50)', size: { w: 90, h: 50 }, bleed: true },
   { key: 'a4-third', label: 'ثلث A4 (210 × 99)', size: { w: 210, h: 99 }, bleed: false },
   { key: 'badge-portrait', label: 'باج هوية عمودي (54 × 85.6)', size: { w: 54, h: 85.6 }, bleed: true },
-  { key: 'a3-portrait', label: 'لوحة شرف A3', size: { w: 297, h: 420 }, bleed: false }
+  { key: 'a3-portrait', label: 'لوحة شرف A3', size: { w: 297, h: 420 }, bleed: false },
+  // للشاشة (١٫٧): المنشور والستوري وحالة واتساب — بالبكسل.
+  { key: 'post-square', label: 'منشور مربّع (1080 × 1080)', size: { w: 285.75, h: 285.75 }, bleed: false, px: { w: 1080, h: 1080 } },
+  { key: 'post-portrait', label: 'منشور عمودي (1080 × 1350)', size: { w: 285.75, h: 357.19 }, bleed: false, px: { w: 1080, h: 1350 } },
+  { key: 'story', label: 'ستوري وحالة واتساب (1080 × 1920)', size: { w: 285.75, h: 508 }, bleed: false, px: { w: 1080, h: 1920 } }
 ];
 
 export const mmToPx = (mm: Mm, dpi: number): number => (mm / 25.4) * dpi;

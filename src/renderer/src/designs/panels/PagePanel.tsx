@@ -5,6 +5,7 @@
 import { BLEED_MM, SIZE_PRESETS } from '@shared/canvas';
 import { NUM } from '../editor/kit';
 import type { DesignEditor } from '../editor/useDesignEditor';
+import { relayoutCanvas } from '@shared/canvasEdit';
 
 export default function PagePanel({ ed }: { ed: DesignEditor }) {
   const { canvas, apply, activeSide, history, say, askSize, imp, backId, backChoices, backDoc } = ed;
@@ -77,26 +78,41 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
             : ''}
       </p>
 
+      {/* «غيّر المقاس» (DESIGNS.md ١٫٧): العناصر تتوزّع وحدها — لا تتمطّط — بقيدٍ واحدٍ يُتراجع عنه. */}
+      <select
+        className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+        data-preset
+        title="غيّر المقاس — تتوزّع العناصر وحدها"
+        value=""
+        onChange={(e) => {
+          const preset = SIZE_PRESETS.find((p) => p.key === e.target.value);
+          if (!preset) return;
+          apply({ ...relayoutCanvas(canvas, preset.size), bleed: preset.bleed ? BLEED_MM : 0, cropMarks: preset.bleed });
+          ed.setAskSize(false);
+        }}
+      >
+        <option value="">{askSize ? 'اختر مقاسًا معياريًّا…' : 'غيّر المقاس — تتوزّع العناصر وحدها…'}</option>
+        <optgroup label="للطباعة">
+          {SIZE_PRESETS.filter((p) => !p.px).map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label} — {p.size.w} × {p.size.h} ملم
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="للشاشة والواتساب">
+          {SIZE_PRESETS.filter((p) => p.px).map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+      {canvas.background.kind !== 'none' && canvas.elements.length > 0 && (
+        <p className="font-label-sm text-label-sm text-on-surface-variant">الخلفية تملأ المقاس الجديد — وما رُسم لمقاسه (كإطار التصاميم الجاهزة) قد يُقصّ طرفاه.</p>
+      )}
+
       {(askSize || canvas.background.kind !== 'image') && (
         <div className="space-y-space-xs">
-          <select
-            className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
-            data-preset
-            value=""
-            onChange={(e) => {
-              const preset = SIZE_PRESETS.find((p) => p.key === e.target.value);
-              if (!preset) return;
-              apply({ ...canvas, size: { ...preset.size }, bleed: preset.bleed ? BLEED_MM : 0, cropMarks: preset.bleed });
-              ed.setAskSize(false);
-            }}
-          >
-            <option value="">اختر مقاسًا معياريًّا…</option>
-            {SIZE_PRESETS.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label} — {p.size.w} × {p.size.h} ملم
-              </option>
-            ))}
-          </select>
           <div className="flex items-center gap-space-sm">
             <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
               عرض

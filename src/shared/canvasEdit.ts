@@ -9,3 +9,4 @@ export * from './design/geometry/align';
 export * from './design/geometry/layers';
 export * from './design/geometry/history';
 export * from './design/geometry/select';
+export * from './design/geometry/relayout';
