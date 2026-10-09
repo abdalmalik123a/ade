@@ -122,7 +122,7 @@ function pageSizeOf(page: PageMm): { landscape: boolean; pageSize: 'A4' | { widt
   return { landscape, pageSize: { width: Math.round(short * 1000), height: Math.round(long * 1000) } };
 }
 
-async function withRenderWindow<T>(
+export async function withRenderWindow<T>(
   sheetHtml: string,
   work: (win: BrowserWindow) => Promise<T>,
   opts: {
@@ -411,7 +411,7 @@ const CRC_TABLE = (() => {
  * نقطة/إنش فتُطبع بحجم أكبر من A4. الدقّة تُقاس بالمتر في المواصفة:
  * 300 نقطة/إنش = 11811 نقطة/متر.
  */
-function withDensity(png: Buffer, dpi: number): Buffer {
+export function withDensity(png: Buffer, dpi: number): Buffer {
   const perMetre = Math.round(dpi / 0.0254);
   const data = Buffer.alloc(9);
   data.writeUInt32BE(perMetre, 0);

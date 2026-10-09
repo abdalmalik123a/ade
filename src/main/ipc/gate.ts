@@ -50,6 +50,7 @@ export const PRODUCTIVE_CHANNELS = [
   'output:resumeJob',
   'output:savePdf',
   'output:savePng300',
+  'output:saveImage',
   'output:saveDocx',
   'attachments:print',
   'pdf:save',

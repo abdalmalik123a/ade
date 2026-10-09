@@ -21,6 +21,8 @@ import { getDb, storeDir } from '../db';
 import { libraryFonts } from '@shared/fonts';
 import { listFaces } from '../services/fonts';
 import { pickOpenPath } from './files';
+import { renderImage, type ImageFormat } from '../services/renderImage';
+import { safeName, saveAs } from './documents';
 
 const DESIGN_FILTERS = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'docx', 'psd', 'pdf'];
 
@@ -179,6 +181,19 @@ export function registerDesignIpc(): void {
         canvas,
         fieldSuggestions: layerSuggestions(imported, canvas)
       };
+    }
+  );
+
+  /** التصميم صورةً (DESIGNS.md ١٫٨): PNG أو JPG أو PNG شفّافة — بمقاسه وبالدقّة التي يطلبها (٩٦ للشاشة، ٣٠٠ للطباعة). */
+  ipcMain.handle(
+    'output:saveImage',
+    async (e, p: { sheetHtml: string; suggestedName: string; page: { w: number; h: number }; dpi: number; format: ImageFormat; transparent?: boolean }): Promise<string | null> => {
+      const w = BrowserWindow.fromWebContents(e.sender);
+      if (!w) return null;
+      const format: ImageFormat = p.format === 'jpg' ? 'jpg' : 'png';
+      const dpi = Math.min(600, Math.max(72, Number(p.dpi) || 300));
+      const bytes = await renderImage(p.sheetHtml, { page: p.page, dpi, format, transparent: p.transparent === true });
+      return saveAs(w, bytes, `${safeName(p.suggestedName)}.${format}`, format === 'jpg' ? 'صورة JPG' : 'صورة PNG', format);
     }
   );
 }

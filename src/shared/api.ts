@@ -1060,11 +1060,9 @@ export type DiwanApi = LibraryApis & {
       suggestedName: string;
       page?: { w: number; h: number };
     }): Promise<string | null>;
-    savePng300(payload: {
-      sheetHtml: string;
-      suggestedName: string;
-      page?: { w: number; h: number };
-    }): Promise<string | null>;
+    savePng300(payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }): Promise<string | null>;
+    /** التصميم صورةً PNG أو JPG أو PNG شفّافة (DESIGNS.md ١٫٨) — بمقاسه بالملّم ودقّته (٩٦ للشاشة، ٣٠٠ للطباعة). */
+    saveImage(payload: { sheetHtml: string; suggestedName: string; page: { w: number; h: number }; dpi: number; format: 'png' | 'jpg'; transparent?: boolean }): Promise<string | null>;
     /** الكتاب إلى Word بتنسيقه: وثيقته وقيمه وترويسته (حقولها محلولة — `resolveLayout`). */
     saveDocx(payload: {
       doc: Doc;

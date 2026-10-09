@@ -24,6 +24,8 @@ export type CanvasRenderOptions = {
   marks?: boolean;
   /** مسارٌ يحوّل مرجع الصورة إلى عنوانٍ يفتحه المتصفّح. */
   imageUrl?: (src: string) => string;
+  /** صورةٌ شفّافة (DESIGNS.md ١٫٨): لا ورقٌ أبيض ولا خلفية — العناصر وحدها. */
+  transparent?: boolean;
 };
 
 /**
@@ -53,8 +55,9 @@ export function renderCanvasHtml(doc: Doc, values: Record<string, string> = {}, 
   const fields = new Map(doc.fields.map((f) => [f.key, f]));
   const page = canvasPx(canvas, opts.dpi);
 
-  const bg =
-    canvas.background.kind === 'image'
+  const bg = options.transparent
+    ? ''
+    : canvas.background.kind === 'image'
       ? `<img alt="" src="${escapeHtml(url(canvas.background.src))}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0"/>`
       : canvas.background.kind === 'color'
         ? `<div style="position:absolute;inset:0;background:${canvas.background.color};z-index:0"></div>`
@@ -71,7 +74,7 @@ export function renderCanvasHtml(doc: Doc, values: Record<string, string> = {}, 
 
   const marks = opts.marks && canvas.bleed > 0 ? cropMarks(canvas, opts.dpi) : '';
 
-  return `<div data-canvas style="position:relative;width:${page.w}px;height:${page.h}px;overflow:hidden;background:#fff">` + `${bg}${body}${marks}</div>`;
+  return `<div data-canvas style="position:relative;width:${page.w}px;height:${page.h}px;overflow:hidden;background:${options.transparent ? 'transparent' : '#fff'}">` + `${bg}${body}${marks}</div>`;
 }
 
 /**

@@ -211,6 +211,7 @@ const api: DiwanApi = {
       invoke('output:savePdf', payload),
     savePng300: (payload: { sheetHtml: string; suggestedName: string; page?: { w: number; h: number } }) =>
       invoke('output:savePng300', payload),
+    saveImage: (payload: Parameters<DiwanApi['output']['saveImage']>[0]) => invoke('output:saveImage', payload),
     saveDocx: (payload: Parameters<DiwanApi['output']['saveDocx']>[0]) => invoke('output:saveDocx', payload),
     printJob: (payload: { label: string; pages: string[]; printer: string | null; page: { w: number; h: number }; duplex: boolean }) =>
       invoke('output:printJob', payload),

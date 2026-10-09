@@ -3,9 +3,9 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Doc } from '@shared/doc';
-import { SCREEN_DPI, type Canvas } from '@shared/canvas';
+import { SCREEN_DPI, SIZE_PRESETS, type Canvas } from '@shared/canvas';
 import { renderCanvasHtml } from '@shared/canvasHtml';
-import { impose, parseCardList, planSheets, renderPlan } from '@shared/design/imposition';
+import { impose, inlineBarcodes, parseCardList, planSheets, renderPlan } from '@shared/design/imposition';
 import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
 import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../../lib/errors';
@@ -193,6 +193,28 @@ export function useDesignOutput(i: Inputs) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages, title, imp, say, previewMark]);
 
+  /**
+   * التصميم صورةً (DESIGNS.md ١٫٨): الوجه الظاهر ببطاقته الأولى، بلا نزفٍ ولا علامات قصّ — PNG أو JPG أو PNG شفّافة. ومقاس
+   * الشاشة (المنشور والستوري) ببكسلاته تمامًا على ٩٦ نقطة، وما سواه بـ٣٠٠ للطباعة.
+   */
+  const saveImage = useCallback(
+    async (format: 'png' | 'jpg', transparent = false) => {
+      setBusy(true);
+      try {
+        const flat: Canvas = { ...canvas, bleed: 0, cropMarks: false };
+        const html = inlineBarcodes(renderCanvasHtml({ ...doc, canvas: flat }, cards[0] ?? {}, { dpi: SCREEN_DPI, marks: false, missing: 'blank', transparent }));
+        const screen = SIZE_PRESETS.find((p) => p.px && Math.abs(p.size.w - canvas.size.w) < 0.05 && Math.abs(p.size.h - canvas.size.h) < 0.05);
+        const path = await window.diwan.output.saveImage({ sheetHtml: html, suggestedName: title.trim() || 'تصميم', page: canvas.size, dpi: screen ? 96 : 300, format, transparent });
+        if (path) say(screen ? `حُفظت الصورة ${screen.px!.w} × ${screen.px!.h} — جاهزةٌ للواتساب والنشر` : 'حُفظت الصورة بدقّة ٣٠٠ نقطة/إنش');
+      } catch (e) {
+        say(errorText(e, 'تعذّر حفظ الصورة'), 'warn');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [canvas, doc, cards, title, say, setBusy]
+  );
+
   // حُسمت الأسماء: تُطبع الدفعة بأجناسها الجديدة — بعد أن تُعاد بطاقاتها وأوراقها.
   const { afterReview, setAfterReview } = i;
   useEffect(() => {
@@ -204,6 +226,6 @@ export function useDesignOutput(i: Inputs) {
 
   return {
     imp, sheetsOpen, setSheetsOpen, previewMark, setPreviewMark, startSlot, setStartSlot, pickText, setPickText, groupCol, setGroupCol,
-    picked, items, batchColumns, pages, issues, after, setAfter, lastPick, print, savePdf
+    picked, items, batchColumns, pages, issues, after, setAfter, lastPick, print, savePdf, saveImage
   };
 }

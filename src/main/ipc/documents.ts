@@ -47,11 +47,11 @@ function win(e: Electron.IpcMainInvokeEvent): BrowserWindow | null {
 }
 
 /** اسم ملف صالح على ويندوز: رقم الصادر يحمل شرطات مائلة. */
-function safeName(s: string): string {
+export function safeName(s: string): string {
   return s.replace(/[\\/:*?"<>|]/g, '-').trim() || 'كتاب';
 }
 
-async function saveAs(
+export async function saveAs(
   window: BrowserWindow,
   data: Buffer,
   suggestedName: string,

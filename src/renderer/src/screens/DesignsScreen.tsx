@@ -20,6 +20,7 @@ import EditorSidebar from '../designs/editor/EditorSidebar';
 import EditorToolbar from '../designs/editor/EditorToolbar';
 import Stage from '../designs/editor/Stage';
 import DesignModals from '../designs/editor/DesignModals';
+import SaveImageMenu from '../designs/editor/SaveImageMenu';
 
 export type { DesignRequest, DesignsScreenProps } from '../designs/editor/useDesignEditor';
 
@@ -69,6 +70,7 @@ export default function DesignsScreen(props: DesignsScreenProps) {
             onReprint={ed.lastPick.current ? () => void ed.print(ed.lastPick.current!) : undefined}
           >
             <div className="flex-1" />
+            <SaveImageMenu busy={ed.busy} onSave={(format, transparent) => void ed.saveImage(format, transparent)} />
             <button
               className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
               data-act="print"
