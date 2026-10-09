@@ -40,6 +40,10 @@ export type ElementBase = {
   name?: string;
   /** الشفافية ٠..١ (DESIGNS.md ١٫٣) — وغيابها ١. */
   opacity?: number;
+  /** مجموعته (DESIGNS.md ١٫٦): عناصرُ بمعرّفٍ واحد تُحدَّد وتُسحب معًا. */
+  group?: string;
+  /** مخفيٌّ من «الطبقات»: لا يُرسم ولا يُطبع، ويبقى في التصميم. */
+  hidden?: boolean;
 };
 
 export type VAlign = 'top' | 'middle' | 'bottom';

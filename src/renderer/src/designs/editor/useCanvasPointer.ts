@@ -1,9 +1,10 @@
 /**
- * السحب بالفأرة: نِسَبٌ لا بكسلات — تحريك العناصر بالتصاقها وخطوط إرشادها، ومقابض المقاس. والسحبة كلّها قيدٌ واحد.
+ * السحب بالفأرة: نِسَبٌ لا بكسلات — تحريك العناصر بالتصاقها وخطوط إرشادها، ومقابض المقاس، ومقبض التدوير، ومستطيل
+ * التحديد (DESIGNS.md ١٫٦). والسحبة كلّها قيدٌ واحد، والضغط على عضوٍ في مجموعةٍ يحدّدها كلّها.
  */
 import { useCallback, useRef, useState } from 'react';
 import { clampBox, type Box, type Canvas, type CanvasElement } from '@shared/canvas';
-import { resizeBox, snapBox, type Edge, type Guide } from '@shared/canvasEdit';
+import { expandToGroups, idsInRect, rectFrom, resizeBox, rotationFrom, snapBox, type Edge, type Guide } from '@shared/canvasEdit';
 import type { Drag } from './kit';
 
 type Inputs = {
@@ -20,6 +21,8 @@ type Inputs = {
 export function useCanvasPointer({ canvas, apply, patchElement, selection, setSelection, pushPast, zoom, geometry }: Inputs) {
   const { pxW, pxH, offset } = geometry;
   const [guides, setGuides] = useState<Guide[]>([]);
+  /** مستطيل التحديد وهو يُسحب — نِسَبًا. */
+  const [marquee, setMarquee] = useState<Box | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const beforeDrag = useRef<Canvas | null>(null);
@@ -41,6 +44,19 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
       const drag = dragRef.current;
       if (!drag) return;
       const at = pointAt(e);
+
+      if (drag.kind === 'rotate') {
+        const rotate = rotationFrom(drag.center, drag.start, { x: e.clientX, y: e.clientY }, drag.r0, e.shiftKey);
+        patchElement(drag.id, { rotate: rotate || undefined } as Partial<CanvasElement>, false);
+        return;
+      }
+
+      if (drag.kind === 'marquee') {
+        const rect = rectFrom(drag.from, at);
+        setMarquee(rect);
+        setSelection([...new Set([...drag.add, ...expandToGroups(canvas.elements, idsInRect(canvas.elements, rect))])]);
+        return;
+      }
 
       if (drag.kind === 'resize') {
         const box = resizeBox(drag.box, drag.edge, { dx: at.x - drag.from.x, dy: at.y - drag.from.y }, e.shiftKey);
@@ -75,13 +91,17 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
         false
       );
     },
-    [canvas, apply, patchElement, pointAt]
+    [canvas, apply, patchElement, pointAt, setSelection]
   );
 
   const endDrag = useCallback(() => {
     if (!dragRef.current) return;
+    const ending = dragRef.current;
     dragRef.current = null;
     setGuides([]);
+    setMarquee(null);
+    // مستطيل التحديد لا يغيّر اللوحة — فلا قيد.
+    if (ending.kind === 'marquee') return;
     const before = beforeDrag.current;
     beforeDrag.current = null;
     if (before) pushPast(before);
@@ -90,7 +110,8 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
   /** ضغطٌ على عنصر: يُحدَّد (ومع Ctrl يُضاف إلى المحدَّد) ويبدأ سحبه — إلا أن يكون مقفلًا. */
   const startMove = (e: React.MouseEvent, el: CanvasElement) => {
     e.stopPropagation();
-    const ids = e.ctrlKey ? (selection.includes(el.id) ? selection : [...selection, el.id]) : selection.includes(el.id) ? selection : [el.id];
+    const own = expandToGroups(canvas.elements, [el.id]);
+    const ids = e.ctrlKey ? [...new Set([...selection, ...own])] : selection.includes(el.id) ? selection : own;
     setSelection(ids);
     if (el.locked) return;
     beforeDrag.current = canvas;
@@ -109,5 +130,21 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     dragRef.current = { kind: 'resize', id: el.id, edge, from: pointAt(e), box: el.box };
   };
 
-  return { sheetRef, guides, onMove, endDrag, startMove, startResize };
+  /** ضغطٌ على مقبض التدوير: يدور حول مركز العنصر كما يُرى على الشاشة. */
+  const startRotate = (e: React.MouseEvent, el: CanvasElement, handle: HTMLElement | null) => {
+    e.stopPropagation();
+    const box = handle?.parentElement?.getBoundingClientRect();
+    if (!box) return;
+    beforeDrag.current = canvas;
+    dragRef.current = { kind: 'rotate', id: el.id, center: { x: box.left + box.width / 2, y: box.top + box.height / 2 }, start: { x: e.clientX, y: e.clientY }, r0: el.rotate ?? 0 };
+  };
+
+  /** ضغطٌ على الورقة نفسها: يبدأ مستطيل التحديد — ومع Ctrl يضيف إلى المحدَّد. */
+  const startMarquee = (e: React.MouseEvent) => {
+    const add = e.ctrlKey ? selection : [];
+    setSelection(add);
+    dragRef.current = { kind: 'marquee', from: pointAt(e), add };
+  };
+
+  return { sheetRef, guides, marquee, onMove, endDrag, startMove, startResize, startRotate, startMarquee };
 }

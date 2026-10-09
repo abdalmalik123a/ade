@@ -22,7 +22,11 @@ export const NUDGE = 0.002;
 /** ما يجري سحبه الآن: تحريكٌ أو مقبض. */
 export type Drag =
   | { kind: 'move'; ids: string[]; from: { x: number; y: number }; boxes: Map<string, Box> }
-  | { kind: 'resize'; id: string; edge: Edge; from: { x: number; y: number }; box: Box };
+  | { kind: 'resize'; id: string; edge: Edge; from: { x: number; y: number }; box: Box }
+  /** التدوير من مقبضه (١٫٦): حول مركز العنصر على الشاشة. */
+  | { kind: 'rotate'; id: string; center: { x: number; y: number }; start: { x: number; y: number }; r0: number }
+  /** مستطيل التحديد بالفأرة (١٫٦) — من نقطة البدء نِسَبًا، ومع Ctrl يُضاف إلى المحدَّد. */
+  | { kind: 'marquee'; from: { x: number; y: number }; add: string[] };
 
 export const textOf = (inlines?: Inline[]): string =>
   Array.isArray(inlines)

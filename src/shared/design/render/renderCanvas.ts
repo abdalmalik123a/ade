@@ -65,6 +65,7 @@ export function renderCanvasHtml(doc: Doc, values: Record<string, string> = {}, 
   const ctx: RenderCtx = { canvas, values, fields, opts, url };
   // وعنصرٌ بنوعٍ لا يعرفه السجلّ (لم يمرّ بالتقويم) لا يُرسم ولا يُسقط الرسم — كما كان.
   const body = byLayer(canvas.elements)
+    .filter((el) => !el.hidden)
     .map((el) => kindSpec(el)?.render(el, ctx) ?? '')
     .join('');
 

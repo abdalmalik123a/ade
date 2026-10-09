@@ -89,6 +89,9 @@ function normalizeElement(raw: unknown, index: number): CanvasElement | null {
   // الشفافية خاصّيةٌ مشتركة (DESIGNS.md ١٫٣): تُقوَّم هنا لكلّ نوع، و١ (الغياب) لا يُكتب.
   const opacity = typeof raw.opacity === 'number' && Number.isFinite(raw.opacity) ? Math.min(1, Math.max(0, raw.opacity)) : 1;
   if (el && opacity < 1) el.opacity = Math.round(opacity * 100) / 100;
+  // والمجموعة والإخفاء (١٫٦) كذلك: مشتركان، والمعرّف حروفٌ آمنة بحدّ.
+  if (el && typeof raw.group === 'string' && /^[\w-]{1,40}$/.test(raw.group)) el.group = raw.group;
+  if (el && raw.hidden === true) el.hidden = true;
   return el;
 }
 

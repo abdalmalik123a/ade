@@ -22,6 +22,25 @@ const LAYERS: [LayerMove, string, string][] = [
   ['back', 'flip_to_back', 'إلى الخلف']
 ];
 
+type EditAct = 'selectAll' | 'copy' | 'cut' | 'paste' | 'group' | 'ungroup';
+/** الفعل وأيقونته واسمه باختصاره، وما يلزم ليُفعَّل. */
+const EDIT_TOOLS: [EditAct, string, string, 'selection' | 'two' | 'group' | null][] = [
+  ['selectAll', 'select_all', 'حدّد الكلّ (Ctrl+A)', null],
+  ['copy', 'content_copy', 'انسخ (Ctrl+C)', 'selection'],
+  ['cut', 'content_cut', 'قصّ (Ctrl+X)', 'selection'],
+  ['paste', 'content_paste', 'الصق (Ctrl+V)', null],
+  ['group', 'group_work', 'جمّع (Ctrl+G)', 'two'],
+  ['ungroup', 'workspaces', 'فكّ التجميع (Ctrl+Shift+G)', 'group']
+];
+const EDIT_RUN: Record<EditAct, (ed: DesignEditor) => unknown> = {
+  selectAll: (ed) => ed.selectAll(),
+  copy: (ed) => ed.copy(),
+  cut: (ed) => ed.cut(),
+  paste: (ed) => ed.paste(),
+  group: (ed) => ed.group(),
+  ungroup: (ed) => ed.ungroup()
+};
+
 const SAVE = 'h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
 const SAVE_COPY = 'h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
 
@@ -76,6 +95,25 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
 
       <div className="w-px h-6 bg-outline-variant shrink-0" />
 
+      {/* الحافظة والتجميع (DESIGNS.md ١٫٦) — لكلّ اختصارٍ زرّه. */}
+      <div className="flex items-center gap-1 shrink-0">
+        {EDIT_TOOLS.map(([act, icon, label, needs]) => (
+          <button
+            key={act}
+            className={TOOL}
+            data-edit={act}
+            title={label}
+            type="button"
+            disabled={needs === 'selection' ? !selection.length : needs === 'two' ? selection.length < 2 : needs === 'group' ? !ed.grouped : false}
+            onClick={() => void EDIT_RUN[act](ed)}
+          >
+            <span className="material-symbols-outlined text-[18px]">{icon}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="w-px h-6 bg-outline-variant shrink-0" />
+
       <div className="flex items-center gap-1 shrink-0">
         {ALIGNS.map(([mode, icon, label]) => (
           <button key={mode} className={TOOL} data-align={mode} title={label} type="button" disabled={!selection.length} onClick={() => ed.align(mode)}>
@@ -118,6 +156,15 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
         <span className="material-symbols-outlined text-[18px]">visibility</span>
       </button>
 
+      <button className={TOOL} data-zoom="out" title="صغّر (Ctrl مع العجلة)" type="button" onClick={() => ed.zoomBy(1 / 1.2)}>
+        <span className="material-symbols-outlined text-[18px]">zoom_out</span>
+      </button>
+      <button className={TOOL} data-zoom="fit" title="بقدر الشاشة" type="button" onClick={ed.zoomFit}>
+        <span className="material-symbols-outlined text-[18px]">fit_screen</span>
+      </button>
+      <button className={TOOL} data-zoom="in" title="كبّر (Ctrl مع العجلة)" type="button" onClick={() => ed.zoomBy(1.2)}>
+        <span className="material-symbols-outlined text-[18px]">zoom_in</span>
+      </button>
       <span className="font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap shrink-0">{Math.round(zoom * 100)}٪</span>
       <input className="w-24 shrink-0" max={3} min={0.15} step={0.05} type="range" value={zoom} onChange={(e) => ed.setZoom(Number(e.target.value))} />
 

@@ -9,7 +9,7 @@ import { useCanvasPaint } from './useCanvasPaint';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function Stage({ ed }: { ed: DesignEditor }) {
-  const { canvas, selection, single, preview, grid, zoom, setZoom, view, guides, html } = ed;
+  const { canvas, selection, single, preview, grid, zoom, setZoom, view, guides, html, marquee } = ed;
   const { page, pxW, pxH, offset } = ed.geometry;
   const deskRef = useRef<HTMLDivElement>(null);
   const paintRef = useCanvasPaint(html, preview);
@@ -23,11 +23,24 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
-    // والعودة من المعرض تعيد القياس: المحرّر المخفيّ عرضه صفر.
-  }, [page.w, page.h, view, setZoom]);
+    // والعودة من المعرض تعيد القياس: المحرّر المخفيّ عرضه صفر. و«ملء الشاشة» من الشريط يعيده (`fitKey`).
+  }, [page.w, page.h, view, setZoom, ed.fitKey]);
+
+  // Ctrl مع عجلة الفأرة يكبّر ويصغّر اللوحة لا البرنامج (DESIGNS.md ١٫٦) — مستمعٌ غير سلبيّ ليُمنع تكبير النافذة.
+  useEffect(() => {
+    const desk = deskRef.current;
+    if (!desk) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      ed.zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1);
+    };
+    desk.addEventListener('wheel', onWheel, { passive: false });
+    return () => desk.removeEventListener('wheel', onWheel);
+  }, [ed.zoomBy]);
 
   return (
-    <div ref={deskRef} className="flex-1 overflow-auto flex items-start justify-center p-space-xl" onMouseLeave={ed.endDrag} onMouseMove={ed.onMove} onMouseUp={ed.endDrag}>
+    <div ref={deskRef} className="flex-1 overflow-auto flex items-start justify-center p-space-xl" data-desk="" onMouseLeave={ed.endDrag} onMouseMove={ed.onMove} onMouseUp={ed.endDrag}>
       <div className="shrink-0" style={{ width: page.w * zoom, height: page.h * zoom }}>
         <div
           ref={ed.sheetRef}
@@ -41,7 +54,8 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
             position: 'relative'
           }}
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) ed.setSelection([]);
+            // الضغط خارج العناصر يبدأ مستطيل التحديد (١٫٦).
+            if (!(e.target as HTMLElement).closest('[data-handle]')) ed.startMarquee(e);
           }}
         >
           <div ref={paintRef} dangerouslySetInnerHTML={{ __html: html }} />
@@ -72,9 +86,18 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
             />
           ))}
 
-          {/* مقابضُ التحديد فوق الرسم — لا داخله، فالمطبوع لا يحملها. */}
+          {/* مستطيل التحديد وهو يُسحب. */}
+          {marquee && (
+            <div
+              className="absolute border border-primary bg-primary/10 pointer-events-none"
+              data-marquee=""
+              style={{ right: offset + marquee.x * pxW, top: offset + marquee.y * pxH, width: marquee.w * pxW, height: marquee.h * pxH, zIndex: 9500 }}
+            />
+          )}
+
+          {/* مقابضُ التحديد فوق الرسم — لا داخله، فالمطبوع لا يحملها. والمخفيّ بلا مقبض. */}
           {!preview &&
-            canvas.elements.map((el) => {
+            canvas.elements.filter((el) => !el.hidden).map((el) => {
               const on = selection.includes(el.id);
               return (
                 <div
@@ -88,7 +111,9 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
                     top: offset + el.box.y * pxH,
                     width: el.box.w * pxW,
                     height: el.box.h * pxH,
-                    zIndex: 5000 + el.z
+                    zIndex: 5000 + el.z,
+                    // يدور مع عنصره — فالمقابض على حدوده لا على صندوقه قبل التدوير.
+                    ...(el.rotate ? { transform: `rotate(${-el.rotate}deg)` } : {})
                   }}
                   onMouseDown={(e) => ed.startMove(e, el)}
                 >
@@ -104,6 +129,15 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
                         onMouseDown={(e) => ed.startResize(e, el, edge)}
                       />
                     ))}
+                  {on && !el.locked && single?.id === el.id && (
+                    <div
+                      className="absolute w-3 h-3 rounded-full bg-surface border-2 border-primary cursor-grab"
+                      data-grip="rotate"
+                      style={{ top: -20, right: '50%', transform: 'translateX(50%)' }}
+                      title="أدِره — ومع Shift بخطوة ١٥°"
+                      onMouseDown={(e) => ed.startRotate(e, el, e.currentTarget)}
+                    />
+                  )}
                 </div>
               );
             })}

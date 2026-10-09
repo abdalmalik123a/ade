@@ -2,7 +2,7 @@
  * محرّر التصاميم مجموعًا: كلّ خطّافٍ في ملفّه بعمله (DESIGNS.md ٠٫٣ و٣٫٢)، وهنا يُركَّب بعضها على بعض بترتيب ما يحتاجه
  * كلٌّ من غيره — ومنه تأخذ الشاشة ولوحاتها ما تعرضه. ولا حسابَ هنا.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../kit/useToast';
 import { screenGeometry } from './kit';
 import { useCanvasSides } from './useCanvasSides';
@@ -46,6 +46,9 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   const [preview, setPreview] = useState(false);
   const [grid, setGrid] = useState(false);
   const [zoom, setZoom] = useState(0.5);
+  /** «ملء الشاشة»: يزيد فيعيد المكتبُ (Stage) قياسَ التكبير. */
+  const [fitKey, setFitKey] = useState(0);
+  const zoomBy = useCallback((f: number) => setZoom((z) => Math.min(3, Math.max(0.15, Math.round(z * f * 100) / 100))), []);
   const [title, setTitle] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [copies, setCopies] = useState(1);
@@ -67,7 +70,8 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   const pointer = useCanvasPointer({ canvas, apply, patchElement: els.patchElement, selection: els.selection, setSelection: els.setSelection, pushPast: sides.pushPast, zoom, geometry });
   useDesignKeys({
     canvas, selection: els.selection, setSelection: els.setSelection, apply, undo: sides.undo, redo: sides.redo,
-    duplicateSelected: els.duplicateSelected, removeSelected: els.removeSelected
+    duplicateSelected: els.duplicateSelected, removeSelected: els.removeSelected, selectAll: els.selectAll, copy: els.copy, cut: els.cut,
+    paste: els.paste, group: els.group, ungroup: els.ungroup
   });
   const [designId, setDesignId] = useState<number | null>(null);
   const draft = useDesignDraft({ doc: docs.doc, title, values, designId, say, onChanged });
@@ -112,6 +116,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   return {
     request, onChanged, toast, say, busy, view, setView, preview, setPreview, grid, setGrid, zoom, setZoom, title, setTitle, values, setValues,
     copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry, designId, setDesignId,
+    fitKey, zoomFit: () => setFitKey((k) => k + 1), zoomBy,
     draftSavedAt: draft.draftSavedAt,
     ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...library, ...sources, ...cards, ...output
   };

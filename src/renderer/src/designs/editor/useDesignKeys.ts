@@ -1,6 +1,7 @@
 /**
- * لوحة المفاتيح في المحرّر — مفاتيح Windows وحدها: Ctrl+Z وCtrl+Y وCtrl+D وDelete وEsc والأسهم (ومع Shift أبعد).
- * ولا تعمل وهو يكتب في خانة.
+ * لوحة المفاتيح في المحرّر — مفاتيح Windows وحدها، ولكلٍّ زرّه في الشريط (DESIGNS.md ١٫٦): Ctrl+Z وCtrl+Y وCtrl+D، وCtrl+A
+ * وCtrl+C وCtrl+X وCtrl+V، وCtrl+G وCtrl+Shift+G (كما في Office)، وDelete وEsc والأسهم (ومع Shift أبعد). ولا تعمل وهو يكتب في
+ * خانة.
  */
 import { useEffect } from 'react';
 import { nudge, withBoxes } from '@shared/canvasEdit';
@@ -16,9 +17,16 @@ type Inputs = {
   redo: () => void;
   duplicateSelected: () => void;
   removeSelected: () => void;
+  selectAll: () => void;
+  copy: () => boolean;
+  cut: () => void;
+  paste: () => void;
+  group: () => void;
+  ungroup: () => void;
 };
 
-export function useDesignKeys({ canvas, selection, setSelection, apply, undo, redo, duplicateSelected, removeSelected }: Inputs): void {
+export function useDesignKeys(k: Inputs): void {
+  const { canvas, selection, setSelection, apply, undo, redo, duplicateSelected, removeSelected } = k;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -37,6 +45,28 @@ export function useDesignKeys({ canvas, selection, setSelection, apply, undo, re
       if (e.ctrlKey && e.code === 'KeyD') {
         e.preventDefault();
         duplicateSelected();
+        return;
+      }
+      if (e.ctrlKey && e.code === 'KeyA') {
+        e.preventDefault();
+        k.selectAll();
+        return;
+      }
+      if (e.ctrlKey && e.code === 'KeyV') {
+        e.preventDefault();
+        k.paste();
+        return;
+      }
+      if (e.ctrlKey && e.code === 'KeyG') {
+        e.preventDefault();
+        if (e.shiftKey) k.ungroup();
+        else k.group();
+        return;
+      }
+      if (e.ctrlKey && selection.length && (e.code === 'KeyC' || e.code === 'KeyX')) {
+        e.preventDefault();
+        if (e.code === 'KeyC') k.copy();
+        else k.cut();
         return;
       }
       if (e.code === 'Escape') {
@@ -66,5 +96,5 @@ export function useDesignKeys({ canvas, selection, setSelection, apply, undo, re
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [canvas, selection, setSelection, apply, undo, redo, duplicateSelected, removeSelected]);
+  }, [canvas, selection, setSelection, apply, undo, redo, duplicateSelected, removeSelected, k]);
 }

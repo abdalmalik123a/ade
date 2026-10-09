@@ -323,8 +323,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وتُغلق', !(await page.text()).includes('مكتبة الرسومات'));
 
   // المقابض تظهر على المحدَّد وحده
-  const grips = await page.eval(`return document.querySelectorAll('[data-grip]').length;`);
+  const grips = await page.eval(`return document.querySelectorAll('[data-grip]:not([data-grip="rotate"])').length;`);
   ok('وللمحدَّد ثمانيةُ مقابض', grips === 8);
+  // ومقبض التدوير فوقها (DESIGNS.md ١٫٦).
+  ok('ومقبضٌ للتدوير', (await page.eval(`return document.querySelectorAll('[data-grip="rotate"]').length;`)) === 1);
 
   // المحاذاة: وسّط أفقيًّا — والعنصر وحده يُوسَّط في الورقة لا في نفسه
   const before = await centres();
