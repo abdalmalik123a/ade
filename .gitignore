@@ -28,3 +28,4 @@ diwan-owner-private.key
 
 # تقارير الفحص الشامل
 reports/
+__pycache__/
