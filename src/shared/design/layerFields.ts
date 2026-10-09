@@ -8,8 +8,8 @@
  *
  * والاسم العامّ («Layer 1»، «Text»، «Copy») لا يُقترح له شيء: لا تخمين.
  */
-import type { Suggestion } from './doc';
-import { normalizeFold } from './arabic';
+import type { Suggestion } from '../doc';
+import { normalizeFold } from '../arabic';
 
 /** [أنماط الاسم، الحقل] — الأدقّ أولًا: «Father Name» قبل «Name». */
 const TABLE: [RegExp, string][] = [

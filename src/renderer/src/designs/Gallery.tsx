@@ -13,8 +13,8 @@ import type { Seal, TemplateSummary } from '@shared/api';
 import type { Client } from '@shared/orders';
 import { canvasPx, SCREEN_DPI } from '@shared/canvas';
 import { renderCanvasHtml } from '@shared/canvasHtml';
-import { fitCanvasText } from '@shared/canvasFit';
-import { impose, inlineBarcodes } from '@shared/imposition';
+import { fitCanvasText } from '@shared/design/fit';
+import { impose, inlineBarcodes } from '@shared/design/imposition';
 import {
   KINDS,
   PALETTES,

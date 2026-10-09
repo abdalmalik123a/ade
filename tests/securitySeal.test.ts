@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyCanvas, barcodeElement } from '../src/shared/canvas';
 import { emptyDoc } from '../src/shared/doc';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
-import { inlineBarcodes } from '../src/shared/imposition';
+import { inlineBarcodes } from '../src/shared/design/imposition';
 import { sealCode, sealSvg } from '../src/shared/securitySeal';
 
 describe('نقش الأمان الفريد', () => {

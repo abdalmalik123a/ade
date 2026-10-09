@@ -1,7 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { BrowserWindow } from 'electron';
-import { fitCanvasText } from '@shared/canvasFit';
+import { fitCanvasText } from '@shared/design/fit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';

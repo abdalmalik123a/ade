@@ -5,7 +5,7 @@
  * يُرى هنا هو ما يُرسَل. والأسماء تُقاس بعد الرسم فتصغر الطويلة كما تصغر هناك.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { fitCanvasText } from '@shared/canvasFit';
+import { fitCanvasText } from '@shared/design/fit';
 import type { PreflightIssue } from '@shared/preflight';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);

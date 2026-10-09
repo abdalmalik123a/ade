@@ -2,11 +2,11 @@
  * ربط أعمدة الدفعة يدويًّا ويتذكّره التصميم، وفحص ٥٠٠ بطاقة (هـ٥).
  */
 import { describe, expect, it } from 'vitest';
-import { parseRows } from '../src/shared/batch';
+import { parseRows } from '../src/shared/design/batch';
 import { canvasDoc, emptyCanvas, textElement } from '../src/shared/canvas';
 import { fieldRef, reconcileFields, run } from '../src/shared/doc';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
-import { impose, planSheets, renderPlan } from '../src/shared/imposition';
+import { impose, planSheets, renderPlan } from '../src/shared/design/imposition';
 
 const KEYS = ['الاسم', 'الصف', 'الرقم'];
 

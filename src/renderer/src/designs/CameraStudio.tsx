@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CENTER, sourceRect, type Crop } from '@shared/photoSheet';
-import type { Photo } from '@shared/batch';
+import type { Photo } from '@shared/design/batch';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 const FOLDER = '__folder__';

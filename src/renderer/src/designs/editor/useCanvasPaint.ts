@@ -2,9 +2,9 @@
  * ما يُرسم بعد حقن اللوحة في الشاشة: الباركود ورموزه، وتصغير الأسماء الطويلة لتسع.
  */
 import { useEffect, useRef } from 'react';
-import { drawCode } from '@shared/imposition';
+import { drawCode } from '@shared/design/imposition';
 import { NOT_128 } from '@shared/barcode';
-import { fitCanvasText } from '@shared/canvasFit';
+import { fitCanvasText } from '@shared/design/fit';
 
 /**
  * الباركود يُرسم بعد الحقن.

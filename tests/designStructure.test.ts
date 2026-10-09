@@ -6,7 +6,7 @@
  *    `designStructure.allow.json` بحجمه — قائمةٌ **تتناقص حتى تفرغ بنهاية المرحلة صفر، ولا يُضاف إليها شيء**، ولا ينمو
  *    ملفٌّ فيها. و`DIWAN_DESIGN_RATCHET=1 npx vitest run tests/designStructure.test.ts` يكتب الأحجام الأصغر ويُسقط ما
  *    نزل تحت حدّه.
- * ٢. **النواة** (`shared/design` والأنواع الجاهزة واللوحة والرسّام والهندسة والترتيب على الورق والدفعات) لا تستورد React
+ * ٢. **النواة** (`shared/design` ومداخلها الثابتة والأنواع الجاهزة) لا تستورد React
  *    ولا Electron ولا Node ولا الواجهة ولا العملية الرئيسة — تعمل في العمليّتين وفي الاختبار.
  * ٣. **أنواع العناصر لا يستورد بعضها بعضًا** (`shared/design/kinds/*`): تعديل نوعٍ لا يمسّ غيره — إلا السجلّ وأنواعه
  *    المشتركة (`registry` و`types` و`index`).
@@ -39,7 +39,8 @@ const CORE = [
   ...walk(join(ROOT, 'src/shared/designKit')),
   ...walk(join(ROOT, 'src/shared/fonts')),
   ...walk(join(ROOT, 'src/shared/assets')),
-  ...['canvas.ts', 'canvasHtml.ts', 'canvasEdit.ts', 'canvasFit.ts', 'imposition.ts', 'batch.ts', 'layerFields.ts', 'clipart.ts'].flatMap((n) => file(`src/shared/${n}`))
+  // والمداخل الثابتة التي تعيد التصدير من `shared/design` (DESIGNS.md ٣٫١)، والرسومات المدمجة.
+  ...['canvas.ts', 'canvasHtml.ts', 'canvasEdit.ts', 'clipart.ts'].flatMap((n) => file(`src/shared/${n}`))
 ];
 
 /** مجلّدات التصاميم كلّها: النواة، والواجهة، والخدمات. */

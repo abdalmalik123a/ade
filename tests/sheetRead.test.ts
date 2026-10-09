@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import ExcelJS from 'exceljs';
 import { sheetToText } from '../src/main/services/sheetRead';
-import { parseRows } from '../src/shared/batch';
+import { parseRows } from '../src/shared/design/batch';
 
 describe('قائمةٌ من Excel', () => {
   it('تُقرأ بصيغة اللصق نفسها — فيقرؤها قارئ الدفعة الواحد', async () => {

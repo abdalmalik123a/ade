@@ -4,8 +4,8 @@
  */
 import { useMemo, useState } from 'react';
 import type { Doc } from '@shared/doc';
-import type { Photo } from '@shared/batch';
-import { nameKeyOf } from '@shared/batch';
+import type { Photo } from '@shared/design/batch';
+import { nameKeyOf } from '@shared/design/batch';
 import { derivedWords } from '@shared/tafqeet';
 import { GENDER_KEY, docHasChoices, guessGender, unsureNames, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../../lib/useLearnedGenders';

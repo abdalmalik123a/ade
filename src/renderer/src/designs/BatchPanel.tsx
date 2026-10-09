@@ -8,8 +8,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { errorText } from '../lib/errors';
 import type { DocField } from '@shared/doc';
-import { matchPhotos, nameKeyOf, parseRows, type BatchMap, type Photo } from '@shared/batch';
-import { sheetCount, type Imposition } from '@shared/imposition';
+import { matchPhotos, nameKeyOf, parseRows, type BatchMap, type Photo } from '@shared/design/batch';
+import { sheetCount, type Imposition } from '@shared/design/imposition';
 import CameraStudio from './CameraStudio';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);

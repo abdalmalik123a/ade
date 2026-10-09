@@ -16,7 +16,7 @@ import { freshDb } from './helpers';
 import { tafqeet } from '../src/shared/tafqeet';
 import { canonicalNationalId, nationalIdHint } from '../src/shared/idChecks';
 import { barcodeSvg, code128Text, encodes128 } from '../src/shared/barcode';
-import { inlineBarcodes } from '../src/shared/imposition';
+import { inlineBarcodes } from '../src/shared/design/imposition';
 import { designPreflight } from '../src/shared/preflight';
 import { barcodeElement, emptyCanvas } from '../src/shared/canvas';
 import { canonicalizeNationalIds, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';

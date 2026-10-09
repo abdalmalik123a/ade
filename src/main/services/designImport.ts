@@ -30,7 +30,7 @@ import {
   type CanvasSize
 } from '@shared/canvas';
 import { tokenInlines, type Align, type Inline, type Suggestion } from '@shared/doc';
-import { fieldFromLayerName } from '@shared/layerFields';
+import { fieldFromLayerName } from '@shared/design/layerFields';
 import type { FieldSuggestion } from '@shared/api';
 import { FONT } from '@shared/designKit/styles';
 import { imageMeta } from './imageSize';

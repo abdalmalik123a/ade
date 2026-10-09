@@ -6,7 +6,7 @@
  * طابق حقول التصميم — وإلا فالأعمدة بترتيب الحقول. ولا يُخمَّن ما لا يُعرف:
  * العمود الذي لا يطابق حقلًا يُترك ويُقال عنه.
  */
-import { normalizeFold } from './arabic';
+import { normalizeFold } from '../arabic';
 
 export type Parsed = {
   rows: Record<string, string>[];

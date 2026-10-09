@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { citizenSourceOf, rowFromCitizen, rowsToTsv } from '../src/shared/citizenFields';
-import { parseRows } from '../src/shared/batch';
+import { parseRows } from '../src/shared/design/batch';
 
 const citizen = {
   fullName: 'سجاد كاظم محمد',

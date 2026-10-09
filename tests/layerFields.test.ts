@@ -2,7 +2,7 @@
  * اقتراح الحقول من أسماء طبقات Photoshop (هـ٤): من اسم الطبقة حقلُها، والعامّ لا يُقترح له.
  */
 import { describe, expect, it } from 'vitest';
-import { fieldFromLayerName } from '../src/shared/layerFields';
+import { fieldFromLayerName } from '../src/shared/design/layerFields';
 import { APPLY_THRESHOLD } from '../src/shared/doc';
 
 describe('الحقل من اسم الطبقة', () => {

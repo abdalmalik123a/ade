@@ -8,11 +8,11 @@
  * والوحدة الملّم. والبطاقة في خانتها بنزفها كاملًا: الخانات متلاصقة، فبين
  * حافّتي قصٍّ متجاورتين نزفان — قصّتان بالمقصلة، لا قصّةٌ تأكل من البطاقتين.
  */
-import type { CanvasSize } from './canvas';
-import { barcodeSvg } from './barcode';
-import { qrSvg } from './qr';
-import { sealSvg } from './securitySeal';
-import { toIndic } from './arabic';
+import type { CanvasSize } from './model/types';
+import { barcodeSvg } from '../barcode';
+import { qrSvg } from '../qr';
+import { sealSvg } from '../securitySeal';
+import { toIndic } from '../arabic';
 
 /** يرسم الرمز بنوعه — المعاينة والطباعة من هنا وحده. */
 export function drawCode(kind: string, value: string): string {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Doc } from '@shared/doc';
 import { SCREEN_DPI, type Canvas } from '@shared/canvas';
 import { renderCanvasHtml } from '@shared/canvasHtml';
-import { impose, parseCardList, planSheets, renderPlan } from '@shared/imposition';
+import { impose, parseCardList, planSheets, renderPlan } from '@shared/design/imposition';
 import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
 import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../../lib/errors';

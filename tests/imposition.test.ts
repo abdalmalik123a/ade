@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cellAt, impose, inlineBarcodes, parseCardList, planSheets, renderPlan, sheetCount } from '../src/shared/imposition';
-import { matchPhotos, parseRows } from '../src/shared/batch';
+import { cellAt, impose, inlineBarcodes, parseCardList, planSheets, renderPlan, sheetCount } from '../src/shared/design/imposition';
+import { matchPhotos, parseRows } from '../src/shared/design/batch';
 
 describe('الترتيب على الورق', () => {
   it('الهوية بنزفها تسعٌ في A4 أفقيّة (لا ثمانٍ عموديّة) — والخانات متلاصقة', () => {

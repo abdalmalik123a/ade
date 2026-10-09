@@ -8,7 +8,7 @@
  * - رزمٌ لمدرسة: عمودٌ من القائمة (الصفّ، الشعبة) تبدأ كلُّ قيمةٍ منه ورقةً
  *   جديدة تسبقها ورقةٌ فاصلة باسمها وعددها.
  */
-import type { Imposition } from '@shared/imposition';
+import type { Imposition } from '@shared/design/imposition';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
