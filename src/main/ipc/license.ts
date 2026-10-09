@@ -20,7 +20,7 @@ import { app, ipcMain } from 'electron';
 import { now } from '../clock';
 import { dataDir, getDb } from '../db';
 import { OWNER_PUBLIC_KEY } from '../license/ownerKey';
-import { dayNumber, deviceCode, evaluate, readKey, type LicensePayload, type LicenseState } from '../services/license';
+import { dayNumber, deviceCode, evaluate, keyList, readKey, type LicensePayload, type LicenseState } from '../services/license';
 import { logAudit } from '../services/documents';
 import type { LicenseStatus } from '@shared/api';
 import { DEVELOPER } from '@shared/brand';
@@ -117,12 +117,13 @@ export function licenseStatus(fresh = false): LicenseStatus {
   // أحدث يومٍ رآه البرنامج — يُكتب يومًا بيوم، لا مع كلّ سؤال.
   const stored = latest([setting('lastSeen'), file.lastSeen, reg.lastSeen]);
   const seen = !stored || dayNumber(t) > dayNumber(new Date(stored)) ? iso(t) : stored;
-  const keys = [...new Set([...(JSON.parse(setting('licenseKeys') ?? '[]') as string[]), ...(file.keys ?? [])])];
+  // وما فسد من القائمتين فارغٌ لا خطأ (و٣): كان يرمي هنا فيتوقّف الإصدار كلّه.
+  const keys = [...new Set([...keyList(setting('licenseKeys')), ...keyList(file.keys)])];
 
   // يُكتب ما تغيّر وحده.
   if (setting('trialStart') !== trialStart) putSetting('trialStart', trialStart);
   if (setting('lastSeen') !== seen) putSetting('lastSeen', seen);
-  if (file.trialStart !== trialStart || file.lastSeen !== seen || (file.keys ?? []).length !== keys.length) {
+  if (file.trialStart !== trialStart || file.lastSeen !== seen || keyList(file.keys).length !== keys.length) {
     try {
       writeFileSync(fileOf(), JSON.stringify({ trialStart, lastSeen: seen, keys }, null, 2));
     } catch {
@@ -172,11 +173,11 @@ export function registerLicenseIpc(): void {
       throw new Error(`هذا المفتاح لجهازٍ آخر (${r.payload.device}) — ورمز هذا الجهاز ${device}`);
     }
     const key = String(raw).replace(/\s+/g, '');
-    const keys = [...new Set([...(JSON.parse(setting('licenseKeys') ?? '[]') as string[]), key])];
+    const keys = [...new Set([...keyList(setting('licenseKeys')), key])];
     putSetting('licenseKeys', JSON.stringify(keys));
     const file = readFileStore();
     try {
-      writeFileSync(fileOf(), JSON.stringify({ ...file, keys: [...new Set([...(file.keys ?? []), key])] }, null, 2));
+      writeFileSync(fileOf(), JSON.stringify({ ...file, keys: [...new Set([...keyList(file.keys), key])] }, null, 2));
     } catch {
       // في القاعدة يكفي.
     }

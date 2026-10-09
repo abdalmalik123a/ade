@@ -90,6 +90,9 @@ export default async function scenario(page, { profile }) {
   ok('ويُقال ذلك بجانبها', await page.eval(`return Boolean(document.querySelector('[data-basmala-note]'));`));
   await page.goto('office-settings');
   await wait(700);
+  // والترويسة لم تُحفظ فيسأل «اترك بلا حفظ؟» (ج — حماية العمل): التفضيل حُفظ في الإعدادات، والترويسة تُترك.
+  await page.eval(`[...document.querySelectorAll('[data-confirm] button')].find((b) => b.textContent.trim() === 'اترك بلا حفظ')?.click(); return true;`);
+  await wait(700);
   ok('وتظهر في الإعدادات مشعولة', await page.eval(`return document.querySelector('[data-setting="basmala"]').checked;`));
   await page.eval(`document.querySelector('[data-setting="basmala"]').click(); return true;`);
   await wait(600);
@@ -118,6 +121,14 @@ export default async function scenario(page, { profile }) {
   // ولا شريط أوامر: Ctrl+K زال مع الاختصارات التي لا يعرفها الموظف من Windows ولا Word (ن١٥).
   await arabicKey('KeyK', 'ن', 75);
   ok('وCtrl+K لا تفتح شيئًا — والإعدادات تعرض الاختصارات الباقية', !(await page.eval(`return Boolean(document.querySelector('[data-command-palette], input[placeholder^="اكتب أمرًا"]'));`)));
+
+  // ── و٣: القناة تحفظ إعدادات المكتب وحدها — `appVersion` مرتفعةٌ كانت تقفل الإقلاع ──
+  const refused = await page.eval(`
+    return window.diwan.settings.set({ officeName: 'لا يُكتب', appVersion: '99.0.0' }).then(() => 'حُفظ', (e) => String(e?.message ?? e));
+  `);
+  ok(`«appVersion» يُرفض بعربية ولا يُكتب منه شيء («${refused.slice(-60)}»)`, refused.includes('ليس من إعدادات المكتب') && setting('appVersion') !== '99.0.0' && setting('officeName') !== 'لا يُكتب');
+  const kept = await page.eval(`return window.diwan.settings.set({ hijriOffset: 1 }).then((s) => s.hijriOffset, (e) => 'خطأ: ' + e.message);`);
+  ok('وإعدادٌ من المكتب يُحفظ كما كان', kept === 1 && setting('hijriOffset') === '1');
 
   return steps.join('\n');
 }

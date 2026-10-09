@@ -27,6 +27,7 @@ import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
 import { normalizeCounterCards } from '@shared/counterCards';
 import { clampHijriOffset } from '@shared/dates';
+import { assertSettingsPatch } from '@shared/settingsKeys';
 import type {
   OfficeSettings,
   SidebarCounts,
@@ -116,6 +117,8 @@ function parseOffsets(raw: string | undefined): OfficeSettings['printOffsets'] {
 const clampMm = (v: number) => Math.max(-15, Math.min(15, Math.round(v * 10) / 10));
 
 function writeSettings(patch: Partial<OfficeSettings>): OfficeSettings {
+  // حقول الإعدادات وحدها (و٣) — لا `appVersion` ولا `licenseKeys` ولا غيرهما من جدولها.
+  assertSettingsPatch(patch);
   const db = getDb();
   const stmt = db.prepare(
     `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))

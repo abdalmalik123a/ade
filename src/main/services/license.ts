@@ -113,6 +113,23 @@ export function readKey(raw: string, publicKey: string | KeyObject): KeyCheck {
   return { ok: true, payload: p };
 }
 
+/**
+ * المفاتيح المحفوظة قائمةَ نصوص (و٣) — في القاعدة نصُّ JSON، وفي ملفّ الترخيص قائمة. وما فسد منها (ليس JSON، أو
+ * ليس قائمة، أو فيها غير النصوص) فارغٌ لا خطأ: كان `JSON.parse` بلا حماية يرمي في `requireProductive` فيتوقّف الإصدار
+ * كلّه — ولو كان المفتاح الصحيح في ملفّ الترخيص.
+ */
+export function keyList(raw: unknown): string[] {
+  let value = raw;
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(value) ? value.filter((k): k is string => typeof k === 'string' && k.trim() !== '') : [];
+}
+
 export type LicenseState =
   | { status: 'activated'; office: string | null; issued: string }
   | { status: 'subscribed'; plan: SubscriptionPlan; daysLeft: number; lastDay: string; office: string | null; issued: string }
