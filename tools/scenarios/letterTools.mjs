@@ -180,6 +180,9 @@ export default async function scenario(page, { profile }) {
   ok(`وما صحّحه الموظف من الحدّ يُقيَّد ليُقترح لكتب الجهة القادمة (${JSON.stringify(corr)})`, corr.length === 1 && corr[0].suggested === '2' && corr[0].chosen === '1');
   await page.clickText('إلغاء', 'button');
   await wait(600);
+  // وفي المصمّم ما لم يُحفظ فيسأل «اترك بلا حفظ؟» (ج٣) — والحدّ قُيِّد، فيُترك.
+  await page.eval(`[...document.querySelectorAll('[data-confirm] button')].find((b) => b.textContent.trim() === 'اترك بلا حفظ')?.click(); return true;`);
+  await wait(600);
 
   // التصنيف من العنوان: نماذج المكتب المصنَّفة شواهد
   // «ورقة فارغة» في المكتبة بعينها — والشبّاك المخفيّ فيه بطاقة «كتابٌ على ورقة فارغة» أيضًا.

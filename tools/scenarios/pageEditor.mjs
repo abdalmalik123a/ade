@@ -10,7 +10,8 @@
  * الكتب: لا سطر في هامشٍ ولا في الفجوة بين ورقتين، وعدد صفحاته على الشاشة هو عدد صفحات
  * ملف PDF الذي يخرج من محرّك الطباعة نفسه.
  */
-import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import Database from 'better-sqlite3';
@@ -359,8 +360,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok(`وفي الطباعة صفحتان كما على الشاشة (${signPages})`, signPages === 2);
 
   // ── اللصق من Word: بتنسيقه وجدوله وصورته ──────────────────────────
-  // ما يضعه Word في الحافظة: وسوم Office، وتعليقاتٌ شرطية، و`<o:p>`، والصورة ملفٌّ مؤقّت.
-  const picture = pathToFileURL(resolve('tests/fixtures/tiny.jpg')).href;
+  // ما يضعه Word في الحافظة: وسوم Office، وتعليقاتٌ شرطية، و`<o:p>`، والصورة ملفٌّ مؤقّت — في المجلّد المؤقّت كما يضعها
+  // Word (`%TEMP%\msohtmlclip1\…`)؛ ولا يُقبل غيره منذ و٥.
+  const clipDir = join(tmpdir(), `msohtmlclip-diwan-${Date.now()}`);
+  mkdirSync(clipDir, { recursive: true });
+  copyFileSync(resolve('tests/fixtures/tiny.jpg'), join(clipDir, 'clip_image001.jpg'));
+  const picture = pathToFileURL(join(clipDir, 'clip_image001.jpg')).href;
   const WORD_HTML =
     `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">` +
     `<head><meta name=Generator content="Microsoft Word 15"><style><!-- p.MsoNormal {margin:0cm;font-size:11.0pt;} --></style></head>` +
@@ -415,6 +420,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (pasted.img.startsWith('diwan://store/images/')) {
     ok('وملفّها في المخزن', readdirSync(join(profile, 'data', 'store', 'images')).includes(pasted.img.split('/').pop()));
   }
+  rmSync(clipDir, { recursive: true, force: true });
 
   // لقطة شاشة وحدها في الحافظة: تُدرج صورةً بمقاسها.
   await paste(null, null, true);

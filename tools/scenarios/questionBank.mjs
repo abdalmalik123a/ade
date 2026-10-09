@@ -48,6 +48,9 @@ export default async function scenario(page, { profile }) {
   // ── ورقةٌ جديدة: البنك يعرض مادّتها ─────────────────────────────
   await page.clickText('ورقة جديدة');
   await wait(400);
+  // والورقة الأولى لم تُحفظ فيسأل «اترك بلا حفظ؟» (ج٣) — سؤالها في البنك، فتُترك.
+  await page.eval(`[...document.querySelectorAll('[data-confirm] button')].find((b) => b.textContent.trim() === 'اترك بلا حفظ')?.click(); return true;`);
+  await wait(400);
   await page.type('input[data-head="المادة"]', 'الفيزياء');
   await page.eval(`document.querySelector('[data-act="bank-open"]').click(); return true;`);
   await wait(600);

@@ -288,6 +288,9 @@ export default async function scenario(page, { profile, shotsDir }) {
     return true;`);
   await wait(400);
   await click('[data-act="second-round"]');
+  await wait(600);
+  // وورقة الدور الأول لم تُحفظ فيسأل «اترك بلا حفظ؟» (ج٣) — والدور الثاني ورقةٌ جديدة، فتُترك.
+  await page.eval(`[...document.querySelectorAll('[data-confirm] button')].find((b) => b.textContent.trim() === 'اترك بلا حفظ')?.click(); return true;`);
   await wait(900);
   const round2 = await page.eval(`return [...document.querySelectorAll('textarea[data-question-text]')].map((t) => t.value);`);
   ok(
