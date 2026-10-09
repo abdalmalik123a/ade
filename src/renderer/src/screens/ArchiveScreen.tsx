@@ -11,7 +11,7 @@
  * (د٣): يبقى برقمه وبصمته ولا يُعاد طبعه.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { localStamp, weekStart } from '@shared/dates';
+import { localStamp, weekStart, isoDate } from '@shared/dates';
 import { LIST_LIMITS, limitNote } from '@shared/limits';
 import type { ArchiveStats, AuditEntry, DocumentDetail, DocumentRow, PeriodStats, SearchHits } from '@shared/api';
 import { errorText } from '../lib/errors';
@@ -37,24 +37,19 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'custom', label: 'مدة مخصّصة' }
 ];
 
-function iso(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 /** حدود المدة. الأسبوع يبدأ بالسبت (`weekStart`) — كالملخّص الأسبوعي في «التنبيهات». */
 function rangeOf(period: Period, from: string, to: string): { from: string | null; to: string | null } {
   const now = new Date();
-  const today = iso(now);
+  const today = isoDate(now);
   switch (period) {
     case 'today':
       return { from: today, to: today };
     case 'week':
-      return { from: iso(weekStart(now)), to: today };
+      return { from: isoDate(weekStart(now)), to: today };
     case 'month':
-      return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
+      return { from: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
     case 'year':
-      return { from: iso(new Date(now.getFullYear(), 0, 1)), to: today };
+      return { from: isoDate(new Date(now.getFullYear(), 0, 1)), to: today };
     case 'all':
       return { from: null, to: null };
     case 'custom':
@@ -87,8 +82,8 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
   const [query, setQuery] = useState(globalQuery);
   // من البحث الشامل: الأرشيف كلّه — فالمطلوب قد صدر قبل سنة.
   const [period, setPeriod] = useState<Period>(globalQuery.trim() ? 'all' : 'today');
-  const [customFrom, setCustomFrom] = useState(iso(new Date()));
-  const [customTo, setCustomTo] = useState(iso(new Date()));
+  const [customFrom, setCustomFrom] = useState(isoDate(new Date()));
+  const [customTo, setCustomTo] = useState(isoDate(new Date()));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);

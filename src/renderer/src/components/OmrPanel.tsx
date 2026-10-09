@@ -15,8 +15,7 @@ import { CHOICE_LETTERS, gradeOmr, omrCapacity, omrSheetHtml, parseKey, readOmr,
 import type { PixelData } from '@shared/deskew';
 import { itemAnalysis, itemNote } from '@shared/examAnalysis';
 import { choosePrinter } from '../lib/printChoice';
-
-const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndic } from '@shared/arabic';
 
 type Result = { name: string; id: string; answers: number[]; grade: OmrGrade } | { name: string; error: string };
 

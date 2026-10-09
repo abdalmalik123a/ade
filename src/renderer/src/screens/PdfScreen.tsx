@@ -47,12 +47,12 @@ import { errorText } from '../lib/errors';
 import { useLeaveGuard } from '../kit/useLeaveGuard';
 import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
 import { fitJpeg, reencode, rememberLimit, savedLimit, toJpeg, TOP_DPI } from '../lib/fitImage';
+import { toIndic } from '@shared/arabic';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 type Src = PdfOpened & { doc?: PDFDocumentProxy; img?: HTMLImageElement };
 
-const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 /** «صفحةٌ واحدة، صفحتان، ٣ صفحات، ١١ صفحة» — العدد ومعدوده كما يُقرأ. */
 function pagesWord(n: number): string {
   if (n === 1) return 'صفحةٌ واحدة';

@@ -82,7 +82,8 @@ export function omrCapacity(choices: number): number {
 }
 
 const mm = (v: number) => `${Math.round(v * 100) / 100}mm`;
-const esc = (s: string) => s.replace(/[<>&]/g, '');
+/** يحذف علامات HTML من نصّ الرأس — لا يهرّبها (فدلالته غير `escapeHtml`، ولذا اسمه غير اسمه). */
+const stripMarkup = (s: string) => s.replace(/[<>&]/g, '');
 
 /** ورقة الإجابة علاماتٍ بالملّم الحقيقي — ورأسها من رأس ورقة الأسئلة. */
 export function omrSheetHtml(spec: OmrSpec, head: { title?: string; lines?: string[] } = {}): string {
@@ -90,7 +91,7 @@ export function omrSheetHtml(spec: OmrSpec, head: { title?: string; lines?: stri
   const box = (x: number, y: number, w: number, h: number, extra = '') =>
     `<div style="position:absolute;left:${mm(x)};top:${mm(y)};width:${mm(w)};height:${mm(h)};${extra}"></div>`;
   const text = (x: number, y: number, t: string, size = 3.2, anchor: 'center' | 'right' = 'center') =>
-    `<div style="position:absolute;left:${mm(x - 20)};top:${mm(y - size * 0.62)};width:${mm(40)};text-align:${anchor};font-size:${mm(size)};line-height:1.2;color:#000;font-family:'Cairo','IBM Plex Sans Arabic',sans-serif">${esc(t)}</div>`;
+    `<div style="position:absolute;left:${mm(x - 20)};top:${mm(y - size * 0.62)};width:${mm(40)};text-align:${anchor};font-size:${mm(size)};line-height:1.2;color:#000;font-family:'Cairo','IBM Plex Sans Arabic',sans-serif">${stripMarkup(t)}</div>`;
   const parts: string[] = [];
   const s = FID.size;
   for (const [x, y] of [
@@ -103,8 +104,8 @@ export function omrSheetHtml(spec: OmrSpec, head: { title?: string; lines?: stri
   }
   parts.push(
     `<div dir="rtl" style="position:absolute;left:${mm(28)};right:${mm(28)};top:${mm(20)};font-family:'Cairo','IBM Plex Sans Arabic',sans-serif;color:#000;text-align:center">` +
-      `<div style="font-size:${mm(5)};font-weight:700">${esc(head.title || 'ورقة الإجابة')}</div>` +
-      (head.lines ?? []).map((l) => `<div style="font-size:${mm(3.4)};margin-top:${mm(1)}">${esc(l)}</div>`).join('') +
+      `<div style="font-size:${mm(5)};font-weight:700">${stripMarkup(head.title || 'ورقة الإجابة')}</div>` +
+      (head.lines ?? []).map((l) => `<div style="font-size:${mm(3.4)};margin-top:${mm(1)}">${stripMarkup(l)}</div>`).join('') +
       `<div style="font-size:${mm(3.6)};margin-top:${mm(4)};text-align:right">اسم الطالب: ...........................................&nbsp;&nbsp;&nbsp; الشعبة: ..........</div>` +
       `<div style="font-size:${mm(2.8)};margin-top:${mm(2)};color:#333">ظلِّل دائرةً واحدة لكل سؤال بقلمٍ غامق، وظلِّل رقمك في الأعمدة — ولا تكتب قرب المربّعات السود</div>` +
       `</div>`

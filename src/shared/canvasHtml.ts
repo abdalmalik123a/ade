@@ -20,7 +20,8 @@ import {
   type TextElement
 } from './canvas';
 import type { Doc, DocField, Inline } from './doc';
-import { escapeHtml, type MissingMode } from './docHtml';
+import { type MissingMode } from './docHtml';
+import { escapeHtml } from './html';
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 
 export type CanvasRenderOptions = {

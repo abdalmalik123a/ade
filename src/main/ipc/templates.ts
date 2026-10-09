@@ -31,6 +31,7 @@ import {
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
 import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
+import { localToday } from '@shared/dates';
 
 /** ما يُتعلَّم من المصمّم والاستيراد — ولا يُقبل من الواجهة غيره. */
 const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 'clip'];
@@ -189,7 +190,7 @@ export function registerTemplateIpc(): void {
   ipcMain.handle('templates:saveCensus', async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win || !lastCensus) return null;
-    const date = new Date().toLocaleDateString('en-CA');
+    const date = localToday();
     const path = await pickSavePath(win, {
       title: 'احفظ إحصاء ملفات Word',
       defaultName: `إحصاء ملفات Word ${date}.txt`,

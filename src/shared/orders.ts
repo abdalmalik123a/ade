@@ -123,8 +123,3 @@ export function dueLabel(due: string | null, today: string): { text: string; ton
   return { text: `بعد ${d} أيام`, tone: 'later' };
 }
 
-/** تاريخ اليوم محليًّا YYYY-MM-DD — لا بالتوقيت العالمي، فالمكتب في بغداد لا في غرينتش. */
-export function localToday(now = new Date()): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-}

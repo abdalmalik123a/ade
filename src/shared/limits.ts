@@ -4,6 +4,8 @@
  * والقائمة التي بلغت حدّها تقول ذلك تحتها: كان الأرشيف يكتب «٥٠٠ كتاب» وفي المكتب آلاف،
  * وسجلّ الزبائن يعرض ٣٠٠ ملف بلا كلمة — فيظنّ المكتب أنّ ما يراه كلّ ما عنده.
  */
+import { toIndic } from './arabic';
+
 export const LIST_LIMITS = {
   /** سجلّ الصادر في «السجلّ» — الأحدث أوّلًا. */
   documents: 500,
@@ -16,6 +18,6 @@ export const LIST_LIMITS = {
 /** «تُعرض ٥٠٠ كتاب فقط — …» حين بلغت القائمة حدّها، وإلا لا شيء. */
 export function limitNote(shown: number, limit: number, what: string, how: string): string | null {
   if (shown < limit) return null;
-  const n = String(limit).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+  const n = toIndic(limit);
   return `تُعرض ${n} ${what} فقط — ${how}`;
 }

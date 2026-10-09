@@ -19,12 +19,12 @@ import { UI_SCALES } from '../shell/Onboarding';
 
 /** إزاحة الهجري بالأيام — يُختار منها ما يطابق ما أُعلن في العراق. */
 const HIJRI_OFFSETS = [-2, -1, 0, 1, 2] as const;
-const indic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 import BackupPanel from '../components/BackupPanel';
 import ArchiveIntegrity from '../components/ArchiveIntegrity';
 import LicenseCard from '../components/LicenseCard';
 import AboutDialog from '../components/AboutDialog';
 import UpdateCard from '../components/UpdateCard';
+import { toIndic } from '@shared/arabic';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -198,7 +198,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
                           void window.diwan.settings.set({ hijriOffset: d }).then(() => onChanged?.());
                         }}
                       >
-                        {d === 0 ? 'كما هو' : `${d > 0 ? '+' : '−'}${indic(Math.abs(d))}`}
+                        {d === 0 ? 'كما هو' : `${d > 0 ? '+' : '−'}${toIndic(Math.abs(d))}`}
                       </button>
                     ))}
                   </div>

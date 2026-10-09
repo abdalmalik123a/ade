@@ -10,8 +10,7 @@ import type { Attachment } from '@shared/api';
 import { SIZE_LIMITS, sizeText } from '@shared/pdfEdit';
 import { errorText } from '../lib/errors';
 import { fitJpeg, rememberLimit, savedLimit } from '../lib/fitImage';
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndic } from '@shared/arabic';
 
 export default function UploadExportDialog({
   attachments,

@@ -8,8 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { PendingPrintJob } from '@shared/api';
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndic } from '@shared/arabic';
 
 export default function ResumePrintDialog() {
   const [jobs, setJobs] = useState<PendingPrintJob[]>([]);

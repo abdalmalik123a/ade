@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PRINT_ROLES, describeRole, normalizePrintRoles, planPrint } from '../src/shared/printRoles';
-import { escapeHtml } from '../src/shared/docHtml';
+import { escapeHtml } from '../src/shared/html';
 import { inlineBarcodes } from '../src/shared/imposition';
 import { htmlToText } from '../src/main/services/documents';
 

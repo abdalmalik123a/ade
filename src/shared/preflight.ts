@@ -10,6 +10,7 @@
  */
 import type { Canvas, CanvasElement } from './canvas';
 import { encodes128, NOT_128 } from './barcode';
+import { toIndic } from './arabic';
 
 export type PreflightIssue = {
   /** `warn` يُفسد الورقة غالبًا، و`info` يُحسن أن يُعرف. */
@@ -21,8 +22,6 @@ export type PreflightIssue = {
 export const MIN_PRINT_DPI = 150;
 /** المنطقة الآمنة داخل خطّ القصّ: المقصلة تنحرف ملّمًا أو اثنين. */
 export const SAFE_MM = 3;
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
 function labelOf(el: CanvasElement): string {
   if (el.name) return el.name;

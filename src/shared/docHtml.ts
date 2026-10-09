@@ -18,14 +18,8 @@ import {
   type TableBlock
 } from './doc';
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
-
-/**
- * ونصٌّ يقع في خاصّية (`src="…"`) تُهرَّب علامته `"` أيضًا — وإلا قطع اسمُ ملفٍّ أو قيمةٌ فيها
- * علامة تنصيص الخاصّية وفتح غيرها (خطة Production، ٢٫٥). و`&quot;` ممّا يفكّه `htmlToText`،
- * فالنصّ المستخرج للبحث والبصمة لا يتغيّر.
- */
-export const escapeHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+import { toIndic } from './arabic';
+import { escapeHtml } from './html';
 
 export type MissingMode = 'token' | 'blank' | 'hide';
 
@@ -112,7 +106,6 @@ function renderInlines(
     .join('');
 }
 
-const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 const AR_LETTERS = [...'أبجدهوزحطيكلمنسعفصقرشتثخذضظغ'];
 const ORDINALS = [
   'أولًا',
@@ -126,8 +119,6 @@ const ORDINALS = [
   'تاسعًا',
   'عاشرًا'
 ];
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => AR_DIGITS[Number(d)]!);
 
 /**
  * علامة الترقيم تُحسب عند الرسم لا تُكتب.

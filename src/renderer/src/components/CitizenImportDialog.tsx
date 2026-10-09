@@ -9,8 +9,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CitizenImportReport } from '@shared/api';
 import { IMPORT_TARGETS, importRows, mapOf, readTable, withTarget, type ImportTable, type ImportTarget } from '@shared/citizenImport';
 import { errorText } from '../lib/errors';
+import { toIndic } from '@shared/arabic';
 
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 const GROUPS = [...new Set(IMPORT_TARGETS.map((t) => t.group))];
 
 /** ما خرج — جملةٌ واحدة للشريط بعد الاستيراد. */

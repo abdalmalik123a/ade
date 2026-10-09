@@ -9,13 +9,10 @@ import type { Database } from 'better-sqlite3';
 import type { TodayAgenda, WeekSummary, WorkCounts } from '@shared/api';
 import type { Order } from '@shared/orders';
 import { normalizeFold } from '@shared/arabic';
-import { BACKUP_REMIND_DAYS, daysSince, isoDate, weekStart } from '@shared/dates';
+import { BACKUP_REMIND_DAYS, daysSince, isoDate, weekStart, localToday } from '@shared/dates';
 import { listOrders } from './orders';
 import { listDrafts } from './templates';
 import { workBetween } from './workLog';
-
-const localToday = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** المعاملات المعلّقة في الشبّاك — مخزونةٌ في الإعدادات، وما فسد منها لا شيء. */
 export function parkedCount(db: Database): number {

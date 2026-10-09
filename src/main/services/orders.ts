@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
-import { isOrderStatus, localToday, type Order, type OrderCounts, type OrderInput, type OrderStatus } from '@shared/orders';
+import { isOrderStatus, type Order, type OrderCounts, type OrderInput, type OrderStatus } from '@shared/orders';
+import { localToday } from '@shared/dates';
 import { prepareClients } from './clients';
 
 /**

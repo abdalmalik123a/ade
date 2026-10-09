@@ -5,6 +5,8 @@
  * وشعارٌ وعلامة مائية — بمواضع نسبيةٍ من الصفحة **كما تُرى** (بعد الدوران والقصّ). والحفظ
  * يكتب ملفًّا جديدًا دائمًا: الأصل يبقى كما وصل (قرار المالك).
  */
+import { toIndic } from './arabic';
+import { escapeHtml } from './html';
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -231,8 +233,7 @@ export function watermarkText(id: string, text: string): TextOverlay {
  * تُرى في كلّ صفحةٍ برقمها.
  */
 export function pageTokens(text: string, n: number, total: number): string {
-  const indic = (v: number) => String(v).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
-  return text.replace(/\{رقم\}/g, indic(n)).replace(/\{عدد\}/g, indic(total)).replace(/\{n\}/g, String(n)).replace(/\{N\}/g, String(total));
+  return text.replace(/\{رقم\}/g, toIndic(n)).replace(/\{عدد\}/g, toIndic(total)).replace(/\{n\}/g, String(n)).replace(/\{N\}/g, String(total));
 }
 
 /** رقم الصفحة أسفلها في الوسط، على الصفحات كلّها. */
@@ -349,8 +350,6 @@ export async function fitSearch<T>(
   return { smallest };
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
 /**
  * الطبقة ورقةَ HTML بمقاس الصفحة كما تُرى — يرسمها محرّك الطباعة PDF شفّافًا (`renderLayerPdf`).
  * والنصّ باتجاهه (`dir="auto"`): العربيّ من اليمين، والإنكليزيّ من اليسار، والمختلط يُرتَّب.
@@ -362,14 +361,14 @@ export function layerHtml(overlays: Overlay[], pageMm: { w: number; h: number })
       `width:${(o.box.w * pageMm.w).toFixed(2)}mm;height:${(o.box.h * pageMm.h).toFixed(2)}mm;` +
       `opacity:${Math.max(0, Math.min(1, o.opacity))};transform:rotate(${o.angle}deg);transform-origin:center`;
     if (o.kind === 'image') {
-      return `<div style="${pos}"><img alt="" src="diwan://store/${esc(o.src)}" style="width:100%;height:100%;object-fit:contain"/></div>`;
+      return `<div style="${pos}"><img alt="" src="diwan://store/${escapeHtml(o.src)}" style="width:100%;height:100%;object-fit:contain"/></div>`;
     }
     const justify = o.align === 'center' ? 'center' : o.align === 'left' ? 'flex-end' : 'flex-start';
     return (
       `<div dir="auto" style="${pos};display:flex;align-items:center;justify-content:${justify};` +
       `font-family:'${o.font}',Arial,sans-serif;font-size:${o.size}pt;line-height:1.3;color:${o.color};` +
       `font-weight:${o.bold ? 700 : 400};text-align:${o.align};white-space:pre-wrap;overflow:visible">` +
-      `<span style="width:100%">${esc(o.text)}</span></div>`
+      `<span style="width:100%">${escapeHtml(o.text)}</span></div>`
     );
   });
   return `<div style="position:relative;width:${pageMm.w}mm;height:${pageMm.h}mm">${items.join('')}</div>`;

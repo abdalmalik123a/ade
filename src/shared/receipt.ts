@@ -6,7 +6,7 @@
  * (للهويات وحدها). على ورقة A4 العادية — ما في كلّ مكتب — نسختان كلٌّ بثلثها يفصلهما خطّ قصّ (المالك: «نعم نسختان»):
  * للزبون، وللمكتب تُرفق بما تركه فلا تختلط أغراض الزبائن.
  */
-import { escapeHtml } from './docHtml';
+import { escapeHtml } from './html';
 import { formatGregorian, fromIsoDate, localStamp } from './dates';
 import type { Order } from './orders';
 

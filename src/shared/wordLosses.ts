@@ -8,6 +8,7 @@
  *
  * والكشف في `main/services/wordScan.ts`؛ وهنا الأسماء بلغة المكتب والجمع.
  */
+import { toIndic } from './arabic';
 
 export type WordLossKey =
   | 'textbox'
@@ -127,8 +128,6 @@ export function censusOf(scans: WordScan[], failed = 0): WordCensus {
     pages: count(scans.map((s) => s.page ?? 'غير محدّد')).map(([name, files]) => ({ name, files }))
   };
 }
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
 /**
  * الإحصاء نصًّا يُقرأ ويُرسل — أعدادٌ وأسماء خطوطٍ وحدها: لا اسم ملفٍّ ولا كلمةٌ من متنه، فبيانات الناس لا تخرج.

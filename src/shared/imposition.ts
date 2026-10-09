@@ -12,6 +12,7 @@ import type { CanvasSize } from './canvas';
 import { barcodeSvg } from './barcode';
 import { qrSvg } from './qr';
 import { sealSvg } from './securitySeal';
+import { toIndic } from './arabic';
 
 /** يرسم الرمز بنوعه — المعاينة والطباعة من هنا وحده. */
 export function drawCode(kind: string, value: string): string {
@@ -220,8 +221,6 @@ export function planSheets(imp: Imposition, items: number[], opts: SheetOptions 
   flush();
   return out;
 }
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
 const pageDiv = (imp: Imposition, inner: string) =>
   `<div class="print-page" style="position:relative;width:${mm(imp.sheet.w)};height:${mm(imp.sheet.h)};overflow:hidden;background:#fff;break-after:page;page-break-after:always">${inner}</div>`;

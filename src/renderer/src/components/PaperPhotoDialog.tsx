@@ -14,9 +14,7 @@ import { paperDoc, planPaper, type PaperPlan, type ReviewReason } from '@shared/
 import { applySpelling } from '@shared/spelling';
 import CameraCapture from './CameraCapture';
 import { canvasOf, pixelsOf, pngOf } from '../lib/pixels';
-
-/** الأرقام بالهندية — إلا ما لصق حرفًا لاتينيًّا: «A4» اسمُ مقاسٍ لا عدد. */
-const toIndic = (n: number | string) => String(n).replace(/(?<![A-Za-z])\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndicText as toIndic } from '@shared/arabic';
 
 const REASON: Record<ReviewReason, string> = {
   digits: 'أرقام — طابقها بالصورة',

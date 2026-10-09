@@ -14,14 +14,13 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DraftRow, TemplateSummary } from '@shared/api';
-import { localStamp } from '@shared/dates';
+import { localStamp, localToday } from '@shared/dates';
 import type { Parked } from './ServiceScreen';
 import { readyMessage } from '@shared/agenda';
 import {
   OPEN_STATUSES,
   STATUSES,
   dueLabel,
-  localToday,
   statusOf,
   type Client,
   type Order,
@@ -34,8 +33,7 @@ import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
-
-const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndic } from '@shared/arabic';
 
 const TONE: Record<string, string> = {
   late: 'bg-error text-on-error',

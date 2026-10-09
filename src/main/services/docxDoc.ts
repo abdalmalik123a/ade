@@ -33,6 +33,7 @@ import {
   type PageSize
 } from '@shared/doc';
 import { APPLY_THRESHOLD, fixZeroPeriods } from './blanks';
+import { toIndic } from '@shared/arabic';
 
 /** ملف يُنقل من حزمة Word إلى مخزن التطبيق فيعيد مساره النسبي. */
 export type SaveImage = (bytes: Uint8Array, extension: string) => string | null;
@@ -255,7 +256,7 @@ function formatNumber(n: number, fmt: string): string {
       return String.fromCharCode(64 + (((n - 1) % 26) + 1));
     case 'hindiNumbers':
     case 'arabicAbjadNumbers':
-      return String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+      return toIndic(n);
     default:
       return String(n);
   }

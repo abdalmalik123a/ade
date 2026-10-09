@@ -9,10 +9,8 @@
  * SVG مضمَّن بنمطٍ (`pattern`) لا صورةٌ في الخلفية: يأخذ خطوط الصفحة العربية ويُطبع
  * متّجهًا حادًّا بأيّ مقاس.
  */
+import { escapeHtml } from './html';
 let seq = 0;
-
-const escape = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export type WatermarkOptions = {
   text: string;
@@ -43,9 +41,9 @@ export function tiledWatermark(opts: WatermarkOptions): string {
     `<svg data-watermark-tiled="" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2" aria-hidden="true">` +
     `<defs><pattern id="${id}" width="${w}mm" height="${h}mm" patternUnits="userSpaceOnUse" patternTransform="rotate(${angle})">` +
     `<text x="0" y="${size * 1.2}mm" font-size="${size}mm" font-family="'Noto Naskh Arabic','Amiri',Tahoma,sans-serif" font-weight="700" ` +
-    `fill="${escape(opts.color ?? '#b00020')}" fill-opacity="${opacity}" direction="rtl" text-anchor="start">${escape(text)}</text>` +
+    `fill="${escapeHtml(opts.color ?? '#b00020')}" fill-opacity="${opacity}" direction="rtl" text-anchor="start">${escapeHtml(text)}</text>` +
     `<text x="${w / 2}mm" y="${size * 2.8}mm" font-size="${size}mm" font-family="'Noto Naskh Arabic','Amiri',Tahoma,sans-serif" font-weight="700" ` +
-    `fill="${escape(opts.color ?? '#b00020')}" fill-opacity="${opacity}" direction="rtl" text-anchor="start">${escape(text)}</text>` +
+    `fill="${escapeHtml(opts.color ?? '#b00020')}" fill-opacity="${opacity}" direction="rtl" text-anchor="start">${escapeHtml(text)}</text>` +
     `</pattern></defs><rect width="100%" height="100%" fill="url(#${id})"/></svg>`
   );
 }

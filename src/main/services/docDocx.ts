@@ -33,6 +33,7 @@ import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, 
 import { marker } from '@shared/docHtml';
 import { defaultAlign, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
 import { imageMeta } from './imageSize';
+import { toIndic } from '@shared/arabic';
 
 /** بكسل الشاشة (٩٦ في الإنش) إلى وحدات Word. */
 const halfPoints = (px: number) => Math.round(px * 1.5);
@@ -127,7 +128,7 @@ function paragraph(p: ParagraphBlock, ctx: Ctx): Paragraph {
 
 function items(list: ListItem[], styles: ListStyle[], depth: number, ctx: Ctx): Paragraph[] {
   const style = styles[Math.min(depth, styles.length - 1)] ?? 'bullet';
-  const num = (n: number) => (ctx.numerals === 'indic' ? String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!) : String(n));
+  const num = (n: number) => (ctx.numerals === 'indic' ? toIndic(n) : String(n));
   const out: Paragraph[] = [];
   list.forEach((it, i) => {
     const score = typeof it.score === 'number' ? [new TextRun({ text: `  (${num(it.score)} درجة)`, bold: true, rightToLeft: ctx.rtl })] : [];

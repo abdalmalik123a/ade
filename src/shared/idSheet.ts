@@ -11,7 +11,7 @@
  */
 import { STANDARD_CARD_SIZES, cardFilterCss, type IdColorFilter } from './idCardDuplex';
 import { normalizeFold } from './arabic';
-import { escapeHtml } from './docHtml';
+import { escapeHtml } from './html';
 import { tiledWatermark, type WatermarkOptions } from './watermark';
 
 export const A4 = { w: 210, h: 297 };

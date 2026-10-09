@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { deleteClient, getClient, listClients, prepareClients, saveClient, setClientLogo } from '../src/main/services/clients';
 import { deleteOrder, listOrders, orderCounts, saveOrder, setOrderStatus } from '../src/main/services/orders';
-import { dueLabel, localToday, statusOf } from '../src/shared/orders';
+import { dueLabel, statusOf } from '../src/shared/orders';
+import { localToday } from '../src/shared/dates';
 import { deleteCitizen, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
 import type { CitizenInput } from '../src/shared/api';
 

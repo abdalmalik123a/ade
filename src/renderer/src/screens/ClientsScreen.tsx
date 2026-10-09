@@ -7,10 +7,11 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { dominantColor, paletteFrom } from '@shared/designKit';
-import { dueLabel, localToday, statusOf, type Client, type Order } from '@shared/orders';
+import { dueLabel, statusOf, type Client, type Order } from '@shared/orders';
 import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFile';
 import { errorText } from '../lib/errors';
 import { useToast } from '../kit/useToast';
+import { localToday } from '@shared/dates';
 
 const KINDS = ['مدرسة', 'روضة', 'إعدادية', 'ثانوية', 'دائرة', 'مديرية', 'شركة', 'جامعة', 'مركز'];
 

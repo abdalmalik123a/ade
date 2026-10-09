@@ -7,8 +7,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OverviewStep } from '@shared/overview';
 import type { RouteKey } from '@shared/routes';
+import { toIndic } from '@shared/arabic';
 
-const indic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 const CARD_W = 360;
 /** أوّل ما يطابق ظاهرًا بحجمه — لا نسخةٌ مخفيّة منه. */
 const visible = (selector: string) =>
@@ -140,7 +140,7 @@ export default function Overview({
       >
         <div className="flex items-center justify-between gap-space-sm">
           <span className="font-label-sm text-label-sm text-on-surface-variant tabular">
-            {indic(i + 1)} من {indic(steps.length)}
+            {toIndic(i + 1)} من {toIndic(steps.length)}
           </span>
           <button className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface" data-act="overview-skip" type="button" onClick={onClose}>
             تخطَّ

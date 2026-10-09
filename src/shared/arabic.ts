@@ -64,3 +64,11 @@ export function toFtsQuery(raw: string): string {
     .map((t) => `"${t}"*`)
     .join(' AND ');
 }
+
+const INDIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+/** الأرقام بالهندية كما يكتبها المكتب: «١٢» لا «12» (ز٢ — كانت تُعرَّف في نحو عشرين ملفًّا). */
+export const toIndic = (n: number | string): string => String(n).replace(/\d/g, (d) => INDIC_DIGITS[Number(d)]!);
+
+/** وفي نصٍّ فيه رموزٌ لاتينية: الرقم بعد حرفٍ لاتيني يبقى كما هو («A4»)، وسائر الأرقام تُحوَّل. */
+export const toIndicText = (s: number | string): string => String(s).replace(/(?<![A-Za-z])\d/g, (d) => INDIC_DIGITS[Number(d)]!);

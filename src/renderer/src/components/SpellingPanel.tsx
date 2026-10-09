@@ -6,8 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { SpellIssue } from '@shared/spelling';
-
-const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
+import { toIndic } from '@shared/arabic';
 
 export default function SpellingPanel({
   issues,

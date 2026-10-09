@@ -49,6 +49,9 @@ export function isoDate(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** تاريخ اليوم محليًّا YYYY-MM-DD — لا بالتوقيت العالمي، فالمكتب في بغداد لا في غرينتش (ز٢: كانت ثلاث نسخ). */
+export const localToday = (now: Date = new Date()): string => isoDate(now);
+
 /** أوّل الأسبوع: السبت منتصف الليل — أوّل أيّام الدوام بعد الجمعة (لـ«السجلّ» والملخّص الأسبوعي معًا). */
 export function weekStart(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 1) % 7));

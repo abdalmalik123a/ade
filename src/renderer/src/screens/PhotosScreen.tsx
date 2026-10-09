@@ -33,11 +33,11 @@ import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
 import { fitJpeg, rememberLimit, savedLimit } from '../lib/fitImage';
 import { dataUrlOf, drawScene, fallbackPlace, loadImage, loadSuit, renderJpeg, workPixels, type Scene, type Suit, type Work } from '../lib/portraitCanvas';
+import { toIndic } from '@shared/arabic';
 
 /** القاط المدمج صورٌ مضمّنة (data:) تُحمَّل عند فتح الشاشة — فلا تُقفَل اللوحة بأصل ملفٍّ محلّي. */
 const SUIT_FILES = import.meta.glob('../assets/suits/*.webp', { query: '?inline', import: 'default' }) as Record<string, () => Promise<string>>;
 
-const toIndic = (n: number | string) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 const pct = (v: number) => toIndic(Math.round(v * 100));
 const FRAME_H = 520;
 const CUSTOM_ID = 'custom';

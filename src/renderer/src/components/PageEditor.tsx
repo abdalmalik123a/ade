@@ -73,6 +73,7 @@ import FieldHints from './FieldHints';
 import { wrongGenderWords } from '@shared/fieldHints';
 import { GENDER_KEY, isChoiceKey, pickChoice } from '@shared/gender';
 import { sampleValues } from '@shared/letterDraft';
+import { toIndic } from '@shared/arabic';
 
 /** «جرّب باسمٍ آخر»: امرأةٌ وقيمٌ تجريبية — فيُرى ما بقي مذكّرًا أو نصًّا وهو خانة. */
 function trialValues(fields: DocField[], values: Record<string, string> = {}): Record<string, string> {
@@ -137,7 +138,6 @@ function pagesLabel(n: number): string {
   if (n === 2) return 'صفحتان';
   return n <= 10 ? `${n} صفحات` : `${n} صفحة`;
 }
-const indicDigits = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
 
 // ── الأوامر ─────────────────────────────────────────────────────────────
 
@@ -987,7 +987,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
 
   const pageH = page.h * MM_PX;
   const stride = pageH + SHEET_GAP;
-  const pageNumber = (n: number) => (doc.pageSetup.numerals === 'indic' ? indicDigits(n) : String(n));
+  const pageNumber = (n: number) => (doc.pageSetup.numerals === 'indic' ? toIndic(n) : String(n));
 
   return (
     <div className="flex gap-space-md h-full min-h-0">
