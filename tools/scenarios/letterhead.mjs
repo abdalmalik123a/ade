@@ -155,7 +155,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('القسم الثالث بحقله التلقائي', layout.sections?.[2]?.blocks?.[0]?.value === '{رقم_الصادر}');
   ok('محاذاة القسم الثالث يسارًا', layout.sections?.[2]?.blocks?.[0]?.align === 'left');
   ok('حُفظت البسملة', layout.basmala?.show === true);
-  ok('حُفظ الخط', layout.font === 'amiri');
+  // من «خطوط ديوان» باسم عائلته (DESIGNS.md ٠٫٧) — وما حُفظ بمفتاحه القديم «amiri» يُقرأ بالعائلة نفسها.
+  ok('حُفظ الخط', layout.font === 'Amiri');
 
   // ── المكتبة: البحث والمفضّلة والتكرار ──────────────────────────────
   await page.type('input[placeholder^="ابحث: هيت"]', 'الرصافه');

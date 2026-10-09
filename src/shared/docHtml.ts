@@ -20,6 +20,7 @@ import {
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 import { toIndic } from './arabic';
 import { escapeHtml } from './html';
+import { cleanFamily } from './fonts';
 
 export type MissingMode = 'token' | 'blank' | 'hide';
 
@@ -82,7 +83,8 @@ function renderInlines(
         let out = escapeHtml(resolveChoices(node.text, values[GENDER_KEY]));
         const m = node.marks;
         if (!m) return out;
-        if (m.font) out = `<span style="font-family:'${escapeHtml(m.font)}'">${out}</span>`;
+        // الاسم نظيفًا (`cleanFamily`): من Word أو من ملفٍّ مستورد، ويُكتب داخل نمطٍ مضمَّن.
+        if (m.font && cleanFamily(m.font)) out = `<span style="font-family:'${cleanFamily(m.font)}'">${out}</span>`;
         if (m.size) out = `<span style="font-size:${m.size}px">${out}</span>`;
         if (m.underline) out = `<u>${out}</u>`;
         if (m.italic) out = `<em>${out}</em>`;

@@ -11,6 +11,7 @@
  */
 
 import { docText, emptyDoc, normalizeDoc, type Block } from './doc';
+import { cleanFamily, legacyFamily, stackOf } from './fonts';
 
 export type BlockKind = 'text' | 'image' | 'divider' | 'field' | 'spacer';
 export type Align = 'right' | 'center' | 'left';
@@ -84,20 +85,19 @@ export const BASMALA_TEXT = 'بسم الله الرحمن الرحيم';
 /**
  * خطّ الترويسة: واحد لها كلّها لا لكل سطر.
  *
- * خطٌّ لكل سطر يُخرج ترويسات مهلهلة، وهو باب «Word المصغّر». والأربعة محزومة
- * في التطبيق — لا من النظام — فالإخراج واحد على كل جهاز.
+ * خطٌّ لكل سطر يُخرج ترويسات مهلهلة، وهو باب «Word المصغّر». ويُختار من «خطوط ديوان» (DESIGNS.md ٠٫٧) بما فيها
+ * المستورد — فالإخراج واحد على كل جهاز. ومفاتيح ما قبل المكتبة (`naskh` و`amiri` و`cairo` و`plex`) تُقرأ بعائلاتها
+ * ولا تُرحَّل: سلاسلها هي هي، فلا يتبدّل شكل ترويسةٍ محفوظة ولا كتابٍ صدر بها.
  */
-export type FontKey = 'plex' | 'amiri' | 'naskh' | 'cairo';
+export type FontKey = string;
 
-export const FONTS: { key: FontKey; label: string; stack: string }[] = [
-  { key: 'naskh', label: 'نسخ (Noto Naskh)', stack: "'Noto Naskh Arabic', serif" },
-  { key: 'amiri', label: 'أميري — نسخ كلاسيكي', stack: "'Amiri', serif" },
-  { key: 'cairo', label: 'القاهرة — حديث', stack: "'Cairo', sans-serif" },
-  { key: 'plex', label: 'بلكس — خط التطبيق', stack: "'IBM Plex Sans Arabic', sans-serif" }
-];
+/** عائلة خطّ الترويسة — من مفتاحٍ قديم أو اسمها. */
+export function fontFamilyOf(font: FontKey): string {
+  return legacyFamily(font) ?? cleanFamily(font);
+}
 
-export function fontStack(key: FontKey): string {
-  return (FONTS.find((f) => f.key === key) ?? FONTS[FONTS.length - 1]!).stack;
+export function fontStack(font: FontKey): string {
+  return stackOf(fontFamilyOf(font) || 'IBM Plex Sans Arabic');
 }
 
 export type LetterheadLayout = {
@@ -181,7 +181,8 @@ function normalizeBasmala(raw: unknown): LetterheadBasmala {
  * أما الجديدة فتبدأ بالنسخ، وهو خطّ الكتاب الرسمي.
  */
 function normalizeFont(raw: unknown, fallback: FontKey): FontKey {
-  return FONTS.some((f) => f.key === raw) ? (raw as FontKey) : fallback;
+  if (typeof raw === 'string' && legacyFamily(raw)) return raw;
+  return cleanFamily(raw) || fallback;
 }
 
 /** المحاذاة الافتراضية لقسم بحسب موضعه: الأول يمين، والأخير يسار، وما بينهما وسط. */

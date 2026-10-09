@@ -16,6 +16,7 @@ import ClientsScreen from './screens/ClientsScreen';
 import PhotosScreen, { type PhotoIncoming } from './screens/PhotosScreen';
 import PdfScreen, { type PdfIncoming } from './screens/PdfScreen';
 import LetterheadScreen from './screens/LetterheadScreen';
+import FontsScreen from './screens/FontsScreen';
 import AuditScreen from './screens/AuditScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import IdDuplexDialog from './screens/IdDuplexDialog';
@@ -338,12 +339,7 @@ export default function App() {
           />
         );
       case 'papers':
-        return (
-          <PapersScreen
-            ref={papersRef}
-            onChanged={() => void refresh()}
-          />
-        );
+        return <PapersScreen ref={papersRef} onChanged={() => void refresh()} />;
       case 'designs':
         return <DesignsScreen request={designRequest} onChanged={() => void refresh()} />;
       case 'orders':
@@ -380,6 +376,8 @@ export default function App() {
         );
       case 'letterhead':
         return <LetterheadScreen />;
+      case 'fonts':
+        return <FontsScreen />;
       case 'audit':
         return (
           <AuditScreen

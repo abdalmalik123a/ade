@@ -8,6 +8,7 @@ import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
+import type { FontsApi } from './fonts';
 import type { ImportMap, ImportRow } from './citizenImport';
 import type { WordCensus, WordScan } from './wordLosses';
 
@@ -1036,14 +1037,8 @@ export type DiwanApi = {
   };
   drafts: {
     list(): Promise<DraftRow[]>;
-    save(input: {
-      id: number | null;
-      templateId: number | null;
-      citizenId: number | null;
-      title: string;
-      values: Record<string, string>;
-      bodyHtml: string;
-    }): Promise<number>;
+    /** كتابٌ (`values.__doc`) أو تصميمٌ لم يُحفظ (`values.__design`، DESIGNS.md ٠٫٦) — والجدول واحد. */
+    save(input: { id: number | null; templateId: number | null; citizenId: number | null; title: string; values: Record<string, string>; bodyHtml: string }): Promise<number>;
     delete(id: number): Promise<void>;
   };
   /** إخراج الورقة: طباعة ومعاينة PDF وصورة عالية الدقة وWord. */
@@ -1178,6 +1173,7 @@ export type DiwanApi = {
       fieldSuggestions: FieldSuggestion[];
     } | null>;
   };
+  fonts: FontsApi;
   files: {
     /** يحذف المسوح العابرة (`tmp/…`) حين يُغلق الحوار الذي مسحها — وغيرها يُتجاهل. */
     discardTransient(paths: string[]): Promise<number>;

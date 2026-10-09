@@ -103,9 +103,11 @@ describe('اختبار الهيكل (ز١)', () => {
       'DIWAN_TEST_SCAN_FILE',
       'DIWAN_TEST_SLOW_ISSUE',
       'DIWAN_TEST_UPDATE_NO_LAUNCH',
-      // متغيّرات النظام وأداة البناء
+      'DIWAN_TEST_WINDOWS_FONTS',
+      // متغيّرات النظام وأداة البناء (WINDIR: مجلّد خطوط Windows — «خطوط ديوان»)
       'ELECTRON_RENDERER_URL',
-      'LOCALAPPDATA'
+      'LOCALAPPDATA',
+      'WINDIR'
     ]);
     const bad: string[] = [];
     for (const s of under('src/main/')) {

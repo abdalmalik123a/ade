@@ -70,6 +70,8 @@ import {
 } from './editorKit';
 import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
 import FieldHints from './FieldHints';
+import FontSelect from './FontSelect';
+import { fontsIn } from '../lib/fonts';
 import { wrongGenderWords } from '@shared/fieldHints';
 import { GENDER_KEY, isChoiceKey, pickChoice } from '@shared/gender';
 import { sampleValues } from '@shared/letterDraft';
@@ -125,8 +127,6 @@ const S = docSchema;
 const N = S.nodes as Record<string, NonNullable<(typeof S.nodes)[string]>>;
 const M = S.marks as Record<string, MarkType>;
 
-/** خطوط Windows العربية التي تكتب بها المكاتب في Word، والمحزومة مع البرنامج. والفارغ خطّ الورقة. */
-const FONTS = ['Simplified Arabic', 'Traditional Arabic', 'Sakkal Majalla', 'Arial', 'Times New Roman', 'Tahoma', 'Amiri', 'Cairo', 'IBM Plex Sans Arabic'];
 /** تباعد الأسطر كما في Word: مفرد، و١٫١٥، ونصف، ومزدوج. */
 const LINE_HEIGHTS = [1, 1.15, 1.5, 2, 2.5];
 /** الفجوة بين ورقتين على الشاشة. */
@@ -998,21 +998,15 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
             <Tool act="redo" icon="redo" title="إعادة (Ctrl+Y)" onRun={() => run_(redo)} />
             <ToolSep />
-            <select
-              aria-label="الخطّ"
+            <FontSelect
+              act="font"
+              blank="خطّ الورقة"
               className="h-8 w-40 rounded-lg bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
-              data-act="font"
-              title="الخطّ — لما حُدِّد، أو لما سيُكتب"
-              value={curFont ?? ''}
-              onChange={(e) => run_(setValueMark(M.font, e.target.value ? { family: e.target.value } : null))}
-            >
-              <option value="">خطّ الورقة</option>
-              {FONTS.map((f) => (
-                <option key={f} value={f} style={{ fontFamily: `'${f}'` }}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              title="الخطّ من «خطوط ديوان» — لما حُدِّد، أو لما سيُكتب"
+              used={state ? fontsIn(state.doc, M.font) : []}
+              value={curFont}
+              onChange={(family) => run_(setValueMark(M.font, family ? { family } : null))}
+            />
             <select
               aria-label="حجم الخطّ"
               className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"

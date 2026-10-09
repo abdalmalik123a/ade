@@ -5,6 +5,7 @@ import {
   asksLetterNumber,
   defaultAlign,
   emptyLayout,
+  fontStack,
   isLayoutEmpty,
   normalizeLayout,
   visibleSections,
@@ -458,12 +459,24 @@ describe('البسملة وخطّ الترويسة', () => {
     expect(old.basmala.show).toBe(false);
   });
 
-  it('قيمة خطّ غريبة تعود إلى الأصل الآمن', () => {
-    const layout = normalizeLayout({
-      sections: [{ id: 's', blocks: [], weight: 1 }],
-      font: 'comic-sans'
-    });
-    expect(layout.font).toBe('plex');
+  it('خطّ الترويسة من «خطوط ديوان» باسمه — والغائب يبقى باسمه فيُنبَّه عليه، والفاسد يعود إلى الأصل الآمن (٠٫٧)', () => {
+    const at = (font: unknown) => normalizeLayout({ sections: [{ id: 's', blocks: [], weight: 1 }], font }).font;
+    expect(at('Simplified Arabic')).toBe('Simplified Arabic');
+    // لا بديل صامت: يبقى باسمه، ومصمّم الترويسة يقول إنّه ليس في المكتبة.
+    expect(at('comic-sans')).toBe('comic-sans');
+    expect(at("x';}body{")).toBe('xbody');
+    expect(at(42)).toBe('plex');
+    expect(at('   ')).toBe('plex');
+    // ومفاتيح ما قبل المكتبة تبقى، وسلاسلها هي هي — فلا يتبدّل شكل ترويسةٍ محفوظة.
+    expect(at('naskh')).toBe('naskh');
+    expect(at('constructor')).toBe('constructor');
+    expect([fontStack('naskh'), fontStack('amiri'), fontStack('cairo'), fontStack('plex')]).toEqual([
+      "'Noto Naskh Arabic', serif",
+      "'Amiri', serif",
+      "'Cairo', sans-serif",
+      "'IBM Plex Sans Arabic', sans-serif"
+    ]);
+    expect(fontStack('constructor')).toBe("'constructor', serif");
   });
 });
 

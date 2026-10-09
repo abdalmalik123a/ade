@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import FillCard from './screens/FillCard';
+import { loadFonts } from './lib/fonts';
 import './styles.css';
 
 /**
@@ -23,6 +24,8 @@ if (printMode) {
     </StrictMode>
   );
 } else {
+  // خطوط ديوان المستوردة قبل أن تُرسم ورقة (DESIGNS.md ٠٫٧).
+  void loadFonts();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary fullPage fallbackTitle="تعذّر عرض ديوان">

@@ -10,6 +10,7 @@ import { installErrorTranslation } from './errors';
 import { registerFileIpc } from './files';
 import { registerInboxIpc } from './inbox';
 import { registerDesignIpc } from './designs';
+import { registerFontIpc } from './fonts';
 import { registerPdfIpc } from './pdf';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
@@ -153,6 +154,7 @@ export function registerIpc(): void {
   registerFileIpc();
   registerInboxIpc();
   registerDesignIpc();
+  registerFontIpc();
   registerPdfIpc();
   registerTemplateIpc();
   registerCitizenIpc();

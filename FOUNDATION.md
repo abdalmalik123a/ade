@@ -1131,7 +1131,7 @@ src/main/                 عملية Electron: القاعدة، الإصدار،
   license/ownerKey.ts     المفتاح العامّ للمالك (Ed25519) — به تُقرأ مفاتيح التفعيل
   db/                     الاتصال (index.ts) وإعداداته (pragmas.ts)، والمخطّط (schema.sql)، وفهارس البحث (search.sql)
   ipc/                    القنوات — لكلّ بابٍ ملفّ: backup · camera · citizens · content · designs · documents
-                          · files · index · letterheads · license · orders · pdf · photos · questions · templates
+                          · files · fonts · index · letterheads · license · orders · pdf · photos · questions · templates
     gate.ts               بوّابة الإنتاج: قنوات الإصدار والطباعة والإخراج تمرّ بالمدّة التجريبية — قائمةٌ واحدة
                           (وأوّل ما يخرج منها يُقيَّد مرّةً فيختفي «؟» الصفحات)
     license.ts            التفعيل: أين يُحفظ أوّل تشغيلٍ وأحدث يومٍ والمفاتيح (القاعدة والملفّ والسجلّ)، وما يُمنع
@@ -1175,6 +1175,8 @@ src/main/                 عملية Electron: القاعدة، الإصدار،
     printJobs.ts          سجلُّ الطباعة: ما أُرسل ورقةً ورقة، فيُستأنف بعد انقطاع
     psd.ts                قراءة Photoshop: الترويسة والدقّة والصورة المسطَّحة
     psdLayers.ts          طبقاته عناصرَ تُحرَّر، ومحوُها من الخلفية
+    fontFile.ts           ملفّ الخطّ يُفحص قبل قبوله (TTF · OTF · WOFF) ومنه العائلة والوزن والميل — بلا مكتبة
+    fonts.ts              «خطوط ديوان»: الاستيراد من ملفٍّ ومن خطوط Windows بضغطة، والحذف، وقواعد نافذة الإخراج
     questionBank.ts       بنك الأسئلة: الحفظ بلا تكرار، والبحث المتساهل مع الهمزة
     render.ts             الإخراج: الطباعة وPDF وصورة ٣٠٠ نقطة، ومعايرة الطابعة، والتقاط أنماط الورقة مع كلّ كتاب
     revisions.ts          المعرّف الثابت ورقم النسخة، وسجلّ النسخ السابقة (§٣)
@@ -1234,6 +1236,8 @@ src/shared/               ما تشترك فيه العمليتان — دوال
     draft.ts              مسودّة التصميم في جدول المسودّات نفسه (`__design`)، وبصمته لمعرفة «تغيّر أم لا» (٠٫٦)
     kit/                  التصاميم الجاهزة: الأنواع الستّة عشر (catalog وlayouts/ وsample) والأنماط الخمسة (نمطٌ في ملفّ
                           بـstyles/) واللوحات والزخرفة المحسوبة (ornaments وcolor)
+  fonts/                  «خطوط ديوان» (DESIGNS.md ٠٫٧): المحزوم التسعة بتراخيصها، والاسم النظيف، وسلسلة الخطّ، والغائب
+                          وبديله، و`@font-face` للمستورد — للمحرّر والترويسات والتصاميم ونافذة الإخراج
   clipart.ts              مكتبة الرسومات المدمجة
   barcode.ts              Code128 بلا مكتبة
   qr.ts                   رمز QR بلا مكتبة
@@ -1287,6 +1291,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     OrdersScreen.tsx      الطلبات بحالاتها
     ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»
     LetterheadScreen.tsx  الترويسات والشعارات والكليشات
+    FontsScreen.tsx       «المكتبة ← الخطوط»: المحزوم والمستورد، واستيراد ملفٍّ، وخطوط Windows بضغطة
     PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر
     DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج
@@ -1302,6 +1307,8 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     editorKit.tsx         أدوات المحرّر: الشريط وقائمة الإدراج ولوحة الحقول
     LetterSheet.tsx       ورقة الكتاب كما تُطبع — للشبّاك والمحرّر معًا
     LetterheadView.tsx    الترويسة كما تُطبع
+    FontSelect.tsx        اختيار الخطّ من «خطوط ديوان» — والغائب باسمه، ويُضاف من Windows بضغطة
+    PendingCard.tsx       بطاقة ما لم يكتمل في «قيد العمل»: مسودّة كتابٍ أو تصميم، أو معاملةٌ معلّقة
     LetterheadDesigner.tsx  مصمّم الترويسة بالأقسام
     ErrorBar.tsx          شريط الأخطاء: كلّ فشلٍ لم يُلتقط يُقال بسببه
     ErrorBoundary.tsx     الشاشة التي تسقط تُقال ولا تُسقط التطبيق
@@ -1345,6 +1352,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
+                          · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها
                           · printChoice.ts أيّ طابعةٍ تطبع: من دور الشاشة، أو تُسأل في `PrintChooser`
                           · portraitCanvas.ts رسم صورة المعاملة: المعاينة والحفظ من دالّةٍ واحدة
   src/assets/suits/       القاط المدمج: WebP شفّافة من مكتبة المالك، والنظاميّ بلا شارات (tools/prepare-suits.py)

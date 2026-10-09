@@ -6,6 +6,7 @@ import { pageOfSheetHtml } from '@shared/sheetPage';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 import { rendererDevUrl } from '../devUrl';
+import { importedFontCss } from './fonts';
 
 /**
  * محرّك الإخراج: الطباعة وPDF والصورة عالية الدقّة.
@@ -177,8 +178,9 @@ async function withRenderWindow<T>(
           document.head.appendChild(old);
           document.body.className = kept.bodyClass || '';
         }
+        // ومعها خطوط ديوان المستوردة (DESIGNS.md ٠٫٧): لا جسر في هذه النافذة تسأل منه، فتُحقن قواعدها هنا.
         const style = document.createElement('style');
-        style.textContent = ${JSON.stringify(opts.layer ? layerCss(page) : printCss(page, opts.offset))};
+        style.textContent = ${JSON.stringify(`${importedFontCss(getDb())}\n${opts.layer ? layerCss(page) : printCss(page, opts.offset)}`)};
         document.head.appendChild(style);
         const root = document.createElement('div');
         root.className = 'print-root';
@@ -320,13 +322,9 @@ export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reas
   }
 }
 
-function printWith(
-  req: PrintRequest,
-  silent: boolean,
-  page: PageMm,
-  landscape: boolean,
-  pageSize: ReturnType<typeof pageSizeOf>['pageSize']
-): Promise<{ ok: boolean; reason?: string }> {
+type PageSize = ReturnType<typeof pageSizeOf>['pageSize'];
+
+function printWith(req: PrintRequest, silent: boolean, page: PageMm, landscape: boolean, pageSize: PageSize): Promise<{ ok: boolean; reason?: string }> {
   return withRenderWindow(
     req.sheetHtml,
     (win) =>

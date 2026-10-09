@@ -314,6 +314,13 @@ const api: DiwanApi = {
   designs: {
     import: (fallback: { w: number; h: number } | null) => invoke('designs:import', fallback)
   },
+  fonts: {
+    list: () => invoke('fonts:list'),
+    importFiles: () => invoke('fonts:importFiles'),
+    windows: () => invoke('fonts:windows'),
+    importWindows: (family: string) => invoke('fonts:importWindows', family),
+    remove: (family: string) => invoke('fonts:remove', family)
+  },
   files: {
     discardTransient: (paths: string[]) => invoke('files:discardTransient', paths),
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),

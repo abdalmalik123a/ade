@@ -326,3 +326,17 @@ CREATE TABLE IF NOT EXISTS work_days (
   n     INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, kind)
 );
+
+-- «خطوط ديوان» (DESIGNS.md ٠٫٧): ما استورده المكتب — وجهٌ لكلّ ملفّ (العادي والعريض ملفّان)، وملفّه في المخزن
+-- ببصمته (`fonts/…`) فينتقل في النسخة الاحتياطية. والمحزوم لا يُكتب هنا: هو في البرنامج نفسه (`shared/fonts`).
+CREATE TABLE IF NOT EXISTS fonts (
+  id            INTEGER PRIMARY KEY,
+  family        TEXT NOT NULL COLLATE NOCASE,
+  weight        INTEGER NOT NULL DEFAULT 400,
+  italic        INTEGER NOT NULL DEFAULT 0,
+  file          TEXT NOT NULL,
+  source        TEXT NOT NULL DEFAULT 'file',    -- file | windows
+  original_name TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (family, weight, italic)
+);

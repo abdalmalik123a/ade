@@ -10,7 +10,7 @@ import { useState } from 'react';
 import {
   defaultAlign,
   newId,
-  FONTS,
+  fontFamilyOf,
   HEADER_FIELDS,
   type Align,
   type BlockKind,
@@ -18,6 +18,7 @@ import {
   type LetterheadBlock,
   type LetterheadLayout
 } from '@shared/letterhead';
+import FontSelect from './FontSelect';
 
 const KIND_META: { kind: BlockKind; icon: string; label: string }[] = [
   { kind: 'text', icon: 'title', label: 'سطر نصّي' },
@@ -577,17 +578,13 @@ export default function LetterheadDesigner({
       <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
         <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
           الخط
-          <select
+          <FontSelect
+            act="letterhead-font"
             className="h-8 px-2 rounded bg-surface-container-low text-on-surface font-label-md text-label-md"
-            value={layout.font}
-            onChange={(e) => onChange({ ...layout, font: e.target.value as typeof layout.font })}
-          >
-            {FONTS.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            title="خطّ الترويسة كلّها — من «خطوط ديوان»"
+            value={fontFamilyOf(layout.font)}
+            onChange={(family) => family && onChange({ ...layout, font: family })}
+          />
         </label>
 
         <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface cursor-pointer">
