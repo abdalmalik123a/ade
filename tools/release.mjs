@@ -3,9 +3,13 @@
  * CHANGELOG.md، ويكتب بصمته SHA-256 في release/SHA256SUMS.txt — تُرسل مع المثبّت فيُطابقها المكتب
  * (docs/INSTALL.md) قبل أن يثبّت.
  *
+ * وهو بوّابة (و٨): **يفشل** إن كان في الشجرة ما لم يُودَع (فالمثبّت من إيداعٍ معروف — ومنها إشعاراتٌ أعاد البناء
+ * توليدها)، أو غابت قاعدة الإصدار `tests/fixtures/release-<الإصدار>.db` (كانت تحذيرًا)، أو لم تنجح اختبارات الوحدة.
+ *
  *   npm run release   (= npm run dist ثم هذا)
  */
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,12 +22,21 @@ const fail = (m) => {
   process.exit(1);
 };
 
+// ── البوّابة (و٨): الشجرة نظيفة، وقاعدة الإصدار موجودة، والاختبارات تنجح ──
+const git = spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' });
+if (git.status !== 0) fail('تعذّر سؤال git عن حال الشجرة');
+if (git.stdout.trim()) fail(`في الشجرة ما لم يُودَع — المثبّت يُبنى من إيداعٍ نظيف:
+${git.stdout.trimEnd()}`);
+if (!existsSync(join(ROOT, 'tests', 'fixtures', `release-${version}.db`))) {
+  fail(`لا tests/fixtures/release-${version}.db — اصنعها (tests/makeReleaseDb.test.ts) وأودعها: بها يُختبر ترحيل قاعدة كلّ مكتبٍ اشترى هذا الإصدار`);
+}
+console.log('… اختبارات الوحدة');
+const tests = spawnSync('npx vitest run', { cwd: ROOT, stdio: 'inherit', shell: true });
+if (tests.status !== 0) fail('اختبارات الوحدة لم تنجح كلّها — لا إصدار');
+
 if (!existsSync(exe)) fail(`لا مثبّت للإصدار ${version}: ${exe} — شغّل npm run dist أوّلًا`);
 const changelog = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf8');
 if (!new RegExp(`^## ${version.replace(/\./g, '\\.')}\\b`, 'm').test(changelog)) fail(`لا قسم «## ${version}» في CHANGELOG.md`);
-if (!existsSync(join(ROOT, 'tests', 'fixtures', `release-${version}.db`))) {
-  console.warn(`! لا tests/fixtures/release-${version}.db — اصنعها (tests/makeReleaseDb.test.ts) واحفظها لكلّ إصدارٍ يُباع`);
-}
 
 const hash = createHash('sha256');
 for await (const chunk of createReadStream(exe)) hash.update(chunk);

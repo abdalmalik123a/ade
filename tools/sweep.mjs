@@ -12,10 +12,14 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
+import { registryGuard } from './registryGuard.mjs';
 
 const SCENARIOS_DIR = resolve('tools/scenarios');
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 دقائق
 const RESILIENCE_TIMEOUT_MS = 20 * 60 * 1000; // 20 دقيقة لسيناريو الصمود
+
+/** قبل كلّ تشغيل — على البرنامج المحزوم: تُمحى مرساة المدّة التجريبية من السجلّ (و٨، `registryGuard.mjs`). */
+let beforeRun = () => {};
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -57,6 +61,7 @@ function ensurePortFree(port = 9223) {
 async function runScenarioOnce(scenarioPath, customEnv = {}, timeoutMs = DEFAULT_TIMEOUT_MS) {
   ensurePortFree(9223);
   await sleep(400);
+  beforeRun();
 
   const start = Date.now();
   const env = {
@@ -221,6 +226,19 @@ async function main() {
   const results = [];
   const startAll = Date.now();
 
+  // على البرنامج المحزوم: مرساة المدّة في السجلّ تُحفظ، وتُمحى قبل كلّ تشغيل، وتعود في النهاية — وإن قُطع الفحص.
+  const guard = isPackaged ? registryGuard() : null;
+  if (guard) {
+    beforeRun = () => guard.clear();
+    if (guard.file) console.log(`  مرساة المدّة في السجلّ محفوظة في: ${guard.file}
+`);
+    process.once('SIGINT', () => {
+      guard.restore();
+      process.exit(130);
+    });
+  }
+
+  try {
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i];
     const idxStr = `[${String(i + 1).padStart(2, '0')}/${configs.length}]`;
@@ -244,6 +262,9 @@ async function main() {
         }
       }
     }
+  }
+  } finally {
+    guard?.restore();
   }
 
   const totalTimeSec = ((Date.now() - startAll) / 1000).toFixed(1);
