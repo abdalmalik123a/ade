@@ -2,7 +2,7 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` و`release-1.2.0.db` و`release-1.3.0.db` كتبها إصدارها
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.4.0.db` كتبها إصدارها
  * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -26,6 +26,11 @@ import { guardDataVersion, readDataVersion } from '../src/main/services/dataVers
 import { normalizePrintRoles } from '../src/shared/printRoles';
 import { normalizeHidden } from '../src/shared/sections';
 import type { IssueInput } from '../src/shared/api';
+import { listFaces } from '../src/main/services/fonts';
+import { listElements } from '../src/main/services/elements';
+import { getTemplate, saveTemplate, templateDoc } from '../src/main/services/templates';
+import { designPackLevel } from '../src/shared/canvas';
+import { isDesignDraft, readDesignDraft } from '../src/shared/design/draft';
 
 /** القواعد المفتوحة تُغلق بعد كلّ فحص — فيُمحى مجلّدها المؤقّت ولا يبقى ملفّ WAL ممسوكًا. */
 const opened: Database.Database[] = [];
@@ -54,7 +59,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
@@ -74,7 +79,8 @@ describe.each(SOLD)('قاعدة %s المبيعة', (version) => {
     expect((db.prepare('SELECT COUNT(*) AS n FROM attachments').get() as { n: number }).n).toBe(1);
     expect(listLetterheads(db).map((l) => l.name)).toEqual(['مديرية تربية الأنبار']);
     expect(listTemplates(db).map((t) => t.title)).toEqual(['تأييد استمرار بالخدمة']);
-    expect(listDrafts(db)).toHaveLength(1);
+    // مسودّة الكتاب — ومسودّة التصميم (١٫٤٫٠) في «ما جاء به».
+    expect(listDrafts(db).filter((d) => !isDesignDraft(d.valuesJson))).toHaveLength(1);
     expect(listClips(db).map((c) => c.title)).toEqual(['ختام']);
     const docs = listDocuments(db, { limit: 100 });
     expect(docs).toHaveLength(8);
@@ -147,5 +153,35 @@ describe('ما جاء به ١٫٣٫٠ (الحزمة الصغيرة الآمنة)
     const o = saveOrder(db, { id: null, clientId: null, citizenId: zainab.id, customer: zainab.fullName, title: 'هويّة' });
     expect(o.citizenId).toBe(zainab.id);
     expect(listOrders(db, { citizenId: zainab.id }).map((x) => x.id)).toEqual([o.id]);
+  });
+});
+
+describe('ما جاء به ١٫٤٫٠ (التصاميم، المرحلة ١)', () => {
+  it('قاعدته: التصميم بعناصره الجديدة كما حُفظ، ومسودّة التصميم بقيمها، والخطّ والعنصر في مكتبتيهما', () => {
+    const { db, dir } = openRelease('1.4.0');
+    const row = listTemplates(db, 'تصاميم', 'print-only').find((t) => t.title === 'هوية مدرسة الرافدين')!;
+    const doc = templateDoc(getTemplate(db, row.id)!);
+    const els = doc.canvas!.elements;
+    expect(els.map((e) => e.kind)).toEqual(['path', 'image', 'text', 'text', 'table']);
+    expect(els.find((e) => e.id === 'name')).toMatchObject({ arc: 40, outline: { color: '#ffffff' }, group: 'g1' });
+    expect(els.find((e) => e.id === 'photo')).toMatchObject({ shape: 'circle', frame: { rings: 2 } });
+    expect(els.find((e) => e.id === 'imsak')).toMatchObject({ borders: 'rows', hideHeader: true });
+    expect(designPackLevel(doc)).toBe(2);
+    expect(collectContent(db, join(dir, 'store'), '1.4.1').pkg.format).toBe(2);
+    const draft = listDrafts(db).find((d) => d.title === 'تصميمٌ لم يُحفظ')!;
+    expect(readDesignDraft(draft.valuesJson)?.values).toEqual({ 'العام الدراسي': '٢٠٢٦ – ٢٠٢٧' });
+    expect(listFaces(db).map((f) => [f.family, f.source])).toEqual([['Diwani Office', 'windows']]);
+    expect(listElements(db).map((e) => [e.name, e.category])).toEqual([['زخرفة الزاوية', 'زخارف']]);
+  });
+
+  it('وقاعدة ١٫٣٫٠ تُفتح بمكتبتي الخطوط والعناصر فارغتين، ويُحفظ فيها تصميمٌ بالمرحلة ١', () => {
+    const { db } = openRelease('1.3.0');
+    expect(listFaces(db)).toEqual([]);
+    expect(listElements(db)).toEqual([]);
+    const source = openRelease('1.4.0').db;
+    const row = listTemplates(source, 'تصاميم', 'print-only')[0]!;
+    const doc = templateDoc(getTemplate(source, row.id)!);
+    const saved = saveTemplate(db, { id: null, code: null, title: row.title, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [], doc });
+    expect(templateDoc(getTemplate(db, saved.id)!).canvas!.elements.find((e) => e.id === 'name')).toMatchObject({ arc: 40 });
   });
 });

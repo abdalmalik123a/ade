@@ -27,6 +27,8 @@ import { normalizeLayout } from '../src/shared/letterhead';
 import { docFromLegacy, run } from '../src/shared/doc';
 import { normalizePrintRoles } from '../src/shared/printRoles';
 import type { CitizenInput, IssueInput, SheetStyle } from '../src/shared/api';
+import { canvasDoc, emptyCanvas, imageElement, normalizeCanvas, pathElement, tableElement, textElement } from '../src/shared/canvas';
+import { designDraftValues } from '../src/shared/design/draft';
 
 const { version: VERSION } = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string };
 /** ما جاء به إصدارٌ يُكتب في قاعدته وما بعدها — بالأرقام لا بالنصّ («1.10.0» بعد «1.3.0»). */
@@ -105,6 +107,27 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   setOrderStatus(db, done.id, 'delivered');
   // ١٫٣٫٠: الطلب مربوطٌ بملفّ الزبون (د٨).
   if (atLeast('1.3.0')) saveOrder(db, { id: null, clientId: null, citizenId: zainab.id, customer: 'زينب علي حسن الربيعي', title: 'صور جواز', received: 'صورة البطاقة' });
+  // ١٫٤٫٠ (التصاميم، المرحلة ١): تصميمٌ بما جاءت به — شكلٌ حرّ بتدرّج، وصورةٌ مقصوصةٌ دائرةً بإطار، ونصٌّ على قوسٍ
+  // بحدٍّ وظلّ، وجدولٌ بأسطرٍ وصفٍّ ملوّن، وشفافية ومجموعة — ومسودّة تصميمٍ لم يُحفظ، وخطٌّ استورده المكتب وعنصرٌ في
+  // مكتبته (صفّاهما كما يكتبهما `importFace` و`importElement`؛ ملفّاهما في المخزن لا في القاعدة).
+  if (atLeast('1.4.0')) {
+    const gold = { type: 'linear' as const, angle: 90, stops: [{ offset: 0, color: '#f5d77a' }, { offset: 1, color: '#9a7524' }] };
+    const canvas = normalizeCanvas({
+      ...emptyCanvas({ w: 148, h: 105 }),
+      elements: [
+        pathElement({ id: 'wave', box: { x: 0, y: 0.8, w: 1, h: 0.2 }, d: 'M0 50 Q25 0 50 50 T100 50 V100 H0 Z', fill: gold, z: 1 }),
+        imageElement({ id: 'photo', box: { x: 0.05, y: 0.25, w: 0.2, h: 0.35 }, ref: 'صورة الطالب', shape: 'circle', frame: { color: '#9a7524', width: 0.8, rings: 2, gap: 0.6 }, z: 2 }),
+        textElement({ id: 'name', box: { x: 0.3, y: 0.08, w: 0.6, h: 0.2 }, inlines: [run('مدرسة الرافدين')], size: 18, bold: true, color: '#1f3a8a', arc: 40, outline: { color: '#ffffff', width: 0.5 }, shadow: { color: '#00000059', dx: 0.6, dy: 1, blur: 2 }, z: 3, group: 'g1' }),
+        textElement({ id: 'year', box: { x: 0.3, y: 0.28, w: 0.6, h: 0.1 }, inlines: [run('{العام الدراسي}')], size: 12, opacity: 0.8, z: 4, group: 'g1' }),
+        tableElement({ id: 'imsak', box: { x: 0.3, y: 0.42, w: 0.65, h: 0.35 }, borders: 'rows', hideHeader: true, rowStyles: [null, { bg: '#fde68a', bold: true }, null], z: 5 })
+      ]
+    });
+    const design = canvasDoc(canvas, { title: 'هوية مدرسة الرافدين', category: 'تصاميم' });
+    saveTemplate(db, { id: null, code: null, title: 'هوية مدرسة الرافدين', subtitle: '148.0 × 105.0 ملم', category: 'تصاميم', subjectLine: null, bodyHtml: 'مدرسة الرافدين', letterheadId: null, variables: [], doc: design });
+    saveDraft(db, { id: null, templateId: null, citizenId: null, title: 'تصميمٌ لم يُحفظ', values: designDraftValues({ doc: design, values: { 'العام الدراسي': '٢٠٢٦ – ٢٠٢٧' } }), bodyHtml: '' });
+    db.prepare("INSERT INTO fonts (family, weight, italic, file, source, original_name) VALUES ('Diwani Office', 400, 0, 'fonts/0123456789abcdef0123456789abcdef.ttf', 'windows', 'DiwaniOffice.ttf')").run();
+    db.prepare("INSERT INTO elements (name, category, kind, file, width, height) VALUES ('زخرفة الزاوية', 'زخارف', 'svg', 'elements/fedcba9876543210fedcba9876543210.svg', 120, 120)").run();
+  }
   recordWork(db, '2026-10-03', { sheets: 12, files: 2 });
   recordWork(db, '2026-10-04', { sheets: 5, files: 0 });
 
