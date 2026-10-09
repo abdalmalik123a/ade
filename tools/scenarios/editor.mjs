@@ -104,16 +104,17 @@ export default async function scenario(page, { profile, shotsDir }) {
   );
   if (shotsDir) await page.shot(join(shotsDir, 'editor-field.png'));
 
-  // ── الحجم: «نؤيد» بحجم ٢٠ ──────────────────────────────────────────
+  // ── الحجم: «نؤيد» بحجم ١٨ نقطة كما في Word (د٥) — ٢٤ بكسلًا مخزَّنًا ─────────────
   await select(0, 4);
-  await choose('[data-act="size"]', '20');
+  await choose('[data-act="size"]', '18');
   ok(
-    'وصار المظلَّل بحجم ٢٠ على الورقة',
+    'وصار المظلَّل بحجم ١٨ نقطة على الورقة',
     await page.eval(`
-      const s = document.querySelector('${ED} > p [data-size="20"]');
+      const s = document.querySelector('${ED} > p [data-size="24"]');
       return Boolean(s) && s.textContent === 'نؤيد';
     `)
   );
+  ok('والمنتقي يقول «18» بالنقطة', (await page.eval(`return document.querySelector('[data-act="size"]').value;`)) === '18');
 
   // ── المحاذاة: توسيط السطر ──────────────────────────────────────────
   await click('[data-act="align-center"]');
@@ -257,8 +258,8 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   ok('وحقلها الذي صنعه F4', doc?.fields?.[0]?.label === 'أحمد عادل');
   ok(
-    'والحجم محفوظٌ علامةً على النصّ',
-    ps.some((b) => b.inlines.some((i) => i.kind === 'run' && i.text === 'نؤيد' && i.marks?.size === 20))
+    'والحجم محفوظٌ علامةً على النصّ — بالبكسل كما كان (١٨ نقطة = ٢٤)',
+    ps.some((b) => b.inlines.some((i) => i.kind === 'run' && i.text === 'نؤيد' && i.marks?.size === 24))
   );
   ok('والتوسيط محفوظٌ على السطر', ps[0]?.align === 'center');
   ok('والسطر الجديد سطرٌ مستقلّ لا ملتصق', ps.some((b) => textOf(b) === 'والكتاب صادرٌ بناءً على طلبه'));
@@ -290,7 +291,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     `)
   );
   ok('والتوسيط فيها', (await count('.a4-sheet [data-body] p[style*="text-align:center"]')) > 0);
-  ok('والحجم فيها', (await count('.a4-sheet [data-body] span[style*="font-size:20px"]')) > 0);
+  ok('والحجم فيها', (await count('.a4-sheet [data-body] span[style*="font-size:24px"]')) > 0);
   ok('والجدول فيها', (await count('.a4-sheet [data-body] table')) === 1);
   if (shotsDir) await page.shot(join(shotsDir, 'service-review.png'));
 

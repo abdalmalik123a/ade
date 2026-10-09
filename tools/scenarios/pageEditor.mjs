@@ -88,7 +88,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   let text = await page.text();
   ok('Ctrl+A يحدّد الورقة كلّها ويقولها', text.includes('المحدَّد: الورقة كلّها'));
   ok('وزرّ «تحديد الكلّ» مضاء', await page.eval(`return document.querySelector('[data-act="select-all"]')?.className.includes('bg-secondary-fixed');`));
-  ok('واختير الحجم ١٨ للكلّ', await choose('[data-act="size"]', '18'));
+  // الحجم بالنقطة كما في Word (د٥): «١٨» نقطة = ٢٤ بكسلًا مخزَّنًا.
+  ok('واختير الحجم ١٨ نقطة للكلّ', await choose('[data-act="size"]', '18'));
   await click('[data-act="bold"]');
   await wait(300);
   await click('[data-act="align-center"]');
@@ -234,7 +235,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('الفقرات الأربع محفوظة', paras.length === 4);
   ok('والتوسيط على الفقرات الثلاث الأولى', paras.slice(0, 3).every((b) => b.align === 'center'));
   ok('والعريض على كلّ نصّها', paras.slice(0, 3).every((b) => b.inlines.every((i) => i.kind !== 'run' || i.marks?.bold)));
-  ok('والحجم ١٨ على كلّ نصّها', paras.slice(0, 3).every((b) => b.inlines.every((i) => i.kind !== 'run' || i.marks?.size === 18 || b.size === 18)));
+  ok('والحجم ١٨ نقطة (٢٤ بكسلًا) على كلّ نصّها', paras.slice(0, 3).every((b) => b.inlines.every((i) => i.kind !== 'run' || i.marks?.size === 24 || b.size === 24)));
   ok('والمائل عبر الفقرتين', paras[0]?.inlines.some((i) => i.kind === 'run' && i.marks?.italic) && paras[1]?.inlines.some((i) => i.kind === 'run' && i.marks?.italic));
   ok('والخانة في الفقرة الثانية وفي الحقول', doc?.fields?.[0]?.label === 'المعلومات' && paras[1]?.inlines.some((i) => i.kind === 'field' && i.ref === doc.fields[0].key));
   ok('وفاصل الصفحة قبل «الصفحة الثانية»', blocks.findIndex((b) => b.kind === 'pageBreak') === blocks.findIndex((b) => b.kind === 'paragraph' && textOf(b) === 'الصفحة الثانية') - 1);

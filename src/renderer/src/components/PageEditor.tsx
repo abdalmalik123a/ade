@@ -57,12 +57,12 @@ import {
 import { watermarkHtml } from '@shared/docHtml';
 import { fieldFromText, makeTable } from '@shared/docEdit';
 import { HEAD_MAX, findSheetHead } from '@shared/sheetHead';
+import { WORD_SIZES_PT, ptToPx, pxToPt } from '@shared/fontSize';
 import {
   BASE_SIZE,
   FieldPanel,
   InsertMenu,
   OFFICIAL_INDENT_MM,
-  SIZES,
   Tool,
   ToolSep,
   type EditorProps,
@@ -976,7 +976,8 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const curFont = state ? (markValue(state, M.font, 'family') as string | null) : null;
   const curSizeMark = state ? (markValue(state, M.size, 'px') as number | null) : null;
   const curParaSize = state ? (paragraphValue(state, 'size') as number | null | undefined) : null;
-  const curSize = Math.round(curSizeMark ?? curParaSize ?? BASE_SIZE);
+  // يُعرض بالنقطة كما في Word (د٥)، ويبقى مخزَّنًا بالبكسل.
+  const curPt = pxToPt(curSizeMark ?? curParaSize ?? BASE_SIZE);
   const curAlign = state ? (paragraphValue(state, 'align') as Align | undefined) : undefined;
   const curLh = state ? (paragraphValue(state, 'lineHeight') as number | null | undefined) : undefined;
   const curIndent = state ? paragraphValue(state, 'indent') : undefined;
@@ -1016,14 +1017,14 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
               aria-label="حجم الخطّ"
               className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
               data-act="size"
-              title="حجم الخطّ — لما حُدِّد، أو لما سيُكتب"
-              value={String(curSize)}
+              title="حجم الخطّ بالنقطة كما في Word — لما حُدِّد، أو لما سيُكتب"
+              value={String(curPt)}
               onChange={(e) => {
-                const px = Number(e.target.value);
+                const px = ptToPx(Number(e.target.value));
                 run_(setValueMark(M.size, px === BASE_SIZE ? null : { px }));
               }}
             >
-              {[...new Set([...SIZES, curSize])].sort((a, b) => a - b).map((s) => (
+              {[...new Set([...WORD_SIZES_PT, curPt])].sort((a, b) => a - b).map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
