@@ -27,6 +27,11 @@ export async function prepare() {
     copyFileSync(FIXTURE, join(FOLDER, name));
   }
   writeFileSync(join(FOLDER, 'ملاحظات.txt'), 'ليس مستندًا', 'utf8');
+  // هـ١: أرشيفٌ فيه Word القديم وExcel ومجلّدٌ فرعيّ — يُعدّ ما لا يُنقل ويُقال (ولا ملفّ .docx في الفرعيّ: فالبطاقات ثلاثٌ كما كانت).
+  writeFileSync(join(FOLDER, 'قديم.doc'), 'Word قديم', 'utf8');
+  writeFileSync(join(FOLDER, 'كشف.xls'), 'Excel قديم', 'utf8');
+  mkdirSync(join(FOLDER, 'أرشيف 2025'));
+  writeFileSync(join(FOLDER, 'أرشيف 2025', 'تأييد قديم.doc'), 'Word قديم', 'utf8');
   return { DIWAN_TEST_OPEN_DIR: FOLDER };
 }
 
@@ -47,6 +52,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وعدّت الملفات والبطاقات', text.includes('3 ملفًا') && text.includes('3 بطاقة'));
   ok('ونبّهت على النسخ المتشابهة', text.includes('تُركت نسخةً'));
   ok('ولم تُحتسب الملفات التي ليست Word', !text.includes('ملاحظات.txt'));
+  const skipped = await page.eval(`return document.querySelector('[data-import-skipped]')?.textContent ?? ''`);
+  ok('وقالت ما لم يُنقل: Word القديم من المجلّد وفرعيّه بعدده وما يُفعل له (هـ١)', skipped.includes('2 ملفّ Word بصيغةٍ قديمة') && skipped.includes('احفظه .docx'));
+  ok('وExcel وما ليس Word بعدديهما', skipped.includes('1 ملفّ Excel') && skipped.includes('1 ملفّ ليس Word'));
   ok('وكشفت الترويسة المتكرّرة', text.includes('ترويسة واحدة تتكرّر في 3'));
   // أسماء الحقول في مدخلات تُحرَّر، لا في نصّ الصفحة.
   const fieldLabels = await page.eval(`
@@ -90,6 +98,12 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   text = await page.text();
   ok('أكّد الحفظ وقال ما تُرك', text.includes('حُفظت 1 بطاقة') && text.includes('وتُركت 2'));
+  ok('وقال في النتيجة ما لم يُنقل من المجلّد (هـ١)', text.includes('ولم يُنقل من المجلّد') && text.includes('2 ملفّ Word بصيغةٍ قديمة'));
+  await wait(3500);
+  ok('ورسالته باقيةٌ بعد ثلاث ثوانٍ حتى تُغلق', (await page.text()).includes('ولم يُنقل من المجلّد'));
+  await page.eval(`document.querySelector('[data-act="toast-close"]')?.click()`);
+  await wait(300);
+  ok('و«أغلق» يغلقها', !(await page.text()).includes('ولم يُنقل من المجلّد'));
 
   // ── التفتيش في القاعدة ─────────────────────────────────────────────
   const { templates, letterheads } = read();

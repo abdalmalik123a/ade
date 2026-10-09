@@ -795,7 +795,11 @@ function OrderDialog({
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
-                  void window.diwan.files.readSheet().then((out) => out && setBatchText(out.text));
+                  // وملفٌّ لا يُقرأ (`.xls` القديم) يُقال سببه — كان يسكت (هـ١).
+                  void window.diwan.files
+                    .readSheet()
+                    .then((out) => out && setBatchText(out.text))
+                    .catch((err: unknown) => setError(errorText(err, 'تعذّرت قراءة الملف')));
                 }}
               >
                 <span className="material-symbols-outlined text-[16px]">table_view</span>

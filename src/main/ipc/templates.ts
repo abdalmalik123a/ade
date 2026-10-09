@@ -107,7 +107,8 @@ export function registerTemplateIpc(): void {
       title: 'استيراد نموذج',
       buttonLabel: 'استيراد',
       filterName: 'نماذج',
-      extensions: ['docx', 'xml']
+      // و`.doc` يُرى ليُقال له ما يُفعل (هـ١) — لا ليُخفى فيظنّ المكتب أنّ ملفّه ضاع.
+      extensions: ['docx', 'doc', 'xml']
     });
     if (!source) return null;
 
@@ -172,7 +173,8 @@ export function registerTemplateIpc(): void {
       title: 'اختر ملف Excel فيه كتب المكتب',
       buttonLabel: 'اقرأ الملف',
       filterName: 'Excel',
-      extensions: ['xlsx']
+      // و`.xls` القديم يُرى ليُقال له «احفظه .xlsx» (هـ١).
+      extensions: ['xlsx', 'xls']
     });
     if (!file) return null;
     const plan = await planExcelImport(file, { saveImage: storeLetterheadImage });

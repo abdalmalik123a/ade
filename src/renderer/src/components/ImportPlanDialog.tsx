@@ -13,6 +13,7 @@ import { renameField, unfield, type Doc, type Suggestion } from '@shared/doc';
 import { isLayoutEmpty } from '@shared/letterhead';
 import type { ImportChoices, ImportPlan } from '@shared/api';
 import { similarityBucket } from '@shared/learningKeys';
+import { skippedLines } from '@shared/importSkipped';
 import { WORD_LOSSES, lossesOf } from '@shared/wordLosses';
 import LetterheadView from './LetterheadView';
 import { WordLossList } from './WordLosses';
@@ -197,6 +198,7 @@ export default function ImportPlanDialog({
   /** من أوراق ملفّ Excel لا من مجلّد ملفّات Word — فتُقال المراجعة بلغته. */
   const excel = plan.source === 'excel';
   const shared = plan.sharedLetterhead;
+  const skipped = skippedLines(plan.skipped);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-md">
@@ -215,6 +217,15 @@ export default function ImportPlanDialog({
             لا يُحفظ إلا ما تختاره. راجع الأسماء المستنتجة — والنقطة الحمراء علامةُ
             اجتهادٍ ضعيف.
           </span>
+          {/* ما في المجلّد ولم يُقرأ (هـ١): يُقال بعدده وبما يُفعل له قبل الحفظ — لا يُكتشف بعد شهر. */}
+          {skipped.length > 0 && (
+            <div className="flex flex-col gap-0.5 p-space-xs rounded-lg bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm" data-import-skipped="">
+              <span className="font-semibold">ما في المجلّد ولم يُنقل:</span>
+              {skipped.map((line) => (
+                <span key={line}>• {line}</span>
+              ))}
+            </div>
+          )}
           {plan.census && plan.census.files > 0 && (
             <div className="flex flex-col gap-1 pt-space-xs border-t border-outline-variant/60 font-label-sm text-label-sm text-on-surface-variant" data-census="">
               {plan.census.losses.length > 0 && (

@@ -579,6 +579,25 @@ export type ImportPlan = {
   failed: { file: string; error: string }[];
   /** إحصاء المجلّد: ما لا يُنقل بعدد ملفّاته، والخطوط والجداول والصور — بلا أسماءٍ ولا نصوص. */
   census?: WordCensus;
+  /** ما في المجلّد ولم يُقرأ (هـ١) بأعداده وأسبابه — يُقال في المراجعة وفي النتيجة (`shared/importSkipped.ts`). */
+  skipped?: ImportSkipped;
+};
+
+/**
+ * ما في المجلّد ولم يُقرأ (هـ١) — فمكتبٌ أرشيفه `.doc` أو مجلّداتٌ فرعية لا يظنّ أنّه نقله كلّه وقد دخل بعضه.
+ */
+export type ImportSkipped = {
+  /** ملفّات Word بصيغةٍ غير `.docx` (`.doc` و`.rtf` وأخواتهما): تُحفظ `.docx` من Word ثم تُستورد. */
+  doc: number;
+  /** ملفّات Excel: لا تُقرأ من المجلّد — «كتب من ملف Excel» ملفًّا ملفًّا. */
+  xls: number;
+  /** ما ليس Word ولا Excel (PDF وصور ونصوص) — يبقى كما هو. */
+  unsupported: number;
+  /** ملفّات `.docx` بعد السقف (`limit`) — لم تُقرأ. */
+  overCap: number;
+  /** مجلّداتٌ فرعية لم تُفتح: أعمق من الحدّ أو ممنوعٌ فتحها. */
+  folders: number;
+  limit: number;
 };
 
 export type ImportChoices = {

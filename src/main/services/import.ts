@@ -389,6 +389,9 @@ function xmlToTemplate(xml: string, fallbackTitle: string): ImportedTemplate {
   };
 }
 
+/** ملفّات Word بصيغةٍ غير `.docx`: لا تُقرأ — تُحفظ `.docx` من Word (هـ١). */
+export const OTHER_WORD = new Set(['.doc', '.dot', '.rtf', '.odt', '.docm', '.dotx', '.dotm']);
+
 export async function importTemplateFile(
   path: string,
   saveImage?: ImageSaver
@@ -543,5 +546,8 @@ export async function importTemplateFile(
     };
   }
 
+  if (OTHER_WORD.has(ext)) {
+    throw new Error(`«${basename(path)}» ملف Word بصيغةٍ قديمة (${ext}) — افتحه في Word واحفظه بصيغة .docx («حفظ باسم») ثم استورده`);
+  }
   throw new Error(`الملف ليس Word ولا XML (${ext || 'بلا امتداد'}) — يُستورد النموذج من .docx أو .xml`);
 }

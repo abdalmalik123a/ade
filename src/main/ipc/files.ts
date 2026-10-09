@@ -208,7 +208,8 @@ export function registerFileIpc(): void {
       title: 'اختر قائمة الأسماء',
       buttonLabel: 'افتح',
       filterName: 'Excel أو CSV',
-      extensions: ['xlsx', 'csv']
+      // و`.xls` القديم يُرى ليُقال له «احفظه .xlsx» (هـ١).
+      extensions: ['xlsx', 'xls', 'csv']
     });
     if (!source) return null;
     return { name: basename(source), ...(await sheetToText(source)) };

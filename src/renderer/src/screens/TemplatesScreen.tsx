@@ -27,6 +27,7 @@ import {
 import LetterheadView from '../components/LetterheadView';
 import TemplateDesigner from './TemplateDesigner';
 import { errorText } from '../lib/errors';
+import { skippedLines } from '@shared/importSkipped';
 import { normalizeFold } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -37,7 +38,7 @@ const SORTS = [
   { value: 'title', label: 'أبجدياً حسب العنوان الإداري' }
 ] as const;
 
-type Toast = { text: string; tone: 'ok' | 'warn' } | null;
+type Toast = { text: string; tone: 'ok' | 'warn'; sticky?: boolean } | null;
 
 /** ملفّ Word فتحه الشبّاك من «الملفّات» — مقروءًا، يُفتح في المصمّم مرّةً بمفتاحه. */
 export type WordIncoming = { key: number; imported: ImportedTemplate };
@@ -92,10 +93,11 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
   const [loadingPacks, setLoadingPacks] = useState(false);
   const timer = useRef<number | null>(null);
 
-  const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
-    setToast({ text, tone });
+  const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok', sticky = false) => {
+    setToast({ text, tone, sticky });
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setToast(null), 3000);
+    // وما لم يُنقل من المجلّد يبقى حتى يُغلق (هـ١): أسطرٌ تُقرأ لا تختفي بعد ثلاث ثوانٍ.
+    if (!sticky) timer.current = window.setTimeout(() => setToast(null), 3000);
   }, []);
 
   const reload = useCallback(async (category: string | null) => {
@@ -217,11 +219,14 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       const found = await window.diwan.templates.planFolder();
       if (!found) return;
       if (found.candidates.length === 0) {
+        // ومجلّدٌ ملفّاته `.doc` يُقال له ما فيه وما يُفعل (هـ١) — لا «لا ملفات Word» وهو ممتلئٌ بها.
+        const left = skippedLines(found.skipped);
         say(
-          found.failed.length
+          (found.failed.length
             ? `لم يُقرأ أيّ ملف من ${found.failed.length}`
-            : 'لا ملفات Word في هذا المجلد',
-          'warn'
+            : 'لا ملفات .docx في هذا المجلد') + (left.length ? ` — ${left.join(' · ')}` : ''),
+          'warn',
+          left.length > 0
         );
         return;
       }
@@ -260,10 +265,15 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       setPlan(null);
       await reload(active);
       onChanged?.();
+      // وما في المجلّد ولم يُنقل يُقال في النتيجة أيضًا (هـ١)، ويبقى حتى يُغلق — فلا يظنّ المكتب أنّ أرشيفه كلّه دخل.
+      const left = skippedLines(edited.skipped);
       say(
         `حُفظت ${out.templates} بطاقة` +
           (out.letterheadId ? ' وترويسة واحدة للجميع' : '') +
-          (out.skipped ? ` — وتُركت ${out.skipped}` : '')
+          (out.skipped ? ` — وتُركت ${out.skipped}` : '') +
+          (left.length ? ` · ولم يُنقل من المجلّد: ${left.join(' · ')}` : ''),
+        'ok',
+        left.length > 0
       );
     } catch (e) {
       say(errorText(e, 'تعذّر الحفظ'), 'warn');
@@ -746,6 +756,18 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
             {toast.tone === 'ok' ? 'check_circle' : 'warning'}
           </span>
           <span>{toast.text}</span>
+          {toast.sticky && (
+            <button
+              aria-label="أغلق الرسالة"
+              className="shrink-0 w-7 h-7 rounded-full hover:bg-black/10 inline-flex items-center justify-center"
+              data-act="toast-close"
+              title="أغلق"
+              type="button"
+              onClick={() => setToast(null)}
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          )}
         </div>
       )}
       {formOpen && (

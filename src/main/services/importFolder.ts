@@ -32,12 +32,14 @@ import type {
   ImportChoices,
   ImportedTemplate,
   ImportOutcome,
-  ImportPlan
+  ImportPlan,
+  ImportSkipped
 } from '@shared/api';
+import { FOLDER_DEPTH } from '@shared/importSkipped';
 import { groupDuplicates, stripTatweel } from './blanks';
 import { applyBlankFields } from '@shared/fieldHints';
 import { HEAD_MAX, findSheetHead, splitSheetHead } from '@shared/sheetHead';
-import { importTemplateFile, type ImageSaver } from './import';
+import { OTHER_WORD, importTemplateFile, type ImageSaver } from './import';
 import { adoptDataFields, excelToDocs } from './excelDoc';
 import { saveLetterhead } from './letterheads';
 import { saveTemplate } from './templates';
@@ -47,8 +49,55 @@ import { censusOf, type WordScan } from '@shared/wordLosses';
 
 export type { ImportCandidate, ImportChoices, ImportOutcome, ImportPlan };
 
-/** سقفٌ يمنع مجلدًا ضخمًا من تعليق التطبيق — والباقي يُستورد على دفعات. */
+/** سقفٌ يمنع مجلدًا ضخمًا من تعليق التطبيق — وما بعده يُعدّ ويُقال (هـ١)، ويُستورد من مجلّدٍ آخر. */
 export const FOLDER_LIMIT = 500;
+
+const EXCEL = new Set(['.xls', '.xlsx', '.xlsm', '.xlsb', '.ods']);
+/** ما ليس من عمل المكتب: مؤقّتات Word (`~$`) وملفّات ويندوز المخفيّة — لا تُقرأ ولا تُعدّ. */
+const noise = (name: string) => name.startsWith('~$') || name.startsWith('.') || /^(desktop\.ini|thumbs\.db)$/i.test(name);
+const systemDir = (name: string) => /^[.$~]/.test(name) || name === 'System Volume Information';
+
+/**
+ * ملفّات Word في المجلّد ومجلّداته الفرعية (هـ١) بمساراتها النسبية («الإنذارات/انذار.docx»)، وما تُرك بأعداده.
+ *
+ * ملفّات كلّ مجلّدٍ قبل مجلّداته الفرعية وبترتيب أسمائها — فالترتيب ثابت، والسقف يأخذ الأقرب إلى ما اختير.
+ * ومجلّدٌ فرعيّ لا يُفتح يُعدّ ولا يُسقط المجلّد؛ والمجلّد المختار نفسه إن لم يُفتح فخطؤه يُقال كما كان.
+ */
+export async function walkFolder(dir: string, limit = FOLDER_LIMIT): Promise<{ files: string[]; skipped: ImportSkipped }> {
+  const skipped: ImportSkipped = { doc: 0, xls: 0, unsupported: 0, overCap: 0, folders: 0, limit };
+  const files: string[] = [];
+  async function walk(rel: string, depth: number): Promise<void> {
+    const at = rel ? join(dir, rel) : dir;
+    const entries = rel ? await readdir(at, { withFileTypes: true }).catch(() => null) : await readdir(at, { withFileTypes: true });
+    if (!entries) {
+      skipped.folders++;
+      return;
+    }
+    entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    const subs: string[] = [];
+    for (const e of entries) {
+      const path = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (!systemDir(e.name)) subs.push(path);
+        continue;
+      }
+      if (!e.isFile() || noise(e.name)) continue;
+      const ext = extname(e.name).toLowerCase();
+      if (ext === '.docx') {
+        if (files.length < limit) files.push(path);
+        else skipped.overCap++;
+      } else if (OTHER_WORD.has(ext)) skipped.doc++;
+      else if (EXCEL.has(ext)) skipped.xls++;
+      else skipped.unsupported++;
+    }
+    for (const sub of subs) {
+      if (depth >= FOLDER_DEPTH) skipped.folders++;
+      else await walk(sub, depth + 1);
+    }
+  }
+  await walk('', 0);
+  return { files, skipped };
+}
 
 /** أسطر نصٍّ مجرّدة: بلا تمديدٍ ولا مسافاتٍ زائدة — فالفرق في المنطوق. */
 const plainLines = (text: string) =>
@@ -107,13 +156,8 @@ export async function planFolderImport(
   dir: string,
   opts: { saveImage?: ImageSaver; limit?: number } = {}
 ): Promise<ImportPlan> {
-  const limit = opts.limit ?? FOLDER_LIMIT;
-  const names = (await readdir(dir))
-    .filter((n) => extname(n).toLowerCase() === '.docx')
-    // `~$` ملفات Word المؤقّتة — ليست مستندات.
-    .filter((n) => !n.startsWith('~$'))
-    .sort()
-    .slice(0, limit);
+  // والمجلّدات الفرعية تُفتح، وما لا يُقرأ يُعدّ (هـ١) — وكان المجلّد الأوّل وحده و`.docx` وحده، والسقف يقصّ صامتًا.
+  const { files: names, skipped } = await walkFolder(dir, opts.limit ?? FOLDER_LIMIT);
 
   const failed: ImportPlan['failed'] = [];
   /** ما في كلّ ملفٍّ ولا يُنقل — للإحصاء: ملفٌّ واحد ولو كان فيه عدّة استمارات. */
@@ -177,7 +221,8 @@ export async function planFolderImport(
       candidates.map((c) => ({ id: c.id, text: docText({ ...c.doc, blocks: c.doc.blocks.slice(c.headCount ?? 0) }) }))
     ),
     failed,
-    census: censusOf(scans, failed.length)
+    census: censusOf(scans, failed.length),
+    skipped
   };
 }
 

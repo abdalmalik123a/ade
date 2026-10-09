@@ -1,15 +1,20 @@
-import { copyFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
+  FOLDER_LIMIT,
   applyImportPlan,
   formsOf,
   letterheadKey,
   planFolderImport,
+  walkFolder,
   type ImportPlan
 } from '../src/main/services/importFolder';
+import { importTemplateFile } from '../src/main/services/import';
+import { sheetToText } from '../src/main/services/sheetRead';
+import { FOLDER_DEPTH, skippedLines } from '../src/shared/importSkipped';
 import { listTemplates, prepareTemplates, templateDoc } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { docText, emptyDoc, normalizeDoc, paragraph, run, type Block } from '../src/shared/doc';
@@ -75,6 +80,103 @@ describe('مشي المجلد', () => {
   it('يحترم سقف الدفعة الواحدة', async () => {
     const dir = officeFolder(['أ.docx', 'ب.docx', 'ج.docx']);
     expect((await planFolderImport(dir, { limit: 2 })).candidates).toHaveLength(2);
+  });
+});
+
+describe('ما لا يدخل يُقال (هـ١)', () => {
+  /** مجلّد مكتبٍ بأرشيفه: مجلّداتٌ فرعية، و`.doc` قديم، وExcel، وPDF — كما هو على الأجهزة. */
+  function archive(): string {
+    const dir = officeFolder(['انذار.docx'], {
+      'قديم.doc': 'Word قديم',
+      'تأييد.rtf': 'Word بصيغة أخرى',
+      'كشف.xls': 'Excel قديم',
+      'قائمة.xlsx': 'Excel',
+      'كتاب ممسوح.pdf': 'PDF',
+      '~$انذار.docx': 'مؤقّت Word',
+      'desktop.ini': 'ويندوز',
+      'Thumbs.db': 'ويندوز'
+    });
+    mkdirSync(join(dir, 'الإنذارات', '2025'), { recursive: true });
+    copyFileSync(FIXTURE, join(dir, 'الإنذارات', 'انذار ثاني.docx'));
+    copyFileSync(FIXTURE, join(dir, 'الإنذارات', '2025', 'انذار ثالث.docx'));
+    writeFileSync(join(dir, 'الإنذارات', 'قديم آخر.doc'), 'Word قديم', 'utf8');
+    return dir;
+  }
+
+  it('يدخل المجلّدات الفرعية ويذكر المسار النسبي — وكان المجلّد الأوّل وحده', async () => {
+    const plan = await planFolderImport(archive());
+    expect(plan.candidates.map((c) => c.file)).toEqual(['انذار.docx', 'الإنذارات/انذار ثاني.docx', 'الإنذارات/2025/انذار ثالث.docx']);
+    // والعنوان من اسم الملفّ لا من مساره.
+    expect(plan.candidates.every((c) => !c.title.includes('/'))).toBe(true);
+  });
+
+  it('ويعدّ المتروك بسببه: Word القديم وExcel وما ليس Word — والمؤقّت والمخفيّ لا يُعدّان', async () => {
+    const plan = await planFolderImport(archive());
+    expect(plan.skipped).toEqual({ doc: 3, xls: 2, unsupported: 1, overCap: 0, folders: 0, limit: FOLDER_LIMIT });
+    expect(plan.failed).toEqual([]);
+  });
+
+  it('والسقف معلَن: ٦٠٠ ملفّ يُقرأ منها ٥٠٠ ويُعدّ الباقي — وكان يُقصّ صامتًا', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-folder-'));
+    for (let i = 0; i < 600; i++) writeFileSync(join(dir, `كتاب ${String(i).padStart(3, '0')}.docx`), '');
+    const walked = await walkFolder(dir);
+    expect(walked.files).toHaveLength(500);
+    expect(walked.files[0]).toBe('كتاب 000.docx');
+    expect(walked.skipped.overCap).toBe(100);
+    expect(skippedLines(walked.skipped)).toEqual([expect.stringContaining('100 ملفّ Word بعد الـ500 الأولى لم يُقرأ')]);
+  });
+
+  it('وملفّات المجلّد قبل مجلّداته الفرعية — فالسقف يأخذ الأقرب', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-folder-'));
+    mkdirSync(join(dir, 'أ'));
+    writeFileSync(join(dir, 'أ', 'فرعي.docx'), '');
+    writeFileSync(join(dir, 'ي.docx'), '');
+    const walked = await walkFolder(dir, 1);
+    expect(walked.files).toEqual(['ي.docx']);
+    expect(walked.skipped.overCap).toBe(1);
+  });
+
+  it('ولا يُمشى أعمق من الحدّ — والمجلّد الذي لم يُفتح يُعدّ', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-folder-'));
+    const levels = Array.from({ length: FOLDER_DEPTH + 1 }, (_, i) => `م${i + 1}`);
+    mkdirSync(join(dir, ...levels), { recursive: true });
+    writeFileSync(join(dir, ...levels.slice(0, FOLDER_DEPTH), 'عميق.docx'), '');
+    writeFileSync(join(dir, ...levels, 'أعمق.docx'), '');
+    const walked = await walkFolder(dir);
+    expect(walked.files).toEqual([`${levels.slice(0, FOLDER_DEPTH).join('/')}/عميق.docx`]);
+    expect(walked.skipped.folders).toBe(1);
+  });
+
+  it('ومجلّدات النظام والمخفيّة لا تُفتح ولا تُعدّ', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-folder-'));
+    for (const d of ['.git', '$RECYCLE.BIN', 'System Volume Information']) {
+      mkdirSync(join(dir, d));
+      writeFileSync(join(dir, d, 'x.docx'), '');
+    }
+    const walked = await walkFolder(dir);
+    expect(walked.files).toEqual([]);
+    expect(walked.skipped).toEqual({ doc: 0, xls: 0, unsupported: 0, overCap: 0, folders: 0, limit: FOLDER_LIMIT });
+  });
+
+  it('وأسطر المتروك بلغة المكتب وبما يُفعل له — ولا سطر لما لم يُترك', () => {
+    expect(skippedLines(undefined)).toEqual([]);
+    expect(skippedLines({ doc: 0, xls: 0, unsupported: 0, overCap: 0, folders: 0, limit: 500 })).toEqual([]);
+    const lines = skippedLines({ doc: 300, xls: 2, unsupported: 5, overCap: 0, folders: 1, limit: 500 });
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toMatch(/^300 ملفّ Word بصيغةٍ قديمة.*احفظه \.docx من Word/);
+    expect(lines[1]).toMatch(/^2 ملفّ Excel.*«كتب من ملف Excel»/);
+    expect(lines[2]).toMatch(/^1 مجلّد لم يُفتح/);
+    expect(lines[3]).toMatch(/^5 ملفّ ليس Word/);
+  });
+
+  it('وملفّ .doc وحده يُقال له «احفظه .docx» — لا «ليس Word»', async () => {
+    const dir = officeFolder([], { 'قديم.doc': 'Word قديم' });
+    await expect(importTemplateFile(join(dir, 'قديم.doc'))).rejects.toThrow(/بصيغةٍ قديمة \(\.doc\).*حفظ باسم/);
+  });
+
+  it('وقائمة Excel القديمة (.xls) يُقال لها «احفظه .xlsx» — لا «تالف»', async () => {
+    const dir = officeFolder([], { 'كشف.xls': 'Excel قديم' });
+    await expect(sheetToText(join(dir, 'كشف.xls'))).rejects.toThrow(/بصيغةٍ قديمة \(\.xls\).*احفظه \.xlsx/);
   });
 });
 

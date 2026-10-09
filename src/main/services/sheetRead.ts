@@ -9,6 +9,8 @@ import { cellText as cellValueText } from './cellText';
  * والورقة الأولى وحدها، والصفوف الفارغة تُترك.
  */
 export async function sheetToText(file: string): Promise<{ text: string; rows: number }> {
+  // `.xls` القديم يُرى في الحوار ليُقال له ما يُفعل (هـ١) — لا يُحاوَل فيُقال «تالف».
+  if (/\.xls$/i.test(file)) throw new Error('هذا ملف Excel بصيغةٍ قديمة (.xls) — افتحه في Excel واحفظه .xlsx («حفظ باسم») ثم افتحه هنا');
   const book = new ExcelJS.Workbook();
   try {
     if (/\.csv$/i.test(file)) await book.csv.readFile(file);

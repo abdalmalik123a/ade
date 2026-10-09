@@ -62,7 +62,15 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
   async function dropped(list: FileList) {
     const adopted = await window.diwan.inbox.adopt([...list]);
     if (!adopted.length) {
-      setNote('ما أُفلت ليس PDF ولا صورةً ولا ملفّ Word');
+      // وملفّ Word أو Excel القديم يُقال له ما يُفعل (هـ١) — لا «ليس ملفّ Word» وهو منه.
+      const names = [...list].map((f) => f.name.toLowerCase());
+      setNote(
+        names.some((n) => /\.(doc|rtf)$/.test(n))
+          ? 'ملفّ Word بصيغةٍ قديمة (.doc) — افتحه في Word واحفظه .docx («حفظ باسم») ثم أفلته هنا'
+          : names.some((n) => n.endsWith('.xls'))
+            ? 'ملفّ Excel بصيغةٍ قديمة (.xls) — احفظه .xlsx من Excel'
+            : 'ما أُفلت ليس PDF ولا صورةً ولا ملفّ Word'
+      );
       return;
     }
     setNote(null);
