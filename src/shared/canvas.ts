@@ -12,6 +12,7 @@ export type {
   VAlign,
   TextElement,
   ImageElement,
+  ImageFrame,
   BarcodeElement,
   ShapeElement,
   TableCell,

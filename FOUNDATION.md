@@ -1240,6 +1240,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
     draft.ts              مسودّة التصميم في جدول المسودّات نفسه (`__design`)، وبصمته لمعرفة «تغيّر أم لا» (٠٫٦)
     elements.ts           مكتبة العناصر: الأصناف والأنواع وجسرها، وصندوق العنصر بنسبة أبعاده (٠٫٨)
     svgClean.ts           تعقيم SVG بقائمة سماح: لا شيفرة ولا روابط خارجية، بلا DOM (٠٫٨)
+    shapes.ts             أشكال القصّ والإطار الثمانية مساراتٍ من الصندوق، واللون الآمن (١٫١)
     kit/                  التصاميم الجاهزة: الأنواع الستّة عشر (catalog وlayouts/ وsample) والأنماط الخمسة (نمطٌ في ملفّ
                           بـstyles/) واللوحات والزخرفة المحسوبة (ornaments وcolor)
   fonts/                  «خطوط ديوان» (DESIGNS.md ٠٫٧): المحزوم التسعة بتراخيصها، والاسم النظيف، وسلسلة الخطّ، والغائب
@@ -1359,6 +1360,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           · useDesignOutput (الورق والفاحص والطباعة وPDF) — ومكوّناته: Stage وEditorToolbar وEditorSidebar
                           وDesignModals، وkit.ts ما يشتركن فيه
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
+                          وImageShapePanel (شكل الصورة وإطارها، ١٫١)
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

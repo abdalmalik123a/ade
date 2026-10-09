@@ -6,6 +6,7 @@ import type { TextElement } from '@shared/canvas';
 import { ICON, NUM, inlinesOf, kindName, textOf, toHexColor } from '../editor/kit';
 import type { DesignEditor } from '../editor/useDesignEditor';
 import TablePanel from './TablePanel';
+import ImageShapePanel from './ImageShapePanel';
 
 const SELECT = 'h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
@@ -78,6 +79,8 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
           />
         </label>
       )}
+
+      {single.kind === 'image' && <ImageShapePanel image={single} patch={(p) => patchElement(single.id, p)} />}
 
       {single.kind === 'barcode' && (
         <select

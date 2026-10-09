@@ -15,6 +15,7 @@
  * (DESIGNS.md ٠٫٤: كان هذا كلّه في `shared/canvas.ts`، وهو اليوم مدخلٌ ثابت يعيد التصدير من هنا.)
  */
 import type { Align, Dir, Inline, Uuid } from '../../doc';
+import type { ImageShape } from '../shapes';
 
 /** ملّمٌ — وهو وحدة القياس الوحيدة في اللوحة. */
 export type Mm = number;
@@ -71,6 +72,9 @@ export type TextElement = ElementBase & {
   letterSpacing?: number;
 };
 
+/** إطار الصورة على حدّ شكلها (DESIGNS.md ١٫١): بالملّم، حلقةً أو حلقتين بينهما فسحة. */
+export type ImageFrame = { color: string; width: Mm; rings?: 1 | 2; gap?: Mm };
+
 /** صورةٌ ثابتة، أو صورةُ حقلٍ من سجل المستمسكات والماسح (`ref`). */
 export type ImageElement = ElementBase & {
   kind: 'image';
@@ -78,6 +82,9 @@ export type ImageElement = ElementBase & {
   ref?: string;
   fit: 'cover' | 'contain';
   radius?: number;
+  /** تُقصّ بشكلٍ (`design/shapes.ts`) — وبغيره مستطيلةٌ كما كانت. */
+  shape?: ImageShape;
+  frame?: ImageFrame;
 };
 
 /** الباركود: Code128 للأرقام، وQR لما يُقرأ بالهاتف. */
