@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BUILTIN_CLIPARTS, type ClipartItem } from '@shared/clipart';
 import type { LibraryElement } from '@shared/design/elements';
+import { BUNDLED_ELEMENTS, type BundledElement } from '@shared/assets/elements';
 
 export type ClipartModalProps = {
   isOpen: boolean;
@@ -8,6 +9,8 @@ export type ClipartModalProps = {
   onSelect: (item: ClipartItem) => void;
   /** عنصرٌ من «مكتبة العناصر» (DESIGNS.md ٠٫٨) — يُدرج بمساره في المخزن. */
   onSelectElement?: (el: LibraryElement) => void;
+  /** أيقونةٌ أو زخرفةٌ من عناصر ديوان (DESIGNS.md ١٫٤) — تُدرج شكلًا حرًّا يُلوَّن. */
+  onSelectVector?: (item: BundledElement) => void;
 };
 
 /** ما استورده المكتب إلى «المكتبة ← العناصر». */
@@ -16,12 +19,15 @@ const OFFICE = 'ما أضافه المكتب';
 const CATEGORIES = [
   'الكل',
   OFFICE,
+  'أيقونات',
+  'زخارف',
+  'صور ظلّية',
   'دينية وإسلامية',
   'شخصيات وأطفال',
   'تكريم وشهادات'
 ] as const;
 
-export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElement }: ClipartModalProps) {
+export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElement, onSelectVector }: ClipartModalProps) {
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
   const [search, setSearch] = useState('');
   const [office, setOffice] = useState<LibraryElement[]>([]);
@@ -33,6 +39,9 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
 
   const q = search.trim().toLowerCase();
   const officeShown = activeCategory === 'الكل' || activeCategory === OFFICE ? office.filter((el) => !q || el.name.toLowerCase().includes(q) || el.category.includes(q)) : [];
+  const vectors = BUNDLED_ELEMENTS.filter(
+    (v) => (activeCategory === 'الكل' || v.category === activeCategory) && (!q || v.name.includes(q) || v.tags.some((t) => t.includes(q)))
+  );
   const filtered = BUILTIN_CLIPARTS.filter((item) => {
     if (activeCategory !== 'الكل' && item.category !== activeCategory) {
       return false;
@@ -45,7 +54,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" data-clipart-modal="">
       <div className="relative w-full max-w-3xl bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl p-space-lg flex flex-col gap-space-md text-right">
         {/* الرأس */}
         <header className="flex items-center justify-between border-b border-outline-variant pb-space-sm">
@@ -81,6 +90,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
                     ? 'bg-primary-container text-on-primary'
                     : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
                 }`}
+                data-category={cat}
                 onClick={() => setActiveCategory(cat)}
               >
                 {cat}
@@ -95,7 +105,8 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
             <input
               type="text"
               className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-lowest border border-outline-variant text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="ابحث (قرآن، كارتون، كأس...)"
+              data-clipart-search=""
+              placeholder="ابحث (قرآن، كارتون، كأس، رمضان، موقع...)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -121,11 +132,30 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
               <span className="font-label-xs text-label-xs text-on-surface-variant">{el.category}</span>
             </button>
           ))}
+          {vectors.map((v) => (
+            <button
+              key={`vec-${v.key}`}
+              type="button"
+              className="group p-space-sm rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-md transition-all flex flex-col items-center gap-space-xs text-center"
+              data-act="insert-vector"
+              data-vector={v.key}
+              onClick={() => {
+                onSelectVector?.(v);
+                onClose();
+              }}
+            >
+              <svg className="w-20 h-20 p-3 rounded-lg bg-surface-container-low group-hover:scale-105 transition-transform text-primary" viewBox="0 0 100 100">
+                <path d={v.d} fill="currentColor" />
+              </svg>
+              <span className="font-label-sm text-label-sm font-bold text-on-surface truncate w-full">{v.name}</span>
+              <span className="font-label-xs text-label-xs text-on-surface-variant">{v.category}</span>
+            </button>
+          ))}
           {activeCategory === OFFICE ? (
             officeShown.length === 0 && (
               <div className="col-span-full py-12 text-center text-on-surface-variant">لم يُضَف عنصرٌ بعد — من «المكتبة ← العناصر»</div>
             )
-          ) : filtered.length === 0 ? (
+          ) : filtered.length === 0 && vectors.length === 0 ? (
             <div className="col-span-full py-12 text-center text-on-surface-variant">
               لا توجد رسومات مطابقة لبحثك
             </div>

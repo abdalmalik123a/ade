@@ -4,11 +4,12 @@
  */
 import { useCallback, useState } from 'react';
 import type { FieldSuggestion } from '@shared/api';
-import { clampBox, emptyCanvas, imageElement, normalizeCanvas, type Canvas, type CanvasElement, type CanvasSize } from '@shared/canvas';
+import { clampBox, emptyCanvas, imageElement, normalizeCanvas, pathElement, type Canvas, type CanvasElement, type CanvasSize } from '@shared/canvas';
 import { startCanvasHistory, type CanvasHistory } from '@shared/canvasEdit';
 import { buildDesign } from '@shared/design/kit';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
 import { elementBox, type LibraryElement } from '@shared/design/elements';
+import type { BundledElement } from '@shared/assets/elements';
 import { errorText } from '../../lib/errors';
 import type { GalleryPick } from '../Gallery';
 import type { Side } from './useCanvasSides';
@@ -175,8 +176,19 @@ export function useDesignSources(i: Inputs) {
     say('أُدرجت الصورة في اللوحة');
   }, [add, say]);
 
+  /** أيقونةٌ أو زخرفةٌ من عناصر ديوان (DESIGNS.md ١٫٤): شكلٌ حرٌّ مربّعٌ بالملّم في الوسط — يُلوَّن ويُدرَّج كسائر الأشكال. */
+  const handleSelectVector = useCallback(
+    (item: BundledElement) => {
+      const side = Math.min(canvas.size.w, canvas.size.h) / 4;
+      const [w, h] = [side / canvas.size.w, side / canvas.size.h];
+      add(pathElement({ box: clampBox({ x: (1 - w) / 2, y: (1 - h) / 2, w, h }), d: item.d, fill: '#1f3a8a', name: item.name }));
+      say(`أُدرجت «${item.name}» — لوّنها من خصائصها`);
+    },
+    [add, say, canvas.size]
+  );
+
   return {
     askSize, setAskSize, layerReview, setLayerReview, openBackground, importDesign, pickFromGallery, handleCreateBlank, handleSelectClipart,
-    handleSelectElement, pickLocalImage
+    handleSelectElement, handleSelectVector, pickLocalImage
   };
 }

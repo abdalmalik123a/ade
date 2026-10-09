@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { BUILTIN_CLIPARTS, svgToDataUrl } from '@shared/clipart';
+import { BUNDLED_ELEMENTS } from '@shared/assets/elements';
 import { ELEMENT_CATEGORIES, type ElementCategory, type ElementImport, type LibraryElement } from '@shared/design/elements';
 import { toIndic } from '@shared/arabic';
 import { confirmAction } from '../kit/ask';
@@ -127,8 +128,18 @@ export default function ElementsScreen() {
         </section>
 
         <section className="space-y-space-sm" data-elements="bundled">
-          <h2 className="font-headline-sm text-headline-sm text-on-surface">رسومات ديوان ({toIndic(BUILTIN_CLIPARTS.length)})</h2>
+          <h2 className="font-headline-sm text-headline-sm text-on-surface">عناصر ديوان ({toIndic(BUNDLED_ELEMENTS.length + BUILTIN_CLIPARTS.length)})</h2>
+          <p className="font-label-sm text-label-sm text-on-surface-variant">رسمها ديوان وهي حرّة — والأيقونات والزخارف تُلوَّن وتُدرَّج في التصميم كأيّ شكل.</p>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-space-sm">
+            {BUNDLED_ELEMENTS.map((v) => (
+              <article key={v.key} className={TILE} data-element={v.name}>
+                <svg className="w-full aspect-square p-2 text-primary" viewBox="0 0 100 100">
+                  <path d={v.d} fill="currentColor" />
+                </svg>
+                <span className="font-label-sm text-label-sm text-on-surface truncate">{v.name}</span>
+                <span className="font-label-xs text-label-xs text-on-surface-variant">{v.category}</span>
+              </article>
+            ))}
             {BUILTIN_CLIPARTS.map((item) => (
               <article key={item.id} className={TILE} data-element={item.name}>
                 <img alt={item.name} className="w-full aspect-square object-contain" src={svgToDataUrl(item.svg)} />
