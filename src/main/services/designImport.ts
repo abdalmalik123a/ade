@@ -32,7 +32,7 @@ import {
 import { tokenInlines, type Align, type Inline, type Suggestion } from '@shared/doc';
 import { fieldFromLayerName } from '@shared/design/layerFields';
 import type { FieldSuggestion } from '@shared/api';
-import { FONT } from '@shared/designKit/styles';
+import { FONT } from '@shared/design/kit/styles';
 import { imageMeta } from './imageSize';
 import { writePng } from './png';
 import { readPsd } from './psd';

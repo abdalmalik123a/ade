@@ -6,7 +6,7 @@
  * لها باسمها لا بكتابته كل مرّة.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { dominantColor, paletteFrom } from '@shared/designKit';
+import { dominantColor, paletteFrom } from '@shared/design/kit';
 import { dueLabel, statusOf, type Client, type Order } from '@shared/orders';
 import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFile';
 import { errorText } from '../lib/errors';

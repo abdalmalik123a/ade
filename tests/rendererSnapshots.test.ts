@@ -11,7 +11,7 @@
  * والمعرّفات العشوائية (`newUuid`) تُبدَّل بأرقامٍ بترتيب ظهورها — فاللقطة ما يُرى لا ما يُولَّد.
  */
 import { describe, expect, it } from 'vitest';
-import { KINDS, PALETTES, STYLES, buildDoc, sampleValues } from '../src/shared/designKit';
+import { KINDS, PALETTES, STYLES, buildDoc, sampleValues } from '../src/shared/design/kit';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
 import { SCREEN_DPI } from '../src/shared/canvas';
 import { imageFormDoc, type FormSlot } from '../src/shared/imageForm';

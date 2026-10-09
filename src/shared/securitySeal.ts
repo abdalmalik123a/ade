@@ -8,7 +8,7 @@
  *
  * والحساب حتميّ خالص: الاسم نفسه يعطي النقش نفسه في كل طباعة وعلى كل جهاز.
  */
-import { n, seeded } from './designKit/ornaments';
+import { n, seeded } from './design/kit/ornaments';
 
 /** FNV-1a — بصمةٌ صغيرة ثابتة للنصّ، بذرةً للنقش. */
 function hash(text: string): number {

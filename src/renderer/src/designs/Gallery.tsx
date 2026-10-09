@@ -26,7 +26,7 @@ import {
   type Brand,
   type KindSpec,
   type Palette
-} from '@shared/designKit';
+} from '@shared/design/kit';
 
 export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand };
 

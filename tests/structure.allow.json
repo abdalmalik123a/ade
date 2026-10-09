@@ -31,8 +31,6 @@
   "src/renderer/src/screens/TemplatesScreen.tsx": 1264,
   "src/shared/api.ts": 1243,
   "src/shared/blanks.ts": 658,
-  "src/shared/designKit/kinds.ts": 550,
-  "src/shared/designKit/styles.ts": 705,
   "src/shared/deskew.ts": 467,
   "src/shared/doc.ts": 892,
   "src/shared/docPm.ts": 584,

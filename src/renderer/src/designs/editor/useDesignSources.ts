@@ -6,7 +6,7 @@ import { useCallback, useState } from 'react';
 import type { FieldSuggestion } from '@shared/api';
 import { clampBox, emptyCanvas, imageElement, normalizeCanvas, type Canvas, type CanvasElement, type CanvasSize } from '@shared/canvas';
 import { startCanvasHistory, type CanvasHistory } from '@shared/canvasEdit';
-import { buildDesign } from '@shared/designKit';
+import { buildDesign } from '@shared/design/kit';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
 import { errorText } from '../../lib/errors';
 import type { GalleryPick } from '../Gallery';

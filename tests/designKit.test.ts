@@ -8,10 +8,10 @@ import {
   dominantColor,
   paletteFrom,
   sampleValues
-} from '../src/shared/designKit';
+} from '../src/shared/design/kit';
 import { canvasKeys, canvasPx } from '../src/shared/canvas';
 import { estimateEm, renderCanvasHtml } from '../src/shared/canvasHtml';
-import { luminance } from '../src/shared/designKit/color';
+import { luminance } from '../src/shared/design/kit/color';
 
 const royal = PALETTES[0]!;
 
