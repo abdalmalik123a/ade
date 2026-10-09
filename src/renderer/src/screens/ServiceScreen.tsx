@@ -169,6 +169,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [pasteOpen, setPasteOpen] = useState(false);
   /** استمارةٌ مطبوعةٌ مسبقًا في الطابعة: تُطبع القيم وحدها في فراغاتها. */
   const [valuesOnly, setValuesOnly] = useState(false);
+  /** النسخ عند الشبّاك (د٣): «ثلاث نسخ» ضغطةٌ واحدة لا ثلاث عمليات — والأصل ١، ويعود إليه للزبون التالي. */
+  const [copies, setCopies] = useState(1);
   /** الدمج: سطرٌ لكل اسم، ولكلٍّ معاملتُه وأوراقُه. */
   const [merge, setMerge] = useState(false);
   const [names, setNames] = useState('');
@@ -427,14 +429,14 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         destination: byRole('destination') || null,
         purpose: byRole('purpose') || null,
         values: use,
-        copies: 1,
+        copies,
         copyKind: 'نسخة أصلية',
         // المال صامت (§١): العمود باقٍ في القاعدة بلا قيمة.
         fee: 0
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, values, fields, asPrinted]);
+  }, [loaded, values, fields, asPrinted, copies]);
 
   const common = (printer: string | null) => ({
     operator: settings?.operatorName || null,
@@ -468,11 +470,13 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       });
       const customer = { values: { ...values }, citizenId: out.citizenId ?? citizenId, genderByHand };
       const label = `معاملة ${citizenName} — ${out.documents[0]?.serial ?? ''}`;
+      const n = copies;
       setAfter({
-        outcome: { what: papersWord(out.documents.length), printer: pick?.printer ?? null, serial: out.documents[0]?.serial ?? '' },
+        outcome: { what: papersWithCopies(out.documents.length, n), printer: pick?.printer ?? null, serial: out.documents[0]?.serial ?? '' },
         ids: out.documents.map((d) => d.id),
         mode,
         label,
+        copies: n,
         customer
       });
       onIssued?.();
@@ -487,7 +491,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       else setNewCitizen(null);
       reset();
       if (pick) {
-        await printIssued(out.documents.map((d) => d.id), pick.printer, mode, label);
+        await printIssued(out.documents.map((d) => d.id), pick.printer, mode, label, n);
       }
     } catch (e) {
       sayError(e, 'تعذّر الإصدار');
@@ -536,8 +540,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     }
   }
 
-  const printIssued = (ids: number[], printer: string, mode: 'full' | 'values', label: string) =>
-    followPrint(() => window.diwan.documents.printIssued({ ids, printer, mode, label }), ids.length);
+  const printIssued = (ids: number[], printer: string, mode: 'full' | 'values', label: string, n = 1) =>
+    followPrint(() => window.diwan.documents.printIssued({ ids, printer, mode, label, copies: n }), ids.length * n);
+
+  /** «ورقتان» — أو «ورقتان × ٣ نسخ» حين تُطبع نسخ. */
+  const papersWithCopies = (papers: number, n: number) => (n > 1 ? `${papersWord(papers)} × ${n} نسخ` : papersWord(papers));
 
   async function resumePrint() {
     const run = printRun;
@@ -569,6 +576,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     ids: number[];
     mode: 'full' | 'values';
     label: string;
+    /** النسخ كما طُبعت — و«أعد الطبع» يعيدها بها. */
+    copies: number;
     customer: { values: Record<string, string>; citizenId: number | null; genderByHand: boolean } | null;
   } | null>(null);
 
@@ -577,7 +586,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     const printer = after.outcome.printer ?? (await choosePrinter('documents'))?.printer;
     if (!printer) return;
     setAfter({ ...after, outcome: { ...after.outcome, printer } });
-    await printIssued(after.ids, printer, after.mode, after.label);
+    await printIssued(after.ids, printer, after.mode, after.label, after.copies);
   }
 
   /** ما قُيِّد الآن ملفًّا للزبون (واتساب، بريد) — كلّ كتابٍ ملفّه، من السجلّ كما صدر. */
@@ -609,6 +618,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setNames('');
     setMerge(false);
     setValuesOnly(false);
+    setCopies(1);
     setAt(0);
   }
 
@@ -853,16 +863,18 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
       const ids = all.flatMap((t) => t.documents.map((d) => d.id));
       const label = `دمج ${all.length} اسمًا — ${all[0]?.documents[0]?.serial ?? ''}`;
+      const n = copies;
       setAfter({
-        outcome: { what: `${papersWord(papers)} لـ${all.length} اسمًا`, printer: pick?.printer ?? null, serial: all[0]?.documents[0]?.serial ?? '' },
+        outcome: { what: `${papersWithCopies(papers, n)} لـ${all.length} اسمًا`, printer: pick?.printer ?? null, serial: all[0]?.documents[0]?.serial ?? '' },
         ids,
         mode,
         label,
+        copies: n,
         customer: null
       });
       onIssued?.();
       reset();
-      if (pick) await printIssued(ids, pick.printer, mode, label);
+      if (pick) await printIssued(ids, pick.printer, mode, label, n);
     } catch (e) {
       sayError(e, 'تعذّر الإصدار');
     } finally {
@@ -1606,6 +1618,19 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
           {step === 'review' && (
             <>
               <PrinterNote role="documents" roles={settings?.printRoles} />
+              <label className="flex items-center gap-1 font-label-md text-label-md text-on-surface-variant" title="كم نسخةً من كلّ ورقة — تُطبع مجموعاتٍ مرتّبة">
+                النسخ
+                <input
+                  className="w-14 h-10 rounded-lg bg-surface-container-low text-center text-on-surface tabular"
+                  data-copies=""
+                  inputMode="numeric"
+                  max={99}
+                  min={1}
+                  type="number"
+                  value={copies}
+                  onChange={(e) => setCopies(Math.min(99, Math.max(1, Math.round(Number(e.target.value) || 1))))}
+                />
+              </label>
               <button
                 className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
                 type="button"
@@ -1622,7 +1647,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               >
                 {busy
                   ? 'لحظة…'
-                  : `اطبع ${merge ? rows.length * loaded.length : loaded.length} ورقة`}
+                  : `اطبع ${(merge ? rows.length * loaded.length : loaded.length) * copies} ورقة`}
               </button>
             </>
           )}

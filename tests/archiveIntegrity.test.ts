@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
+  addPrintedCopy,
   CHAIN_GENESIS,
   chainLink,
   getDocument,
@@ -67,6 +68,21 @@ describe('إبطال كتابٍ صادر', () => {
     expect(() => voidDocument(db, a.id, '   ', null)).toThrow(/سبب/);
     voidDocument(db, a.id, 'خطأ', null);
     expect(() => voidDocument(db, a.id, 'ثانية', null)).toThrow(/من قبل/);
+  });
+
+  it('ونسخ الشبّاك (د٣) طبعةٌ واحدة بنسخها: «إصدار أول» بثلاث — لا إعادتان، ولا «أعد طبع» في السجلّ', () => {
+    const db = freshDb();
+    const a = issueDocument(db, issue('سالم حسن'));
+    recordPrint(db, a.id, { copies: 1, printer: 'طابعة الاختبار', operator: null });
+    addPrintedCopy(db, a.id);
+    addPrintedCopy(db, a.id);
+    const prints = db.prepare('SELECT copies, reason FROM document_prints WHERE document_id = ?').all(a.id);
+    expect(prints).toEqual([{ copies: 3, reason: 'إصدار أول' }]);
+    expect(getDocument(db, a.id)?.printedCopies).toBe(3);
+    expect(listAudit(db, { documentId: a.id }).map((e) => e.action)).not.toContain('reprint');
+    // وبلا طبعةٍ قبلها لا نسخة تُزاد — خطأٌ لا قيدٌ صامت.
+    const b = issueDocument(db, issue('زينب علي'));
+    expect(() => addPrintedCopy(db, b.id)).toThrow(/لا طبعة/);
   });
 
   it('والمُبطَل لا يُعاد طبعه — ولا يُستهلك رقمه لغيره', () => {

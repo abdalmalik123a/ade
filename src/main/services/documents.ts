@@ -725,6 +725,17 @@ export function recordPrint(
   ).run(id, Math.max(1, opts.copies), opts.printer, opts.operator);
 }
 
+/**
+ * نسخةٌ أخرى من الطبعة نفسها (د٣): ثلاث نسخٍ عند الشبّاك طبعةٌ واحدة بثلاث نسخ — لا «إصدار أول» ثم إعادتان.
+ * والنسخ تُرسل ورقةً ورقة في مهمّةٍ مسجّلة، فكلّ نسخةٍ خرجت فعلًا تزيد عدد آخر طبعةٍ للكتاب: فإن انقطعت
+ * الكهرباء بعد الثانية قال السجلّ «نسختان»، وأكمل الاستئناف.
+ */
+export function addPrintedCopy(db: Database, id: number): void {
+  const last = db.prepare('SELECT id FROM document_prints WHERE document_id = ? ORDER BY id DESC LIMIT 1').get(id) as { id: number } | undefined;
+  if (!last) throw new Error('لا طبعة لهذا الكتاب تُزاد نسخها');
+  db.prepare('UPDATE document_prints SET copies = copies + 1 WHERE id = ?').run(last.id);
+}
+
 /** إعادة الطباعة تُقيَّد ولا تُنشئ رقمًا جديدًا — الكتاب واحد ونسخه تُعدّ. */
 export function recordReprint(
   db: Database,

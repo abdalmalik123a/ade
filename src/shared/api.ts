@@ -857,7 +857,8 @@ export type DiwanApi = {
      * أوراقٌ صدرت تُطبع على الطابعة المختارة ورقةً ورقة بسجلٍّ يُستأنف (خطة Production، ٢٫٣)، وبأنماطها
      * يوم صدرت. و`mode: 'values'` يطبع القيم وحدها في مواضعها — على استمارةٍ مطبوعةٍ مسبقًا.
      */
-    printIssued(req: { ids: number[]; printer: string | null; mode?: 'full' | 'values'; label?: string }): Promise<PrintJobResult>;
+    /** و`copies` النسخ (د٣، ١–٩٩): مجموعاتٌ مرتّبة في المهمّة المسجّلة نفسها. */
+    printIssued(req: { ids: number[]; printer: string | null; mode?: 'full' | 'values'; label?: string; copies?: number }): Promise<PrintJobResult>;
     /** يربط كتب معاملةٍ بملف مواطنٍ حُفظ بعدها — المتن والبصمة لا يُمسّان. */
     linkCitizen(transactionId: number, citizenId: number): Promise<number>;
     /** «كرّره»: أمِن المحرّر صدر فيعود إليه، أم من الشبّاك فيعود بنماذجه وقيمه؟ */

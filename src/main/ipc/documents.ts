@@ -270,21 +270,25 @@ export function registerDocumentIpc(): void {
    */
   ipcMain.handle(
     'documents:printIssued',
-    async (e, req: { ids: number[]; printer: string | null; mode?: PrintMode; label?: string }) => {
+    async (e, req: { ids: number[]; printer: string | null; mode?: PrintMode; label?: string; copies?: number }) => {
       const db = getDb();
       const docs = (Array.isArray(req.ids) ? req.ids : [])
         .map((id) => svc.getDocument(db, Number(id)))
         .filter((d): d is NonNullable<typeof d> => d !== null && d.status !== 'void');
-      if (!req.printer) return { ok: false, sent: 0, total: docs.length, reason: 'لم تُختر طابعة', journaled: false };
+      // النسخ (د٣): مجموعاتٌ مرتّبة — المعاملة كاملةً ثم ثانيةً — ورقةً ورقة في المهمّة نفسها، فيُعدّ ما خرج
+      // فعلًا ويُستأنف منه بعد انقطاع الكهرباء.
+      const copies = Math.min(99, Math.max(1, Math.round(Number(req.copies) || 1)));
+      if (!req.printer) return { ok: false, sent: 0, total: docs.length * copies, reason: 'لم تُختر طابعة', journaled: false };
       if (!docs.length) return { ok: true, sent: 0, total: 0, journaled: false };
+      const sets = Array.from({ length: copies }, () => docs).flat();
       const job = journal().create({
         label: req.label ?? `${docs.length} ورقة — ${docs[0]!.serial}`,
         printer: req.printer,
         // ٠×٠: لكلّ ورقةٍ مقاسها (`sendSheet`) — فمعاملةٌ فيها فولسكاب وA4 لا تُطبع كلّها على مقاسٍ واحد.
         page: PER_SHEET_PAGE,
         duplex: false,
-        pages: docs.map((d) => forPrint(d.bodyHtml, req.mode ?? 'full')),
-        docIds: docs.map((d) => d.id),
+        pages: sets.map((d) => forPrint(d.bodyHtml, req.mode ?? 'full')),
+        docIds: sets.map((d) => d.id),
         // أوراق المهمّة الواحدة صدرت معًا فأنماطها واحدة.
         styleHash: svc.documentStyleHash(db, docs[0]!.id)
       });
@@ -348,17 +352,20 @@ export function registerDocumentIpc(): void {
       duplex: job.duplex,
       style: svc.styleByHash(getDb(), job.styleHash)
     });
-    // أوراق «السجلّ»: تُقيَّد طبعة كلّ كتابٍ حين يُرسل — ولو بعد استئنافٍ من حيث انقطعت.
+    // أوراق «السجلّ»: تُقيَّد طبعة كلّ كتابٍ حين يُرسل — ولو بعد استئنافٍ من حيث انقطعت. وأوّل ورقةٍ للكتاب في
+    // المهمّة طبعته، وما بعدها من النسخ (د٣) يزيد نسخ تلك الطبعة نفسها — لا «إعادة طباعة».
     if (out.ok && job.docIds) {
       const db = getDb();
       const operator = (db.prepare("SELECT value FROM settings WHERE key = 'operatorName'").get() as { value: string } | undefined)?.value ?? null;
-      for (const id of job.docIds.slice(sheet * job.perSheet, (sheet + 1) * job.perSheet)) {
+      const from = sheet * job.perSheet;
+      job.docIds.slice(from, from + job.perSheet).forEach((id, k) => {
         try {
-          svc.recordPrint(db, id, { copies: 1, printer: job.printer, operator });
+          if (job.docIds!.indexOf(id) < from + k) svc.addPrintedCopy(db, id);
+          else svc.recordPrint(db, id, { copies: 1, printer: job.printer, operator });
         } catch {
           // الورقة طُبعت؛ وتقييدها لا يوقف الدفعة.
         }
-      }
+      });
     }
     return out;
   };
