@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import type { Database } from 'better-sqlite3';
 import type { ContentCounts, ContentImportResult } from '@shared/api';
 import type { Doc } from '@shared/doc';
+import { designPackLevel } from '@shared/canvas';
 import type { LetterheadLayout } from '@shared/letterhead';
 import type { TemplateVariable } from '@shared/template';
 import { saveClip } from './clips';
@@ -25,7 +26,11 @@ import { isCodeTaken, saveTemplate } from './templates';
 import { ZipWriter, extractEntry, fileSink, readZipIndex, safeInnerPath } from './zip';
 
 const NAME = 'diwan-content.json';
-const FORMAT = 1;
+/**
+ * أعلى صيغةٍ يقرؤها هذا الإصدار. والحزمة تُكتب بأدنى صيغةٍ تحمل ما فيها (`designPackLevel`): ١ ما لم يكن فيها شكلٌ حرّ
+ * أو صورةٌ مقصوصة (المرحلة ١ من DESIGNS.md) — فحزم الكتب والترويسات تبقى تُقرأ في الإصدارات الأقدم.
+ */
+const FORMAT = 2;
 /** مجلّدات الناس في المخزن — لا تخرج في حزمة ولا تدخل منها. */
 const PEOPLE = new Set(['attachments', 'photos', 'documents']);
 /** مسار ملفٍّ في المخزن كما يُكتب في الوثائق والترويسات: `مجلّد/بصمة.امتداد`. */
@@ -93,7 +98,8 @@ export function collectContent(db: Database, storeRoot: string, appVersion: stri
     .prepare('SELECT uuid, title, body, category, direction FROM clips WHERE uuid IS NOT NULL ORDER BY id')
     .all() as PackClip[];
 
-  const pkg: ContentPackage = { app: 'diwan', kind: 'content', format: FORMAT, appVersion, createdAt: now.toISOString(), letterheads, templates, clips };
+  const format = Math.max(1, ...templates.map((t) => designPackLevel(t.doc)));
+  const pkg: ContentPackage = { app: 'diwan', kind: 'content', format, appVersion, createdAt: now.toISOString(), letterheads, templates, clips };
   const files = new Set<string>();
   for (const m of JSON.stringify(pkg).matchAll(STORE_REF)) {
     const rel = `${m[1]}/${m[2]}`;

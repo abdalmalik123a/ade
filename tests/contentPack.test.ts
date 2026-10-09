@@ -141,4 +141,23 @@ describe('حزمة المحتوى', () => {
     await expect(importContent(notPack, b.db, b.store, b.dir)).rejects.toThrow(/ليس حزمة/);
     await expect(exportContent(join(b.dir, 'e.diwanpack'), b.db, b.store, '1.0.0')).rejects.toThrow(/لا محتوى/);
   });
+
+  it('وصيغتها بما تحمل (DESIGNS.md ١٫٢): ١ للكتب والتصاميم القديمة، و٢ لشكلٍ حرّ أو صورةٍ مقصوصة — وأحدث منها تُرفض', async () => {
+    const a = filledOffice();
+    expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(1);
+    const design = (element: Record<string, unknown>) => ({
+      id: null, code: null, title: `تصميم ${String(element.kind)}`, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [],
+      doc: { id: 'd', schemaVersion: 2, kind: 'canvas', issuing: 'print-only', blocks: [], fields: [], meta: {}, canvas: { size: { w: 90, h: 50 }, bleed: 0, cropMarks: false, background: { kind: 'none' }, elements: [{ id: 'e', box: { x: 0, y: 0, w: 1, h: 1 }, z: 1, ...element }] } }
+    });
+    saveTemplate(a.db, design({ kind: 'image', src: '', fit: 'cover' }));
+    expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(1);
+    saveTemplate(a.db, design({ kind: 'path', d: 'M0 0 H100 V100 Z' }));
+    expect(collectContent(a.db, a.store, '1.4.0').pkg.format).toBe(2);
+
+    const b = office();
+    const pack = join(b.dir, 'future.diwanpack');
+    const pkg = { app: 'diwan', kind: 'content', format: 3, appVersion: '9.0.0', createdAt: '2027-01-01T00:00:00Z', letterheads: [], templates: [], clips: [] };
+    writeFileSync(pack, zipSync({ 'diwan-content.json': new TextEncoder().encode(JSON.stringify(pkg)) }));
+    await expect(importContent(pack, b.db, b.store, join(b.dir, 'work'))).rejects.toThrow(/حدّث البرنامج/);
+  });
 });

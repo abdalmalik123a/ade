@@ -1230,7 +1230,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   design/                 نواة التصاميم (DESIGNS.md §٣):
     model/                اللوحة: الأنواع، والوحدات (المقاس بالملّم والمواضع نِسَبًا)، وتقويم الصندوق، والبناء والتقويم،
                           وversion.ts رقم إصدار النموذج وترحيله (٠٫٥)
-    kinds/                نوع العنصر وحدة: text وimage وbarcode وshape وtable — لكلٍّ تقويمه ورسمه وحقوله، وregistry.ts
+    kinds/                نوع العنصر وحدة: text وimage وbarcode وshape وtable وpath (١٫٢) — لكلٍّ تقويمه ورسمه وحقوله، وregistry.ts
     render/               الرسّام يمرّ على السجلّ — والدقّة وسيطٌ لا ثابت
     geometry/             التحرير خالصًا: الالتصاق والمقابض والمحاذاة والطبقات والتراجع
     fit.ts                الاسم يصغر ليسع — قياسٌ بالخطّ الحقيقي، في المعاينة والطباعة
@@ -1241,6 +1241,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
     elements.ts           مكتبة العناصر: الأصناف والأنواع وجسرها، وصندوق العنصر بنسبة أبعاده (٠٫٨)
     svgClean.ts           تعقيم SVG بقائمة سماح: لا شيفرة ولا روابط خارجية، بلا DOM (٠٫٨)
     shapes.ts             أشكال القصّ والإطار الثمانية مساراتٍ من الصندوق، واللون الآمن (١٫١)
+    pathPresets.ts        مكتبة الأشكال الحرّة: ١٧ شكلًا في مربّع ٠..١٠٠ بصناديقها الافتراضية (١٫٢)
     kit/                  التصاميم الجاهزة: الأنواع الستّة عشر (catalog وlayouts/ وsample) والأنماط الخمسة (نمطٌ في ملفّ
                           بـstyles/) واللوحات والزخرفة المحسوبة (ornaments وcolor)
   fonts/                  «خطوط ديوان» (DESIGNS.md ٠٫٧): المحزوم التسعة بتراخيصها، والاسم النظيف، وسلسلة الخطّ، والغائب
@@ -1360,7 +1361,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           · useDesignOutput (الورق والفاحص والطباعة وPDF) — ومكوّناته: Stage وEditorToolbar وEditorSidebar
                           وDesignModals، وkit.ts ما يشتركن فيه
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
-                          وImageShapePanel (شكل الصورة وإطارها، ١٫١)
+                          وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

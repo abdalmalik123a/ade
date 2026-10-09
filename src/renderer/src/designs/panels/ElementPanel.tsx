@@ -7,6 +7,7 @@ import { ICON, NUM, inlinesOf, kindName, textOf, toHexColor } from '../editor/ki
 import type { DesignEditor } from '../editor/useDesignEditor';
 import TablePanel from './TablePanel';
 import ImageShapePanel from './ImageShapePanel';
+import PathPanel from './PathPanel';
 
 const SELECT = 'h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
@@ -81,6 +82,7 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
       )}
 
       {single.kind === 'image' && <ImageShapePanel image={single} patch={(p) => patchElement(single.id, p)} />}
+      {single.kind === 'path' && <PathPanel path={single} patch={(p) => patchElement(single.id, p)} />}
 
       {single.kind === 'barcode' && (
         <select

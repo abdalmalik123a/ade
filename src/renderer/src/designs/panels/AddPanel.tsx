@@ -6,12 +6,14 @@ import { useState } from 'react';
 import { barcodeElement, clampBox, imageElement, shapeElement, tableElement, textElement } from '@shared/canvas';
 import { inlinesOf } from '../editor/kit';
 import type { DesignEditor } from '../editor/useDesignEditor';
+import ShapeLibrary from './ShapeLibrary';
 
 const BTN = 'h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface';
 const BTN_ICON = `${BTN} flex items-center gap-1 shadow-xs border border-outline-variant/60`;
 
 export default function AddPanel({ ed }: { ed: DesignEditor }) {
   const { add } = ed;
+  const [library, setLibrary] = useState(false);
   return (
     <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
       <h2 className="font-body-md text-body-md text-on-surface font-semibold">ضع عنصرًا فوق التصميم</h2>
@@ -46,7 +48,12 @@ export default function AddPanel({ ed }: { ed: DesignEditor }) {
         >
           + شكل
         </button>
+        <button className={BTN_ICON} data-add="shapes" type="button" onClick={() => setLibrary((o) => !o)}>
+          <span className="material-symbols-outlined text-[16px] text-secondary">interests</span>
+          <span>+ موجات وأشرطة وإطارات</span>
+        </button>
       </div>
+      {library && <ShapeLibrary ed={ed} onDone={() => setLibrary(false)} />}
     </div>
   );
 }

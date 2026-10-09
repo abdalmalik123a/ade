@@ -6,6 +6,7 @@ import type { CSSProperties } from 'react';
 import { tokenInlines, type Inline } from '@shared/doc';
 import { SCREEN_DPI, canvasPx, mmToPx, type Box, type Canvas, type CanvasElement } from '@shared/canvas';
 import type { Edge } from '@shared/canvasEdit';
+import { pathPreset } from '@shared/design/pathPresets';
 
 export const DESIGN_CATEGORY = 'تصاميم';
 export const NUM =
@@ -54,6 +55,8 @@ export const kindName = (el: CanvasElement): string => {
       return 'شكل';
     case 'table':
       return 'جدول';
+    case 'path':
+      return pathPreset(el.preset)?.label ?? 'شكل حرّ';
   }
 };
 

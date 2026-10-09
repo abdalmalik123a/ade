@@ -136,7 +136,25 @@ export type TableElement = ElementBase & {
   stripeBg?: string;
 };
 
-export type CanvasElement = TextElement | ImageElement | BarcodeElement | ShapeElement | TableElement;
+/**
+ * الشكل الحرّ (DESIGNS.md ١٫٢): مسارٌ في مربّع ٠..١٠٠ يتمدّد مع صندوقه — موجةٌ وزاويةٌ وشريطٌ وقوسٌ وإطار
+ * (`pathPresets.ts`)، بملءٍ أو حدٍّ، ويُقلب أفقيًّا أو رأسيًّا.
+ */
+export type PathElement = ElementBase & {
+  kind: 'path';
+  d: string;
+  /** من أيّ شكلٍ في المكتبة جاء — للاسم في الطبقات. */
+  preset?: string;
+  fill?: string;
+  stroke?: string;
+  /** بالملّم — ولا يتمدّد مع الصندوق. */
+  strokeWidth?: Mm;
+  evenodd?: boolean;
+  flipX?: boolean;
+  flipY?: boolean;
+};
+
+export type CanvasElement = TextElement | ImageElement | BarcodeElement | ShapeElement | TableElement | PathElement;
 
 export type Background =
   | { kind: 'none' }

@@ -20,6 +20,25 @@ type Raw = Record<string, unknown>;
  */
 const STEPS: Record<number, (raw: Raw) => Raw> = {};
 
+/**
+ * أدنى صيغةِ حزمةٍ تحمل التصميم كما رُسم (DESIGNS.md ٣٫٥): **١** لما يرسمه كلّ إصدار، و**٢** لما لا يرسمه ما قبل
+ * المرحلة ١ — الشكل الحرّ (١٫٢) والصورة المقصوصة بشكلٍ أو بإطار (١٫١). فالحزمة ترتفع صيغتها بما تحمل وحده، والإصدار
+ * الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا صامتًا.
+ */
+export function designPackLevel(doc: unknown): number {
+  if (typeof doc !== 'object' || doc === null) return 1;
+  const d = doc as Raw;
+  for (const canvas of [d.canvas, d.backCanvas]) {
+    const elements = typeof canvas === 'object' && canvas !== null ? (canvas as Raw).elements : null;
+    if (!Array.isArray(elements)) continue;
+    for (const el of elements as Raw[]) {
+      if (el?.kind === 'path') return 2;
+      if (el?.kind === 'image' && (el.shape !== undefined || el.frame !== undefined)) return 2;
+    }
+  }
+  return 1;
+}
+
 /** إصدار اللوحة المحفوظة — وما لا رقم له (أو رقمه فاسد) ١. */
 export function canvasVersionOf(raw: unknown): number {
   const v = typeof raw === 'object' && raw !== null ? (raw as Raw).v : undefined;

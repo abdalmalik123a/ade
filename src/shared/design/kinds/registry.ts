@@ -8,6 +8,7 @@ import { IMAGE_KIND, legacySvgImage } from './image';
 import { BARCODE_KIND } from './barcode';
 import { SHAPE_KIND } from './shape';
 import { TABLE_KIND } from './table';
+import { PATH_KIND } from './path';
 
 type AnyKind = { [K in CanvasElement['kind']]: KindSpec<Extract<CanvasElement, { kind: K }>> };
 
@@ -16,7 +17,8 @@ export const KINDS: AnyKind = {
   image: IMAGE_KIND,
   barcode: BARCODE_KIND,
   shape: SHAPE_KIND,
-  table: TABLE_KIND
+  table: TABLE_KIND,
+  path: PATH_KIND
 };
 
 /** أنواعٌ قديمة تُقرأ فتصير نوعًا قائمًا — ولا تُكتب بعد اليوم. */
