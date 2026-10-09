@@ -59,10 +59,23 @@ export type PrintJournal = {
   get(id: string): PrintJob | null;
 };
 
+/**
+ * معرّف الدفعة كما يصنعه `create` وحده (و٤) — فالمعرّف يصير اسم ملف، وما سواه («../license») كان يصل
+ * `rmSync` من قناة «تجاهل الدفعة» إلى ما خارج مجلّد السجلّ.
+ */
+export const JOB_ID = /^job-\d+-[a-z0-9]+$/;
+export const isJobId = (id: unknown): id is string => typeof id === 'string' && JOB_ID.test(id);
+
+/** معرّفٌ مخالف يُرفض قبل أن يصير مسارًا — فلا يُلمس القرص به. */
+function checkedId(id: string): string {
+  if (!isJobId(id)) throw new Error('رقم الدفعة غير صالح');
+  return id;
+}
+
 /** السجلّ في مجلّدٍ واحد: لكلّ دفعةٍ ملفُّ حالٍ صغير يُعاد كتابته، وملفُّ أوراقٍ لا يتغيّر. */
 export function printJournal(dir: string): PrintJournal {
-  const state = (id: string) => join(dir, `${id}.json`);
-  const pagesFile = (id: string) => join(dir, `${id}.pages.json`);
+  const state = (id: string) => join(dir, `${checkedId(id)}.json`);
+  const pagesFile = (id: string) => join(dir, `${checkedId(id)}.pages.json`);
   const read = (id: string): PrintJob | null => {
     try {
       return JSON.parse(readFileSync(state(id), 'utf8')) as PrintJob;
@@ -89,7 +102,7 @@ export function printJournal(dir: string): PrintJournal {
       const perSheet = input.duplex ? 2 : 1;
       const job: PrintJob = {
         ...input,
-        id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 7).padEnd(5, '0')}`,
         perSheet,
         total: Math.ceil(pages.length / perSheet),
         sent: 0,
@@ -105,12 +118,14 @@ export function printJournal(dir: string): PrintJournal {
       return pagesOf(id).slice(sheet * job.perSheet, (sheet + 1) * job.perSheet);
     },
     markSent(id, sent) {
+      if (!Number.isInteger(sent) || sent < 0) throw new Error('عدد الأوراق المرسلة غير صالح');
       const job = read(id);
       if (job) write({ ...job, sent });
     },
     finish(id) {
+      const file = state(id);
       pagesCache.delete(id);
-      rmSync(state(id), { force: true });
+      rmSync(file, { force: true });
       rmSync(pagesFile(id), { force: true });
     },
     pending() {
@@ -138,6 +153,8 @@ export async function runJob(
 ): Promise<{ ok: boolean; sent: number; total: number; reason?: string }> {
   const job = journal.get(id);
   if (!job) return { ok: false, sent: 0, total: 0, reason: 'لا دفعة بهذا الرقم' };
+  // ومن أين يُستأنف: ورقةٌ صحيحة في الدفعة (و٤) — لا NaN يُكتب في السجلّ فيضيع موضع الاستئناف.
+  if (!Number.isInteger(from) || from < 0 || from > job.total) return { ok: false, sent: job.sent, total: job.total, reason: 'موضع الاستئناف غير صالح' };
   journal.markSent(id, from);
   for (let sheet = from; sheet < job.total; sheet++) {
     const out = await printOne(journal.sheetPages(id, sheet), job, sheet);

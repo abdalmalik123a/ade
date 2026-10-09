@@ -1,8 +1,8 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { printJournal, runJob } from '../src/main/services/printJobs';
+import { JOB_ID, isJobId, printJournal, runJob } from '../src/main/services/printJobs';
 
 const dirs: string[] = [];
 const fresh = () => {
@@ -73,5 +73,44 @@ describe('سجلّ الطباعة الكبيرة', () => {
     const out = await runJob(journal, job.id, 0, async (p) => (p[0] === '<p>2</p>' ? { ok: false, reason: 'نفد الورق' } : { ok: true }));
     expect(out).toMatchObject({ ok: false, sent: 1, reason: 'نفد الورق' });
     expect(journal.pending()[0]?.sent).toBe(1);
+  });
+});
+
+describe('معرّف الدفعة وموضع الاستئناف (و٤)', () => {
+  it('المعرّف كما يصنعه السجلّ وحده', () => {
+    const journal = printJournal(fresh());
+    const job = journal.create({ label: 'x', printer: 'P', page: { w: 210, h: 297 }, duplex: false, pages: pages(1) });
+    expect(job.id).toMatch(JOB_ID);
+    for (const bad of ['../license', '..\license', 'job-1-ab/../../x', 'job-1-AB', 'job--x', '', 7, null, undefined]) expect(isJobId(bad)).toBe(false);
+  });
+
+  it('«تجاهل الدفعة» بمعرّفٍ خارج النمط يُرفض ولا يلمس ملفًّا خارج السجلّ', () => {
+    const root = fresh();
+    const dir = join(root, 'jobs');
+    mkdirSync(dir);
+    // ملفّ الترخيص بجانب مجلّد السجلّ — كما في مجلّد البيانات.
+    writeFileSync(join(root, 'license.json'), '{}');
+    const journal = printJournal(dir);
+    expect(() => journal.finish('../license')).toThrow('رقم الدفعة غير صالح');
+    expect(() => journal.finish('../x')).toThrow('رقم الدفعة غير صالح');
+    expect(existsSync(join(root, 'license.json'))).toBe(true);
+    expect(journal.get('../license')).toBeNull();
+    expect(journal.sheetPages('../license', 0)).toEqual([]);
+  });
+
+  it('والاستئناف من موضعٍ ليس عددًا صحيحًا في الدفعة يُرفض — والسجلّ كما هو', async () => {
+    const journal = printJournal(fresh());
+    const job = journal.create({ label: 'x', printer: 'P', page: { w: 210, h: 297 }, duplex: false, pages: pages(3) });
+    journal.markSent(job.id, 2);
+    let printed = 0;
+    for (const from of [NaN, -1, 1.5, 4]) {
+      const out = await runJob(journal, job.id, from, async () => (printed++, { ok: true }));
+      expect(out).toMatchObject({ ok: false, reason: 'موضع الاستئناف غير صالح' });
+    }
+    expect(printed).toBe(0);
+    expect(journal.get(job.id)?.sent).toBe(2);
+    expect(() => journal.markSent(job.id, NaN)).toThrow('عدد الأوراق المرسلة غير صالح');
+    // وموضعٌ صحيح يُستأنف منه كما كان.
+    expect(await runJob(journal, job.id, 2, async () => ({ ok: true }))).toEqual({ ok: true, sent: 3, total: 3 });
   });
 });

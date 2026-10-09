@@ -72,7 +72,7 @@ export default function ResumePrintDialog() {
             min={0}
             type="number"
             value={lastOut}
-            onChange={(e) => setLastOut(Math.max(0, Math.min(job.total, Number(e.target.value) || 0)))}
+            onChange={(e) => setLastOut(Math.max(0, Math.min(job.total, Math.round(Number(e.target.value)) || 0)))}
           />
         </label>
         {note && <span className="font-label-md text-label-md text-on-surface-variant">{note}</span>}

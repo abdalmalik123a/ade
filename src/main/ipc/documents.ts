@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { printJournal, runJob, type PrintJob } from '../services/printJobs';
+import { isJobId, printJournal, runJob, type PrintJob } from '../services/printJobs';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/documents';
 import { searchOthers } from '../services/search';
@@ -395,12 +395,15 @@ export function registerDocumentIpc(): void {
   /** «التنبيهات» (د٧): من القاعدة، ومعها ما انقطع من الطباعة. */
   ipcMain.handle('today:agenda', () => todayAgenda(getDb(), journal().pending(), now(), autoBackupState()));
   ipcMain.handle('today:weekSeen', () => markWeekSeen(getDb(), now()));
-  ipcMain.handle('output:resumeJob', async (e, id: string, from: number) => ({
-    ...(await runJob(journal(), id, Math.max(0, from), sendSheet(e), progress(e, id))),
-    journaled: true,
-    id
-  }));
-  ipcMain.handle('output:discardJob', (_e, id: string) => journal().finish(id));
+  // المعرّف بنمطه، والموضع عددٌ صحيح غير سالب — وما يخالف يُرفض عند حدّ القناة بلا لمس القرص (و٤).
+  ipcMain.handle('output:resumeJob', async (e, id: unknown, from: unknown) => {
+    if (!isJobId(id) || typeof from !== 'number' || !Number.isInteger(from) || from < 0) throw new Error('طلب استئنافٍ غير صالح');
+    return { ...(await runJob(journal(), id, from, sendSheet(e), progress(e, id))), journaled: true, id };
+  });
+  ipcMain.handle('output:discardJob', (_e, id: unknown) => {
+    if (!isJobId(id)) throw new Error('رقم الدفعة غير صالح');
+    journal().finish(id);
+  });
 
   // ورقة المعايرة بلا إزاحة — فهي ما تُقاس به الإزاحة.
   ipcMain.handle('output:printCalibration', async (e, printer: string | null) =>
