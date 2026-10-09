@@ -340,3 +340,16 @@ CREATE TABLE IF NOT EXISTS fonts (
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (family, weight, italic)
 );
+
+-- مكتبة العناصر (DESIGNS.md ٠٫٨): زخارف وإطارات وأيقونات وصور ظلّية استوردها المكتب — SVG معقَّمة أو PNG، وملفّها في
+-- المخزن ببصمتها (`elements/…`) فتنتقل في النسخة الاحتياطية. والمحزوم في البرنامج نفسه (`shared/clipart.ts`).
+CREATE TABLE IF NOT EXISTS elements (
+  id          INTEGER PRIMARY KEY,
+  name        TEXT NOT NULL,
+  category    TEXT NOT NULL DEFAULT 'أخرى',
+  kind        TEXT NOT NULL,                     -- svg | png
+  file        TEXT NOT NULL UNIQUE,
+  width       REAL NOT NULL,
+  height      REAL NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);

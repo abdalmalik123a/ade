@@ -8,7 +8,7 @@ import type { PhotoPreset } from './photoPresets';
 import type { CustomSuit } from './suits';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
-import type { FontsApi } from './fonts';
+import type { LibraryApis } from './libraryApi';
 import type { ImportMap, ImportRow } from './citizenImport';
 import type { WordCensus, WordScan } from './wordLosses';
 
@@ -726,7 +726,7 @@ export type Seal = {
   authorityId: number | null;
 };
 
-export type DiwanApi = {
+export type DiwanApi = LibraryApis & {
   settings: {
     get(): Promise<OfficeSettings>;
     set(patch: Partial<OfficeSettings>): Promise<OfficeSettings>;
@@ -1173,7 +1173,6 @@ export type DiwanApi = {
       fieldSuggestions: FieldSuggestion[];
     } | null>;
   };
-  fonts: FontsApi;
   files: {
     /** يحذف المسوح العابرة (`tmp/…`) حين يُغلق الحوار الذي مسحها — وغيرها يُتجاهل. */
     discardTransient(paths: string[]): Promise<number>;

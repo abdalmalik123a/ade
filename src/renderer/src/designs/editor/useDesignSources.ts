@@ -8,6 +8,7 @@ import { clampBox, emptyCanvas, imageElement, normalizeCanvas, type Canvas, type
 import { startCanvasHistory, type CanvasHistory } from '@shared/canvasEdit';
 import { buildDesign } from '@shared/design/kit';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
+import { elementBox, type LibraryElement } from '@shared/design/elements';
 import { errorText } from '../../lib/errors';
 import type { GalleryPick } from '../Gallery';
 import type { Side } from './useCanvasSides';
@@ -154,6 +155,15 @@ export function useDesignSources(i: Inputs) {
     [add, say]
   );
 
+  /** عنصرٌ من «مكتبة العناصر» (DESIGNS.md ٠٫٨): بمساره في المخزن، وبنسبة أبعاده — فلا تُمطّ الأيقونة. */
+  const handleSelectElement = useCallback(
+    (el: LibraryElement) => {
+      add(imageElement({ box: elementBox(el, canvas.size), src: el.file, fit: 'contain', name: el.name }));
+      say(`أُدرج «${el.name}» في اللوحة`);
+    },
+    [add, say, canvas.size]
+  );
+
   /**
    * صورةٌ ثابتة من الجهاز — تُحفظ في المخزن باسم بصمتها كسائر الصور (§١٧).
    * وكانت تُقرأ dataURL وتُكتب داخل التصميم نفسه، فتنتفخ القاعدة بكل صورة.
@@ -165,5 +175,8 @@ export function useDesignSources(i: Inputs) {
     say('أُدرجت الصورة في اللوحة');
   }, [add, say]);
 
-  return { askSize, setAskSize, layerReview, setLayerReview, openBackground, importDesign, pickFromGallery, handleCreateBlank, handleSelectClipart, pickLocalImage };
+  return {
+    askSize, setAskSize, layerReview, setLayerReview, openBackground, importDesign, pickFromGallery, handleCreateBlank, handleSelectClipart,
+    handleSelectElement, pickLocalImage
+  };
 }

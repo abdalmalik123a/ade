@@ -50,7 +50,9 @@ export default function DesignsScreen(props: DesignsScreenProps) {
 
       {ed.newBlankModalOpen && <NewBlankModal isOpen={ed.newBlankModalOpen} onClose={() => ed.setNewBlankModalOpen(false)} onCreate={ed.handleCreateBlank} />}
 
-      {ed.clipartModalOpen && <ClipartModal isOpen={ed.clipartModalOpen} onClose={() => ed.setClipartModalOpen(false)} onSelect={ed.handleSelectClipart} />}
+      {ed.clipartModalOpen && (
+        <ClipartModal isOpen={ed.clipartModalOpen} onClose={() => ed.setClipartModalOpen(false)} onSelect={ed.handleSelectClipart} onSelectElement={ed.handleSelectElement} />
+      )}
 
       <div className={view === 'editor' ? 'flex h-[calc(100vh-4rem)]' : 'hidden'}>
         <EditorSidebar ed={ed} />

@@ -16,7 +16,8 @@ const EXACT: [table: string, column: string][] = [
   ['attachments', 'file_path'],
   ['citizens', 'photo_path'],
   ['seals', 'image_path'],
-  ['fonts', 'file']
+  ['fonts', 'file'],
+  ['elements', 'file']
 ];
 
 /** أعمدةٌ نصّية يرد فيها المسار داخل JSON أو علامات الورقة (`diwan://store/…`). */

@@ -1,30 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BUILTIN_CLIPARTS, type ClipartItem } from '@shared/clipart';
+import type { LibraryElement } from '@shared/design/elements';
 
 export type ClipartModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (item: ClipartItem) => void;
+  /** عنصرٌ من «مكتبة العناصر» (DESIGNS.md ٠٫٨) — يُدرج بمساره في المخزن. */
+  onSelectElement?: (el: LibraryElement) => void;
 };
+
+/** ما استورده المكتب إلى «المكتبة ← العناصر». */
+const OFFICE = 'ما أضافه المكتب';
 
 const CATEGORIES = [
   'الكل',
+  OFFICE,
   'دينية وإسلامية',
   'شخصيات وأطفال',
   'تكريم وشهادات'
 ] as const;
 
-export default function ClipartModal({ isOpen, onClose, onSelect }: ClipartModalProps) {
+export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElement }: ClipartModalProps) {
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
   const [search, setSearch] = useState('');
+  const [office, setOffice] = useState<LibraryElement[]>([]);
+  useEffect(() => {
+    if (isOpen) void window.diwan.elements.list().then(setOffice, () => setOffice([]));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const q = search.trim().toLowerCase();
+  const officeShown = activeCategory === 'الكل' || activeCategory === OFFICE ? office.filter((el) => !q || el.name.toLowerCase().includes(q) || el.category.includes(q)) : [];
   const filtered = BUILTIN_CLIPARTS.filter((item) => {
     if (activeCategory !== 'الكل' && item.category !== activeCategory) {
       return false;
     }
-    const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
       item.name.toLowerCase().includes(q) ||
@@ -92,7 +104,28 @@ export default function ClipartModal({ isOpen, onClose, onSelect }: ClipartModal
 
         {/* شبكة الرسومات */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-space-sm max-h-[55vh] overflow-y-auto p-1">
-          {filtered.length === 0 ? (
+          {officeShown.map((el) => (
+            <button
+              key={`office-${el.id}`}
+              type="button"
+              className="group p-space-sm rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-md transition-all flex flex-col items-center gap-space-xs text-center"
+              data-act="insert-element"
+              data-element={el.name}
+              onClick={() => {
+                onSelectElement?.(el);
+                onClose();
+              }}
+            >
+              <img alt={el.name} className="w-20 h-20 object-contain p-2 rounded-lg bg-surface-container-low group-hover:scale-105 transition-transform" src={`diwan://store/${el.file}`} />
+              <span className="font-label-sm text-label-sm font-bold text-on-surface truncate w-full">{el.name}</span>
+              <span className="font-label-xs text-label-xs text-on-surface-variant">{el.category}</span>
+            </button>
+          ))}
+          {activeCategory === OFFICE ? (
+            officeShown.length === 0 && (
+              <div className="col-span-full py-12 text-center text-on-surface-variant">لم يُضَف عنصرٌ بعد — من «المكتبة ← العناصر»</div>
+            )
+          ) : filtered.length === 0 ? (
             <div className="col-span-full py-12 text-center text-on-surface-variant">
               لا توجد رسومات مطابقة لبحثك
             </div>

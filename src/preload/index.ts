@@ -321,6 +321,11 @@ const api: DiwanApi = {
     importWindows: (family: string) => invoke('fonts:importWindows', family),
     remove: (family: string) => invoke('fonts:remove', family)
   },
+  elements: {
+    list: () => invoke('elements:list'),
+    importFiles: (category: string) => invoke('elements:importFiles', category),
+    remove: (id: number) => invoke('elements:remove', id)
+  },
   files: {
     discardTransient: (paths: string[]) => invoke('files:discardTransient', paths),
     pickImage: (bucket: string) => invoke('files:pickImage', bucket),

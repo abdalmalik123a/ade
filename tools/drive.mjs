@@ -201,7 +201,7 @@ class Page {
     let found = await click(route);
     if (!found) {
       // تبويبٌ لم يُرسم بعد: يُفتح أوّل ما في وجهته ثم يُعاد.
-      const viaDest = { 'clients-directory': 'citizens-identity-records', 'audit-log-integrity': 'transactions-archive-ledger', 'header-seal-configuration': 'templates-library-drafts', 'diwan-fonts': 'templates-library-drafts' }[route];
+      const viaDest = { 'clients-directory': 'citizens-identity-records', 'audit-log-integrity': 'transactions-archive-ledger', 'header-seal-configuration': 'templates-library-drafts', 'diwan-fonts': 'templates-library-drafts', 'diwan-elements': 'templates-library-drafts' }[route];
       if (viaDest && (await click(viaDest))) {
         await sleep(500);
         found = await click(route);

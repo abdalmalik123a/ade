@@ -50,11 +50,12 @@ export const DESTINATIONS: readonly Destination[] = [
     label: 'المكتبة',
     icon: 'local_library',
     entry: 'templates',
-    routes: ['templates', 'letterhead', 'fonts'],
+    routes: ['templates', 'letterhead', 'fonts', 'elements'],
     tabs: [
       { route: 'templates', label: 'النماذج' },
       { route: 'letterhead', label: 'الترويسات' },
-      { route: 'fonts', label: 'الخطوط' }
+      { route: 'fonts', label: 'الخطوط' },
+      { route: 'elements', label: 'العناصر' }
     ]
   }
 ];
