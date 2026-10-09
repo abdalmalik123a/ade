@@ -172,11 +172,40 @@ export function subscriptionUntil(plan, start) {
 }
 
 const KIND_LABEL = { full: 'كامل', sub: 'اشتراك', extend: 'تمديد' };
-const PLAN_LABEL = { lifetime: 'مدى الحياة', monthly: 'شهري', yearly: 'سنوي', extend: 'تمديد تجريبي' };
+/**
+ * مفتاح العرض (و٩): مدى الحياة موقَّعٌ كالمعتاد — لجهاز المالك يعرض به البرنامج — ويُقيَّد في السجلّ بهذا النوع، فلا يزيد
+ * `countLifetime` ولا يأخذ مكان مشترٍ من «أوّل ١٠». **صيغة المفتاح الموقَّع واحدة** (`kind: 'full'`): البرنامج لا يفرّق.
+ */
+export const DEMO_KIND = 'عرض';
+const PLAN_LABEL = { lifetime: 'مدى الحياة', demo: 'عرض (مدى الحياة)', monthly: 'شهري', yearly: 'سنوي', extend: 'تمديد تجريبي' };
+
+/** آخر عشرة أرقامٍ من الهاتف — فـ«07701234567» و«+9647701234567» واحد. */
+const phoneKey = (p) => String(p ?? '').replace(/\D/g, '').slice(-10);
 
 /**
- * يُصدر مفتاحًا ويكتبه في السجلّ. `plan`: lifetime أو monthly أو yearly أو extend. ويعيد المفتاح ورقم المشتري
- * (لمدى الحياة) ورسالةً جاهزةً للزبون.
+ * ما صدر قبلُ لهذا الجهاز أو المكتب أو الهاتف (و٩) — تنبيهٌ لا منع: مفتاحٌ ثانٍ لجهازٍ واحد أو مكتبٍ اشترى قبلُ
+ * يُرى قبل أن يُرسل، لا بعد أن يُعدّ مشتريًا جديدًا.
+ */
+export function repeatsOf(dir, { device, office, phone }) {
+  const rows = readLedger(dir);
+  const out = [];
+  const say = (match, what) => {
+    const found = rows.filter(match);
+    if (!found.length) return;
+    const last = found[found.length - 1];
+    out.push(`${what} صدر له ${found.length === 1 ? 'مفتاحٌ' : `${found.length} مفاتيح`} قبلُ — آخرها «${last.plan || last.kind}» يوم ${last.date}`);
+  };
+  say((r) => r.device === device, `هذا الجهاز (${device})`);
+  const name = String(office ?? '').trim();
+  if (name) say((r) => String(r.office ?? '').trim() === name, `المكتب «${name}»`);
+  const tel = phoneKey(phone);
+  if (tel.length >= 7) say((r) => phoneKey(r.phone) === tel, `الهاتف ${String(phone).trim()}`);
+  return out;
+}
+
+/**
+ * يُصدر مفتاحًا ويكتبه في السجلّ. `plan`: lifetime أو demo أو monthly أو yearly أو extend. ويعيد المفتاح ورقم المشتري
+ * (لمدى الحياة) ورسالةً جاهزةً للزبون، وتنبيهات ما صدر قبلُ للجهاز أو المكتب أو الهاتف.
  */
 export function issue(dir, privateKey, input, opts = {}) {
   const device = normalizeDevice(input.device);
@@ -184,7 +213,8 @@ export function issue(dir, privateKey, input, opts = {}) {
   const issued = input.issued ?? today();
   const office = String(input.office ?? '').trim() || undefined;
   let payload;
-  if (plan === 'lifetime') payload = { v: 1, device, kind: 'full', issued, office };
+  // والعرض مدى الحياة نفسه موقَّعًا — يختلف في السجلّ وحده.
+  if (plan === 'lifetime' || plan === 'demo') payload = { v: 1, device, kind: 'full', issued, office };
   else if (plan === 'monthly' || plan === 'yearly') {
     const until = input.until || subscriptionUntil(plan, input.start || issued);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(until)) throw new KeyToolError('يوم انتهاء الاشتراك YYYY-MM-DD');
@@ -192,13 +222,15 @@ export function issue(dir, privateKey, input, opts = {}) {
   } else if (plan === 'extend') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.until ?? '')) throw new KeyToolError('اكتب آخر يومٍ في التمديد');
     payload = { v: 1, device, kind: 'extend', issued, until: input.until, office };
-  } else throw new KeyToolError('اختر الخطّة: مدى الحياة أو شهري أو سنوي أو تمديد');
+  } else throw new KeyToolError('اختر الخطّة: مدى الحياة أو عرض أو شهري أو سنوي أو تمديد');
   const key = signKey(payload, privateKey);
   const buyer = plan === 'lifetime' ? countLifetime(dir) + 1 : null;
+  // قبل أن يُقيَّد هذا المفتاح نفسه.
+  const warnings = repeatsOf(dir, { device, office, phone: input.phone });
   if (opts.record !== false) {
     appendLedger(dir, {
       date: issued,
-      kind: KIND_LABEL[payload.kind],
+      kind: plan === 'demo' ? DEMO_KIND : KIND_LABEL[payload.kind],
       plan: PLAN_LABEL[plan],
       buyer: buyer ?? '',
       device,
@@ -206,11 +238,16 @@ export function issue(dir, privateKey, input, opts = {}) {
       phone: input.phone,
       until: payload.until ?? '',
       price: input.price,
-      notes: buyer && buyer <= EARLY_LIFETIME ? `من أوّل ${EARLY_LIFETIME} مشترين${input.notes ? ` — ${input.notes}` : ''}` : input.notes,
+      notes:
+        plan === 'demo'
+          ? `مفتاح عرض — لا يُعدّ من أوّل ${EARLY_LIFETIME}${input.notes ? ` — ${input.notes}` : ''}`
+          : buyer && buyer <= EARLY_LIFETIME
+            ? `من أوّل ${EARLY_LIFETIME} مشترين${input.notes ? ` — ${input.notes}` : ''}`
+            : input.notes,
       key
     });
   }
-  return { key, payload, buyer, message: customerMessage(key, payload) };
+  return { key, payload, buyer, warnings, message: customerMessage(key, payload) };
 }
 
 /** ما يُرسل للزبون بواتساب: المفتاح وكيف يُلصق. */

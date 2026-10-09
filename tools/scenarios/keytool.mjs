@@ -148,6 +148,21 @@ export default async function scenario(page, { shotsDir }) {
   await setVal('ledgerQ', '');
   await shot('3-ledger');
 
+  // ── و٩: مفتاح عرض لجهاز المالك — موقَّعٌ مدى الحياة ولا يُعدّ من أوّل ١٠، وتنبيهٌ لجهازٍ صدر له قبلُ ──
+  await page.eval(`document.querySelector('[data-tab="issue"]').click(); return true;`);
+  await wait(300);
+  await plan('demo');
+  await setVal('device', DEVICE);
+  await setVal('office', 'جهاز العرض');
+  await click('issueBtn');
+  const demoKey = readKey(await text('[data-result-key]'));
+  ok('«مفتاح عرض»: مدى الحياة موقَّعٌ كغيره', demoKey?.kind === 'full' && demoKey.device === DEVICE);
+  ok('ويُقال إنّه لا يُعدّ من أوّل ١٠', (await text('#resultTitle')).includes('مفتاح عرض') && (await text('#resultTitle')).includes('لا يُعدّ من أوّل ١٠'));
+  ok('والعدّاد: مدى الحياة ١١ كما كان، وعرض ١', (await text('[data-counter]')).includes('مدى الحياة: ١١') && (await text('[data-counter]')).includes('عرض: ١'));
+  ok('وتنبيهٌ ظاهر: هذا الجهاز صدرت له مفاتيح قبلُ', (await page.eval(`return !document.getElementById('resultWarn').classList.contains('hidden');`)) && (await text('[data-result-warn]')).includes('هذا الجهاز'));
+  const demoRow = readFileSync(join(DIR, 'سجل المفاتيح المصدرة.csv'), 'utf8').split(/\r?\n/).filter(Boolean).pop() ?? '';
+  ok('وفي السجلّ بنوعه «عرض» بلا رقم مشترٍ', demoRow.startsWith(`"${new Date().toLocaleDateString('en-CA')}","عرض","عرض (مدى الحياة)",""`));
+
   // ── ملفّ التحديث ──────────────────────────────────────────────────
   const upd = await page.eval(
     `return await window.keytool.makeUpdate({ exe: ${JSON.stringify(join(DIR, 'setup.exe'))}, version: '1.0.1', notes: 'إصلاحات' });`

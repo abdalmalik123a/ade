@@ -65,7 +65,7 @@ const handle = (channel, fn) =>
 function summary() {
   const rows = core.readLedger(dir);
   const count = (plan) => rows.filter((r) => r.plan === plan).length;
-  return { lifetime: core.countLifetime(dir), monthly: count('شهري'), yearly: count('سنوي'), total: rows.length, early: core.EARLY_LIFETIME };
+  return { lifetime: core.countLifetime(dir), demo: rows.filter((r) => r.kind === core.DEMO_KIND).length, monthly: count('شهري'), yearly: count('سنوي'), total: rows.length, early: core.EARLY_LIFETIME };
 }
 
 handle('state', () => ({ dir, ...core.keyState(dir), unlocked: Boolean(key) }));
@@ -101,7 +101,7 @@ handle('normalize-device', (code) => core.normalizeDevice(code));
 
 handle('issue', (input) => {
   const out = core.issue(dir, needKey(), input);
-  return { key: out.key, buyer: out.buyer, message: out.message, payload: out.payload, summary: summary() };
+  return { key: out.key, buyer: out.buyer, message: out.message, payload: out.payload, warnings: out.warnings, demo: input?.plan === 'demo', summary: summary() };
 });
 
 handle('ledger', () => {

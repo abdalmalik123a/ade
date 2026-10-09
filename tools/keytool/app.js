@@ -74,7 +74,7 @@ function setSummary(s) {
     next <= s.early
       ? `مدى الحياة: بيع منه ${AR(s.lifetime)} — والتالي رقم ${AR(next)} من أوّل ${AR(s.early)}.`
       : `أوّل ${AR(s.early)} اكتملوا (مدى الحياة: ${AR(s.lifetime)}) — والبيع الآن بالأسعار التي تحدّدها لكلّ خطّة.`;
-  $('counter').textContent = `${early}  شهري: ${AR(s.monthly)} · سنوي: ${AR(s.yearly)} · كلّ المفاتيح: ${AR(s.total)}`;
+  $('counter').textContent = `${early}  شهري: ${AR(s.monthly)} · سنوي: ${AR(s.yearly)}${s.demo ? ` · عرض: ${AR(s.demo)}` : ''} · كلّ المفاتيح: ${AR(s.total)}`;
   $('ledgerSum').textContent = $('counter').textContent;
 }
 
@@ -194,13 +194,17 @@ $('issueBtn').onclick = () =>
     last = await call('issue', input);
     setSummary(last.summary);
     const pl = last.payload;
-    $('resultTitle').textContent =
-      pl.kind === 'full'
+    $('resultTitle').textContent = last.demo
+      ? `✓ مفتاح عرض مدى الحياة — لا يُعدّ من أوّل ${AR(summary.early)} — ${pl.office ?? pl.device}`
+      : pl.kind === 'full'
         ? `✓ مفتاح مدى الحياة — المشتري رقم ${AR(last.buyer)}${last.buyer <= summary.early ? ` من أوّل ${AR(summary.early)}` : ''} — ${pl.office ?? pl.device}`
         : pl.kind === 'sub'
           ? `✓ اشتراك ${pl.plan === 'yearly' ? 'سنوي' : 'شهري'} حتى ${pl.until} — ${pl.office ?? pl.device}`
           : `✓ تمديد التجربة حتى ${pl.until} — ${pl.office ?? pl.device}`;
     $('resultKey').textContent = last.key;
+    // ما صدر قبلُ للجهاز أو المكتب أو الهاتف (و٩): يُرى قبل أن يُرسل المفتاح.
+    $('resultWarn').textContent = (last.warnings ?? []).map((w) => `⚠ ${w}`).join(String.fromCharCode(10));
+    $('resultWarn').classList.toggle('hidden', !(last.warnings ?? []).length);
     $('copied').textContent = '';
     $('result').classList.remove('hidden');
     $('result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -104,3 +104,43 @@ describe('السجلّ', () => {
     expect(readFileSync(join(v.dir, core.LEDGER_FILE), 'utf8').split('\r\n')[0]).toContain('رقم المشتري');
   });
 });
+
+describe('مفتاح العرض (و٩)', () => {
+  it('مدى الحياة موقَّعٌ يقرؤه البرنامج كغيره — ولا يُعدّ من أوّل ١٠: مشترٍ بعده «المشتري ١»', () => {
+    const v = vault();
+    const key = core.loadPrivateKey(v.dir);
+    const demo = core.issue(v.dir, key, { device: DEVICE, plan: 'demo', office: 'جهاز المالك' });
+    expect(demo.buyer).toBeNull();
+    expect(demo.payload).toMatchObject({ kind: 'full', device: DEVICE });
+    const read = readKey(demo.key, v.publicPem);
+    expect(read.ok && read.payload.kind).toBe('full');
+    expect(core.countLifetime(v.dir)).toBe(0);
+
+    const buyer = core.issue(v.dir, key, { device: deviceCode('مكتب-حقيقي'), plan: 'lifetime', office: 'مكتب النور' });
+    expect(buyer.buyer).toBe(1);
+    expect(core.countLifetime(v.dir)).toBe(1);
+  });
+
+  it('ويُرى في السجلّ بنوعه «عرض» وملاحظته', () => {
+    const v = vault();
+    core.issue(v.dir, core.loadPrivateKey(v.dir), { device: DEVICE, plan: 'demo', notes: 'للمعرض' });
+    const [row] = core.readLedger(v.dir);
+    expect(row).toMatchObject({ kind: core.DEMO_KIND, plan: 'عرض (مدى الحياة)', buyer: '' });
+    expect(row.notes).toBe('مفتاح عرض — لا يُعدّ من أوّل 10 — للمعرض');
+  });
+
+  it('وتنبيهٌ عند تكرار الجهاز أو المكتب أو الهاتف — لا منع', () => {
+    const v = vault();
+    const key = core.loadPrivateKey(v.dir);
+    expect(core.issue(v.dir, key, { device: DEVICE, plan: 'lifetime', office: 'مكتب النور', phone: '07701234567' }).warnings).toEqual([]);
+    const again = core.issue(v.dir, key, { device: DEVICE, plan: 'monthly', office: ' مكتب النور ', phone: '+964 770 123 4567', issued: '2026-10-09' });
+    expect(again.warnings).toHaveLength(3);
+    expect(again.warnings[0]).toMatch(/^هذا الجهاز .* صدر له مفتاحٌ قبلُ — آخرها «مدى الحياة»/);
+    expect(again.warnings[1]).toMatch(/^المكتب «مكتب النور»/);
+    expect(again.warnings[2]).toMatch(/^الهاتف \+964 770 123 4567/);
+    // وأُصدر رغم التنبيه.
+    expect(core.readLedger(v.dir)).toHaveLength(2);
+    const other = core.issue(v.dir, key, { device: deviceCode('جهاز-آخر'), plan: 'lifetime', office: 'مدرسة الأمل' });
+    expect(other.warnings).toEqual([]);
+  });
+});
