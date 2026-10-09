@@ -11,6 +11,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
+/** حزم المحرّر (ProseMirror) تُبنى في الواجهة — وما تحمله معها من حزمٍ صغيرة (و٧: كانت خارج الإشعارات). */
+const PROSEMIRROR = Object.keys(pkg.devDependencies ?? {}).filter((d) => d.startsWith('prosemirror-'));
+const prosemirrorDeps = PROSEMIRROR.flatMap((name) => {
+  const file = join(ROOT, 'node_modules', name, 'package.json');
+  return existsSync(file) ? Object.keys(JSON.parse(readFileSync(file, 'utf8')).dependencies ?? {}) : [];
+});
+
 /** ما يُحزم فعلًا: تبعيّات التشغيل، وما تبنيه الواجهة في حزمتها من أدوات التطوير. */
 const BUNDLED = [
   ...Object.keys(pkg.dependencies ?? {}),
@@ -19,7 +26,9 @@ const BUNDLED = [
   'react-dom',
   'pdfjs-dist',
   'material-symbols',
-  ...Object.keys(pkg.devDependencies ?? {}).filter((d) => d.startsWith('@fontsource/'))
+  ...Object.keys(pkg.devDependencies ?? {}).filter((d) => d.startsWith('@fontsource/')),
+  ...PROSEMIRROR,
+  ...prosemirrorDeps
 ];
 
 const licenseOf = (p) => (typeof p.license === 'string' ? p.license : p.license?.type ?? (p.licenses ?? []).map((l) => l.type).join(' / ')) || '—';
