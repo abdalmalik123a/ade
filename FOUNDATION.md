@@ -1282,7 +1282,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»
     LetterheadScreen.tsx  الترويسات والشعارات والكليشات
     PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر
-    DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة
+    DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج
     PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة
     AuditScreen.tsx       سجلّ التدقيق وسلامة الأرشيف
@@ -1329,6 +1329,13 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     QuestionBankPanel.tsx بنك الأسئلة جانب الورقة
   src/designs/            أجزاء شاشة التصاميم: المعرض، والدفعة، واستوديو التصوير، ومراجعة الأوراق
                           وخياراتها، ومكتبة الرسومات، و«حقولٌ من أسماء الطبقات»
+    editor/               المحرّر (DESIGNS.md ٠٫٣): useDesignEditor يركّب خطّافاته — useCanvasSides (الوجه والظهر
+                          وتاريخهما) · useCanvasElements (العناصر والمحدَّد) · useCanvasPointer (السحب) · useDesignKeys
+                          · useDesignDoc (الوثيقة ورسمها والظهر المحفوظ) · useCanvasPaint (الباركود وتصغير النصّ) ·
+                          useDesignLibrary (الحفظ والفتح) · useDesignSources (الخلفية والاستيراد والمعرض) · useDesignBatch
+                          · useDesignOutput (الورق والفاحص والطباعة وPDF) — ومكوّناته: Stage وEditorToolbar وEditorSidebar
+                          وDesignModals، وkit.ts ما يشتركن فيه
+    panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر)
                           · printChoice.ts أيّ طابعةٍ تطبع: من دور الشاشة، أو تُسأل في `PrintChooser`
