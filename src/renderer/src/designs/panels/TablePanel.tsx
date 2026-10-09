@@ -1,7 +1,7 @@
 /**
  * الجدول المحدَّد: صفوفه وأعمدته، وخطّه وترويسته وتقليمه وألوانه، وعناوين أعمدته ومحاذاتها، ومحتوى خلاياه (أو وسوم حقول).
  */
-import type { TableElement } from '@shared/canvas';
+import type { TableElement, TableRowStyle } from '@shared/canvas';
 import { toHexColor } from '../editor/kit';
 import FontSelect from '../../components/FontSelect';
 import { familyOf, stackOf } from '@shared/fonts';
@@ -19,7 +19,13 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
           <button className={SMALL} title="إضافة صف جديد" type="button" onClick={() => patch({ rows: [...table.rows, table.columns.map(() => ({ text: '' }))] })}>
             + صف ({table.rows.length})
           </button>
-          <button className={`${SMALL} disabled:opacity-40`} title="حذف آخر صف" type="button" disabled={table.rows.length <= 1} onClick={() => patch({ rows: table.rows.slice(0, -1) })}>
+          <button
+            className={`${SMALL} disabled:opacity-40`}
+            title="حذف آخر صف"
+            type="button"
+            disabled={table.rows.length <= 1}
+            onClick={() => patch({ rows: table.rows.slice(0, -1), ...(table.rowStyles ? { rowStyles: table.rowStyles.slice(0, table.rows.length - 1) } : {}) })}
+          >
             - صف
           </button>
           <button
@@ -80,6 +86,19 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
         </div>
       </div>
 
+      {/* الحدود والعناوين (DESIGNS.md ١٫٩): جدول المنيو بأسطرٍ وحدها، والفاتورة اليدوية بلا عناوين إن شاء. */}
+      <div className="flex items-center gap-space-sm flex-wrap font-label-xs text-label-xs text-on-surface-variant">
+        <select className={`${SMALL} border border-outline-variant`} data-act="table-borders" title="حدود الجدول" value={table.borders ?? 'all'} onChange={(e) => patch({ borders: e.target.value === 'all' ? undefined : (e.target.value as 'rows' | 'none') })}>
+          <option value="all">حدودٌ كاملة</option>
+          <option value="rows">أسطرٌ أفقية</option>
+          <option value="none">بلا حدود</option>
+        </select>
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input checked={!table.hideHeader} data-act="table-header" type="checkbox" onChange={(e) => patch({ hideHeader: e.target.checked ? undefined : true })} />
+          صفّ العناوين
+        </label>
+      </div>
+
       {/* تعديل عناوين الأعمدة */}
       <div className="space-y-1">
         <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">عناوين الأعمدة:</span>
@@ -122,6 +141,7 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
           {table.rows.map((row, rIdx) => (
             <div key={rIdx} className="flex items-center gap-1">
               <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{rIdx + 1}</span>
+              <RowStyle table={table} index={rIdx} patch={patch} />
               {row.map((cell, cIdx) => (
                 <input
                   key={cIdx}
@@ -139,5 +159,40 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
         </div>
       </div>
     </div>
+  );
+}
+
+/** لون الصفّ وعريضه (١٫٩) — يوم الإمساكية الحاضر، وصفّ المجموع. */
+function RowStyle({ table, index, patch }: { table: TableElement; index: number; patch: (p: Partial<TableElement>) => void }) {
+  const style = table.rowStyles?.[index] ?? null;
+  const set = (next: TableRowStyle | null) => {
+    const all = Array.from({ length: table.rows.length }, (_, i) => (i === index ? next : (table.rowStyles?.[i] ?? null)));
+    patch({ rowStyles: all.some(Boolean) ? all : undefined });
+  };
+  return (
+    <span className="flex items-center gap-0.5 shrink-0">
+      <input
+        className="w-6 h-6 rounded border border-outline-variant cursor-pointer"
+        data-row-bg={index}
+        title="لون الصفّ"
+        type="color"
+        value={toHexColor(style?.bg ?? '#ffffff')}
+        onChange={(e) => set({ ...style, bg: e.target.value })}
+      />
+      <button
+        className={`w-6 h-6 rounded font-bold text-[11px] ${style?.bold ? 'bg-primary-container text-on-primary' : 'bg-surface-container-lowest border border-outline-variant'}`}
+        data-row-bold={index}
+        title="صفٌّ عريض"
+        type="button"
+        onClick={() => set({ ...style, bold: style?.bold ? undefined : true })}
+      >
+        ع
+      </button>
+      {style && (
+        <button className="w-5 h-6 text-on-surface-variant hover:text-error" data-row-clear={index} title="بلا لونٍ ولا عرض" type="button" onClick={() => set(null)}>
+          ×
+        </button>
+      )}
+    </span>
   );
 }

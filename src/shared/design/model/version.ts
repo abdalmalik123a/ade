@@ -36,6 +36,7 @@ export function designPackLevel(doc: unknown): number {
       if (el?.kind === 'image' && (el.shape !== undefined || el.frame !== undefined)) return 2;
       if (typeof el?.opacity === 'number' && el.opacity < 1) return 2;
       if (el?.hidden === true) return 2;
+      if (el?.kind === 'table' && (el.borders !== undefined || el.hideHeader !== undefined || el.rowStyles !== undefined)) return 2;
       if (el?.dash !== undefined || el?.gradient !== undefined || (el?.fill !== null && typeof el?.fill === 'object')) return 2;
     }
   }

@@ -18,6 +18,7 @@ export type {
   TableCell,
   TableColumn,
   TableElement,
+  TableRowStyle,
   PathElement,
   CanvasElement,
   Background,

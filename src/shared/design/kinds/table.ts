@@ -5,7 +5,8 @@ import { newUuid } from '../../doc';
 import { escapeHtml } from '../../html';
 import { ptToPx } from '../model/units';
 import { isObj } from '../model/box';
-import type { Box, TableCell, TableColumn, TableElement } from '../model/types';
+import type { Box, TableCell, TableColumn, TableElement, TableRowStyle } from '../model/types';
+import { cssColor } from '../shapes';
 import { boxStyle } from '../render/box';
 import type { KindSpec } from './types';
 
@@ -43,6 +44,20 @@ export function tableElement(patch: Partial<TableElement> & { box: Box }): Table
 /** قيمة الخليّة: حقلُها أو نصُّها، ووسومه `{…}` بقيمها — وما لم يُملأ يبقى وسمًا. */
 const cellValue = (cell: TableCell, values: Record<string, string>): string =>
   (cell.field ? (values[cell.field] ?? `{${cell.field}}`) : cell.text).replace(/\{([^{}]+)\}/g, (_m, k: string) => values[k.trim()] ?? `{${k.trim()}}`);
+
+/** أنماط الصفوف مقوَّمة: ألوانٌ آمنة وعريضٌ، بطول الصفوف لا أكثر — وما لا شيء فيه عدم. */
+function normalizeRowStyles(raw: unknown, rows: number): { rowStyles?: (TableRowStyle | null)[] } {
+  if (!Array.isArray(raw)) return {};
+  const out = raw.slice(0, rows).map((r): TableRowStyle | null => {
+    if (!isObj(r)) return null;
+    const style: TableRowStyle = {};
+    if (typeof r.bg === 'string') style.bg = cssColor(r.bg, '#fff7d6');
+    if (typeof r.color === 'string') style.color = cssColor(r.color, '#111111');
+    if (r.bold === true) style.bold = true;
+    return Object.keys(style).length ? style : null;
+  });
+  return out.some(Boolean) ? { rowStyles: out } : {};
+}
 
 export const TABLE_KIND: KindSpec<TableElement> = {
   kind: 'table',
@@ -83,13 +98,20 @@ export const TABLE_KIND: KindSpec<TableElement> = {
       headerFontSize: typeof raw.headerFontSize === 'number' ? raw.headerFontSize : 11,
       font: typeof raw.font === 'string' ? raw.font : undefined,
       stripe: raw.stripe === true,
-      stripeBg: typeof raw.stripeBg === 'string' ? raw.stripeBg : '#f8fafc'
+      stripeBg: typeof raw.stripeBg === 'string' ? raw.stripeBg : '#f8fafc',
+      ...(raw.borders === 'rows' || raw.borders === 'none' ? { borders: raw.borders } : {}),
+      ...(raw.hideHeader === true ? { hideHeader: true } : {}),
+      ...normalizeRowStyles(raw.rowStyles, rows.length || 3)
     };
   },
   render(el, { canvas, values, opts }) {
     const borderPx = Math.max(1, Math.round((el.borderWidth ?? 1) * (opts.dpi / 96)));
     const borderColor = el.borderColor ?? '#cbd5e1';
     const borderStyle = `${borderPx}px solid ${borderColor}`;
+    // الحدود (١٫٩): كلّها كما كانت، أو أسطرٌ أفقية، أو بلا حدود.
+    const mode = el.borders ?? 'all';
+    const cellBorder = mode === 'all' ? `border:${borderStyle}` : mode === 'rows' ? `border:none;border-bottom:${borderStyle}` : 'border:none';
+    const headBorder = mode === 'all' ? `border:${borderStyle}` : mode === 'rows' ? `border:none;border-bottom:${borderPx * 2}px solid ${borderColor}` : 'border:none';
     const fontSizePx = ptToPx(el.fontSize ?? 10, opts.dpi);
     const headerFontSizePx = ptToPx(el.headerFontSize ?? 11, opts.dpi);
     const headerBg = el.headerBg ?? '#f1f5f9';
@@ -99,22 +121,24 @@ export const TABLE_KIND: KindSpec<TableElement> = {
     const ths = el.columns
       .map(
         (col) =>
-          `<th style="border:${borderStyle};background:${headerBg};color:${headerColor};padding:4px 6px;text-align:${col.align ?? 'center'};width:${col.widthPercent}%;font-size:${headerFontSizePx.toFixed(1)}px;font-weight:700">${escapeHtml(col.title)}</th>`
+          `<th style="${headBorder};background:${headerBg};color:${headerColor};padding:4px 6px;text-align:${col.align ?? 'center'};width:${col.widthPercent}%;font-size:${headerFontSizePx.toFixed(1)}px;font-weight:700">${escapeHtml(col.title)}</th>`
       )
       .join('');
 
     const trs = el.rows
       .map((row, ri) => {
-        const bg = el.stripe && ri % 2 === 1 ? `background:${el.stripeBg ?? '#f8fafc'};` : '';
+        const rs = el.rowStyles?.[ri] ?? null;
+        const bg = rs?.bg ? `background:${rs.bg};` : el.stripe && ri % 2 === 1 ? `background:${el.stripeBg ?? '#f8fafc'};` : '';
+        const ink = rs?.color ? `color:${rs.color};` : '';
         const tds = row
           .map((cell, ci) => {
             const col = el.columns[ci];
             const align = cell.align ?? col?.align ?? 'center';
-            const weight = cell.bold ? 'font-weight:700;' : '';
-            return `<td style="border:${borderStyle};padding:4px 6px;text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(cellValue(cell, values))}</td>`;
+            const weight = cell.bold || rs?.bold ? 'font-weight:700;' : '';
+            return `<td style="${cellBorder};padding:4px 6px;text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(cellValue(cell, values))}</td>`;
           })
           .join('');
-        return `<tr style="${bg}">${tds}</tr>`;
+        return `<tr style="${bg}${ink}">${tds}</tr>`;
       })
       .join('');
 
@@ -123,7 +147,7 @@ export const TABLE_KIND: KindSpec<TableElement> = {
     return (
       `<div dir="${el.dir ?? 'rtl'}" style="${style}">` +
       `<table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">` +
-      `<thead><tr>${ths}</tr></thead>` +
+      `${el.hideHeader ? '' : `<thead><tr>${ths}</tr></thead>`}` +
       `<tbody>${trs}</tbody>` +
       `</table></div>`
     );

@@ -145,7 +145,15 @@ export type TableElement = ElementBase & {
   font?: string;
   stripe?: boolean;
   stripeBg?: string;
+  /** الحدود (DESIGNS.md ١٫٩): كلّها، أو أسطرٌ أفقية (المنيو)، أو بلا حدود. وغيابها «كلّها» كما كان. */
+  borders?: 'all' | 'rows' | 'none';
+  /** بلا صفّ العناوين — جدول المنيو والفاتورة اليدوية. */
+  hideHeader?: boolean;
+  /** صفٌّ بلونه وخطّه (١٫٩) — يومُ الإمساكية الحاضر، وصفّ المجموع — بترتيب الصفوف. */
+  rowStyles?: (TableRowStyle | null)[];
 };
+
+export type TableRowStyle = { bg?: string; color?: string; bold?: boolean };
 
 /**
  * الشكل الحرّ (DESIGNS.md ١٫٢): مسارٌ في مربّع ٠..١٠٠ يتمدّد مع صندوقه — موجةٌ وزاويةٌ وشريطٌ وقوسٌ وإطار
