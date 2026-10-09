@@ -1367,7 +1367,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           وDesignModals، وkit.ts ما يشتركن فيه
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
                           وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
-                          وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣)
+                          وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣) وTextEffectsPanel (ظلّ النصّ وحدّه وقوسه، ١٫١٠)
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

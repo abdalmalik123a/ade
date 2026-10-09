@@ -22,7 +22,8 @@ const STEPS: Record<number, (raw: Raw) => Raw> = {};
 
 /**
  * أدنى صيغةِ حزمةٍ تحمل التصميم كما رُسم (DESIGNS.md ٣٫٥): **١** لما يرسمه كلّ إصدار، و**٢** لما لا يرسمه ما قبل
- * المرحلة ١ — الشكل الحرّ (١٫٢)، والصورة المقصوصة بشكلٍ أو بإطار (١٫١)، والتدرّج والشفافية والخطّ المنقّط (١٫٣). فالحزمة
+ * المرحلة ١ — الشكل الحرّ (١٫٢)، والصورة المقصوصة بشكلٍ أو بإطار (١٫١)، والتدرّج والشفافية والخطّ المنقّط (١٫٣)، وأنماط
+ * الجدول (١٫٩)، وظلّ النصّ وحدّه وقوسه (١٫١٠). فالحزمة
  * ترتفع صيغتها بما تحمل وحده، والإصدار الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا أو تدرّجًا صامتًا.
  */
 export function designPackLevel(doc: unknown): number {
@@ -36,6 +37,7 @@ export function designPackLevel(doc: unknown): number {
       if (el?.kind === 'image' && (el.shape !== undefined || el.frame !== undefined)) return 2;
       if (typeof el?.opacity === 'number' && el.opacity < 1) return 2;
       if (el?.hidden === true) return 2;
+      if (el?.kind === 'text' && (el.shadow !== undefined || el.outline !== undefined || el.arc !== undefined)) return 2;
       if (el?.kind === 'table' && (el.borders !== undefined || el.hideHeader !== undefined || el.rowStyles !== undefined)) return 2;
       if (el?.dash !== undefined || el?.gradient !== undefined || (el?.fill !== null && typeof el?.fill === 'object')) return 2;
     }

@@ -9,7 +9,8 @@ import { mmToPx, ptToPx } from '../model/units';
 import { isObj } from '../model/box';
 import type { Box, TextElement } from '../model/types';
 import { boxStyle } from '../render/box';
-import { cssGradient, normalizeGradient } from '../paint';
+import { cssGradient, normalizeGradient, paintId, svgGradient } from '../paint';
+import { cssColor } from '../shapes';
 import type { KindSpec, RenderCtx } from './types';
 
 export function textElement(patch: Partial<TextElement> & { box: Box }): TextElement {
@@ -96,10 +97,79 @@ function plainText(inlines: Inline[], values: Record<string, string>, fields: Ma
     .join('');
 }
 
+const clamp = (v: unknown, lo: number, hi: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
+
+/** تأثيرات النصّ المحفوظة مقوَّمة (١٫١٠): ألوانٌ آمنة وحدودٌ للأرقام — والتالف عدم. */
+function normalizeEffects(raw: Record<string, unknown>): Pick<TextElement, 'shadow' | 'outline' | 'arc'> {
+  const out: Pick<TextElement, 'shadow' | 'outline' | 'arc'> = {};
+  if (isObj(raw.shadow)) {
+    const s = raw.shadow;
+    out.shadow = { color: cssColor(s.color, 'rgba(0,0,0,0.35)'), dx: clamp(s.dx, -20, 20, 1), dy: clamp(s.dy, -20, 20, 1.5), blur: clamp(s.blur, 0, 30, 2) };
+  }
+  if (isObj(raw.outline) && typeof raw.outline.width === 'number' && raw.outline.width > 0) {
+    out.outline = { color: cssColor(raw.outline.color, '#ffffff'), width: clamp(raw.outline.width, 0.1, 5, 0.6) };
+  }
+  const arc = Math.round(clamp(raw.arc, -100, 100, 0));
+  if (arc) out.arc = arc;
+  return out;
+}
+
+/**
+ * هندسة القوس (١٫١٠): النصّ على دائرةٍ يحيط منها بزاويةٍ من `arc` — ١٠٠ نصف دائرة — فالقصير والطويل ينحنيان سواء.
+ * نصف القطر من طول النصّ المقدَّر وزاويته، والحجم يصغر ليسع وترُه عرضَ الصندوق، وشريطه في وسط الصندوق. والمسار أطول
+ * من النصّ بهامشٍ فلا يسقط حرفٌ إن أخطأ التقدير، والنصّ في منتصفه.
+ */
+export function arcGeometry(arc: number, em: number, max: number, w: number, h: number): { size: number; r: number; d: string } {
+  const theta = (Math.min(100, Math.abs(arc)) / 100) * Math.PI;
+  const k = Math.sin(theta / 2) / (theta / 2);
+  const size = em > 0 ? Math.min(max, (w * 0.96) / (em * k)) : max;
+  const r = Math.max(em * size, size) / theta;
+  const sagText = r * (1 - Math.cos(theta / 2));
+  const up = arc > 0;
+  // القمّة (أعلى الباب أو قاع الابتسامة) حيث يتوسّط الشريط: الحروف فوق خطّها ٠٫٨ وتحته ٠٫٣ من حجمها.
+  const apex = up ? h / 2 - sagText / 2 + size * 0.25 : h / 2 + sagText / 2 + size * 0.25;
+  const cy = up ? apex + r : apex - r;
+  const phi = Math.min(Math.PI * 1.9, Math.max(theta * 1.5, theta + 0.5));
+  const dx = r * Math.sin(phi / 2);
+  const y = up ? cy - r * Math.cos(phi / 2) : cy + r * Math.cos(phi / 2);
+  const f = (n: number) => n.toFixed(2);
+  // من اليسار إلى اليمين: فوق المركز مع عقارب الساعة (الحروف للخارج)، وتحته عكسها (الحروف للداخل) — فيُقرأ كلاهما.
+  const d = `M${f(w / 2 - dx)} ${f(y)} A${f(r)} ${f(r)} 0 ${phi > Math.PI ? 1 : 0} ${up ? 1 : 0} ${f(w / 2 + dx)} ${f(y)}`;
+  return { size, r, d };
+}
+
+/**
+ * النصّ على قوس (١٫١٠): SVG متّجهٌ في الطباعة، والعربية موصولةٌ عليه (تجربة ٠٫١٠). والتدرّج معه، والظلّ نسخةٌ مزاحةٌ
+ * تحته (متّجهةٌ ما لم تُنعَّم)، والحدّ تحت الملء.
+ */
+function arcHtml(el: TextElement, text: string, max: number, box: string, w: number, h: number, dpi: number): string {
+  const em = estimateEm(text, el.bold) + (el.letterSpacing ?? 0) * [...text].length;
+  const { size, d } = arcGeometry(el.arc ?? 0, em, max, w, h);
+  const pathId = paintId(el.id, 'arc');
+  const gid = paintId(el.id, 'text');
+  const font = [`direction:${el.dir ?? 'rtl'}`, `font-size:${size.toFixed(2)}px`, el.font ? `font-family:${el.font}` : '', el.bold ? 'font-weight:700' : '', el.letterSpacing ? `letter-spacing:${el.letterSpacing}em` : ''].filter(Boolean).join(';');
+  const line = (attrs: string) => `<text style="${font}"${attrs} text-anchor="middle"><textPath href="#${pathId}" startOffset="50%">${escapeHtml(text)}</textPath></text>`;
+  const sh = el.shadow;
+  const shadow = sh
+    ? line(` fill="${sh.color}" transform="translate(${ptToPx(sh.dx, dpi).toFixed(2)} ${ptToPx(sh.dy, dpi).toFixed(2)})"${sh.blur ? ` filter="blur(${(ptToPx(sh.blur, dpi) / 2).toFixed(2)}px)"` : ''}`)
+    : '';
+  const stroke = el.outline ? ` stroke="${el.outline.color}" stroke-width="${(ptToPx(el.outline.width, dpi) * 2).toFixed(2)}" paint-order="stroke fill" stroke-linejoin="round"` : '';
+  return (
+    `<svg style="${box};overflow:visible" width="${w.toFixed(2)}" height="${h.toFixed(2)}" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}">` +
+    `<defs>${el.gradient ? svgGradient(gid, el.gradient) : ''}<path id="${pathId}" d="${d}" fill="none"/></defs>` +
+    `${shadow}${line(` fill="${el.gradient ? `url(#${gid})` : el.color}"${stroke}`)}</svg>`
+  );
+}
+
 function render(el: TextElement, { canvas, values, fields, opts }: RenderCtx): string {
   const inner = inlinesHtml(el.inlines, values, fields, opts.missing);
   // الحجم بالنقاط يصير بكسلات عند الدقّة المطلوبة — فالطباعة لا تتصاغر.
   const max = ptToPx(el.size, opts.dpi);
+  if (el.arc) {
+    const w = el.box.w * mmToPx(canvas.size.w, opts.dpi);
+    const h = el.box.h * mmToPx(canvas.size.h, opts.dpi);
+    return arcHtml(el, plainText(el.inlines, values, fields), max, boxStyle(el, canvas, opts.dpi), w, h, opts.dpi);
+  }
   let size = max;
   if (el.fit === 'shrink') {
     const width = el.box.w * mmToPx(canvas.size.w, opts.dpi);
@@ -130,7 +200,12 @@ function render(el: TextElement, { canvas, values, fields, opts }: RenderCtx): s
     .filter(Boolean)
     .join(';');
   // النصّ المتدرّج (DESIGNS.md ١٫٣): التدرّج خلفيةُ الأسطر مقصوصةً بحروفها — متّجهٌ في PDF.
-  const paint = el.gradient ? `;background:${cssGradient(el.gradient)};-webkit-background-clip:text;background-clip:text;color:transparent` : '';
+  // والظلّ والحدّ (١٫١٠): الحدّ ضعفُ سُمكه تحت الملء (`paint-order`) فلا يأكل الحرف ويظهر بسُمكه خارجه.
+  const sh = el.shadow;
+  const effects =
+    (sh ? `;text-shadow:${ptToPx(sh.dx, opts.dpi).toFixed(2)}px ${ptToPx(sh.dy, opts.dpi).toFixed(2)}px ${ptToPx(sh.blur, opts.dpi).toFixed(2)}px ${sh.color}` : '') +
+    (el.outline ? `;-webkit-text-stroke:${(ptToPx(el.outline.width, opts.dpi) * 2).toFixed(2)}px ${el.outline.color};paint-order:stroke fill` : '');
+  const paint = (el.gradient ? `;background:${cssGradient(el.gradient)};-webkit-background-clip:text;background-clip:text;color:transparent` : '') + effects;
   if (el.fit === 'shrink') {
     // سطرٌ واحد يُقاس: `data-fit` أقصى حجمٍ مسموح، والقياس يختار ما يسع تحته.
     return `<div dir="${el.dir ?? 'rtl'}" data-fit="${max.toFixed(2)}" style="${style}"><span style="white-space:nowrap${paint}">${inner}</span></div>`;
@@ -164,7 +239,8 @@ export const TEXT_KIND: KindSpec<TextElement> = {
       fit: raw.fit === 'shrink' ? 'shrink' : undefined,
       wordSpacing: typeof raw.wordSpacing === 'number' ? raw.wordSpacing : undefined,
       letterSpacing: typeof raw.letterSpacing === 'number' ? raw.letterSpacing : undefined,
-      ...(normalizeGradient(raw.gradient) ? { gradient: normalizeGradient(raw.gradient) } : {})
+      ...(normalizeGradient(raw.gradient) ? { gradient: normalizeGradient(raw.gradient) } : {}),
+      ...normalizeEffects(raw)
     };
   },
   render,

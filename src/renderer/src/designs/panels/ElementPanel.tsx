@@ -1,5 +1,5 @@
 /**
- * خصائص العنصر المحدَّد وحده: القفل والتكرار والحذف، ونصّه وحجمه ومحاذاته واتجاهه وعرضه ولونه، وحقل الصورة والباركود
+ * خصائص العنصر المحدَّد وحده: القفل والتكرار والحذف، ونصّه وحجمه ومحاذاته واتجاهه وعرضه ولونه وتأثيراته، وحقل الصورة والباركود
  * ونوع رمزه — والجدول في لوحته.
  */
 import type { TextElement } from '@shared/canvas';
@@ -12,6 +12,7 @@ import FontSelect from '../../components/FontSelect';
 import { familyOf, stackOf } from '@shared/fonts';
 import PaintPanel from './PaintPanel';
 import GradientControl, { gradientFrom } from './GradientControl';
+import TextEffectsPanel from './TextEffectsPanel';
 
 const SELECT = 'h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
@@ -85,6 +86,7 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
             </label>
             {single.gradient && <GradientControl act="text-gradient" value={single.gradient} onChange={(gradient) => patchElement(single.id, { gradient })} />}
           </div>
+          <TextEffectsPanel el={single} patch={(p) => patchElement(single.id, p)} />
         </>
       )}
 

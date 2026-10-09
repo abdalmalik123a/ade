@@ -79,6 +79,12 @@ export type TextElement = ElementBase & {
   letterSpacing?: number;
   /** النصّ متدرّج اللون (DESIGNS.md ١٫٣) — العنوان الذهبيّ؛ و`color` لونه حيث لا يُرسم التدرّج. */
   gradient?: Gradient;
+  /** ظلّ النصّ (١٫١٠): لونه وإزاحته ونعومته بالنقاط. */
+  shadow?: { color: string; dx: number; dy: number; blur: number };
+  /** حدّ الحروف (١٫١٠): لونه وسُمكه بالنقاط — تحت الملء فلا يأكله. */
+  outline?: { color: string; width: number };
+  /** النصّ على قوس (١٫١٠): −١٠٠..١٠٠ — موجبٌ يقوّسه للأعلى كقوس الباب، وسالبٌ للأسفل. */
+  arc?: number;
 };
 
 /** إطار الصورة على حدّ شكلها (DESIGNS.md ١٫١): بالملّم، حلقةً أو حلقتين بينهما فسحة. */
