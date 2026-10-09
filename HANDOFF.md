@@ -10,11 +10,11 @@
 
 - الفرع: **`packs`** (على GitHub: `git fetch origin && git checkout packs`). `master` و`production` عند الإصدار ١٫٢٫٠ ولا تُمَسّ.
 - **تمّ الإنجاز (✅ ولا يُعاد):** الموجتان ١ و٢ (الإصدار ١٫٢٫٠) · المجموعة **أ** (صحّة المُخرَج) · **ب** (السلامة والخصوصية) · **ج** (حماية العمل) — إيداعاتها وطريقتها في `PROGRESS.md` §٥ب.
-- **المتبقّي:** ~~د (١١ بندًا)~~ و~~هـ (٣)~~ و~~و (١٠)~~ **تمّ الإنجاز ٩ ت١** (إيداعاتها وطريقتها في `PROGRESS.md` §٥ب — لا تُعاد) · ز (٢) — مفصَّلة أدناه. ثم يبدأ العمل على **التصاميم** (`DESIGNS.md`)، ولا يُبدأ إلا بقول المالك «ابدأ».
-- الخط المرجعي السليم عند التسليم: `npm run typecheck` ✓ · `npx vitest run` ← **١٢٥٠ ✓ و٢ متخطّاة** بلا أخطاء · الشجرة نظيفة. **وبعد المجموعة د (٩ ت١): ١٢٦٤ ✓ و٢ متخطّاة؛ وبعد هـ: ١٢٨٨ ✓؛ وبعد و: ١٣٢٨ ✓.**
+- **المتبقّي:** ~~د (١١ بندًا)~~ و~~هـ (٣)~~ و~~و (١٠)~~ و~~ز (٢)~~ **تمّ الإنجاز ٩ ت١ — الحزمة كلّها** (إيداعاتها وطريقتها في `PROGRESS.md` §٥ب — لا تُعاد). ثم يبدأ العمل على **التصاميم** (`DESIGNS.md`)، ولا يُبدأ إلا بقول المالك «ابدأ».
+- الخط المرجعي السليم عند التسليم: `npm run typecheck` ✓ · `npx vitest run` ← **١٢٥٠ ✓ و٢ متخطّاة** بلا أخطاء · الشجرة نظيفة. **وبعد المجموعة د (٩ ت١): ١٢٦٤ ✓ و٢ متخطّاة؛ وبعد هـ: ١٢٨٨ ✓؛ وبعد و: ١٣٢٨ ✓؛ وبعد ز: ١٣٣٩ ✓.**
 - السيناريوهات الجديدة في هذه الجولة وأعداد فحوصها (للمقارنة بعد أيّ تعديل يمسّها): `paperSize` ✓١٤ · `transientScans` ✓٩ · `restoreStuck` ✓١١ · `parkedGone` ✓٧ ·
   `deleteGuards` ✓٣٣ · `leaveGuards` ✓٤٥ · `rootBoundary` ✓٧. **وبعد المجموعة د:** `copies` ✓١٠ (جديد) · `service` ✓٦٣ · `work` ✓١١ · `orders` ✓٢٧ ·
-  `license` ✓٣١ · `issue` ✓١١٣ · `templates` ✓٤٠ · `citizens` ✓٣٦ · `editor` ✓٣٩ · `pageEditor` ✓٦٣ · `harden` ✓١١. **وبعد هـ:** `importFolder` ✓٣٤ · `pdfTools` ✓٢٧ · `designs` ✓٦٨. **وبعد و:** `harden` ✓١٤ · `settings` ✓٢٩ · `backup` ✓٢٠ · `autoBackup` ✓٢٢ · `printResume` ✓٤ · `transientScans` ✓٩ · `license` ✓٣١ · `update` ✓٦ · `keytool` ✓٤٤.
+  `license` ✓٣١ · `issue` ✓١١٣ · `templates` ✓٤٠ · `citizens` ✓٣٦ · `editor` ✓٣٩ · `pageEditor` ✓٦٣ · `harden` ✓١١. **وبعد هـ:** `importFolder` ✓٣٤ · `pdfTools` ✓٢٧ · `designs` ✓٦٨. **وبعد و:** `harden` ✓١٤ · `settings` ✓٢٩ · `backup` ✓٢٠ · `autoBackup` ✓٢٢ · `printResume` ✓٤ · `transientScans` ✓٩ · `license` ✓٣١ · `update` ✓٦ · `keytool` ✓٤٤. **وبعد ز:** `issue` ✓١١٣ · `service` ✓٦٣ · `papers` ✓٣٦ · `templates` ✓٤٠ · `orders` ✓٢٧.
 
 ## ١ — قواعد المالك (لا تُخالَف)
 
