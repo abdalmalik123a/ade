@@ -1,0 +1,9 @@
+{
+  "src/main/services/designImport.ts": 524,
+  "src/main/services/psdLayers.ts": 1120,
+  "src/renderer/src/designs/Gallery.tsx": 501,
+  "src/renderer/src/screens/DesignsScreen.tsx": 2321,
+  "src/shared/canvas.ts": 558,
+  "src/shared/designKit/kinds.ts": 550,
+  "src/shared/designKit/styles.ts": 705
+}
