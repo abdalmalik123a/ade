@@ -1135,6 +1135,8 @@ export type DiwanApi = LibraryApis & {
     clipboardImage(): Promise<string | null>;
     /** الشخص مفصولًا: قناعه (بايتٌ لكلّ بكسل) وألوانه بلا هالة الخلفية — بمقاس ما أُرسل. */
     cutout(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number }>;
+    /** الشيء مفصولًا (المنتج والشعار في التصاميم، DESIGNS.md ٢٫٣) — بالصيغة نفسها، بنموذج الأشياء. */
+    cutoutObject(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number }>;
     presets(): Promise<PhotoPreset[]>;
     savePreset(preset: PhotoPreset): Promise<PhotoPreset[]>;
     deletePreset(id: string): Promise<PhotoPreset[]>;

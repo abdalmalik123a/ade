@@ -1,14 +1,20 @@
 /**
  * شكل الصورة وإطارها (DESIGNS.md ١٫١): قصٌّ بشكلٍ من ثمانية — كلٌّ بلمحته — وإطارٌ على حدّه، حلقةً أو حلقتين بفسحة.
+ * و«أزل الخلفية» (٢٫٣) للصورة المُدرَجة: المنتج أو الشعار على خلفيةٍ شفّافة.
  */
+import { useState } from 'react';
 import type { ImageElement, ImageFrame } from '@shared/canvas';
 import { IMAGE_SHAPES, SHAPE_LABELS, shapePath, type ImageShape } from '@shared/design/shapes';
 import { NUM, toHexColor } from '../editor/kit';
+import CutoutModal from '../cutout/CutoutModal';
 
 const TILE = 'w-9 h-9 rounded-lg flex items-center justify-center border transition-colors';
 
 export default function ImageShapePanel({ image, patch }: { image: ImageElement; patch: (p: Partial<ImageElement>) => void }) {
   const frame = image.frame;
+  const [cutting, setCutting] = useState(false);
+  // الرسمة المتّجهة (SVG من «رسومات») بلا خلفيةٍ أصلًا — والصورة الفارغة لا شيء فيها.
+  const photo = Boolean(image.src) && !image.src.startsWith('data:image/svg');
   const setFrame = (next: Partial<ImageFrame> | null) => patch({ frame: next ? { color: '#ffffff', width: 1, ...frame, ...next } : undefined });
   const tile = (shape: ImageShape | undefined, label: string) => {
     const on = image.shape === shape;
@@ -34,6 +40,28 @@ export default function ImageShapePanel({ image, patch }: { image: ImageElement;
 
   return (
     <div className="space-y-space-xs" data-panel="image-shape">
+      {photo && (
+        <button
+          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          data-act="cutout"
+          title="المنتج أو الشعار على خلفيةٍ شفّافة — على هذا الجهاز"
+          type="button"
+          onClick={() => setCutting(true)}
+        >
+          <span className="material-symbols-outlined text-[18px]">background_replace</span>
+          أزل الخلفية
+        </button>
+      )}
+      {cutting && (
+        <CutoutModal
+          src={image.src}
+          onClose={() => setCutting(false)}
+          onDone={(src) => {
+            patch({ src });
+            setCutting(false);
+          }}
+        />
+      )}
       <span className="font-label-sm text-label-sm text-on-surface-variant">القصّ بشكل</span>
       <div className="flex flex-wrap gap-1">
         {tile(undefined, 'بلا قصّ')}

@@ -1119,6 +1119,7 @@ tools/
   mrz-fixture.mjs         يرسم ظهر بطاقةٍ مخترع لاختبار قارئه (tests/fixtures)
   psd-layers.mjs          طبقات ملف Photoshop صورًا PNG شفّافة — بقارئ البرنامج نفسه
   prepare-suits.py        القاط المدمج من مكتبة المالك: خلفيةٌ بيضاء تصير شفّافة، وبقعٌ وثقوب، وإطار الصدر (Pillow)
+  models/                 نموذج الأشياء من أوزانه الأصلية: convert-birefnet.py ومثيل الالتفاف المشوَّه deform_py.py — مرّةً، لا مع البناء
   aged-db/                مولّد قاعدة الإصدار الأوّل — يجري على نسخةٍ من ذلك الإصدار
                           (وقاعدة كلّ إصدارٍ يُباع: tests/makeReleaseDb.test.ts → fixtures/release-X.Y.Z.db)
 tests/                    اختبارات الوحدة (vitest)، وملفّاتها المرجعية في fixtures/
@@ -1173,7 +1174,8 @@ src/main/                 عملية Electron: القاعدة، الإصدار،
     ocr.ts                القارئ الضوئي المحلي (tesseract): النصّ، والورقة كلمةً كلمة، وسطور ظهر البطاقة
     orders.ts             الطلبات بحالاتها ومواعيدها
     pdfEdit.ts            محرّر PDF — البناء: الصفحات تُنسخ وتُدار وتُقصّ، والطبقة تُختم، والصور تُصغَّر
-    portrait.ts           فصل الشخص عن خلفيّته بالنموذج المحلّي (onnxruntime على المعالج) — بلا شبكة
+    portrait.ts           فصل الشخص عن خلفيّته بالنموذج المحلّي (onnxruntime على المعالج) — بلا شبكة؛ وجلسةٌ لكلّ نموذج بخيوط الجهاز
+    objectCutout.ts       فصل الشيء عن خلفيّته (DESIGNS.md ٢٫٣): BiRefNet_lite-matting بجلسات portrait.ts ومعالجة حافّته
     png.ts                كتابة PNG بلا مكتبة — و`pHYs` دائمًا
     printJobs.ts          سجلُّ الطباعة: ما أُرسل ورقةً ورقة، فيُستأنف بعد انقطاع
     psd.ts                قراءة Photoshop: الترويسة والدقّة والصورة المسطَّحة
@@ -1267,6 +1269,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   photoSheet.ts           الصور الشخصية: قصٌّ بمقاس، وتصفيفٌ على الورق
   photoPresets.ts         قوالب صورة المعاملة (والرسميّ منها بمصدره)، وخلفيّاتها، والدقّة في ملف JPEG
   portraitMask.ts         القناع: مدخل النموذج، وحافّةٌ حادّة بلا غواش ولا هالة، والفرشاة، والمعالم، وإلباس القاط وحدّه
+  objectMask.ts           مدخل نموذج الأشياء (٢٫٣): مربّعٌ ٥١٢ بمقياس ImageNet
   portraitEnhance.ts      تحسينٌ محافظ: لونٌ وإضاءةٌ لكلّ بكسلٍ في مكانه، والضجيج على اللون وحده
   suits.ts                مكتبة القاط: المدمج (والنظاميّ بلا شارات)، والمستورد PNG شفّافًا
   idCardDuplex.ts         الهوية وجهًا وظهرًا بمقاس ١:١
@@ -1358,6 +1361,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           وخياراتها، ومكتبة الرسومات، و«حقولٌ من أسماء الطبقات»، وDraftStrip (ما لم يُحفظ في رأس المعرض)
     gallery/              المعرض أجزاءً (٠٫٩): Thumbs (اللمحات) · useGalleryBrand («لمن؟» واللون والنمط) · BrandPanel ·
                           SavedDesigns — و`Gallery.tsx` تركيبٌ
+    cutout/               «أزل الخلفية» للصورة في التصميم (٢٫٣): useCutout (النموذج والفرشاة والحفظ في المخزن) · CutoutModal
     editor/               المحرّر (DESIGNS.md ٠٫٣): useDesignEditor يركّب خطّافاته — useCanvasSides (الوجه والظهر
                           وتاريخهما) · useCanvasElements (العناصر والمحدَّد) · useCanvasPointer (السحب) · useDesignKeys
                           · useDesignDoc (الوثيقة ورسمها والظهر المحفوظ) · useCanvasPaint (الباركود وتصغير النصّ) ·

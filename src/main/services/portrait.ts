@@ -7,6 +7,7 @@
  *
  * وصورة الزبون لا تغادر هذه العملية إلى أيّ مكان: تدخل بكسلاتٍ وتخرج قناعًا.
  */
+import { availableParallelism } from 'node:os';
 import type { InferenceSession } from 'onnxruntime-node';
 import { decontaminate, modelInput, modelSize, sharpenAlpha, upsampleAlpha } from '@shared/portraitMask';
 
@@ -34,21 +35,29 @@ export function loadOrt(): Promise<Ort> {
   return ortLoad;
 }
 
-let cached: { path: string; session: Promise<InferenceSession> } | null = null;
+/** جلسةٌ لكلّ نموذج (الأشخاص، والأشياء — DESIGNS.md ٢٫٣) بالمحرّك نفسه: تُحمَّل عند أوّل صورةٍ وتبقى حتى الإغلاق. */
+const sessions = new Map<string, Promise<InferenceSession>>();
 
-function session(modelPath: string): Promise<InferenceSession> {
-  if (!cached || cached.path !== modelPath) {
-    const pending = loadOrt().then((ort) => ort.InferenceSession.create(modelPath, { executionProviders: ['cpu'], graphOptimizationLevel: 'all' }));
+/**
+ * خيوط المعالج صراحةً: في العملية الرئيسة لـElectron كان المحرّك يعمل بخيطٍ واحد — نموذج الأشياء ٩ ثوانٍ للصورة، وهو بخيوط
+ * الجهاز الثمانية ٢٫٣ (قيس على i5-1035G1، ١٠ ت١). و`level` «basic» للنموذج الكبير: يُحمَّل في ٢٫٦ ثانية بدل ٩ والسرعة نفسها.
+ */
+const THREADS = Math.max(1, Math.min(8, availableParallelism()));
+
+export function modelSession(modelPath: string, level: 'basic' | 'all' = 'all'): Promise<InferenceSession> {
+  let pending = sessions.get(modelPath);
+  if (!pending) {
+    pending = loadOrt().then((ort) => ort.InferenceSession.create(modelPath, { executionProviders: ['cpu'], graphOptimizationLevel: level, intraOpNumThreads: THREADS }));
     // فشل التحميل لا يُحفظ: المحاولة التالية تعيده.
-    pending.catch(() => (cached = null));
-    cached = { path: modelPath, session: pending };
+    pending.catch(() => sessions.delete(modelPath));
+    sessions.set(modelPath, pending);
   }
-  return cached.session;
+  return pending;
 }
 
 /** قناع النموذج (٠..٢٥٥) بمقاس الصورة — قبل الشدّ إلى الحوافّ. */
 export async function matte(modelPath: string, pixels: Uint8Array | Uint8ClampedArray, width: number, height: number, order: 'rgba' | 'bgra' = 'rgba'): Promise<Uint8Array> {
-  const s = await session(modelPath);
+  const s = await modelSession(modelPath);
   const { Tensor } = await loadOrt();
   const size = modelSize(width, height);
   const input = new Tensor('float32', modelInput(pixels, width, height, size.w, size.h, order), [1, 3, size.h, size.w]);
@@ -70,9 +79,9 @@ export async function cutout(modelPath: string, pixels: Uint8Array | Uint8Clampe
   return { alpha, pixels: decontaminate(pixels, alpha, width, height), ms: Date.now() - t0 };
 }
 
-/** يُطلق النموذج عند الإغلاق. */
+/** يُطلق النموذجين عند الإغلاق. */
 export async function closePortrait(): Promise<void> {
-  const current = cached;
-  cached = null;
-  if (current) await (await current.session.catch(() => null))?.release();
+  const open = [...sessions.values()];
+  sessions.clear();
+  for (const s of open) await (await s.catch(() => null))?.release();
 }

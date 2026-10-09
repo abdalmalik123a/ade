@@ -295,6 +295,7 @@ const api: DiwanApi = {
     modelReady: () => invoke('photos:modelReady'),
     clipboardImage: () => invoke('photos:clipboardImage'),
     cutout: (input: { pixels: Uint8Array; width: number; height: number }) => invoke('photos:cutout', input),
+    cutoutObject: (input: { pixels: Uint8Array; width: number; height: number }) => invoke('photos:cutoutObject', input),
     presets: () => invoke('photos:presets'),
     savePreset: (preset: unknown) => invoke('photos:savePreset', preset),
     deletePreset: (id: string) => invoke('photos:deletePreset', id),

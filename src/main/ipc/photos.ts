@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import { cutout } from '../services/portrait';
+import { objectCutout } from '../services/objectCutout';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
 import { importFile, pickOpenPath } from './files';
@@ -18,15 +19,19 @@ import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPre
 import { parseCustomSuits, pngTransparency, type CustomSuit } from '@shared/suits';
 
 const MODEL = 'modnet-portrait-q8.onnx';
+/** نموذج الأشياء (DESIGNS.md ٢٫٣) — للتصاميم؛ والأشخاص لـMODNet. */
+const OBJECT_MODEL = 'birefnet-lite-matting-q8.onnx';
 
-export function portraitModelPath(): string {
+function modelPath(file: string): string {
   const candidates = [
-    join(process.resourcesPath ?? '', 'models', MODEL),
-    join(app.getAppPath(), 'resources', 'models', MODEL),
-    join(app.getAppPath(), '..', 'resources', 'models', MODEL)
+    join(process.resourcesPath ?? '', 'models', file),
+    join(app.getAppPath(), 'resources', 'models', file),
+    join(app.getAppPath(), '..', 'resources', 'models', file)
   ];
   return candidates.find((p) => existsSync(p)) ?? candidates[1]!;
 }
+
+export const portraitModelPath = (): string => modelPath(MODEL);
 
 const readSetting = (key: string): string | null =>
   (getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? null;
@@ -49,6 +54,14 @@ export function registerPhotoIpc(): void {
     if (!existsSync(path)) throw new Error('نموذج إزالة الخلفية غير مثبّت مع البرنامج');
     if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
     return cutout(path, input.pixels, input.width, input.height);
+  });
+
+  /** الشيء مفصولًا عن خلفيّته (المنتج والكوب والشعار في التصاميم) — بنموذج الأشياء وحده. */
+  ipcMain.handle('photos:cutoutObject', async (_e, input: { pixels: Uint8Array; width: number; height: number }) => {
+    const path = modelPath(OBJECT_MODEL);
+    if (!existsSync(path)) throw new Error('نموذج إزالة خلفية الأشياء غير مثبّت مع البرنامج');
+    if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
+    return objectCutout(path, input.pixels, input.width, input.height);
   });
 
   /** صورةٌ في الحافظة (من واتساب الحاسوب أو المتصفّح) تُحفظ في المخزن كأيّ صورةٍ تُفتح. */
