@@ -26,6 +26,7 @@ import { prepareTemplates } from '../services/templates';
 import { prepareSearch } from '../services/searchIndex';
 import { swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
+import { backupPasswordProblem } from '@shared/backupPassword';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
@@ -290,7 +291,9 @@ export function registerBackupIpc(): void {
     if (config.keep) setting('autoBackupKeep', String(Math.max(1, Math.min(60, Math.round(config.keep)))));
     if (config.password === null) unsetSetting('autoBackupSecret');
     else if (typeof config.password === 'string') {
-      if (config.password.length < 4) throw new Error('كلمة النسخة التلقائية أربعة أحرفٍ أقلّها');
+      // الحدّ في العملية الرئيسية لا في الواجهة وحدها (و٦).
+      const problem = backupPasswordProblem(config.password);
+      if (problem) throw new Error(problem);
       if (!safeStorage.isEncryptionAvailable()) throw new Error('حفظ الكلمة مشفّرةً غير متاحٍ على هذا الجهاز');
       setting('autoBackupSecret', safeStorage.encryptString(config.password).toString('base64'));
     }
@@ -335,7 +338,13 @@ export function registerBackupIpc(): void {
 
   ipcMain.handle('backup:create', async (e, password?: string | null) => {
     const w = win(e);
-    return w ? createBackup(w, password?.trim() ? password : null) : null;
+    if (!w) return null;
+    // بلا كلمة: نسخةٌ غير مشفّرة. وبكلمةٍ: ثمانية أحرفٍ أقلّها (و٦) — وكانت كلمةٌ من فراغاتٍ تُعدّ «بلا كلمة» فتخرج
+    // النسخة غير مشفّرةٍ والموظف يظنّها مشفّرة.
+    if (password == null || password === '') return createBackup(w, null);
+    const problem = backupPasswordProblem(String(password));
+    if (problem) throw new Error(problem);
+    return createBackup(w, String(password));
   });
 
   /** يُختار الملف — ويُقال أمشفّرٌ هو، فيُسأل عن كلمته قبل الفحص. */

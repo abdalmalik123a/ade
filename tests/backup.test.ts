@@ -76,6 +76,20 @@ const walk = (root: string, prefix = ''): string[] =>
   );
 
 describe('النسخة ملفًّا ملفًّا', () => {
+  it('ونسخةٌ قديمة بكلمةٍ من أربعة أحرف تُفتح — حدّ الثمانية عند الإنشاء وحده (و٦)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
+    const dbFile = officeDb(dir);
+    const target = join(dir, 'old-short.zip');
+    // كما صنعها إصدارٌ قبل و٦ (الحدّ في القناة، لا في الكاتب).
+    await writeBackup({ target, dbFile, storeRoot: store(dir), password: '1234', appVersion: '1.2.0' });
+    const opened = await openBackup(target, '1234', join(dir, 'work'));
+    try {
+      expect(opened.meta).toMatchObject({ app: 'diwan', appVersion: '1.2.0' });
+    } finally {
+      opened.dispose();
+    }
+  });
+
   it('القاعدة والمخزن يعودان كما كُتبا بايتًا ببايت — مشفّرةً أو لا — ومعها إصدارها', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
     const dbFile = officeDb(dir);

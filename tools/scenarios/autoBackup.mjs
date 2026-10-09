@@ -41,6 +41,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('«النسخة التلقائية عند الإغلاق» في الإعدادات، غير مفعّلة', await page.eval(`return document.querySelector('[data-auto-backup]')?.dataset.autoBackup === 'off';`));
   await click('[data-auto-encrypt]');
   await wait(200);
+  // و٦: سبعة أحرف لا تكفي — والعملية الرئيسية تتحقّق أيضًا.
+  await page.type('[data-auto-password]', 'سبعة١٢٣');
+  await page.type('[data-auto-confirm]', 'سبعة١٢٣');
+  await wait(200);
+  const shortHint = await page.eval(`return document.querySelector('[data-auto-hint]')?.innerText ?? '';`);
+  const shortOff = await page.eval(`return document.querySelector('[data-act="auto-backup-enable"]')?.disabled === true;`);
+  ok(`كلمةٌ من سبعة أحرف تُرفض («${shortHint}») والزرّ معطّل`, shortHint.includes('8 أحرفٍ أقلّها') && shortOff);
   await page.type('[data-auto-password]', 'كلمة-المكتب');
   await page.type('[data-auto-confirm]', 'كلمة-المكتب');
   await click('[data-act="auto-backup-enable"]');

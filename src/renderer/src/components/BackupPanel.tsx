@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import type { AutoBackupStatus, BackupSummary, MirrorSnapshot } from '@shared/api';
 import { BACKUP_REMIND_DAYS, daysSince, sinceText } from '@shared/dates';
 import { errorText } from '../lib/errors';
+import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 import BackupCreate from './BackupCreate';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -52,7 +53,9 @@ export default function BackupPanel({
 
   const stale = !lastBackupAt || daysSince(lastBackupAt) >= BACKUP_REMIND_DAYS;
   const autoMismatch = autoEncrypt && autoConfirm.length > 0 && autoPassword !== autoConfirm;
-  const canEnableAuto = !autoEncrypt || (autoPassword.length >= 4 && autoPassword === autoConfirm);
+  // ثمانية أحرفٍ أقلّها (و٦) — والعملية الرئيسية تتحقّق أيضًا.
+  const autoProblem = autoEncrypt && autoPassword ? backupPasswordProblem(autoPassword) : null;
+  const canEnableAuto = !autoEncrypt || (autoPassword !== '' && !autoProblem && autoPassword === autoConfirm);
 
   /** يُختار المجلّد ثم تُفعَّل — أو يُبدَّل مجلّدها وتبقى كلمتها. */
   async function chooseAutoDir(first: boolean) {
@@ -230,10 +233,11 @@ export default function BackupPanel({
                     <input className={`${input} flex-1`} data-auto-password="" placeholder="كلمة المرور" type="password" value={autoPassword} onChange={(e) => setAutoPassword(e.target.value)} />
                     <input className={`${input} flex-1`} data-auto-confirm="" placeholder="أعِدها" type="password" value={autoConfirm} onChange={(e) => setAutoConfirm(e.target.value)} />
                   </div>
-                  <span className={`font-label-sm text-label-sm ${autoMismatch ? 'text-error' : 'text-on-surface-variant'}`}>
+                  <span className={`font-label-sm text-label-sm ${autoMismatch || autoProblem ? 'text-error' : 'text-on-surface-variant'}`} data-auto-hint="">
                     {autoMismatch
                       ? 'الكلمتان لا تتطابقان'
-                      : 'تُحفظ على هذا الجهاز مشفّرةً بحساب ويندوز لتُؤخذ النسخة وحدها. واحفظها أنت أيضًا: بها وحدها تُسترجع النسخة على جهازٍ آخر.'}
+                      : autoProblem ??
+                        `تُحفظ على هذا الجهاز مشفّرةً بحساب ويندوز لتُؤخذ النسخة وحدها. واحفظها أنت أيضًا: بها وحدها تُسترجع النسخة على جهازٍ آخر. و${BACKUP_PASSWORD_MIN} أحرفٍ أقلّها.`}
                   </span>
                 </div>
               )}

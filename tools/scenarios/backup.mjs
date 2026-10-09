@@ -39,6 +39,16 @@ export default async function scenario(page, { profile }) {
   ok('«آخر نسخة احتياطية» يُذكَّر بها ولم تُؤخذ بعد', (await page.text()).includes('آخر نسخة احتياطية: لم يحدث بعد'));
   await page.eval(`document.querySelector('[data-backup-encrypt]').click(); return true;`);
   await wait(200);
+  // و٦: سبعة أحرف لا تكفي — في الواجهة وفي العملية الرئيسية.
+  await page.type('[data-backup-password]', 'سبعة١٢٣');
+  await page.type('[data-backup-confirm]', 'سبعة١٢٣');
+  await wait(200);
+  const shortHint = await page.eval(`return document.querySelector('[data-backup-hint]')?.innerText ?? '';`);
+  const shortOff = await page.eval(`return document.querySelector('[data-act="backup-create"]')?.disabled === true;`);
+  ok(`كلمةٌ من سبعة أحرف تُرفض («${shortHint}») والزرّ معطّل`, shortHint.includes('8 أحرفٍ أقلّها') && shortOff);
+  const beforeDirect = readdirSync(DIR).length;
+  const direct = await page.eval(`return window.diwan.backup.create('1234567').then(() => 'أُنشئت', (e) => e.message);`);
+  ok('والعملية الرئيسية ترفضها أيضًا ولا تُنشأ نسخة', direct.includes('8 أحرفٍ أقلّها') && readdirSync(DIR).length === beforeDirect);
   await page.type('[data-backup-password]', 'سرّ المكتب');
   await page.type('[data-backup-confirm]', 'سرّ المكتب');
   await page.eval(`document.querySelector('[data-act="backup-create"]').click(); return true;`);

@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { errorText } from '../lib/errors';
+import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 
 const input =
   'h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
@@ -23,7 +24,9 @@ export default function BackupCreate({
   const [busy, setBusy] = useState(false);
 
   const mismatch = encrypt && confirm.length > 0 && password !== confirm;
-  const canCreate = !encrypt || (password.length >= 4 && password === confirm);
+  // ثمانية أحرفٍ أقلّها (و٦) — والعملية الرئيسية تتحقّق أيضًا.
+  const problem = encrypt && password ? backupPasswordProblem(password) : null;
+  const canCreate = !encrypt || (password !== '' && !problem && password === confirm);
 
   async function create() {
     setBusy(true);
@@ -53,8 +56,8 @@ export default function BackupCreate({
             <input className={`${input} flex-1`} data-backup-password="" placeholder="كلمة المرور" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             <input className={`${input} flex-1`} data-backup-confirm="" placeholder="أعِدها" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
-          <span className={`font-label-sm text-label-sm ${mismatch ? 'text-error' : 'text-on-surface-variant'}`}>
-            {mismatch ? 'الكلمتان لا تتطابقان' : 'لا تُحفظ الكلمة في أي مكان: من نسيها لا تُفتح نسخته أبدًا. وأربعة أحرفٍ أقلّها.'}
+          <span className={`font-label-sm text-label-sm ${mismatch || problem ? 'text-error' : 'text-on-surface-variant'}`} data-backup-hint="">
+            {mismatch ? 'الكلمتان لا تتطابقان' : problem ?? `لا تُحفظ الكلمة في أي مكان: من نسيها لا تُفتح نسخته أبدًا. و${BACKUP_PASSWORD_MIN} أحرفٍ أقلّها.`}
           </span>
         </div>
       )}
