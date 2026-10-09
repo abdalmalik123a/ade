@@ -63,3 +63,16 @@ describe('التحديث «أ+»', () => {
     await expect(readUpdate(s.exe, s.pub, '1.0.0', s.dir)).rejects.toThrow(/ليس تحديثًا/);
   });
 });
+
+describe('التحديث بمفاتيح المالك (و١٠)', () => {
+  it('موقَّعٌ بأيّ مفتاحٍ في قائمة التحديث يُقبل، وبمفتاحٍ خارجها يُرفض', async () => {
+    const s = setup();
+    const other = setup();
+    const opened = await readUpdate(s.file, [other.pub, s.pub], '1.0.0', join(s.dir, 'work'));
+    expect(opened.manifest.version).toBe('1.1.0');
+    await expect(readUpdate(s.file, [other.pub], '1.0.0', s.dir)).rejects.toThrow(/غير موقّعٍ من المطوّر/);
+    // ومفتاحٌ عامٌّ تالف في القائمة لا يُسقط الفحص بغيره.
+    expect((await readUpdate(s.file, ['ليس مفتاحًا', s.pub], '1.0.0', join(s.dir, 'work2'))).manifest.version).toBe('1.1.0');
+    await expect(readUpdate(s.file, [], '1.0.0', s.dir)).rejects.toThrow(/غير موقّعٍ من المطوّر/);
+  }, 30_000);
+});

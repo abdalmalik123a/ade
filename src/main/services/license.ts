@@ -19,6 +19,8 @@ export const TRIAL_DAYS = 14;
 /** Crockford: بلا I وL وO وU — فلا يُخلط حرفٌ برقمٍ حين يُقرأ على الهاتف. */
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const PREFIX = 'DIWAN-';
+/** توقيعٌ لا يصحّ — أو مفتاحٌ مقطوع. */
+const BAD_KEY = 'المفتاح غير صحيح — انسخه كاملًا كما وصلك';
 
 /** `DWN-XXXX-XXXX-XXXX-XXXX` — ٨٠ بتًّا من بصمة معرّف الجهاز. */
 export function deviceCode(machineId: string): string {
@@ -96,12 +98,12 @@ export function readKey(raw: string, publicKey: string | KeyObject): KeyCheck {
   } catch {
     good = false;
   }
-  if (!good) return { ok: false, reason: 'المفتاح غير صحيح — انسخه كاملًا كما وصلك' };
+  if (!good) return { ok: false, reason: BAD_KEY };
   let p: LicensePayload;
   try {
     p = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as LicensePayload;
   } catch {
-    return { ok: false, reason: 'المفتاح غير صحيح — انسخه كاملًا كما وصلك' };
+    return { ok: false, reason: BAD_KEY };
   }
   if (p?.v !== 1 || typeof p.device !== 'string' || !['full', 'sub', 'extend'].includes(p.kind) || !DAY.test(p.issued ?? '')) {
     return { ok: false, reason: 'مفتاحٌ بصيغةٍ لا يعرفها هذا الإصدار — حدّث البرنامج' };
@@ -111,6 +113,18 @@ export function readKey(raw: string, publicKey: string | KeyObject): KeyCheck {
     return { ok: false, reason: 'مفتاح الاشتراك بلا خطّته أو يومٍ ينتهي إليه' };
   }
   return { ok: true, payload: p };
+}
+
+/**
+ * يتحقّق من المفتاح بأيٍّ من مفاتيح المالك العامّة (و١٠) — أوّلُ توقيعٍ يصحّ يُقبل. وما فشل بغير التوقيع (ليس مفتاح
+ * ديوان، أو صيغةٌ لا يعرفها الإصدار بتوقيعٍ صحيح) يُقال سببه كما هو؛ وإلا فـ«غير صحيح».
+ */
+export function readKeyWith(raw: string, publicKeys: readonly (string | KeyObject)[]): KeyCheck {
+  for (const k of publicKeys) {
+    const r = readKey(raw, k);
+    if (r.ok || r.reason !== BAD_KEY) return r;
+  }
+  return { ok: false, reason: BAD_KEY };
 }
 
 /**

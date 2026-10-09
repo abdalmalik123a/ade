@@ -3,12 +3,13 @@
  * بأيّامها التقويمية — وأداة المالك تصنع ما يقرؤه البرنامج.
  */
 import { execFileSync } from 'node:child_process';
-import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, type LicensePayload } from '../src/main/services/license';
+import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, type LicensePayload } from '../src/main/services/license';
+import { OWNER_KEYS, OWNER_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
 
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 const pub = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -117,5 +118,45 @@ describe('الاشتراك الشهري والسنوي (قرار المالك ٣
     expect(readKey(encodeKey(sub('2026-11-09'), signer), pub).ok).toBe(true);
     expect(readKey(encodeKey({ ...sub('2026-11-09'), plan: undefined }, signer), pub).ok).toBe(false);
     expect(readKey(encodeKey({ ...sub('2026-11-09'), until: undefined }, signer), pub).ok).toBe(false);
+  });
+});
+
+describe('مفاتيح المالك بأدوارها (و١٠)', () => {
+  const pair = () => {
+    const k = generateKeyPairSync('ed25519');
+    return { priv: k.privateKey, pem: k.publicKey.export({ type: 'spki', format: 'pem' }).toString() };
+  };
+  const full: LicensePayload = { v: 1, device: DEVICE, kind: 'full', issued: '2026-10-09', office: 'مكتب النور' };
+
+  it('بصمة القائمة المدمجة «ذهبية» — تعديلٌ غير مقصود يفشل هنا', () => {
+    // المفتاح الأوّل (2026-10-02) بدوره `both`: به صدرت كلّ المفاتيح وكلّ تحديثٍ قائم. لا تُغيَّر هذه البصمة إلا
+    // بإضافة مفتاحٍ أعطاه المالك عمدًا — في إصدارٍ جديد.
+    expect(createHash('sha256').update(JSON.stringify(OWNER_KEYS)).digest('hex')).toBe('e17dcaa17609a43fb66c35d19c975bddea18e5bef9ea68cfc40b94495fd7359d');
+    expect(OWNER_KEYS).toEqual([{ id: 'owner-2026-10-02', role: 'both', publicKey: OWNER_PUBLIC_KEY }]);
+    expect(keysFor('license')).toEqual([OWNER_PUBLIC_KEY]);
+    expect(keysFor('update')).toEqual([OWNER_PUBLIC_KEY]);
+  });
+
+  it('التفعيل يجرّب `license|both`، والتحديث `update|both`', () => {
+    const keys = [
+      { id: 'a', role: 'both' as const, publicKey: 'A' },
+      { id: 'b', role: 'license' as const, publicKey: 'B' },
+      { id: 'c', role: 'update' as const, publicKey: 'C' }
+    ];
+    expect(keysFor('license', keys)).toEqual(['A', 'B']);
+    expect(keysFor('update', keys)).toEqual(['A', 'C']);
+  });
+
+  it('مفتاحٌ موقَّعٌ بأيّ مفتاحٍ في القائمة يُقبل، وبثالثٍ خارجها يُرفض', () => {
+    const [k1, k2, k3] = [pair(), pair(), pair()];
+    const by = (k: { priv: Parameters<typeof sign>[2] }) => encodeKey(full, (d) => sign(null, d, k.priv));
+    expect(readKeyWith(by(k1), [k1.pem, k2.pem])).toEqual({ ok: true, payload: full });
+    expect(readKeyWith(by(k2), [k1.pem, k2.pem])).toEqual({ ok: true, payload: full });
+    expect(readKeyWith(by(k3), [k1.pem, k2.pem])).toEqual({ ok: false, reason: 'المفتاح غير صحيح — انسخه كاملًا كما وصلك' });
+    expect(readKeyWith('ليس مفتاحًا', [k1.pem])).toMatchObject({ ok: false, reason: expect.stringMatching(/ليس مفتاح/) });
+    // وصيغةٌ لا يعرفها الإصدار بتوقيعٍ صحيح يُقال سببها — لا «غير صحيح».
+    const odd = encodeKey({ ...full, kind: 'gift' as LicensePayload['kind'] }, (d) => sign(null, d, k2.priv));
+    expect(readKeyWith(odd, [k1.pem, k2.pem])).toMatchObject({ ok: false, reason: expect.stringMatching(/حدّث البرنامج/) });
+    expect(readKeyWith(by(k1), [])).toMatchObject({ ok: false });
   });
 });

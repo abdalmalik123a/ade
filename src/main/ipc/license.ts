@@ -19,8 +19,8 @@ import { join } from 'node:path';
 import { app, ipcMain } from 'electron';
 import { now } from '../clock';
 import { dataDir, getDb } from '../db';
-import { OWNER_PUBLIC_KEY } from '../license/ownerKey';
-import { dayNumber, deviceCode, evaluate, keyList, readKey, type LicensePayload, type LicenseState } from '../services/license';
+import { keysFor } from '../license/ownerKey';
+import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, type LicensePayload, type LicenseState } from '../services/license';
 import { logAudit } from '../services/documents';
 import type { LicenseStatus } from '@shared/api';
 import { DEVELOPER } from '@shared/brand';
@@ -30,9 +30,15 @@ import { formatGregorian } from '@shared/dates';
 const DEVELOPER_PHONE = DEVELOPER.phoneDisplay;
 
 const test = (name: string): string | undefined => (app.isPackaged ? undefined : process.env[name]);
-const publicKey = (): string => test('DIWAN_TEST_LICENSE_PUBKEY') ?? OWNER_PUBLIC_KEY;
-/** مفتاح المالك العامّ — للتفعيل وللتحديث «أ+» (وتحت المِقْود مفتاح الاختبار، في غير المثبّت وحده). */
-export const ownerPublicKey = publicKey;
+/**
+ * مفاتيح المالك العامّة لعملٍ (و١٠): التفعيل أو التحديث «أ+» — بأدوارها من `OWNER_KEYS`. وتحت المِقْود مفتاح الاختبار
+ * وحده، في غير المثبّت وحده.
+ */
+const publicKeys = (role: 'license' | 'update'): string[] => {
+  const testKey = test('DIWAN_TEST_LICENSE_PUBKEY');
+  return testKey ? [testKey] : keysFor(role);
+};
+export const ownerPublicKeys = publicKeys;
 
 let machine: string | null = null;
 /** معرّف ويندوز للجهاز — يُقرأ بلا صلاحيات مدير. وإن تعذّر فاسم الجهاز والمستخدم. */
@@ -135,7 +141,7 @@ export function licenseStatus(fresh = false): LicenseStatus {
   const device = deviceCode(machineId());
   const valid: LicensePayload[] = [];
   for (const k of keys) {
-    const r = readKey(k, publicKey());
+    const r = readKeyWith(k, publicKeys('license'));
     if (r.ok && r.payload.device === device) valid.push(r.payload);
   }
   const state: LicenseState = evaluate({ now: t, trialStart: new Date(trialStart), lastSeen: new Date(seen), keys: valid, device });
@@ -166,7 +172,7 @@ export function registerLicenseIpc(): void {
   ipcMain.handle('license:status', () => licenseStatus(true));
 
   ipcMain.handle('license:activate', (_e, raw: string): LicenseStatus => {
-    const r = readKey(String(raw ?? ''), publicKey());
+    const r = readKeyWith(String(raw ?? ''), publicKeys('license'));
     if (!r.ok) throw new Error(r.reason);
     const device = deviceCode(machineId());
     if (r.payload.device !== device) {

@@ -23,7 +23,7 @@ export function canonicalManifest(m: UpdateManifest): string {
 export type OpenedUpdate = { manifest: UpdateManifest; installer: ZipEntry };
 
 /** يقرأ ملفّ التحديث ويتحقّق من توقيعه وإصداره — قبل أن يُفكّ المثبّت أو يُسأل المكتب. */
-export async function readUpdate(path: string, publicKey: string, current: string, workDir: string): Promise<OpenedUpdate> {
+export async function readUpdate(path: string, publicKeys: string | readonly string[], current: string, workDir: string): Promise<OpenedUpdate> {
   let entries: ZipEntry[];
   try {
     entries = await readZipIndex(path);
@@ -45,11 +45,15 @@ export async function readUpdate(path: string, publicKey: string, current: strin
     rmSync(file, { force: true });
   }
   const m = parsed?.manifest;
+  // بأيٍّ من مفاتيح التحديث (و١٠: `update|both`) — ومفتاحٌ عامٌّ تالف لا يُسقط الفحص بغيره.
   let signed = false;
-  try {
-    signed = verify(null, Buffer.from(canonicalManifest(m), 'utf8'), createPublicKey(publicKey), Buffer.from(String(parsed.signature), 'base64url'));
-  } catch {
-    signed = false;
+  for (const publicKey of typeof publicKeys === 'string' ? [publicKeys] : publicKeys) {
+    try {
+      signed = verify(null, Buffer.from(canonicalManifest(m), 'utf8'), createPublicKey(publicKey), Buffer.from(String(parsed.signature), 'base64url'));
+    } catch {
+      signed = false;
+    }
+    if (signed) break;
   }
   if (!signed || m.app !== 'diwan' || m.kind !== 'update') throw new Error('التحديث غير موقّعٍ من المطوّر — لا يُثبَّت');
   if (compareVersions(m.version, current) <= 0) {

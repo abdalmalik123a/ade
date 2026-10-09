@@ -12,7 +12,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { dataDir } from '../db';
 import { extractInstaller, readUpdate } from '../services/update';
 import type { DataGuard } from '../services/dataVersion';
-import { ownerPublicKey } from './license';
+import { ownerPublicKeys } from './license';
 import { pickOpenPath } from './files';
 
 let startup: DataGuard | null = null;
@@ -29,12 +29,12 @@ export function registerUpdateIpc(): void {
     if (!w) return null;
     const path = await pickOpenPath(w, { title: 'تحديث ديوان', buttonLabel: 'افحصه', filterName: 'تحديث ديوان', extensions: ['diwanupdate'] });
     if (!path) return null;
-    const { manifest } = await readUpdate(path, ownerPublicKey(), app.getVersion(), workDir());
+    const { manifest } = await readUpdate(path, ownerPublicKeys('update'), app.getVersion(), workDir());
     return { path, version: manifest.version, notes: manifest.notes, size: manifest.size, issued: manifest.issued, current: app.getVersion() };
   });
 
   ipcMain.handle('update:install', async (_e, path: string) => {
-    const opened = await readUpdate(String(path), ownerPublicKey(), app.getVersion(), workDir());
+    const opened = await readUpdate(String(path), ownerPublicKeys('update'), app.getVersion(), workDir());
     const dir = join(app.getPath('temp'), 'diwan-update');
     mkdirSync(dir, { recursive: true });
     const installer = await extractInstaller(String(path), opened, join(dir, `diwan-${opened.manifest.version}-setup.exe`));
