@@ -9,11 +9,11 @@
 
 ## قبل التثبيت: طابِق البصمة
 
-يصلك مع المثبّت (مثل `diwan-1.2.0-setup.exe`) ملفّ `SHA256SUMS.txt`. افتح PowerShell في مجلّد المثبّت واكتب —
+يصلك مع المثبّت (مثل `diwan-1.3.0-setup.exe`) ملفّ `SHA256SUMS.txt`. افتح PowerShell في مجلّد المثبّت واكتب —
 باسم المثبّت الذي وصلك:
 
 ```powershell
-Get-FileHash .\diwan-1.2.0-setup.exe -Algorithm SHA256
+Get-FileHash .\diwan-1.3.0-setup.exe -Algorithm SHA256
 ```
 
 إن طابق الرقمُ ما في `SHA256SUMS.txt` فالمثبّت كما صدر. وإن اختلف فلا تثبّته واطلبه من المطوّر ثانيةً.

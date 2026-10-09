@@ -2,7 +2,7 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` و`release-1.2.0.db` كتبها إصدارهما
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` و`release-1.2.0.db` و`release-1.3.0.db` كتبها إصدارها
  * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -54,7 +54,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0', '1.2.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
@@ -130,5 +130,22 @@ describe('ما جاء به ١٫٢٫٠ (الموجة ٢)', () => {
     expect(o.received).toBe('صورتان');
     expect(listOrders(db, { query: String(o.id) }).map((x) => x.id)).toEqual([o.id]);
     expect(workBetween(db, '2026-01-01', '2027-01-01')).toEqual({ sheets: 0, files: 0 });
+  });
+});
+
+describe('ما جاء به ١٫٣٫٠ (الحزمة الصغيرة الآمنة)', () => {
+  it('قاعدته: الطلب مربوطٌ بملفّ الزبون، والطبعة بنسخها عند الشبّاك', () => {
+    const { db } = openRelease('1.3.0');
+    const zainab = listCitizens(db, {}).find((c) => c.fullName === 'زينب علي حسن الربيعي')!;
+    expect(listOrders(db, { citizenId: zainab.id }).map((o) => [o.title, o.citizenId])).toEqual([['صور جواز', zainab.id]]);
+    expect(db.prepare('SELECT COUNT(DISTINCT document_id) AS docs, SUM(copies) AS copies FROM document_prints').get()).toEqual({ docs: 1, copies: 3 });
+  });
+
+  it('وقاعدة ١٫٢٫٠ تُفتح بعموده الجديد: الطلب يُربط بالزبون', () => {
+    const { db } = openRelease('1.2.0');
+    const zainab = listCitizens(db, {}).find((c) => c.fullName === 'زينب علي حسن الربيعي')!;
+    const o = saveOrder(db, { id: null, clientId: null, citizenId: zainab.id, customer: zainab.fullName, title: 'هويّة' });
+    expect(o.citizenId).toBe(zainab.id);
+    expect(listOrders(db, { citizenId: zainab.id }).map((x) => x.id)).toEqual([o.id]);
   });
 });

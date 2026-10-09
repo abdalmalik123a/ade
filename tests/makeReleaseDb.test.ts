@@ -14,7 +14,7 @@ import Database from 'better-sqlite3';
 import { addAttachment, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
 import { prepareLetterheads, saveLetterhead } from '../src/main/services/letterheads';
 import { prepareTemplates, saveDraft, saveTemplate } from '../src/main/services/templates';
-import { issueBatch, issueDocument, issueTransaction, prepareDocuments, recordPrint, voidDocument } from '../src/main/services/documents';
+import { addPrintedCopy, issueBatch, issueDocument, issueTransaction, prepareDocuments, recordPrint, voidDocument } from '../src/main/services/documents';
 import { saveOrder, setOrderStatus } from '../src/main/services/orders';
 import { recordWork } from '../src/main/services/workLog';
 import { prepareClips, saveClip } from '../src/main/services/clips';
@@ -29,6 +29,8 @@ import { normalizePrintRoles } from '../src/shared/printRoles';
 import type { CitizenInput, IssueInput, SheetStyle } from '../src/shared/api';
 
 const { version: VERSION } = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string };
+/** ما جاء به إصدارٌ يُكتب في قاعدته وما بعدها — بالأرقام لا بالنصّ («1.10.0» بعد «1.3.0»). */
+const atLeast = (v: string) => VERSION.localeCompare(v, undefined, { numeric: true }) >= 0;
 const STYLE: SheetStyle = { css: '.a4-sheet{font-family:"IBM Plex Sans Arabic"}', bodyClass: 'font-body-md' };
 
 it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', () => {
@@ -85,6 +87,11 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   const printed = issueDocument(db, doc('زينب علي حسن الربيعي', { citizenId: zainab.id, nationalId: '199011112222' }));
   // ١٫٢٫٠: الطبعة تُقيَّد حين تتمّ — وما سواها حُفظ بلا طباعة.
   recordPrint(db, printed.id, { copies: 1, printer: 'ليزر المكتب', operator: 'مشغّل 01' });
+  // ١٫٣٫٠: النسخ عند الشبّاك — طبعةٌ واحدة تزيد نسخها ورقةً ورقة (د٣).
+  if (atLeast('1.3.0')) {
+    addPrintedCopy(db, printed.id);
+    addPrintedCopy(db, printed.id);
+  }
   const wrong = issueDocument(db, doc('اسمٌ خاطئ'));
   voidDocument(db, wrong.id, 'صدر باسمٍ خاطئ', 'مشغّل 01');
   const sheet = (n: string) => ({ sheetHtml: `<div class="a4-sheet">${n}</div>`, templateId: null, letterheadId: null, authorityId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0 });
@@ -96,6 +103,8 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   saveOrder(db, { id: null, clientId: school.id, title: 'هويّات الطلبة', quantity: 40, dueDate: '2026-10-10', received: 'قائمة الأسماء وصور الطلبة' });
   const done = saveOrder(db, { id: null, clientId: null, customer: 'أحمد كريم جاسم', phone: '07701234567', title: 'صور شخصية', received: 'صورة الهوية' });
   setOrderStatus(db, done.id, 'delivered');
+  // ١٫٣٫٠: الطلب مربوطٌ بملفّ الزبون (د٨).
+  if (atLeast('1.3.0')) saveOrder(db, { id: null, clientId: null, citizenId: zainab.id, customer: 'زينب علي حسن الربيعي', title: 'صور جواز', received: 'صورة البطاقة' });
   recordWork(db, '2026-10-03', { sheets: 12, files: 2 });
   recordWork(db, '2026-10-04', { sheets: 5, files: 0 });
 
