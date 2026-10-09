@@ -7,6 +7,7 @@
 import { join } from 'node:path';
 import { app, BrowserWindow } from 'electron';
 import { hardenWindow } from './harden';
+import { rendererDevUrl } from './devUrl';
 
 let card: BrowserWindow | null = null;
 
@@ -37,7 +38,7 @@ export async function openFillCard(citizenId: number): Promise<void> {
       card = null;
     });
   }
-  const devUrl = process.env['ELECTRON_RENDERER_URL'];
+  const devUrl = rendererDevUrl();
   if (devUrl) await card.loadURL(`${devUrl}/index.html?${new URLSearchParams(query).toString()}`);
   else await card.loadFile(join(__dirname, '../renderer/index.html'), { query });
   card.show();

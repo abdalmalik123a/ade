@@ -5,6 +5,7 @@ import { fitCanvasText } from '@shared/canvasFit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
+import { rendererDevUrl } from '../devUrl';
 
 /**
  * محرّك الإخراج: الطباعة وPDF والصورة عالية الدقّة.
@@ -40,7 +41,7 @@ let styleCache: SheetStyle | null | undefined;
 export function sheetStyle(): SheetStyle | null {
   if (styleCache !== undefined) return styleCache;
   styleCache = null;
-  if (process.env['ELECTRON_RENDERER_URL']) return styleCache;
+  if (rendererDevUrl()) return styleCache;
   try {
     const dir = join(__dirname, '../renderer');
     const html = readFileSync(join(dir, 'index.html'), 'utf8');
@@ -160,7 +161,7 @@ async function withRenderWindow<T>(
 
   try {
     // صفحة التطبيق نفسها، بعلامة تمنع تركيب الواجهة — فتبقى الأنماط والخطوط.
-    const devUrl = process.env['ELECTRON_RENDERER_URL'];
+    const devUrl = rendererDevUrl();
     if (devUrl) await win.loadURL(`${devUrl}/index.html?mode=print`);
     else
       await win.loadFile(join(__dirname, '../renderer/index.html'), { query: { mode: 'print' } });

@@ -14,6 +14,7 @@ import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
 import { closePortrait } from './services/portrait';
 import { hardenSession, hardenWindow } from './harden';
+import { rendererDevUrl } from './devUrl';
 import { PALETTE } from '@shared/theme';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
@@ -202,8 +203,9 @@ function createWindow(): void {
     if (level >= 3) logError('renderer', new Error(`${message} (${sourceId}:${line})`));
   });
 
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    void mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  const devUrl = rendererDevUrl();
+  if (devUrl) {
+    void mainWindow.loadURL(devUrl);
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
