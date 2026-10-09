@@ -107,7 +107,9 @@ describe('هيكل التصاميم (DESIGNS.md ٠٫١)', () => {
     const KINDS = join(ROOT, 'src/shared/design/kinds');
     const SHARED = new Set(['registry', 'types', 'index']);
     const bad: string[] = [];
-    for (const f of DESIGN_FILES.filter((x) => x.abs.startsWith(KINDS + (process.platform === 'win32' ? '\\' : '/')))) {
+    // والسجلّ وحده يستورد الأنواع كلّها — ذلك عمله.
+    const kindFiles = DESIGN_FILES.filter((x) => x.abs.startsWith(KINDS + (process.platform === 'win32' ? '\\' : '/')) && !SHARED.has(basename(x.abs).replace(/\.(ts|tsx)$/, '')));
+    for (const f of kindFiles) {
       for (const spec of importsOf(f.text)) {
         if (!spec.startsWith('.')) continue;
         const target = resolve(dirname(f.abs), spec);
