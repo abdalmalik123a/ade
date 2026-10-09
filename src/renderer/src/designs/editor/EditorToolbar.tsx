@@ -134,6 +134,16 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
             onChange={(e) => ed.setCopies(Number(e.target.value.replace(/[^\d]/g, '')) || 1)}
           />
         </label>
+        {ed.draftSavedAt && (
+          <span
+            className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"
+            data-status="design-draft"
+            title="ما لم يُحفظ يُحفظ مسودّةً وحده — ويُكمَل من «قيد العمل» ورأس المعرض"
+          >
+            <span className="material-symbols-outlined text-[16px]">cloud_done</span>
+            مسودّة {ed.draftSavedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
         {designId !== null ? (
           <>
             <button className={SAVE} data-act="save" title="احفظ التعديلات على نفس التصميم" type="button" disabled={busy} onClick={() => void ed.save(false)}>

@@ -375,9 +375,14 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   ok('والمحفوظ معروضٌ في قسمه', Boolean(opened) && opened.includes('هوية طالب'));
   await wait(900);
-  ok('ويُفتح فيعود مقاسه', (await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`)).includes('85.6'));
+  // ما عُدّل بعد الحفظ حُفظ مسودّةً عند المغادرة (DESIGNS.md ٠٫٦) — فيُسأل: المحفوظ أم التعديلات؟
+  const asked = await page.eval(`return document.querySelector('[data-confirm] [data-confirm-title]')?.innerText ?? '';`);
+  ok('والتعديل بعد الحفظ لم يضع: يُسأل عنه حين يُفتح', asked.includes('تعديلاتٌ لم تُحفظ'));
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="saved"]')?.click(); return true;`);
+  await wait(900);
+  ok('ويُفتح فيعود مقاسه',(await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`)).includes('85.6'));
   // والعدّ بالأسماء لا برقمٍ يتغيّر بكل إضافة. والباركود أُضيف بعد الحفظ،
-  // فلا يعود معه — وهذا هو الصواب: يُفتح ما حُفظ لا ما كان على الشاشة.
+  // فلا يعود مع «افتح المحفوظ» — يُفتح ما حُفظ، والتعديل في مسودّته.
   const reopened = await page.eval(`
     return [...document.querySelectorAll('input[data-value]')].map((el) => el.dataset.value);
   `);

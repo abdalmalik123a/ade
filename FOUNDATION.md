@@ -1222,7 +1222,8 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   omr.ts                  ورقة الإجابة بالدوائر: رسمُها وقراءتها وتصحيحها
   canvas.ts · canvasHtml.ts · canvasEdit.ts   مداخل ثابتة تعيد التصدير من design/ (DESIGNS.md ٠٫٤)
   design/                 نواة التصاميم (DESIGNS.md §٣):
-    model/                اللوحة: الأنواع، والوحدات (المقاس بالملّم والمواضع نِسَبًا)، وتقويم الصندوق، والبناء والتقويم
+    model/                اللوحة: الأنواع، والوحدات (المقاس بالملّم والمواضع نِسَبًا)، وتقويم الصندوق، والبناء والتقويم،
+                          وversion.ts رقم إصدار النموذج وترحيله (٠٫٥)
     kinds/                نوع العنصر وحدة: text وimage وbarcode وshape وtable — لكلٍّ تقويمه ورسمه وحقوله، وregistry.ts
     render/               الرسّام يمرّ على السجلّ — والدقّة وسيطٌ لا ثابت
     geometry/             التحرير خالصًا: الالتصاق والمقابض والمحاذاة والطبقات والتراجع
@@ -1230,6 +1231,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
     imposition.ts         الترتيب على A4: الخانات وعلامات القصّ، ورسم الباركود قبل الإرسال
     batch.ts              قائمةٌ من Excel، ومطابقة الصور بأصحابها
     layerFields.ts        اسم طبقة Photoshop ← حقلٌ مقترح بثقته
+    draft.ts              مسودّة التصميم في جدول المسودّات نفسه (`__design`)، وبصمته لمعرفة «تغيّر أم لا» (٠٫٦)
     kit/                  التصاميم الجاهزة: الأنواع الستّة عشر (catalog وlayouts/ وsample) والأنماط الخمسة (نمطٌ في ملفّ
                           بـstyles/) واللوحات والزخرفة المحسوبة (ornaments وcolor)
   clipart.ts              مكتبة الرسومات المدمجة
@@ -1332,16 +1334,17 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     OmrPanel.tsx          تصحيح ورقة الدوائر
     QuestionBankPanel.tsx بنك الأسئلة جانب الورقة
   src/designs/            أجزاء شاشة التصاميم: المعرض، والدفعة، واستوديو التصوير، ومراجعة الأوراق
-                          وخياراتها، ومكتبة الرسومات، و«حقولٌ من أسماء الطبقات»
+                          وخياراتها، ومكتبة الرسومات، و«حقولٌ من أسماء الطبقات»، وDraftStrip (ما لم يُحفظ في رأس المعرض)
     editor/               المحرّر (DESIGNS.md ٠٫٣): useDesignEditor يركّب خطّافاته — useCanvasSides (الوجه والظهر
                           وتاريخهما) · useCanvasElements (العناصر والمحدَّد) · useCanvasPointer (السحب) · useDesignKeys
                           · useDesignDoc (الوثيقة ورسمها والظهر المحفوظ) · useCanvasPaint (الباركود وتصغير النصّ) ·
-                          useDesignLibrary (الحفظ والفتح) · useDesignSources (الخلفية والاستيراد والمعرض) · useDesignBatch
+                          useDesignLibrary (الحفظ والفتح واستئناف المسودّة) · useDesignSources (الخلفية والاستيراد والمعرض)
+                          · useDesignDraft (الحفظ التلقائي مسودّةً وعند المغادرة والإغلاق، DESIGNS.md ٠٫٦) · useDesignBatch
                           · useDesignOutput (الورق والفاحص والطباعة وPDF) — ومكوّناته: Stage وEditorToolbar وEditorSidebar
                           وDesignModals، وkit.ts ما يشتركن فيه
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
-                          · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر)
+                          · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · printChoice.ts أيّ طابعةٍ تطبع: من دور الشاشة، أو تُسأل في `PrintChooser`
                           · portraitCanvas.ts رسم صورة المعاملة: المعاينة والحفظ من دالّةٍ واحدة
   src/assets/suits/       القاط المدمج: WebP شفّافة من مكتبة المالك، والنظاميّ بلا شارات (tools/prepare-suits.py)

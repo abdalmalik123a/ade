@@ -206,6 +206,12 @@ export default function App() {
     [navigate]
   );
 
+  /** التصاميم بطلب: تصميمٌ أو مسودّته أو استيرادٌ أو جهة — والمفتاح يتغيّر فيُنفَّذ ولو تكرّر. */
+  const openDesigns = (req: Omit<DesignRequest, 'key'>) => {
+    setDesignRequest({ key: Date.now(), ...req });
+    navigate('designs');
+  };
+
   /** كتابٌ صدر يُكرَّر من حيث كُتب: المحرّر لكتبه، والشبّاك لمعاملاته. */
   const repeatDocument = useCallback(
     async (id: number) => {
@@ -302,15 +308,9 @@ export default function App() {
           <TemplatesScreen
             incoming={wordIncoming}
             request={libraryRequest}
-            onOpenDesign={(templateId) => {
-              setDesignRequest({ key: Date.now(), templateId });
-              navigate('designs');
-            }}
+            onOpenDesign={(templateId) => openDesigns({ templateId })}
             onOpenInEditor={(id) => openEditor({ templateId: id })}
-            onImportDesign={() => {
-              setDesignRequest({ key: Date.now(), action: 'import' });
-              navigate('designs');
-            }}
+            onImportDesign={() => openDesigns({ action: 'import' })}
             onChanged={() => void refresh()}
           />
         );
@@ -352,20 +352,19 @@ export default function App() {
             request={orderRequest}
             onChanged={() => void refresh()}
             onOpenDraft={(id) => openEditor({ draftId: id })}
+            onOpenDesignDraft={(id) => openDesigns({ draftId: id })}
             onResumeParked={(parkedKey) => {
               setResumeRequest({ key: Date.now(), parkedKey });
               navigate('service');
             }}
-            onOpenDesign={(order) => {
-              setDesignRequest({
-                key: Date.now(),
+            onOpenDesign={(order) =>
+              openDesigns({
                 templateId: order.templateId ?? undefined,
                 batchText: order.batchText,
                 clientId: order.clientId ?? undefined,
                 order: { id: order.id, title: order.title }
-              });
-              navigate('designs');
-            }}
+              })
+            }
           />
         );
       case 'photos':
@@ -376,10 +375,7 @@ export default function App() {
         return (
           <ClientsScreen
             onChanged={() => void refresh()}
-            onDesignFor={(client) => {
-              setDesignRequest({ key: Date.now(), clientId: client.id });
-              navigate('designs');
-            }}
+            onDesignFor={(client) => openDesigns({ clientId: client.id })}
           />
         );
       case 'letterhead':

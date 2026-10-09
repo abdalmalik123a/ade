@@ -34,6 +34,8 @@ import { choosePrinter } from '../lib/printChoice';
 import { receiptSheet, type ReceiptOffice } from '@shared/receipt';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
 import { toIndic } from '@shared/arabic';
+import { isDesignDraft } from '@shared/design/draft';
+import { DraftCard, PendingCard } from '../components/PendingCard';
 
 const TONE: Record<string, string> = {
   late: 'bg-error text-on-error',
@@ -65,6 +67,8 @@ export type OrdersScreenProps = {
   onChanged?: () => void;
   /** «أكمله»: مسودة كتابٍ تُفتح في المحرّر. */
   onOpenDraft?: (draftId: number) => void;
+  /** «أكمله»: مسودّة تصميمٍ لم يُحفظ تُفتح في التصاميم (DESIGNS.md ٠٫٦). */
+  onOpenDesignDraft?: (draftId: number) => void;
   /** «استأنف»: معاملةٌ معلّقة تُفتح في الشبّاك من حيث تُركت. */
   onResumeParked?: (parkedKey: number) => void;
   /**
@@ -77,7 +81,7 @@ export type OrdersScreenProps = {
 /** الطلب الجديد من الشبّاك يُفتح مرّةً لا كلّ رجوع. */
 let orderRequestSeen = 0;
 
-export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onResumeParked, request = null }: OrdersScreenProps) {
+export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onOpenDesignDraft, onResumeParked, request = null }: OrdersScreenProps) {
   /** اسم المكتب — في رسالة «طلبكم جاهز» (د٨)؛ ووصل الاستلام إن شغّله المكتب، بهاتفه وعنوانه (الموجة ٢). */
   const [office, setOffice] = useState<ReceiptOffice & { receipt: boolean }>({ receipt: false, name: '', phone: '', address: '' });
   useEffect(() => {
@@ -116,9 +120,12 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
    * فتُحذف هنا بما فيها. والمعلّقة لا تُحذف من هنا: يستأنفها الشبّاك أو يلغيها.
    */
   const deleteDraft = async (d: DraftRow) => {
+    const design = isDesignDraft(d.valuesJson);
     const ok = await confirmAction({
       title: 'أتحذف المسودّة؟',
-      message: `«${d.title || 'كتابٌ بلا عنوان'}» — يضيع ما كُتب فيها، ولا يُمسّ ما صدر.`,
+      message: design
+        ? `«${d.title || 'تصميمٌ بلا اسم'}» — يضيع ما لم يُحفظ منه، ولا يُمسّ التصميم المحفوظ.`
+        : `«${d.title || 'كتابٌ بلا عنوان'}» — يضيع ما كُتب فيها، ولا يُمسّ ما صدر.`,
       confirm: 'احذفها',
       danger: true
     });
@@ -242,18 +249,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
                   <div className="flex-1 min-h-0 overflow-auto px-space-sm pb-space-sm space-y-space-sm">
                     {col.key === 'yours' &&
                       drafts.map((d) => (
-                        <PendingCard
-                          key={`d${d.id}`}
-                          action="أكمله"
-                          act="resume-draft"
-                          icon="edit_document"
-                          kind="مسودة كتاب"
-                          sub={[d.citizenName, d.templateTitle].filter(Boolean).join(' · ')}
-                          title={d.title || 'كتابٌ بلا عنوان'}
-                          when={localStamp(d.updatedAt)}
-                          onRun={() => onOpenDraft?.(d.id)}
-                          onDelete={() => void deleteDraft(d)}
-                        />
+                        <DraftCard key={`d${d.id}`} draft={d} onOpen={onOpenDraft} onOpenDesign={onOpenDesignDraft} onDelete={() => void deleteDraft(d)} />
                       ))}
                     {col.key === 'customer' &&
                       parked.map((p) => (
@@ -365,60 +361,6 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onR
         </div>
       )}
     </main>
-  );
-}
-
-/** بطاقة ما لم يكتمل من غير الطلبات: مسودةٌ أو معاملةٌ معلّقة — بزرٍّ واحد. */
-function PendingCard({
-  kind,
-  icon,
-  title,
-  sub,
-  when,
-  action,
-  act,
-  onRun,
-  onDelete
-}: {
-  kind: string;
-  icon: string;
-  title: string;
-  sub: string;
-  when: string;
-  action: string;
-  act: string;
-  onRun: () => void;
-  /** المسودّة وحدها تُحذف من هنا (د٢). */
-  onDelete?: () => void;
-}) {
-  return (
-    <article className="rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)]" data-pending={act}>
-      <div className="flex items-center justify-between gap-2 font-label-sm text-label-sm text-on-surface-variant">
-        <span className="flex items-center gap-1.5 min-w-0">
-          <span className="material-symbols-outlined text-[16px] text-secondary">{icon}</span>
-          <span className="truncate">{kind}</span>
-        </span>
-        <span className="shrink-0 tabular">{when}</span>
-      </div>
-      <div className="font-body-md text-body-md text-on-surface font-semibold truncate">{title}</div>
-      {sub && <div className="font-label-sm text-label-sm text-on-surface-variant truncate">{sub}</div>}
-      <div className="flex items-center gap-1">
-        <button className="flex-1 h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
-          {action}
-        </button>
-        {onDelete && (
-          <button
-            className="w-8 h-8 shrink-0 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center"
-            data-act="delete-draft"
-            title="احذف المسودّة"
-            type="button"
-            onClick={onDelete}
-          >
-            <span className="material-symbols-outlined text-[18px]">delete</span>
-          </button>
-        )}
-      </div>
-    </article>
   );
 }
 

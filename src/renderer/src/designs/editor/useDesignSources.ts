@@ -27,6 +27,8 @@ type Inputs = {
   setDesignId: (id: number | null) => void;
   setBatchMap: (map: Record<string, string | null>) => void;
   setView: (view: 'gallery' | 'editor') => void;
+  /** جلسةٌ جديدة قبل أن يُبدَّل ما في اللوحة (`useDesignDraft`). */
+  beginSession: () => void;
 };
 
 export function useDesignSources(i: Inputs) {
@@ -35,17 +37,39 @@ export function useDesignSources(i: Inputs) {
   /** حقولٌ مقترحة من أسماء طبقات Photoshop — تُعرض بعد الاستيراد (هـ٤). */
   const [layerReview, setLayerReview] = useState<FieldSuggestion[] | null>(null);
 
+  /**
+   * تصميمٌ جديد في اللوحة — لا تعديلٌ على المفتوح. فالاستيراد من المعرض كان يحلّ في التصميم المفتوح قبله (بظهره ورقمه)،
+   * فيكتب «احفظ» فوقه (DESIGNS.md ٠٫٦).
+   */
+  const fresh = (next: Canvas, newTitle: string) => {
+    i.beginSession();
+    i.setDesignId(null);
+    i.setBatchMap({});
+    i.setTitle(newTitle);
+    i.setSelection([]);
+    i.setBackHistory(null);
+    i.setActiveSide('front');
+    i.setValues({});
+    i.setHistory(startCanvasHistory(next));
+    i.setView('editor');
+  };
+
   // ── الخلفية: المقاس من الملف ───────────────────────────────────────
-  const openBackground = useCallback(async () => {
+  /** `asNew`: من المعرض — تصميمٌ جديد على الخلفية؛ ومن المحرّر خلفيةٌ للمفتوح. */
+  const openBackground = useCallback(async (asNew = false) => {
     try {
       const out = await window.diwan.files.pickBackground('designs');
       if (!out) return;
-      i.setView('editor');
-      apply({
-        ...canvas,
+      const next: Canvas = {
+        ...(asNew ? emptyCanvas(canvas.size) : canvas),
         background: out.meta?.dpi ? { kind: 'image', src: out.src, dpi: out.meta.dpi } : { kind: 'image', src: out.src },
         size: out.meta?.mm ? { w: out.meta.mm.w, h: out.meta.mm.h } : canvas.size
-      });
+      };
+      if (asNew) fresh(next, '');
+      else {
+        i.setView('editor');
+        apply(next);
+      }
 
       if (out.meta?.mm) {
         setAskSize(false);
@@ -66,21 +90,23 @@ export function useDesignSources(i: Inputs) {
    *
    * وWord يعطي مواضعَ مربّعاته فتخرج الشهادة كما صُمّمت، لا كومةَ أسطر.
    */
-  const importDesign = useCallback(async () => {
+  const importDesign = useCallback(async (asNew = false) => {
     try {
       const out = await window.diwan.designs.import(askSize ? canvas.size : null);
       if (!out) return;
-      i.setView('editor');
+      const name = out.name.replace(/\.[^.]+$/, '');
+      if (asNew) fresh(out.canvas ? normalizeCanvas(out.canvas) : emptyCanvas(canvas.size), name);
+      else i.setView('editor');
 
       if (out.canvas) {
-        apply(normalizeCanvas(out.canvas));
+        if (!asNew) apply(normalizeCanvas(out.canvas));
         i.setSelection([]);
         setAskSize(false);
         if (out.fieldSuggestions?.length) setLayerReview(out.fieldSuggestions);
       } else {
         setAskSize(true);
       }
-      if (!title.trim()) i.setTitle(out.name.replace(/\.[^.]+$/, ''));
+      if (!asNew && !title.trim()) i.setTitle(name);
 
       const where = out.source === 'word' ? 'Word' : out.source === 'psd' ? 'Photoshop' : out.source === 'pdf' ? 'PDF' : 'صورة';
       say(
@@ -103,16 +129,8 @@ export function useDesignSources(i: Inputs) {
    */
   const pickFromGallery = useCallback(
     ({ kind, style, palette, brand }: GalleryPick) => {
-      i.setHistory(startCanvasHistory(buildDesign({ kind: kind.key, style, palette, brand })));
-      i.setBackHistory(null);
-      i.setActiveSide('front');
-      i.setValues({});
-      i.setSelection([]);
-      i.setDesignId(null);
-      i.setBatchMap({});
+      fresh(buildDesign({ kind: kind.key, style, palette, brand }), brand.name ? `${kind.title} — ${brand.name}` : kind.title);
       setAskSize(false);
-      i.setTitle(brand.name ? `${kind.title} — ${brand.name}` : kind.title);
-      i.setView('editor');
       say(`${kind.title} — املأه، أو الصق قائمةً كاملة في «دفعة»`);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,15 +139,7 @@ export function useDesignSources(i: Inputs) {
 
   const handleCreateBlank = useCallback(
     (size: CanvasSize, bleed = 0, customTitle = '') => {
-      i.setDesignId(null);
-      i.setBatchMap({});
-      i.setTitle(customTitle);
-      i.setSelection([]);
-      i.setBackHistory(null);
-      i.setActiveSide('front');
-      i.setValues({});
-      i.setHistory(startCanvasHistory(emptyCanvas(size, bleed)));
-      i.setView('editor');
+      fresh(emptyCanvas(size, bleed), customTitle);
       say(customTitle ? `بدء تصميم فارغ: ${customTitle}` : 'بدء تصميم فارغ جديد');
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

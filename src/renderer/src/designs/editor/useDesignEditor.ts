@@ -11,6 +11,7 @@ import { useCanvasPointer } from './useCanvasPointer';
 import { useDesignKeys } from './useDesignKeys';
 import { useBackDesign, useDesignDoc } from './useDesignDoc';
 import { useDesignLibrary } from './useDesignLibrary';
+import { useDesignDraft } from './useDesignDraft';
 import { useDesignSources } from './useDesignSources';
 import { useBatchCards, useBatchState } from './useDesignBatch';
 import { useDesignOutput } from './useDesignOutput';
@@ -28,6 +29,8 @@ export type DesignRequest = {
   order?: { id: number; title: string };
   /** «المكتبة ← استورد ← تصميم من Photoshop أو PDF»: يُسأل عن الملف حين تُفتح (المرحلة ٥). */
   action?: 'import';
+  /** مسودّةُ تصميمٍ لم يُحفظ من «قيد العمل» (DESIGNS.md ٠٫٦). */
+  draftId?: number;
 };
 
 export type DesignsScreenProps = {
@@ -66,18 +69,22 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
     canvas, selection: els.selection, setSelection: els.setSelection, apply, undo: sides.undo, redo: sides.redo,
     duplicateSelected: els.duplicateSelected, removeSelected: els.removeSelected
   });
+  const [designId, setDesignId] = useState<number | null>(null);
+  const draft = useDesignDraft({ doc: docs.doc, title, values, designId, say, onChanged });
   const library = useDesignLibrary({
-    say, onChanged, setBusy, doc: docs.doc, canvas, title, setTitle, setHistory: sides.setHistory, setBackHistory: sides.setBackHistory,
-    setActiveSide: sides.setActiveSide, setValues, setBatchMap: batch.setBatchMap, setSelection: els.setSelection, setView
+    say, onChanged, setBusy, doc: docs.doc, canvas, title, setTitle, designId, setDesignId, beginSession: draft.beginSession, markSaved: draft.markSaved,
+    setHistory: sides.setHistory, setBackHistory: sides.setBackHistory, setActiveSide: sides.setActiveSide, setValues, setBatchMap: batch.setBatchMap,
+    setSelection: els.setSelection, setView
   });
   const sources = useDesignSources({
     say, canvas, apply, add: els.add, title, setTitle, setHistory: sides.setHistory, setBackHistory: sides.setBackHistory,
-    setActiveSide: sides.setActiveSide, setValues, setSelection: els.setSelection, setDesignId: library.setDesignId, setBatchMap: batch.setBatchMap, setView
+    setActiveSide: sides.setActiveSide, setValues, setSelection: els.setSelection, setDesignId, setBatchMap: batch.setBatchMap, setView,
+    beginSession: draft.beginSession
   });
   const cards = useBatchCards({ doc: docs.doc, values, copies, batchRows: batch.batchRows });
   const output = useDesignOutput({
     canvas, doc: docs.doc, effectiveBackDoc: docs.effectiveBackDoc, cards: cards.cards, batchRows: batch.batchRows, unsureCount: cards.unsureBatch.length,
-    title, designId: library.designId, linkedOrder, say, onChanged, setBusy, afterReview: cards.afterReview, setAfterReview: cards.setAfterReview
+    title, designId, linkedOrder, say, onChanged, setBusy, afterReview: cards.afterReview, setAfterReview: cards.setAfterReview
   });
 
   /**
@@ -87,7 +94,9 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   useEffect(() => {
     if (!request) return;
     setLinkedOrder(request.order && request.templateId ? { ...request.order, templateId: request.templateId } : null);
-    if (request.templateId) {
+    if (request.draftId) {
+      void library.resumeDraft(request.draftId);
+    } else if (request.templateId) {
       void library.openDesign(request.templateId).then(() => {
         batch.setBatchSeed(request.batchText ?? '');
         batch.setBatchPhotos([]);
@@ -95,14 +104,15 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
       });
     } else {
       setView('gallery');
-      if (request.action === 'import') void sources.importDesign();
+      if (request.action === 'import') void sources.importDesign(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.key]);
 
   return {
     request, onChanged, toast, say, busy, view, setView, preview, setPreview, grid, setGrid, zoom, setZoom, title, setTitle, values, setValues,
-    copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry,
+    copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry, designId, setDesignId,
+    draftSavedAt: draft.draftSavedAt,
     ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...library, ...sources, ...cards, ...output
   };
 }

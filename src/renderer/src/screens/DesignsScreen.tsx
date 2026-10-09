@@ -11,6 +11,7 @@
  * الهندسي في `shared/canvasEdit.ts` — قواعدُ تُختبر بالأرقام.
  */
 import Gallery from '../designs/Gallery';
+import DraftStrip from '../designs/DraftStrip';
 import ClipartModal from '../designs/ClipartModal';
 import NewBlankModal from '../designs/NewBlankModal';
 import { ToolHeader, ToolOutput } from '../components/ToolFrame';
@@ -31,13 +32,14 @@ export default function DesignsScreen(props: DesignsScreenProps) {
       <div className={view === 'gallery' ? 'h-[calc(100vh-4rem)] flex flex-col' : 'hidden'}>
         <div className="shrink-0 max-w-[1440px] w-full mx-auto px-space-xl pt-space-md">
           <ToolHeader bar icon="workspace_premium" title="شهادات وتصاميم" />
+          <DraftStrip refreshKey={`${view}-${ed.draftSavedAt?.getTime() ?? 0}`} onResume={(id) => void ed.resumeDraft(id)} />
         </div>
         <div className="flex-1 min-h-0">
           <Gallery
             presetClient={request?.clientId ? { id: request.clientId, key: request.key } : null}
             saved={ed.designs}
-            onImport={() => void ed.importDesign()}
-            onOpenImage={() => void ed.openBackground()}
+            onImport={() => void ed.importDesign(true)}
+            onOpenImage={() => void ed.openBackground(true)}
             onOpenSaved={(id) => void ed.openDesign(id)}
             onDeleteSaved={(id) => void ed.deleteDesign(id)}
             onPick={ed.pickFromGallery}

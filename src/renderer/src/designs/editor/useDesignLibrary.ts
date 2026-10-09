@@ -1,12 +1,16 @@
 /**
- * التصاميم المحفوظة: القائمة، والحفظ (ونسخةً)، والفتح، والحذف — وما يصلح ظهرًا للبطاقة المفتوحة.
+ * التصاميم المحفوظة: القائمة، والحفظ (ونسخةً)، والفتح، والحذف — وما يصلح ظهرًا للبطاقة المفتوحة. ومسودّة تصميمٍ لم يُحفظ
+ * تُستأنف هنا كما يُفتح المحفوظ (`useDesignDraft`).
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { TemplateSummary } from '@shared/api';
 import type { Doc } from '@shared/doc';
+import { localStamp } from '@shared/dates';
 import { normalizeCanvas, type Canvas, type TextElement } from '@shared/canvas';
 import { startCanvasHistory, type CanvasHistory } from '@shared/canvasEdit';
+import { isDesignDraft, readDesignDraft } from '@shared/design/draft';
 import { errorText } from '../../lib/errors';
+import { ask } from '../../kit/ask';
 import { DESIGN_CATEGORY, textOf } from './kit';
 import type { Side } from './useCanvasSides';
 
@@ -18,6 +22,11 @@ type Inputs = {
   canvas: Canvas;
   title: string;
   setTitle: (title: string) => void;
+  designId: number | null;
+  setDesignId: (id: number | null) => void;
+  /** جلسةٌ جديدة قبل أن يُبدَّل ما في اللوحة — و`draftId` مسودّةٌ تُستأنف (`useDesignDraft`). */
+  beginSession: (draftId?: number) => void;
+  markSaved: () => void;
   setHistory: (h: CanvasHistory) => void;
   setBackHistory: (h: CanvasHistory | null) => void;
   setActiveSide: (side: Side) => void;
@@ -28,9 +37,8 @@ type Inputs = {
 };
 
 export function useDesignLibrary(i: Inputs) {
-  const { say, onChanged, setBusy, doc, canvas, title, setTitle } = i;
+  const { say, onChanged, setBusy, doc, canvas, title, setTitle, designId, setDesignId } = i;
   const [designs, setDesigns] = useState<TemplateSummary[]>([]);
-  const [designId, setDesignId] = useState<number | null>(null);
 
   const loadDesigns = useCallback(async () => {
     try {
@@ -74,6 +82,7 @@ export function useDesignLibrary(i: Inputs) {
         });
         setDesignId(saved.id);
         if (asCopy) setTitle(finalTitle);
+        i.markSaved();
         await loadDesigns();
         onChanged?.();
         say(asCopy ? 'حُفظت نسخة جديدة من التصميم' : designId === null ? 'حُفظ التصميم' : 'حُفظت التعديلات');
@@ -106,35 +115,74 @@ export function useDesignLibrary(i: Inputs) {
     [designId, loadDesigns, onChanged, say]
   );
 
-  const openDesign = useCallback(
-    async (id: number) => {
+  /** يضع تصميمًا في اللوحة بجلسةٍ جديدة — محفوظًا أو من مسودّته. */
+  const show = (loaded: Doc, id: number | null, values: Record<string, string>, draftId?: number) => {
+    i.beginSession(draftId);
+    i.setHistory(startCanvasHistory(normalizeCanvas(loaded.canvas)));
+    i.setBackHistory(loaded.backCanvas ? startCanvasHistory(normalizeCanvas(loaded.backCanvas)) : null);
+    i.setActiveSide('front');
+    setTitle(loaded.meta.title ?? '');
+    i.setValues(values);
+    i.setBatchMap(loaded.meta.batchMap ?? {});
+    setDesignId(id);
+    i.setSelection([]);
+    i.setView('editor');
+  };
+
+  /** مسودّةُ تصميمٍ لم يُحفظ — من «قيد العمل» أو رأس المعرض: يعود كما تُرك، والكتابة بعدُ في المسودّة نفسها. */
+  const resumeDraft = useCallback(
+    async (draftId: number) => {
       try {
-        const loaded = await window.diwan.templates.doc(id);
-        i.setHistory(startCanvasHistory(normalizeCanvas(loaded.canvas)));
-        if (loaded.backCanvas) {
-          i.setBackHistory(startCanvasHistory(normalizeCanvas(loaded.backCanvas)));
-        } else {
-          i.setBackHistory(null);
+        const row = (await window.diwan.drafts.list()).find((d) => d.id === draftId);
+        const draft = row ? readDesignDraft(row.valuesJson) : null;
+        if (!row || !draft) {
+          say('لم تُعثر على المسودّة — لعلّها حُذفت أو حُفظ تصميمها', 'warn');
+          return;
         }
-        i.setActiveSide('front');
-        setTitle(loaded.meta.title ?? '');
-        i.setValues({});
-        i.setBatchMap(loaded.meta.batchMap ?? {});
-        setDesignId(id);
-        i.setSelection([]);
-        i.setView('editor');
-        say('فُتح التصميم');
+        show(draft.doc, row.templateId, draft.values, draftId);
+        say('عاد التصميم كما تُرك — احفظه حين تنتهي');
       } catch (e) {
-        say(errorText(e, 'تعذّر فتح التصميم'), 'warn');
+        say(errorText(e, 'تعذّر فتح المسودّة'), 'warn');
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [say]
   );
 
+  const openDesign = useCallback(
+    async (id: number) => {
+      try {
+        // للتصميم تعديلاتٌ لم تُحفظ: يُسأل أيّهما — ولا يُمحى شيء، فما لم يُختر يبقى في «قيد العمل».
+        const pending = (await window.diwan.drafts.list()).find((d) => d.templateId === id && isDesignDraft(d.valuesJson));
+        if (pending) {
+          const answer = await ask({
+            title: 'لهذا التصميم تعديلاتٌ لم تُحفظ',
+            message: `آخرها ${localStamp(pending.updatedAt)}. وما لا تفتحه يبقى في «قيد العمل».`,
+            choices: [
+              { key: 'saved', label: 'افتح المحفوظ', tone: 'neutral' },
+              { key: 'draft', label: 'أكمل التعديلات', tone: 'primary' }
+            ],
+            fallback: 'draft'
+          });
+          if (answer === 'draft') {
+            await resumeDraft(pending.id);
+            return;
+          }
+        }
+        const loaded = await window.diwan.templates.doc(id);
+        show(loaded, id, {});
+        say('فُتح التصميم');
+      } catch (e) {
+        say(errorText(e, 'تعذّر فتح التصميم'), 'warn');
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [say, resumeDraft]
+  );
+
   /** تصاميمُ محفوظة بمقاس هذه البطاقة — تصلح ظهرًا لها. */
   const sizeTag = `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)}`;
   const backChoices = designs.filter((d) => d.id !== designId && (d.subtitle ?? '').startsWith(sizeTag));
 
-  return { designs, designId, setDesignId, save, deleteDesign, openDesign, backChoices };
+  return { designs, save, deleteDesign, openDesign, resumeDraft, backChoices };
 }
