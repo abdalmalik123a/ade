@@ -25,7 +25,8 @@ function setup() {
   return { dir, key, pub, exe, file: join(dir, 'diwan-1.1.0.diwanupdate') };
 }
 
-describe('التحديث «أ+»', () => {
+// كلّ فحصٍ يشغّل أداة المالك مرّتين (مفتاحٌ ثم توقيع) — وتحت حمل البناء تتجاوز الخمس ثوانٍ الافتراضية فتسقط بوّابة الإصدار.
+describe('التحديث «أ+»', { timeout: 30_000 }, () => {
   it('ما صنعته أداة المالك يقرؤه البرنامج: إصداره و«ما الجديد»، والمثبّت كما هو', async () => {
     const s = setup();
     const opened = await readUpdate(s.file, s.pub, '1.0.0', join(s.dir, 'work'));
