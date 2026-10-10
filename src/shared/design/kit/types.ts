@@ -62,6 +62,10 @@ export type TableSlot = {
   borderColor?: string;
   fontSize?: number;
   stripe?: boolean;
+  /** حدود الجدول (١٫٩): أسطرٌ أفقية للمنيو، أو بلا حدود — وبغيرها كاملة. */
+  borders?: 'rows' | 'none';
+  /** بلا صفّ عناوين: قائمة الأصناف وأسعارها. */
+  hideHeader?: boolean;
 };
 
 export type Layout = {

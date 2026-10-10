@@ -90,16 +90,17 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('للتصاميم بطاقةٌ في الشبّاك تفتحها', (await page.eval(`return Boolean(document.querySelector('[data-cards] [data-card="designs"]'));`)) && text.includes('لمن؟'));
   ok('تبدأ بالمعرض: «لمن؟» ثم اللون والنمط', text.includes('لمن؟') && text.includes('النمط'));
 
-  // ── المعرض: ستّة عشر نوعًا حيّةً بعيّنة، لا صناديق فارغة ─────────────
+  // ── المعرض: تسعة عشر نوعًا حيّةً بعيّنة (٣٫١)، لا صناديق فارغة ─────────────
   await wait(1200);
   const gallery = await page.eval(`return document.querySelectorAll('[data-kind]').length;`);
-  ok('والمعرض ستّة عشر نوعًا', gallery === 16);
+  ok('والمعرض تسعة عشر نوعًا', gallery === 19);
   ok('ولمحاتُها تصاميم مرسومة بعيّنةٍ لا وسوم', await page.eval(`
     const thumbs = document.querySelectorAll('[data-kind] [data-canvas]');
     const text = [...thumbs].map((t) => t.innerText).join(' ');
-    return thumbs.length === 16 && text.includes('زينب علي حسين') && !/\\{[^{}]+\\}/.test(text);
+    return thumbs.length === 19 && text.includes('زينب علي حسين') && !/\\{[^{}]+\\}/.test(text);
   `));
-  ok('ولا وصل ولا سند ولا فاتورة في المعرض — ديوان ليس ماليًّا', !(await page.text()).match(/وصل مبيعات|سند قبض|فواتير/));
+  // والوصل والفاتورة استماراتٌ تُملأ بالقلم (٣٫١) — لا وصل مبيعاتٍ يُحسب ولا سند.
+  ok('ولا وصل مبيعاتٍ ولا سند في المعرض — ديوان ليس ماليًّا', !(await page.text()).match(/وصل مبيعات|سند قبض|فواتير/));
   // «لوحة بيضاء فارغة»: تُفتح نافذة المقاس، والمقاس يُختار فتُبدأ لوحةٌ بمقاسه.
   await page.eval(`document.querySelector('[data-act="blank-card"]').click()`);
   await wait(400);

@@ -24,9 +24,9 @@ import { KINDS, kindOf } from './catalog';
 import { SAMPLE } from './sample';
 import type { Decor, KindSpec, Rect } from './types';
 import { U, ctxOf, n } from './ornaments';
-import { STYLES, styleOf, type Style, type StyleCtx } from './styles';
+import { FIRST_STYLES, STYLES, styleOf, type Style, type StyleCtx } from './styles';
 
-export { KINDS, STYLES, PALETTES, SAMPLE, kindOf, styleOf, paletteFrom };
+export { KINDS, STYLES, FIRST_STYLES, PALETTES, SAMPLE, kindOf, styleOf, paletteFrom };
 export { dominantColor } from './color';
 export type { KindSpec, Style, Palette };
 
@@ -176,6 +176,10 @@ export function buildDesign({ kind: kindKey, style: styleKey, palette, brand }: 
         fontSize: tbl.fontSize ?? 10,
         headerFontSize: (tbl.fontSize ?? 10) + 1,
         stripe: tbl.stripe ?? true,
+        ...(tbl.borders && { borders: tbl.borders }),
+        // على الورق الداكن (مطعمٌ، ليالي رمضان، أسود وذهبي) حبرُ الصفوف حبرُ النمط — وإلا كُتبت الأصناف سوداءَ على أسود.
+        ...(isDarkPaper && { rowStyles: bakedRows.map(() => ({ color: style.type('body', palette, kind.family).color })) }),
+        ...(tbl.hideHeader && { hideHeader: true }),
         stripeBg: isDarkPaper ? 'rgba(255,255,255,0.05)' : '#f8fafc',
         font: style.type('body', palette, kind.family).font,
         z: z++,

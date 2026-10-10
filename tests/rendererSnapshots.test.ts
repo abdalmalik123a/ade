@@ -11,7 +11,7 @@
  * والمعرّفات العشوائية (`newUuid`) تُبدَّل بأرقامٍ بترتيب ظهورها — فاللقطة ما يُرى لا ما يُولَّد.
  */
 import { describe, expect, it } from 'vitest';
-import { KINDS, PALETTES, STYLES, buildDoc, sampleValues } from '../src/shared/design/kit';
+import { FIRST_STYLES, KINDS, PALETTES, STYLES, buildDoc, sampleValues } from '../src/shared/design/kit';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
 import { SCREEN_DPI } from '../src/shared/canvas';
 import { imageFormDoc, type FormSlot } from '../src/shared/imageForm';
@@ -36,9 +36,13 @@ function stable(html: string): string {
 
 const snap = (name: string) => `./snapshots/renderer/${name}.html`;
 
+/** الأنماط الثمانية الجديدة (٣٫١) بأنواعٍ تمثّل عائلاتها — لا بالتسعة عشر كلّها (فاللقطات لا تتضخّم). */
+const REPRESENTATIVE = ['thanks', 'student-id', 'invitation', 'menu', 'invoice'];
+
 describe('لقطات الرسّام (DESIGNS.md ٠٫٢)', () => {
   KINDS.forEach((kind, k) => {
     STYLES.forEach((style, s) => {
+      if (s >= FIRST_STYLES && !REPRESENTATIVE.includes(kind.key)) return;
       it(`${kind.key} بنمط ${style.key}`, async () => {
         const palette = PALETTES[(k + s) % PALETTES.length]!;
         const doc = buildDoc({ kind: kind.key, style: style.key, palette });

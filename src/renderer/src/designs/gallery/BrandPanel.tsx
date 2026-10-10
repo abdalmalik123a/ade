@@ -82,7 +82,8 @@ export default function BrandPanel({ b }: { b: GalleryBrand }) {
 
       <div className="flex flex-wrap items-center gap-space-sm">
         <span className="font-label-md text-label-md text-on-surface-variant font-semibold w-20 shrink-0">النمط</span>
-        <div className="flex p-1 rounded-xl bg-surface-container-lowest">
+        {/* ثلاثة عشر نمطًا (٣٫١): تلتفّ أسطرًا ولا تخرج عن العرض. */}
+        <div className="flex flex-wrap gap-0.5 p-1 rounded-xl bg-surface-container-lowest">
           {STYLES.map((s) => (
             <button
               key={s.key}

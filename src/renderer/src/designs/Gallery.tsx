@@ -23,7 +23,9 @@ import { useGalleryBrand } from './gallery/useGalleryBrand';
 
 export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand };
 
-const GROUPS = ['الكل', 'شهادات', 'هويّات', 'مدرسية', 'مناسبات', 'أعمال وكروت'];
+/** المجموعات بترتيبها المعتاد، وما أُضيف إلى القائمة بعدها (٣٫١: «مطاعم ومحلّات») — فنوعٌ جديد لا يختفي بلا تبويب. */
+const ORDER = ['شهادات', 'هويّات', 'مدرسية', 'مناسبات', 'أعمال وكروت'];
+const GROUPS = ['الكل', ...ORDER, ...[...new Set(KINDS.map((k) => k.group))].filter((g) => !ORDER.includes(g))];
 
 export default function Gallery({
   saved,

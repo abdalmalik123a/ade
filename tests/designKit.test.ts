@@ -16,9 +16,9 @@ import { luminance } from '../src/shared/design/kit/color';
 const royal = PALETTES[0]!;
 
 describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => {
-  it('ستّة عشر نوعًا بخمسة أنماط — ثمانون تصميمًا يُبنى كلٌّ منها', () => {
-    expect(KINDS).toHaveLength(16);
-    expect(STYLES).toHaveLength(5);
+  it('تسعة عشر نوعًا بثلاثة عشر نمطًا (٣٫١) — كلّ تصميمٍ منها يُبنى', () => {
+    expect(KINDS).toHaveLength(19);
+    expect(STYLES).toHaveLength(13);
     for (const kind of KINDS)
       for (const style of STYLES) {
         const canvas = buildDesign({ kind: kind.key, style: style.key, palette: royal });
@@ -33,9 +33,15 @@ describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => 
       }
   });
 
-  it('ولا نوعٌ ماليّ، والباركود على البطاقات وحدها (قرار المالك)', () => {
-    // ديوان ليس برنامجًا ماليًّا: لا وصل مبيعات ولا سند قبض ولا فاتورة في المعرض.
-    expect(KINDS.filter((k) => /وصل|سند|فاتور|مبيعات|قبض/.test(`${k.title} ${k.group}`)).map((k) => k.key)).toEqual([]);
+  it('ولا حسابَ في المعرض، والباركود على البطاقات وحدها (قرار المالك)', () => {
+    // ديوان ليس برنامجًا ماليًّا: الوصل والفاتورة (٣٫١، بقرار المالك ٧ ت١) **استماراتٌ تُملأ بالقلم** — لا حقل فيها يملؤه
+    // البرنامج إلا هويّة المحلّ (اسمه وعنوانه وهاتفه)، فلا مبلغ ولا مجموع يُحسب أو يُكتب.
+    const money = KINDS.filter((k) => /وصل|سند|فاتور|مبيعات|قبض/.test(`${k.title} ${k.group}`));
+    expect(money.map((k) => k.key).sort()).toEqual(['invoice', 'receipt']);
+    for (const kind of money) {
+      const canvas = buildDesign({ kind: kind.key, style: 'official', palette: royal });
+      expect([kind.key, canvasKeys(canvas).sort()]).toEqual([kind.key, ['الجهة', 'العنوان', 'الهاتف'].sort()]);
+    }
     for (const kind of KINDS) {
       const canvas = buildDesign({ kind: kind.key, style: 'official', palette: royal });
       const coded = canvas.elements.some((e) => e.kind === 'barcode');
