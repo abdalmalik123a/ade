@@ -2,7 +2,7 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.5.0.db` كتبها إصدارها
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.6.0.db` كتبها إصدارها
  * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -59,7 +59,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.5.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.5.0', '1.6.0'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
@@ -183,5 +183,30 @@ describe('ما جاء به ١٫٤٫٠ (التصاميم، المرحلة ١)', (
     const doc = templateDoc(getTemplate(source, row.id)!);
     const saved = saveTemplate(db, { id: null, code: null, title: row.title, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [], doc });
     expect(templateDoc(getTemplate(db, saved.id)!).canvas!.elements.find((e) => e.id === 'name')).toMatchObject({ arc: 40 });
+  });
+});
+
+describe('ما جاء به ١٫٦٫٠ (التصاميم، المرحلة ٣)', () => {
+  it('قاعدته: خطّ الجهة في ملفّها، والإمساكية بجدولها المتقارب وإعدادها وأوقاتها، وتقويم حقل التاريخ — والحزمة صيغتها ٣', () => {
+    const { db, dir } = openRelease('1.6.0');
+    expect(listClients(db).find((c) => c.name === 'أسواق النور')).toMatchObject({ font: 'Cairo', color: '#0f6b50' });
+    const row = listTemplates(db, 'تصاميم', 'print-only').find((t) => t.title === 'إمساكية أسواق النور')!;
+    const doc = templateDoc(getTemplate(db, row.id)!);
+    expect(doc.canvas!.calendars).toEqual({ التاريخ: 'hijri' });
+    const table = doc.canvas!.elements.find((e) => e.id === 'imsakiya');
+    expect(table).toMatchObject({ dense: true, imsakiya: { start: '2027-02-08', calendar: 'both', digits: 'indic', fridays: true } });
+    expect(table?.kind === 'table' && table.rows[0]!.map((c) => c.text)).toEqual(['الإثنين', '١', '٨ شباط', '٤:٥٥', '٥:٠٥']);
+    expect(designPackLevel(doc)).toBe(3);
+    expect(collectContent(db, join(dir, 'store'), '1.6.0').pkg.format).toBe(3);
+  });
+
+  it('وقاعدة ١٫٥٫٠ تُفتح وجهاتها بلا خطّ، ويُحفظ فيها تصميمٌ بالمرحلة ٣', () => {
+    const { db } = openRelease('1.5.0');
+    expect(listClients(db).every((c) => c.font === null)).toBe(true);
+    const source = openRelease('1.6.0').db;
+    const row = listTemplates(source, 'تصاميم', 'print-only').find((t) => t.title === 'إمساكية أسواق النور')!;
+    const doc = templateDoc(getTemplate(source, row.id)!);
+    const saved = saveTemplate(db, { id: null, code: null, title: row.title, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [], doc });
+    expect(templateDoc(getTemplate(db, saved.id)!).canvas!.calendars).toEqual({ التاريخ: 'hijri' });
   });
 });

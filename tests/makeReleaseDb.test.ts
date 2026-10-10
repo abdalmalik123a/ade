@@ -33,6 +33,8 @@ import { designDraftValues } from '../src/shared/design/draft';
 const { version: VERSION } = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string };
 /** ما جاء به إصدارٌ يُكتب في قاعدته وما بعدها — بالأرقام لا بالنصّ («1.10.0» بعد «1.3.0»). */
 const atLeast = (v: string) => VERSION.localeCompare(v, undefined, { numeric: true }) >= 0;
+/** خليّة جدولٍ بنصّها. */
+const run0 = (text: string) => ({ text });
 const STYLE: SheetStyle = { css: '.a4-sheet{font-family:"IBM Plex Sans Arabic"}', bodyClass: 'font-body-md' };
 
 it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', () => {
@@ -127,6 +129,35 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
     saveDraft(db, { id: null, templateId: null, citizenId: null, title: 'تصميمٌ لم يُحفظ', values: designDraftValues({ doc: design, values: { 'العام الدراسي': '٢٠٢٦ – ٢٠٢٧' } }), bodyHtml: '' });
     db.prepare("INSERT INTO fonts (family, weight, italic, file, source, original_name) VALUES ('Diwani Office', 400, 0, 'fonts/0123456789abcdef0123456789abcdef.ttf', 'windows', 'DiwaniOffice.ttf')").run();
     db.prepare("INSERT INTO elements (name, category, kind, file, width, height) VALUES ('زخرفة الزاوية', 'زخارف', 'svg', 'elements/fedcba9876543210fedcba9876543210.svg', 120, 120)").run();
+  }
+  // ١٫٦٫٠ (التصاميم، المرحلة ٣): خطّ الجهة في ملفّها (٣٫٣)، وإمساكيةٌ بجدولها المتقارب وإعدادها وأوقاتها، وحقل تاريخٍ
+  // بتقويمه في اللوحة (٣٫٤).
+  if (atLeast('1.6.0')) {
+    saveClient(db, { id: null, name: 'أسواق النور', kind: 'محلّ', color: '#0f6b50', font: 'Cairo', phone: '07700000000', address: 'الرمادي' });
+    const rows = [
+      [run0('الإثنين'), run0('١'), run0('٨ شباط'), run0('٤:٥٥'), run0('٥:٠٥')],
+      [run0('الثلاثاء'), run0('٢'), run0('٩ شباط'), run0('٤:٥٤'), run0('٥:٠٤')]
+    ];
+    const canvas = normalizeCanvas({
+      ...emptyCanvas({ w: 210, h: 297 }, 3),
+      calendars: { التاريخ: 'hijri' },
+      elements: [
+        textElement({ id: 'year', name: 'سنة الإمساكية', box: { x: 0.25, y: 0.17, w: 0.5, h: 0.03 }, inlines: [run('١٤٤٨ هـ — ٢٠٢٧ م')], size: 15, z: 1 }),
+        textElement({ id: 'date', box: { x: 0.25, y: 0.21, w: 0.5, h: 0.03 }, inlines: [run('{التاريخ}')], size: 10, z: 2 }),
+        tableElement({
+          id: 'imsakiya',
+          name: 'جدول الإمساكية',
+          box: { x: 0.1, y: 0.232, w: 0.8, h: 0.62 },
+          columns: ['اليوم', 'رمضان', 'الميلادي', 'الإمساك', 'الفجر'].map((title) => ({ title, widthPercent: 20, align: 'center' as const })),
+          rows,
+          dense: true,
+          imsakiya: { start: '2027-02-08', calendar: 'both', digits: 'indic', fridays: true },
+          rowStyles: [{ color: '#f3ead6' }, { color: '#f3ead6' }],
+          z: 3
+        })
+      ]
+    });
+    saveTemplate(db, { id: null, code: null, title: 'إمساكية أسواق النور', subtitle: '210.0 × 297.0 ملم', category: 'تصاميم', subjectLine: null, bodyHtml: 'إمساكية', letterheadId: null, variables: [], doc: canvasDoc(canvas, { title: 'إمساكية أسواق النور', category: 'تصاميم' }) });
   }
   recordWork(db, '2026-10-03', { sheets: 12, files: 2 });
   recordWork(db, '2026-10-04', { sheets: 5, files: 0 });
