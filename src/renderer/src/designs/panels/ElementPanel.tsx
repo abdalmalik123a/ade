@@ -104,7 +104,13 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
         </label>
       )}
 
-      {single.kind === 'image' && <ImageShapePanel image={single} patch={(p) => patchElement(single.id, p)} />}
+      {single.kind === 'image' && (
+        <ImageShapePanel
+          frameRatio={(single.box.w * ed.canvas.size.w) / Math.max(0.001, single.box.h * ed.canvas.size.h)}
+          image={single}
+          patch={(p) => patchElement(single.id, p)}
+        />
+      )}
       {single.kind === 'path' && <PathPanel path={single} patch={(p) => patchElement(single.id, p)} />}
 
       {single.kind === 'barcode' && (

@@ -1271,6 +1271,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   photoPresets.ts         قوالب صورة المعاملة (والرسميّ منها بمصدره)، وخلفيّاتها، والدقّة في ملف JPEG
   portraitMask.ts         القناع: مدخل النموذج، وحافّةٌ حادّة بلا غواش ولا هالة، والفرشاة، والمعالم، وإلباس القاط وحدّه
   objectMask.ts           مدخل نموذج الأشياء (٢٫٣): مربّعٌ ٥١٢ بمقياس ImageNet
+  photoEdit.ts            «حسّن الصورة» (٢٫٢): الاستقامة وقصّ زواياها، والقصّ بنسبة، والتشبّع، والتنعيم الذي يُبقي الحافّة
   portraitEnhance.ts      تحسينٌ محافظ: لونٌ وإضاءةٌ لكلّ بكسلٍ في مكانه، والضجيج على اللون وحده
   suits.ts                مكتبة القاط: المدمج (والنظاميّ بلا شارات)، والمستورد PNG شفّافًا
   idCardDuplex.ts         الهوية وجهًا وظهرًا بمقاس ١:١
@@ -1363,6 +1364,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     gallery/              المعرض أجزاءً (٠٫٩): Thumbs (اللمحات) · useGalleryBrand («لمن؟» واللون والنمط) · BrandPanel ·
                           SavedDesigns — و`Gallery.tsx` تركيبٌ
     cutout/               «أزل الخلفية» للصورة في التصميم (٢٫٣): useCutout (النموذج والفرشاة والحفظ في المخزن) · CutoutModal
+    photo/                «حسّن الصورة» (٢٫٢): photoCanvas (الهندسة رسمًا واحدًا) · usePhotoEdit · CropOverlay · PhotoEditModal
     editor/               المحرّر (DESIGNS.md ٠٫٣): useDesignEditor يركّب خطّافاته — useCanvasSides (الوجه والظهر
                           وتاريخهما) · useCanvasElements (العناصر والمحدَّد) · useCanvasPointer (السحب) · useDesignKeys
                           · useDesignDoc (الوثيقة ورسمها والظهر المحفوظ) · useCanvasPaint (الباركود وتصغير النصّ) ·

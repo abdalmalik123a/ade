@@ -1,19 +1,21 @@
 /**
  * شكل الصورة وإطارها (DESIGNS.md ١٫١): قصٌّ بشكلٍ من ثمانية — كلٌّ بلمحته — وإطارٌ على حدّه، حلقةً أو حلقتين بفسحة.
  * و«أزل الخلفية» (٢٫٣) للصورة المُدرَجة: المنتج أو الشعار على خلفيةٍ شفّافة؛ و«استبدل الصورة» (٢٫١) لما ليس حقلًا —
- * توقيع المدير في قالب Photoshop، والشعار، وصورة المنتج.
+ * توقيع المدير في قالب Photoshop، والشعار، وصورة المنتج؛ و«حسّن الصورة» (٢٫٢): قصٌّ وتدويرٌ واستقامةٌ وإضاءةٌ وألوانٌ وتنعيم.
  */
 import { useState } from 'react';
 import type { ImageElement, ImageFrame } from '@shared/canvas';
 import { IMAGE_SHAPES, SHAPE_LABELS, shapePath, type ImageShape } from '@shared/design/shapes';
 import { NUM, toHexColor } from '../editor/kit';
 import CutoutModal from '../cutout/CutoutModal';
+import PhotoEditModal from '../photo/PhotoEditModal';
 
 const TILE = 'w-9 h-9 rounded-lg flex items-center justify-center border transition-colors';
 
-export default function ImageShapePanel({ image, patch }: { image: ImageElement; patch: (p: Partial<ImageElement>) => void }) {
+export default function ImageShapePanel({ image, patch, frameRatio }: { image: ImageElement; patch: (p: Partial<ImageElement>) => void; frameRatio?: number }) {
   const frame = image.frame;
   const [cutting, setCutting] = useState(false);
+  const [editing, setEditing] = useState(false);
   // الرسمة المتّجهة (SVG من «رسومات») بلا خلفيةٍ أصلًا — والصورة الفارغة لا شيء فيها.
   const photo = Boolean(image.src) && !image.src.startsWith('data:image/svg');
   const setFrame = (next: Partial<ImageFrame> | null) => patch({ frame: next ? { color: '#ffffff', width: 1, ...frame, ...next } : undefined });
@@ -55,6 +57,29 @@ export default function ImageShapePanel({ image, patch }: { image: ImageElement;
           <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
           استبدل الصورة
         </button>
+      )}
+      {photo && (
+        <button
+          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          data-act="photo-edit"
+          title="قصٌّ وتدويرٌ واستقامة، وإضاءةٌ وألوانٌ وتنعيم"
+          type="button"
+          onClick={() => setEditing(true)}
+        >
+          <span className="material-symbols-outlined text-[18px]">tune</span>
+          حسّن الصورة
+        </button>
+      )}
+      {editing && (
+        <PhotoEditModal
+          frameRatio={frameRatio}
+          src={image.src}
+          onClose={() => setEditing(false)}
+          onDone={(src) => {
+            patch({ src });
+            setEditing(false);
+          }}
+        />
       )}
       {photo && (
         <button
