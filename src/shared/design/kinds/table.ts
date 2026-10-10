@@ -5,7 +5,7 @@ import { newUuid } from '../../doc';
 import { escapeHtml } from '../../html';
 import { ptToPx } from '../model/units';
 import { isObj } from '../model/box';
-import type { Box, TableCell, TableColumn, TableElement, TableRowStyle } from '../model/types';
+import type { Box, ImsakiyaSettings, TableCell, TableColumn, TableElement, TableRowStyle } from '../model/types';
 import { cssColor } from '../shapes';
 import { boxStyle } from '../render/box';
 import type { KindSpec } from './types';
@@ -59,6 +59,13 @@ function normalizeRowStyles(raw: unknown, rows: number): { rowStyles?: (TableRow
   return out.some(Boolean) ? { rowStyles: out } : {};
 }
 
+/** إعداد الإمساكية (٣٫٤) مقوَّمًا: تاريخٌ صحيح وتقويمٌ معروف — وإلا فليس جدول إمساكية. */
+function normalizeImsakiya(raw: unknown): { imsakiya?: ImsakiyaSettings } {
+  if (!isObj(raw) || typeof raw.start !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw.start)) return {};
+  const calendar = raw.calendar === 'gregorian' || raw.calendar === 'hijri' ? raw.calendar : 'both';
+  return { imsakiya: { start: raw.start, calendar, digits: raw.digits === 'latin' ? 'latin' : 'indic', fridays: raw.fridays !== false } };
+}
+
 export const TABLE_KIND: KindSpec<TableElement> = {
   kind: 'table',
   normalize(raw, b) {
@@ -101,7 +108,9 @@ export const TABLE_KIND: KindSpec<TableElement> = {
       stripeBg: typeof raw.stripeBg === 'string' ? raw.stripeBg : '#f8fafc',
       ...(raw.borders === 'rows' || raw.borders === 'none' ? { borders: raw.borders } : {}),
       ...(raw.hideHeader === true ? { hideHeader: true } : {}),
-      ...normalizeRowStyles(raw.rowStyles, rows.length || 3)
+      ...(raw.dense === true ? { dense: true } : {}),
+      ...normalizeRowStyles(raw.rowStyles, rows.length || 3),
+      ...normalizeImsakiya(raw.imsakiya)
     };
   },
   render(el, { canvas, values, opts }) {
@@ -117,11 +126,13 @@ export const TABLE_KIND: KindSpec<TableElement> = {
     const headerBg = el.headerBg ?? '#f1f5f9';
     const headerColor = el.headerColor ?? '#0f172a';
     const fontFam = el.font ? `font-family:${el.font};` : '';
+    // المتقاربة (٣٫٤): حشوٌ أقلّ وسطرٌ أضيق — والعادية كما كانت حرفًا.
+    const pad = el.dense ? 'padding:1px 4px;line-height:1.2' : 'padding:4px 6px';
 
     const ths = el.columns
       .map(
         (col) =>
-          `<th style="${headBorder};background:${headerBg};color:${headerColor};padding:4px 6px;text-align:${col.align ?? 'center'};width:${col.widthPercent}%;font-size:${headerFontSizePx.toFixed(1)}px;font-weight:700">${escapeHtml(col.title)}</th>`
+          `<th style="${headBorder};background:${headerBg};color:${headerColor};${pad};text-align:${col.align ?? 'center'};width:${col.widthPercent}%;font-size:${headerFontSizePx.toFixed(1)}px;font-weight:700">${escapeHtml(col.title)}</th>`
       )
       .join('');
 
@@ -135,7 +146,7 @@ export const TABLE_KIND: KindSpec<TableElement> = {
             const col = el.columns[ci];
             const align = cell.align ?? col?.align ?? 'center';
             const weight = cell.bold || rs?.bold ? 'font-weight:700;' : '';
-            return `<td style="${cellBorder};padding:4px 6px;text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(cellValue(cell, values))}</td>`;
+            return `<td style="${cellBorder};${pad};text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(cellValue(cell, values))}</td>`;
           })
           .join('');
         return `<tr style="${bg}${ink}">${tds}</tr>`;

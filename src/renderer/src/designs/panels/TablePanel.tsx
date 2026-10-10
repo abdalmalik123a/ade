@@ -97,6 +97,10 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
           <input checked={!table.hideHeader} data-act="table-header" type="checkbox" onChange={(e) => patch({ hideHeader: e.target.checked ? undefined : true })} />
           صفّ العناوين
         </label>
+        <label className="flex items-center gap-1 cursor-pointer" title="حشوٌ أقلّ وسطرٌ أضيق — فيسع الجدول الطويل صندوقه">
+          <input checked={Boolean(table.dense)} data-act="table-dense" type="checkbox" onChange={(e) => patch({ dense: e.target.checked ? true : undefined })} />
+          صفوف متقاربة
+        </label>
       </div>
 
       {/* تعديل عناوين الأعمدة */}

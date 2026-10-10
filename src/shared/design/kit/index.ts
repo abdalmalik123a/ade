@@ -20,6 +20,7 @@ import {
 } from '../../canvas';
 import { reconcileFields, tokenInlines, type Doc } from '../../doc';
 import { PALETTES, paletteFrom, luminance, type Palette } from './color';
+import { markedRows } from '../imsakiya';
 import { KINDS, kindOf } from './catalog';
 import { SAMPLE } from './sample';
 import type { Decor, KindSpec, Rect } from './types';
@@ -147,7 +148,7 @@ export function buildDesign({ kind: kindKey, style: styleKey, palette, brand }: 
         fit: slot.fit ? 'shrink' : undefined,
         wordSpacing: t.wordSpacing,
         z: z++,
-        name: bake(slot.text).length > 24 ? `${bake(slot.text).slice(0, 24)}…` : bake(slot.text)
+        name: slot.name ?? (bake(slot.text).length > 24 ? `${bake(slot.text).slice(0, 24)}…` : bake(slot.text))
       })
     );
   }
@@ -164,6 +165,9 @@ export function buildDesign({ kind: kindKey, style: styleKey, palette, brand }: 
     const headerBg = tbl.headerBg ?? palette.primary;
     const headerColor = luminance(headerBg) > 0.55 ? palette.ink : '#ffffff';
     const isDarkPaper = luminance(style.paper(palette)) < 0.4;
+    // على الورق الداكن (مطعمٌ، ليالي رمضان، أسود وذهبي) حبرُ الصفوف حبرُ النمط — وإلا كُتبت الأصناف سوداءَ على أسود؛
+    // والصفوف المميَّزة (جمعة الإمساكية) بلون الترويسة.
+    const rowStyles = markedRows(bakedRows.length, tbl.marked ?? [], headerBg, isDarkPaper ? style.type('body', palette, kind.family).color : null);
     elements.push(
       tableElement({
         box: toBox(tbl.at),
@@ -177,8 +181,9 @@ export function buildDesign({ kind: kindKey, style: styleKey, palette, brand }: 
         headerFontSize: (tbl.fontSize ?? 10) + 1,
         stripe: tbl.stripe ?? true,
         ...(tbl.borders && { borders: tbl.borders }),
-        // على الورق الداكن (مطعمٌ، ليالي رمضان، أسود وذهبي) حبرُ الصفوف حبرُ النمط — وإلا كُتبت الأصناف سوداءَ على أسود.
-        ...(isDarkPaper && { rowStyles: bakedRows.map(() => ({ color: style.type('body', palette, kind.family).color })) }),
+        ...(rowStyles && { rowStyles }),
+        ...(tbl.imsakiya && { imsakiya: tbl.imsakiya }),
+        ...(tbl.dense && { dense: true }),
         ...(tbl.hideHeader && { hideHeader: true }),
         stripeBg: isDarkPaper ? 'rgba(255,255,255,0.05)' : '#f8fafc',
         font: style.type('body', palette, kind.family).font,

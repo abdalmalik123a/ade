@@ -335,7 +335,7 @@ const api: DiwanApi = {
     storeImageUrl: (url: string) => invoke('files:storeImageUrl', url),
     pickBackground: (bucket: string) => invoke('files:pickBackground', bucket),
     pickImageFolder: (bucket: string) => invoke('files:pickImageFolder', bucket),
-    readSheet: () => invoke('files:readSheet'),
+    readSheet: (what?: 'imsakiya') => invoke('files:readSheet', what),
     saveAs: (payload: {
       data: Uint8Array;
       suggestedName: string;

@@ -221,18 +221,26 @@ export function registerFileIpc(): void {
   /**
    * قائمةٌ من ملف Excel أو CSV — تعود بصيغة اللصق نفسها (أعمدةٌ بالجدولة).
    * فالمدرسة ترسل ملفًّا، ولا يُفتح Excel ليُنسخ منه ويُلصق.
+   *
+   * والإمساكية (٣٫٤) جدولها الرسمي قد يكون PDF أيضًا: يعود بايتاتٍ يقرأ نصَّها pdf.js في الواجهة.
    */
-  ipcMain.handle('files:readSheet', async (e): Promise<{ name: string; text: string; rows: number } | null> => {
+  ipcMain.handle('files:readSheet', async (e, what?: 'imsakiya'): Promise<{ name: string; text: string; rows: number; pdf?: Uint8Array } | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
+    const imsakiya = what === 'imsakiya';
     const source = await pickOpenPath(win, {
-      title: 'اختر قائمة الأسماء',
+      title: imsakiya ? 'اختر جدول الإمساكية الرسمي' : 'اختر قائمة الأسماء',
       buttonLabel: 'افتح',
-      filterName: 'Excel أو CSV',
+      filterName: imsakiya ? 'Excel أو CSV أو PDF' : 'Excel أو CSV',
       // و`.xls` القديم يُرى ليُقال له «احفظه .xlsx» (هـ١).
-      extensions: ['xlsx', 'xls', 'csv']
+      extensions: imsakiya ? ['xlsx', 'xls', 'csv', 'pdf'] : ['xlsx', 'xls', 'csv']
     });
     if (!source) return null;
+    if (imsakiya && /\.pdf$/i.test(source)) {
+      const bytes = await readFile(source);
+      if (bytes.length > 30 * 1024 * 1024) throw new Error('ملف PDF أكبر من ٣٠ ميغا — ليس جدول إمساكية');
+      return { name: basename(source), text: '', rows: 0, pdf: new Uint8Array(bytes) };
+    }
     return { name: basename(source), ...(await sheetToText(source)) };
   });
 

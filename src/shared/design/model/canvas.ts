@@ -7,7 +7,7 @@ import type { ElementCommon } from '../kinds/types';
 import { SIZE_PRESETS } from './units';
 import { CANVAS_VERSION, migrateCanvas } from './version';
 import { clampBox, isObj, num } from './box';
-import type { Background, Box, Canvas, CanvasElement, CanvasSize } from './types';
+import type { Background, Box, Canvas, CanvasElement, CanvasSize, DateCalendar } from './types';
 
 /** العناصر مرتّبةً بطبقاتها — الأصغر `z` أولًا، والمتساوي بترتيب إضافته. */
 export function byLayer(elements: CanvasElement[]): CanvasElement[] {
@@ -124,6 +124,16 @@ export function normalizeCanvas(input: unknown): Canvas {
     bleed,
     cropMarks: raw.cropMarks === true,
     background: normalizeBackground(raw.background),
-    elements: Array.isArray(raw.elements) ? raw.elements.map(normalizeElement).filter((el): el is CanvasElement => el !== null) : []
+    elements: Array.isArray(raw.elements) ? raw.elements.map(normalizeElement).filter((el): el is CanvasElement => el !== null) : [],
+    ...normalizeCalendars(raw.calendars)
   };
+}
+
+/** تقويمات حقول التاريخ: مفتاحٌ نصّيّ وتقويمٌ معروف — وما سواهما يُترك. */
+function normalizeCalendars(raw: unknown): { calendars?: Record<string, DateCalendar> } {
+  if (!isObj(raw)) return {};
+  const out = Object.fromEntries(
+    Object.entries(raw).filter((e): e is [string, DateCalendar] => e[0].trim() !== '' && (e[1] === 'gregorian' || e[1] === 'hijri' || e[1] === 'both'))
+  );
+  return Object.keys(out).length ? { calendars: out } : {};
 }

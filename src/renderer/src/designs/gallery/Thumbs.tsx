@@ -7,6 +7,7 @@ import { renderCanvasHtml } from '@shared/canvasHtml';
 import { fitCanvasText } from '@shared/design/fit';
 import { inlineBarcodes } from '@shared/design/imposition';
 import { buildDoc, sampleValues, type Brand, type KindSpec, type Palette } from '@shared/design/kit';
+import { freshImsakiya } from '@shared/design/imsakiya';
 
 export function Thumb({
   kind,
@@ -25,7 +26,8 @@ export function Thumb({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const { html, px } = useMemo(() => {
-    const doc = buildDoc({ kind: kind.key, style, palette, brand });
+    const built = buildDoc({ kind: kind.key, style, palette, brand });
+    const doc = { ...built, canvas: freshImsakiya(built.canvas!) };
     return {
       html: inlineBarcodes(renderCanvasHtml(doc, sampleValues(brand), { dpi: SCREEN_DPI, marks: false, missing: 'blank' })),
       px: canvasPx(doc.canvas!, SCREEN_DPI)

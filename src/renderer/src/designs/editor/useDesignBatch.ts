@@ -7,6 +7,7 @@ import type { Doc } from '@shared/doc';
 import type { Photo } from '@shared/design/batch';
 import { nameKeyOf } from '@shared/design/batch';
 import { derivedWords } from '@shared/tafqeet';
+import { valuesInCalendars } from '@shared/dates';
 import { GENDER_KEY, docHasChoices, guessGender, unsureNames, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../../lib/useLearnedGenders';
 
@@ -48,7 +49,8 @@ export function useBatchCards({ doc, values, copies, batchRows }: Inputs) {
     // والتذكير والتأنيث لكلّ بطاقةٍ من اسم صاحبها — وعمود «الجنس» في القائمة يغلب.
     const nameKey = docHasChoices(doc) ? nameKeyOf(keys) : undefined;
     return (batchRows.length ? batchRows.map((row) => ({ ...values, ...row })) : Array.from({ length: Math.max(1, copies) }, () => values)).map((card) => {
-      const out = derivedWords(card, keys);
+      // والتاريخ بتقويم حقله (٣٫٤): عمود Excel «2026/10/11» يُطبع «٢٩ ربيع الآخر ١٤٤٨ هـ» في كلّ بطاقة.
+      const out = valuesInCalendars(derivedWords(card, keys), doc.canvas?.calendars);
       if (nameKey && !out[GENDER_KEY] && out[nameKey]) {
         const name = out[nameKey]!.trim();
         const g = genderDecisions[name] ?? guessGender(name, learned)?.gender;

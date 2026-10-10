@@ -4,7 +4,7 @@
  * ما يُعرف من التصميم وقيمه يُحسب هنا خالصًا ويُختبر بالأرقام: خلفيةٌ دقّتها
  * دون ١٥٠ نقطة/إنش، وعنصرٌ يلامس خطّ القصّ، وبطاقاتٌ بلا اسمٍ أو بلا صورة —
  * وفي الدفعة كلّها (DESIGNS.md ٣٫٢): **الأسماء التي تصغر كثيرًا لتسع** بأصحابها، و**رمز QR
- * الكثيف** على مقاسه فلا تقرؤه الكاميرا، و**الصور التي لا تُفتح**.
+ * الكثيف** على مقاسه فلا تقرؤه الكاميرا، و**الصور التي لا تُفتح**. والإمساكية بأوقاتٍ فارغة (٣٫٤): لا تُطبع بلا جدولها الرسمي.
  * وما لا يُعرف إلا بعد الرسم (اسمٌ صغُر كثيرًا، نصٌّ فاض عن صندوقه، دقّة صورة
  * الطالب الفعلية) تقيسه المعاينة بالخطّ الحقيقي وتضمّه إلى القائمة.
  *
@@ -15,6 +15,7 @@ import { encodes128, NOT_128 } from './barcode';
 import { toIndic } from './arabic';
 import { pickVersion } from './qr';
 import { estimateEm } from './design/kinds/text';
+import { imsakiyaGaps } from './design/imsakiya';
 
 export type PreflightIssue = {
   /** `warn` يُفسد الورقة غالبًا، و`info` يُحسن أن يُعرف. */
@@ -125,6 +126,18 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
       const empty = cards.filter((c) => !c[ref]?.trim()).length;
       if (empty) issues.push({ level: 'warn', text: `${toIndic(empty)} بطاقة بلا صورة في «${ref}»` });
     }
+  }
+
+  // الإمساكية: أوقاتها من الجدول الرسمي وحده (٣٫٤) — فارغةً تخرج جدولًا بلا أوقات، وناقصةً تخرج أيّامًا بلا إمساك.
+  const gaps = imsakiyaGaps(canvas);
+  if (gaps?.empty) {
+    issues.push({
+      level: 'warn',
+      text:
+        gaps.empty === gaps.total
+          ? 'الإمساكية بلا أوقات — استورد الجدول الرسمي لمدينتك من «جدول الإمساكية»'
+          : `في الإمساكية ${toIndic(gaps.empty)} خانة وقتٍ فارغة من ${toIndic(gaps.total)} — أكملها من الجدول الرسمي`
+    });
   }
 
   // الباركود: قيمةٌ لا يحملها Code128 (حروفٌ عربية) كانت تخرج بطاقةً بلا باركودٍ صامتةً.

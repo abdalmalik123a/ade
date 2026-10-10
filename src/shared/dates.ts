@@ -6,7 +6,9 @@
  * تُعلَن بالرؤية فقد تخالفه بيوم: فيُزاح بإعداد المكتب (`hijriOffset`، من −٢ إلى +٢ يومًا).
  */
 
-const AR_MONTHS = [
+import { toIndic, toLatinDigits } from './arabic';
+
+export const AR_MONTHS = [
   'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران',
   'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'
 ];
@@ -41,6 +43,78 @@ export function formatHijri(date: Date, offsetDays: number = hijriOffsetDays): s
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((p) => p.type === type)?.value ?? '';
   return `${get('day')} ${get('month')} ${get('year')}`;
+}
+
+const HIJRI_NUMERIC = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'numeric', year: 'numeric' });
+
+/** الهجري أرقامًا — السنة والشهر واليوم — بإزاحة المكتب: منه يُعرف أوّل رمضان (الإمساكية، ٣٫٤). */
+export function hijriParts(date: Date, offsetDays: number = hijriOffsetDays): { y: number; m: number; d: number } {
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate() + offsetDays, 12);
+  const parts = HIJRI_NUMERIC.formatToParts(day);
+  const get = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return { y: get('year'), m: get('month'), d: get('day') };
+}
+
+/** الشهور بأسمائها العراقية والمصرية والمغاربية والإنكليزية — مطبَّعةً بلا همزات. */
+const MONTH_NAMES: [RegExp, number][] = [
+  [/كانون الثاني|يناير|جانفي|^jan/, 1],
+  [/شباط|فبراير|فيفري|^feb/, 2],
+  [/اذار|مارس|^mar/, 3],
+  [/نيسان|ابريل|افريل|^apr/, 4],
+  [/ايار|مايو|^ماي$|^may/, 5],
+  [/حزيران|يونيو|جوان|^jun/, 6],
+  [/تموز|يوليو|جويليه|^jul/, 7],
+  [/^اب$|اغسطس|اوت|^aug/, 8],
+  [/ايلول|سبتمبر|^sep/, 9],
+  [/تشرين الاول|اكتوبر|^oct/, 10],
+  [/تشرين الثاني|نوفمبر|^nov/, 11],
+  [/كانون الاول|ديسمبر|^dec/, 12]
+];
+
+/**
+ * تاريخٌ ميلاديّ من نصّه كما يُكتب: «2027/02/08» (Excel)، «8/2/2027» و«٨ / ٢ / ٢٠٢٧» و«8-2» (اليوم ثم الشهر كما في العراق)،
+ * «8 شباط 2027» (وما يكتبه `formatGregorian`). والسنة الغائبة سنةُ `ref` أو جارتها الأقرب إليه — وما سوى ذلك عدم.
+ */
+export function parseDateText(text: string, ref: Date = new Date()): Date | null {
+  const s = toLatinDigits(text)
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  let y: number | null = null;
+  let mo = 0;
+  let d = 0;
+  let m = /^(\d{4})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{1,2})(?:\s.*)?$/.exec(s);
+  if (m) [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  else if ((m = /^(\d{1,2})\s*[/.-]\s*(\d{1,2})(?:\s*[/.-]\s*(\d{2}|\d{4}))?$/.exec(s))) {
+    [d, mo] = [Number(m[1]), Number(m[2])];
+    if (m[3]) y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+  } else if ((m = /^(\d{1,2}) ([^\d]+?)(?: (\d{4}))?(?: ?م)?$/.exec(s))) {
+    const month = MONTH_NAMES.find(([re]) => re.test(m![2]!.trim()));
+    if (!month) return null;
+    [d, mo] = [Number(m[1]), month[1]];
+    if (m[3]) y = Number(m[3]);
+  } else return null;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  if (y === null) {
+    const near = [-1, 0, 1].map((k) => new Date(ref.getFullYear() + k, mo - 1, d));
+    near.sort((a, b) => Math.abs(a.getTime() - ref.getTime()) - Math.abs(b.getTime() - ref.getTime()));
+    y = near[0]!.getFullYear();
+  }
+  const out = new Date(y, mo - 1, d);
+  return out.getMonth() === mo - 1 ? out : null;
+}
+
+/**
+ * قيمة حقل التاريخ بتقويمه (٣٫٤): ما يُقرأ تاريخًا يُكتب بالتقويم المختار، بأرقامٍ هندية إن كُتب بها — وما لا يُقرأ
+ * (تاريخٌ هجريٌّ مكتوب، أو نصٌّ آخر) يبقى كما كُتب.
+ */
+export function dateValueIn(text: string, calendar: Calendar): string {
+  const date = parseDateText(text);
+  if (!date) return text;
+  const out = formatDateIn(date, calendar);
+  return /[٠-٩]/.test(text) ? toIndic(out) : out;
 }
 
 /** صيغة التخزين: YYYY-MM-DD بالتوقيت المحلي، لا UTC — وإلا انزاح اليوم. */
@@ -121,3 +195,11 @@ export function sinceText(iso: string | null, now: Date = new Date()): string {
 
 /** بعدها يُذكَّر المكتب بنسخةٍ احتياطية: أسبوع — وما يضيع في أسبوعٍ يُعاد، وفي شهرٍ لا. */
 export const BACKUP_REMIND_DAYS = 7;
+
+/** قيم البطاقة بتقاويم حقولها (٣٫٤): حقلٌ له تقويمٌ يُكتب تاريخه به — في البطاقة الواحدة وفي كلّ بطاقةٍ من الدفعة — وما سواه كما هو. */
+export function valuesInCalendars(values: Record<string, string>, calendars: Record<string, Calendar> | undefined): Record<string, string> {
+  if (!calendars || !Object.keys(calendars).length) return values;
+  const out = { ...values };
+  for (const [key, calendar] of Object.entries(calendars)) if (out[key]?.trim()) out[key] = dateValueIn(out[key]!, calendar);
+  return out;
+}

@@ -1,6 +1,6 @@
 /**
- * عمود الأدوات بجانب اللوحة: العودة إلى المعرض، واسم التصميم ومقاسه، ثم اللوحات بترتيب العمل — املأ، والدفعة،
- * والخلفية والمقاس، والإضافة، وخصائص المحدَّد، والطبقات.
+ * عمود الأدوات بجانب اللوحة: العودة إلى المعرض، واسم التصميم ومقاسه، ثم اللوحات بترتيب العمل — جدول الإمساكية إن كانت (٣٫٤)،
+ * واملأ، والدفعة، والخلفية والمقاس، والإضافة، وخصائص المحدَّد، والطبقات.
  */
 import BatchPanel from '../BatchPanel';
 import FillPanel from '../panels/FillPanel';
@@ -10,10 +10,13 @@ import ElementPanel from '../panels/ElementPanel';
 import LayersPanel from '../panels/LayersPanel';
 import ImportNotes from '../ImportNotes';
 import BrandKitBar from '../panels/BrandKitBar';
+import ImsakiyaPanel from '../imsakiya/ImsakiyaPanel';
+import { imsakiyaTable } from '@shared/design/imsakiya';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
   const { canvas, designId, doc } = ed;
+  const imsakiya = imsakiyaTable(canvas);
   return (
     <section className="w-[420px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md">
       <header className="flex items-center justify-between gap-space-sm">
@@ -58,6 +61,8 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
       <BrandKitBar ed={ed} />
 
       {ed.importNotes && <ImportNotes where={ed.importNotes.where} lines={ed.importNotes.lines} onClose={() => ed.setImportNotes(null)} />}
+
+      {imsakiya && <ImsakiyaPanel key={imsakiya.id} ed={ed} table={imsakiya} />}
 
       <FillPanel ed={ed} />
 

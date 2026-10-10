@@ -19,6 +19,8 @@ export type {
   TableColumn,
   TableElement,
   TableRowStyle,
+  ImsakiyaSettings,
+  DateCalendar,
   PathElement,
   CanvasElement,
   Background,

@@ -7,6 +7,7 @@ import type { FieldSuggestion } from '@shared/api';
 import { clampBox, emptyCanvas, imageElement, normalizeCanvas, pathElement, type Canvas, type CanvasElement, type CanvasSize } from '@shared/canvas';
 import { startCanvasHistory, type CanvasHistory } from '@shared/canvasEdit';
 import { buildDesign } from '@shared/design/kit';
+import { freshImsakiya } from '@shared/design/imsakiya';
 import { svgToDataUrl, type ClipartItem } from '@shared/clipart';
 import { elementBox, type LibraryElement } from '@shared/design/elements';
 import type { BundledElement } from '@shared/assets/elements';
@@ -135,7 +136,8 @@ export function useDesignSources(i: Inputs) {
    */
   const pickFromGallery = useCallback(
     ({ kind, style, palette, brand }: GalleryPick) => {
-      fresh(buildDesign({ kind: kind.key, style, palette, brand }), brand.name ? `${kind.title} — ${brand.name}` : kind.title);
+      // والإمساكية بأيّام رمضان القادم (٣٫٤) — فعيّنة المعرض ثابتة.
+      fresh(freshImsakiya(buildDesign({ kind: kind.key, style, palette, brand })), brand.name ? `${kind.title} — ${brand.name}` : kind.title);
       setAskSize(false);
       say(`${kind.title} — املأه، أو الصق قائمةً كاملة في «دفعة»`);
     },

@@ -16,8 +16,8 @@ import { luminance } from '../src/shared/design/kit/color';
 const royal = PALETTES[0]!;
 
 describe('محرّك التصاميم: نوعٌ × نمطٌ × لوحة', () => {
-  it('تسعة عشر نوعًا بثلاثة عشر نمطًا (٣٫١) — كلّ تصميمٍ منها يُبنى', () => {
-    expect(KINDS).toHaveLength(19);
+  it('عشرون نوعًا (والإمساكية ٣٫٤) بثلاثة عشر نمطًا (٣٫١) — كلّ تصميمٍ منها يُبنى', () => {
+    expect(KINDS).toHaveLength(20);
     expect(STYLES).toHaveLength(13);
     for (const kind of KINDS)
       for (const style of STYLES) {

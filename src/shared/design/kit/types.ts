@@ -4,7 +4,7 @@
  * التخطيط **نِسَبٌ من الورقة** والمحور الأفقي من اليسار (كإحداثيات الرسم)، ويُقلب عند بناء العناصر. وهو لا يعرف
  * لونًا ولا خطًّا: يقول «هنا العنوان، وهنا الاسم، وهنا خطّ التوقيع» — والنمط يقرّر كيف يبدو كلٌّ منها.
  */
-import type { CanvasSize } from '../model/types';
+import type { CanvasSize, ImsakiyaSettings } from '../model/types';
 
 /** دورُ النصّ: عليه يختار النمط الخطَّ واللون. */
 export type Role =
@@ -33,6 +33,8 @@ export type TextSlot = {
   /** سطرٌ يصغر ليسع — للأسماء والجهات. */
   fit?: boolean;
   dir?: 'rtl' | 'ltr';
+  /** اسمه في الطبقات — لما يُعرف به بعد البناء (سطر سنة الإمساكية). */
+  name?: string;
 };
 
 export type ImageSlot = {
@@ -66,6 +68,12 @@ export type TableSlot = {
   borders?: 'rows' | 'none';
   /** بلا صفّ عناوين: قائمة الأصناف وأسعارها. */
   hideHeader?: boolean;
+  /** صفوفٌ متقاربة: جدولٌ طويل يسع صندوقه. */
+  dense?: boolean;
+  /** صفوفٌ مميَّزة بلون الترويسة (أيّام الجمعة في الإمساكية). */
+  marked?: number[];
+  /** جدول إمساكية (٣٫٤) بإعداده. */
+  imsakiya?: ImsakiyaSettings;
 };
 
 export type Layout = {

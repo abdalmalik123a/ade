@@ -68,6 +68,9 @@ export function toFtsQuery(raw: string): string {
 const INDIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 
 /** الأرقام بالهندية كما يكتبها المكتب: «١٢» لا «12» (ز٢ — كانت تُعرَّف في نحو عشرين ملفًّا). */
+/** والعكس: الهندية والفارسية لاتينيةً — فيُقرأ «٤:٥٥» و«۴:۵۵» كما يُقرأ «4:55». */
+export const toLatinDigits = (s: string): string => s.replace(/[٠-٩۰-۹]/g, (d) => DIGIT_MAP[d] ?? d);
+
 export const toIndic = (n: number | string): string => String(n).replace(/\d/g, (d) => INDIC_DIGITS[Number(d)]!);
 
 /** وفي نصٍّ فيه رموزٌ لاتينية: الرقم بعد حرفٍ لاتيني يبقى كما هو («A4»)، وسائر الأرقام تُحوَّل. */

@@ -1183,8 +1183,8 @@ export type DiwanApi = LibraryApis & {
     storeImageUrl(url: string): Promise<string | null>;
     /** مجلد صورٍ لدفعة — لكلٍّ اسمُ ملفّه بلا امتداد، وعليه يُطابَق بصفّه. */
     pickImageFolder(bucket: string): Promise<{ name: string; src: string }[] | null>;
-    /** قائمةٌ من ملف Excel أو CSV — نصًّا بأعمدةٍ مفصولة بالجدولة، كما لو أُلصقت. */
-    readSheet(): Promise<{ name: string; text: string; rows: number } | null>;
+    /** قائمةٌ من ملف Excel أو CSV — نصًّا بأعمدةٍ مفصولة بالجدولة، كما لو أُلصقت؛ وللإمساكية PDF أيضًا (بايتاتٍ، ٣٫٤). */
+    readSheet(what?: 'imsakiya'): Promise<{ name: string; text: string; rows: number; pdf?: Uint8Array } | null>;
     /** خلفيةُ لوحة ومقاسُها من الملف — و`dpi: null` يعني: اسأل، لا تخمّن. */
     pickBackground(bucket: string): Promise<{
       src: string;

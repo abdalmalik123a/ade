@@ -37,7 +37,7 @@ function stable(html: string): string {
 const snap = (name: string) => `./snapshots/renderer/${name}.html`;
 
 /** الأنماط الثمانية الجديدة (٣٫١) بأنواعٍ تمثّل عائلاتها — لا بالتسعة عشر كلّها (فاللقطات لا تتضخّم). */
-const REPRESENTATIVE = ['thanks', 'student-id', 'invitation', 'menu', 'invoice'];
+const REPRESENTATIVE = ['thanks', 'student-id', 'invitation', 'menu', 'invoice', 'imsakiya'];
 
 describe('لقطات الرسّام (DESIGNS.md ٠٫٢)', () => {
   KINDS.forEach((kind, k) => {

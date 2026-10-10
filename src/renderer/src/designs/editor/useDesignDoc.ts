@@ -6,6 +6,7 @@ import { reconcileFields, type Doc } from '@shared/doc';
 import { SCREEN_DPI, canvasDoc, type Canvas } from '@shared/canvas';
 import type { CanvasHistory } from '@shared/canvasEdit';
 import { renderCanvasHtml } from '@shared/canvasHtml';
+import { valuesInCalendars } from '@shared/dates';
 import { DESIGN_CATEGORY } from './kit';
 import type { Side } from './useCanvasSides';
 
@@ -49,7 +50,9 @@ export function useDesignDoc({ history, backHistory, backDoc, title, batchMap, a
     if (backHistory?.present && (backHistory.present.elements.length > 0 || backHistory.present.background.kind !== 'none')) {
       built.backCanvas = backHistory.present;
     }
-    built.fields = reconcileFields(built);
+    // وحقل التاريخ بتقويمه المحفوظ في اللوحة (٣٫٤) — حقلُ تاريخٍ يُكتب به.
+    const calendars = history.present.calendars ?? {};
+    built.fields = reconcileFields(built).map((f) => (calendars[f.key] ? { ...f, type: 'date' as const, calendar: calendars[f.key] } : f));
     if (Object.keys(batchMap).length) built.meta = { ...built.meta, batchMap };
     return built;
   }, [history.present, backHistory, title, batchMap]);
@@ -57,7 +60,7 @@ export function useDesignDoc({ history, backHistory, backDoc, title, batchMap, a
   const html = useMemo(
     // مع دفعةٍ تُعرض بطاقة أوّل اسمٍ فيها — فيُرى الاسم الحقيقي في موضعه لا وسمُه.
     () =>
-      renderCanvasHtml(activeSide === 'front' ? doc : (effectiveBackDoc ?? canvasDoc(canvas)), batchRows[0] ? { ...values, ...batchRows[0] } : values, {
+      renderCanvasHtml(activeSide === 'front' ? doc : (effectiveBackDoc ?? canvasDoc(canvas)), valuesInCalendars(batchRows[0] ? { ...values, ...batchRows[0] } : values, doc.canvas?.calendars), {
         dpi: SCREEN_DPI,
         missing: preview ? 'blank' : 'token'
       }),

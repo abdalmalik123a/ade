@@ -1,6 +1,7 @@
 /**
- * القائمة: الأنواع التسعة عشر بمقاساتها ومجموعاتها وتخطيطها وعيّنتها — ما يطلبه الزبون فعلًا من المكتب. والثلاثة الأخيرة
- * (٣٫١): المنيو والوصل والفاتورة — استماراتٌ تُملأ بالقلم بلا حساب (قرار المالك).
+ * القائمة: الأنواع العشرون بمقاساتها ومجموعاتها وتخطيطها وعيّنتها — ما يطلبه الزبون فعلًا من المكتب. والمنيو والوصل والفاتورة
+ * (٣٫١) استماراتٌ تُملأ بالقلم بلا حساب (قرار المالك)، والإمساكية (٣٫٤) آخرها — وتُضاف الأنواع في آخر القائمة أبدًا، فلا
+ * تتبدّل لوحات ما قبلها في اللقطات.
  */
 import type { CanvasSize } from '../model/types';
 import type { KindSpec } from './types';
@@ -9,6 +10,7 @@ import { certificate, honour, invitation } from './layouts/sheets';
 import { businessCard, examCard, idBack, label, staffId, studentId } from './layouts/cards';
 import { eventBadge, greetingCard, modernBusinessCard, trainingCert } from './layouts/more';
 import { invoice, menu, receipt } from './layouts/forms';
+import { imsakiya } from './layouts/imsakiya';
 
 const A4L: CanvasSize = { w: 297, h: 210 };
 const A4P: CanvasSize = { w: 210, h: 297 };
@@ -91,7 +93,10 @@ export const KINDS: KindSpec[] = [
   // ── مطاعم ومحلّات (٣٫١) ──
   { key: 'menu', title: 'منيو مطعم', group: 'مطاعم ومحلّات', size: A4P, bleed: 3, family: 'sheet', layout: menu, sample: SAMPLE },
   { key: 'receipt', title: 'وصل قبض', group: 'مطاعم ومحلّات', size: A5L, bleed: 0, family: 'sheet', layout: receipt, sample: SAMPLE },
-  { key: 'invoice', title: 'استمارة فاتورة', group: 'مطاعم ومحلّات', size: A5P, bleed: 0, family: 'sheet', layout: invoice, sample: SAMPLE }
+  { key: 'invoice', title: 'استمارة فاتورة', group: 'مطاعم ومحلّات', size: A5P, bleed: 0, family: 'sheet', layout: invoice, sample: SAMPLE },
+
+  // ── مناسبات (٣٫٤): الإمساكية بجدولها الرسمي ──
+  { key: 'imsakiya', title: 'إمساكية رمضان', group: 'مناسبات', size: A4P, bleed: 3, family: 'sheet', layout: imsakiya, sample: SAMPLE }
 ];
 
 export const kindOf = (key: string): KindSpec | undefined => KINDS.find((k) => k.key === key);

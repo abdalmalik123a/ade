@@ -155,11 +155,21 @@ export type TableElement = ElementBase & {
   borders?: 'all' | 'rows' | 'none';
   /** بلا صفّ العناوين — جدول المنيو والفاتورة اليدوية. */
   hideHeader?: boolean;
+  /** صفوفٌ متقاربة (٣٫٤): حشوٌ أقلّ وسطرٌ أضيق — فيسع جدولٌ طويل (ثلاثون يومًا في الإمساكية) صندوقه ولا يُقصّ آخره. */
+  dense?: boolean;
   /** صفٌّ بلونه وخطّه (١٫٩) — يومُ الإمساكية الحاضر، وصفّ المجموع — بترتيب الصفوف. */
   rowStyles?: (TableRowStyle | null)[];
+  /** جدول إمساكية (٣٫٤): إعداده يُحفظ فيه، فيُعاد بناء أيّامه بتقويمٍ آخر ولا تضيع أوقاته. */
+  imsakiya?: ImsakiyaSettings;
 };
 
 export type TableRowStyle = { bg?: string; color?: string; bold?: boolean };
+
+/** تقويم التاريخ — كتقويم حقول المعاملات (`shared/dates.ts`). */
+export type DateCalendar = 'gregorian' | 'hijri' | 'both';
+
+/** إعداد الإمساكية: أوّل رمضان (`YYYY-MM-DD`)، وتقويم أيّامها، وأرقامها، وتمييز أيّام الجمعة. */
+export type ImsakiyaSettings = { start: string; calendar: DateCalendar; digits: 'indic' | 'latin'; fridays: boolean };
 
 /**
  * الشكل الحرّ (DESIGNS.md ١٫٢): مسارٌ في مربّع ٠..١٠٠ يتمدّد مع صندوقه — موجةٌ وزاويةٌ وشريطٌ وقوسٌ وإطار
@@ -199,4 +209,6 @@ export type Canvas = {
   cropMarks: boolean;
   background: Background;
   elements: CanvasElement[];
+  /** تقويم حقول التاريخ في التصميم (٣٫٤) — «التاريخ» بالهجري، و«تاريخ النشاط» بالاثنين؛ والغائب يُطبع كما كُتب. */
+  calendars?: Record<string, DateCalendar>;
 };
