@@ -12,6 +12,7 @@ import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFi
 import { errorText } from '../lib/errors';
 import { useToast } from '../kit/useToast';
 import { localToday } from '@shared/dates';
+import ClientBrandFields from '../components/ClientBrandFields';
 
 const KINDS = ['مدرسة', 'روضة', 'إعدادية', 'ثانوية', 'دائرة', 'مديرية', 'شركة', 'جامعة', 'مركز'];
 
@@ -45,8 +46,9 @@ type Draft = {
   schoolGender: string;
   governorate: string;
   principal: string;
+  font: string;
 };
-const EMPTY: Draft = { name: '', kind: '', phone: '', address: '', color: '', notes: '', schoolGender: '', governorate: '', principal: '' };
+const EMPTY: Draft = { name: '', kind: '', phone: '', address: '', color: '', notes: '', schoolGender: '', governorate: '', principal: '', font: '' };
 
 export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenProps) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -83,7 +85,8 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
         notes: current.notes ?? '',
         schoolGender: current.schoolGender ?? '',
         governorate: current.governorate ?? '',
-        principal: current.principal ?? ''
+        principal: current.principal ?? '',
+        font: current.font ?? ''
       });
     else if (selected === 'new') setDraft(EMPTY);
     if (typeof selected === 'number') void window.diwan.orders.list({ clientId: selected }).then(setOrders);
@@ -238,20 +241,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                   <span className="font-label-md text-label-md text-on-surface font-semibold">الهاتف</span>
                   <input className={input} data-client-phone="" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
                 </label>
-                <label className="flex flex-col gap-1">
-                  <span className="font-label-md text-label-md text-on-surface font-semibold">اللون</span>
-                  <span className="flex items-center gap-space-sm">
-                    <input
-                      className="w-12 h-10 rounded-lg border border-outline-variant bg-surface-container-low"
-                      type="color"
-                      value={draft.color || '#1f3a8a'}
-                      onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-                    />
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      {draft.color ? 'لون تصاميمها وترويساتها' : 'يُستخرج من الشعار حين يُوضع'}
-                    </span>
-                  </span>
-                </label>
+                <ClientBrandFields color={draft.color} font={draft.font} onChange={(patch) => setDraft({ ...draft, ...patch })} />
                 <label className="flex flex-col gap-1 col-span-2">
                   <span className="font-label-md text-label-md text-on-surface font-semibold">العنوان</span>
                   <input className={input} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />

@@ -8,7 +8,7 @@ import type { Client } from '@shared/orders';
 import { PALETTES, STYLES, dominantColor, paletteFrom, type Brand } from '@shared/design/kit';
 
 /** لون الشعار من بكسلاته — والصورة تُقرأ من المخزن برأس CORS فلا تُقفَل اللوحة. */
-async function logoColor(path: string): Promise<string | null> {
+export async function logoColor(path: string): Promise<string | null> {
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.src = `diwan://store/${path}`;

@@ -9,6 +9,7 @@ import AddPanel from '../panels/AddPanel';
 import ElementPanel from '../panels/ElementPanel';
 import LayersPanel from '../panels/LayersPanel';
 import ImportNotes from '../ImportNotes';
+import BrandKitBar from '../panels/BrandKitBar';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
@@ -53,6 +54,8 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
         value={ed.title}
         onChange={(e) => ed.setTitle(e.target.value)}
       />
+
+      <BrandKitBar ed={ed} />
 
       {ed.importNotes && <ImportNotes where={ed.importNotes.where} lines={ed.importNotes.lines} onClose={() => ed.setImportNotes(null)} />}
 

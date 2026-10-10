@@ -25,13 +25,15 @@ export function prepareClients(db: Database): void {
   add('school_gender', 'TEXT');
   add('governorate', 'TEXT');
   add('principal', 'TEXT');
+  // طقم الجهة (DESIGNS.md ٣٫٣): خطّ تصاميمها.
+  add('font', 'TEXT');
 }
 
 type Row = Client;
 
 const SELECT = `
   SELECT a.id, a.name, a.kind, a.phone, a.address, a.color, a.notes,
-    a.school_gender AS schoolGender, a.governorate, a.principal,
+    a.school_gender AS schoolGender, a.governorate, a.principal, a.font,
     (SELECT s.image_path FROM seals s WHERE s.authority_id = a.id AND s.kind = 'شعار' AND s.image_path IS NOT NULL
       ORDER BY s.id DESC LIMIT 1) AS logo,
     (SELECT COUNT(*) FROM letterheads l WHERE l.authority_id = a.id) AS letterheads,
@@ -77,20 +79,21 @@ export function saveClient(db: Database, input: ClientInput): Client {
     normalizeFold(name),
     keep(input.schoolGender, before?.schoolGender),
     keep(input.governorate, before?.governorate),
-    keep(input.principal, before?.principal)
+    keep(input.principal, before?.principal),
+    keep(input.font, before?.font)
   ];
   let id = input.id;
   if (id) {
     db.prepare(
       `UPDATE authorities SET name = ?, kind = ?, phone = ?, address = ?, color = ?, notes = ?, search_fold = ?,
-         school_gender = ?, governorate = ?, principal = ? WHERE id = ?`
+         school_gender = ?, governorate = ?, principal = ?, font = ? WHERE id = ?`
     ).run(...values, id);
   } else {
     id = Number(
       db
         .prepare(
-          `INSERT INTO authorities (name, kind, phone, address, color, notes, search_fold, school_gender, governorate, principal)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO authorities (name, kind, phone, address, color, notes, search_fold, school_gender, governorate, principal, font)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(...values).lastInsertRowid
     );

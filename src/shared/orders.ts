@@ -49,6 +49,8 @@ export type Client = {
   schoolGender: string | null;
   governorate: string | null;
   principal: string | null;
+  /** خطّ تصاميم الجهة من «خطوط ديوان» (DESIGNS.md ٣٫٣) — عائلةٌ لا مكدّس. */
+  font: string | null;
 };
 
 export type ClientInput = {
@@ -62,6 +64,7 @@ export type ClientInput = {
   schoolGender?: string | null;
   governorate?: string | null;
   principal?: string | null;
+  font?: string | null;
 };
 
 export type Order = {
