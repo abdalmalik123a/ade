@@ -19,8 +19,11 @@ export type PsdItem =
       /** سطرٌ واحد: يصغر ليسع بدل أن يُقصّ. */
       single: boolean;
     }
-  | { kind: 'photo'; layer: number; rect: Rect; round: boolean }
-  | { kind: 'barcode'; layer: number; rect: Rect };
+  /** والصورة المقصوصة في إطارٍ (`base`)، والحلقة فوقها (`ring`): حدُّ أحدهما حلقتُها (٢٫١). */
+  | { kind: 'photo'; layer: number; base?: number; ring?: number; rect: Rect; round: boolean }
+  | { kind: 'barcode'; layer: number; rect: Rect }
+  /** صورةٌ وُضعت في القالب لتُستبدل («كائنٌ ذكيّ»: التوقيع، صورة المنتج…) — بمستطيلها الظاهر في الورقة (٢٫١). */
+  | { kind: 'picture'; layer: number; rect: Rect };
 
 /** شرائط الحبر في عدّادٍ: [بداية، نهاية) لكلّ شريط، والفجوات الصغيرة تُلحَم. */
 function bands(counts: number[], minGap: number): [number, number][] {
@@ -145,7 +148,43 @@ function isRound(bytes: Uint8Array, doc: PsdDoc, layer: PsdLayer): boolean {
 const SHAPE_NAME = /^(rectangle|rounded rectangle|shape|ellipse|circle|vector|polygon|line)\b/;
 
 /**
- * ما يصير عنصرًا يُحرَّر: كلّ نصٍّ ظاهر، وصورةُ الشخص، والرمز.
+ * الحلقة فوق الصورة (٢٫١): قوالب الهويّات ترسم حلقة الصورة شكلًا منفصلًا فوقها بحدٍّ وحده — وفي اللوحة يبقى في الخلفية
+ * تحت الصورة فتغطّيه. فأقرب طبقةٍ فوقها بحدٍّ، ليست نصًّا، بمقاس الإطار تقريبًا وفي وسطه، حلقتُها.
+ */
+function ringAbove(doc: PsdDoc, photo: PsdLayer, frame: Rect): PsdLayer | undefined {
+  const fw = width(frame);
+  const fh = height(frame);
+  const cx = (frame.left + frame.right) / 2;
+  const cy = (frame.top + frame.bottom) / 2;
+  return doc.layers.find((l) => {
+    // حلقةٌ بحدٍّ وحده تعبئتها صفر — فلا تُعدّ «غير مرسومة»: المخفيّة وحدها تُترك.
+    if (l.index <= photo.index || l.text || !l.effects?.stroke || l.hidden || l.divider) return false;
+    const w = width(l.rect);
+    const h = height(l.rect);
+    const near = Math.abs((l.rect.left + l.rect.right) / 2 - cx) < fw * 0.1 && Math.abs((l.rect.top + l.rect.bottom) / 2 - cy) < fh * 0.1;
+    return near && w > fw * 0.75 && w < fw * 1.15 && h > fh * 0.75 && h < fh * 1.15;
+  });
+}
+
+/**
+ * الكائن الذكيّ صورةً تُستبدل (٢٫١): ظاهرٌ غير مقصوصٍ في غيره ولا يُقصّ فيه غيره (فتلك صورةُ الموظف وإطارها)، ومستطيله
+ * داخل الورقة بين نصف بالمئة منها وأكثرها (فالخلفية الكاملة تبقى خلفية) — وإلا `null`.
+ */
+function pictureRect(doc: PsdDoc, layer: PsdLayer): Rect | null {
+  if (layer.clipping || !drawable(layer) || doc.layers.some((l) => l.clipping && clipBase(doc, l) === layer)) return null;
+  const r: Rect = {
+    left: Math.max(0, layer.rect.left),
+    top: Math.max(0, layer.rect.top),
+    right: Math.min(doc.width, layer.rect.right),
+    bottom: Math.min(doc.height, layer.rect.bottom)
+  };
+  if (width(r) <= 0 || height(r) <= 0) return null;
+  const share = (width(r) * height(r)) / (doc.width * doc.height);
+  return share >= 0.005 && share <= 0.85 ? r : null;
+}
+
+/**
+ * ما يصير عنصرًا يُحرَّر: كلّ نصٍّ ظاهر، وصورةُ الشخص، والرمز، والصورة التي تُستبدل.
  *
  * والصورة والرمز يُعرفان بأسماء طبقاتهم ومجموعاتهم — كما تسمّيها قوالب السوق
  * («Replace Image»، «Employee Image»، «QR Code») — فإن لم يُسمَّيا بقيا من
@@ -177,7 +216,11 @@ export function psdItems(bytes: Uint8Array, doc: PsdDoc): PsdItem[] {
     const named = /replace (your )?(image|photo)|employee image|your photo|^photo$|^image$|صورة/.test(name);
     const inGroup = /employee image|photo|avatar|صورة/.test(path);
     const rank = named ? 3 : inGroup && layer.clipping ? 2 : inGroup && !shape ? 1 : 0;
-    if (!rank) continue;
+    if (!rank) {
+      const picture = layer.smart ? pictureRect(doc, layer) : null;
+      if (picture) items.push({ kind: 'picture', layer: layer.index, rect: picture });
+      continue;
+    }
     const key = path || name;
     if ((photos.get(key)?.rank ?? 0) < rank) photos.set(key, { layer, rank });
   }
@@ -185,9 +228,12 @@ export function psdItems(bytes: Uint8Array, doc: PsdDoc): PsdItem[] {
   for (const { layer } of photos.values()) {
     // المقصوصة تأخذ شكلَ قاعدتها: الصورة في دائرةٍ تُطبع في الدائرة.
     const frame = clipBase(doc, layer) ?? layer;
+    const ring = ringAbove(doc, layer, frame.rect);
     items.push({
       kind: 'photo',
       layer: layer.index,
+      ...(frame !== layer && { base: frame.index }),
+      ...(ring && { ring: ring.index }),
       rect: frame.rect,
       round: frame !== layer && isRound(bytes, doc, frame)
     });

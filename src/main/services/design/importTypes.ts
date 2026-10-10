@@ -3,6 +3,8 @@
  */
 import type { Box, CanvasSize } from '@shared/canvas';
 import type { Align, Inline, Suggestion } from '@shared/doc';
+import type { Gradient } from '@shared/design/paint';
+import type { ImageShape } from '@shared/design/shapes';
 
 /** الوحدات إلى الملّم — وكلٌّ منها من معيار صاحبه. */
 export const TWIP_MM = 25.4 / 1440;
@@ -46,6 +48,16 @@ export type DesignImport = {
     vAlign?: 'top' | 'middle' | 'bottom';
     fit?: 'shrink' | 'cover' | 'contain';
     radius?: number;
+    // مؤثّرات Photoshop (DESIGNS.md ٢٫١) — الأطوال نِسَبًا من ارتفاع التصميم كـ`sizeFrac`، فتصير نقاطًا وملّمات بمقاسه.
+    shadowFrac?: { color: string; dx: number; dy: number; blur: number };
+    outlineFrac?: { color: string; width: number };
+    gradient?: Gradient;
+    arc?: number;
+    opacity?: number;
+    shape?: ImageShape;
+    frameFrac?: { color: string; width: number };
+    /** مجموعة Photoshop: ما فيها معًا يُحدَّد ويُنقل معًا. */
+    group?: string;
   }[];
   warnings: string[];
 };

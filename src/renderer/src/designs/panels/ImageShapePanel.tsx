@@ -1,6 +1,7 @@
 /**
  * شكل الصورة وإطارها (DESIGNS.md ١٫١): قصٌّ بشكلٍ من ثمانية — كلٌّ بلمحته — وإطارٌ على حدّه، حلقةً أو حلقتين بفسحة.
- * و«أزل الخلفية» (٢٫٣) للصورة المُدرَجة: المنتج أو الشعار على خلفيةٍ شفّافة.
+ * و«أزل الخلفية» (٢٫٣) للصورة المُدرَجة: المنتج أو الشعار على خلفيةٍ شفّافة؛ و«استبدل الصورة» (٢٫١) لما ليس حقلًا —
+ * توقيع المدير في قالب Photoshop، والشعار، وصورة المنتج.
  */
 import { useState } from 'react';
 import type { ImageElement, ImageFrame } from '@shared/canvas';
@@ -40,6 +41,21 @@ export default function ImageShapePanel({ image, patch }: { image: ImageElement;
 
   return (
     <div className="space-y-space-xs" data-panel="image-shape">
+      {!image.ref && (
+        <button
+          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          data-act="replace-image"
+          title="صورةٌ من الجهاز مكانها، بموضعها ومقاسها"
+          type="button"
+          onClick={async () => {
+            const src = await window.diwan.files.pickImage('designs');
+            if (src) patch({ src });
+          }}
+        >
+          <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+          استبدل الصورة
+        </button>
+      )}
       {photo && (
         <button
           className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"

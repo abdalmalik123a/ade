@@ -8,9 +8,13 @@ import { fieldFromLayerName } from '@shared/design/layerFields';
 import { FONT } from '@shared/design/kit/styles';
 import { BUNDLED_FONTS, cleanFamily, familyFromPostScript, matchFamily, stackOf } from '@shared/fonts';
 import { writePng } from '../png';
+import { layerPixels, toRgb } from './psdPixels';
+import type { PsdDoc, PsdLayer } from './psdTypes';
 import { readPsd } from '../psd';
 import { eraseLayers, parsePsdLayers, psdItems, type PsdItem, type Rect } from '../psdLayers';
 import type { DesignImport } from './importTypes';
+import { psdGlobalAngle } from './psdEffects';
+import { photoFrame, PsdLosses, textStyle } from './psdStyle';
 
 // ── Photoshop ────────────────────────────────────────────────────────
 
@@ -43,6 +47,25 @@ function fontFor(name: string | null, families: string[], missing: Set<string>):
 }
 
 const ARABIC = /[؀-ۿ]/;
+
+/** الصورة التي تُستبدل PNG بشفافيّتها وقناعها، مقصوصةً على مستطيلها الظاهر (٢٫١). */
+function picturePng(bytes: Uint8Array, doc: PsdDoc, layer: PsdLayer, r: Rect, dpi: number): Buffer | null {
+  const px = layerPixels(bytes, doc, layer);
+  if (!px) return null;
+  const w = r.right - r.left;
+  const h = r.bottom - r.top;
+  const lw = layer.rect.right - layer.rect.left;
+  const rgba = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (r.top - layer.rect.top + y) * lw + (r.left - layer.rect.left + x);
+      const o = (y * w + x) * 4;
+      toRgb(px.k, px.native, i * px.k, rgba, o);
+      rgba[o + 3] = px.alpha[i]!;
+    }
+  }
+  return writePng(rgba, w, h, dpi);
+}
 
 /**
  * صندوق النصّ من موضع حبره: الارتفاع سطرٌ كامل حول وسط الحبر، والعرض يزيد
@@ -87,7 +110,15 @@ export function psdDesign(bytes: Uint8Array, name: string, families: string[] = 
   const H = read.height;
 
   const doc = parsePsdLayers(bytes);
-  const items = doc ? psdItems(bytes, doc) : [];
+  // الصور التي تُستبدل تُستخرج قبل المحو (٢٫١): ما لم تُقرأ بكسلاته يبقى في الخلفية لا يضيع — ولا صور بلا صورةٍ مسطَّحة.
+  const pictures = new Map<number, Buffer>();
+  const all = doc ? psdItems(bytes, doc) : [];
+  for (const item of all) {
+    if (item.kind !== 'picture' || !doc || !read.rgba) continue;
+    const png = picturePng(bytes, doc, doc.layers.find((l) => l.index === item.layer)!, item.rect, read.dpi ?? 300);
+    if (png) pictures.set(item.layer, png);
+  }
+  const items = all.filter((item) => item.kind !== 'picture' || pictures.has(item.layer));
   if (!read.rgba && !items.length) throw new Error('ملف Photoshop مبتور — لم تُقرأ صورته ولا طبقاته');
   const background = doc ? eraseLayers(bytes, doc, read.rgba, read.planes ?? null, items.map((i) => i.layer), read.dpi) : null;
   const rgba = background?.rgba ?? read.rgba;
@@ -95,14 +126,26 @@ export function psdDesign(bytes: Uint8Array, name: string, families: string[] = 
     ? [{ name: `${basename(name, extname(name))}.png`, bytes: writePng(rgba, W, H, read.dpi ?? 300) }]
     : [];
 
+  const losses = new PsdLosses();
+  const globalAngle = psdGlobalAngle(bytes);
+  const layerOf = new Map((doc?.layers ?? []).map((l) => [l.index, l]));
   const elements: DesignImport['elements'] = items.map((item) => {
     const box = (r: Rect) =>
       clampBox({ x: (W - r.right) / W, y: r.top / H, w: (r.right - r.left) / W, h: (r.bottom - r.top) / H });
     if (item.kind === 'photo') {
-      return { kind: 'image', box: box(item.rect), ref: 'صورة الموظف', fit: 'cover', radius: item.round ? 50 : undefined };
+      const at = (i: number | undefined) => (i === undefined ? undefined : layerOf.get(i));
+      const style = photoFrame(at(item.ring), at(item.base), layerOf.get(item.layer)!, H, losses);
+      // بحلقةٍ: الدائرة شكلُ القصّ (١٫١) والحلقة حولها؛ وبلاها كما كانت.
+      const round = item.round && style.frameFrac ? { shape: 'circle' as const } : { radius: item.round ? 50 : undefined };
+      return { kind: 'image', box: box(item.rect), ref: 'صورة الموظف', fit: 'cover', ...round, ...style };
     }
     if (item.kind === 'barcode') {
       return { kind: 'barcode', box: box(item.rect), symbology: 'qr', ref: 'الرقم' };
+    }
+    if (item.kind === 'picture') {
+      const layer = layerOf.get(item.layer)!;
+      images.push({ name: `${layer.name || 'صورة'}.png`, bytes: pictures.get(item.layer)! });
+      return { kind: 'image', box: box(item.rect), imageIndex: images.length - 1, fit: 'contain', ...(layer.opacity < 0.99 && { opacity: Math.round(layer.opacity * 100) / 100 }) };
     }
     const arabic = ARABIC.test(item.text);
     const suggest = fieldFromLayerName(item.name, item.text) ?? undefined;
@@ -125,8 +168,19 @@ export function psdDesign(bytes: Uint8Array, name: string, families: string[] = 
       letterSpacing: item.style.tracking || undefined,
       fit: item.single ? 'shrink' : undefined,
       vAlign: item.single ? undefined : 'top',
-      lineHeight: item.single ? 1.2 : item.style.lineHeight
+      lineHeight: item.single ? 1.2 : item.style.lineHeight,
+      ...textStyle(layerOf.get(item.layer)!, H, globalAngle, losses)
     };
+  });
+
+  // مجموعات Photoshop: ما صار منها عنصرين فأكثر مجموعةٌ في اللوحة (١٫٦) — يُحدَّد ويُنقل معًا.
+  const groupKey = (i: number) => layerOf.get(items[i]!.layer)?.groups.join(' › ') ?? '';
+  const sizes = new Map<string, number>();
+  items.forEach((_, i) => groupKey(i) && sizes.set(groupKey(i), (sizes.get(groupKey(i)) ?? 0) + 1));
+  const ids = [...sizes].filter(([, n]) => n > 1).map(([key]) => key);
+  elements.forEach((el, i) => {
+    const at = ids.indexOf(groupKey(i));
+    if (at >= 0) el.group = `psd-${at + 1}`;
   });
 
   if (missingFonts.size) {
@@ -139,6 +193,7 @@ export function psdDesign(bytes: Uint8Array, name: string, families: string[] = 
   if (background?.filledAreas) {
     warnings.push(`${background.filledAreas} موضعًا تحته مؤثّرٌ لا يُرسم فمُلئ ممّا حوله — راجعه في المعاينة`);
   }
+  warnings.push(...losses.lines());
   if (background?.recomposed) {
     warnings.push('الصورة المسطَّحة في الملف فارغة (حُفظ بلا «توافقٍ أقصى») — رُكّبت الخلفية من طبقاته بلا مؤثّراتها');
   }

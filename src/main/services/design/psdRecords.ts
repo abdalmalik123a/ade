@@ -3,6 +3,7 @@
  */
 import { height, readRect, toBuffer, utf16be, width, type Channel, type PsdDoc, type PsdLayer, type PsdText } from './psdTypes';
 import { readTextLayer } from './psdText';
+import { readEffects, type PsdEffects } from './psdEffects';
 
 // ── السجلّات ─────────────────────────────────────────────────────────
 
@@ -80,6 +81,8 @@ export function parsePsdLayers(bytes: Uint8Array): PsdDoc | null {
     let divider = 0;
     let fill = 1;
     let text: PsdText | undefined;
+    let effects: PsdEffects | undefined;
+    let smart = false;
     while (p + 12 <= extraEnd) {
       const sig = buf.toString('ascii', p, p + 4);
       if (sig !== '8BIM' && sig !== '8B64') break;
@@ -95,12 +98,16 @@ export function parsePsdLayers(bytes: Uint8Array): PsdDoc | null {
         fill = data[0]! / 255;
       } else if (key === 'TySh') {
         text = readTextLayer(data);
+      } else if (key === 'lfx2') {
+        effects = readEffects(data) ?? undefined;
+      } else if (key === 'SoLd' || key === 'PlLd' || key === 'SoLE') {
+        smart = true;
       }
       p += 12 + length + (length % 2);
     }
     at = extraEnd;
 
-    raw.push({ index, name: name.trim(), rect, channels, blend, opacity: opacity * fill, clipping, hidden: ownHidden, ownHidden, mask, divider, text });
+    raw.push({ index, name: name.trim(), rect, channels, blend, opacity: opacity * fill, clipping, hidden: ownHidden, ownHidden, mask, divider, text, effects, ...(smart && { smart }) });
   }
 
   // بيانات القنوات بعد السجلّات كلّها، بترتيبها.

@@ -2,6 +2,7 @@
  * طبقات Photoshop — النصّ: سجلّ `TySh` وEngineData (الخطّ والحجم واللون والمحاذاة) (DESIGNS.md ٠٫٩).
  */
 import { utf16be, type PsdText, type Rect } from './psdTypes';
+import { readDescriptorAt } from './psdDescriptor';
 
 // ── النصّ: Txt والـEngineData ────────────────────────────────────────
 
@@ -109,8 +110,17 @@ export function readTextLayer(data: Buffer): PsdText | undefined {
     };
   }
 
+  // بعد واصف النصّ (٥٦) واصفُ التشويه: نمطه («قوس»…) وانحناؤه، واتّجاه النصّ (عموديٌّ أم أفقيّ) في واصف النصّ (٢٫١).
+  const textDesc = readDescriptorAt(data, 56);
+  const warpDesc = textDesc && textDesc.end + 6 <= data.length ? readDescriptorAt(data, textDesc.end + 6) : null;
+  const warpStyle = warpDesc?.desc.items['warpStyle'];
+  const warpValue = warpDesc?.desc.items['warpValue'];
+  const warp = typeof warpStyle === 'string' && warpStyle !== 'warpNone' ? { style: warpStyle, value: typeof warpValue === 'number' ? warpValue : 0 } : undefined;
+
   return {
     value,
+    ...(warp && { warp }),
+    ...(textDesc?.desc.items['Ornt'] === 'Vrtc' && { vertical: true }),
     sizePx: fontSize * scale,
     lineHeight: leading && fontSize ? Math.max(0.8, Math.min(3, leading / fontSize)) : 1.2,
     box,

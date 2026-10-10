@@ -116,6 +116,8 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
                     ...(el.rotate ? { transform: `rotate(${-el.rotate}deg)` } : {})
                   }}
                   onMouseDown={(e) => ed.startMove(e, el)}
+                  // نقرتان على عضوٍ في مجموعة (Photoshop أو Ctrl+G): هو وحده — فيُحرَّر نصّه دون فكّ المجموعة.
+                  onDoubleClick={() => el.group && ed.setSelection([el.id])}
                 >
                   {on &&
                     !el.locked &&

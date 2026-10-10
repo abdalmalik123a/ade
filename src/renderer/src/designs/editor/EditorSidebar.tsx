@@ -8,6 +8,7 @@ import PagePanel from '../panels/PagePanel';
 import AddPanel from '../panels/AddPanel';
 import ElementPanel from '../panels/ElementPanel';
 import LayersPanel from '../panels/LayersPanel';
+import ImportNotes from '../ImportNotes';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
@@ -52,6 +53,8 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
         value={ed.title}
         onChange={(e) => ed.setTitle(e.target.value)}
       />
+
+      {ed.importNotes && <ImportNotes where={ed.importNotes.where} lines={ed.importNotes.lines} onClose={() => ed.setImportNotes(null)} />}
 
       <FillPanel ed={ed} />
 

@@ -107,12 +107,18 @@ export function canvasFromImport(
           ref: el.ref,
           fit: el.fit === 'cover' ? 'cover' : 'contain',
           radius: el.radius,
+          ...(el.shape && { shape: el.shape }),
+          ...(el.frameFrac && { frame: { color: el.frameFrac.color, width: Math.round(el.frameFrac.width * canvas.size.h * 100) / 100 } }),
+          ...(el.opacity !== undefined && { opacity: el.opacity }),
+          ...(el.group && { group: el.group }),
           z: i + 1
         })
       ];
     }
     // النسبة تصير نقاطًا بمقاس الورقة الذي عُرف — من الملف أو من اختيار المكتب.
     const size = el.sizeFrac ? Math.round(((el.sizeFrac * canvas.size.h) / POINT_MM) * 100) / 100 : (el.size ?? 14);
+    /** طولٌ نسبةً من الارتفاع ← نقاط (مؤثّرات Photoshop، ٢٫١). */
+    const pt = (frac: number) => Math.round(((frac * canvas.size.h) / POINT_MM) * 100) / 100;
     return [
       textElement({
         box: el.box,
@@ -128,6 +134,12 @@ export function canvasFromImport(
         ...(el.lineHeight && { lineHeight: el.lineHeight }),
         ...(el.vAlign && { vAlign: el.vAlign }),
         ...(el.fit === 'shrink' && { fit: 'shrink' as const }),
+        ...(el.shadowFrac && { shadow: { color: el.shadowFrac.color, dx: pt(el.shadowFrac.dx), dy: pt(el.shadowFrac.dy), blur: pt(el.shadowFrac.blur) } }),
+        ...(el.outlineFrac && { outline: { color: el.outlineFrac.color, width: pt(el.outlineFrac.width) } }),
+        ...(el.gradient && { gradient: el.gradient }),
+        ...(el.arc && { arc: el.arc }),
+        ...(el.opacity !== undefined && { opacity: el.opacity }),
+        ...(el.group && { group: el.group }),
         z: i + 1
       })
     ];

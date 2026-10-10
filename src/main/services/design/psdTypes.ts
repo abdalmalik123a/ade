@@ -1,6 +1,7 @@
 /**
  * طبقات Photoshop — الأنواع والقراءة الصغيرة المشتركة: المستطيل، والطبقة بقنواتها ونصّها، والملفّ (DESIGNS.md ٠٫٩).
  */
+import type { PsdEffects } from './psdEffects';
 
 export type Rect = { top: number; left: number; bottom: number; right: number };
 
@@ -23,6 +24,10 @@ export type PsdText = {
   lineHeight: number;
   /** صندوقُ النصّ الملتفّ بإحداثيات الورقة — ولا صندوق للنصّ النقطيّ. */
   box?: Rect;
+  /** تشويه النصّ (٢٫١): «قوس» وانحناؤه −١٠٠..١٠٠ يصير قوسنا (١٫١٠)، وما سواه يُقال. */
+  warp?: { style: string; value: number };
+  /** نصٌّ عموديّ — يُرسم أفقيًّا ويُقال. */
+  vertical?: boolean;
 };
 
 export type PsdLayer = {
@@ -42,6 +47,10 @@ export type PsdLayer = {
   /** أسماء المجموعات من الأعلى إلى الطبقة. */
   groups: string[];
   text?: PsdText;
+  /** مؤثّرات الطبقة (`lfx2`، ٢٫١). */
+  effects?: PsdEffects;
+  /** «كائنٌ ذكيّ» (`SoLd`/`PlLd`): صورةٌ وُضعت في القالب لتُستبدل — فتصير صورةً تُستبدل في اللوحة (٢٫١). */
+  smart?: boolean;
 };
 
 export type PsdDoc = {

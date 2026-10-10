@@ -38,6 +38,8 @@ export function useDesignSources(i: Inputs) {
   const [askSize, setAskSize] = useState(false);
   /** حقولٌ مقترحة من أسماء طبقات Photoshop — تُعرض بعد الاستيراد (هـ٤). */
   const [layerReview, setLayerReview] = useState<FieldSuggestion[] | null>(null);
+  /** ملاحظات آخر استيراد كلّها (٢٫١): ما صار وما لم يُنقل — تبقى حتى تُغلق. */
+  const [importNotes, setImportNotes] = useState<{ where: string; lines: string[] } | null>(null);
 
   /**
    * تصميمٌ جديد في اللوحة — لا تعديلٌ على المفتوح. فالاستيراد من المعرض كان يحلّ في التصميم المفتوح قبله (بظهره ورقمه)،
@@ -111,6 +113,8 @@ export function useDesignSources(i: Inputs) {
       if (!asNew && !title.trim()) i.setTitle(name);
 
       const where = out.source === 'word' ? 'Word' : out.source === 'psd' ? 'Photoshop' : out.source === 'pdf' ? 'PDF' : 'صورة';
+      // الملاحظات كلّها في لوح (٢٫١) — والتنبيه بأوّلها كما كان.
+      setImportNotes(out.warnings.length > 1 ? { where, lines: out.warnings } : null);
       say(
         out.size
           ? `${where}: ${out.size.w.toFixed(1)} × ${out.size.h.toFixed(1)} ملم` + (out.warnings.length ? ` — ${out.warnings[0]}` : '')
@@ -188,7 +192,7 @@ export function useDesignSources(i: Inputs) {
   );
 
   return {
-    askSize, setAskSize, layerReview, setLayerReview, openBackground, importDesign, pickFromGallery, handleCreateBlank, handleSelectClipart,
+    askSize, setAskSize, layerReview, setLayerReview, importNotes, setImportNotes, openBackground, importDesign, pickFromGallery, handleCreateBlank, handleSelectClipart,
     handleSelectElement, handleSelectVector, pickLocalImage
   };
 }
