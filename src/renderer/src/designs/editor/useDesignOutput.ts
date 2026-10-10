@@ -6,7 +6,7 @@ import type { Doc } from '@shared/doc';
 import { SCREEN_DPI, SIZE_PRESETS, type Canvas } from '@shared/canvas';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { impose, inlineBarcodes, parseCardList, planSheets, renderPlan } from '@shared/design/imposition';
-import { designPreflight, lowResIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
+import { designPreflight, lowResIssues, missingPhotoIssues, placedDpi, type PreflightIssue } from '@shared/preflight';
 import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../../lib/errors';
 import { choosePrinter } from '../../lib/printChoice';
@@ -103,14 +103,22 @@ export function useDesignOutput(i: Inputs) {
     void Promise.all(
       jobs.slice(0, 600).map(
         (job) =>
-          new Promise<{ label: string; dpi: number } | null>((resolve) => {
+          new Promise<{ label: string; dpi: number | null }>((resolve) => {
             const img = new Image();
             img.onload = () => resolve({ label: job.label, dpi: placedDpi(img.naturalWidth, job.boxMm) });
-            img.onerror = () => resolve(null);
+            // ما لم يُفتح يُقال (٣٫٢): ملفٌّ نُقل أو تالف كان يخرج بطاقةً بلا صورةٍ صامتة.
+            img.onerror = () => resolve({ label: job.label, dpi: null });
             img.src = job.src.startsWith('data:') ? job.src : `diwan://store/${job.src}`;
           })
       )
-    ).then((found) => alive && setLowRes(lowResIssues(found.filter((f): f is { label: string; dpi: number } => f !== null))));
+    ).then(
+      (found) =>
+        alive &&
+        setLowRes([
+          ...lowResIssues(found.filter((f): f is { label: string; dpi: number } => f.dpi !== null)),
+          ...missingPhotoIssues(found.filter((f) => f.dpi === null).map((f) => f.label))
+        ])
+    );
     return () => {
       alive = false;
     };

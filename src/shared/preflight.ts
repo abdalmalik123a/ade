@@ -2,7 +2,9 @@
  * فاحص ما قبل الطباعة — ما يُقال للمكتب قبل أن تخرج أربعمئة بطاقة.
  *
  * ما يُعرف من التصميم وقيمه يُحسب هنا خالصًا ويُختبر بالأرقام: خلفيةٌ دقّتها
- * دون ١٥٠ نقطة/إنش، وعنصرٌ يلامس خطّ القصّ، وبطاقاتٌ بلا اسمٍ أو بلا صورة.
+ * دون ١٥٠ نقطة/إنش، وعنصرٌ يلامس خطّ القصّ، وبطاقاتٌ بلا اسمٍ أو بلا صورة —
+ * وفي الدفعة كلّها (DESIGNS.md ٣٫٢): **الأسماء التي تصغر كثيرًا لتسع** بأصحابها، و**رمز QR
+ * الكثيف** على مقاسه فلا تقرؤه الكاميرا، و**الصور التي لا تُفتح**.
  * وما لا يُعرف إلا بعد الرسم (اسمٌ صغُر كثيرًا، نصٌّ فاض عن صندوقه، دقّة صورة
  * الطالب الفعلية) تقيسه المعاينة بالخطّ الحقيقي وتضمّه إلى القائمة.
  *
@@ -11,6 +13,8 @@
 import type { Canvas, CanvasElement } from './canvas';
 import { encodes128, NOT_128 } from './barcode';
 import { toIndic } from './arabic';
+import { pickVersion } from './qr';
+import { estimateEm } from './design/kinds/text';
 
 export type PreflightIssue = {
   /** `warn` يُفسد الورقة غالبًا، و`info` يُحسن أن يُعرف. */
@@ -22,6 +26,39 @@ export type PreflightIssue = {
 export const MIN_PRINT_DPI = 150;
 /** المنطقة الآمنة داخل خطّ القصّ: المقصلة تنحرف ملّمًا أو اثنين. */
 export const SAFE_MM = 3;
+/** دون هذه النسبة من حجمه يُقرأ الاسم بصعوبة — كما تقيسه المعاينة ورقةً ورقة. */
+export const MIN_SHRINK = 0.6;
+/**
+ * أصغر خليّةٍ في رمز QR تقرؤها كاميرا الهاتف على الورق: ربع ملّم — رمزٌ ٨٫٥ ملم برابطٍ قصير خليّته ٠٫٢٩ ويُقرأ، والذي
+ * يكثّفه رابطٌ طويل إلى ٠٫١٥ لا يُقرأ.
+ */
+export const MIN_QR_MODULE_MM = 0.25;
+
+/** خليّة رمز QR بالملّم: الضلع الأقصر على عدد خلاياه وهامشه الصامت (٤ من كلّ جهة، `qrSvg`) — و`null` إن لم يسعه رمز. */
+export function qrModuleMm(text: string, sideMm: number): number | null {
+  try {
+    const size = 17 + 4 * pickVersion(new TextEncoder().encode(text).length);
+    return sideMm / (size + 8);
+  } catch {
+    return null;
+  }
+}
+
+/** نسبة ما يصغر إليه سطرٌ يصغر ليسع (`fit: shrink`) بقيم بطاقة — بتقدير العرض نفسه الذي يرسم به (`estimateEm`). */
+export function shrinkRatio(el: Extract<CanvasElement, { kind: 'text' }>, canvasWidthMm: number, values: Record<string, string>): number {
+  const text = el.inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? (values[n.ref] ?? '') : ' ')).join('').trim();
+  if (!text) return 1;
+  const em = estimateEm(text, el.bold) + (el.letterSpacing ?? 0) * [...text].length;
+  const sizeMm = (el.size * 25.4) / 72;
+  return Math.min(1, (el.box.w * canvasWidthMm * 0.96) / (em * sizeMm));
+}
+
+/** الصور التي لم تُفتح (ملفٌّ نُقل أو حُذف أو تالف) — تخرج البطاقة بلا صورة. */
+export function missingPhotoIssues(labels: string[]): PreflightIssue[] {
+  const count = new Map<string, number>();
+  for (const l of labels) count.set(l, (count.get(l) ?? 0) + 1);
+  return [...count].map(([label, n]) => ({ level: 'warn' as const, text: `${toIndic(n)} ${n === 1 ? 'صورة' : 'صور'} في «${label}» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة` }));
+}
 
 function labelOf(el: CanvasElement): string {
   if (el.name) return el.name;
@@ -99,6 +136,49 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
     if (!bad.length) continue;
     const where = el.ref ? ` في ${toIndic(bad.length)} ${bad.length === 1 ? 'بطاقة' : 'بطاقات'}` : '';
     issues.push({ level: 'warn', text: `«${labelOf(el)}» لا يُطبع${where} (مثل «${bad[0]}»): ${NOT_128}` });
+  }
+
+  // رمز QR: ما فيه يكثّف خلاياه، والصندوق الصغير يصغّرها — دون ربع ملّم لا تقرؤه الكاميرا بثقة.
+  for (const el of canvas.elements) {
+    if (el.kind !== 'barcode' || el.symbology !== 'qr') continue;
+    const side = Math.min(el.box.w * canvas.size.w, el.box.h * canvas.size.h);
+    const values = (el.ref ? cards.map((c) => (c[el.ref!] ?? '').trim()) : [el.value.trim()]).filter(Boolean);
+    let dense = 0;
+    let finest = Infinity;
+    let tooLong = 0;
+    for (const v of values) {
+      const mm = qrModuleMm(v, side);
+      if (mm === null) tooLong++;
+      else if (mm < MIN_QR_MODULE_MM) {
+        dense++;
+        finest = Math.min(finest, mm);
+      }
+    }
+    const where = (n: number) => (el.ref ? ` في ${toIndic(n)} ${n === 1 ? 'بطاقة' : 'بطاقات'}` : '');
+    if (tooLong) issues.push({ level: 'warn', text: `«${labelOf(el)}» أطول من أن يحمله رمز QR${where(tooLong)} — قصّر ما فيه` });
+    if (dense) {
+      issues.push({
+        level: 'warn',
+        text: `«${labelOf(el)}» كثيفٌ على مقاسه${where(dense)} (الخليّة ${toIndic(Math.round(finest * 100) / 100)} ملم، والمقروء ${toIndic(MIN_QR_MODULE_MM)} فأكثر) — كبّر الرمز أو قصّر ما فيه`
+      });
+    }
+  }
+
+  // الأسماء التي تصغر كثيرًا لتسع — في الدفعة كلّها لا الورقة المعروضة وحدها، بأصحابها.
+  if (cards.length) {
+    for (const el of canvas.elements) {
+      if (el.kind !== 'text' || el.fit !== 'shrink' || !el.inlines.some((n) => n.kind === 'field')) continue;
+      const small = cards.filter((c) => shrinkRatio(el, canvas.size.w, c) < MIN_SHRINK);
+      if (!small.length) continue;
+      const names = small
+        .slice(0, 3)
+        .map((c) => `«${el.inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'field' ? (c[n.ref] ?? '') : ' ')).join('').trim()}»`)
+        .join('، ');
+      issues.push({
+        level: 'info',
+        text: `«${labelOf(el)}» يصغر دون ${toIndic(MIN_SHRINK * 100)}٪ من حجمه ليسع في ${toIndic(small.length)} ${small.length === 1 ? 'بطاقة' : 'بطاقات'}: ${names}${small.length > 3 ? ' وغيرها' : ''} — كبّر صندوقه أو اختصر`
+      });
+    }
   }
   return issues;
 }
