@@ -260,7 +260,7 @@ export type LicenseStatus = (
 
 export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };
 /** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
-export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'> };
+export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'>; missing?: { fonts: string[]; images: number } };
 
 /** حزمة مشحونة مع البرنامج في resources/packs ومعروضة للاختيار. */
 export type BundledPackInfo = {
@@ -975,7 +975,7 @@ export type DiwanApi = LibraryApis & {
    * تُصدَّر ملفًّا وتُستورد في مكتبٍ آخر. والمكرّر يُعرف بمعرّفه فلا يُضاف ثانيةً.
    */
   content: {
-    export(): Promise<ContentCounts & { path: string } | null>;
+    export(designs?: number[]): Promise<(ContentCounts & { path: string; leftOut?: { fonts: string[]; elements: string[] } }) | null>;
     import(): Promise<ContentImportResult | null>;
     bundled(): Promise<BundledPackInfo[]>;
     importBundled(id: string): Promise<ContentImportResult | null>;

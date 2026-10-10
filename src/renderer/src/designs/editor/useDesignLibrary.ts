@@ -184,5 +184,5 @@ export function useDesignLibrary(i: Inputs) {
   const sizeTag = `${canvas.size.w.toFixed(1)} × ${canvas.size.h.toFixed(1)}`;
   const backChoices = designs.filter((d) => d.id !== designId && (d.subtitle ?? '').startsWith(sizeTag));
 
-  return { designs, save, deleteDesign, openDesign, resumeDraft, backChoices };
+  return { designs, loadDesigns, save, deleteDesign, openDesign, resumeDraft, backChoices };
 }

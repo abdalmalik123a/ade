@@ -34,6 +34,13 @@ const NAME = 'diwan-content.json';
 const FORMAT = 3;
 /** مجلّدات الناس في المخزن — لا تخرج في حزمة ولا تدخل منها. */
 const PEOPLE = new Set(['attachments', 'photos', 'documents']);
+/**
+ * ما استورده المكتب إلى مكتبتيه — خطوطه وعناصره (DESIGNS.md §٣٫٧): ترخيصه له، فلا يخرج في حزمةٍ ولا يُكتب منها؛ وينتقل في
+ * النسخة الاحتياطية وحدها. والتصميم الذي يستعمله يقول ذلك عند الحزم (`design/designPack.ts`).
+ */
+const LIBRARY = new Set(['fonts', 'elements']);
+/** خارج الحزم: الناس والمكتبتان. */
+export const unpackable = (folder: string): boolean => PEOPLE.has(folder) || LIBRARY.has(folder);
 /** مسار ملفٍّ في المخزن كما يُكتب في الوثائق والترويسات: `مجلّد/بصمة.امتداد`. */
 const STORE_REF = /\b([a-z][a-z0-9-]{0,31})\/([0-9a-f]{16,64}\.[a-z0-9]{1,5})\b/g;
 
@@ -63,16 +70,26 @@ export type ContentPackage = {
   clips: PackClip[];
 };
 
-/** ما في المكتب من محتوى — وصور المخزن التي يشير إليها وهي موجودة. */
-export function collectContent(db: Database, storeRoot: string, appVersion: string, now = new Date()): { pkg: ContentPackage; files: string[] } {
-  const letterheads = (
+/**
+ * ما في المكتب من محتوى — وصور المخزن التي يشير إليها وهي موجودة. و`only`: تصاميمُ بأرقامها وحدها (حزمة التصاميم، ٣٫٦)
+ * بلا ترويساتٍ ولا كليشات.
+ */
+export function collectContent(
+  db: Database,
+  storeRoot: string,
+  appVersion: string,
+  now = new Date(),
+  only?: number[]
+): { pkg: ContentPackage; files: string[] } {
+  const picked = only ? new Set(only) : null;
+  const letterheads = (picked ? [] : (
     db.prepare('SELECT uuid, name, category, layout_json AS layout FROM letterheads WHERE uuid IS NOT NULL ORDER BY id').all() as {
       uuid: string;
       name: string;
       category: string | null;
       layout: string;
     }[]
-  ).map((r) => ({ uuid: r.uuid, name: r.name, category: r.category, layout: JSON.parse(r.layout) as unknown }));
+  )).map((r) => ({ uuid: r.uuid, name: r.name, category: r.category, layout: JSON.parse(r.layout) as unknown }));
 
   const varsOf = db.prepare('SELECT token, label, source, required FROM template_variables WHERE template_id = ? ORDER BY sort_order');
   const templates = (
@@ -84,7 +101,9 @@ export function collectContent(db: Database, storeRoot: string, appVersion: stri
          WHERE t.uuid IS NOT NULL ORDER BY t.id`
       )
       .all() as (Omit<PackTemplate, 'doc' | 'variables'> & { id: number; docJson: string | null })[]
-  ).map(({ id, docJson, ...t }) => ({
+  )
+    .filter((t) => !picked || picked.has(t.id))
+    .map(({ id, docJson, ...t }) => ({
     ...t,
     doc: docJson ? (JSON.parse(docJson) as unknown) : null,
     variables: (varsOf.all(id) as { token: string; label: string | null; source: string | null; required: number }[]).map((v) => ({
@@ -95,16 +114,14 @@ export function collectContent(db: Database, storeRoot: string, appVersion: stri
     })) as TemplateVariable[]
   }));
 
-  const clips = db
-    .prepare('SELECT uuid, title, body, category, direction FROM clips WHERE uuid IS NOT NULL ORDER BY id')
-    .all() as PackClip[];
+  const clips = picked ? [] : (db.prepare('SELECT uuid, title, body, category, direction FROM clips WHERE uuid IS NOT NULL ORDER BY id').all() as PackClip[]);
 
   const format = Math.max(1, ...templates.map((t) => designPackLevel(t.doc)));
   const pkg: ContentPackage = { app: 'diwan', kind: 'content', format, appVersion, createdAt: now.toISOString(), letterheads, templates, clips };
   const files = new Set<string>();
   for (const m of JSON.stringify(pkg).matchAll(STORE_REF)) {
     const rel = `${m[1]}/${m[2]}`;
-    if (!PEOPLE.has(m[1]!) && existsSync(join(storeRoot, rel))) files.add(rel);
+    if (!unpackable(m[1]!) && existsSync(join(storeRoot, rel))) files.add(rel);
   }
   return { pkg, files: [...files].sort() };
 }
@@ -113,6 +130,12 @@ export function collectContent(db: Database, storeRoot: string, appVersion: stri
 export async function exportContent(target: string, db: Database, storeRoot: string, appVersion: string): Promise<ContentCounts> {
   const { pkg, files } = collectContent(db, storeRoot, appVersion);
   if (!pkg.templates.length && !pkg.letterheads.length && !pkg.clips.length) throw new Error('لا محتوى في المكتب بعد — لا نماذج ولا ترويسات ولا كليشات');
+  await writePack(target, pkg, files, storeRoot);
+  return { templates: pkg.templates.length, letterheads: pkg.letterheads.length, clips: pkg.clips.length, files: files.length };
+}
+
+/** الحزمة ملفًّا: وصفها وصور مخزنها — إلى اسمٍ جانبيّ ثم تُنقل، فلا يبقى نصف ملف. */
+export async function writePack(target: string, pkg: ContentPackage, files: string[], storeRoot: string): Promise<void> {
   const part = `${target}.part`;
   const sink = await fileSink(part);
   try {
@@ -128,7 +151,6 @@ export async function exportContent(target: string, db: Database, storeRoot: str
   }
   if (existsSync(target)) rmSync(target);
   renameSync(part, target);
-  return { templates: pkg.templates.length, letterheads: pkg.letterheads.length, clips: pkg.clips.length, files: files.length };
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -140,7 +162,7 @@ export async function importContent(
   db: Database,
   storeRoot: string,
   workDir: string
-): Promise<Omit<ContentImportResult, 'path'>> {
+): Promise<Omit<ContentImportResult, 'path'> & { addedIds: number[] }> {
   let entries;
   try {
     entries = await readZipIndex(path);
@@ -171,7 +193,7 @@ export async function importContent(
   for (const e of entries) {
     if (!e.name.startsWith('store/') || e.name.endsWith('/')) continue;
     const rel = e.name.slice(6);
-    if (!safeInnerPath(rel) || PEOPLE.has(rel.split('/')[0]!)) continue;
+    if (!safeInnerPath(rel) || unpackable(rel.split('/')[0]!)) continue;
     const file = join(storeRoot, rel);
     if (existsSync(file)) continue;
     mkdirSync(dirname(file), { recursive: true });
@@ -181,6 +203,8 @@ export async function importContent(
 
   const added = { templates: 0, letterheads: 0, clips: 0, files };
   const existing = { templates: 0, letterheads: 0, clips: 0 };
+  /** النماذج المضافة بأرقامها — فيُقال ما غاب منها (الخطوط والصور، ٣٫٦). */
+  const addedIds: number[] = [];
   const idOf = (table: 'letterheads' | 'templates' | 'clips', uuid: string) =>
     (db.prepare(`SELECT id FROM ${table} WHERE uuid = ?`).get(uuid) as { id: number } | undefined)?.id ?? null;
   const setUuid = (table: 'letterheads' | 'templates' | 'clips', id: number, uuid: string) =>
@@ -218,6 +242,7 @@ export async function importContent(
         doc: t.doc && typeof t.doc === 'object' ? (t.doc as Doc) : null
       });
       setUuid('templates', saved.id, t.uuid);
+      addedIds.push(saved.id);
       added.templates++;
     }
     for (const c of Array.isArray(pkg.clips) ? pkg.clips : []) {
@@ -232,5 +257,5 @@ export async function importContent(
       added.clips++;
     }
   })();
-  return { added, existing };
+  return { added, existing, addedIds };
 }

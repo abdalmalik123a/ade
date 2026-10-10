@@ -21,6 +21,7 @@ import BrandPanel from './gallery/BrandPanel';
 import SavedDesigns from './gallery/SavedDesigns';
 import { Thumb } from './gallery/Thumbs';
 import { useGalleryBrand } from './gallery/useGalleryBrand';
+import { useDesignPacks } from './gallery/useDesignPacks';
 
 /** ما اختير في المعرض — والجهة بملفّها إن كانت، فتملأ حقول التصميم (٣٫٥). */
 export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand; client?: Client | null };
@@ -37,7 +38,9 @@ export default function Gallery({
   onDeleteSaved,
   onOpenImage,
   onImport,
-  onNewBlank
+  onNewBlank,
+  say,
+  reload
 }: {
   saved: TemplateSummary[];
   /** «صمّم لها» من ملف الجهة: يُفتح المعرض عليها. */
@@ -48,8 +51,12 @@ export default function Gallery({
   onOpenImage: () => void;
   onImport: () => void;
   onNewBlank?: () => void;
+  /** رسائل حزم التصاميم (٣٫٦)، وإعادة قراءة المحفوظ بعد الاستيراد. */
+  say: Parameters<typeof useDesignPacks>[0]['say'];
+  reload: () => Promise<void> | void;
 }) {
   const b = useGalleryBrand(presetClient);
+  const packs = useDesignPacks({ say, reload });
   const { style, palette, brand } = b;
   const [group, setGroup] = useState('الكل');
   const kinds = KINDS.filter((k) => group === 'الكل' || k.group === group);
@@ -95,11 +102,22 @@ export default function Gallery({
               <span className="material-symbols-outlined text-[18px]">upload_file</span>
               من Word أو Photoshop أو PDF
             </button>
+            <button
+              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+              data-act="pack-import"
+              disabled={packs.busy}
+              title="حزمة تصاميم (.diwanpack) من مكتبٍ آخر أو جهازٍ ثانٍ — والموجود منها لا يُكرَّر"
+              type="button"
+              onClick={() => void packs.importPack()}
+            >
+              <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+              استورد حزمة تصاميم
+            </button>
           </div>
         </header>
 
         {/* تصاميمك المحفوظة — في الصدارة لسهولة العودة إليها وتعديلها */}
-        <SavedDesigns saved={saved} onOpenSaved={onOpenSaved} onDeleteSaved={onDeleteSaved} />
+        <SavedDesigns saved={saved} packs={packs} onOpenSaved={onOpenSaved} onDeleteSaved={onDeleteSaved} />
 
         {/* لمن التصميم — الشعار والاسم واللون */}
         <BrandPanel b={b} />

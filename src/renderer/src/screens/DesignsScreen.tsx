@@ -45,6 +45,8 @@ export default function DesignsScreen(props: DesignsScreenProps) {
             onDeleteSaved={(id) => void ed.deleteDesign(id)}
             onPick={ed.pickFromGallery}
             onNewBlank={() => ed.setNewBlankModalOpen(true)}
+            say={ed.say}
+            reload={ed.loadDesigns}
           />
         </div>
       </div>

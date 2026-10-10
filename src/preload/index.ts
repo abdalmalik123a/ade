@@ -163,7 +163,7 @@ const api: DiwanApi = {
     activate: (key) => invoke('license:activate', key)
   },
   content: {
-    export: () => invoke('content:export'),
+    export: (designs?: number[]) => invoke('content:export', designs),
     import: () => invoke('content:import'),
     bundled: () => invoke('content:bundled'),
     importBundled: (id: string) => invoke('content:importBundled', id)

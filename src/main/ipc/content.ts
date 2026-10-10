@@ -1,11 +1,13 @@
 /**
- * حزمة المحتوى (خطة Production، ٤٫٣) — قنوات النظام. المنطق في services/contentPack.ts.
+ * حزمة المحتوى (خطة Production، ٤٫٣) — قنوات النظام. المنطق في services/contentPack.ts، وحزمة التصاميم المختارة
+ * (DESIGNS.md ٣٫٦) في services/design/designPack.ts.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { dataDir, getDb } from '../db';
 import { exportContent, importContent } from '../services/contentPack';
+import { exportDesigns, missingAfterImport } from '../services/design/designPack';
 import { logAudit } from '../services/documents';
 import { isoDate } from '@shared/dates';
 import type { BundledPackInfo, ContentCounts, ContentImportResult } from '@shared/api';
@@ -24,9 +26,23 @@ export function registerContentIpc(): void {
   const win = (e: Electron.IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender);
   const storeRoot = () => join(dataDir(), 'store');
 
-  ipcMain.handle('content:export', async (e): Promise<(ContentCounts & { path: string }) | null> => {
+  ipcMain.handle('content:export', async (e, designs?: unknown): Promise<(ContentCounts & { path: string }) | null> => {
     const w = win(e);
     if (!w) return null;
+    // تصاميمُ مختارة من المعرض (٣٫٦): أرقامٌ صحيحة وحدها، وحدٌّ لما يُحزم مرّة.
+    const ids = Array.isArray(designs) ? designs.filter((d): d is number => Number.isInteger(d) && d > 0).slice(0, 500) : [];
+    if (ids.length) {
+      const target = await pickSavePath(w, {
+        title: 'حزمة التصاميم المختارة',
+        defaultName: `تصاميم-${isoDate(new Date())}.diwanpack`,
+        filterName: 'حزمة محتوى ديوان',
+        ext: 'diwanpack'
+      });
+      if (!target) return null;
+      const out = await exportDesigns(target, getDb(), storeRoot(), app.getVersion(), ids);
+      logAudit(getDb(), 'content', 'export', `حزمة تصاميم: ${out.templates} تصميمًا`);
+      return { ...out, path: target };
+    }
     const path = await pickSavePath(w, {
       title: 'حزمة المحتوى — النماذج والترويسات والكليشات',
       defaultName: `diwan-content-${isoDate(new Date())}.diwanpack`,
@@ -49,10 +65,11 @@ export function registerContentIpc(): void {
       extensions: ['diwanpack']
     });
     if (!path) return null;
-    const result = await importContent(path, getDb(), storeRoot(), join(dataDir(), 'restore-work'));
+    const { addedIds, ...result } = await importContent(path, getDb(), storeRoot(), join(dataDir(), 'restore-work'));
     const a = result.added;
     logAudit(getDb(), 'content', 'import', `أُضيف ${a.templates} نموذجًا، ${a.letterheads} ترويسة، ${a.clips} كليشة`);
-    return { ...result, path };
+    // وما غاب في التصاميم المضافة (٣٫٦): خطٌّ ليس في هذا الجهاز، وصورةٌ لم تأتِ.
+    return { ...result, path, ...(addedIds.length && { missing: missingAfterImport(getDb(), storeRoot(), addedIds) }) };
   });
 
   ipcMain.handle('content:bundled', async (): Promise<BundledPackInfo[]> => {
@@ -82,7 +99,7 @@ export function registerContentIpc(): void {
     if (typeof id !== 'string' || !/^[a-z0-9_-]+$/i.test(id)) throw new Error('معرف الحزمة غير صالح');
     const path = join(packsDir(), `${id}.diwanpack`);
     if (!existsSync(path)) throw new Error(`حزمة المحتوى «${id}» غير موجودة في مجلد الحزم`);
-    const result = await importContent(path, getDb(), storeRoot(), join(dataDir(), 'restore-work'));
+    const { addedIds: _ids, ...result } = await importContent(path, getDb(), storeRoot(), join(dataDir(), 'restore-work'));
     const a = result.added;
     logAudit(getDb(), 'content', 'import', `أُضيف ${a.templates} نموذجًا، ${a.letterheads} ترويسة، ${a.clips} كليشة`);
     return { ...result, path };
