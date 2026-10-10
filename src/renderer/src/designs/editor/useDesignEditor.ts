@@ -15,6 +15,7 @@ import { useDesignDraft } from './useDesignDraft';
 import { useDesignSources } from './useDesignSources';
 import { useBatchCards, useBatchState } from './useDesignBatch';
 import { useDesignOutput } from './useDesignOutput';
+import { useOrderFill } from './useOrderFill';
 
 /**
  * ما تُفتح به الشاشة من غيرها: تصميمُ طلبٍ بقائمته، أو المعرضُ على جهة.
@@ -25,8 +26,8 @@ export type DesignRequest = {
   templateId?: number;
   batchText?: string | null;
   clientId?: number;
-  /** الطلب الذي فُتح منه التصميم — فإذا طُبع صار الطلب «جاهزًا للتسليم» (د٨). */
-  order?: { id: number; title: string };
+  /** الطلب الذي فُتح منه التصميم — فإذا طُبع صار الطلب «جاهزًا للتسليم» (د٨)؛ وكمّيته نسخُه إن لم تكن قائمة (٣٫٥). */
+  order?: { id: number; title: string; quantity?: number | null };
   /** «المكتبة ← استورد ← تصميم من Photoshop أو PDF»: يُسأل عن الملف حين تُفتح (المرحلة ٥). */
   action?: 'import';
   /** مسودّةُ تصميمٍ لم يُحفظ من «قيد العمل» (DESIGNS.md ٠٫٦). */
@@ -55,7 +56,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   const [clipartModalOpen, setClipartModalOpen] = useState(false);
   const [newBlankModalOpen, setNewBlankModalOpen] = useState(false);
   /** الطلب الذي تُطبع له هذه الدفعة — ما دام التصميم تصميمَه. */
-  const [linkedOrder, setLinkedOrder] = useState<{ id: number; title: string; templateId: number } | null>(null);
+  const [linkedOrder, setLinkedOrder] = useState<{ id: number; title: string; templateId: number | null } | null>(null);
 
   const sides = useCanvasSides();
   const { canvas, apply } = sides;
@@ -86,6 +87,15 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
     beginSession: draft.beginSession
   });
   const cards = useBatchCards({ doc: docs.doc, values, copies, batchRows: batch.batchRows });
+  // الطلب وملفّ الجهة يملآن التصميم (٣٫٥).
+  const order = useOrderFill({
+    doc: docs.doc, values, setValues, setCopies, say, learned: cards.learned, pickFromGallery: sources.pickFromGallery,
+    seedBatch: (text) => {
+      batch.setBatchSeed(text);
+      batch.setBatchPhotos([]);
+      batch.setBatchKey((k) => k + 1);
+    }
+  });
   const output = useDesignOutput({
     canvas, doc: docs.doc, effectiveBackDoc: docs.effectiveBackDoc, cards: cards.cards, batchRows: batch.batchRows, unsureCount: cards.unsureBatch.length,
     title, designId, linkedOrder, say, onChanged, setBusy, afterReview: cards.afterReview, setAfterReview: cards.setAfterReview
@@ -97,16 +107,17 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
    */
   useEffect(() => {
     if (!request) return;
-    setLinkedOrder(request.order && request.templateId ? { ...request.order, templateId: request.templateId } : null);
+    // وطلبٌ بلا تصميم (٣٫٥): التصميم الجديد من المعرض له ما لم يُحفظ — `templateId` عدمٌ كرقم التصميم غير المحفوظ.
+    setLinkedOrder(request.order ? { ...request.order, templateId: request.templateId ?? null } : null);
     if (request.draftId) {
       void library.resumeDraft(request.draftId);
     } else if (request.templateId) {
-      void library.openDesign(request.templateId).then(() => {
-        batch.setBatchSeed(request.batchText ?? '');
-        batch.setBatchPhotos([]);
-        batch.setBatchKey((k) => k + 1);
-      });
+      // قائمة الطلب في الدفعة، وجهته تملأ حقوله، وكمّيته نسخه (٣٫٥).
+      void library.openDesign(request.templateId).then(() =>
+        order.openedFromOrder({ clientId: request.clientId, batchText: request.batchText, quantity: request.order?.quantity })
+      );
     } else {
+      order.galleryForOrder(request.order ? { batchText: request.batchText, quantity: request.order.quantity } : null);
       setView('gallery');
       if (request.action === 'import') void sources.importDesign(true);
     }
@@ -118,7 +129,13 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
     copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry, designId, setDesignId,
     fitKey, zoomFit: () => setFitKey((k) => k + 1), zoomBy,
     draftSavedAt: draft.draftSavedAt,
-    ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...library, ...sources, ...cards, ...output
+    ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...library, ...sources, ...cards, ...output,
+    pickFromGallery: order.pickFromGallery, fillFromClient: order.fillNow,
+    // تصميمٌ محفوظ يُفتح من المعرض ليس من الطلب: نسخه لا تبقى كمّية الطلب.
+    openDesign: (id: number) => {
+      order.leaveOrder();
+      return library.openDesign(id);
+    }
   };
 }
 

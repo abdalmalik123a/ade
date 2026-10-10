@@ -13,6 +13,7 @@
  */
 import { useState } from 'react';
 import type { TemplateSummary } from '@shared/api';
+import type { Client } from '@shared/orders';
 import { toIndic } from '@shared/arabic';
 import { impose } from '@shared/design/imposition';
 import { KINDS, type Brand, type KindSpec, type Palette } from '@shared/design/kit';
@@ -21,7 +22,8 @@ import SavedDesigns from './gallery/SavedDesigns';
 import { Thumb } from './gallery/Thumbs';
 import { useGalleryBrand } from './gallery/useGalleryBrand';
 
-export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand };
+/** ما اختير في المعرض — والجهة بملفّها إن كانت، فتملأ حقول التصميم (٣٫٥). */
+export type GalleryPick = { kind: KindSpec; style: string; palette: Palette; brand: Brand; client?: Client | null };
 
 /** المجموعات بترتيبها المعتاد، وما أُضيف إلى القائمة بعدها (٣٫١: «مطاعم ومحلّات») — فنوعٌ جديد لا يختفي بلا تبويب. */
 const ORDER = ['شهادات', 'هويّات', 'مدرسية', 'مناسبات', 'أعمال وكروت'];
@@ -145,7 +147,7 @@ export default function Gallery({
                 className="group rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors text-right overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-primary"
                 data-kind={k.key}
                 type="button"
-                onClick={() => onPick({ kind: k, style, palette, brand })}
+                onClick={() => onPick({ kind: k, style, palette, brand, client: b.client })}
               >
                 <div className="h-[230px] flex items-center justify-center p-space-md">
                   <Thumb kind={k} style={style} palette={palette} brand={brand} width={250} height={196} />

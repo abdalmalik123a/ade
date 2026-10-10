@@ -359,7 +359,7 @@ export default function App() {
                 templateId: order.templateId ?? undefined,
                 batchText: order.batchText,
                 clientId: order.clientId ?? undefined,
-                order: { id: order.id, title: order.title }
+                order: { id: order.id, title: order.title, quantity: order.quantity }
               })
             }
           />

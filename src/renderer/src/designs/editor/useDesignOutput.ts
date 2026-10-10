@@ -21,7 +21,7 @@ type Inputs = {
   unsureCount: number;
   title: string;
   designId: number | null;
-  linkedOrder: { id: number; title: string; templateId: number } | null;
+  linkedOrder: { id: number; title: string; templateId: number | null } | null;
   say: (text: string, tone?: 'ok' | 'warn') => void;
   onChanged?: () => void;
   setBusy: (busy: boolean) => void;

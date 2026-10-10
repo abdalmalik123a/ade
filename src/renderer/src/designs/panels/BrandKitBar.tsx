@@ -1,23 +1,16 @@
 /**
  * «طقم الجهة» في المحرّر (DESIGNS.md ٣٫٣): جهةٌ من ملفّاتها ثم ضغطة — شعارها مكان شعار الجهة (أو في الركن)، ولونها في عائلة
- * اللون الغالبة، وخطّها على النصوص، واسمها وعنوانها وهاتفها في حقولها — على أيّ تصميمٍ مفتوح، والتراجع يعيده كلّه.
+ * اللون الغالبة، وخطّها على النصوص، وما في ملفّها في حقولها (٣٫٥: اسمها وعنوانها وهاتفها ومديريتها ومديرها وصفته، والعام
+ * الدراسي — وما كُتب باليد لا يُطمس) — على أيّ تصميمٍ مفتوح، والتراجع يعيد اللوحة.
  */
 import { useEffect, useState } from 'react';
 import type { Client } from '@shared/orders';
 import { applyBrand } from '@shared/design/brand';
+import { filledWords } from '@shared/design/fillFrom';
 import type { DesignEditor } from '../editor/useDesignEditor';
 import { logoColor } from '../gallery/useGalleryBrand';
 
 const SELECT = 'flex-1 min-w-0 h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
-
-/** حقول هويّة الجهة في التصاميم: الاسم بأسمائه الثلاثة، والعنوان والهاتف. */
-const fieldsOf = (c: Client): Record<string, string> => ({
-  الجهة: c.name,
-  المدرسة: c.name,
-  الدائرة: c.name,
-  ...(c.address && { العنوان: c.address }),
-  ...(c.phone && { الهاتف: c.phone })
-});
 
 export default function BrandKitBar({ ed }: { ed: DesignEditor }) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -33,16 +26,16 @@ export default function BrandKitBar({ ed }: { ed: DesignEditor }) {
     const color = client.color ?? (client.logo ? await logoColor(client.logo).catch(() => null) : null);
     const out = applyBrand(ed.canvas, { color, font: client.font, logo: client.logo });
     ed.apply(out.canvas);
-    const keys = new Set(ed.doc.fields.map((f) => f.key));
-    const filled = Object.fromEntries(Object.entries(fieldsOf(client)).filter(([k]) => keys.has(k)));
-    if (Object.keys(filled).length) ed.setValues((v) => ({ ...v, ...filled }));
+    const filled = ed.fillFromClient(client);
     const parts = [
       out.colors ? `${out.colors} لونًا بلونها` : '',
       out.fonts ? `${out.fonts} نصًّا بخطّها` : '',
       out.logo === 'replaced' ? 'شعارها مكان الشعار' : out.logo === 'added' ? 'شعارها في الركن' : '',
-      Object.keys(filled).length ? 'واسمها في حقوله' : ''
+      Object.keys(filled).length ? `و${filledWords(filled)} من ملفّها` : ''
     ].filter(Boolean);
-    ed.say(parts.length ? `طقم «${client.name}»: ${parts.join('، ')} — والتراجع يعيده` : `لا شيء في ملفّ «${client.name}» يُطبَّق — أضف شعارها أو لونها أو خطّها من «الجهات»`, parts.length ? 'ok' : 'warn');
+    // التراجع يعيد اللوحة (اللون والخطّ والشعار) — والحقول قيمٌ لا تُمسّ باليد.
+    const undo = out.colors || out.fonts || out.logo ? ' — والتراجع يعيد اللوحة' : '';
+    ed.say(parts.length ? `طقم «${client.name}»: ${parts.join('، ')}${undo}` : `لا شيء في ملفّ «${client.name}» يُطبَّق — أضف شعارها أو لونها أو خطّها من «الجهات»`, parts.length ? 'ok' : 'warn');
   };
 
   return (

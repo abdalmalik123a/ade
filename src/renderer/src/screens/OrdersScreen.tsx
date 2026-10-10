@@ -424,16 +424,16 @@ function OrderCard({
             {info.verb}
           </button>
         )}
-        {order.templateId && (
+        {(order.templateId || order.clientId) && (
           <button
             className="h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
             data-act="open-design"
-            title={`افتح «${order.templateTitle ?? 'التصميم'}»${order.batchText ? ' وقائمته في الدفعة' : ''}`}
+            title={`${order.templateId ? `افتح «${order.templateTitle ?? 'التصميم'}»` : `صمّم لـ«${order.customer}» من المعرض`}${order.batchText ? ' وقائمته في الدفعة' : ''} — وملفّ الجهة يملأ حقوله`}
             type="button"
             onClick={onOpenDesign}
           >
             <span className="material-symbols-outlined text-[16px]">draw</span>
-            التصميم
+            {order.templateId ? 'التصميم' : 'صمّم'}
           </button>
         )}
         {order.status === 'ready' && (
