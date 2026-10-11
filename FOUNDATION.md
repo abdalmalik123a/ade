@@ -1211,6 +1211,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   brand.ts                المطوّر ورقمه — في «عن البرنامج» والتفعيل ورسائل ما يتوقّف
   sections.ts             الأقسام المخفيّة في ١٫٠٫٠ — تُقرأ وحدها لتُخفى بطاقاتها أوّل مرّة
   counterCards.ts         بطاقات الشبّاك: ثمانٍ بترتيبٍ ثابت يُخفيه المكتب ويرتّبه من الإعدادات
+  seasons.ts              صفّ الموسم في الشبّاك: بطاقاتٌ وكلماتٌ يكثر طلبها، ولا يُقترح نموذجٌ لا تجده الكلمة (البند ٧)
   limits.ts               أقصى ما تعرضه القوائم دفعةً واحدة، وما يُقال تحتها حين تبلغه
   doc.ts                  نواة الوثيقة: الكتل والحقول والصفحة
   docHtml.ts              محرّك الرسم الوحيد — للمعاينة والطباعة معًا
@@ -1223,7 +1224,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   template.ts             نموذج الكتاب الرسمي
   letterhead.ts           الترويسة: أقسامٌ جنبًا إلى جنب، والبسملة، والعدد والتاريخ
   letterFields.ts         كتالوج حقول صاحب العلاقة — يُختار منه ولا يُفرض
-  printRoles.ts           أدوار الطابعات: لكلّ نوع عملٍ «عادي» و«ملوّن» و«اسأل»، وحكمٌ واحد لما يحدث عند «اطبع»
+  printRoles.ts           أدوار الطابعات: لكلّ نوع عملٍ «عادي» و«ملوّن» و«اسأل»، وحكمٌ واحد لما يحدث عند «اطبع»؛ وطابعة الملفّ (PDF) تُعرف (البند ١١)
   letterDraft.ts          الكتاب في المحرّر: ما يُحفظ، و«جرّبها»، وقائمة «قبل الإصدار»
   sheetHead.ts            «احفظ أعلى الورقة ترويسةً»: حدّ الرأس ونقله كتلًا
   addressing.ts           اتجاه المخاطبة: يُخمَّن من أفعال العبارة ويرتّب الكليشات
@@ -1308,11 +1309,13 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   shortcuts.ts            الاختصارات الثابتة بموضع المفتاح — ولكلٍّ زرّه
 src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/main.tsx وApp.tsx وstyles.css
   src/shell/              الإطار: السكّة (Sidebar: خمس وجهاتٍ ظاهرة والإعدادات أسفلها) والرأس (Header: البحث الشامل
-                          ونتائجه في مكانها) ومعالج البداية (Onboarding)
+                          ونتائجه في مكانها) ومعالج البداية (Onboarding)، و«تُؤخذ النسخة التلقائية قبل الإغلاق» (ClosingOverlay)
   src/screens/            الشاشات — كلٌّ بمساره في routes.ts
     ServiceScreen.tsx     الشبّاك: المعاملة كاملة والزبون واقف، والمعلَّقة تبقى
+    ServicePickers.tsx    «هات المدرسة» و«هات الزبون» في الشبّاك
     EditorScreen.tsx      المحرّر ومعاينة A4: الإصدار والإخراج — و«اطبع» في أسفل اللوح لا يمرّ (البند ٤)
     EditorDialogs.tsx     نوافذ محرّر الكتاب: «اطبع الكتاب» و«صدر الكتاب» وحفظ الترويسة و«اجعله نموذجًا»
+    EditorPickers.tsx     لوح المحرّر: البحث والاستبدال، و«هات الزبون»، و«أضف حقلًا إلى الكتاب»
     TemplatesScreen.tsx   مكتبة النماذج والمسودات
     TemplateDesigner.tsx  مصمّم النماذج
     ArchiveScreen.tsx     «الصادر» في السجلّ: الكتب والبحث فيها (ArchiveHits.tsx نتائج البحث الشامل)
@@ -1344,6 +1347,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     LetterheadView.tsx    الترويسة كما تُطبع
     FontSelect.tsx        اختيار الخطّ من «خطوط ديوان» — والغائب باسمه، ويُضاف من Windows بضغطة
     PendingCard.tsx       بطاقة ما لم يكتمل في «قيد العمل»: مسودّة كتابٍ أو تصميم، أو معاملةٌ معلّقة
+    CounterEmpty.tsx      الشبّاك بلا نموذجٍ يطابق: «اكتبه على ورقة فارغة» و«استورد نماذج» (البند ٧)
     LetterheadDesigner.tsx  مصمّم الترويسة بالأقسام
     ErrorBar.tsx          شريط الأخطاء: كلّ فشلٍ لم يُلتقط يُقال بسببه
     ErrorBoundary.tsx     الشاشة التي تسقط تُقال ولا تُسقط التطبيق
@@ -1392,7 +1396,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
                           وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
                           وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣) وTextEffectsPanel (ظلّ النصّ وحدّه وقوسه، ١٫١٠)
-  src/kit/                useEscape.ts: Escape يغلق النافذة العليا كما ✕ (UI.md ٤) · ask.ts وConfirmHost السؤال · useToast · useLeaveGuard
+  src/kit/                useEscape.ts: Escape يغلق النافذة العليا كما ✕ (UI.md ٤) · ask.ts وConfirmHost السؤال · notice.ts وNoticeHost كلمةٌ عابرة تبقى بعد مغادرة شاشتها (البند ١٠) · useToast · useLeaveGuard
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import type { BundledPackInfo, OfficeSettings, PrinterInfo } from '@shared/api';
 import type { RouteKey } from '@shared/routes';
 import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
+import { isFilePrinter } from '@shared/printRoles';
 import icon from '../assets/brand/diwan-icon.png';
 import logo from '../assets/brand/madatech-logo.png';
 
@@ -141,17 +142,40 @@ export default function Onboarding({
                   لم تُعثر على طابعةٍ في هذا الجهاز. وصّلها ثم اخترها من «الإعدادات».
                 </p>
               ) : (
-                printers.map((p) => (
-                  <button key={p.name} className={option(printer === p.name)} type="button" onClick={() => setPrinter(p.name)}>
-                    <span className="material-symbols-outlined text-secondary">print</span>
-                    <span className="flex flex-col">
-                      <span className="font-label-md text-label-md font-semibold text-on-surface">{p.displayName}</span>
-                      <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        {p.isDefault ? 'طابعة النظام الافتراضية' : p.description || ' '}
-                      </span>
-                    </span>
-                  </button>
-                ))
+                <>
+                  {/* طابعات المكتب أوّلًا، وما يحفظ ملفًّا بعدها مكتوبٌ عليه ذلك؛ والمختارة بعلامةٍ وكلمة — كانت ظلًّا باهتًا وحده (البند ١١). */}
+                  {[...printers]
+                    .sort((a, b) => Number(isFilePrinter(a.name)) - Number(isFilePrinter(b.name)))
+                    .map((p) => {
+                      const on = printer === p.name;
+                      const file = isFilePrinter(p.name);
+                      return (
+                        <button
+                          key={p.name}
+                          className={option(on)}
+                          data-file-printer={file ? '' : undefined}
+                          data-printer={p.name}
+                          data-selected={on ? '' : undefined}
+                          type="button"
+                          onClick={() => setPrinter(p.name)}
+                        >
+                          <span className={`material-symbols-outlined ${on ? 'text-secondary' : 'text-on-surface-variant'}`}>{on ? 'check_circle' : file ? 'picture_as_pdf' : 'print'}</span>
+                          <span className="flex-1 flex flex-col">
+                            <span className="font-label-md text-label-md font-semibold text-on-surface">{p.displayName}</span>
+                            <span className="font-label-sm text-label-sm text-on-surface-variant">
+                              {file ? 'تحفظ ملفًّا ولا تطبع على ورق' : p.isDefault ? 'طابعة النظام الافتراضية' : p.description || ' '}
+                            </span>
+                          </span>
+                          {on && <span className="h-6 px-2 rounded-full bg-secondary text-on-secondary font-label-sm text-label-sm font-bold flex items-center">المختارة</span>}
+                        </button>
+                      );
+                    })}
+                  {printer && isFilePrinter(printer) && printers.some((p) => !isFilePrinter(p.name)) && (
+                    <p className="font-label-sm text-label-sm text-error" data-file-printer-warning="">
+                      المختارة تحفظ ملفًّا ولا تطبع على ورق — اختر طابعة المكتب إن كانت موصولة.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}

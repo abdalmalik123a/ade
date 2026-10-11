@@ -42,9 +42,11 @@ import IdSheetDialog from '../components/IdSheetDialog';
 import { ROUTES, type RouteKey } from '@shared/routes';
 import { COUNTER_CARDS, cardMatches, normalizeCounterCards, type CounterCard } from '@shared/counterCards';
 import InboxPanel, { type InboxOpen } from '../components/InboxPanel';
-import { seasonOf } from '@shared/seasons';
+import { seasonItems, seasonOf } from '@shared/seasons';
+import CounterEmpty from '../components/CounterEmpty';
+import { CitizenPicker, SchoolPicker } from './ServicePickers';
 import { formValues } from '@shared/imageForm';
-import { applySchool, hasSchoolFields, SCHOOL_KINDS, schoolSlotOf, schoolValues } from '@shared/schoolFile';
+import { applySchool, hasSchoolFields, schoolSlotOf, schoolValues } from '@shared/schoolFile';
 import type { Client } from '@shared/orders';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
@@ -1030,22 +1032,22 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                   </div>
                 ) : null;
               })()}
-              {/* صفّ الموسم (ن١): ما يكثر طلبه الآن — وما لا يقدّمه المكتب من بطاقاته لا يُعرض. */}
+              {/* صفّ الموسم (ن١): ما يكثر طلبه الآن — وما لا يقدّمه المكتب ولا تجده نماذجه لا يُعرض (البند ٧). */}
               {(() => {
                 const season = query.trim() ? null : seasonOf();
                 const offered = settings?.counterCards ?? normalizeCounterCards(undefined);
-                const items = season?.items.filter((it) => !('card' in it) || offered.includes(it.card)) ?? [];
-                return season && items.length > 0 ? (
+                const chips = season ? seasonItems(season, offered, items.map((t) => `${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`)) : [];
+                return season && chips.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-space-xs px-1" data-season="">
                     <span className="flex items-center gap-1 font-label-md text-label-md text-on-surface font-semibold">
                       <span className="material-symbols-outlined text-[18px] text-secondary">event</span>
                       {season.title}
                     </span>
-                    {items.map((it) => (
+                    {chips.map((it) => (
                       <button
                         key={it.label}
                         className="h-8 px-3 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
-                        data-season-item=""
+                        data-season-item={'card' in it ? 'card' : 'search'}
                         type="button"
                         onClick={() => {
                           if ('card' in it) {
@@ -1189,11 +1191,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                 )}
               </div>
               {shown.length === 0 ? (
-                <div className="py-space-lg text-center font-body-md text-body-md text-on-surface-variant">
-                  {items.length === 0
-                    ? 'المكتبة فارغة — استورد ملفّات Word من «المكتبة»'
-                    : 'لا نموذج بهذا الاسم'}
-                </div>
+                <CounterEmpty
+                  empty={items.length === 0}
+                  onBlank={() => onOpenTool?.({ route: 'editor' }, citizenId)}
+                  onImport={() => onOpenTool?.({ route: 'templates' }, null)}
+                />
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-space-md">
                   {ordered.map((t) => {
@@ -1839,127 +1841,5 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         </div>
       )}
     </main>
-  );
-}
-
-/** «هات المدرسة» (ملفّ المدارس): جهات المكتب والمدارسُ أوّلها، ويُبحث فيها بالاسم. */
-function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; onClose: () => void; onPick: (school: Client) => void }) {
-  const [query, setQuery] = useState('');
-  const q = normalizeFold(query.trim());
-  const isSchool = (c: Client) => SCHOOL_KINDS.includes(c.kind ?? '') || Boolean(c.schoolGender || c.governorate || c.principal);
-  const rows = schools.filter((c) => !q || normalizeFold(c.name).includes(q)).sort((a, b) => Number(isSchool(b)) - Number(isSchool(a)));
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
-      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm" data-school-picker="">
-        <span className="font-headline-sm text-headline-sm text-on-surface">هات المدرسة</span>
-        <input
-          autoFocus
-          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-          placeholder="اسم المدرسة"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
-          {rows.length === 0 ? (
-            <span className="py-space-md text-center font-label-md text-label-md text-on-surface-variant">
-              {schools.length ? 'لا مدرسة بهذا الاسم' : 'أضف المدارس في «الجهات» بملفّاتها — مرّةً واحدة'}
-            </span>
-          ) : (
-            rows.map((c) => (
-              <button
-                key={c.id}
-                className="min-h-10 px-3 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between gap-space-sm"
-                data-school-pick={c.id}
-                type="button"
-                onClick={() => onPick(c)}
-              >
-                <span>{c.name}</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
-                  {[c.schoolGender, c.governorate, c.principal].filter(Boolean).join(' · ') || c.kind || ''}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-        <button
-          className="h-9 self-end px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
-          type="button"
-          onClick={onClose}
-        >
-          إغلاق
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** الزبون المتكرر: يُكتب اسمه فيُستعاد ما يعرفه البرنامج عنه. */
-function CitizenPicker({
-  onClose,
-  onPick
-}: {
-  onClose: () => void;
-  onPick: (id: number) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [rows, setRows] = useState<{ id: number; fullName: string; nationalId: string | null }[]>(
-    []
-  );
-
-  useEffect(() => {
-    let alive = true;
-    void window.diwan.citizens.list({ query, limit: 20 }).then((list) => {
-      if (alive) setRows(list as typeof rows);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [query]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
-      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm">
-        <span className="font-headline-sm text-headline-sm text-on-surface">
-          هات الزبون
-        </span>
-        <input
-          autoFocus
-          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
-          placeholder="اسم المواطن أو رقمه"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
-          {rows.length === 0 ? (
-            <span className="py-space-md text-center font-label-md text-label-md text-on-surface-variant">
-              لا ملفّ بهذا الاسم
-            </span>
-          ) : (
-            rows.map((c) => (
-              <button
-                key={c.id}
-                className="h-10 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between"
-                type="button"
-                onClick={() => onPick(c.id)}
-              >
-                <span>{c.fullName}</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  {c.nationalId ?? ''}
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-        <button
-          className="h-9 self-end px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
-          type="button"
-          onClick={onClose}
-        >
-          إغلاق
-        </button>
-      </div>
-    </div>
   );
 }

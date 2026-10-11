@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRINT_ROLES, describeRole, normalizePrintRoles, planPrint } from '../src/shared/printRoles';
+import { PRINT_ROLES, describeRole, isFilePrinter, normalizePrintRoles, planPrint } from '../src/shared/printRoles';
 import { escapeHtml } from '../src/shared/html';
 import { inlineBarcodes } from '../src/shared/design/imposition';
 import { htmlToText } from '../src/main/services/documents';
@@ -74,5 +74,12 @@ describe('escapeHtml (٢٫٥)', () => {
     const html = inlineBarcodes(`<div data-barcode="qr" data-value="${escapeHtml(value)}" style="left:0"></div>`);
     expect(html).toContain('<svg');
     expect(html).toBe(inlineBarcodes(`<div data-barcode="qr" data-value="رقم &quot;١٢&quot; A&amp;B" style="left:0"></div>`));
+  });
+});
+
+describe('الطابعة التي تحفظ ملفًّا (محادثة «الشبّاك واليوم الأوّل»، البند ١١)', () => {
+  it('PDF وXPS وOneNote والفاكس — لا طابعات المكتب', () => {
+    for (const n of ['Microsoft Print to PDF', 'Microsoft XPS Document Writer', 'OneNote (Desktop)', 'Fax', 'PDF24']) expect(isFilePrinter(n), n).toBe(true);
+    for (const n of ['EPSON L3250 Series', 'Canon MF3010', 'HP LaserJet Pro M404', 'Faxless Printer']) expect(isFilePrinter(n), n).toBe(false);
   });
 });

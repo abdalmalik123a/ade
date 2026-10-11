@@ -37,7 +37,9 @@ import { setHijriOffset } from '@shared/dates';
 import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
 import { isCombo, shortcut } from '@shared/shortcuts';
-import { flushBeforeClose } from './lib/beforeClose';
+import ClosingOverlay from './shell/ClosingOverlay';
+import NoticeHost from './kit/NoticeHost';
+import { notice } from './kit/notice';
 import ConfirmHost from './kit/ConfirmHost';
 import { canLeaveAll, hasUnsaved, onUnsavedLabel } from './kit/leaveGuard';
 
@@ -74,19 +76,6 @@ export default function App() {
     void window.diwan.ui.info().then((i) => setVersion(i.version));
   }, []);
 
-  /**
-   * البرنامج يُغلق: يُفرَغ ما لم يُحفظ (مسودة المحرّر) ثم يمضي الإغلاق — ويأخذ نسخته التلقائية
-   * إن كانت، فيُقال ذلك لا يُترك نافذةً لا تستجيب.
-   */
-  const [closing, setClosing] = useState(false);
-  useEffect(
-    () =>
-      window.diwan.ui.onClosing(({ backup }) => {
-        if (backup) setClosing(true);
-        void flushBeforeClose().finally(() => window.diwan.ui.closeReady());
-      }),
-    []
-  );
   const [search, setSearch] = useState('');
   /** ملفّ مواطنٍ يُفتح من البحث الشامل. */
   const [citizenFocus, setCitizenFocus] = useState<{ key: number; citizenId: number } | null>(null);
@@ -303,6 +292,9 @@ export default function App() {
             documentId={target.documentId}
             onStatus={setEditorStatus}
             onIssued={() => void refresh()}
+            onLeave={(d) =>
+              notice(`حُفظ ما كتبته في «قيد العمل»: «${d.title}»`, { label: 'افتحه', run: () => openEditor({ draftId: d.id }) })
+            }
           />
         );
       case 'templates':
@@ -527,14 +519,8 @@ export default function App() {
 
       <ErrorBar />
 
-      {closing && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50" data-closing="">
-          <div className="rounded-2xl bg-surface-container-lowest px-space-lg py-space-md shadow-2xl flex items-center gap-space-sm font-label-lg text-label-lg text-on-surface">
-            <span className="material-symbols-outlined animate-spin text-secondary">progress_activity</span>
-            تُؤخذ النسخة التلقائية قبل الإغلاق…
-          </div>
-        </div>
-      )}
+      {/* الإغلاق يُفرغ ما لم يُحفظ أوّلًا، ويقول إنّه يأخذ النسخة التلقائية. */}
+      <ClosingOverlay />
 
       {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
@@ -552,8 +538,9 @@ export default function App() {
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
 
-      {/* أسئلة «أتحذف؟» و«اترك بلا حفظ؟» من أيّ مكان (kit/ask.ts). */}
+      {/* أسئلة «أتحذف؟» و«اترك بلا حفظ؟» من أيّ مكان (kit/ask.ts)، وكلمةٌ عابرة تبقى بعد مغادرة شاشتها (kit/notice.ts). */}
       <ConfirmHost />
+      <NoticeHost />
 
       {/* «على أيّ طابعة؟» — تسأله الشاشات حين للدور طابعتان أو طلب المكتب أن يُسأل. */}
       <PrintChooser />

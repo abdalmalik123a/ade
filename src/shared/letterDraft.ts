@@ -13,6 +13,7 @@ import { normalizeLayout, type LetterheadLayout } from './letterhead';
 import { legacyFieldMeta } from './template';
 import { isChoiceKey } from './gender';
 import { count, countIn } from './arabic';
+import { findSheetHead } from './sheetHead';
 
 export type Registry = { number: string; dateGreg: string; dateHijri: string };
 export const NO_REGISTRY: Registry = { number: '', dateGreg: '', dateHijri: '' };
@@ -105,6 +106,22 @@ export function readSavedLetter(raw: string | Record<string, unknown>): SavedLet
     docType: str('docType'),
     owner: name
   };
+}
+
+/**
+ * عنوان المسودّة في «قيد العمل» (البند ١٠): نوع الكتاب، أو صاحب العلاقة، أو موضوعه («م / تأييد استمرار بالدوام»)، أو أوّل
+ * سطرٍ كُتب بعد رأس الورقة — وكانت كلّها «مسودة بلا عنوان» فلا يُعرف أيّها الكتاب. والقيم في نصّه كما على الورقة.
+ */
+export function draftTitle(input: { docType: string; owner: string; doc: Doc; values: Record<string, string> }): string {
+  const head = findSheetHead(input.doc);
+  const lines = docText({ ...input.doc, blocks: input.doc.blocks.slice(head) }, input.values)
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const subject = lines.map((l) => /^(?:م|الموضوع)\s*[/:]\s*(.+)$/.exec(l)?.[1]?.trim()).find(Boolean);
+  const first = subject ?? lines[0] ?? '';
+  const short = first.length > 48 ? `${first.slice(0, 47).trim()}…` : first;
+  return input.docType.trim() || input.owner.trim() || short || 'مسودة بلا عنوان';
 }
 
 /** حقل اسم صاحب العلاقة على الورقة — بدوره، أو بمصدره من السجل. */

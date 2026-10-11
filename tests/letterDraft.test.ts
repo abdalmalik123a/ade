@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lacksSigner, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, NO_REGISTRY } from '../src/shared/letterDraft';
+import { draftTitle, lacksSigner, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, NO_REGISTRY } from '../src/shared/letterDraft';
 import { docText, emptyDoc, fieldRef, makeField, paragraph, run, type Doc } from '../src/shared/doc';
 import { emptyLayout } from '../src/shared/letterhead';
 
@@ -107,5 +107,23 @@ describe('قائمة التحقّق قبل الإصدار', () => {
     const checks = letterChecks({ ...base, doc: letter(), values: { الاسم: 'زينب', 'تاريخ التعيين': 'أمس' }, owner: 'زينب', headRatio: 0.2 });
     expect(checks.every((c) => c.level === 'info')).toBe(true);
     expect(NO_REGISTRY.number).toBe('');
+  });
+});
+
+describe('عنوان المسودّة في «قيد العمل» (محادثة «الشبّاك واليوم الأوّل»، البند ١٠)', () => {
+  const doc = (...lines: string[]): Doc => ({ ...emptyDoc(), blocks: lines.map((l) => paragraph(l ? [run(l)] : [])) });
+  it('نوع الكتاب أوّلًا، ثم صاحب العلاقة', () => {
+    expect(draftTitle({ docType: 'تأييد', owner: 'سالم حسن', doc: doc('نص'), values: {} })).toBe('تأييد');
+    expect(draftTitle({ docType: ' ', owner: 'سالم حسن', doc: doc('نص'), values: {} })).toBe('سالم حسن');
+  });
+  it('ثم موضوعه «م /»، وإلا أوّل سطرٍ كُتب — لا «مسودة بلا عنوان»', () => {
+    expect(draftTitle({ docType: '', owner: '', doc: doc('', 'إلى / مديرية التربية', 'م / تأييد استمرار بالدوام', 'نؤيد…'), values: {} })).toBe('تأييد استمرار بالدوام');
+    expect(draftTitle({ docType: '', owner: '', doc: doc('', '  نؤيد لكم   بأن  '), values: {} })).toBe('نؤيد لكم بأن');
+    expect(draftTitle({ docType: '', owner: '', doc: doc('أ'.repeat(60)), values: {} })).toBe(`${'أ'.repeat(47)}…`);
+    expect(draftTitle({ docType: '', owner: '', doc: doc(''), values: {} })).toBe('مسودة بلا عنوان');
+  });
+  it('والقيمة في السطر كما على الورقة', () => {
+    const d = { ...emptyDoc(), blocks: [paragraph([run('إلى '), fieldRef('الجهة')])], fields: [makeField({ key: 'الجهة' })] };
+    expect(draftTitle({ docType: '', owner: '', doc: d, values: { الجهة: 'مديرية التربية' } })).toBe('إلى مديرية التربية');
   });
 });

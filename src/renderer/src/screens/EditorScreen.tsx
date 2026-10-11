@@ -22,14 +22,13 @@ import { patchField } from '@shared/docEdit';
 import { countIn, normalizeFold } from '@shared/arabic';
 import { docText, emptyDoc, isDateField, makeField, pageMm, paragraph, type Doc, type DocField } from '@shared/doc';
 import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, resolveLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
-import { CORE_FIELDS, FIELD_GROUPS, type CatalogField } from '@shared/letterFields';
+import type { CatalogField } from '@shared/letterFields';
 import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
 import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, type Gender } from '@shared/gender';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import { docSpelling, fixDocSpelling } from '@shared/spelling';
 import { fieldHints } from '@shared/fieldHints';
-import { countInDoc, replaceInDoc } from '@shared/findReplace';
-import { NO_REGISTRY, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
+import { NO_REGISTRY, draftTitle, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import { errorText } from '../lib/errors';
 import AddressingPicker from '../components/AddressingPicker';
@@ -47,6 +46,7 @@ import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { describeRole } from '@shared/printRoles';
 import { AsTemplateDialog, IssueDialog, IssuedDialog, Modal, SaveLayoutDialog, inputCls } from './EditorDialogs';
+import { CitizenPicker, FieldPicker, FindReplaceBar } from './EditorPickers';
 
 const AUTOSAVE_MS = 4000;
 const MM_PX = 96 / 25.4;
@@ -71,10 +71,12 @@ type Props = {
   documentId?: number | null;
   onStatus?: (status: { transaction: string | null; busy: boolean; exporting: boolean }) => void;
   onIssued?: () => void;
+  /** غادر الموظف المحرّر وما كتبه مسودّةٌ في «قيد العمل» — فيُقال له ذلك ويُفتح بضغطة (البند ١٠). */
+  onLeave?: (draft: { id: number; title: string }) => void;
 };
 
 function EditorScreen(
-  { templateId = null, citizenId = null, draftId = null, documentId = null, onStatus, onIssued }: Props,
+  { templateId = null, citizenId = null, draftId = null, documentId = null, onStatus, onIssued, onLeave }: Props,
   ref: React.Ref<EditorHandle>
 ) {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
@@ -452,6 +454,10 @@ function EditorScreen(
     await loadTemplate(id);
   }
   const savedLetter = () => ({ doc, values, registry, layout, docType, owner });
+  const draftName = draftTitle({ docType, owner: ownerName, doc, values });
+  /** المسودّة الحاضرة — تُقرأ بعد أن تُفكّ الشاشة عند المغادرة، فلا تنتظر رسمًا. */
+  const draftRef = useRef<number | null>(draftId);
+  draftRef.current = draft;
   const saveDraft = useCallback(
     async (silent: boolean) => {
       if (!hasContent) {
@@ -464,11 +470,12 @@ function EditorScreen(
           id: draft,
           templateId: activeTemplate,
           citizenId: linkedCitizen,
-          title: docType || ownerName || 'مسودة بلا عنوان',
+          title: draftName,
           values: letterValues(savedLetter()),
           bodyHtml: docText(doc, values)
         });
         setDraft(id);
+        draftRef.current = id;
         setSavedAt(new Date());
         dirty.current = false;
         if (!silent) setToast('حُفظت المسودة');
@@ -479,7 +486,7 @@ function EditorScreen(
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasContent, draft, activeTemplate, linkedCitizen, docType, ownerName, doc, values, registry, layout, owner]
+    [hasContent, draft, activeTemplate, linkedCitizen, draftName, doc, values, registry, layout, owner]
   );
 
   useEffect(() => {
@@ -492,17 +499,21 @@ function EditorScreen(
    * ما لم يُحفظ بعد يُحفظ عند مغادرة المحرّر وعند إغلاق البرنامج (خطة Production، ١٫٥).
    *
    * مؤقّت الحفظ يُعاد مع كلّ حرف ويُلغى مع الشاشة، فكان ما كُتب منذ آخر توقّفٍ عن الكتابة يضيع
-   * بنقرةٍ على الشريط — بلا تنبيه. والحفظ هنا هو الحفظ التلقائيّ نفسه، بلا رسالة.
+   * بنقرةٍ على الشريط — بلا تنبيه. والحفظ هنا هو الحفظ التلقائيّ نفسه. وكان صامتًا: ما كُتب في «قيد العمل» ولا يعرف الموظف
+   * ذلك، فيظنّه ضاع (البند ١٠) — فالمغادرة تقول أين صار، بعنوانه، ويُفتح منها بضغطة (`onLeave`).
    */
   const flushDraft = useRef<() => Promise<void>>(async () => undefined);
   flushDraft.current = async () => {
     if (dirty.current && hasContent) await saveDraft(true);
   };
+  const leave = useRef({ draftName, onLeave });
+  leave.current = { draftName, onLeave };
   useEffect(() => {
     const unregister = onBeforeClose(() => flushDraft.current());
     return () => {
       unregister();
-      void flushDraft.current();
+      const { draftName: left, onLeave: told } = leave.current;
+      void flushDraft.current().then(() => draftRef.current !== null && told?.({ id: draftRef.current, title: left }));
     };
   }, []);
 
@@ -1071,7 +1082,7 @@ function EditorScreen(
               {saving
                 ? 'تُحفظ المسودة…'
                 : savedAt
-                  ? `حُفظت المسودة ${savedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}`
+                  ? `حُفظت المسودة ${savedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })} في «قيد العمل»`
                   : hasContent
                     ? 'تُحفظ مسودةً تلقائيًّا بعد ثوانٍ من الكتابة'
                     : 'لا مسودة'}
@@ -1253,178 +1264,3 @@ function EditorScreen(
 }
 
 export default forwardRef(EditorScreen);
-
-/** بحثٌ واستبدال في الكتاب — متساهلٌ مع الهمزة — وبحثٌ في نصوص المكتبة كلّها. */
-function FindReplaceBar({
-  doc,
-  templates,
-  onChange,
-  onOpenTemplate
-}: {
-  doc: Doc;
-  templates: TemplateSummary[];
-  onChange: (d: Doc) => void;
-  onOpenTemplate: (id: number) => void;
-}) {
-  const [find, setFind] = useState('');
-  const [replace, setReplace] = useState('');
-  const [loose, setLoose] = useState(true);
-  const [msg, setMsg] = useState<string | null>(null);
-  const count = countInDoc(doc, find, loose);
-  const inLibrary = useMemo(() => {
-    if (!find.trim()) return [];
-    const probe = emptyDoc();
-    return templates.filter((t) => {
-      probe.blocks = [paragraph([{ kind: 'run', text: `${t.title}\n${t.bodyHtml}` }])];
-      return countInDoc(probe, find, loose) > 0;
-    });
-  }, [find, loose, templates]);
-  return (
-    <div className="px-space-md py-space-sm bg-surface-container-low border-b border-outline-variant/40 flex flex-col gap-space-xs" data-find="">
-      <div className="flex flex-wrap items-center gap-space-xs">
-        <input className={`${inputCls} w-56`} data-find-input="" placeholder="ابحث عن…" value={find} onChange={(e) => (setFind(e.target.value), setMsg(null))} />
-        <input className={`${inputCls} w-56`} data-replace-input="" placeholder="واستبدل بـ…" value={replace} onChange={(e) => setReplace(e.target.value)} />
-        <label className="flex items-center gap-1 font-label-sm text-label-sm cursor-pointer">
-          <input checked={loose} className="w-4 h-4 accent-secondary" type="checkbox" onChange={(e) => setLoose(e.target.checked)} />
-          متساهلٌ مع الهمزة
-        </label>
-        <span className="font-label-sm text-label-sm text-on-surface-variant" data-find-count="">
-          {find.trim() ? `${count} في الكتاب` : ''}
-        </span>
-        <button
-          className="h-9 px-3 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm disabled:opacity-40"
-          data-act="replace-all"
-          disabled={count === 0}
-          type="button"
-          onClick={() => {
-            const out = replaceInDoc(doc, find, replace, loose);
-            onChange(out.doc);
-            setMsg(`استُبدل ${out.count} — والحقول لا تُمسّ`);
-          }}
-        >
-          استبدل الكل
-        </button>
-        {msg && <span className="font-label-sm text-label-sm text-secondary">{msg}</span>}
-      </div>
-      {inLibrary.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1 font-label-sm text-label-sm">
-          <span className="text-on-surface-variant">وفي المكتبة:</span>
-          {inLibrary.slice(0, 12).map((t) => (
-            <button key={t.id} className="h-7 px-2 rounded-full bg-surface-container-lowest hover:bg-surface-container-high" type="button" onClick={() => onOpenTemplate(t.id)}>
-              {t.title}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** استيراد سريع من سجل المواطنين — F2، والبحث متساهل مع الهمزة. */
-function CitizenPicker({ onClose, onPick }: { onClose: () => void; onPick: (c: CitizenDetail) => void }) {
-  const [query, setQuery] = useState('');
-  const [rows, setRows] = useState<{ id: number; fullName: string; nationalId: string | null; jobTitle: string | null }[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let live = true;
-    setLoading(true);
-    const timer = setTimeout(() => {
-      void window.diwan.citizens.list({ query, limit: 40 }).then((list) => {
-        if (!live) return;
-        setRows(list);
-        setLoading(false);
-      });
-    }, 150);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
-  return (
-    <Modal title="هات الزبون" onClose={onClose}>
-      <input autoFocus className={inputCls} placeholder="ابحث بالاسم أو الرقم الوطني أو الهاتف..." type="text" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <div className="mt-space-sm max-h-[50vh] overflow-y-auto divide-y divide-outline-variant">
-        {loading ? (
-          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">جارٍ البحث...</div>
-        ) : rows.length === 0 ? (
-          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">{query ? 'لا مواطن بهذا البحث' : 'لا زبائن بعد'}</div>
-        ) : (
-          rows.map((r) => (
-            <button
-              key={r.id}
-              className="w-full text-right py-space-sm px-space-xs hover:bg-surface-container-high flex items-center justify-between"
-              type="button"
-              onClick={() => void window.diwan.citizens.get(r.id).then((c) => c && onPick(c))}
-            >
-              <span className="flex flex-col">
-                <span className="font-label-lg text-label-lg text-on-surface font-bold">{r.fullName}</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">{r.jobTitle ?? '—'}</span>
-              </span>
-              <span className="font-mono font-label-sm text-label-sm text-on-surface-variant">{r.nationalId ?? ''}</span>
-            </button>
-          ))
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-/** حقلٌ من كتالوج المعاملات الرسمية، أو حقلٌ يسمّيه المكتب — يُدرج في الورقة حيث وقف المؤشّر. */
-function FieldPicker({ existing, onClose, onPick }: { existing: string[]; onClose: () => void; onPick: (f: CatalogField) => void }) {
-  const [query, setQuery] = useState('');
-  const [custom, setCustom] = useState('');
-  const term = query.trim();
-  // صاحب العلاقة أوّلًا: الاسم والرقم الوطني والجهة والغرض — ما لا يخلو منه كتاب.
-  const all = [{ name: 'صاحب العلاقة', hint: 'الاسم والرقم الوطني والجهة والغرض', fields: CORE_FIELDS }, ...FIELD_GROUPS];
-  const groups = all.map((g) => ({ ...g, fields: g.fields.filter((f) => !term || f.label.includes(term)) })).filter((g) => g.fields.length > 0);
-  const used = new Set(existing);
-  return (
-    <Modal title="أضف حقلًا إلى الكتاب" onClose={onClose}>
-      <div className="flex flex-col gap-space-md">
-        <div className="flex items-center gap-space-xs">
-          <input
-            autoFocus
-            className={inputCls}
-            placeholder="حقلٌ تسمّيه بنفسك — مثال: رقم الإضبارة"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && custom.trim()) onPick({ label: custom.trim(), token: custom.trim() });
-            }}
-          />
-          <button
-            className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
-            disabled={!custom.trim()}
-            type="button"
-            onClick={() => onPick({ label: custom.trim(), token: custom.trim() })}
-          >
-            أضف
-          </button>
-        </div>
-        <input className={inputCls} placeholder="ابحث في حقول المعاملات الرسمية..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="max-h-[45vh] overflow-y-auto flex flex-col gap-space-md">
-          {groups.map((g) => (
-            <div key={g.name} className="flex flex-col gap-space-xs">
-              <span className="font-label-lg text-label-lg text-on-surface font-bold">
-                {g.name} <span className="font-label-sm text-label-sm text-on-surface-variant font-normal">{g.hint}</span>
-              </span>
-              <div className="flex flex-wrap gap-space-xs">
-                {g.fields.map((f) => (
-                  <button
-                    key={f.token}
-                    className={`h-8 px-space-sm rounded-lg font-label-sm text-label-sm ${used.has(f.label) ? 'bg-surface-container text-on-surface-variant' : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'}`}
-                    type="button"
-                    onClick={() => onPick(f)}
-                  >
-                    {f.label}
-                    {used.has(f.label) && ' ✓'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Modal>
-  );
-}

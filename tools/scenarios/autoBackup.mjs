@@ -79,7 +79,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await click('[data-act="backup-inspect"]');
   await wait(1500);
   const summary = await page.eval(`return document.querySelector('[data-backup-summary]')?.innerText ?? '';`);
-  ok(`الاسترجاع من المجلّد: بكلمتها تُرى ما فيها (${summary.slice(0, 40)}…)`, summary.includes('النسخة سليمة') && summary.includes('1 مواطنًا'));
+  ok(`الاسترجاع من المجلّد: بكلمتها تُرى ما فيها (${summary.slice(0, 40)}…)`, summary.includes('النسخة سليمة') && summary.includes('مواطن واحد'));
   await click('[data-act="backup-restore"]');
   await wait(3500);
   ok(`وتحلّ محلّ البيانات: عاد ما كان قبل آخر تعديل (${citizens().join('، ')})`, citizens().join() === 'قبل النسخة');

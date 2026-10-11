@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { InboxFile } from '@shared/api';
+import { toIndic } from '@shared/arabic';
 
 export type InboxOpen = 'pdf' | 'photo' | 'word';
 
@@ -19,22 +20,46 @@ const SOURCE: Record<InboxFile['source'], string> = {
 };
 
 const ICON: Record<InboxFile['kind'], string> = { pdf: 'picture_as_pdf', image: 'image', word: 'description' };
+/** ما يُقال مكان الاسم حين تُخفى الأسماء. */
+const KIND: Record<InboxFile['kind'], string> = { pdf: 'ملفّ PDF', image: 'صورة', word: 'ملفّ Word' };
 
-/** «منذ ٥ دقائق» — بالأرقام الغربية كبقيّة الواجهة. */
+/**
+ * أسماء الملفّات تُخفى على هذا الجهاز (البند ٢١): «آخر ما وصل» في الشاشة الأولى، وأسماء ملفّات الزبائن («هوية زينب علي
+ * حسن.pdf») يراها زبونٌ آخر واقفٌ أمام الشاشة. والاختيار تفضيلٌ للشاشة لا إعدادٌ للمكتب — وبلا تخزينٍ تبقى ظاهرة.
+ */
+const HIDE_KEY = 'diwan.inbox.hideNames';
+function readHidden(): boolean {
+  try {
+    return localStorage.getItem(HIDE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeHidden(on: boolean) {
+  try {
+    if (on) localStorage.setItem(HIDE_KEY, '1');
+    else localStorage.removeItem(HIDE_KEY);
+  } catch {
+    /* بلا تخزين: يبقى الاختيار لهذه الجلسة */
+  }
+}
+
+/** «منذ ٥ د» — والرقم هنديّ كبقيّة الواجهة (UI.md ٣). */
 function ago(iso: string): string {
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   if (min < 1) return 'الآن';
-  if (min < 60) return `منذ ${min} د`;
+  if (min < 60) return `منذ ${toIndic(min)} د`;
   const h = Math.round(min / 60);
-  if (h < 24) return `منذ ${h} س`;
+  if (h < 24) return `منذ ${toIndic(h)} س`;
   const d = Math.round(h / 24);
-  return d === 1 ? 'أمس' : `منذ ${d} أيام`;
+  return d === 1 ? 'أمس' : `منذ ${toIndic(d)} أيام`;
 }
 
 export default function InboxPanel({ active, onOpen: open }: { active: boolean; onOpen: (file: InboxFile, as: InboxOpen) => Promise<void> }) {
   const [files, setFiles] = useState<InboxFile[] | null>(null);
   const [dropping, setDropping] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(readHidden);
   /** يُفتح الملفّ في أداته — وما تعذّر يُقال هنا لا يُبلع. */
   const onOpen = (f: InboxFile, as: InboxOpen) => {
     setNote(null);
@@ -88,7 +113,20 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
         <span className="font-label-md text-label-md text-on-surface font-semibold">آخر ما وصل</span>
         <span className="font-label-sm text-label-sm text-on-surface-variant truncate">التنزيلات · سطح المكتب · واتساب · الفلاشة</span>
         <button
-          className="ms-auto w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
+          className={`ms-auto w-8 h-8 rounded-lg hover:bg-surface-container-high ${hidden ? 'text-secondary bg-secondary-fixed' : 'text-on-surface-variant'}`}
+          aria-pressed={hidden}
+          data-act="inbox-names"
+          title={hidden ? 'أظهر أسماء الملفّات' : 'أخفِ أسماء الملفّات — يراها من يقف أمام الشاشة'}
+          type="button"
+          onClick={() => {
+            writeHidden(!hidden);
+            setHidden(!hidden);
+          }}
+        >
+          <span className="material-symbols-outlined text-[18px]">{hidden ? 'visibility_off' : 'visibility'}</span>
+        </button>
+        <button
+          className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
           data-act="inbox-refresh"
           title="حدّث القائمة"
           type="button"
@@ -128,9 +166,15 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
             <div key={f.id} className="flex items-center gap-space-xs p-1.5 rounded-lg bg-surface-container-lowest" data-inbox-file={f.kind}>
               <span className="material-symbols-outlined text-[20px] text-secondary shrink-0">{ICON[f.kind]}</span>
               <span className="flex-1 min-w-0 flex flex-col">
-                <span className="font-label-md text-label-md text-on-surface truncate" dir="auto" title={f.name}>
-                  {f.name}
-                </span>
+                {hidden ? (
+                  <span className="font-label-md text-label-md text-on-surface truncate" data-name-hidden="">
+                    {KIND[f.kind]}
+                  </span>
+                ) : (
+                  <span className="font-label-md text-label-md text-on-surface truncate" dir="auto" title={f.name}>
+                    {f.name}
+                  </span>
+                )}
                 <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
                   {SOURCE[f.source]} · {ago(f.modified)}
                 </span>

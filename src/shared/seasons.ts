@@ -5,6 +5,7 @@
  * وكلّ بندٍ بابٌ لا محتوى: بطاقةٌ تُفتح، أو كلمةٌ يُبحث بها في نماذج المكتب — فلا يُخترع نموذج.
  */
 import type { CounterCardId } from './counterCards';
+import { normalizeFold } from './arabic';
 
 export type SeasonItem = { label: string } & ({ card: CounterCardId } | { search: string });
 export type Season = { title: string; items: SeasonItem[] };
@@ -71,4 +72,14 @@ const SEASONS: { months: number[]; season: Season }[] = [
 export function seasonOf(date: Date = new Date()): Season | null {
   const m = date.getMonth() + 1;
   return SEASONS.find((s) => s.months.includes(m))?.season ?? null;
+}
+
+/**
+ * بنود الموسم الظاهرة (البند ٧): البطاقة ما دام المكتب يقدّمها، والكلمة ما دام في نماذجه ما تجده (`texts`: عنوان النموذج
+ * وصنفه، كما يبحث الشبّاك) — فلا يُقترح نموذجٌ غير موجود. كان «تأييد استمرار بالدوام» في مكتبٍ جديد يبحث فلا يجد شيئًا،
+ * فيُخلي الشبّاك من بطاقاته ويبقى سطرٌ بلا زرّ.
+ */
+export function seasonItems(season: Season, offered: readonly CounterCardId[], texts: readonly string[]): SeasonItem[] {
+  const folded = texts.map((t) => normalizeFold(t));
+  return season.items.filter((it) => ('card' in it ? offered.includes(it.card) : folded.some((t) => t.includes(normalizeFold(it.search)))));
 }

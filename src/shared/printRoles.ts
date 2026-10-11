@@ -74,3 +74,9 @@ export function describeRole(role: PrintRole): string | null {
   if (plan.kind === 'choose-color') return `${plan.normal} أو ${plan.color} (يُسأل عند الطبع)`;
   return null;
 }
+
+/**
+ * طابعةٌ تحفظ ملفًّا ولا تطبع على ورق — «Microsoft Print to PDF» وأخواتها (XPS وOneNote والفاكس وطابعات PDF) — تُميَّز من
+ * طابعات المكتب حيث تُختار (محادثة «الشبّاك واليوم الأوّل»، البند ١١): كانت بينها بلا فرقٍ في المعالج.
+ */
+export const isFilePrinter = (name: string): boolean => /pdf|xps|onenote|\bfax\b|فاكس/i.test(name);
