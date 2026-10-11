@@ -55,7 +55,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
   await page.clickText('احفظ بطاقتين');
   await wait(2500);
-  ok('امتلأت المكتبة من المجلد', (await page.text()).includes('حُفظت 2 بطاقة'));
+  ok('امتلأت المكتبة من المجلد', (await page.text()).includes('حُفظت بطاقتان'));
 
   await page.goto('citizens-identity-records');
   await page.clickText('إضافة ملف مواطن');
@@ -187,7 +187,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     return true;
   `);
   await wait(400);
-  ok('حُسب الناتج وأُهمل المكرَّر', (await page.text()).includes('2 اسمًا × 1 ورقة'));
+  ok('حُسب الناتج وأُهمل المكرَّر', (await page.text()).includes('اسمان × ورقة واحدة'));
 
   await page.clickText('راجع الأوراق');
   await wait(1200);
@@ -198,7 +198,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   let batchSaid = false;
   for (let i = 0; i < 30 && !batchSaid; i++) {
     await wait(200);
-    batchSaid = (await afterText()).includes('ورقتان لـ2 اسمًا');
+    batchSaid = (await afterText()).includes('ورقتان — اسمان');
   }
   ok('صدرت الدفعة', batchSaid);
 
@@ -275,7 +275,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1000);
   await page.clickText('احفظ بلا طباعة');
   await wait(1500);
-  ok('حُفظت معاملة الزبون الجديد', (await afterText()).includes('ورقةٌ واحدة'));
+  ok('حُفظت معاملة الزبون الجديد', (await afterText()).includes('ورقة واحدة'));
   ok('وعُرض حفظه في الزبائن', (await page.eval(`return document.querySelector('[data-new-citizen]')?.innerText ?? '';`)).includes('كريم حسن علي'));
   await page.eval(`document.querySelector('[data-act="save-new-citizen"]').click(); return true;`);
   await wait(900);

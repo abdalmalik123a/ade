@@ -666,7 +666,7 @@
 - **سقوف الحجم لم تُرفع**: نُقلت أجزاءٌ إلى ملفّاتٍ مجاورة (ArchiveHits، CitizenBits، OrderCard، PhotoPresetsDialog، papersTree،
   deskewSteps، editorMenuItem، ImportPlanRows).
 - **الفحص**: typecheck ✓؛ الوحدة ✓ (`count.test.ts` جديد، وتوقّعات preflight وidChecks وauditFixes بالصيغ الجديدة)؛ سيناريو `uiGuide` ✓١٦
-  جديد؛ والمتأثّرة نجحت: screens وcitizens وleaveGuards وcontentPack وcopies وdailyWork وelements وcitizenImport وdesignPacks؛ وسقط في overview فحصٌ واحد وفي issue فحصان، وكلّها كانت تثبّت السلوك القديم عمدًا (اختفاء «؟»، و«1 … الكتب الصادرة اليوم»، والبصمة ظاهرة)، فصُحّحت توقّعاتها **ولم تُعَد بعد**. **وأوقف Claude Code الجولة لنقص ذاكرة الجهاز** عند designs، فلم تُشغَّل: designs وstudio وexcelImport وimportFolder وprintRoles وservice وaudit وdesignBatchCheck وpageEditor — صُحّحت توقّعاتها بالصيغ الجديدة ولم تُشغَّل. **تُشغَّل هي وoverview وissue أوّل المحادثة التالية**.
+  جديد؛ والمتأثّرة نجحت: screens وcitizens وleaveGuards وcontentPack وcopies وdailyWork وelements وcitizenImport وdesignPacks؛ وسقط في overview فحصٌ واحد وفي issue فحصان، وكلّها كانت تثبّت السلوك القديم عمدًا (اختفاء «؟»، و«1 … الكتب الصادرة اليوم»، والبصمة ظاهرة)، فصُحّحت توقّعاتها. وأوقف Claude Code الجولة لنقص ذاكرة الجهاز، فأُكملت في جلسةٍ تالية (١١ ت١) واحدًا بعد واحد: overview ✓٣٨، issue ✓١١٣، designs ✓٧٠، studio ✓٨، excelImport ✓١٩، importFolder ✓٣٤، printRoles ✓١٩، service ✓٦٣، audit ✓٨، designBatchCheck ✓٣، pageEditor ✓٦٣ — بلا فاشل. وسقط أوّلًا فحصان في importFolder وأربعةٌ في service لأنّها كانت تنتظر الصيغ القديمة («3 ملفًا»، «حُفظت 2 بطاقة»، «2 اسمًا × 1 ورقة»، «ورقةٌ واحدة») فصُحّحت توقّعاتها وحدها، بلا تغييرٍ في البرنامج.
 - **بقي**: نصوصٌ عددية لم يذكرها التدقيق قد تبقى بصيغٍ قديمة — تُصلح بالأداة حين تُمسّ (UI.md ٣).
 
 ## ٦. الموجة ٣ — «التفوّق» ⬜

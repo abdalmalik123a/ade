@@ -49,7 +49,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   let text = await page.text();
   ok('انفتحت شاشة المراجعة', text.includes('مراجعة ما وجدناه في مجلدك'));
-  ok('وعدّت الملفات والبطاقات', text.includes('3 ملفًا') && text.includes('3 بطاقة'));
+  ok('وعدّت الملفات والبطاقات', text.includes('٣ ملفّات') && text.includes('٣ بطاقات'));
   ok('ونبّهت على النسخ المتشابهة', text.includes('تُركت نسخةً'));
   ok('ولم تُحتسب الملفات التي ليست Word', !text.includes('ملاحظات.txt'));
   const skipped = await page.eval(`return document.querySelector('[data-import-skipped]')?.textContent ?? ''`);
@@ -97,7 +97,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(2500);
 
   text = await page.text();
-  ok('أكّد الحفظ وقال ما تُرك', text.includes('حُفظت 1 بطاقة') && text.includes('وتُركت 2'));
+  ok('أكّد الحفظ وقال ما تُرك', text.includes('حُفظت بطاقة واحدة') && text.includes('وتُركت 2'));
   ok('وقال في النتيجة ما لم يُنقل من المجلّد (هـ١)', text.includes('ولم يُنقل من المجلّد') && text.includes('2 ملفّ Word بصيغةٍ قديمة'));
   await wait(3500);
   ok('ورسالته باقيةٌ بعد ثلاث ثوانٍ حتى تُغلق', (await page.text()).includes('ولم يُنقل من المجلّد'));
