@@ -3,6 +3,7 @@ import type { SidebarCounts } from '@shared/api';
 import mark from '../assets/brand/mt-mark.png';
 import { useEffect, useRef, useState } from 'react';
 import { channels } from '@shared/brand';
+import { toIndic } from '@shared/arabic';
 import { destinationOf, DESTINATIONS, type Destination } from '../lib/destinations';
 
 /**
@@ -34,7 +35,10 @@ export type SidebarProps = {
 
 export default function Sidebar({ active, onNavigate, counts, version, onAbout, officeName }: SidebarProps) {
   const here = destinationOf(active);
-  /** العدّاد على «قيد العمل»: الطلبات المفتوحة والمعاملات المعلّقة — لا المسودّات (د٢) — والمتأخّر وما موعده اليوم بلون التنبيه. */
+  /**
+   * العدّاد على «قيد العمل»: الطلبات المفتوحة والمعاملات المعلّقة — لا المسودّات (د٢) — والمتأخّر وما موعده اليوم بلون التنبيه.
+   * وهو «مفتوح» في صفحتها نفسه، بالرقم الهندي، وتلميحه يقول ما يعدّ (البند ١٩).
+   */
   const badge = (d: Destination) => {
     if (d.key !== 'work') return null;
     const { dueToday, overdue } = counts.orders;
@@ -47,9 +51,9 @@ export default function Sidebar({ active, onNavigate, counts, version, onAbout, 
           alert ? 'bg-error text-on-error' : 'bg-secondary text-on-secondary'
         }`}
         data-badge={alert ? 'alert' : 'count'}
-        title={overdue ? `متأخّر ${overdue}` : dueToday ? `موعده اليوم ${dueToday}` : undefined}
+        title={`${overdue ? `متأخّر ${toIndic(overdue)} — ` : dueToday ? `موعده اليوم ${toIndic(dueToday)} — ` : ''}مفتوح ${toIndic(open)}: الطلبات والمعاملات المعلّقة، والمسودّات لا تُعدّ`}
       >
-        {open}
+        {toIndic(open)}
       </span>
     );
   };

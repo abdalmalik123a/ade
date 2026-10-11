@@ -106,14 +106,16 @@ export default function OrderCard({
           </button>
         )}
         {order.status !== 'waiting' && order.status !== 'ready' && (
+          // فعلٌ لا حال (البند ١٩): كانت ساعةً رملية وحدها فلا يُعرف أتقول «ينتظر» أم تنقله — وكلمتها تقابل «وصل ما ينقص».
           <button
-            className="h-8 w-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
+            className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 whitespace-nowrap"
             data-act="wait"
-            title="بانتظار الزبون — تنقص صورٌ أو قائمة"
+            title="انقله إلى «ينتظر الزبون» — تنقص صورٌ أو قائمة أو تأكيد"
             type="button"
             onClick={() => onMove('waiting')}
           >
-            <span className="material-symbols-outlined text-[18px]">hourglass_top</span>
+            <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
+            ينقصه شيء
           </button>
         )}
       </div>

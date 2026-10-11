@@ -70,7 +70,8 @@ export default async function scenario(page) {
   ok('المعلّقة في «ينتظر الزبون» بلا يد', waiting.some((t) => t.includes('علي حسن كاظم')));
   ok('والمسودة في «عليك أن تكمله»', yours.some((t) => t.includes('زينب علي')));
   // د٢ (قرار المالك): المسودّات لا تُعدّ في رقم السكّة — المعلّقة وحدها هنا (ولا طلبات).
-  const badge = await page.eval(`return Number(document.querySelector('[data-dest="work"] [data-badge]')?.innerText ?? 0);`);
+  // والعدد بالرقم الهندي كبقيّة الواجهة (البند ١٩).
+  const badge = await page.eval(`return Number((document.querySelector('[data-dest="work"] [data-badge]')?.innerText ?? '0').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)));`);
   ok(`والسكّة تعدّ المعلّقة على «قيد العمل» لا المسودّة (${badge})`, badge === 1);
 
   // ── د٢: المسودّة تُحذف بسؤالها ───────────────────────────────────

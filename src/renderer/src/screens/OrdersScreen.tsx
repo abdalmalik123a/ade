@@ -181,7 +181,15 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
               <div className="flex items-center gap-space-xs" data-orders-summary="">
                 {counts.late > 0 && <span className={`px-3 py-1 rounded-full font-label-md text-label-md font-semibold ${TONE.late}`}>متأخّر {toIndic(counts.late)}</span>}
                 {counts.today > 0 && <span className={`px-3 py-1 rounded-full font-label-md text-label-md font-semibold ${TONE.today}`}>اليوم {toIndic(counts.today)}</span>}
-                <span className={`px-3 py-1 rounded-full font-label-md text-label-md ${TONE.later}`}>مفتوح {toIndic(counts.open + drafts.length + parked.length)}</span>
+                {/* «مفتوح» ما تعدّه شارة السكّة نفسه: الطلبات والمعلّقات — والمسودّات بجانبه لا فيه (قرار المالك د٢؛ البند ١٩). */}
+                <span className={`px-3 py-1 rounded-full font-label-md text-label-md ${TONE.later}`} data-open-count={counts.open + parked.length} title="الطلبات المفتوحة والمعاملات المعلّقة — العدد على «قيد العمل» في السكّة">
+                  مفتوح {toIndic(counts.open + parked.length)}
+                </span>
+                {drafts.length > 0 && (
+                  <span className={`px-3 py-1 rounded-full font-label-md text-label-md ${TONE.later}`} data-draft-count={drafts.length} title="المسودّات تُكمَل من هنا — ولا تُعدّ في السكّة">
+                    {count(drafts.length, 'مسودة')}
+                  </span>
+                )}
               </div>
             )}
           </div>

@@ -1333,7 +1333,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج (PhotoPresetsDialog.tsx قوالب المكتب)
     PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة
     AuditScreen.tsx       سجلّ التدقيق وسلامة الأرشيف
-    SettingsScreen.tsx    الإعدادات
+    SettingsScreen.tsx    الإعدادات — وفهرسٌ بأقسامها في أعلاها (البند ٢٠)
     FillCard.tsx          بطاقة التعبئة في نافذتها (mode=fillcard)
     DeskewModal.tsx       تسوية المستمسك وتنظيفه (deskewSteps.ts البكسلات والأركان و«المسح النظيف»)
     IdDuplexDialog.tsx    «استنساخ هوية»: الوجه والظهر بمقاسهما الحقيقي
@@ -1357,6 +1357,8 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     BackupCreate.tsx      «خذ نسخة احتياطية» بكلمةٍ اختيارية — في الإعدادات وفي حوار الأرشيف (BackupDialog)
     LicenseCard.tsx       «التفعيل»: رمز الجهاز يُنسخ، ومفتاحٌ يُلصق
     UpdateCard.tsx        «التحديث»: ملفٌّ موقّع يُفحص فيُرى إصداره و«ما الجديد» قبل أن يُثبَّت
+    SettingsPrinters.tsx  الطابعات في الإعدادات: أدوارها ومعايرتها
+    SettingsIndex.tsx     فهرس الإعدادات: أسماء أقسامها من عناوينها، ثابتٌ وهي تُمرَّر (البند ٢٠)
     WhatsNewDialog.tsx    «ما الجديد» مرّةً بعد التحديث، من CHANGELOG.md المحزوم
     AboutDialog.tsx       «عن البرنامج»: الأيقونة والإصدار والمطوّر والشعار على داكن، والإشعارات القانونية
     NotificationsBell.tsx «التنبيهات»: جرسٌ في الشريط العلوي برقم ما ينتظر، وكلّ سطرٍ يقود إلى مكانه
