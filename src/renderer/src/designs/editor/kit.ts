@@ -26,7 +26,12 @@ export type Drag =
   /** التدوير من مقبضه (١٫٦): حول مركز العنصر على الشاشة. */
   | { kind: 'rotate'; id: string; center: { x: number; y: number }; start: { x: number; y: number }; r0: number }
   /** مستطيل التحديد بالفأرة (١٫٦) — من نقطة البدء نِسَبًا، ومع Ctrl يُضاف إلى المحدَّد. */
-  | { kind: 'marquee'; from: { x: number; y: number }; add: string[] };
+  | { kind: 'marquee'; from: { x: number; y: number }; add: string[] }
+  /**
+   * حدٌّ بين عمودين أو صفّين في جدول (البند ٢): أوزانها عند البدء، والحدّ، ومقاس الجدول على الشاشة، وموضع الفأرة،
+   * و`sign` اتّجاه الكسب (في الجدول العربيّ العمود الأوّل يمينًا).
+   */
+  | { kind: 'table'; id: string; axis: 'col' | 'row'; border: number; start: number[]; size: number; from: number; sign: number };
 
 export const textOf = (inlines?: Inline[]): string =>
   Array.isArray(inlines)

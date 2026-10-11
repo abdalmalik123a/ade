@@ -163,7 +163,7 @@ describe('حزمة المحتوى', () => {
 
     const b = office();
     const pack = join(b.dir, 'future.diwanpack');
-    const pkg = { app: 'diwan', kind: 'content', format: 4, appVersion: '9.0.0', createdAt: '2027-01-01T00:00:00Z', letterheads: [], templates: [], clips: [] };
+    const pkg = { app: 'diwan', kind: 'content', format: 5, appVersion: '9.0.0', createdAt: '2027-01-01T00:00:00Z', letterheads: [], templates: [], clips: [] };
     writeFileSync(pack, zipSync({ 'diwan-content.json': new TextEncoder().encode(JSON.stringify(pkg)) }));
     await expect(importContent(pack, b.db, b.store, join(b.dir, 'work'))).rejects.toThrow(/حدّث البرنامج/);
   });

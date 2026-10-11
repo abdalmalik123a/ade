@@ -1,5 +1,8 @@
 /**
  * تخطيط البطاقات: هويّات الطلبة والموظفين وظهرها، وبطاقة الامتحان، والملصق، وكرت العمل.
+ *
+ * وما يُقصّ لا يقترب شيءٌ منه من خطّ القصّ دون ٣ ملم (`SAFE_MM`) — ونصوص الأشرطة في أعلاها وأسفلها كذلك (محادثة «التصاميم»،
+ * البند ١٢)؛ ويحرسه فحص المعرض كلّه (`tests/kitPreflight.test.ts`).
  */
 import type { Layout, TextSlot } from '../types';
 
@@ -9,7 +12,7 @@ export function studentId(): Layout {
   return {
     calm: [0.32, 0.3, 0.64, 0.55],
     images: [
-      { at: [0.852, 0.035, 0.113, 0.18], logo: true, fit: 'contain' },
+      { at: [0.845, 0.06, 0.11, 0.16], logo: true, fit: 'contain' },
       { at: [0.05, 0.315, 0.245, 0.53], ref: 'الصورة', fit: 'cover', radius: 6 }
     ],
     decor: [
@@ -19,13 +22,13 @@ export function studentId(): Layout {
       { t: 'band', at: [0, 0.885, 1, 0.115], edge: 'top' }
     ],
     texts: [
-      { text: '{المدرسة}', at: [0.16, 0.035, 0.67, 0.11], role: 'onBand', size: 9, fit: true },
-      { text: 'هويّة طالب', at: [0.16, 0.14, 0.67, 0.08], role: 'onBandSmall', size: 6.5 },
+      { text: '{المدرسة}', at: [0.16, 0.06, 0.67, 0.1], role: 'onBand', size: 9, fit: true },
+      { text: 'هويّة طالب', at: [0.16, 0.16, 0.67, 0.075], role: 'onBandSmall', size: 6.5 },
       { text: '{الاسم}', at: [0.33, 0.31, 0.62, 0.13], role: 'name', size: 11, align: 'right', fit: true },
       { text: 'الصف: {الصف}', at: [0.33, 0.45, 0.62, 0.095], role: 'body', size: 7.5, align: 'right', fit: true },
       { text: 'الرقم: {الرقم}', at: [0.33, 0.545, 0.62, 0.095], role: 'body', size: 7.5, align: 'right' },
       { text: 'العام الدراسي: {العام الدراسي}', at: [0.33, 0.64, 0.62, 0.095], role: 'body', size: 7.5, align: 'right' },
-      { text: '{العنوان}', at: [0.05, 0.895, 0.9, 0.095], role: 'onBandSmall', size: 5.5, fit: true }
+      { text: '{العنوان}', at: [0.05, 0.888, 0.9, 0.052], role: 'onBandSmall', size: 5.5, fit: true }
     ],
     codes: [{ at: [0.55, 0.745, 0.4, 0.12], ref: 'الرقم' }]
   };
@@ -35,7 +38,7 @@ export function staffId(): Layout {
   return {
     calm: [0.06, 0.68, 0.88, 0.22],
     images: [
-      { at: [0.389, 0.035, 0.222, 0.14], logo: true, fit: 'contain' },
+      { at: [0.389, 0.04, 0.222, 0.135], logo: true, fit: 'contain' },
       { at: [0.29, 0.345, 0.42, 0.33], ref: 'الصورة', fit: 'cover', radius: 6 }
     ],
     decor: [
@@ -49,7 +52,7 @@ export function staffId(): Layout {
       { text: '{الاسم}', at: [0.06, 0.685, 0.88, 0.07], role: 'name', size: 11, fit: true },
       { text: '{العنوان الوظيفي}', at: [0.06, 0.752, 0.88, 0.045], role: 'accent', size: 8, fit: true },
       { text: 'الرقم الوظيفي: {الرقم}', at: [0.06, 0.797, 0.88, 0.04], role: 'body', size: 6.5 },
-      { text: 'صالحة حتى {الصلاحية}', at: [0.06, 0.922, 0.88, 0.07], role: 'onBandSmall', size: 6 }
+      { text: 'صالحة حتى {الصلاحية}', at: [0.06, 0.92, 0.88, 0.04], role: 'onBandSmall', size: 6 }
     ],
     codes: [{ at: [0.2, 0.843, 0.6, 0.06], ref: 'الرقم' }]
   };
@@ -73,7 +76,7 @@ export function idBack(): Layout {
       { t: 'rule', x1: 0.06, x2: 0.4, y: 0.84 }
     ],
     texts: [
-      { text: '{المدرسة}', at: [0.05, 0.03, 0.9, 0.12], role: 'onBand', size: 8, fit: true },
+      { text: '{المدرسة}', at: [0.05, 0.06, 0.9, 0.11], role: 'onBand', size: 8, fit: true },
       line('• هذه الهويّة ملكٌ لـ{المدرسة}، وتُبرز عند الطلب.', 0.24),
       line('• لا تُعار لغير صاحبها، ويُبلَّغ عن فقدانها فورًا.', 0.335),
       line('• من يجدها يُرجى تسليمها إلى المدرسة أو الاتصال بـ{الهاتف}', 0.43),
@@ -96,7 +99,7 @@ export function examCard(): Layout {
       { t: 'panel', at: [0.05, 0.795, 0.9, 0.15] }
     ],
     texts: [
-      { text: '{المديرية}', at: [0.15, 0.025, 0.7, 0.07], role: 'onBandSmall', size: 8, fit: true },
+      { text: '{المديرية}', at: [0.15, 0.032, 0.7, 0.063], role: 'onBandSmall', size: 8, fit: true },
       { text: '{الجهة}', at: [0.15, 0.095, 0.7, 0.085], role: 'onBand', size: 11, fit: true },
       { text: 'البطاقة الامتحانية', at: [0.2, 0.225, 0.6, 0.11], role: 'headline', size: 19 },
       { text: 'الاسم: {الاسم}', at: [0.29, 0.37, 0.66, 0.085], role: 'name', size: 12, align: 'right', fit: true },
@@ -121,7 +124,7 @@ export function label(): Layout {
       { t: 'rule', x1: 0.06, x2: 0.94, y: 0.87 }
     ],
     texts: [
-      { text: '{المدرسة}', at: [0.05, 0.045, 0.9, 0.17], role: 'onBand', size: 8.5, fit: true },
+      { text: '{المدرسة}', at: [0.05, 0.065, 0.9, 0.17], role: 'onBand', size: 8.5, fit: true },
       { text: '{الاسم}', at: [0.06, 0.3, 0.88, 0.19], role: 'name', size: 13, align: 'right', fit: true },
       { text: 'الصف: {الصف}', at: [0.52, 0.52, 0.42, 0.16], role: 'body', size: 9.5, align: 'right', fit: true },
       { text: 'الشعبة: {الشعبة}', at: [0.06, 0.52, 0.42, 0.16], role: 'body', size: 9.5, align: 'right' },

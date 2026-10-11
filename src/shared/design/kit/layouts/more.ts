@@ -42,7 +42,7 @@ export function eventBadge(): Layout {
       { text: '{الاسم}', at: [0.06, 0.67, 0.88, 0.07], role: 'name', size: 12, fit: true },
       { text: '{الصفة}', at: [0.06, 0.74, 0.88, 0.05], role: 'accent', size: 9, fit: true },
       { text: '{الجهة}', at: [0.06, 0.795, 0.88, 0.04], role: 'body', size: 7, fit: true },
-      { text: '{التاريخ}', at: [0.06, 0.915, 0.88, 0.06], role: 'onBandSmall', size: 6.5 }
+      { text: '{التاريخ}', at: [0.06, 0.91, 0.88, 0.05], role: 'onBandSmall', size: 6.5 }
     ],
     codes: [{ at: [0.36, 0.835, 0.28, 0.06], ref: 'الرقم' }]
   };

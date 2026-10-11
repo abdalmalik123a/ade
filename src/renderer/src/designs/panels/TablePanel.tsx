@@ -1,7 +1,20 @@
 /**
- * الجدول المحدَّد: صفوفه وأعمدته، وخطّه وترويسته وتقليمه وألوانه، وعناوين أعمدته ومحاذاتها، ومحتوى خلاياه (أو وسوم حقول).
+ * الجدول المحدَّد: صفوفه وأعمدته، وخطّه وترويسته وتقليمه وألوانه، وعناوين أعمدته ومحاذاتها وعرضها، وارتفاع صفوفه، ومحتوى
+ * خلاياه (أو وسوم حقول). والعرض والارتفاع بالملّم — وكلاهما من الجار فلا يتغيّر صندوق الجدول (البند ٢، `tableSizes.ts`)،
+ * ويُسحبان أيضًا على اللوحة (`TableGrips`).
  */
-import type { TableElement, TableRowStyle } from '@shared/canvas';
+import { useEffect, useState } from 'react';
+import type { Canvas, TableElement, TableRowStyle } from '@shared/canvas';
+import {
+  columnsMm,
+  rowsMm,
+  setColumnMm,
+  setRowMm,
+  withColumnAdded,
+  withColumnRemoved,
+  withRowAdded,
+  withRowRemoved
+} from '@shared/design/tableSizes';
 import { toHexColor } from '../editor/kit';
 import FontSelect from '../../components/FontSelect';
 import { familyOf, stackOf } from '@shared/fonts';
@@ -10,13 +23,48 @@ const SMALL = 'h-7 px-2 rounded bg-surface-container-low hover:bg-surface-contai
 const NUMBER = 'w-14 h-7 px-1 rounded bg-surface-container-lowest border border-outline-variant text-center tabular font-label-xs text-label-xs';
 const COLOR = 'w-7 h-7 rounded border border-outline-variant bg-surface-container-lowest cursor-pointer';
 
-export default function TablePanel({ table, patch }: { table: TableElement; patch: (p: Partial<TableElement>) => void }) {
+/**
+ * رقمٌ بالملّم يُعتمد عند ترك الخانة أو Enter — لا مع كلّ حرف، فلا يُوزَّع «١» قبل «١٢». و`null` «تلقائي»: صفوفٌ بلا ضبطٍ
+ * ارتفاعها ما يرسمه المتصفّح لمحتواها، فلا يُكتب لها رقمٌ لا يطابقها.
+ */
+function MmInput({ value, act, title, onSet }: { value: number | null; act: string; title: string; onSet: (mm: number) => void }) {
+  const shown = value === null ? '' : value.toFixed(1);
+  const [text, setText] = useState(shown);
+  useEffect(() => setText(shown), [shown]);
+  const commit = () => {
+    const mm = Number(text.replace(',', '.'));
+    if (Number.isFinite(mm) && mm > 0 && (value === null || Math.abs(mm - value) >= 0.05)) onSet(mm);
+    else setText(shown);
+  };
+  return (
+    <input
+      className={NUMBER}
+      data-act={act}
+      inputMode="decimal"
+      placeholder="تلقائي"
+      title={title}
+      value={text}
+      onBlur={commit}
+      onChange={(e) => setText(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+    />
+  );
+}
+
+export default function TablePanel({ canvas, table, patch }: { canvas: Pick<Canvas, 'size'>; table: TableElement; patch: (p: Partial<TableElement>) => void }) {
+  const widths = columnsMm(table, canvas);
+  // الصفوف بلا ضبطٍ «تلقائي» — والرقم الأوّل يبدأها متساوية (`setRowMm`).
+  const heights = table.rowHeights ? rowsMm(table, canvas) : null;
+  /** الصفّ الظاهر: العناوين صفّه الأوّل إن ظهرت. */
+  const shown = (row: number) => row + (table.hideHeader ? 0 : 1);
   return (
     <div className="space-y-space-sm pt-2 border-t border-outline-variant/60" data-table-inspector="">
       <div className="flex items-center justify-between">
         <span className="font-label-sm text-label-sm text-on-surface font-semibold">صفوف وأعمدة الجدول</span>
         <div className="flex items-center gap-1">
-          <button className={SMALL} title="إضافة صف جديد" type="button" onClick={() => patch({ rows: [...table.rows, table.columns.map(() => ({ text: '' }))] })}>
+          <button className={SMALL} title="إضافة صف جديد" type="button" onClick={() => patch(withRowAdded(table))}>
             + صف ({table.rows.length})
           </button>
           <button
@@ -24,20 +72,15 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
             title="حذف آخر صف"
             type="button"
             disabled={table.rows.length <= 1}
-            onClick={() => patch({ rows: table.rows.slice(0, -1), ...(table.rowStyles ? { rowStyles: table.rowStyles.slice(0, table.rows.length - 1) } : {}) })}
+            onClick={() => patch(withRowRemoved(table))}
           >
             - صف
           </button>
           <button
             className={SMALL}
-            title="إضافة عمود جديد"
+            title="إضافة عمود جديد — بعرض متوسّط الأعمدة، والبقيّة تفسح له"
             type="button"
-            onClick={() =>
-              patch({
-                columns: [...table.columns, { title: 'عمود', widthPercent: 20, align: 'center' as const }],
-                rows: table.rows.map((r) => [...r, { text: '' }])
-              })
-            }
+            onClick={() => patch(withColumnAdded(table))}
           >
             + عمود ({table.columns.length})
           </button>
@@ -46,7 +89,7 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
             title="حذف آخر عمود"
             type="button"
             disabled={table.columns.length <= 1}
-            onClick={() => patch({ columns: table.columns.slice(0, -1), rows: table.rows.map((r) => r.slice(0, -1)) })}
+            onClick={() => patch(withColumnRemoved(table))}
           >
             - عمود
           </button>
@@ -103,6 +146,23 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
         </label>
       </div>
 
+      {/* العرض والارتفاع (البند ٢): بالملّم من الجار، و«متساوية» تعيدها كما يُرسم الجدول بلا ضبط. */}
+      <div className="flex items-center gap-space-sm flex-wrap font-label-xs text-label-xs text-on-surface-variant">
+        <span>العرض والارتفاع بالملّم — ويُسحب حدّ العمود والصفّ على اللوحة</span>
+        <button className={SMALL} data-act="table-even-cols" type="button" onClick={() => patch({ columns: table.columns.map((c) => ({ ...c, widthPercent: Math.round(10000 / table.columns.length) / 100 })) })}>
+          أعمدة متساوية
+        </button>
+        <button className={`${SMALL} disabled:opacity-40`} data-act="table-even-rows" disabled={!table.rowHeights} type="button" onClick={() => patch({ rowHeights: undefined, headerHeight: undefined })}>
+          صفوف متساوية
+        </button>
+        {!table.hideHeader && (
+          <label className="flex items-center gap-1">
+            صفّ العناوين
+            <MmInput act="table-header-height" title="ارتفاع صفّ العناوين بالملّم" value={heights?.[0] ?? null} onSet={(mm) => patch(setRowMm(table, canvas, 0, mm))} />
+          </label>
+        )}
+      </div>
+
       {/* تعديل عناوين الأعمدة */}
       <div className="space-y-1">
         <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">عناوين الأعمدة:</span>
@@ -133,6 +193,7 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
                 <option value="center">وسط</option>
                 <option value="left">يسار</option>
               </select>
+              <MmInput act={`table-col-width-${idx}`} title="عرض العمود بالملّم — من جاره" value={widths[idx]!} onSet={(mm) => patch(setColumnMm(table, canvas, idx, mm))} />
             </div>
           ))}
         </div>
@@ -145,6 +206,7 @@ export default function TablePanel({ table, patch }: { table: TableElement; patc
           {table.rows.map((row, rIdx) => (
             <div key={rIdx} className="flex items-center gap-1">
               <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{rIdx + 1}</span>
+              <MmInput act={`table-row-height-${rIdx}`} title="ارتفاع الصفّ بالملّم — من جاره" value={heights?.[shown(rIdx)] ?? null} onSet={(mm) => patch(setRowMm(table, canvas, shown(rIdx), mm))} />
               <RowStyle table={table} index={rIdx} patch={patch} />
               {row.map((cell, cIdx) => (
                 <input

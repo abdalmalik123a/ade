@@ -22,6 +22,7 @@ export default function DesignModals({ ed }: { ed: DesignEditor }) {
           cards={ed.items.length}
           duplex={Boolean(ed.effectiveBackDoc)}
           issues={ed.issues}
+          optionsActive={ed.startSlot > 0 || Boolean(ed.pickText.trim()) || Boolean(ed.groupCol) || ed.previewMark}
           options={
             <>
               <PrintOptions

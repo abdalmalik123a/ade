@@ -3,7 +3,8 @@
  */
 import { newUuid } from '../../doc';
 import { escapeHtml } from '../../html';
-import { ptToPx } from '../model/units';
+import { mmToPx, ptToPx } from '../model/units';
+import { rowPixels } from '../tableSizes';
 import { isObj } from '../model/box';
 import type { Box, ImsakiyaSettings, TableCell, TableColumn, TableElement, TableRowStyle } from '../model/types';
 import { cssColor } from '../shapes';
@@ -59,6 +60,13 @@ function normalizeRowStyles(raw: unknown, rows: number): { rowStyles?: (TableRow
   return out.some(Boolean) ? { rowStyles: out } : {};
 }
 
+/** ارتفاع الصفوف (البند ٢) مقوَّمًا: وزنٌ موجبٌ لكلّ صفّ بعدد الصفوف — وإلا فلا أوزان، ووزن العناوين موجب. */
+function normalizeRowHeights(raw: Record<string, unknown>, rows: number): { rowHeights?: number[]; headerHeight?: number } {
+  const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+  const heights = Array.isArray(raw.rowHeights) && raw.rowHeights.length === rows && raw.rowHeights.every(ok) ? { rowHeights: raw.rowHeights as number[] } : {};
+  return { ...heights, ...(heights.rowHeights && ok(raw.headerHeight) ? { headerHeight: raw.headerHeight } : {}) };
+}
+
 /** إعداد الإمساكية (٣٫٤) مقوَّمًا: تاريخٌ صحيح وتقويمٌ معروف — وإلا فليس جدول إمساكية. */
 function normalizeImsakiya(raw: unknown): { imsakiya?: ImsakiyaSettings } {
   if (!isObj(raw) || typeof raw.start !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw.start)) return {};
@@ -110,6 +118,7 @@ export const TABLE_KIND: KindSpec<TableElement> = {
       ...(raw.hideHeader === true ? { hideHeader: true } : {}),
       ...(raw.dense === true ? { dense: true } : {}),
       ...normalizeRowStyles(raw.rowStyles, rows.length || 3),
+      ...normalizeRowHeights(raw, rows.length || 3),
       ...normalizeImsakiya(raw.imsakiya)
     };
   },
@@ -128,6 +137,14 @@ export const TABLE_KIND: KindSpec<TableElement> = {
     const fontFam = el.font ? `font-family:${el.font};` : '';
     // المتقاربة (٣٫٤): حشوٌ أقلّ وسطرٌ أضيق — والعادية كما كانت حرفًا.
     const pad = el.dense ? 'padding:1px 4px;line-height:1.2' : 'padding:4px 6px';
+    // ارتفاع الصفوف إن ضُبط (البند ٢): كلّ صفٍّ بحصّته من ارتفاع الصندوق — والعناوين أوّلًا. وبغيره تتقاسمه كما كانت.
+    const heights = rowPixels(el, el.box.h * mmToPx(canvas.size.h, opts.dpi));
+    const tall = (i: number) => (heights?.[i] !== undefined ? ` style="height:${heights[i]!.toFixed(2)}px"` : '');
+    const headTall = el.hideHeader ? '' : tall(0);
+    const bodyTall = (ri: number) => {
+      const own = heights?.[ri + (el.hideHeader ? 0 : 1)];
+      return own !== undefined ? `height:${own.toFixed(2)}px;` : '';
+    };
 
     const ths = el.columns
       .map(
@@ -149,7 +166,7 @@ export const TABLE_KIND: KindSpec<TableElement> = {
             return `<td style="${cellBorder};${pad};text-align:${align};font-size:${fontSizePx.toFixed(1)}px;${weight}">${escapeHtml(cellValue(cell, values))}</td>`;
           })
           .join('');
-        return `<tr style="${bg}${ink}">${tds}</tr>`;
+        return `<tr style="${bodyTall(ri)}${bg}${ink}">${tds}</tr>`;
       })
       .join('');
 
@@ -158,7 +175,7 @@ export const TABLE_KIND: KindSpec<TableElement> = {
     return (
       `<div dir="${el.dir ?? 'rtl'}" style="${style}">` +
       `<table style="width:100%;height:100%;border-collapse:collapse;table-layout:fixed">` +
-      `${el.hideHeader ? '' : `<thead><tr>${ths}</tr></thead>`}` +
+      `${el.hideHeader ? '' : `<thead><tr${headTall}>${ths}</tr></thead>`}` +
       `<tbody>${trs}</tbody>` +
       `</table></div>`
     );

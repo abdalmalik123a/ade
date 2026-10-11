@@ -4,6 +4,8 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import { clampBox, type Box, type Canvas, type CanvasElement } from '@shared/canvas';
+import { dragShare } from '@shared/shares';
+import { minShare, withRowWeights } from '@shared/design/tableSizes';
 import { expandToGroups, idsInRect, rectFrom, resizeBox, rotationFrom, snapBox, type Edge, type Guide } from '@shared/canvasEdit';
 import type { Drag } from './kit';
 
@@ -55,6 +57,20 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
         const rect = rectFrom(drag.from, at);
         setMarquee(rect);
         setSelection([...new Set([...drag.add, ...expandToGroups(canvas.elements, idsInRect(canvas.elements, rect))])]);
+        return;
+      }
+
+      // حدٌّ في جدول: الجاران يتقاسمان، وصندوق الجدول كما هو (البند ٢).
+      if (drag.kind === 'table') {
+        const el = canvas.elements.find((x) => x.id === drag.id);
+        if (el?.kind !== 'table') return;
+        const moved = (drag.axis === 'col' ? e.clientX : e.clientY) - drag.from;
+        const next = dragShare(drag.start, drag.border, (drag.sign * moved) / drag.size, minShare(drag.start.length));
+        patchElement(
+          drag.id,
+          (drag.axis === 'col' ? { columns: el.columns.map((c, i) => ({ ...c, widthPercent: next[i]! })) } : withRowWeights(el, next)) as Partial<CanvasElement>,
+          false
+        );
         return;
       }
 
@@ -139,6 +155,14 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     dragRef.current = { kind: 'rotate', id: el.id, center: { x: box.left + box.width / 2, y: box.top + box.height / 2 }, start: { x: e.clientX, y: e.clientY }, r0: el.rotate ?? 0 };
   };
 
+  /** ضغطٌ على حدٍّ في جدولٍ محدَّد (`TableGrips`): يبدأ تقاسم العرض أو الارتفاع بين جاريه — والسحبة كلّها قيدٌ واحد. */
+  const startTableDrag = (e: React.MouseEvent, id: string, axis: 'col' | 'row', border: number, start: number[], size: number, sign: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    beforeDrag.current = canvas;
+    dragRef.current = { kind: 'table', id, axis, border, start, size: size || 1, from: axis === 'col' ? e.clientX : e.clientY, sign };
+  };
+
   /** ضغطٌ على الورقة نفسها: يبدأ مستطيل التحديد — ومع Ctrl يضيف إلى المحدَّد. */
   const startMarquee = (e: React.MouseEvent) => {
     const add = e.ctrlKey ? selection : [];
@@ -146,5 +170,5 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     dragRef.current = { kind: 'marquee', from: pointAt(e), add };
   };
 
-  return { sheetRef, guides, marquee, onMove, endDrag, startMove, startResize, startRotate, startMarquee };
+  return { sheetRef, guides, marquee, onMove, endDrag, startMove, startResize, startRotate, startMarquee, startTableDrag };
 }

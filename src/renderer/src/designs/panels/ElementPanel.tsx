@@ -137,7 +137,7 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
         </select>
       )}
 
-      {single.kind === 'table' && <TablePanel table={single} patch={(p) => patchElement(single.id, p)} />}
+      {single.kind === 'table' && <TablePanel canvas={ed.canvas} table={single} patch={(p) => patchElement(single.id, p)} />}
 
       {/* الشفافية لكلّ عنصر (DESIGNS.md ١٫٣) */}
       <label className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">

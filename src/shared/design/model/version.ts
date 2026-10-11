@@ -24,12 +24,18 @@ const STEPS: Record<number, (raw: Raw) => Raw> = {};
  * أدنى صيغةِ حزمةٍ تحمل التصميم كما رُسم (DESIGNS.md ٣٫٥): **١** لما يرسمه كلّ إصدار، و**٢** لما لا يرسمه ما قبل
  * المرحلة ١ — الشكل الحرّ (١٫٢)، والصورة المقصوصة بشكلٍ أو بإطار (١٫١)، والتدرّج والشفافية والخطّ المنقّط (١٫٣)، وأنماط
  * الجدول (١٫٩)، وظلّ النصّ وحدّه وقوسه (١٫١٠)؛ و**٣** لما لا يرسمه ما قبل المرحلة ٣ — الجدول المتقارب وجدول الإمساكية،
- * وتقويم حقول التاريخ (٣٫٤). فالحزمة ترتفع صيغتها بما تحمل وحده، والإصدار الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا أو تدرّجًا صامتًا.
+ * وتقويم حقول التاريخ (٣٫٤)؛ و**٤** لما لا يرسمه ما قبل ١٫٦٫٠ — ارتفاع صفوف الجدول (محادثة «التصاميم»، البند ٢). فالحزمة ترتفع
+ * صيغتها بما تحمل وحده، والإصدار الأقدم يرفضها ويقول «حدّث البرنامج» بدل أن يُسقط موجةً أو إطارًا أو تدرّجًا صامتًا.
  */
 export function designPackLevel(doc: unknown): number {
   if (typeof doc !== 'object' || doc === null) return 1;
   const d = doc as Raw;
   let level = 1;
+  // ارتفاع الصفوف أعلى ما يُعرف — فيُسأل عنه أوّلًا في الوجهين.
+  for (const canvas of [d.canvas, d.backCanvas]) {
+    const elements = typeof canvas === 'object' && canvas !== null ? (canvas as Raw).elements : null;
+    if (Array.isArray(elements) && (elements as Raw[]).some((el) => el?.kind === 'table' && el.rowHeights !== undefined)) return 4;
+  }
   for (const canvas of [d.canvas, d.backCanvas]) {
     if (typeof canvas === 'object' && canvas !== null && (canvas as Raw).calendars !== undefined) return 3;
     const elements = typeof canvas === 'object' && canvas !== null ? (canvas as Raw).elements : null;

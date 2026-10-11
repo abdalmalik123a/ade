@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react';
 import { SCREEN_DPI, mmToPx } from '@shared/canvas';
 import { EDGES } from './kit';
 import { useCanvasPaint } from './useCanvasPaint';
+import TableGrips from './TableGrips';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function Stage({ ed }: { ed: DesignEditor }) {
@@ -131,6 +132,10 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
                         onMouseDown={(e) => ed.startResize(e, el, edge)}
                       />
                     ))}
+                  {/* حدود الجدول تُسحب (البند ٢) — للجدول المحدَّد وحده، وغير المدار: المقابض على محاورها. */}
+                  {on && !el.locked && single?.id === el.id && el.kind === 'table' && !el.rotate && (
+                    <TableGrips el={el} html={html} onStart={(e, axis, border, start, size, sign) => ed.startTableDrag(e, el.id, axis, border, start, size, sign)} />
+                  )}
                   {on && !el.locked && single?.id === el.id && (
                     <div
                       className="absolute w-3 h-3 rounded-full bg-surface border-2 border-primary cursor-grab"

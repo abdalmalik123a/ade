@@ -3,6 +3,10 @@
  *
  * هي علامات الطباعة نفسها (`renderPlan`) مصغّرةً — لا رسمٌ ثانٍ يشبهها — فما
  * يُرى هنا هو ما يُرسَل. والأسماء تُقاس بعد الرسم فتصغر الطويلة كما تصغر هناك.
+ *
+ * واللوح بترتيب الحاجة (محادثة «التصاميم»، البند ١٤): الفحص ظاهرٌ والتحذيرات أوّله، وخيارات الورق — لما يقع أحيانًا (ورقةٌ
+ * استُعمل بعضها، وبطاقةٌ تلفت، ورزمٌ مفروزة، وPDF معاينةٍ للزبون) — مطويّةٌ تحت اسمها، وتنفتح وحدها إن كان فيها خيارٌ مفعّل.
+ * وكانت كلّها في لوحٍ واحد كثيف.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { fitCanvasText } from '@shared/design/fit';
@@ -45,7 +49,8 @@ export default function SheetsPreview({
   onPrint,
   onPdf,
   issues = [],
-  options
+  options,
+  optionsActive = false
 }: {
   pages: string[];
   sheet: { w: number; h: number };
@@ -62,6 +67,8 @@ export default function SheetsPreview({
   issues?: PreflightIssue[];
   /** خيارات الطباعة تُعرض في اللوح الجانبي (البدء من خانة، والفواصل…). */
   options?: ReactNode;
+  /** في الخيارات ما فُعِّل — فتنفتح ولا يُخفى ما يغيّر الأوراق. */
+  optionsActive?: boolean;
 }) {
   const [at, setAt] = useState(0);
   const stage = useRef<HTMLDivElement>(null);
@@ -92,7 +99,12 @@ export default function SheetsPreview({
     });
   }, [at, pages]);
 
-  const all = [...issues, ...measured];
+  // التحذيرات أوّلًا — ما يُفسد الورقة قبل ما يحسن أن يُعرف.
+  const all = [...issues, ...measured].sort((a, b) => Number(b.level === 'warn') - Number(a.level === 'warn'));
+  const [optionsOpen, setOptionsOpen] = useState(optionsActive);
+  useEffect(() => {
+    if (optionsActive) setOptionsOpen(true);
+  }, [optionsActive]);
 
   // خيارات الورق تُنقص الأوراق — فلا تبقى المعاينة على ورقةٍ لم تعد موجودة.
   useEffect(() => {
@@ -154,7 +166,7 @@ export default function SheetsPreview({
       <div className="flex-1 min-h-0 flex">
       <aside className="w-80 shrink-0 overflow-y-auto bg-surface-container-lowest border-l border-outline-variant p-space-md flex flex-col gap-space-md" data-preflight="">
         <section className="flex flex-col gap-space-xs">
-          <div className="flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface font-semibold">
+          <div className="flex items-center gap-1.5 font-label-lg text-label-lg text-on-surface font-semibold" title="الفاحص يُنبّه ولا يمنع — والقياس بالخطّ الحقيقي للورقة المعروضة">
             <span className={`material-symbols-outlined text-[20px] ${all.some((i) => i.level === 'warn') ? 'text-error' : 'text-secondary'}`}>
               {all.length ? 'report' : 'verified'}
             </span>
@@ -177,11 +189,23 @@ export default function SheetsPreview({
               ))}
             </ul>
           )}
-          <span className="font-label-sm text-label-sm text-on-surface-variant">
-            الفاحص يُنبّه ولا يمنع — والقياس بالخطّ الحقيقي للورقة المعروضة.
-          </span>
         </section>
-        {options}
+        {options && (
+          <details
+            className="rounded-xl border border-outline-variant/70 open:pb-space-sm"
+            data-options-box={optionsOpen ? 'open' : 'closed'}
+            open={optionsOpen}
+            onToggle={(e) => setOptionsOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
+            <summary className="px-space-sm py-space-xs cursor-pointer flex flex-col gap-0.5">
+              <span className="font-label-lg text-label-lg text-on-surface font-semibold">خيارات الورق</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">
+                لورقةٍ استُعمل بعضها، أو بطاقةٍ تلفت فتُعاد، أو رزمٍ مفروزة، أو PDF معاينةٍ للزبون
+              </span>
+            </summary>
+            <div className="px-space-sm pt-space-xs flex flex-col gap-space-md">{options}</div>
+          </details>
+        )}
       </aside>
       <div ref={stage} className="flex-1 min-h-0 flex items-center justify-center gap-space-lg">
         <button className={nav} disabled={at === 0} title="السابقة" type="button" onClick={() => setAt((i) => i - 1)}>

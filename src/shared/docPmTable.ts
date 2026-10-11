@@ -11,6 +11,7 @@
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Command, EditorState, Transaction } from 'prosemirror-state';
 import { CellSelection, TableMap, addColumn, isInTable, mergeCells, removeColumn, selectedRect } from 'prosemirror-tables';
+import { dragShare } from './shares';
 
 type Rect = ReturnType<typeof selectedRect>;
 
@@ -106,21 +107,9 @@ export const MIN_COLUMN_SHARE = 0.04;
 /**
  * سحب الحدّ بين عمودين بالفأرة كما في Word (البند ١): الحدّ `border` بين العمود `border - 1` والعمود `border`، و`gain` ما يكسبه
  * الأوّل من عرض الجدول كلّه (٠٫١ = عُشره) ويخسره جاره — فلا يتغيّر عرض الجدول ولا سائر أعمدته. ولا يضيق أحدهما عن الحدّ.
+ * والحساب نفسه لجدول التصاميم (`shared/shares.ts`).
  */
-export function dragColumnBorder(weights: number[], border: number, gain: number): number[] {
-  if (border <= 0 || border >= weights.length) return weights;
-  const total = weights.reduce((a, b) => a + b, 0);
-  const a = weights[border - 1]!;
-  const b = weights[border]!;
-  const min = total * MIN_COLUMN_SHARE;
-  const lo = Math.min(0, min - a);
-  const hi = Math.max(0, b - min);
-  const delta = Math.min(hi, Math.max(lo, gain * total));
-  const out = [...weights];
-  out[border - 1] = Math.round((a + delta) * 100) / 100;
-  out[border] = Math.round((a + b - out[border - 1]!) * 100) / 100;
-  return out;
-}
+export const dragColumnBorder = (weights: number[], border: number, gain: number): number[] => dragShare(weights, border, gain, MIN_COLUMN_SHARE);
 
 /** أوزان الجدول الذي في `pos` — خطوةً واحدة يتراجع عنها Ctrl+Z (نهاية السحب). */
 export const setTableColumns =
