@@ -8,9 +8,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { strToU8, unzipSync, zipSync } from 'fflate';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { docxToDoc } from '../src/main/services/docxDoc';
 import { blocksToPm, cssSizeToPx, docSchema, firstFontFamily, pmBlocks } from '../src/shared/docPm';
+import { cssColor } from '../src/shared/docPmMarks';
+import { docToDocx } from '../src/main/services/docDocx';
 import { renderDocHtml } from '../src/shared/docHtml';
 import { emptyDoc, fieldRef, paragraph, run, walkBlocks, type Block, type Inline } from '../src/shared/doc';
 
@@ -64,7 +66,10 @@ function everything(): Block[] {
         fieldRef('الاسم'),
         run(' المحترم', { bold: true, underline: true }),
         { kind: 'break' },
-        run('مائلٌ بخطٍّ آخر', { italic: true, font: 'Simplified Arabic', size: 18 })
+        run('مائلٌ بخطٍّ آخر', { italic: true, font: 'Simplified Arabic', size: 18 }),
+        run('مشطوبٌ ملوّن', { strike: true, color: '#c00000' }),
+        run('2', { script: 'sup' }),
+        run('أسفل', { script: 'sub', bold: true })
       ],
       { align: 'justify', indent: 20, spaceAfter: 6, size: 16, lineHeight: 1.5 }
     ),
@@ -205,7 +210,56 @@ describe('قراءة أنماط اللصق', () => {
     expect(firstFontFamily('serif')).toBeNull();
   });
 
-  it('العلامات الخمس في المخطّط', () => {
-    expect(Object.keys(docSchema.marks)).toEqual(['bold', 'italic', 'underline', 'size', 'font']);
+  it('العلامات في المخطّط: الخمس الأولى، ثم الشطب وأعلى السطر وأسفله واللون (البند ٣)', () => {
+    expect(Object.keys(docSchema.marks)).toEqual(['bold', 'italic', 'underline', 'size', 'font', 'strike', 'sup', 'sub', 'color']);
+  });
+
+  it('واللون من Word والمتصفّح بصيغةٍ واحدة — والأسود تلقائيّ، والفاتح الذي يختفي على الورقة البيضاء لا يُقرأ', () => {
+    expect(cssColor('#C00000')).toBe('#c00000');
+    expect(cssColor('#f00')).toBe('#ff0000');
+    expect(cssColor('rgb(0, 112, 192)')).toBe('#0070c0');
+    expect(cssColor('red')).toBe('#ff0000');
+    expect(cssColor('navy')).toBe('#000080');
+    for (const v of ['black', 'windowtext', '#000', 'rgb(51, 51, 51)', 'white', 'rgb(223, 227, 225)', 'rgba(255, 0, 0, 0)', 'inherit', 'currentcolor']) {
+      expect(cssColor(v), v).toBeNull();
+    }
+  });
+
+  it('وأعلى السطر وأسفله لا يجتمعان — كما في Word', () => {
+    const { sup, sub } = docSchema.marks;
+    expect(sup!.excludes(sub!)).toBe(true);
+    expect(sub!.excludes(sup!)).toBe(true);
+  });
+});
+
+describe('الشطب وأعلى السطر وأسفله واللون (محادثة «محرّر الكتاب»، البند ٣)', () => {
+  const doc = () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('مشطوب', { strike: true }), run('م'), run('2', { script: 'sup' }), run('H'), run('2', { script: 'sub' }), run('O أحمر', { color: '#ff0000' })])];
+    return d;
+  };
+
+  it('تُطبع كما تُرى', () => {
+    const html = renderDocHtml(doc());
+    expect(html).toContain('<s>مشطوب</s>');
+    expect(html).toContain('<sup>2</sup>');
+    expect(html).toContain('<sub>2</sub>');
+    expect(html).toContain('<span style="color:#ff0000">O أحمر</span>');
+  });
+
+  it('ولونٌ بغير صيغته أو أعلى سطرٍ بغير اسمه لا يدخل الورقة ولا المحرّر', () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('نصّ', { color: 'red;background:url(x)', script: 'top' as never })])];
+    expect(renderDocHtml(d)).not.toContain('background');
+    expect(pmBlocks(blocksToPm(d.blocks))).toMatchObject([{ inlines: [{ kind: 'run', text: 'نصّ' }] }]);
+    expect((pmBlocks(blocksToPm(d.blocks))[0] as { inlines: { marks?: unknown }[] }).inlines[0]!.marks).toBeUndefined();
+  });
+
+  it('وتخرج إلى Word بخصائصه', async () => {
+    const x = strFromU8(unzipSync(new Uint8Array(await docToDocx(doc(), { title: 'تجربة', blanks: true })))['word/document.xml']!);
+    expect(x).toContain('<w:strike/>');
+    expect(x).toContain('<w:vertAlign w:val="superscript"/>');
+    expect(x).toContain('<w:vertAlign w:val="subscript"/>');
+    expect(x).toMatch(/<w:color w:val="ff0000"\/>/i);
   });
 });

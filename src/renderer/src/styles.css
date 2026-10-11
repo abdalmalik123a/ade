@@ -195,13 +195,24 @@ table th {
   margin: 0;
   min-height: 1lh;
 }
-.pm-page ul {
-  list-style: disc;
-  padding-inline-start: 1.5em;
-}
+/* القوائم بعلامتها كما تُطبع («أ)» و«١-» و«أولًا:» — `marker` في docHtml، البند ٣): زخرفةٌ على الفقرة الأولى لكلّ عنصر
+   (`data-marker`، editorPlugins.ts) لا ترقيم المتصفّح «1.»، والفرع بإزاحة الورقة نفسها. */
+.pm-page ul,
 .pm-page ol {
-  list-style: decimal;
-  padding-inline-start: 1.5em;
+  list-style: none;
+  margin: 0;
+  padding-inline-start: 0;
+}
+.pm-page li {
+  margin: 2px 0;
+}
+.pm-page li > ul,
+.pm-page li > ol {
+  padding-inline-start: 18px;
+}
+.pm-page p[data-marker]::before {
+  content: attr(data-marker) ' ';
+  font-weight: 700;
 }
 .pm-page .pm-table {
   width: 100%;
@@ -216,6 +227,11 @@ table th {
 /* صفّ العناوين عريضٌ كما تطبعه الورقة (`th` في docHtml). */
 .pm-page .pm-header tr:first-child td {
   font-weight: 700;
+}
+/* الفأرة على الحدّ بين عمودين: سهما سحبٍ كما في Word (البند ١، editorPlugins.ts). */
+.pm-page.pm-col-resize,
+.pm-page.pm-col-resize * {
+  cursor: col-resize !important;
 }
 .pm-page .pm-noborder td {
   border-color: transparent;

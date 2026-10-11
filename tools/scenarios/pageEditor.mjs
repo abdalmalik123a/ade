@@ -296,7 +296,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وفاصل الصفحة يزيدها صفحة', total === flowed + 1);
   ok('وما بعد الفاصل في أعلى ورقته', (await outside()) === 0);
   if (shotsDir) await page.shot(join(shotsDir, 'page-editor-pages.png'));
-  ok('وقائمة «قبل الإصدار» تقول العدد نفسه', (await page.text()).includes(`الكتاب في ${total} صفحات`));
+  // والعدد بأداة العدّ وأرقامها الهندية (UI.md ٣): «الكتاب في ٣ صفحات».
+  ok('وقائمة «قبل الإصدار» تقول العدد نفسه', (await page.text()).includes(`الكتاب في ${String(total).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d])} صفحات`));
 
   // ── PDF من محرّك الطباعة: عدد صفحاته عدد صفحات الشاشة ─────────────
   const saveDir = process.env.DIWAN_TEST_SAVE_DIR;

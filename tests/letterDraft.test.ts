@@ -81,7 +81,7 @@ describe('قائمة التحقّق قبل الإصدار', () => {
     expect(checks.some((c) => c.level === 'block')).toBe(false);
     const warn = checks.filter((c) => c.level === 'warn').map((c) => c.text).join(' | ');
     expect(warn).toContain('م /');
-    expect(warn).toContain('إملائيًّا');
+    expect(warn).toContain('الإملاء: تنبيهان');
     expect(warn).toContain('40٪');
     const info = checks.filter((c) => c.level === 'info').map((c) => c.text).join(' | ');
     expect(info).toContain('فراغًا منقوطًا');

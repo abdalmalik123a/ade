@@ -12,6 +12,7 @@ import { formatGregorian } from './dates';
 import { normalizeLayout, type LetterheadLayout } from './letterhead';
 import { legacyFieldMeta } from './template';
 import { isChoiceKey } from './gender';
+import { count, countIn } from './arabic';
 
 export type Registry = { number: string; dateGreg: string; dateHijri: string };
 export const NO_REGISTRY: Registry = { number: '', dateGreg: '', dateHijri: '' };
@@ -140,8 +141,8 @@ export type Check = {
   /** `block` يمنع الإصدار، و`warn` يُقال ولا يمنع، و`info` معلومة. */
   level: 'block' | 'warn' | 'info';
   text: string;
-  /** زرٌّ يصلحه — الإملاء يفتح لوحته، والجنس يُختار في مكانه. */
-  act?: 'spelling' | 'gender';
+  /** زرٌّ يصلحه — الإملاء يفتح لوحته، والجنس يُختار في مكانه، والاسم يؤخذ ممّا كُتب في الكتاب (البند ٩). */
+  act?: 'spelling' | 'gender' | 'owner';
 };
 
 /**
@@ -184,7 +185,7 @@ export function letterChecks(input: {
 }): Check[] {
   const { doc, values } = input;
   const checks: Check[] = [];
-  if (!input.owner.trim()) checks.push({ level: 'block', text: 'اسم صاحب العلاقة — يُقيَّد به الكتاب في الأرشيف' });
+  if (!input.owner.trim()) checks.push({ level: 'block', text: 'اسم صاحب العلاقة — يُقيَّد به الكتاب في الأرشيف', act: 'owner' });
   if (!docText(doc).trim()) checks.push({ level: 'block', text: 'الورقة فارغة — لا يصدر كتابٌ بلا متن' });
   for (const f of missingRequired(doc, values)) {
     if (!isChoiceKey(f.key)) checks.push({ level: 'block', text: `«${f.label}» إلزاميٌّ وفارغ` });
@@ -200,9 +201,9 @@ export function letterChecks(input: {
   const text = docText(doc, values);
   if (!/^\s*(م|الموضوع)\s*[/:]/m.test(text)) checks.push({ level: 'warn', text: 'لا سطر «م /» — أهو كتابٌ بلا موضوع؟' });
   if (lacksSigner(text)) checks.push({ level: 'warn', text: 'لا اسم موقّعٍ بعد الخاتمة — من يوقّع الكتاب؟' });
-  if (input.spelling > 0) checks.push({ level: 'warn', text: `${input.spelling} تنبيهًا إملائيًّا في نصّ الكتاب`, act: 'spelling' });
+  if (input.spelling > 0) checks.push({ level: 'warn', text: `الإملاء: ${count(input.spelling, 'تنبيه')} في نصّ الكتاب`, act: 'spelling' });
   const empty = doc.fields.filter((f) => !f.required && !isChoiceKey(f.key) && !values[f.key]?.trim());
-  if (empty.length) checks.push({ level: 'info', text: `${empty.length} حقلًا فارغًا يُطبع فراغًا منقوطًا يُملأ باليد` });
+  if (empty.length) checks.push({ level: 'info', text: `${count(empty.length, 'حقل')} بلا قيمة — الفارغ يُطبع فراغًا منقوطًا يُملأ باليد` });
   if (input.registryPrinted && !input.number.trim()) checks.push({ level: 'info', text: 'العدد فارغ — يُطبع فراغًا تكتبه الجهة' });
   if (input.headRatio !== null) {
     const pct = Math.round(input.headRatio * 100);
@@ -212,9 +213,6 @@ export function letterChecks(input: {
         : { level: 'info', text: `الترويسة تشغل ${pct}٪ من الورقة` }
     );
   }
-  if (input.pages !== null && input.pages > 1) {
-    const n = input.pages;
-    checks.push({ level: 'info', text: `الكتاب في ${n === 2 ? 'صفحتين' : n <= 10 ? `${n} صفحات` : `${n} صفحة`}` });
-  }
+  if (input.pages !== null && input.pages > 1) checks.push({ level: 'info', text: `الكتاب في ${countIn(input.pages, 'صفحة')}` });
   return checks;
 }

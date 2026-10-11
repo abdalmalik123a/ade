@@ -31,6 +31,7 @@ import {
 } from 'docx';
 import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock } from '@shared/doc';
 import { marker } from '@shared/docHtml';
+import { isHexColor } from '@shared/docPmMarks';
 import { defaultAlign, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
 import { imageMeta } from './imageSize';
 import { toIndic } from '@shared/arabic';
@@ -105,6 +106,11 @@ function runs(inlines: Inline[], rtl: boolean, ctx: Ctx, sizePx?: number, bold?:
       italics: n.marks?.italic,
       italicsComplexScript: n.marks?.italic,
       underline: n.marks?.underline ? {} : undefined,
+      // والشطب وأعلى السطر وأسفله واللون كما على الورقة (البند ٣).
+      strike: n.marks?.strike,
+      superScript: n.marks?.script === 'sup',
+      subScript: n.marks?.script === 'sub',
+      color: n.marks && isHexColor(n.marks.color) ? n.marks.color.slice(1) : undefined,
       size: size ? halfPoints(size) : undefined,
       // الخطّ للعربية واللاتينية معًا: Word يرسم العربية بخطّ «النصوص المعقّدة».
       font: font ? { ascii: font, hAnsi: font, cs: font } : undefined

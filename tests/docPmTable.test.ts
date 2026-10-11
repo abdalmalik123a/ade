@@ -12,9 +12,11 @@ import { makeTable } from '../src/shared/docEdit';
 import {
   addColumnKeepWidths,
   deleteColumnKeepWidths,
+  dragColumnBorder,
   mergeCellsInRow,
   resizeColumnBy,
   selectionSpansRows,
+  setTableColumns,
   tableState,
   toggleHeaderRow,
   toggleTableBorders
@@ -148,5 +150,33 @@ describe('الحدود وصفّ العناوين', () => {
     for (const cmd of [mergeCellsInRow, addColumnKeepWidths('after'), deleteColumnKeepWidths, resizeColumnBy(0.5), toggleTableBorders, toggleHeaderRow]) {
       expect(cmd(plain)).toBe(false);
     }
+  });
+});
+
+describe('سحب حدّ العمود بالفأرة (محادثة «محرّر الكتاب»، البند ١)', () => {
+  it('العمود يكسب ما يخسره جاره — وعرض الجدول وسائر أعمدته كما هي', () => {
+    expect(dragColumnBorder([1, 1, 1], 1, 0.1)).toEqual([1.3, 0.7, 1]);
+    expect(dragColumnBorder([2, 1, 1], 2, 0.125)).toEqual([2, 1.5, 0.5]);
+    const w = dragColumnBorder([1, 3, 1], 2, 0.05);
+    expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(5, 5);
+    expect(w[0]).toBe(1);
+  });
+
+  it('ولا يضيق عمودٌ عن ٤٪ من الجدول — فلا يختفي تحت حدّه', () => {
+    expect(dragColumnBorder([1, 1, 1], 2, -1)).toEqual([1, 0.12, 1.88]);
+    expect(dragColumnBorder([1, 1, 1], 1, 5)).toEqual([1.88, 0.12, 1]);
+  });
+
+  it('وحدّا الجدول الخارجيّان لا يُسحبان', () => {
+    const w = [1, 2, 1];
+    expect(dragColumnBorder(w, 0, 0.2)).toBe(w);
+    expect(dragColumnBorder(w, 3, 0.2)).toBe(w);
+  });
+
+  it('ونهاية السحب خطوةٌ واحدة تحفظها الوثيقة — ولا تقع على غير جدول', () => {
+    const s = editor([1, 1, 1]);
+    const next = run(s, setTableColumns(0, [1.3, 0.7, 1]));
+    expect(saved(next!).columns).toEqual([1.3, 0.7, 1]);
+    expect(run(s, setTableColumns(2, [1, 1, 1]))).toBeNull();
   });
 });

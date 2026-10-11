@@ -270,7 +270,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       say(
         `حُفظت ${count(out.templates, 'بطاقة')}` +
           (out.letterheadId ? ' وترويسة واحدة للجميع' : '') +
-          (out.skipped ? ` — وتُركت ${out.skipped}` : '') +
+          (out.skipped ? ` — وتُركت ${count(out.skipped, 'بطاقة')}` : '') +
           (left.length ? ` · ولم يُنقل من المجلّد: ${left.join(' · ')}` : ''),
         'ok',
         left.length > 0

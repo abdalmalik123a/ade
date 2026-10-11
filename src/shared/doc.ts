@@ -116,10 +116,10 @@ export function isDateField(f: DocField): boolean {
 // ── ما داخل الفقرة ───────────────────────────────────────────────────
 
 /**
- * تنسيق المقطع. والمائل والخطّ من المرحلة ١ لخطّة الترقية (المحرّر يساوي Word): الخطّ اسمُ
- * عائلةٍ كما يعرفه Windows («Simplified Arabic»)، والغائب خطّ الورقة.
+ * تنسيق المقطع. والمائل والخطّ من المرحلة ١ لخطّة الترقية، والخطّ اسمُ عائلةٍ كما يعرفه Windows والغائب خطّ الورقة؛ والشطب
+ * وأعلى السطر وأسفله (`script`) واللون (`#rrggbb`، والغائب أسود) من البند ٣ — ليساوي المحرّر Word (`docPmMarks.ts`).
  */
-export type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; size?: number; font?: string };
+export type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; size?: number; font?: string; strike?: boolean; script?: 'sup' | 'sub'; color?: string };
 
 export type InlineRun = { kind: 'run'; text: string; marks?: Marks };
 /** عقدة الحقل: تشير بمفتاحه، فلا تُكسر بالمسح ولا تُنسخ خطأً. */

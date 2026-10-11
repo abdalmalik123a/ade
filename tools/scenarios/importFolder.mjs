@@ -97,7 +97,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(2500);
 
   text = await page.text();
-  ok('أكّد الحفظ وقال ما تُرك', text.includes('حُفظت بطاقة واحدة') && text.includes('وتُركت 2'));
+  ok('أكّد الحفظ وقال ما تُرك', text.includes('حُفظت بطاقة واحدة') && text.includes('وتُركت بطاقتان'));
   ok('وقال في النتيجة ما لم يُنقل من المجلّد (هـ١)', text.includes('ولم يُنقل من المجلّد') && text.includes('2 ملفّ Word بصيغةٍ قديمة'));
   await wait(3500);
   ok('ورسالته باقيةٌ بعد ثلاث ثوانٍ حتى تُغلق', (await page.text()).includes('ولم يُنقل من المجلّد'));

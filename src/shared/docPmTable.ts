@@ -15,7 +15,7 @@ import { CellSelection, TableMap, addColumn, isInTable, mergeCells, removeColumn
 type Rect = ReturnType<typeof selectedRect>;
 
 /** أوزان الجدول كما يحفظها — وإلا متساويةً بعرضه (جدولٌ لُصق من Word بلا أوزان). */
-function weightsOf(table: PMNode, width: number): number[] {
+export function weightsOf(table: PMNode, width: number): number[] {
   const cols = table.attrs.columns as number[] | null;
   return Array.isArray(cols) && cols.length === width ? [...cols] : Array<number>(width).fill(1);
 }
@@ -97,6 +97,37 @@ export const resizeColumnBy =
       weights[at] = next;
       dispatch(setTableAttrs(state.tr, tablePos(rect), { columns: weights }));
     }
+    return true;
+  };
+
+/** أضيق ما يصير إليه عمودٌ بالسحب: ٤٪ من عرض الجدول (نحو ٧ ملم في متن A4) — فلا يختفي عمودٌ تحت حدّه. */
+export const MIN_COLUMN_SHARE = 0.04;
+
+/**
+ * سحب الحدّ بين عمودين بالفأرة كما في Word (البند ١): الحدّ `border` بين العمود `border - 1` والعمود `border`، و`gain` ما يكسبه
+ * الأوّل من عرض الجدول كلّه (٠٫١ = عُشره) ويخسره جاره — فلا يتغيّر عرض الجدول ولا سائر أعمدته. ولا يضيق أحدهما عن الحدّ.
+ */
+export function dragColumnBorder(weights: number[], border: number, gain: number): number[] {
+  if (border <= 0 || border >= weights.length) return weights;
+  const total = weights.reduce((a, b) => a + b, 0);
+  const a = weights[border - 1]!;
+  const b = weights[border]!;
+  const min = total * MIN_COLUMN_SHARE;
+  const lo = Math.min(0, min - a);
+  const hi = Math.max(0, b - min);
+  const delta = Math.min(hi, Math.max(lo, gain * total));
+  const out = [...weights];
+  out[border - 1] = Math.round((a + delta) * 100) / 100;
+  out[border] = Math.round((a + b - out[border - 1]!) * 100) / 100;
+  return out;
+}
+
+/** أوزان الجدول الذي في `pos` — خطوةً واحدة يتراجع عنها Ctrl+Z (نهاية السحب). */
+export const setTableColumns =
+  (pos: number, columns: number[]): Command =>
+  (state, dispatch) => {
+    if (state.doc.nodeAt(pos)?.type.spec.tableRole !== 'table') return false;
+    if (dispatch) dispatch(setTableAttrs(state.tr, pos, { columns }));
     return true;
   };
 

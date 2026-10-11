@@ -19,7 +19,7 @@ import 'prosemirror-gapcursor/style/gapcursor.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Node as PMNode, MarkType } from 'prosemirror-model';
 import { AllSelection, EditorState, NodeSelection, Plugin, TextSelection, type Command, type Transaction } from 'prosemirror-state';
-import { Decoration, DecorationSet, EditorView, type NodeView } from 'prosemirror-view';
+import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, chainCommands, selectAll, splitBlockAs, toggleMark } from 'prosemirror-commands';
 import { history, redo, undo, undoDepth } from 'prosemirror-history';
@@ -35,7 +35,8 @@ import {
   toggleHeaderRow,
   toggleTableBorders
 } from '@shared/docPmTable';
-import { liftListItem, sinkListItem, splitListItem, wrapInList } from 'prosemirror-schema-list';
+import { liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list';
+import { listStyleAt, setListStyle, toggleList } from '@shared/docPmList';
 import { blocksToPm, docSchema, pmBlocks } from '@shared/docPm';
 import {
   MARGIN_PRESETS,
@@ -50,11 +51,12 @@ import {
   type Block,
   type Doc,
   type DocField,
+  type ListStyle,
   type MarginPreset,
   type PageSetup,
   type PageSize
 } from '@shared/doc';
-import { watermarkHtml } from '@shared/docHtml';
+import { marker, watermarkHtml } from '@shared/docHtml';
 import { fieldFromText, makeTable } from '@shared/docEdit';
 import { HEAD_MAX, findSheetHead } from '@shared/sheetHead';
 import { WORD_SIZES_PT, ptToPx, pxToPt } from '@shared/fontSize';
@@ -69,6 +71,9 @@ import {
   type MenuClip
 } from './editorKit';
 import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
+import { ColumnsView, FieldView, GroupView, ImageView, SpacerView, TableView, pageBreakView } from './pageViews';
+import { listMarkersKey, listMarkersPlugin, tableResizing } from './editorPlugins';
+import ColorTool from './ColorTool';
 import FieldHints from './FieldHints';
 import FontSelect from './FontSelect';
 import { fontsIn } from '../lib/fonts';
@@ -129,6 +134,8 @@ const M = S.marks as Record<string, MarkType>;
 
 /** تباعد الأسطر كما في Word: مفرد، و١٫١٥، ونصف، ومزدوج. */
 const LINE_HEIGHTS = [1, 1.15, 1.5, 2, 2.5];
+/** أشكال الترقيم كما في Word (البند ٣): النقطيّ والرقميّ والحروف «أ)» والترتيبيّ «أولًا:» واللاتينيّ «a)». */
+const LIST_STYLES: ListStyle[] = ['bullet', 'number', 'arabicLetter', 'ordinal', 'latinLetter'];
 /** الفجوة بين ورقتين على الشاشة. */
 const SHEET_GAP = 24;
 
@@ -209,22 +216,6 @@ const clearMarks: Command = (state, dispatch) => {
 
 /** Enter: الفقرة تنشطر، والجديدة ترث تنسيقها كما في Word — بمعرّفٍ جديد. */
 const splitParagraph = splitBlockAs((node) => ({ type: node.type, attrs: { ...node.attrs, id: null } }));
-
-/** القائمة: تُلفّ الفقرات فيها، أو تُفكّ إن كانت فيها بالنمط نفسه. */
-const toggleList =
-  (style: 'bullet' | 'number'): Command =>
-  (state, dispatch, view) => {
-    const { $from } = state.selection;
-    for (let d = $from.depth; d > 0; d--) {
-      const n = $from.node(d);
-      if (n.type === N.list) {
-        if ((n.attrs.styles as string[])[0] === style) return liftListItem(N.list_item)(state, dispatch, view);
-        if (dispatch) dispatch(state.tr.setNodeMarkup($from.before(d), undefined, { ...n.attrs, styles: [style] }));
-        return true;
-      }
-    }
-    return wrapInList(N.list, { id: null, styles: [style] })(state, dispatch, view);
-  };
 
 const markActive = (state: EditorState, type: MarkType): boolean => {
   const { from, to, empty, $from } = state.selection;
@@ -322,280 +313,6 @@ const caretAfterPaste = new Plugin({
     return tr.setSelection(TextSelection.create(tr.doc, end + 1));
   }
 });
-
-// ── عرض العقد ───────────────────────────────────────────────────────────
-
-const FIELD_CHIP =
-  'px-1.5 py-0.5 mx-0.5 rounded-md bg-amber-500/15 text-amber-950 border border-amber-500/40 font-semibold font-label-sm text-label-sm shadow-xs';
-const FIELD_FILLED = 'px-0.5 rounded bg-secondary-fixed/60 text-on-surface font-semibold';
-
-class FieldView implements NodeView {
-  dom: HTMLElement;
-  constructor(
-    private node: PMNode,
-    private labelOf: (key: string) => string
-  ) {
-    this.dom = document.createElement('span');
-    this.dom.contentEditable = 'false';
-    this.render();
-  }
-  private render() {
-    const ref = this.node.attrs.ref as string;
-    const shown = this.labelOf(ref);
-    this.dom.dataset.field = ref;
-    if (shown.startsWith('=')) {
-      this.dom.className = FIELD_FILLED;
-      this.dom.textContent = shown.slice(1);
-      this.dom.dataset.filled = '';
-    } else {
-      this.dom.className = FIELD_CHIP;
-      this.dom.textContent = `[ ${shown} ]`;
-      delete this.dom.dataset.filled;
-    }
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  selectNode() {
-    this.dom.classList.add('ring-2', 'ring-secondary');
-  }
-  deselectNode() {
-    this.dom.classList.remove('ring-2', 'ring-secondary');
-  }
-  ignoreMutation() {
-    return true;
-  }
-}
-
-function button(icon: string, title: string, onClick: () => void, danger = false): HTMLButtonElement {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.title = title;
-  b.className = `w-7 h-7 rounded flex items-center justify-center ${danger ? 'text-error hover:bg-error-container' : 'text-on-surface-variant hover:bg-surface-container-high'}`;
-  b.innerHTML = `<span class="material-symbols-outlined text-[16px]">${icon}</span>`;
-  b.addEventListener('mousedown', (e) => e.preventDefault());
-  b.addEventListener('click', (e) => {
-    e.preventDefault();
-    onClick();
-  });
-  return b;
-}
-
-/** الصورة والشعار: حجمٌ ومحاذاة وحذف — كما في المحرّر الأوّل. */
-class ImageView implements NodeView {
-  dom: HTMLElement;
-  private img: HTMLImageElement;
-  constructor(
-    private node: PMNode,
-    private view: EditorView,
-    private getPos: () => number | undefined
-  ) {
-    this.dom = document.createElement('div');
-    this.dom.className = 'group/img relative';
-    this.img = document.createElement('img');
-    this.img.alt = '';
-    this.img.style.display = 'inline-block';
-    this.img.style.maxWidth = '100%';
-    const bar = document.createElement('div');
-    bar.className =
-      'absolute top-1 right-1 hidden group-hover/img:flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-container-lowest shadow border border-outline-variant/50';
-    bar.contentEditable = 'false';
-    const set = (patch: Record<string, unknown>) => {
-      const pos = this.getPos();
-      if (pos == null) return;
-      this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, ...patch }));
-    };
-    const width = (w: number) => {
-      const next = Math.min(800, Math.max(20, w));
-      const a = this.node.attrs;
-      set({ width: next, ...(a.height ? { height: Math.max(1, Math.round(((a.height as number) * next) / (a.width as number))) } : {}) });
-    };
-    bar.append(
-      button('remove', 'أصغر', () => width((this.node.attrs.width as number) - 20)),
-      button('add', 'أكبر', () => width((this.node.attrs.width as number) + 20)),
-      button('format_align_right', 'يمين', () => set({ align: 'right' })),
-      button('format_align_center', 'وسط', () => set({ align: 'center' })),
-      button('format_align_left', 'يسار', () => set({ align: 'left' })),
-      button(
-        'delete',
-        'حذف',
-        () => {
-          const pos = this.getPos();
-          if (pos != null) this.view.dispatch(this.view.state.tr.delete(pos, pos + this.node.nodeSize));
-        },
-        true
-      )
-    );
-    this.dom.append(this.img, bar);
-    this.render();
-  }
-  private render() {
-    const a = this.node.attrs;
-    this.dom.style.textAlign = a.align === 'justify' ? 'center' : (a.align as string);
-    this.img.src = a.src ? `diwan://store/${a.src as string}` : '';
-    this.img.style.width = `${a.width as number}px`;
-    this.img.style.height = a.height ? `${a.height as number}px` : '';
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  stopEvent(e: Event) {
-    return (e.target as HTMLElement).closest('button') !== null;
-  }
-  ignoreMutation() {
-    return true;
-  }
-}
-
-/** المسافة ومساحة الإجابة — ارتفاعها كما يُطبع، وزرّ السطور. */
-class SpacerView implements NodeView {
-  dom: HTMLElement;
-  private label: HTMLElement;
-  constructor(
-    private node: PMNode,
-    private view: EditorView,
-    private getPos: () => number | undefined
-  ) {
-    this.dom = document.createElement('div');
-    this.dom.className =
-      'rounded border border-dashed border-outline-variant flex items-center justify-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant';
-    this.label = document.createElement('span');
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'h-6 px-2 rounded bg-surface-container-low hover:bg-surface-container-high';
-    toggle.addEventListener('mousedown', (e) => e.preventDefault());
-    toggle.addEventListener('click', () => {
-      const pos = this.getPos();
-      if (pos != null) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, lines: !this.node.attrs.lines }));
-    });
-    this.dom.append(this.label, toggle);
-    this.render();
-  }
-  private render() {
-    const a = this.node.attrs;
-    this.dom.style.height = `${Math.max(28, a.height as number)}px`;
-    this.label.textContent = `${a.lines ? 'مساحة إجابة' : 'مسافة'} ${a.height as number}px`;
-    (this.dom.lastChild as HTMLElement).textContent = a.lines ? 'بلا سطور' : 'بسطور';
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  stopEvent(e: Event) {
-    return (e.target as HTMLElement).closest('button') !== null;
-  }
-  ignoreMutation() {
-    return true;
-  }
-}
-
-function pageBreakView(): NodeView {
-  const dom = document.createElement('div');
-  dom.className = 'my-space-xs border-t-2 border-dashed border-secondary text-center';
-  dom.dataset.pageBreak = '';
-  dom.innerHTML = '<span class="px-2 -mt-2 inline-block bg-surface-container-lowest font-label-sm text-label-sm text-secondary">فاصل صفحة</span>';
-  return { dom, ignoreMutation: () => true };
-}
-
-/** الجدول بأوزان أعمدته كما يُطبع، وبلا حدودٍ إن كان رأسًا مخفيّ الخطوط. */
-class TableView implements NodeView {
-  dom: HTMLTableElement;
-  contentDOM: HTMLElement;
-  private colgroup: HTMLElement;
-  constructor(private node: PMNode) {
-    this.dom = document.createElement('table');
-    this.colgroup = document.createElement('colgroup');
-    this.contentDOM = document.createElement('tbody');
-    this.dom.append(this.colgroup, this.contentDOM);
-    this.render();
-  }
-  private render() {
-    const cols = (this.node.attrs.columns as number[] | null) ?? [];
-    const total = cols.reduce((a, b) => a + b, 0) || 1;
-    this.colgroup.innerHTML = cols.map((w) => `<col style="width:${((w / total) * 100).toFixed(2)}%">`).join('');
-    // صفّ العناوين عريضٌ كما يطبعه `docHtml` (رأسٌ `th`) — وكان يُطبع عريضًا ولا يُرى في المحرّر.
-    this.dom.className = ['pm-table', this.node.attrs.borders === false && 'pm-noborder', this.node.attrs.header && 'pm-header']
-      .filter(Boolean)
-      .join(' ');
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  ignoreMutation(m: { type: string; target: Node }) {
-    return m.type === 'attributes' || this.colgroup.contains(m.target);
-  }
-}
-
-/** عمودان جنبًا إلى جنب بأوزانهما — يُكتب في كلٍّ منهما. */
-class ColumnsView implements NodeView {
-  dom: HTMLElement;
-  contentDOM: HTMLElement;
-  constructor(private node: PMNode) {
-    this.dom = document.createElement('div');
-    this.dom.className = 'pm-columns grid';
-    this.contentDOM = this.dom;
-    this.render();
-  }
-  /** الأوزان شبكةٌ على عنصر الصفّ نفسه — لا أنماطٌ على أعمدةٍ يملك المحرّرُ عناصرها فيقرؤها تغييرًا. */
-  private render() {
-    this.dom.style.gap = `${(this.node.attrs.gap as number | null) ?? 16}px`;
-    const widths = (this.node.attrs.widths as number[] | null) ?? [];
-    const n = this.node.childCount || 1;
-    this.dom.style.gridTemplateColumns = Array.from({ length: n }, (_, i) => `minmax(0, ${widths[i] ?? 1}fr)`).join(' ');
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  // سمات العمودين (الفجوة والأوزان) يضعها العرض نفسه: لو قُرئت تغييرًا من الكاتب لأعاد المحرّر
-  // قراءة الصفّ كلّه — فتدخل خطوةٌ وهمية التراجعَ، وتلتصق بالخانة علامةُ حجمٍ لم يضعها أحد.
-  ignoreMutation(m: { type: string; target: Node }) {
-    return m.type === 'attributes';
-  }
-}
-
-/** المجموعة الشرطية أو المتكرّرة: إطارٌ يقول شرطها، ويُكتب فيها. */
-class GroupView implements NodeView {
-  dom: HTMLElement;
-  contentDOM: HTMLElement;
-  private tag: HTMLElement;
-  constructor(private node: PMNode) {
-    this.dom = document.createElement('div');
-    this.dom.className = 'relative rounded border border-dashed border-secondary/50 px-1 pt-3 my-1';
-    this.tag = document.createElement('span');
-    this.tag.contentEditable = 'false';
-    this.tag.className = 'absolute -top-2 right-2 px-1.5 rounded bg-surface-container-lowest font-label-sm text-label-sm text-secondary';
-    this.contentDOM = document.createElement('div');
-    this.dom.append(this.tag, this.contentDOM);
-    this.render();
-  }
-  private render() {
-    const on = this.node.attrs.on as string;
-    this.tag.textContent = this.node.attrs.mode === 'repeat' ? `يتكرّر لكلّ: ${on}` : `يظهر إن وُجد: ${on}`;
-  }
-  update(node: PMNode) {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
-  }
-  ignoreMutation(m: { type: string; target: Node }) {
-    return m.type === 'attributes' || this.tag.contains(m.target);
-  }
-}
 
 // ── المحرّر ─────────────────────────────────────────────────────────────
 
@@ -760,7 +477,9 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
           keys,
           keymap(baseKeymap),
           gapCursor(),
+          tableResizing(),
           tableEditing(),
+          listMarkersPlugin(() => docRef.current.pageSetup.numerals),
           uniqueIds,
           placeholder,
           caretAfterPaste,
@@ -817,6 +536,11 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     () => JSON.stringify([doc.fields.map((f) => [f.key, f.label]), shownValues ?? {}]),
     [doc.fields, shownValues]
   );
+  // وأرقام الورقة (هندية أو عربية) تُعيد رسم علامات القوائم كما تُطبع — والمتن لم يتغيّر.
+  useEffect(() => {
+    const view = viewRef.current;
+    if (view) view.dispatch(view.state.tr.setMeta(listMarkersKey, true).setMeta('addToHistory', false));
+  }, [doc.pageSetup.numerals]);
   // والعلامات الحمراء تُرسم حين يُجرَّب الاسم الآخر وتُمحى حين يُترك.
   useEffect(() => {
     const view = viewRef.current;
@@ -981,6 +705,8 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const curAlign = state ? (paragraphValue(state, 'align') as Align | undefined) : undefined;
   const curLh = state ? (paragraphValue(state, 'lineHeight') as number | null | undefined) : undefined;
   const curIndent = state ? paragraphValue(state, 'indent') : undefined;
+  const curList = state ? listStyleAt(state) : null;
+  const listLabel = (s: ListStyle) => [0, 1, 2].map((i) => marker(s, i, doc.pageSetup.numerals)).join(' ');
   /** الجدول الذي فيه المؤشّر — حدوده وصفّ عناوينه، وهل التحديد يعبر صفوفه. */
   const table = state ? tableState(state) : null;
   const selChars = state && !state.selection.empty ? state.doc.textBetween(state.selection.from, state.selection.to, ' ').length : 0;
@@ -1028,6 +754,11 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             <Tool act="bold" icon="format_bold" title="عريض (Ctrl+B)" active={state ? markActive(state, M.bold) : false} onRun={() => run_(toggleMark(M.bold))} />
             <Tool act="italic" icon="format_italic" title="مائل (Ctrl+I)" active={state ? markActive(state, M.italic) : false} onRun={() => run_(toggleMark(M.italic))} />
             <Tool act="underline" icon="format_underlined" title="تحته خطّ (Ctrl+U)" active={state ? markActive(state, M.underline) : false} onRun={() => run_(toggleMark(M.underline))} />
+            {/* وما كان ينقص عن Word (البند ٣): الشطب، وأعلى السطر وأسفله (لا يجتمعان)، ولون النصّ — بلا اختصاراتٍ جديدة. */}
+            <Tool act="strike" icon="format_strikethrough" title="يتوسّطه خطّ" active={state ? markActive(state, M.strike) : false} onRun={() => run_(toggleMark(M.strike))} />
+            <Tool act="sup" icon="superscript" title="أعلى السطر" active={state ? markActive(state, M.sup) : false} onRun={() => run_(toggleMark(M.sup))} />
+            <Tool act="sub" icon="subscript" title="أسفل السطر" active={state ? markActive(state, M.sub) : false} onRun={() => run_(toggleMark(M.sub))} />
+            <ColorTool value={state ? (markValue(state, M.color, 'hex') as string | null) : null} onPick={(hex) => run_(setValueMark(M.color, hex ? { hex } : null))} />
             <ToolSep />
             {(
               [
@@ -1061,8 +792,23 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
               active={Boolean(curIndent)}
               onRun={() => run_(setParagraphAttr('indent', curIndent ? null : OFFICIAL_INDENT_MM))}
             />
-            <Tool act="bullets" icon="format_list_bulleted" title="تعداد نقطي" onRun={() => run_(toggleList('bullet'))} />
-            <Tool act="numbers" icon="format_list_numbered" title="ترقيم" onRun={() => run_(toggleList('number'))} />
+            <Tool act="bullets" icon="format_list_bulleted" title="تعداد نقطي" active={curList === 'bullet'} onRun={() => run_(toggleList('bullet'))} />
+            <Tool act="numbers" icon="format_list_numbered" title="ترقيم" active={curList === 'number'} onRun={() => run_(toggleList('number'))} />
+            <select
+              aria-label="شكل الترقيم"
+              className="h-8 w-24 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface"
+              data-act="list-style"
+              title="شكل الترقيم — كما يُطبع، ولمستوى القائمة الذي فيه المؤشّر"
+              value={curList ?? ''}
+              onChange={(e) => e.target.value && run_(setListStyle(e.target.value as ListStyle))}
+            >
+              <option value="">شكل الترقيم</option>
+              {[...LIST_STYLES, ...(curList && !LIST_STYLES.includes(curList) ? [curList] : [])].map((s) => (
+                <option key={s} value={s}>
+                  {listLabel(s)}
+                </option>
+              ))}
+            </select>
             <ToolSep />
             <button
               className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-primary transition-all shadow-xs"

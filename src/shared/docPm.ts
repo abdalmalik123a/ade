@@ -10,7 +10,8 @@
  * المحرّر: كلّ كتلةٍ عقدة، وكلّ حقلٍ عقدةٌ ذرّية لا تُكسر بنصف مسح، ومعرّفات الكتل
  * والحقول تعبر كما هي. والذهاب والإياب لا يفقدان شيئًا (`tests/docPm.test.ts`).
  */
-import { Schema, type Mark, type Node as PMNode, type NodeSpec, type MarkSpec } from 'prosemirror-model';
+import { Schema, type Node as PMNode, type NodeSpec } from 'prosemirror-model';
+import { cssSizeToPx, marks, marksFrom, marksOf } from './docPmMarks';
 import {
   newUuid,
   type Align,
@@ -30,22 +31,8 @@ import {
 
 // ── قراءة الأنماط من HTML ملصوق (Word والمتصفّح) ─────────────────────────
 
-/** حجمٌ مكتوبٌ في CSS إلى بكسل: Word يكتب `14.0pt`، والمتصفّح `18.6667px`. */
-export function cssSizeToPx(value: string): number | null {
-  const m = /^\s*([\d.]+)\s*(px|pt)?\s*$/i.exec(value);
-  if (!m) return null;
-  const n = Number(m[1]);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  const px = (m[2] ?? 'px').toLowerCase() === 'pt' ? (n * 4) / 3 : n;
-  return Math.round(px * 10) / 10;
-}
-
-/** أوّل خطٍّ في القائمة بلا علامات اقتباس — `"Simplified Arabic",serif` ← Simplified Arabic. */
-export function firstFontFamily(value: string): string | null {
-  const first = value.split(',')[0]?.trim().replace(/^["']|["']$/g, '').trim();
-  if (!first || /^(serif|sans-serif|monospace|inherit|initial)$/i.test(first)) return null;
-  return first;
-}
+/** وقارئا الحجم والخطّ مع علاماتهما في `docPmMarks.ts` — ويُصدَّران من هنا كما كانا. */
+export { cssSizeToPx, firstFontFamily } from './docPmMarks';
 
 /**
  * ما يقرؤه المخطّط من عنصر HTML ملصوق — بنيةً لا نوعَ المتصفّح، فالملف يُبنى أيضًا مع
@@ -291,88 +278,16 @@ const nodes: Record<string, NodeSpec> = {
   }
 };
 
-const marks: Record<string, MarkSpec> = {
-  bold: {
-    parseDOM: [
-      { tag: 'strong' },
-      { tag: 'b', getAttrs: (el) => (dom(el).style.fontWeight !== 'normal' ? null : false) },
-      { style: 'font-weight', getAttrs: (v) => (/^(bold(er)?|[6-9]\d\d)$/.test(v as string) ? null : false) }
-    ],
-    toDOM: () => ['strong', 0]
-  },
-  italic: {
-    parseDOM: [{ tag: 'i' }, { tag: 'em' }, { style: 'font-style=italic' }],
-    toDOM: () => ['em', 0]
-  },
-  underline: {
-    parseDOM: [
-      { tag: 'u' },
-      { style: 'text-decoration', getAttrs: (v) => (/underline/.test(v as string) ? null : false) },
-      { style: 'text-decoration-line', getAttrs: (v) => (/underline/.test(v as string) ? null : false) }
-    ],
-    toDOM: () => ['u', 0]
-  },
-  size: {
-    attrs: { px: {} },
-    parseDOM: [
-      {
-        style: 'font-size',
-        getAttrs: (v) => {
-          const px = cssSizeToPx(v as string);
-          return px ? { px } : false;
-        }
-      }
-    ],
-    toDOM: (mark) => ['span', { style: `font-size:${mark.attrs.px}px`, 'data-size': String(mark.attrs.px) }, 0]
-  },
-  font: {
-    attrs: { family: {} },
-    parseDOM: [
-      {
-        style: 'font-family',
-        getAttrs: (v) => {
-          const family = firstFontFamily(v as string);
-          return family ? { family } : false;
-        }
-      }
-    ],
-    toDOM: (mark) => ['span', { style: `font-family:'${mark.attrs.family}'`, 'data-font': mark.attrs.family }, 0]
-  }
-};
-
 export const docSchema = new Schema({ nodes, marks });
 const S = docSchema;
 
 // ── Doc ← → ProseMirror ─────────────────────────────────────────────────
 
-function marksOf(m: Marks | undefined): Mark[] {
-  if (!m) return [];
-  const out: Mark[] = [];
-  if (m.bold) out.push(S.marks.bold!.create());
-  if (m.italic) out.push(S.marks.italic!.create());
-  if (m.underline) out.push(S.marks.underline!.create());
-  if (m.size) out.push(S.marks.size!.create({ px: m.size }));
-  if (m.font) out.push(S.marks.font!.create({ family: m.font }));
-  return out;
-}
-
-function marksFrom(list: readonly Mark[]): Marks | undefined {
-  const out: Marks = {};
-  for (const mk of list) {
-    if (mk.type.name === 'bold') out.bold = true;
-    else if (mk.type.name === 'italic') out.italic = true;
-    else if (mk.type.name === 'underline') out.underline = true;
-    else if (mk.type.name === 'size') out.size = mk.attrs.px as number;
-    else if (mk.type.name === 'font') out.font = mk.attrs.family as string;
-  }
-  return Object.keys(out).length ? out : undefined;
-}
-
 export function inlinesToPm(inlines: Inline[]): PMNode[] {
   const out: PMNode[] = [];
   for (const i of inlines) {
     if (i.kind === 'run') {
-      if (i.text) out.push(S.text(i.text, marksOf(i.marks)));
+      if (i.text) out.push(S.text(i.text, marksOf(i.marks, S)));
     } else if (i.kind === 'field') {
       out.push(S.nodes.field!.create({ ref: i.ref, id: i.id }));
     } else {
