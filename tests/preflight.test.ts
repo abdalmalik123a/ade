@@ -37,7 +37,7 @@ describe('فاحص ما قبل الطباعة', () => {
       { 'اسم الطالب': 'زينب', 'صورة الطالب': 'photos/a.png' },
       { 'اسم الطالب': '', 'صورة الطالب': '' }
     ]);
-    expect(issues.map((i) => i.text)).toEqual(['١ من ٢ بطاقات بلا «اسم الطالب»', '١ بطاقة بلا صورة في «صورة الطالب»']);
+    expect(issues.map((i) => i.text)).toEqual(['بطاقة واحدة بلا «اسم الطالب» (من ٢)', 'بطاقة واحدة بلا صورة في «صورة الطالب»']);
   });
 
   it('دقّة الصورة في موضعها، وتُجمع الضبابية بعنصرها', () => {
@@ -78,14 +78,14 @@ describe('فحص الدفعة كلّها (DESIGNS.md ٣٫٢)', () => {
     expect(designPreflight(c, [short]).some((i) => i.text.includes('كثيفٌ'))).toBe(false);
     const issue = designPreflight(c, [short, dense]).find((i) => i.text.includes('كثيفٌ'));
     expect(issue?.level).toBe('warn');
-    expect(issue?.text).toContain('في ١ بطاقة');
+    expect(issue?.text).toContain('في بطاقة واحدة');
     expect(designPreflight(c, [{ ...short, الرابط: 'z'.repeat(5000) }]).some((i) => i.text.includes('أطول من أن يحمله'))).toBe(true);
   });
 
   it('والصور التي لم تُفتح تُجمع بعنصرها', () => {
     expect(missingPhotoIssues(['صورة الطالب', 'صورة الطالب', 'الشعار'])).toEqual([
-      { level: 'warn', text: '٢ صور في «صورة الطالب» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة' },
-      { level: 'warn', text: '١ صورة في «الشعار» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة' }
+      { level: 'warn', text: 'صورتان في «صورة الطالب» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة' },
+      { level: 'warn', text: 'صورة واحدة في «الشعار» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة' }
     ]);
   });
 });

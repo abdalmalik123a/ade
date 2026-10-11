@@ -549,7 +549,7 @@ export default function LetterheadDesigner({
             {(
               [
                 { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
-                { value: 'printed', label: 'مطبوعان', hint: 'من سجل الصادر' }
+                { value: 'printed', label: 'مطبوعان', hint: 'من الصادر' }
               ] as const
             ).map((c) => (
               <button

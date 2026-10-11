@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { CENTER, sourceRect } from '@shared/photoSheet';
+import { useEscape } from '../kit/useEscape';
 
 export default function CameraCapture({
   title,
@@ -28,6 +29,7 @@ export default function CameraCapture({
   onCapture: (dataUrl: string) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const video = useRef<HTMLVideoElement | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);

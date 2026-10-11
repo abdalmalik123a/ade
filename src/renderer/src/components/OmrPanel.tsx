@@ -15,7 +15,7 @@ import { CHOICE_LETTERS, gradeOmr, omrCapacity, omrSheetHtml, parseKey, readOmr,
 import type { PixelData } from '@shared/deskew';
 import { itemAnalysis, itemNote } from '@shared/examAnalysis';
 import { choosePrinter } from '../lib/printChoice';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 
 type Result = { name: string; id: string; answers: number[]; grade: OmrGrade } | { name: string; error: string };
 
@@ -76,7 +76,7 @@ export default function OmrPanel({
         page: { w: 210, h: 297 },
         duplex: false
       });
-      onSay(out.ok ? `أُرسلت ${toIndic(out.sent)} ورقة إجابة إلى الطابعة` : out.reason || 'لم تتم الطباعة', out.ok ? 'ok' : 'warn');
+      onSay(out.ok ? `أُرسلت أوراق الإجابة إلى الطابعة: ${count(out.sent, 'ورقة')}` : out.reason || 'لم تتم الطباعة', out.ok ? 'ok' : 'warn');
     } finally {
       setBusy(false);
     }
@@ -232,7 +232,7 @@ export default function OmrPanel({
             return (
               <details className="mt-space-xs" data-item-analysis="" open={stats.some((s) => s.flags.includes('key?'))}>
                 <summary className="cursor-pointer font-label-md text-label-md text-on-surface font-semibold">
-                  تحليل الأسئلة ({toIndic(graded.length)} ورقة)
+                  تحليل الأسئلة ({count(graded.length, 'ورقة')})
                   {stats.some((s) => s.flags.includes('key?')) ? ' — في المفتاح ما يُراجَع' : ''}
                 </summary>
                 <table className="w-full font-label-sm text-label-sm mt-1">

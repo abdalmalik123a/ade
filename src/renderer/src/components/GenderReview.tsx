@@ -7,6 +7,8 @@
  */
 import { useState } from 'react';
 import { guessGender, type Gender, type LearnedGenders } from '@shared/gender';
+import { useEscape } from '../kit/useEscape';
+import { count } from '@shared/arabic';
 
 export default function GenderReview({
   names,
@@ -19,6 +21,7 @@ export default function GenderReview({
   onDone: (decisions: Record<string, Gender>) => void;
   onCancel: () => void;
 }) {
+  useEscape(onCancel);
   const [picked, setPicked] = useState<Record<string, Gender>>({});
   const left = names.filter((n) => !picked[n]).length;
 
@@ -28,7 +31,7 @@ export default function GenderReview({
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">قبل الطباعة: ذكرٌ أم أنثى؟</h2>
           <p className="font-label-md text-label-md text-on-surface-variant">
-            {names.length} اسمًا لا يُعرف جنسه من الاسم وحده — والورقة تطبع «الطالب» أو «الطالبة» بحسبه. ويُحفظ جوابك فلا
+            {count(names.length, 'اسم')} لا يُعرف جنسه من الاسم وحده — والورقة تطبع «الطالب» أو «الطالبة» بحسبه. ويُحفظ جوابك فلا
             يُسأل عنه ثانيةً.
           </p>
         </div>

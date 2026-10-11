@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BUILTIN_CLIPARTS, type ClipartItem } from '@shared/clipart';
 import type { LibraryElement } from '@shared/design/elements';
 import { BUNDLED_ELEMENTS, type BundledElement } from '@shared/assets/elements';
+import { useEscape } from '../kit/useEscape';
 
 export type ClipartModalProps = {
   isOpen: boolean;
@@ -28,6 +29,7 @@ const CATEGORIES = [
 ] as const;
 
 export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElement, onSelectVector }: ClipartModalProps) {
+  useEscape(onClose, isOpen);
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
   const [search, setSearch] = useState('');
   const [office, setOffice] = useState<LibraryElement[]>([]);

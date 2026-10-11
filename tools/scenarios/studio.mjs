@@ -104,7 +104,7 @@ export default async function scenario(page) {
   await page.eval(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return true;`);
   await wait(600);
   const photos = await page.eval(`return document.querySelector('[data-batch-photos]')?.innerText ?? '';`);
-  ok('وطوبقت الصور الثلاث بأصحابها في الدفعة', photos.includes('٣ صورة من ٣'));
+  ok('وطوبقت الصور الثلاث بأصحابها في الدفعة', photos.includes('طوبقت الصور: ٣ من ٣'));
   ok('وتظهر في البطاقة', (await page.eval(`return document.querySelector('[data-design]')?.innerHTML ?? '';`)).includes('diwan://store/photos/'));
 
   return steps.join('\n');

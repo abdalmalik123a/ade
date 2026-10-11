@@ -10,6 +10,7 @@ import LayerFieldsReview from '../LayerFieldsReview';
 import CitizenMultiPicker from '../../components/CitizenMultiPicker';
 import GenderReview from '../../components/GenderReview';
 import type { DesignEditor } from './useDesignEditor';
+import { count } from '@shared/arabic';
 
 export default function DesignModals({ ed }: { ed: DesignEditor }) {
   const { doc, imageKeys, say, canvas, unsureBatch } = ed;
@@ -52,7 +53,7 @@ export default function DesignModals({ ed }: { ed: DesignEditor }) {
       {ed.registryOpen && (
         <CitizenMultiPicker
           confirmLabel="اجعلهم قائمة الدفعة"
-          title="هويّات الموظفين من السجل — اختر أصحابها"
+          title="هويّات الموظفين من الزبائن — اختر أصحابها"
           onClose={() => ed.setRegistryOpen(false)}
           onPick={(ids) => {
             ed.setRegistryOpen(false);
@@ -67,7 +68,7 @@ export default function DesignModals({ ed }: { ed: DesignEditor }) {
               ed.setBatchPhotos(records.filter((r) => r.photoPath).map((r) => ({ name: r.fullName, src: r.photoPath! })));
               ed.setBatchKey((k) => k + 1);
               const noPhoto = records.filter((r) => !r.photoPath).length;
-              say(`${records.length} موظفًا من السجل${noPhoto && imageKeys.length ? ` — ${noPhoto} بلا صورة: التقطها في الاستوديو` : ''}`);
+              say(`${count(records.length, 'موظف')} من الزبائن${noPhoto && imageKeys.length ? ` — ${noPhoto} بلا صورة: التقطها في الاستوديو` : ''}`);
             })();
           }}
         />

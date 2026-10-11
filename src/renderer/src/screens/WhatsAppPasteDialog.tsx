@@ -7,6 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import { parseWhatsAppMessage, type ExtractedCitizen } from '@shared/whatsappParser';
+import { useEscape } from '../kit/useEscape';
 
 type Props = {
   isOpen: boolean;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props) {
+  useEscape(onClose, isOpen);
   const [rawText, setRawText] = useState('');
   const [clipNote, setClipNote] = useState<string | null>(null);
 

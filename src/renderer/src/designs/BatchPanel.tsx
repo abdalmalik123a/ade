@@ -10,6 +10,7 @@ import { errorText } from '../lib/errors';
 import type { DocField } from '@shared/doc';
 import { matchPhotos, nameKeyOf, parseRows, type BatchMap, type Photo } from '@shared/design/batch';
 import { sheetCount, type Imposition } from '@shared/design/imposition';
+import { count } from '@shared/arabic';
 import CameraStudio from './CameraStudio';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
@@ -121,7 +122,7 @@ export default function BatchPanel({
             onClick={onFromRegistry}
           >
             <span className="material-symbols-outlined text-[16px]">badge</span>
-            من السجل
+            من الزبائن
           </button>
         )}
       </div>
@@ -142,8 +143,8 @@ export default function BatchPanel({
       {parsed.rows.length > 0 && (
         <div className="space-y-space-xs">
           <p className="font-label-md text-label-md text-on-surface" data-batch-summary="">
-            <b className="tabular">{toIndic(parsed.rows.length)}</b> اسمًا ←{' '}
-            <b className="tabular">{toIndic(sheetCount(imp, parsed.rows.length))}</b> ورقة
+            <b className="tabular">{count(parsed.rows.length, 'اسم')}</b> ←{' '}
+            <b className="tabular">{count(sheetCount(imp, parsed.rows.length), 'ورقة')}</b>
             {!imp.single && <span className="text-on-surface-variant"> ({toIndic(imp.per)} في الورقة)</span>}
           </p>
           <div className="flex flex-wrap gap-1">
@@ -224,7 +225,7 @@ export default function BatchPanel({
               className={`font-label-sm text-label-sm ${matched.unmatched.length ? 'text-error' : 'text-secondary'}`}
               data-batch-photos=""
             >
-              طوبقت {toIndic(matched.matched)} صورة من {toIndic(parsed.rows.length)}
+              طوبقت الصور: {toIndic(matched.matched)} من {toIndic(parsed.rows.length)}
               {matched.unmatched.length > 0 &&
                 ` — بلا صورة: ${matched.unmatched.slice(0, 5).join('، ')}${matched.unmatched.length > 5 ? '…' : ''}`}
             </p>

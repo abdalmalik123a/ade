@@ -114,7 +114,7 @@ describe('٣. الباركود: الأرقام الهندية تُرمَّز، �
     const issues = designPreflight(canvas, [{ الرقم: 'رقم5' }, { الرقم: '١٢٣' }, { الرقم: 'A-77' }]);
     const bar = issues.find((i) => i.text.includes('الباركود لا يحمل الحروف العربية'));
     expect(bar?.level).toBe('warn');
-    expect(bar?.text).toContain('١ بطاقة');
+    expect(bar?.text).toContain('بطاقة واحدة');
     expect(bar?.text).toContain('رقم5');
     expect(designPreflight(canvas, [{ الرقم: '١٢٣' }]).some((i) => i.text.includes('الباركود'))).toBe(false);
   });

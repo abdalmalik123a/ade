@@ -13,7 +13,7 @@ describe('الرقم الوطني', () => {
   });
 
   it('وغيرها يُنبَّه عليه بعدده — ولا يُمنع', () => {
-    expect(nationalIdHint('19991234567')).toContain('وهذا 11');
+    expect(nationalIdHint('19991234567')).toContain('وهذا ١١');
     expect(nationalIdHint('1999123456O8')).toContain('أرقامٌ فقط');
   });
 });

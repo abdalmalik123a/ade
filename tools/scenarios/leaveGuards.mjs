@@ -66,6 +66,8 @@ export default async function scenario(page) {
     return found;
   };
   const has = (text) => page.text().then((t) => t.includes(text));
+  // شاشة «الصادر» في السجلّ — بعلامتها لا بعنوانها (توحّد اسمها في البند ١٥).
+  const onArchive = () => page.eval(`return Boolean(document.querySelector('[data-archive]'));`);
   /** يضع قيمةً في عنصر React (حقلٌ أو مربّع نصّ أو قائمة). */
   const setValue = (selector, value, tag = 'Input') =>
     page.eval(`
@@ -88,7 +90,7 @@ export default async function scenario(page) {
   await wait(900);
   await page.goto('transactions-archive-ledger');
   await wait(600);
-  ok('ترويسةٌ لم تُمسّ: الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('ترويسةٌ لم تُمسّ: الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
 
   await page.goto('header-seal-configuration');
   await wait(900);
@@ -99,12 +101,12 @@ export default async function scenario(page) {
   let q = await dialog();
   ok(`الانتقال بتعديلٍ لم يُحفظ يسأل: ابقَ · اترك · احفظ (${q?.title})`, Boolean(q) && q.title.includes('الترويسة') && q.choices.join() === 'stay,discard,save');
   await choose('stay');
-  ok('«ابقَ» تُبقيه على الترويسة وتعديله باقٍ', (await has('مصمّم الترويسات')) && (await has('غير محفوظة')) && !(await has('الأرشيف والبحث')));
+  ok('«ابقَ» تُبقيه على الترويسة وتعديله باقٍ', (await has('مصمّم الترويسات')) && (await has('غير محفوظة')) && !(await onArchive()));
 
   await page.goto('transactions-archive-ledger');
   await wait(600);
   await choose('discard');
-  ok('«اترك بلا حفظ» تنتقل — ولم يُحفظ شيء', (await has('الأرشيف والبحث')) && (await letterheads()).length === 0);
+  ok('«اترك بلا حفظ» تنتقل — ولم يُحفظ شيء', (await onArchive()) && (await letterheads()).length === 0);
 
   await page.goto('header-seal-configuration');
   await wait(900);
@@ -113,7 +115,7 @@ export default async function scenario(page) {
   await page.goto('transactions-archive-ledger');
   await wait(600);
   await choose('save');
-  ok('«احفظ ثم اترك» تحفظ وتنتقل', (await has('الأرشيف والبحث')) && (await letterheads()).join() === 'ترويسة المغادرة');
+  ok('«احفظ ثم اترك» تحفظ وتنتقل', (await onArchive()) && (await letterheads()).join() === 'ترويسة المغادرة');
 
   // داخل الشاشة نفسها: ترويسةٌ أخرى، وترويسةٌ جديدة
   await page.goto('header-seal-configuration');
@@ -139,7 +141,7 @@ export default async function scenario(page) {
   await wait(500);
   await page.goto('transactions-archive-ledger');
   await wait(800);
-  ok('المحرّر بكتابٍ مكتوب: الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('المحرّر بكتابٍ مكتوب: الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
   ok('لأنّ مسودّته حُفظت', (await page.eval(`return (await window.diwan.drafts.list()).length;`)) === 1);
 
   // ── ٣) تبديل النموذج في المحرّر فوق كتابٍ مكتوب ─────────────────────────
@@ -180,7 +182,7 @@ export default async function scenario(page) {
   await wait(1000);
   await page.goto('transactions-archive-ledger');
   await wait(600);
-  ok('الشبّاك بمعاملةٍ في وسطها: الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('الشبّاك بمعاملةٍ في وسطها: الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
   await page.goto('service-counter');
   await wait(800);
   ok('وتعود المعاملة كما تُركت', await page.eval(`return Boolean(document.querySelector('[data-screen="service"] [data-act="discard"]'));`));
@@ -208,7 +210,7 @@ export default async function scenario(page) {
   await click('button[data-act="save"]', 1500);
   await page.goto('transactions-archive-ledger');
   await wait(600);
-  ok('وبعد حفظ الورقة الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('وبعد حفظ الورقة الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
   await page.goto('exam-papers');
   await wait(900);
   await click('button[title="احذف الورقة"]', 400);
@@ -256,7 +258,7 @@ export default async function scenario(page) {
   ok(`ملفّان فُتحا معًا (${thumbs} صفحات)`, thumbs === 4);
   await page.goto('transactions-archive-ledger');
   await wait(600);
-  ok('فُتحا ولم يُمسّا: الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('فُتحا ولم يُمسّا: الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
   // الشاشة تُفكّ بالانتقال فتبدأ الجلسة فارغة: يُعاد فتح الملفّين.
   await page.goto('pdf-tools');
   await wait(700);
@@ -273,7 +275,7 @@ export default async function scenario(page) {
   await click('[data-act="pdf-save"]', 2000);
   await page.goto('transactions-archive-ledger');
   await wait(600);
-  ok('وبعد الحفظ الانتقال بلا سؤال', (await dialog()) === null && (await has('الأرشيف والبحث')));
+  ok('وبعد الحفظ الانتقال بلا سؤال', (await dialog()) === null && (await onArchive()));
   await page.goto('pdf-tools');
   await wait(700);
   await openBoth();

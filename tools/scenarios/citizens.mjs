@@ -13,7 +13,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   await page.goto('citizens-identity-records');
   let text = await page.text();
-  ok('فُتح سجل المواطنين', text.includes('سجل المواطنين والمستمسكات الرسمية'));
+  ok('فُتحت «الأشخاص» في الزبائن', text.includes('الأشخاص') && text.includes('أرشيف محلي مؤمّن'));
   ok('الدليل فارغ', text.includes('الدليل فارغ'));
   ok('لا ملف مفتوح', text.includes('لم يُفتح أي ملف'));
   ok('العدّادات صفر', text.includes('لم يُسجَّل أي مواطن بعد'));
@@ -126,7 +126,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(400);
 
   // ── خزنة المستمسكات ─────────────────────────────────────────────
-  ok('زرّ الاستعراض من الحاسوب ظاهر', (await page.text()).includes('استعراض من الحاسوب'));
+  ok('زرّ «افتح ملفًّا» ظاهر', (await page.text()).includes('افتح ملفًّا'));
   ok('زرّ المسح الضوئي ظاهر', (await page.text()).includes('مسح ضوئي فوري'));
   ok('زرّ تصدير ZIP معطّل بلا مستمسكات',
     await page.eval(`

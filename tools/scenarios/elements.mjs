@@ -44,7 +44,7 @@ export default async function scenario(page) {
   await click('[data-act="elements-import"]');
   await wait(1500);
   const said = await page.text();
-  ok('SVG وPNG يُستوردان إلى صنفهما', said.includes('أُضيف ٢ عنصرًا') && (await has('[data-elements="imported"] [data-element="إطار ذهبي"]')) && (await has('[data-element="نجمة"]')));
+  ok('SVG وPNG يُستوردان إلى صنفهما', said.includes('أُضيف عنصران') && (await has('[data-elements="imported"] [data-element="إطار ذهبي"]')) && (await has('[data-element="نجمة"]')));
   ok('وما ليس رسمةً يُرفض باسمه وسببه', said.includes('صفحة.svg') && said.includes('ليس رسمةً متّجهة'));
 
   const stored = await page.eval(`

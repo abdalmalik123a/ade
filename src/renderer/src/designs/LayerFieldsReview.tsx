@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import type { FieldSuggestion } from '@shared/api';
 import { APPLY_THRESHOLD } from '@shared/doc';
+import { useEscape } from '../kit/useEscape';
 
 export default function LayerFieldsReview({
   suggestions,
@@ -18,6 +19,7 @@ export default function LayerFieldsReview({
   onApply: (chosen: { elementId: string; key: string; sample: string }[]) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [on, setOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(suggestions.map((s) => [s.elementId, s.confidence >= APPLY_THRESHOLD]))
   );

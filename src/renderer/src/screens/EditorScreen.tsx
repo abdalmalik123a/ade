@@ -1304,7 +1304,7 @@ function CitizenPicker({ onClose, onPick }: { onClose: () => void; onPick: (c: C
         {loading ? (
           <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">جارٍ البحث...</div>
         ) : rows.length === 0 ? (
-          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">{query ? 'لا مواطن بهذا البحث' : 'سجل المواطنين فارغ'}</div>
+          <div className="py-space-lg text-center text-on-surface-variant font-label-md text-label-md">{query ? 'لا مواطن بهذا البحث' : 'لا زبائن بعد'}</div>
         ) : (
           rows.map((r) => (
             <button

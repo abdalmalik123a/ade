@@ -156,12 +156,18 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   // ── أوّل عملٍ يخرج من المكتب ─────────────────────────────────────────
   await page.goto('service-counter');
-  ok('ما دام لم يصدر شيء: «؟» باقٍ', await has('[data-act="page-help"]'));
+  ok('ما دام لم يصدر شيء: «؟» بارز', await has('[data-act="page-help"]:not([data-quiet])'));
   const issued = await page.eval(`try { await window.diwan.documents.issue(${SHEET}, false); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
   await page.goto('orders-board');
-  ok('صدر أوّل كتاب: اختفى «؟» من الصفحات', issued === 'ok' && !(await has('[data-act="page-help"]')));
+  // البند ٨ (قرار المالك ١١ ت١ ٢٠٢٦): لا يختفي — يهدأ زرًّا صغيرًا اسمه «مساعدة» في الصفحات كلّها.
+  const quiet = () => page.eval(`const b = document.querySelector('[data-act="page-help"][data-quiet]'); return b ? b.textContent.trim() : '';`);
+  ok('صدر أوّل كتاب: «؟» صار «مساعدة» صغيرة ولم يختفِ', issued === 'ok' && (await quiet()).includes('مساعدة'));
   await page.goto('clients-directory');
-  ok('كلّها', !(await has('[data-act="page-help"]')));
+  ok('في الصفحات كلّها', (await quiet()).includes('مساعدة'));
+  await click('[data-act="page-help"]');
+  ok('ويشرح الصفحة كما كان', await has('[data-page-help="clients"]'));
+  await page.key('Escape');
+  ok('وEscape يطويه', !(await has('[data-page-help]')));
   const db = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
   const firstWork = db.prepare("SELECT value FROM settings WHERE key = 'firstWorkAt'").get();
   db.close();
@@ -171,7 +177,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   await page.eval(`location.reload(); return true;`).catch(() => undefined);
   await wait(3000);
-  ok('ولا يعود «؟» بعد إقلاع', !(await has('[data-act="page-help"]')) && (await has('[data-act="notifications"]')));
+  ok('وبعد إقلاع: «مساعدة» الهادئة باقية، ولا يعود «؟» البارز', (await has('[data-act="page-help"][data-quiet]')) && !(await has('[data-act="page-help"]:not([data-quiet])')) && (await has('[data-act="notifications"]')));
   await click('[data-act="notifications"]');
   await wait(300);
   await click('[data-act="replay-overview"]');

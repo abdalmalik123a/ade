@@ -58,7 +58,7 @@ export default async function scenario(page, { shotsDir } = {}) {
   ok(`«حزمة»: النقر على التصميم يختاره ولا يفتحه («${label.trim().split('\n').pop()}»)`, still && label.includes('١'));
   await click('[data-act="pack-save"]');
   await wait(1500);
-  ok('ويُحفظ ملفًّا: «حُفظت حزمة بـ١ تصميم»', (await body()).includes('حُفظت حزمة بـ١ تصميم'));
+  ok('ويُحفظ ملفًّا: «حُفظت حزمة فيها تصميم واحد»', (await body()).includes('حُفظت حزمة فيها تصميم واحد'));
   ok('ويعود النقر يفتح', !(await page.eval(`return Boolean(document.querySelector('[data-pack-pick]'));`)));
 
   // ── يُحذف ثمّ يُستورد ─────────────────────────────────────────────

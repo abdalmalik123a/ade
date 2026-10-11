@@ -25,7 +25,7 @@ export default async function scenario(page) {
   }
   const shrunk = issues.find((t) => t.includes('يصغر دون'));
   ok(`مراجعة الأوراق تقول الاسم الذي يصغر كثيرًا (${shrunk ?? issues.length + ' ملاحظة'})`, Boolean(shrunk));
-  ok('وتسمّي صاحبه وحده — بطاقةٌ واحدة، والقصيرة لا', Boolean(shrunk?.includes(LONG) && shrunk.includes('١ بطاقة') && !shrunk.includes('زينب علي')));
+  ok('وتسمّي صاحبه وحده — بطاقةٌ واحدة، والقصيرة لا', Boolean(shrunk?.includes(LONG) && shrunk.includes('بطاقة واحدة') && !shrunk.includes('زينب علي')));
   ok('ومعه ما كان: بطاقاتٌ بلا صورة', issues.some((t) => t.includes('بلا صورة')));
   return steps.join('\n');
 }

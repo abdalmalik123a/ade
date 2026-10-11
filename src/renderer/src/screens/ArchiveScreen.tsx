@@ -18,7 +18,9 @@ import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
 import { confirmAction } from '../kit/ask';
 import BackupDialog from '../components/BackupDialog';
+import { HitButton, HitList } from './ArchiveHits';
 import { auditLabel } from '@shared/auditLabels';
+import { count, countIn, toIndic } from '@shared/arabic';
 
 const COLUMNS = ['رقم الصادر', 'صاحب العلاقة', 'نوع الكتاب', 'الجهة', 'التاريخ والنسخ'];
 
@@ -192,7 +194,7 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
     // «المحدّدة» حتى خمسمئة كتاب بنقرة (ج٢): فوق عشرة يُسأل، وتُقيَّد طبعاتها في السجلّ.
     if (ids.length > BULK_PRINT_CONFIRM) {
       const ok = await confirmAction({
-        title: `طباعة ${nf.format(ids.length)} كتابًا؟`,
+        title: `طباعة ${countIn(ids.length, 'كتاب')}؟`,
         message: 'تُرسل كلّها إلى الطابعة، وتُقيَّد طبعاتها في السجلّ.',
         confirm: 'اطبعها'
       });
@@ -245,8 +247,8 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
 
   const summary = useMemo(() => {
     if (!today) return '';
-    const parts = [`اليوم ${nf.format(today.issuedToday)} كتابًا`, `أمس ${nf.format(today.issuedYesterday)}`];
-    if (today.topTemplate) parts.push(`الأكثر: ${today.topTemplate.title} (${nf.format(today.topTemplate.count)})`);
+    const parts = [`اليوم ${count(today.issuedToday, 'كتاب')}`, `أمس ${count(today.issuedYesterday, 'كتاب')}`];
+    if (today.topTemplate) parts.push(`الأكثر: ${today.topTemplate.title} (${toIndic(today.topTemplate.count)})`);
     return parts.join(' · ');
   }, [today]);
 
@@ -257,9 +259,9 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
       <div className="p-space-lg flex flex-col gap-space-md">
         {/* الأرقام سطرٌ يُقرأ — لا بطاقاتٌ تُتأمَّل */}
         <header className="flex flex-wrap items-baseline justify-between gap-space-sm">
-          <h1 className="font-headline-md text-headline-md text-on-surface font-bold">الأرشيف والبحث</h1>
+          <h1 className="font-headline-md text-headline-md text-on-surface font-bold">الصادر</h1>
           <span className="font-label-md text-label-md text-on-surface-variant" data-archive-today="">
-            الكتب الصادرة اليوم: {summary}
+            {summary}
           </span>
         </header>
 
@@ -416,9 +418,9 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
         {/* الكتب */}
         <section className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
           <div className="p-space-md flex items-center justify-between">
-            <h3 className="font-headline-sm text-headline-sm text-on-surface">{query.trim() ? 'نتائج البحث' : 'سجل الصادر'}</h3>
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">{query.trim() ? 'نتائج البحث' : 'كلّ الكتب'}</h3>
             <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold">
-              {nf.format(rows.length)} كتابًا
+              {count(rows.length, 'كتاب')}
             </span>
           </div>
           {capNote && (
@@ -440,10 +442,14 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
                     مُبطَل: {detail.voidReason}
                   </span>
                 )}
-                <span className="font-mono text-[10px] break-all flex-1" title={detail.sha256}>
-                  {detail.sha256}
-                </span>
-                <span>{nf.format(detail.printedCopies)} نسخة مطبوعة</span>
+                {/* البصمة لمن يتحقّق — خلف «تفاصيل التوثيق» لا سطرًا من ٦٤ حرفًا يتصدّر الكتاب (البند ١٦). */}
+                <details className="flex-1 min-w-0" data-fingerprint="">
+                  <summary className="cursor-pointer select-none">تفاصيل التوثيق</summary>
+                  <span className="block font-mono text-[10px] break-all" dir="ltr">
+                    {detail.sha256}
+                  </span>
+                </details>
+                <span>طُبع منه: {count(detail.printedCopies, 'نسخة')}</span>
                 {detail.status !== 'void' && (
                   <>
                     <button
@@ -647,28 +653,3 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
   );
 }
 
-function HitList({ title, icon, empty, children }: { title: string; icon: string; empty: string; children: React.ReactNode[] }) {
-  return (
-    <div className="bg-surface-container-lowest rounded-xl p-space-sm shadow-sm flex flex-col gap-1 min-w-0">
-      <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
-        <span className="material-symbols-outlined text-[18px] text-secondary">{icon}</span>
-        {title} ({children.length})
-      </span>
-      {children.length ? children : <span className="font-label-sm text-label-sm text-on-surface-variant py-1">{empty}</span>}
-    </div>
-  );
-}
-
-function HitButton({ act, title, sub, onClick }: { act: string; title: string; sub: string; onClick: () => void }) {
-  return (
-    <button
-      className="text-right p-space-xs rounded-lg bg-surface-container-low hover:bg-surface-container-high flex flex-col min-w-0"
-      data-act={act}
-      type="button"
-      onClick={onClick}
-    >
-      <span className="font-label-md text-label-md text-on-surface truncate">{title}</span>
-      {sub && <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{sub}</span>}
-    </button>
-  );
-}

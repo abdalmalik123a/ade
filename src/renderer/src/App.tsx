@@ -443,8 +443,8 @@ export default function App() {
           onLicense={() => navigate('settings')}
           tools={
             <>
-              {/* «؟» الصفحة حتى أوّل عملٍ يخرج من المكتب، ثم يختفي من الصفحات كلّها. */}
-              {!counts.worked && <PageHelp route={route} onOverview={startOverview} />}
+              {/* «؟» الصفحة بارزٌ حتى أوّل عملٍ يخرج من المكتب، ثم «مساعدة» صغيرةٌ دائمة (البند ٨). */}
+              <PageHelp route={route} quiet={counts.worked} onOverview={startOverview} />
               <NotificationsBell
                 agenda={agenda}
                 officeName={settings?.officeName ?? ''}

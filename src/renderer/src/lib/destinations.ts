@@ -30,7 +30,7 @@ export const DESTINATIONS: readonly Destination[] = [
     entry: 'archive',
     routes: ['archive', 'audit'],
     tabs: [
-      { route: 'archive', label: 'ما خرج' },
+      { route: 'archive', label: 'الصادر' },
       { route: 'audit', label: 'الأحداث' }
     ]
   },
@@ -41,8 +41,8 @@ export const DESTINATIONS: readonly Destination[] = [
     entry: 'citizens',
     routes: ['citizens', 'clients'],
     tabs: [
-      { route: 'citizens', label: 'أشخاص' },
-      { route: 'clients', label: 'جهات' }
+      { route: 'citizens', label: 'الأشخاص' },
+      { route: 'clients', label: 'الجهات' }
     ]
   },
   {

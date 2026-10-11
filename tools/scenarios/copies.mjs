@@ -67,8 +67,8 @@ export default async function scenario(page, { profile }) {
     return true;
   `);
   await wait(300);
-  ok('و«اطبع» يقول عدد الأوراق بنسخها', await page.eval(`return [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'اطبع 3 ورقة');`));
-  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'اطبع 3 ورقة').click(); return true;`);
+  ok('و«اطبع» يقول عدد الأوراق بنسخها', await page.eval(`return [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'اطبع ٣ أوراق');`));
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'اطبع ٣ أوراق').click(); return true;`);
   await wait(4000);
 
   // ── الانقطاع: الطابعة تقف عند الثالثة ─────────────────────────────
@@ -86,7 +86,7 @@ export default async function scenario(page, { profile }) {
   p = prints();
   ok(`و«أكمل» يطبع الثالثة وحدها فيصير السجلّ ثلاثًا (${JSON.stringify(p)})`, p.length === 1 && p[0].copies === 3 && p[0].reason === 'إصدار أول' && !(await page.eval(`return Boolean(document.querySelector('[data-print-run]'));`)));
   ok(`وأُرسلت أربع أوراق: نسختان، والثالثة التي رُدّت، ثم أُعيدت (${sheets()})`, sheets() === 4);
-  ok('وشريط ما خرج يقول النسخ', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('× 3 نسخ'));
+  ok('وشريط ما خرج يقول النسخ', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('× ٣ نسخ'));
 
   // ── «أعد الطبع» بالنسخ نفسها ───────────────────────────────────────
   await page.eval(`document.querySelector('[data-act="reprint"]').click(); return true;`);

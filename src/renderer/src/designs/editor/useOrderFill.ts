@@ -7,13 +7,13 @@
  * التراجع، ولا يضيع منها شيءٌ بضغطة.
  */
 import { useEffect, useRef, useState } from 'react';
-import { toIndic } from '@shared/arabic';
 import type { Doc } from '@shared/doc';
 import type { LearnedGenders } from '@shared/gender';
 import type { Client } from '@shared/orders';
 import { applySchool } from '@shared/schoolFile';
 import { clientValues, filledWords } from '@shared/design/fillFrom';
 import type { GalleryPick } from '../Gallery';
+import { count } from '@shared/arabic';
 
 type Inputs = {
   doc: Doc;
@@ -80,7 +80,7 @@ export function useOrderFill(i: Inputs) {
     const n = Math.min(seed.quantity, 2000);
     i.setCopies(n);
     orderCopies.current = true;
-    return `${toIndic(n)} نسخة من الطلب`;
+    return `${count(n, 'نسخة')} من الطلب`;
   };
   /** تصميمٌ ليس من الطلب: نسخه واحدة إن كانت من كمّيته. */
   const leaveOrder = () => {

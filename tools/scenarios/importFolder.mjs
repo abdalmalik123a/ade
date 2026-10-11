@@ -93,7 +93,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.type('input[placeholder="مدارس"]', 'مدارس');
   await wait(300);
 
-  await page.clickText('احفظ 1 بطاقة');
+  await page.clickText('احفظ بطاقة واحدة');
   await wait(2500);
 
   text = await page.text();
@@ -170,7 +170,7 @@ export default async function scenario(page, { profile, shotsDir }) {
       return true;
     `);
     await wait(400);
-    await page.clickText('احفظ 1 بطاقة');
+    await page.clickText('احفظ بطاقة واحدة');
     await wait(2500);
   }
   ok('وتراكمت التصحيحات حتى بلغت العادة', corrections().length === HABIT);

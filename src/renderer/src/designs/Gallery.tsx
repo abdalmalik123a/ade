@@ -106,7 +106,7 @@ export default function Gallery({
               className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
               data-act="pack-import"
               disabled={packs.busy}
-              title="حزمة تصاميم (.diwanpack) من مكتبٍ آخر أو جهازٍ ثانٍ — والموجود منها لا يُكرَّر"
+              title="حزمة تصاميم من مكتبٍ آخر أو جهازٍ ثانٍ — والموجود منها لا يُكرَّر"
               type="button"
               onClick={() => void packs.importPack()}
             >

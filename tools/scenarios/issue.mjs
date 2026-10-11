@@ -361,9 +361,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(900);
   text = await page.text();
   ok('ظهر الكتاب في سجل اليوم', text.includes(doc?.serial ?? '—'));
-  ok('عُدّ في مؤشر اليوم', text.includes('1') && text.includes('الكتب الصادرة اليوم'));
+  ok('عُدّ في مؤشر اليوم', text.includes('اليوم كتاب واحد'));
   ok('ولا إيراد ولا رسوم في الأرشيف', !text.includes('الإيراد') && !text.includes('د.ع'));
-  ok('ظهرت بصمة الكتاب للتدقيق', text.includes(doc?.sha256?.slice(0, 16) ?? '—'));
+  ok('بصمة الكتاب للتدقيق خلف «تفاصيل التوثيق»', text.includes('تفاصيل التوثيق') && (await page.eval(`return document.querySelector('[data-fingerprint]')?.textContent ?? '';`)).includes(doc?.sha256 ?? '—'));
 
   // البحث داخل الأرشيف — متساهل مع الهمزة
   await page.type('input[placeholder^="ابحث برقم الصادر"]', 'احمد');
@@ -379,7 +379,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.type('input[placeholder^="ابحث برقم الصادر"]', '');
   await wait(700);
   text = await page.text();
-  ok('الأرشيف والبحث شاشةٌ واحدة', text.includes('الأرشيف والبحث') && !text.includes('البحث والتقارير الدورية'));
+  ok('الصادر والبحث شاشةٌ واحدة', text.includes('كلّ الكتب') && !text.includes('البحث والتقارير الدورية'));
   ok('عدّت الكتب الصادرة', text.includes('من الكتب الصادرة'));
   ok('ظهر الكتاب في مدة اليوم', text.includes(doc?.serial ?? '—'));
   ok('ظهر توزيع أنواع الوثائق', text.includes('توزيع الكتب حسب نوع الوثيقة'));

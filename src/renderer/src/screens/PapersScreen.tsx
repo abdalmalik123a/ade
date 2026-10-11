@@ -25,9 +25,7 @@ import {
   itemScore,
   listScore,
   newUuid,
-  run,
   type Dir,
-  type Inline,
   type ListItem,
   type Numerals
 } from '@shared/doc';
@@ -59,6 +57,8 @@ import OmrPanel from '../components/OmrPanel';
 import { confirmAction } from '../kit/ask';
 import { useLeaveGuard } from '../kit/useLeaveGuard';
 import type { OmrSpec } from '@shared/omr';
+import { count } from '@shared/arabic';
+import { flatten, inlinesOf, mapTree, moveIn, textOf } from './papersTree';
 
 const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
 
@@ -69,45 +69,6 @@ const SHEET_WIDTH = 794;
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 // ── شجرة الأسئلة: تحويلاتٌ خالصة ─────────────────────────────────────
-
-function mapTree(items: ListItem[], id: string, fn: (it: ListItem) => ListItem | null): ListItem[] {
-  return items.flatMap((it) => {
-    if (it.id === id) {
-      const next = fn(it);
-      return next ? [next] : [];
-    }
-    if (!it.items?.length) return [it];
-    return [{ ...it, items: mapTree(it.items, id, fn) }];
-  });
-}
-
-/** يزيح عنصرًا بين إخوته — ولا يقفز بين المستويات. */
-function moveIn(items: ListItem[], id: string, step: -1 | 1): ListItem[] {
-  const at = items.findIndex((it) => it.id === id);
-  if (at >= 0) {
-    const to = at + step;
-    if (to < 0 || to >= items.length) return items;
-    const next = [...items];
-    const [moved] = next.splice(at, 1);
-    next.splice(to, 0, moved!);
-    return next;
-  }
-  return items.map((it) => (it.items?.length ? { ...it, items: moveIn(it.items, id, step) } : it));
-}
-
-const textOf = (inlines: Inline[]): string =>
-  inlines.map((n) => (n.kind === 'run' ? n.text : n.kind === 'break' ? '\n' : '')).join('');
-
-const inlinesOf = (text: string): Inline[] =>
-  text
-    .split('\n')
-    .flatMap((line, i): Inline[] => (i ? [{ kind: 'break' }, run(line)] : [run(line)]))
-    .filter((n) => n.kind !== 'run' || n.text.length > 0);
-
-/** كل عنصرٍ في الشجرة — لعدّ الأسئلة والتحقّق من نصوصها. */
-function flatten(items: ListItem[]): ListItem[] {
-  return items.flatMap((it) => [it, ...(it.items?.length ? flatten(it.items) : [])]);
-}
 
 // ── السؤال الواحد ────────────────────────────────────────────────────
 
@@ -605,7 +566,7 @@ function PapersScreenInner(
       copies: sheets.copies,
       printer: pick.printer,
       system: pick.system,
-      what: versions ? `${copies} نسخة («أ» و«ب» بالتناوب)` : `${copies} نسخة`
+      what: versions ? `${count(copies, 'نسخة')} («أ» و«ب» بالتناوب)` : count(copies, 'نسخة')
     });
   }, [copies, versions, sheetsFor, send]);
 
@@ -678,8 +639,8 @@ function PapersScreenInner(
     for (const p of picks) void window.diwan.bank.used(p.id);
     say(
       missing.length
-        ? `ورقة الدور الثاني: ${picks.length} سؤالًا من البنك — ولم يُوجد بديلٌ للسؤال ${missing.join('، ')}؛ أكمله بيدك`
-        : `ورقة الدور الثاني: ${picks.length} سؤالًا من البنك بدرجاتها — احفظها باسمها`,
+        ? `ورقة الدور الثاني: ${count(picks.length, 'سؤال')} من البنك — ولم يُوجد بديلٌ للسؤال ${missing.join('، ')}؛ أكمله بيدك`
+        : `ورقة الدور الثاني: ${count(picks.length, 'سؤال')} من البنك بدرجاتها — احفظها باسمها`,
       missing.length ? 'warn' : 'ok'
     );
   }

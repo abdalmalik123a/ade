@@ -53,7 +53,7 @@ export default async function scenario(page, { profile }) {
   await wait(800);
   await page.eval(`document.querySelector('[data-act="content-export"]').click(); return true;`);
   await wait(1500);
-  ok('صُدّرت الحزمة من المكتبة وقيل ما فيها', existsSync(PACK) && (await toast()).includes('صُدّرت حزمة المحتوى: 1 نموذجًا، 1 ترويسة، 1 كليشة'));
+  ok('صُدّرت الحزمة من المكتبة وقيل ما فيها', existsSync(PACK) && (await toast()).includes('صُدّرت حزمة المحتوى: نموذج واحد، ترويسة واحدة، كليشة واحدة'));
   const inside = existsSync(PACK) ? Object.keys(unzipSync(readFileSync(PACK))) : [];
   const json = existsSync(PACK) ? Buffer.from(unzipSync(readFileSync(PACK))['diwan-content.json'] ?? []).toString() : '';
   ok('وليس فيها قاعدةٌ ولا مواطن', inside.includes('diwan-content.json') && !inside.includes('diwan.db') && !json.includes('زينب كاظم'));
@@ -67,7 +67,7 @@ export default async function scenario(page, { profile }) {
   await wait(400);
   await page.eval(`document.querySelector('[data-act="content-import-file"]')?.click(); return true;`);
   await wait(1500);
-  ok('الاستيراد يعيد النموذج والكليشة، ويترك الترويسة الموجودة', (await toast()).includes('أُضيف 1 نموذجًا، 0 ترويسة، 1 كليشة') && (await toast()).includes('1 موجودٌ في المكتب'));
+  ok('الاستيراد يعيد النموذج والكليشة، ويترك الترويسة الموجودة', (await toast()).includes('أُضيف: نموذج واحد، لا ترويسات، كليشة واحدة') && (await toast()).includes('1 موجودٌ في المكتب'));
   const back = db((d) => ({
     t: d.prepare('SELECT uuid, code, letterhead_id AS lh FROM templates').all(),
     c: d.prepare('SELECT uuid FROM clips').all(),
@@ -80,7 +80,7 @@ export default async function scenario(page, { profile }) {
   await wait(400);
   await page.eval(`document.querySelector('[data-act="content-import-file"]')?.click(); return true;`);
   await wait(1500);
-  ok('ومرّةً ثانية لا يُضاف شيء', (await toast()).includes('أُضيف 0 نموذجًا، 0 ترويسة، 0 كليشة') && db((d) => d.prepare('SELECT COUNT(*) AS n FROM templates').get().n) === 1);
+  ok('ومرّةً ثانية لا يُضاف شيء', (await toast()).includes('أُضيف: لا نماذج، لا ترويسات، لا كليشات') && db((d) => d.prepare('SELECT COUNT(*) AS n FROM templates').get().n) === 1);
   ok('وقُيّد التصدير والاستيراد في سجلّ التدقيق', db((d) => d.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE entity = 'content'").get().n) === 3);
 
   rmSync(DIR, { recursive: true, force: true });

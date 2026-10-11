@@ -5,11 +5,13 @@
 import { useRef, useState } from 'react';
 import type { BrushMode } from '@shared/portraitMask';
 import { useCutout } from './useCutout';
+import { useEscape } from '../../kit/useEscape';
 
 const CHECKER = 'repeating-conic-gradient(#d4d4d4 0% 25%, #f5f5f5 0% 50%) 50% / 20px 20px';
 const TOOL = 'h-9 px-space-sm rounded-lg flex items-center gap-1 font-label-md text-label-md transition-colors';
 
 export default function CutoutModal({ src, onClose, onDone }: { src: string; onClose: () => void; onDone: (src: string) => void }) {
+  useEscape(onClose);
   const c = useCutout(src);
   const [tool, setTool] = useState<BrushMode>('remove');
   const [brush, setBrush] = useState(18);

@@ -135,6 +135,8 @@ function counted(n: number, noun: Noun, bound: boolean): string {
   if (n === 1) return noun.one;
   if (n === 2) return bound ? noun.twoBound : noun.two;
   const last = n % 100;
+  // مئةٌ وواحدٌ أو اثنان من المرتبة: «مئتا ألف وألفان» — لا «مئتان واثنان ألف» (البند ١٧).
+  if (n > 100 && (last === 1 || last === 2)) return `${counted(n - last, noun, false)} و${counted(last, noun, bound)}`;
   // المرتبة يليها معدودها دائمًا («مئتا ألف»).
   const words = n === 200 ? TWO_HUNDRED_BOUND : convertGroup(n);
   if (last >= 3 && last <= 10) return `${words} ${noun.few}`;

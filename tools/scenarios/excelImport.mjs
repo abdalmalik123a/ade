@@ -106,7 +106,7 @@ export default async function scenario(page, { profile, shotsDir }) {
 
   const text = await page.text();
   ok('انفتحت مراجعة ملف Excel', text.includes('مراجعة ما وجدناه في ملف Excel'));
-  ok('ورقتان ← بطاقتان — وورقة البيانات ليست كتابًا', text.includes('2 ورقة') && text.includes('2 بطاقة'));
+  ok('ورقتان ← بطاقتان — وورقة البيانات ليست كتابًا', text.includes('ورقتان') && text.includes('بطاقتان'));
   ok('والورقة المخفيّة تُركت وقيل لماذا', text.includes('ورقةً لم تُستورد') && text.includes('معلومات: ورقةٌ مخفيّة'));
   const labels = await page.eval(`return [...document.querySelectorAll('input[type="text"]')].map((i) => i.value).join(' | ');`);
   ok(`وخانات ورقة البيانات بأسماء بياناتها (${labels})`, ['اسم المدرسة', 'المحافظة', 'اسم مدير المدرسة'].every((l) => labels.includes(l)));
@@ -124,9 +124,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   };
   ok('ولا شيء في القاعدة قبل القبول', read().length === 0);
 
-  await page.clickText('احفظ 2 بطاقة');
+  await page.clickText('احفظ بطاقتين');
   await wait(2500);
-  ok('أكّد الحفظ', (await page.text()).includes('حُفظت 2 بطاقة'));
+  ok('أكّد الحفظ', (await page.text()).includes('حُفظت بطاقتان'));
 
   // ── التفتيش في القاعدة ─────────────────────────────────────────────
   const saved = read();

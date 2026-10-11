@@ -47,24 +47,16 @@ import { errorText } from '../lib/errors';
 import { useLeaveGuard } from '../kit/useLeaveGuard';
 import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
 import { fitJpeg, reencode, rememberLimit, savedLimit, toJpeg, TOP_DPI } from '../lib/fitImage';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 type Src = PdfOpened & { doc?: PDFDocumentProxy; img?: HTMLImageElement };
 
-/** «صفحةٌ واحدة، صفحتان، ٣ صفحات، ١١ صفحة» — العدد ومعدوده كما يُقرأ. */
-function pagesWord(n: number): string {
-  if (n === 1) return 'صفحةٌ واحدة';
-  if (n === 2) return 'صفحتان';
-  return `${toIndic(n)} ${n % 100 >= 3 && n % 100 <= 10 ? 'صفحات' : 'صفحة'}`;
-}
-/** «حقلٌ واحد، حقلان، ٣ حقول، ١١ حقلًا». */
-function fieldsWord(n: number): string {
-  if (n === 1) return 'حقلٌ واحد';
-  if (n === 2) return 'حقلان';
-  return `${toIndic(n)} ${n % 100 >= 3 && n % 100 <= 10 ? 'حقول' : 'حقلًا'}`;
-}
+/** «صفحة واحدة، صفحتان، ٣ صفحات، ١١ صفحة» — بأداة العدّ الواحدة. */
+const pagesWord = (n: number): string => count(n, 'صفحة');
+/** «حقل واحد، حقلان، ٣ حقول، ١١ حقلًا». */
+const fieldsWord = (n: number): string => count(n, 'حقل');
 let uid = 0;
 const newId = (p: string) => `${p}${Date.now().toString(36)}${(++uid).toString(36)}`;
 
@@ -722,7 +714,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     if (!ids.length) return;
     const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays };
     const out = await saveAs(sub, `${name || 'ملف'} — صفحات`);
-    if (out) say(`حُفظت ${pagesWord(ids.length)} ملفًّا جديدًا (${madeNote(out.made)})`, madeTone(out.made));
+    if (out) say(`حُفظت الصفحات ملفّاتٍ جديدة: ${count(ids.length, 'ملف')} (${madeNote(out.made)})`, madeTone(out.made));
   }
 
   /** «1-3، 4-6»: كلُّ مجموعةٍ ملفّ؛ وفارغةً: كلُّ صفحةٍ ملفّ. */
@@ -744,7 +736,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       }
       return window.diwan.pdf.saveMany(items);
     });
-    if (out) say(`حُفظ ${toIndic(out.files.length)} ملفًّا في ${out.folder}`);
+    if (out) say(`حُفظ ${count(out.files.length, 'ملف')} في ${out.folder}`);
   }
 
   /**
@@ -769,7 +761,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       }
       return window.diwan.pdf.saveImages(images);
     });
-    if (out) say(`حُفظت ${toIndic(out.files.length)} صورة في ${out.folder}`);
+    if (out) say(`حُفظت ${count(out.files.length, 'صورة')} في ${out.folder}`);
   }
 
   const leave = useLeaveGuard({

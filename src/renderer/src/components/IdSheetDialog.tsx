@@ -14,6 +14,8 @@ import { WATERMARK_PRESETS, purposeWatermark } from '@shared/watermark';
 import DeskewModal from '../screens/DeskewModal';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
+import { useEscape } from '../kit/useEscape';
+import { toIndic, count } from '@shared/arabic';
 
 const resolveUrl = (src: string) =>
   src.startsWith('data:') || src.startsWith('blob:') ? src : `diwan://store/${src.split('/').map(encodeURIComponent).join('/')}`;
@@ -33,6 +35,7 @@ export default function IdSheetDialog({
   citizenName?: string;
   attachments?: Attachment[];
 }) {
+  useEscape(onClose);
   // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
   const scanTransient = useTransientScans();
   const [slots, setSlots] = useState<SheetSlot[]>(() => fillFromAttachments(defaultSlots(), attachments));
@@ -87,7 +90,7 @@ export default function IdSheetDialog({
         silent: !pick.system,
         page: { w: 210, h: 297 }
       });
-      setNote(out.ok ? { text: `أُرسلت ${pages.length} ورقة بمقاس ١:١` } : { text: out.reason || 'لم تتم الطباعة', warn: true });
+      setNote(out.ok ? { text: `أُرسلت ${count(pages.length, 'ورقة')} بالمقاس الحقيقي` } : { text: out.reason || 'لم تتم الطباعة', warn: true });
     } catch (e) {
       setNote({ text: errorText(e, 'تعذّرت الطباعة'), warn: true });
     } finally {
@@ -258,7 +261,7 @@ export default function IdSheetDialog({
 
         <footer className="px-space-lg py-space-sm flex items-center justify-between gap-space-sm bg-surface-container-low shrink-0">
           <span className={`font-label-sm text-label-sm ${note?.warn ? 'text-error' : 'text-secondary'}`} data-sheet-note="">
-            {note?.text ?? `${slots.filter((s) => s.src).length} من ${slots.length} بصورها — ${pages.length} ورقة`}
+            {note?.text ?? `${toIndic(slots.filter((s) => s.src).length)} من ${toIndic(slots.length)} بصورها — ${count(pages.length, 'ورقة')}`}
           </span>
           <div className="flex gap-space-sm">
             <button

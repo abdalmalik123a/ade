@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useTransientScans } from '../lib/transientScans';
 import { detectCards, matchBacks, padRect, type Rect } from '@shared/multiCard';
+import { useEscape } from '../kit/useEscape';
 
 type Page = { img: HTMLImageElement; rects: Rect[] };
 
@@ -47,6 +48,7 @@ export default function MultiCardDialog({
   onSaved: (count: number) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
   const scanTransient = useTransientScans();
   const [fronts, setFronts] = useState<Page | null>(null);

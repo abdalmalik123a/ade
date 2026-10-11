@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isDateField, mergeFields, type Doc, type DocField } from '@shared/doc';
-import { normalizeFold } from '@shared/arabic';
+import { normalizeFold, toIndic, count, countIn } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
 import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type {
@@ -49,6 +49,7 @@ import type { Client } from '@shared/orders';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { AfterPrint, PrinterNote, papersWord, type Outcome } from '../components/OutputBar';
+import SearchField from '../components/SearchField';
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
 import { useToast } from '../kit/useToast';
@@ -562,7 +563,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     followPrint(() => window.diwan.documents.printIssued({ ids, printer, mode, label, copies: n }), ids.length * n);
 
   /** «ورقتان» — أو «ورقتان × ٣ نسخ» حين تُطبع نسخ. */
-  const papersWithCopies = (papers: number, n: number) => (n > 1 ? `${papersWord(papers)} × ${n} نسخ` : papersWord(papers));
+  const papersWithCopies = (papers: number, n: number) => (n > 1 ? `${papersWord(papers)} × ${count(n, 'نسخة')}` : papersWord(papers));
 
   async function resumePrint() {
     const run = printRun;
@@ -612,7 +613,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     if (!after) return;
     let saved = 0;
     for (const id of after.ids) if (await window.diwan.documents.exportPdf(id)) saved++;
-    if (saved) say(saved === 1 ? 'حُفظ PDF من السجلّ كما صدر' : `حُفظت ${saved} ملفّات PDF من السجلّ`);
+    if (saved) say(saved === 1 ? 'حُفظ PDF من السجلّ كما صدر' : `حُفظت من السجلّ ${count(saved, 'ملف')} PDF`);
   }
 
   function sameCustomer() {
@@ -670,7 +671,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     try {
       const saved = await window.diwan.citizens.save(newCitizen.input);
       await window.diwan.documents.linkCitizen(newCitizen.transactionId, saved.id);
-      say(`حُفظ «${saved.fullName}» في سجل المواطنين، ورُبطت به كتبه`);
+      say(`حُفظ «${saved.fullName}» في الزبائن، ورُبطت به كتبه`);
       setNewCitizen(null);
       // «شيءٌ آخر لنفس الزبون» بعدها يحمل ملفّه الجديد — فتعرفه الأداة التي يُفتح لها (المرحلة ٥).
       setAfter((a) => (a?.customer ? { ...a, customer: { ...a.customer, citizenId: saved.id } } : a));
@@ -882,10 +883,10 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       );
       const papers = all.reduce((n, t) => n + t.documents.length, 0);
       const ids = all.flatMap((t) => t.documents.map((d) => d.id));
-      const label = `دمج ${all.length} اسمًا — ${all[0]?.documents[0]?.serial ?? ''}`;
+      const label = `دمج ${countIn(all.length, 'اسم')} — ${all[0]?.documents[0]?.serial ?? ''}`;
       const n = copies;
       setAfter({
-        outcome: { what: `${papersWithCopies(papers, n)} لـ${all.length} اسمًا`, printer: pick?.printer ?? null, serial: all[0]?.documents[0]?.serial ?? '' },
+        outcome: { what: `${papersWithCopies(papers, n)} — ${count(all.length, 'اسم')}`, printer: pick?.printer ?? null, serial: all[0]?.documents[0]?.serial ?? '' },
         ids,
         mode,
         label,
@@ -975,7 +976,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
           <span className="flex-1" />
           {picked.length > 0 && (
             <span className="font-label-md text-label-md text-on-surface">
-              {picked.length} ورقة مختارة
+              المختار: {count(picked.length, 'ورقة')}
             </span>
           )}
         </div>
@@ -1147,16 +1148,15 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               )}
 
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
-                <input
-                  ref={searchRef}
-                  className="w-full max-w-md h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                <SearchField
+                  inputRef={searchRef}
+                  className="w-full h-10 ps-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                   data-counter-search=""
                   placeholder="ابحث بما يقوله الزبون: تأييد، صور، PDF — وEnter تملأ"
-                  type="search"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  wrapClassName="w-full max-w-md"
+                  onChange={setQuery}
                 />
-                
                 {/* شرائح التصنيف */}
                 {categories.length > 0 && (
                   <div className="flex items-center gap-space-xs overflow-x-auto pb-1 scrollbar-none">
@@ -1230,7 +1230,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                           {t.category ?? 'بلا تصنيف'}
                         </span>
                         <span className="font-label-sm text-label-sm text-on-surface-variant">
-                          طُلب {t.printCount} مرّة
+                          طُلب {countIn(t.printCount, 'مرة')}
                         </span>
                       </button>
                     );
@@ -1285,7 +1285,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                   <button
                     className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
                     data-act="counter-id-sheet"
-                    title="مستمسكات صاحب العلاقة من ملفّه بمقاسها 1:1 على ورقة A4 واحدة"
+                    title="مستمسكات صاحب العلاقة من ملفّه بمقاسها الحقيقي على ورقة A4 واحدة"
                     type="button"
                     onClick={() => void openIdSheet()}
                   >
@@ -1325,7 +1325,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
                         أضف من الزبائن
                       </button>
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
-                        {rows.length} اسمًا × {loaded.length} ورقة ={' '}
+                        {count(rows.length, 'اسم')} × {count(loaded.length, 'ورقة')} ={' '}
                         <b>{rows.length * loaded.length}</b> ورقة، لكل اسم معاملتُه.
                         وبقيّة الحقول تُملأ مرّة للجميع.
                       </span>
@@ -1615,11 +1615,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               </label>
               {merge ? (
                 <span className="font-label-md text-label-md text-on-surface">
-                  {rows.length * loaded.length} ورقة لـ{rows.length} اسمًا
+                  {count(rows.length * loaded.length, 'ورقة')} — {count(rows.length, 'اسم')}
                 </span>
               ) : missing.length > 0 ? (
                 <span className="font-label-md text-label-md text-error">
-                  {missing.length} حقلًا إلزاميًّا فارغًا
+                  حقولٌ إلزامية فارغة: {toIndic(missing.length)}
                 </span>
               ) : (
                 genderUnsure && (
@@ -1700,7 +1700,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               >
                 {busy
                   ? 'لحظة…'
-                  : `اطبع ${(merge ? rows.length * loaded.length : loaded.length) * copies} ورقة`}
+                  : `اطبع ${countIn((merge ? rows.length * loaded.length : loaded.length) * copies, 'ورقة')}`}
               </button>
             </>
           )}
@@ -1720,7 +1720,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       {mergePicker && (
         <CitizenMultiPicker
           confirmLabel="أضفهم إلى القائمة"
-          title="قائمة الدمج من السجل — ورقةٌ لكلّ اسم"
+          title="قائمة الدمج من الزبائن — ورقةٌ لكلّ اسم"
           onClose={() => setMergePicker(false)}
           onPick={(ids) => {
             setMergePicker(false);
@@ -1728,7 +1728,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               const have = new Set(rows);
               const added = records.map((r) => r.fullName.trim()).filter((n) => n && !have.has(n));
               setNames((prev) => [prev.trim(), ...added].filter(Boolean).join('\n'));
-              say(`أُضيف ${added.length} اسمًا من السجل`);
+              say(`أُضيف من الزبائن ${count(added.length, 'اسم')}`);
             });
           }}
         />
@@ -1756,7 +1756,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
           const n = Object.keys(filled).length;
           setValues((prev) => ({ ...prev, ...filled }));
           setPasteOpen(false);
-          say(n ? `مُلئ ${n} حقلًا من الرسالة — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
+          say(n ? `مُلئ من الرسالة ${count(n, 'حقل')} — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
         }}
       />
 

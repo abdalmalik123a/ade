@@ -22,6 +22,7 @@ import { useToast } from '../kit/useToast';
 import { choosePrinter } from '../lib/printChoice';
 import { PrinterNote } from '../components/OutputBar';
 import { useToolNav } from '../components/ToolFrame';
+import { useEscape } from '../kit/useEscape';
 
 type Props = {
   isOpen: boolean;
@@ -30,12 +31,8 @@ type Props = {
   attachments?: Attachment[];
 };
 
-export default function IdDuplexDialog({
-  isOpen,
-  onClose,
-  citizenName,
-  attachments = []
-}: Props) {
+export default function IdDuplexDialog({ isOpen, onClose, citizenName, attachments = [] }: Props) {
+  useEscape(onClose, isOpen);
   // المسح عابرٌ: يُحذف حين يُغلق الحوار (مراجعة ٧ ت١).
   const scanTransient = useTransientScans();
   // الخطّافات كلّها قبل `return null` أدناه: كان هذا بعده، فيتغيّر عددها بين تصييرٍ وتصيير (ج٥).
@@ -141,7 +138,7 @@ export default function IdDuplexDialog({
         page: { w: 210, h: 297 },
         duplex: mode === 'duplex'
       });
-      say(out.ok ? 'تم إرسال الهوية إلى الطابعة بمقاس 1:1' : out.reason || 'لم تتم الطباعة', !out.ok);
+      say(out.ok ? 'أُرسلت الهوية إلى الطابعة بمقاسها الحقيقي' : out.reason || 'لم تتم الطباعة', !out.ok);
     } catch (e) {
       say(errorText(e, 'تعذّرت الطباعة'), true);
     } finally {
@@ -181,10 +178,10 @@ export default function IdDuplexDialog({
             <span className="material-symbols-outlined text-[26px]">badge</span>
             <div>
               <h3 className="font-title-lg text-title-lg text-on-surface font-bold">
-                صانع هويات الوجه والظهر (ID Duplex 1:1)
+                استنساخ هوية — الوجه والظهر
               </h3>
               <p className="text-xs text-on-surface-variant">
-                طباعة واستنساخ الهويات والبطاقات بمقاس ١٠٠٪ حقيقي بالمليمتر على ورق A4
+                الهوية والبطاقة بمقاسها الحقيقي بالمليمتر على ورقة A4
                 {citizenName ? ` · ${citizenName}` : ''}
               </p>
             </div>
@@ -222,7 +219,7 @@ export default function IdDuplexDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-secondary flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-secondary" />
-                    وجه الهوية (Front)
+                    وجه الهوية
                   </span>
                   {frontSrc && (
                     <button
@@ -256,7 +253,7 @@ export default function IdDuplexDialog({
                       className="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-xs text-on-surface text-center font-medium"
                       onClick={() => void pickFromFile('front')}
                     >
-                      استعراض من الحاسوب
+                      افتح الصورة
                     </button>
                     <button
                       type="button"
@@ -294,7 +291,7 @@ export default function IdDuplexDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-secondary flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-secondary" />
-                    ظهر الهوية (Back)
+                    ظهر الهوية
                   </span>
                   {backSrc && (
                     <button
@@ -312,7 +309,7 @@ export default function IdDuplexDialog({
                   <div className="w-20 h-14 rounded-lg bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center shrink-0">
                     {backSrc ? (
                       <img
-                        alt="Back"
+                        alt="ظهر الهوية"
                         src={resolveUrl(backSrc)}
                         className="w-full h-full object-cover"
                       />
@@ -328,7 +325,7 @@ export default function IdDuplexDialog({
                       className="px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-xs text-on-surface text-center font-medium"
                       onClick={() => void pickFromFile('back')}
                     >
-                      استعراض من الحاسوب
+                      افتح الصورة
                     </button>
                     <button
                       type="button"
@@ -381,7 +378,7 @@ export default function IdDuplexDialog({
                   },
                   {
                     key: 'duplex',
-                    label: 'طباعة بوجهين (Duplex 1:1)',
+                    label: 'طباعة على وجهي الورقة',
                     desc: 'تطابق ١٠٠٪ بين الوجه والظهر على ورقة واحدة'
                   },
                   {

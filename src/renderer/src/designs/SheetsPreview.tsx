@@ -7,6 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { fitCanvasText } from '@shared/design/fit';
 import type { PreflightIssue } from '@shared/preflight';
+import { count, countIn } from '@shared/arabic';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 const PX_PER_MM = 96 / 25.4;
@@ -120,7 +121,7 @@ export default function SheetsPreview({
           <div>
             <div className="font-headline-sm text-headline-sm text-on-surface">مراجعة الأوراق</div>
             <div className="font-label-sm text-label-sm text-on-surface-variant" data-sheets-summary="">
-              {toIndic(cards)} {cards === 1 && unit === 'بطاقة' ? 'تصميم' : unit} على {toIndic(duplex ? pages.length / 2 : pages.length)} ورقة
+              {unit === 'بطاقة' ? (cards === 1 ? 'تصميم واحد' : count(cards, 'بطاقة')) : `${toIndic(cards)} ${unit}`} على {countIn(duplex ? pages.length / 2 : pages.length, 'ورقة')}
               {duplex ? ' بوجهين' : ''} — {toIndic(sheet.w)} × {toIndic(sheet.h)} ملم، بعلامات القصّ
             </div>
           </div>
@@ -145,7 +146,7 @@ export default function SheetsPreview({
             onClick={onPrint}
           >
             <span className="material-symbols-outlined text-[18px]">print</span>
-            اطبع {toIndic(duplex ? pages.length / 2 : pages.length)} ورقة
+            اطبع {countIn(duplex ? pages.length / 2 : pages.length, 'ورقة')}
           </button>
         </div>
       </div>

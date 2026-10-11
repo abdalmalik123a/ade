@@ -9,13 +9,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CitizenImportReport } from '@shared/api';
 import { IMPORT_TARGETS, importRows, mapOf, readTable, withTarget, type ImportTable, type ImportTarget } from '@shared/citizenImport';
 import { errorText } from '../lib/errors';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
+import { useEscape } from '../kit/useEscape';
 
 const GROUPS = [...new Set(IMPORT_TARGETS.map((t) => t.group))];
 
 /** ما خرج — جملةٌ واحدة للشريط بعد الاستيراد. */
 function doneText(r: CitizenImportReport): string {
-  const parts = [`أُضيف ${toIndic(r.added)}`, r.completed ? `وأُكمل ${toIndic(r.completed)} ملفًّا موجودًا` : ''];
+  const parts = [`أُضيف ${toIndic(r.added)}`, r.completed ? `وأُكمل من الموجود ${count(r.completed, 'ملف')}` : ''];
   const left = r.similar + r.noName;
   return `${parts.filter(Boolean).join('، ')}${left ? `، وتُرك ${toIndic(left)}` : ''}`;
 }
@@ -29,6 +30,7 @@ export default function CitizenImportDialog({
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  useEscape(onClose);
   const [file, setFile] = useState<string | null>(null);
   const [table, setTable] = useState<ImportTable | null>(null);
   const [category, setCategory] = useState('');

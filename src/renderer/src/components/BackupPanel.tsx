@@ -10,6 +10,7 @@ import { BACKUP_REMIND_DAYS, daysSince, sinceText } from '@shared/dates';
 import { errorText } from '../lib/errors';
 import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 import BackupCreate from './BackupCreate';
+import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 const input =
@@ -85,7 +86,7 @@ export default function BackupPanel({
       if (r) {
         onBackedUp(new Date().toISOString());
         setNote({
-          text: `أُخذت النسخة التلقائية: ${r.dbChanged ? 'القاعدة' : 'القاعدة لم تتغيّر'}، و${nf.format(r.filesCopied)} ملفًّا جديدًا (${(r.bytesCopied / 1024 / 1024).toFixed(1)} م.ب) — ${r.root}`,
+          text: `أُخذت النسخة التلقائية: ${r.dbChanged ? 'القاعدة' : 'القاعدة لم تتغيّر'}، والجديد ${count(r.filesCopied, 'ملف')} (${(r.bytesCopied / 1024 / 1024).toFixed(1)} م.ب) — ${r.root}`,
           tone: 'ok'
         });
       }
@@ -342,8 +343,8 @@ export default function BackupPanel({
             data-backup-summary=""
           >
             <span className="font-semibold">
-              {summary.ok ? 'النسخة سليمة' : `النسخة لا تجتاز الفحص (${summary.integrity})`}: {nf.format(summary.documents)} كتابًا ·{' '}
-              {nf.format(summary.citizens)} مواطنًا · {nf.format(summary.templates)} نموذجًا · {nf.format(summary.files)} ملفًّا
+              {summary.ok ? 'النسخة سليمة' : `النسخة لا تجتاز الفحص (${summary.integrity})`}: {count(summary.documents, 'كتاب')} ·{' '}
+              {count(summary.citizens, 'مواطن')} · {count(summary.templates, 'نموذج')} · {count(summary.files, 'ملف')}
               {summary.lastIssuedAt ? ` — آخر كتابٍ فيها ${summary.lastIssuedAt.slice(0, 16)}` : ''}
             </span>
             {(summary.appVersion || summary.createdAt) && (

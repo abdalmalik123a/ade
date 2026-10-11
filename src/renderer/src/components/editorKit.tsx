@@ -10,6 +10,8 @@ import { CALENDAR_LABEL, type Calendar } from '@shared/dates';
 import { ADDRESSING_LABEL, rankByAddressing } from '@shared/addressing';
 import type { Addressing, Seal } from '@shared/api';
 import { patchField, reorderFields } from '@shared/docEdit';
+import { useEscape } from '../kit/useEscape';
+import MenuItem from './editorMenuItem';
 
 export type EditorProps = {
   doc: Doc;
@@ -116,6 +118,7 @@ export function InsertMenu({
   onClip: (clip: MenuClip) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [view, setView] = useState<'main' | 'table' | 'image'>('main');
   const [query, setQuery] = useState('');
   const [hover, setHover] = useState({ r: 3, c: 3 });
@@ -281,33 +284,6 @@ export function InsertMenu({
         )}
       </div>
     </div>
-  );
-}
-
-function MenuItem({
-  act,
-  icon,
-  label,
-  wide,
-  onClick
-}: {
-  act: string;
-  icon: string;
-  label: string;
-  /** يملأ الصفّ — فلا يبقى زرٌّ وحده في نصفه. */
-  wide?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      className={`h-10 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 ${wide ? 'col-span-2' : ''}`}
-      data-act={act}
-      type="button"
-      onClick={onClick}
-    >
-      <span className="material-symbols-outlined text-[18px] text-secondary">{icon}</span>
-      {label}
-    </button>
   );
 }
 

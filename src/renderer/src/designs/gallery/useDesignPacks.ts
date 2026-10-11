@@ -4,7 +4,7 @@
  * استورده المكتب) وما غاب بعد الاستيراد يُقال بأسمائه.
  */
 import { useState } from 'react';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 import { errorText } from '../../lib/errors';
 
 type Say = (text: string, tone?: 'ok' | 'warn', action?: undefined, opts?: { sticky?: boolean }) => void;
@@ -35,7 +35,7 @@ export function useDesignPacks({ say, reload }: { say: Say; reload: () => Promis
         left?.fonts.length ? `خطّ ${names(left.fonts)}` : '',
         left?.elements.length ? `العنصر ${names(left.elements)}` : ''
       ].filter(Boolean);
-      const base = `حُفظت حزمة بـ${toIndic(out.templates)} ${out.templates === 1 ? 'تصميم' : 'تصاميم'}`;
+      const base = `حُفظت حزمة فيها ${count(out.templates, 'تصميم')}`;
       if (parts.length) say(`${base} — ولم يخرج معها ${parts.join(' و')}: مستوردٌ ترخيصه لهذا المكتب، فيحتاجه من يستوردها`, 'warn', undefined, { sticky: true });
       else say(`${base} — تُستورد من «التصاميم» أو «الإعدادات» في أيّ ديوان`);
       cancel();
@@ -61,7 +61,7 @@ export function useDesignPacks({ say, reload }: { say: Say; reload: () => Promis
       ].filter(Boolean);
       const missing = [
         out.missing?.fonts.length ? `خطّ ${names(out.missing.fonts)} ليس في هذا الجهاز — يُرسم ببديله حتى تستورده من «المكتبة ← الخطوط»` : '',
-        out.missing?.images ? `و${toIndic(out.missing.images)} صورة لم تأتِ مع الحزمة (عنصرٌ مستوردٌ في المكتب الآخر)` : ''
+        out.missing?.images ? `و${count(out.missing.images, 'صورة')} لم تأتِ مع الحزمة (عنصرٌ مستوردٌ في المكتب الآخر)` : ''
       ].filter(Boolean);
       say([lines.join(' '), ...missing].join(' — '), missing.length ? 'warn' : 'ok', undefined, missing.length ? { sticky: true } : undefined);
     } catch (e) {

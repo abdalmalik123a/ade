@@ -15,6 +15,7 @@ import { applySpelling } from '@shared/spelling';
 import CameraCapture from './CameraCapture';
 import { canvasOf, pixelsOf, pngOf } from '../lib/pixels';
 import { toIndicText as toIndic } from '@shared/arabic';
+import { useEscape } from '../kit/useEscape';
 
 const REASON: Record<ReviewReason, string> = {
   digits: 'أرقام — طابقها بالصورة',
@@ -47,6 +48,7 @@ export default function PaperPhotoDialog({
   onOpen: (out: { doc: Doc; title: string; notes: string[] }) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [stage, setStage] = useState<'pick' | 'camera' | 'reading' | 'review'>('pick');
   const [step, setStep] = useState('');
   const [error, setError] = useState<string | null>(null);

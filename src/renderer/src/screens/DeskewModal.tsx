@@ -6,17 +6,9 @@
  * لتوليد صورة مستوية مسطحة تماماً ١:١ مع تحسين التباين وتبييض الخلفية.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  DESKEW_ASPECTS,
-  defaultQuadForSize,
-  detectQuad,
-  flattenLight,
-  warpPerspective,
-  type PixelData,
-  type Point,
-  type Quad
-} from '@shared/deskew';
-import { cleanScan, despeckle, inkCoverage, straighten } from '@shared/scanClean';
+import { DESKEW_ASPECTS, defaultQuadForSize, warpPerspective, type Point, type Quad } from '@shared/deskew';
+import { detectCorners, finish, type Cleaning, type Finished } from './deskewSteps';
+import { useEscape } from '../kit/useEscape';
 
 type Props = {
   isOpen: boolean;
@@ -25,43 +17,8 @@ type Props = {
   onApply: (resultDataUrl: string) => void;
 };
 
-/** بكسلات الصورة كما حُمّلت — ليقرأها الكاشف. */
-function pixelsOf(img: HTMLImageElement): PixelData | null {
-  const c = document.createElement('canvas');
-  c.width = img.naturalWidth;
-  c.height = img.naturalHeight;
-  const ctx = c.getContext('2d');
-  if (!ctx) return null;
-  ctx.drawImage(img, 0, 0);
-  return ctx.getImageData(0, 0, c.width, c.height);
-}
-
-function detectCorners(img: HTMLImageElement): Quad | null {
-  const px = pixelsOf(img);
-  return px ? detectQuad(px) : null;
-}
-
-/** ما يُجرى بعد التسوية (هـ١) — ويُعرض أثره: زاوية التقويم، والبقع الممحوّة، والحبر. */
-type Cleaning = { keepColor: boolean; despeckle: boolean; straighten: boolean };
-type Finished = { px: PixelData; angle: number; specks: number; ink: number; heavy: boolean };
-
-/**
- * «مسح نظيف»: ظلُّ اليد ووهجُ المصباح يُسوَّيان، والورق أبيض والحبر حبر — **والختم
- * الأزرق والتوقيع الأحمر بلونهما** إن طُلب. ثم التقويم من الأسطر (ورقةٌ مائلة على
- * الزجاج لا أركان لها تُكشف)، ثم محو البقع المعزولة.
- */
-function finish(px: PixelData, mode: string, cleaning: Cleaning): Finished {
-  let out = px;
-  let angle = 0;
-  if (cleaning.straighten) ({ px: out, angle } = straighten(out));
-  if (mode === 'scan') out = cleaning.keepColor ? cleanScan(out, { keepColor: true }) : flattenLight(out, { gray: true, ink: 1.3 });
-  let specks = 0;
-  if (cleaning.despeckle && mode !== 'color') ({ px: out, removed: specks } = despeckle(out));
-  const { coverage, heavy } = inkCoverage(out);
-  return { px: out, angle, specks, ink: coverage, heavy };
-}
-
 export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Props) {
+  useEscape(onClose, isOpen);
   const [aspectKey, setAspectKey] = useState('id1');
   const [quad, setQuad] = useState<Quad | null>(null);
   const [filterMode, setFilterMode] = useState<'color' | 'photocopy' | 'grayscale' | 'scan'>('color');

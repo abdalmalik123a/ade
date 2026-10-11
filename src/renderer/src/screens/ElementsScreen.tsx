@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BUILTIN_CLIPARTS, svgToDataUrl } from '@shared/clipart';
 import { BUNDLED_ELEMENTS } from '@shared/assets/elements';
 import { ELEMENT_CATEGORIES, type ElementCategory, type ElementImport, type LibraryElement } from '@shared/design/elements';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 import { confirmAction } from '../kit/ask';
 import { useToast } from '../kit/useToast';
 import { errorText } from '../lib/errors';
@@ -16,7 +16,7 @@ const BUTTON = 'h-10 px-space-md rounded-lg font-label-md text-label-md font-sem
 const TILE = 'rounded-xl bg-surface-container-lowest p-space-sm flex flex-col gap-1 shadow-[0_1px_3px_rgba(15,23,42,0.08)]';
 
 function importMessage(out: ElementImport): { text: string; tone: 'ok' | 'warn' } {
-  const added = out.added.length ? `أُضيف ${toIndic(out.added.length)} عنصرًا` : '';
+  const added = out.added.length ? `أُضيف ${count(out.added.length, 'عنصر')}` : '';
   const failed = out.errors.map((e) => `${e.name}: ${e.reason}`).join(' — ');
   if (!added && !failed) return { text: 'لم يُختر ملف', tone: 'warn' };
   return { text: [added, failed && `لم يُضَف: ${failed}`].filter(Boolean).join('. '), tone: failed ? 'warn' : 'ok' };

@@ -1093,6 +1093,7 @@ node tools/drive.mjs tools/scenarios/<name>.mjs   # يقود التطبيق ال
 ```
 CLAUDE.md                 قواعد العمل في كلّ محادثة: النطاق، والثوابت، والفحص بقدر التغيير، والإيداع في packs بلا دمجٍ ولا إصدار، والتقرير
 IMPROVEMENTS.md           قائمة التحسينات بعد ١٫٦٫٠ بأرقامٍ ثابتة، وترتيب المحادثات، وقالب المهمّة القصير
+UI.md                     دليل الواجهة: اسمٌ واحد لكلّ مكان، وعربيةٌ بلا مصطلح، وأداة العدّ، وEscape و✕، والمساعدة
 DEVELOPMENT.md            قرارات المالك والخطة التنفيذية، ودليل المالك لمفاتيح التفعيل
 TESTING.md                ما يُختبر وكيف
 HANDOFF.md                تسليم ما بقي من «الحزمة الصغيرة الآمنة» (د · هـ · و · ز): لكلّ بندٍ موضعه وإصلاحه واختباره — يبدأ منه من يكمل بلا ذاكرة
@@ -1228,7 +1229,7 @@ src/shared/               ما تشترك فيه العمليتان — دوال
   findReplace.ts          البحث والاستبدال في الوثيقة — والحقول لا تُمسّ
   symbols.ts              لوحة الرموز كاملةً في مجموعات
   tafqeet.ts              التفقيط بالدينار العراقي والعملات
-  arabic.ts               تطبيع النصّ العربي للبحث
+  arabic.ts               تطبيع النصّ العربي للبحث، والأرقام الهندية، وأداة العدّ الواحدة للواجهة (count وcountIn — UI.md ٣)
   dates.ts                التاريخان الميلادي والهجري
   examPaper.ts            ورقة الأسئلة: الرأس الثابت يُولَّد من `meta.head`
   examAnalysis.ts         تحليل أسئلة الدوائر، و«الدور الثاني» من البنك
@@ -1310,27 +1311,27 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     EditorScreen.tsx      المحرّر ومعاينة A4: الإصدار والإخراج
     TemplatesScreen.tsx   مكتبة النماذج والمسودات
     TemplateDesigner.tsx  مصمّم النماذج
-    ArchiveScreen.tsx     الأرشيف والبحث
-    CitizensScreen.tsx    سجل المواطنين والمستمسكات
+    ArchiveScreen.tsx     «الصادر» في السجلّ: الكتب والبحث فيها (ArchiveHits.tsx نتائج البحث الشامل)
+    CitizensScreen.tsx    «الأشخاص» في الزبائن: ملفّاتهم ومستمسكاتهم (CitizenBits.tsx الشريحة وزرّ الأيقونة)
     CitizenForm.tsx       نموذج ملف المواطن بخاناته
-    OrdersScreen.tsx      الطلبات بحالاتها
+    OrdersScreen.tsx      الطلبات بحالاتها (OrderCard.tsx بطاقة الطلب ولون موعده)
     ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»
     LetterheadScreen.tsx  الترويسات والشعارات والكليشات
     FontsScreen.tsx       «المكتبة ← الخطوط»: المحزوم والمستورد، واستيراد ملفٍّ، وخطوط Windows بضغطة
     ElementsScreen.tsx    «المكتبة ← العناصر»: رسومات ديوان، وما يُستورد SVG أو PNG بصنفه
-    PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر
+    PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر (papersTree.ts تحويلات شجرة الأسئلة)
     DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
-    PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج
+    PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج (PhotoPresetsDialog.tsx قوالب المكتب)
     PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة
     AuditScreen.tsx       سجلّ التدقيق وسلامة الأرشيف
     SettingsScreen.tsx    الإعدادات
     FillCard.tsx          بطاقة التعبئة في نافذتها (mode=fillcard)
-    DeskewModal.tsx       تسوية المستمسك وتنظيفه
-    IdDuplexDialog.tsx    الهوية وجهًا وظهرًا ١:١
+    DeskewModal.tsx       تسوية المستمسك وتنظيفه (deskewSteps.ts البكسلات والأركان و«المسح النظيف»)
+    IdDuplexDialog.tsx    «استنساخ هوية»: الوجه والظهر بمقاسهما الحقيقي
     WhatsAppPasteDialog.tsx  بيانات المواطن من رسالة واتساب
   src/components/         المكوّنات المشتركة
     PageEditor.tsx        المحرّر: الورقة وثيقةٌ واحدة (ProseMirror)، والصفحات كما تُطبع
-    editorKit.tsx         أدوات المحرّر: الشريط وقائمة الإدراج ولوحة الحقول
+    editorKit.tsx         أدوات المحرّر: الشريط وقائمة الإدراج ولوحة الحقول (editorMenuItem.tsx زرّ القائمة)
     LetterSheet.tsx       ورقة الكتاب كما تُطبع — للشبّاك والمحرّر معًا
     LetterheadView.tsx    الترويسة كما تُطبع
     FontSelect.tsx        اختيار الخطّ من «خطوط ديوان» — والغائب باسمه، ويُضاف من Windows بضغطة
@@ -1355,7 +1356,8 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     AddressingPicker.tsx  لمن يُكتب الكتاب: أعلى أو أدنى أو مساوية
     SpellingPanel.tsx     لوح التنبيه الإملائي
     SymbolPalette.tsx     لوحة الرموز
-    ImportPlanDialog.tsx  مراجعة «استورد مجلدي» — ومعها ما لا يُنقل وإحصاء الملفّات
+    ImportPlanDialog.tsx  مراجعة «استورد مجلدي» — ومعها ما لا يُنقل وإحصاء الملفّات (ImportPlanRows.tsx صفّ الحقل وثقته)
+    SearchField.tsx       حقل بحثٍ يُمسح بـ✕ ظاهر كما بـEscape (UI.md ٤)
     WordLosses.tsx        «ما في ملف Word ولم يُنقل إلى الورقة»: بجانبها في المصمّم، وفي تفصيل كلّ ملفّ
     PaperPhotoDialog.tsx  «من صورة ورقة»: القراءة على الجهاز، والمراجعة بالقصاصات قبل المصمّم
     CameraCapture.tsx     التقاطٌ بالكاميرا: المستمسك كاملًا، والصورة بإطارها
@@ -1382,6 +1384,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
                           وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
                           وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣) وTextEffectsPanel (ظلّ النصّ وحدّه وقوسه، ١٫١٠)
+  src/kit/                useEscape.ts: Escape يغلق النافذة العليا كما ✕ (UI.md ٤) · ask.ts وConfirmHost السؤال · useToast · useLeaveGuard
   src/lib/                errors.ts رسائل الأخطاء · fitImage.ts صورةٌ بحدّ خانة الرفع · useLearnedGenders.ts
                           · beforeClose.ts ما يُفرَغ قبل الإغلاق (مسودة المحرّر والتصاميم)
                           · fonts.ts خطوط ديوان المستوردة: تُحمَّل عند الإقلاع وتُحقن قواعدها، وقائمة المكتبة لمن يعرضها

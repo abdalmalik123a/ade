@@ -3,7 +3,7 @@
  * الإمساكية — وإعدادها (أوّل رمضان، التقويم، الأرقام، الجمعة) يُطبَّق فور تغييره ويُحفظ في جدولها. وكلٌّ خطوةٌ يعيدها التراجع.
  */
 import { useState } from 'react';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 import type { ImsakiyaSettings, TableElement } from '@shared/canvas';
 import { fromIsoDate, isoDate } from '@shared/dates';
 import { fillImsakiya, freshSettings, imsakiyaGaps } from '@shared/design/imsakiya';
@@ -60,7 +60,7 @@ export function useImsakiya(ed: DesignEditor, table: TableElement) {
     const times = timesOf(pending.table);
     if (!times.length) return ed.say('لم يُختر عمود وقتٍ واحد', 'warn');
     ed.apply(fillImsakiya(ed.canvas, times, { ...settings, ...(start && { start: isoDate(start) }) }));
-    ed.say(`الإمساكية: ${toIndic(pending.table.rows.length)} يومًا بـ${toIndic(times.length)} أوقات من «${pending.from}» — قابلها بالجدول الرسمي قبل الطباعة`, 'ok');
+    ed.say(`الإمساكية: ${count(pending.table.rows.length, 'يوم')} بأوقاتها (${toIndic(times.length)} في اليوم) من «${pending.from}» — قابلها بالجدول الرسمي قبل الطباعة`, 'ok');
     setPending(null);
   };
 

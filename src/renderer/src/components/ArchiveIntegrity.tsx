@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import type { ArchiveCheck } from '@shared/api';
 import { errorText } from '../lib/errors';
+import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -65,8 +66,8 @@ export default function ArchiveIntegrity({ card, onOpenSerial }: { card: string;
         >
           <span className="font-semibold">
             {sound
-              ? `السجلّ سليم: فُحص ${nf.format(check.checked)} كتابًا — كلٌّ ببصمة متنه، والسلسلة متّصلة، ولا رقم غائب.`
-              : `فُحص ${nf.format(check.checked)} كتابًا، ووُجد ${nf.format(check.problems.length)} مما يُسأل عنه:`}
+              ? `السجلّ سليم: فُحص ${count(check.checked, 'كتاب')} — كلٌّ ببصمة متنه، والسلسلة متّصلة، ولا رقم غائب.`
+              : `فُحص ${count(check.checked, 'كتاب')}، ووُجد ${nf.format(check.problems.length)} مما يُسأل عنه:`}
           </span>
           {!sound && (
             <ul className="list-disc pr-5 flex flex-col gap-0.5">

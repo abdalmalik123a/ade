@@ -8,7 +8,7 @@
  *
  * والهاتف العراقي المحمول: ١١ رقمًا تبدأ بـ«07» — أو بـ«+964» بلا الصفر.
  */
-import { normalizeFold } from './arabic';
+import { normalizeFold, toIndic } from './arabic';
 
 /** الأرقام وحدها — والهندية تُردّ لاتينية (٠١٢ ← 012). */
 const digits = (v: string) => normalizeFold(v).replace(/\D/g, '');
@@ -51,7 +51,7 @@ export function nationalIdHint(value: string | null | undefined): string | null 
   // لا يراه الموظف، ويُمحى عند الحفظ.
   const stray = [...v].some((ch) => !isDigit(ch) && ch.trim() !== '' && ch !== '-' && !invisible(ch.charCodeAt(0)));
   if (stray) return 'الرقم الوطني أرقامٌ فقط — أفيه حرفٌ سها؟';
-  if (d.length !== 12) return `الرقم الوطني الموحّد ١٢ رقمًا، وهذا ${d.length} — إن لم تكن هويةً قديمة فراجِعه`;
+  if (d.length !== 12) return `الرقم الوطني الموحّد ١٢ رقمًا، وهذا ${toIndic(d.length)} — إن لم تكن هويةً قديمة فراجِعه`;
   return null;
 }
 

@@ -53,7 +53,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     boxes.forEach((b) => { if (!b.checked) b.click(); });
   `);
   await wait(400);
-  await page.clickText('احفظ 2 بطاقة');
+  await page.clickText('احفظ بطاقتين');
   await wait(2500);
   ok('امتلأت المكتبة من المجلد', (await page.text()).includes('حُفظت 2 بطاقة'));
 
@@ -80,7 +80,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   await wait(400);
   ok('اختير أكثر من ورقة', chosen >= 2);
-  ok('وعُدّت المختارات', (await page.text()).includes('2 ورقة مختارة'));
+  ok('وعُدّت المختارات', (await page.text()).includes('المختار: ورقتان'));
 
   await page.clickText('املأ (2)');
   await wait(1200);
@@ -276,10 +276,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.clickText('احفظ بلا طباعة');
   await wait(1500);
   ok('حُفظت معاملة الزبون الجديد', (await afterText()).includes('ورقةٌ واحدة'));
-  ok('وعُرض حفظه في سجل المواطنين', (await page.eval(`return document.querySelector('[data-new-citizen]')?.innerText ?? '';`)).includes('كريم حسن علي'));
+  ok('وعُرض حفظه في الزبائن', (await page.eval(`return document.querySelector('[data-new-citizen]')?.innerText ?? '';`)).includes('كريم حسن علي'));
   await page.eval(`document.querySelector('[data-act="save-new-citizen"]').click(); return true;`);
   await wait(900);
-  ok('فحُفظ ورُبطت به كتبه', (await page.text()).includes('حُفظ «كريم حسن علي» في سجل المواطنين'));
+  ok('فحُفظ ورُبطت به كتبه', (await page.text()).includes('حُفظ «كريم حسن علي» في الزبائن'));
   const db3 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
   const karim = db3.prepare("SELECT id FROM citizens WHERE full_name = 'كريم حسن علي'").get();
   const karimDocs = db3.prepare("SELECT citizen_id AS c FROM documents WHERE citizen_name = 'كريم حسن علي'").all();

@@ -3,7 +3,7 @@
  * (ملفٌّ أو لصق) لا يحسبها ديوان، وأيّامها من أوّل رمضان بالتقويم المختار، والجمعة مميّزة، والأرقام هندية أو لاتينية.
  */
 import { useState } from 'react';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 import type { TableElement } from '@shared/canvas';
 import { CALENDAR_LABEL, type Calendar } from '@shared/dates';
 import type { DesignEditor } from '../editor/useDesignEditor';
@@ -26,7 +26,7 @@ export default function ImsakiyaPanel({ ed, table }: { ed: DesignEditor; table: 
             className={`px-2 py-0.5 rounded-full font-label-xs text-label-xs tabular ${gaps.empty ? 'bg-error-container/30 text-error' : 'bg-secondary-container text-on-secondary'}`}
             data-imsakiya-gaps={gaps.empty}
           >
-            {gaps.empty === gaps.total ? 'الأوقات فارغة' : gaps.empty ? `خانات فارغة: ${toIndic(gaps.empty)}` : `${toIndic(table.rows.length)} يومًا بأوقاتها`}
+            {gaps.empty === gaps.total ? 'الأوقات فارغة' : gaps.empty ? `خانات فارغة: ${toIndic(gaps.empty)}` : `${count(table.rows.length, 'يوم')} بأوقاتها`}
           </span>
         )}
       </div>

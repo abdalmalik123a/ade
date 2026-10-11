@@ -266,7 +266,7 @@ export default function Onboarding({
                       type="button"
                       onClick={() => onDone(patch(), 'templates', 'pack')}
                     >
-                      من ملفّ ‎.diwanpack…
+                      من ملفّ حزمة…
                     </button>
                     <button
                       className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
@@ -293,7 +293,7 @@ export default function Onboarding({
               {(
                 [
                   { key: 'word', go: 'templates', action: 'folder', icon: 'folder_open', title: 'عندي ملفات Word', hint: 'مجلّدها كلّه إلى المكتبة دفعةً واحدة — تُراجع قبل أن تُحفظ' },
-                  { key: 'pack', go: 'templates', action: 'pack', icon: 'inventory_2', title: 'عندي حزمة جاهزة لجهةٍ أو مكتب', hint: 'ملفّ ‎.diwanpack بنماذجها وترويساتها — ما ليس عندك يُضاف' },
+                  { key: 'pack', go: 'templates', action: 'pack', icon: 'inventory_2', title: 'عندي حزمة جاهزة لجهةٍ أو مكتب', hint: 'ملفّ حزمة ديوان بنماذجها وترويساتها — ما ليس عندك يُضاف' },
                   { key: 'letterhead', go: 'letterhead', icon: 'image', title: 'عندي شعارات المدارس والدوائر', hint: 'ارفعها مرّة، فتخرج الترويسات والتصاميم بشعار كلّ جهة ولونها' },
                   { key: 'service', go: 'service', icon: 'storefront', title: 'أبدأ فارغًا — العمل الآن', hint: 'الشبّاك: ورقةٌ فارغة كما في Word، والصور وPDF والمستمسكات' }
                 ] as const

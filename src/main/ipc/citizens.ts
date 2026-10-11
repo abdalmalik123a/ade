@@ -137,7 +137,7 @@ export function registerCitizenIpc(): void {
       const win = BrowserWindow.fromWebContents(e.sender);
       if (!win) return null;
       const picked = await dialog.showOpenDialog(win, {
-        title: 'استعراض من الحاسوب',
+        title: 'افتح ملفًّا',
         buttonLabel: 'إدراج',
         properties: ['openFile'],
         filters: IMAGE_FILTERS

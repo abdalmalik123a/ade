@@ -7,6 +7,7 @@ import { cropForRatio, FULL, isEdited } from '@shared/photoEdit';
 import CropOverlay from './CropOverlay';
 import { straightFrame } from './photoCanvas';
 import { usePhotoEdit } from './usePhotoEdit';
+import { useEscape } from '../../kit/useEscape';
 
 const BTN = 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
 const RATIOS: [string, number][] = [
@@ -17,6 +18,7 @@ const RATIOS: [string, number][] = [
 ];
 
 export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { src: string; frameRatio?: number; onClose: () => void; onDone: (src: string) => void }) {
+  useEscape(onClose);
   const p = usePhotoEdit(src);
   const { edit } = p;
   const [ratio, setRatio] = useState<number | null>(null);

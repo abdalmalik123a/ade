@@ -28,7 +28,7 @@ import LetterheadView from '../components/LetterheadView';
 import TemplateDesigner from './TemplateDesigner';
 import { errorText } from '../lib/errors';
 import { skippedLines } from '@shared/importSkipped';
-import { normalizeFold } from '@shared/arabic';
+import { normalizeFold, count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 
@@ -268,7 +268,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       // وما في المجلّد ولم يُنقل يُقال في النتيجة أيضًا (هـ١)، ويبقى حتى يُغلق — فلا يظنّ المكتب أنّ أرشيفه كلّه دخل.
       const left = skippedLines(edited.skipped);
       say(
-        `حُفظت ${out.templates} بطاقة` +
+        `حُفظت ${count(out.templates, 'بطاقة')}` +
           (out.letterheadId ? ' وترويسة واحدة للجميع' : '') +
           (out.skipped ? ` — وتُركت ${out.skipped}` : '') +
           (left.length ? ` · ولم يُنقل من المجلّد: ${left.join(' · ')}` : ''),
@@ -347,7 +347,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     setBusy(true);
     try {
       const r = await window.diwan.content.export();
-      if (r) say(`صُدّرت حزمة المحتوى: ${nf.format(r.templates)} نموذجًا، ${nf.format(r.letterheads)} ترويسة، ${nf.format(r.clips)} كليشة — ${r.path}`);
+      if (r) say(`صُدّرت حزمة المحتوى: ${count(r.templates, 'نموذج')}، ${count(r.letterheads, 'ترويسة')}، ${count(r.clips, 'كليشة')} — ${r.path}`);
     } catch (e) {
       say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
@@ -365,7 +365,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       const a = r.added;
       const had = r.existing.templates + r.existing.letterheads + r.existing.clips;
       say(
-        `أُضيف ${nf.format(a.templates)} نموذجًا، ${nf.format(a.letterheads)} ترويسة، ${nf.format(a.clips)} كليشة` +
+        `أُضيف: ${count(a.templates, 'نموذج')}، ${count(a.letterheads, 'ترويسة')}، ${count(a.clips, 'كليشة')}` +
           (had ? ` — و${nf.format(had)} موجودٌ في المكتب فتُرك كما هو` : '')
       );
     } catch (e) {
@@ -407,7 +407,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
       const a = r.added;
       const had = r.existing.templates + r.existing.letterheads + r.existing.clips;
       say(
-        `أُضيف ${nf.format(a.templates)} نموذجًا، ${nf.format(a.letterheads)} ترويسة، ${nf.format(a.clips)} كليشة` +
+        `أُضيف: ${count(a.templates, 'نموذج')}، ${count(a.letterheads, 'ترويسة')}، ${count(a.clips, 'كليشة')}` +
           (had ? ` — و${nf.format(had)} موجودٌ في المكتب فتُرك كما هو` : '')
       );
     } catch (e) {
@@ -435,7 +435,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
           <div className="me-auto">
             <h1 className="font-headline-md text-headline-md text-on-surface font-bold">المكتبة</h1>
             <p className="font-label-md text-label-md text-on-surface-variant">
-              ما يُبنى مرّةً ويُطبع كثيرًا — {nf.format(stats?.activeTemplates ?? 0)} نموذجًا بأقسام جهاتها
+              ما يُبنى مرّةً ويُطبع كثيرًا — {count(stats?.activeTemplates ?? 0, 'نموذج', 'لا نماذج بعد')} بأقسام جهاتها
             </p>
           </div>
           <button
@@ -967,7 +967,7 @@ function TemplateCard({
         <div className="p-space-md pt-0 mt-auto flex flex-col gap-space-xs">
           <span className="font-label-sm text-label-sm text-error text-center">
             {usage && usage > 0
-              ? `صدر عن هذا النموذج ${nf.format(usage)} كتابًا — تحذفه؟`
+              ? `صدر عن هذا النموذج ${count(usage, 'كتاب')} — تحذفه؟`
               : 'تأكيد حذف النموذج؟'}
           </span>
           <div className="flex items-center gap-space-xs">
@@ -1220,7 +1220,7 @@ function PacksModal({
                     </button>
                   </div>
                   <div className="flex items-center gap-space-md text-[12px] text-on-surface-variant pt-space-xs border-t border-outline-variant/50">
-                    <span>{p.counts.templates} نموذجًا · {p.counts.clips} كليشة{p.counts.letterheads ? ` · ${p.counts.letterheads} ترويسة` : ''}</span>
+                    <span>{count(p.counts.templates, 'نموذج')} · {count(p.counts.clips, 'كليشة')}{p.counts.letterheads ? ` · ${count(p.counts.letterheads, 'ترويسة')}` : ''}</span>
                     <span>تحقّق المصادر: {p.verifiedOn}</span>
                   </div>
                 </div>
@@ -1232,7 +1232,7 @@ function PacksModal({
             <div>
               <h3 className="font-label-md text-label-md font-bold text-on-surface">استيراد حزمة من ملف خارجي</h3>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                ملف حزمة (.diwanpack) صُدّر من حاسوب آخر أو أُرسل إليك
+                ملفّ حزمة ديوان صُدّر من حاسوب آخر أو أُرسل إليك
               </p>
             </div>
             <button

@@ -153,7 +153,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.type('textarea[data-batch-text]', list);
   await wait(600);
   const summary = await page.eval(`return document.querySelector('[data-batch-summary]')?.innerText ?? '';`);
-  ok('الدفعة: ١٢ اسمًا في ورقتين', summary.includes('١٢') && summary.includes('٢'));
+  ok('الدفعة: ١٢ اسمًا في ورقتين', summary.includes('١٢ اسمًا') && summary.includes('ورقتان'));
   ok('والعمود بلا حقلٍ يُقال عنه', (await page.text()).includes('فتُرك: الهاتف'));
   ok('والمحرّر يُري أوّل اسمٍ لا وسمه', (await design()).includes('طالب 1'));
   await click('button[data-act="sheets"]');
@@ -167,7 +167,7 @@ export default async function scenario(page, { profile, shotsDir }) {
       marks: o.querySelectorAll('.print-page div[style*="background:#000"]').length
     };
   `);
-  ok('وتُراجع الأوراق قبل الطباعة: ١٢ بطاقة على ورقتين', Boolean(sheets?.summary.includes('١٢') && sheets.summary.includes('٢ ورقة')));
+  ok('وتُراجع الأوراق قبل الطباعة: ١٢ بطاقة على ورقتين', Boolean(sheets?.summary.includes('١٢') && sheets.summary.includes('ورقتين')));
   ok('والورقة الأولى تسعُ بطاقات بعلامات قصّها', sheets?.cards === 9 && sheets.marks === 24);
   if (shotsDir) await page.shot(join(shotsDir, 'designs-sheets.png'));
   await page.eval(`document.querySelector('[data-sheets] button[title="التالية"]').click()`);
@@ -198,12 +198,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ورقةٌ استُعمل منها أربع خانات: تُكمَل من الخامسة، فتبقى ورقتان لاثنتي عشرة.
   await page.eval(`document.querySelector('[data-sheets] button[data-slot="4"]').click(); return true;`);
   await wait(500);
-  ok('البدء من الخانة الخامسة: ١٢ بطاقة على ورقتين', (await sheetState()).summary.includes('٢ ورقة'));
+  ok('البدء من الخانة الخامسة: ١٢ بطاقة على ورقتين', (await sheetState()).summary.includes('ورقتين'));
   await page.eval(`document.querySelector('[data-sheets] button[data-slot="0"]').click(); return true;`);
   // بطاقتان تلفتا تُعادان وحدهما.
   await page.type('[data-sheets] input[data-act="pick-cards"]', '3-4');
   await wait(500);
-  ok('وإعادة ما تلف وحده: «3-4» بطاقتان على ورقة', (await sheetState()).summary.includes('٢ بطاقة على ١ ورقة'));
+  ok('وإعادة ما تلف وحده: «3-4» بطاقتان على ورقة', (await sheetState()).summary.includes('بطاقتان على ورقة واحدة'));
   await page.type('[data-sheets] input[data-act="pick-cards"]', '');
   // ورقةٌ فاصلة لكلّ صفّ: الخامس (١١) والسادس (١).
   await page.eval(`
@@ -215,7 +215,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(700);
   const grouped = await sheetState();
   ok('والفواصل: أوّل ورقةٍ فاصلةُ «الخامس» بعددها', grouped.first.includes('الخامس') && grouped.first.includes('١١'));
-  ok('وخمس أوراق: فاصلٌ وورقتان للخامس، وفاصلٌ وورقة للسادس', grouped.summary.includes('٥ ورقة'));
+  ok('وخمس أوراق: فاصلٌ وورقتان للخامس، وفاصلٌ وورقة للسادس', grouped.summary.includes('٥ أوراق'));
 
   await page.eval(`document.querySelector('[data-sheets] button[title="رجوع (Esc)"]').click()`);
   await wait(400);

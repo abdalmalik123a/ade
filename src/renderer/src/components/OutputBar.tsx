@@ -4,6 +4,7 @@
  * «أعد الطبع» و«شيءٌ آخر لنفس الزبون».
  */
 import { PRINT_ROLES, describeRole, type PrintRoleKey, type PrintRoles } from '@shared/printRoles';
+import { count } from '@shared/arabic';
 
 /** «على Canon MF3010 · طابعة الكتب» — أو «تُختار الطابعة عند الطبع». */
 export function PrinterNote({ role, roles }: { role: PrintRoleKey; roles: PrintRoles | null | undefined }) {
@@ -23,12 +24,8 @@ export function PrinterNote({ role, roles }: { role: PrintRoleKey; roles: PrintR
   );
 }
 
-/** «ورقةٌ واحدة»، «ورقتان»، «٣ أوراق»، «١٢ ورقة» — كما تُقال. */
-export function papersWord(n: number): string {
-  if (n === 1) return 'ورقةٌ واحدة';
-  if (n === 2) return 'ورقتان';
-  return n <= 10 ? `${n} أوراق` : `${n} ورقة`;
-}
+/** «ورقة واحدة»، «ورقتان»، «٣ أوراق»، «١٢ ورقة» — بأداة العدّ الواحدة (`count` في `shared/arabic.ts`). */
+export const papersWord = (n: number): string => count(n, 'ورقة');
 
 export type Outcome = {
   /** ما خرج: «٣ أوراق» أو «كتاب». */

@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { CitizenSummary } from '@shared/api';
+import { useEscape } from '../kit/useEscape';
 
 export default function CitizenMultiPicker({
   title,
@@ -21,6 +22,7 @@ export default function CitizenMultiPicker({
   onPick: (ids: number[]) => void;
   onClose: () => void;
 }) {
+  useEscape(onClose);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);

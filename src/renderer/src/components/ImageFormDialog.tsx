@@ -10,6 +10,7 @@ import { eraseBoxes, preparePaper } from '@shared/paperRules';
 import { borderBands, cropPixels, findBoxes, findLeaders, inkShare } from '@shared/formBoxes';
 import { assignKeys, imageFormDoc, planImageForm, unreadCells, withCellRead, type FormSlot } from '@shared/imageForm';
 import { canvasOf, pixelsOf, pngOf } from '../lib/pixels';
+import { useEscape } from '../kit/useEscape';
 
 const KIND: Record<FormSlot['kind'], { label: string; color: string }> = {
   text: { label: 'خانة', color: 'rgba(21,112,218,0.25)' },
@@ -24,6 +25,7 @@ const dpiOf = (width: number) => Math.round(width / 8.27);
 type Read = { title: string; view: string; png: Uint8Array; type: 'png' | 'jpg'; w: number; h: number; dpi: number; slots: FormSlot[] };
 
 export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (templateId: number, edit: boolean) => void }) {
+  useEscape(onClose);
   const [step, setStep] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [read, setRead] = useState<Read | null>(null);

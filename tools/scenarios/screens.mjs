@@ -117,7 +117,7 @@ export default async function scenario(page, { shotsDir }) {
   await page.goto('citizens-identity-records');
   await wait(600);
   const tabs = await page.eval(`return [...document.querySelectorAll('[data-tabs] a')].map((a) => a.innerText.trim()).join('|');`);
-  ok('«الزبائن» بتبويبين: أشخاص وجهات', tabs === 'أشخاص|جهات');
+  ok('«الزبائن» بتبويبين: الأشخاص والجهات', tabs === 'الأشخاص|الجهات');
   await page.goto('clients-directory');
   await wait(600);
   dests = await rail();

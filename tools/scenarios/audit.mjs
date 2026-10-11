@@ -43,7 +43,7 @@ export default async function scenario(page, { profile }) {
   await click('button[data-act="sheets"]');
   await wait(1500);
   const preflight = await page.eval(`return document.querySelector('[data-sheets] [data-preflight]')?.innerText ?? '';`);
-  ok(`وفاحص ما قبل الطباعة يعدّ بطاقات الدفعة التي لا يُطبع فيها («${preflight.split('\n').find((l) => l.includes('الباركود')) ?? ''}»)`, preflight.includes('لا يحمل الحروف العربية') && preflight.includes('١ بطاقة') && preflight.includes('رقم7'));
+  ok(`وفاحص ما قبل الطباعة يعدّ بطاقات الدفعة التي لا يُطبع فيها («${preflight.split('\n').find((l) => l.includes('الباركود')) ?? ''}»)`, preflight.includes('لا يحمل الحروف العربية') && preflight.includes('بطاقة واحدة') && preflight.includes('رقم7'));
   const bars = await page.eval(`return [...document.querySelectorAll('[data-sheets] .print-page [data-canvas]')].map((c) => Boolean(c.querySelector('svg rect')));`);
   ok(`وفي الأوراق: بطاقتا الأرقام بباركودهما (${JSON.stringify(bars)})`, bars.length === 3 && bars.filter(Boolean).length === 2);
   await page.eval(`document.querySelector('[data-sheets] button[title="رجوع (Esc)"]')?.click(); return true;`);

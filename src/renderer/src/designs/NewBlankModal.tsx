@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BLEED_MM, SIZE_PRESETS, type CanvasSize, type SizePreset } from '@shared/canvas';
+import { useEscape } from '../kit/useEscape';
 
 export type NewBlankModalProps = {
   isOpen: boolean;
@@ -8,6 +9,7 @@ export type NewBlankModalProps = {
 };
 
 export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankModalProps) {
+  useEscape(onClose, isOpen);
   const [selectedKey, setSelectedKey] = useState<string>('a4-landscape');
   const [width, setWidth] = useState<number>(297);
   const [height, setHeight] = useState<number>(210);

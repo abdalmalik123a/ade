@@ -4,8 +4,10 @@
  */
 import BackupCreate, { type BackupMade } from './BackupCreate';
 import { useState } from 'react';
+import { useEscape } from '../kit/useEscape';
 
 export default function BackupDialog({ onClose, onDone }: { onClose: () => void; onDone: (made: BackupMade) => void }) {
+  useEscape(onClose);
   const [error, setError] = useState<string | null>(null);
   return (
     <div

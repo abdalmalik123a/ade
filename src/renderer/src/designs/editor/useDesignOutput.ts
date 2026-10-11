@@ -11,6 +11,7 @@ import { WATERMARK_PRESETS, tiledWatermark } from '@shared/watermark';
 import { errorText } from '../../lib/errors';
 import { choosePrinter } from '../../lib/printChoice';
 import type { Outcome } from '../../components/OutputBar';
+import { toIndic, count, countIn } from '@shared/arabic';
 
 type Inputs = {
   canvas: Canvas;
@@ -84,7 +85,7 @@ export function useDesignOutput(i: Inputs) {
         ? [
             ...designPreflight(canvas, batchRows.length ? cards : []),
             ...lowRes,
-            ...(i.unsureCount ? [{ level: 'warn' as const, text: `${i.unsureCount} اسمًا لم يُعرف جنسه من اسمه — يُسأل عنه قبل الطباعة` }] : [])
+            ...(i.unsureCount ? [{ level: 'warn' as const, text: `${count(i.unsureCount, 'اسم')} لم يُعرف جنسه من اسمه — يُسأل عنه قبل الطباعة` }] : [])
           ]
         : [],
     [sheetsOpen, canvas, cards, batchRows.length, lowRes, i.unsureCount]
@@ -138,7 +139,7 @@ export function useDesignOutput(i: Inputs) {
       const pick = again ?? (await choosePrinter('designs', { allowSystem: true }));
       if (!pick) return;
       setBusy(true);
-      const off = window.diwan.output.onPrintProgress((p) => say(`يُطبع… ${p.sent} من ${p.total} ورقة`));
+      const off = window.diwan.output.onPrintProgress((p) => say(`يُطبع… ${toIndic(p.sent)} من ${countIn(p.total, 'ورقة')}`));
       try {
         const out = await window.diwan.output.printJob({
           label: title.trim() || 'تصميم',
@@ -162,11 +163,11 @@ export function useDesignOutput(i: Inputs) {
           // تُغلق المعاينة ويقول شريط الإخراج ما خرج وأين — والطلب إن صار جاهزًا.
           lastPick.current = { printer: pick.printer, system: pick.system };
           setSheetsOpen(false);
-          setAfter({ what: `${sheets} ورقة${effectiveBackDoc ? ' بوجهيها' : ''}`, printer: pick.system ? 'طابعة ويندوز' : pick.printer });
+          setAfter({ what: `${count(sheets, 'ورقة')}${effectiveBackDoc ? ' بوجهيها' : ''}`, printer: pick.system ? 'طابعة ويندوز' : pick.printer });
           if (orderNote) say(orderNote.replace(/^ — و/, ''));
         } else
           say(
-            `توقّفت الطباعة بعد ${out.sent} من ${out.total} ورقة${out.reason ? ` — ${out.reason}` : ''}${out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''}`,
+            `توقّفت الطباعة بعد ${toIndic(out.sent)} من ${countIn(out.total, 'ورقة')}${out.reason ? ` — ${out.reason}` : ''}${out.journaled ? '؛ تُستأنف من شريط الطباعة' : ''}`,
             'warn'
           );
       } catch (e) {

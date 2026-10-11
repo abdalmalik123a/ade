@@ -23,6 +23,9 @@ import { LIST_LIMITS, limitNote } from '@shared/limits';
 import { errorText } from '../lib/errors';
 import { choosePrinter } from '../lib/printChoice';
 import { confirmAction } from '../kit/ask';
+import { useEscape } from '../kit/useEscape';
+import { Chip, IconBtn } from './CitizenBits';
+import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 const storeUrl = (rel: string | null) => (rel ? `diwan://store/${rel}` : undefined);
@@ -62,6 +65,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
   const [preview, setPreview] = useState<Attachment | null>(null);
   /** النصّ المستخرَج — أو ظهر البطاقة بقارئه الخاصّ (`mrz`، ولا دقّة له: أرقام التحقّق حَكَمُه). */
   const [ocrPanel, setOcrPanel] = useState<{ attachment: Attachment; text: string; confidence: number | null; mrz?: MrzResult | null } | null>(null);
+  useEscape(() => setPreview(null), preview !== null);
+  useEscape(() => setOcrPanel(null), ocrPanel !== null);
   const [idDuplexOpen, setIdDuplexOpen] = useState(false);
   /** ورقة المستمسكات المجمّعة (خطة Production، المرحلة ٥) — بمستمسكات الملف المفتوح إن كان. */
   const [idSheetOpen, setIdSheetOpen] = useState(false);
@@ -257,7 +262,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
         <section className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-md">
           <div className="flex flex-col gap-space-xs">
             <h2 className="font-headline-lg text-headline-lg text-on-surface">
-              سجل المواطنين والمستمسكات الرسمية
+              الأشخاص
             </h2>
             <div className="flex items-center gap-space-xs text-on-surface-variant">
               <span className="material-symbols-outlined text-[16px] text-secondary">shield</span>
@@ -276,7 +281,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
               <span className="material-symbols-outlined text-[18px] text-secondary">
                 document_scanner
               </span>
-              <span>فحص الماسح الضوئي (WIA)</span>
+              <span>فحص الماسح الضوئي</span>
               {scanners !== null && (
                 <span
                   className={
@@ -292,17 +297,17 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
             <button
               className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
               type="button"
-              title="طباعة واستنساخ الهويات والبطاقات بمقاس 1:1 الحقيقي على ورقة A4"
+              title="الهوية والبطاقة بوجهيها بمقاسها الحقيقي على ورقة A4"
               onClick={() => setIdDuplexOpen(true)}
             >
               <span className="material-symbols-outlined text-[18px]">badge</span>
-              <span>استنساخ هوية 1:1 (وجه وظهر)</span>
+              <span>استنساخ هوية</span>
             </button>
             <button
               className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
               data-act="open-id-sheet"
               type="button"
-              title="عدّة مستمسكاتٍ بمقاسها 1:1 على ورقة A4 واحدة — الوطنية والسكن وجهًا وظهرًا"
+              title="عدّة مستمسكاتٍ بمقاسها الحقيقي على ورقة A4 واحدة — الوطنية والسكن وجهًا وظهرًا"
               onClick={() => setIdSheetOpen(true)}
             >
               <span className="material-symbols-outlined text-[18px]">document_scanner</span>
@@ -370,7 +375,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
               unit: 'كتاب',
               icon: 'history_edu',
               hint:
-                (stats?.issuedThisMonth ?? 0) === 0 ? 'لم يصدر أي كتاب هذا الشهر' : 'من سجل الصادر'
+                (stats?.issuedThisMonth ?? 0) === 0 ? 'لم يصدر أي كتاب هذا الشهر' : 'من الصادر'
             }
           ].map((card) => (
             <div
@@ -525,7 +530,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
                   <div className="rounded-lg bg-error-container p-space-md flex items-center justify-between gap-space-md">
                     <span className="font-label-md text-label-md text-on-error-container">
                       {confirmDelete.usage > 0
-                        ? `صدر باسم هذا المواطن ${nf.format(confirmDelete.usage)} كتابًا. حذف الملف يبقي الكتب في الأرشيف لكن يفكّ ارتباطها. تحذف؟`
+                        ? `صدر باسم هذا الزبون ${count(confirmDelete.usage, 'كتاب')}. حذف الملف يبقي الكتب في الأرشيف لكن يفكّ ارتباطها. تحذف؟`
                         : 'يُحذف الملف ومستمسكاته نهائيًا. تأكيد؟'}
                     </span>
                     <div className="flex items-center gap-space-xs shrink-0">
@@ -593,7 +598,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
                       <span className="font-label-sm text-label-sm text-on-surface-variant">
                         {detail.attachments.length === 0
                           ? 'لا مستمسكات لهذا الملف'
-                          : `${nf.format(detail.attachments.length)} وثائق مؤرشفة`}
+                          : `${count(detail.attachments.length, 'وثيقة')} في ملفّه`}
                       </span>
                     </div>
                     <div className="flex items-center gap-space-xs">
@@ -604,7 +609,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
                         onClick={() => void importAttachment('')}
                       >
                         <span className="material-symbols-outlined text-[18px]">folder_open</span>
-                        <span>استعراض من الحاسوب</span>
+                        <span>افتح ملفًّا</span>
                       </button>
                       <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
@@ -654,17 +659,17 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
                       <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
                         type="button"
-                        title="طباعة واستنساخ مستمسكات المواطن بوجهين 1:1"
+                        title="مستمسكات الزبون بوجهيها بمقاسها الحقيقي"
                         onClick={() => setIdDuplexOpen(true)}
                       >
                         <span className="material-symbols-outlined text-[18px]">badge</span>
-                        <span>طباعة هوية وجه وظهر 1:1</span>
+                        <span>استنساخ هوية</span>
                       </button>
                       <button
                         className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
                         data-act="citizen-id-sheet"
                         type="button"
-                        title="مستمسكات المواطن كلّها بمقاسها 1:1 على ورقة A4 واحدة"
+                        title="مستمسكات الزبون كلّها بمقاسها الحقيقي على ورقة A4 واحدة"
                         onClick={() => setIdSheetOpen(true)}
                       >
                         <span className="material-symbols-outlined text-[18px]">document_scanner</span>
@@ -1222,7 +1227,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
           onSaved={(n) => {
             setMultiOpen(false);
             void reloadDetail(detail.id).then(() => reloadList());
-            say(`حُفظت ${n} صورة في مستمسكاته — كلّ بطاقةٍ بوجهها وظهرها`);
+            say(`حُفظت ${count(n, 'صورة')} في مستمسكاته — كلّ بطاقةٍ بوجهها وظهرها`);
           }}
         />
       )}
@@ -1279,56 +1284,3 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
   );
 }
 
-function Chip({
-  active,
-  onClick,
-  children
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className={
-        active
-          ? 'px-space-sm py-1 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold shrink-0'
-          : 'px-space-sm py-1 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm shrink-0'
-      }
-      type="button"
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function IconBtn({
-  icon,
-  title,
-  onClick,
-  disabled,
-  tone
-}: {
-  icon: string;
-  title: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'error';
-}) {
-  return (
-    <button
-      className={
-        tone === 'error'
-          ? 'w-7 h-7 rounded text-error hover:bg-error-container transition-colors flex items-center justify-center disabled:opacity-30'
-          : 'w-7 h-7 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center justify-center disabled:opacity-30'
-      }
-      title={title}
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <span className="material-symbols-outlined text-[16px]">{icon}</span>
-    </button>
-  );
-}

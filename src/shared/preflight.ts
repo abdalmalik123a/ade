@@ -12,7 +12,7 @@
  */
 import type { Canvas, CanvasElement } from './canvas';
 import { encodes128, NOT_128 } from './barcode';
-import { toIndic } from './arabic';
+import { toIndic, count as countOf, countIn } from './arabic';
 import { pickVersion } from './qr';
 import { estimateEm } from './design/kinds/text';
 import { imsakiyaGaps } from './design/imsakiya';
@@ -58,7 +58,7 @@ export function shrinkRatio(el: Extract<CanvasElement, { kind: 'text' }>, canvas
 export function missingPhotoIssues(labels: string[]): PreflightIssue[] {
   const count = new Map<string, number>();
   for (const l of labels) count.set(l, (count.get(l) ?? 0) + 1);
-  return [...count].map(([label, n]) => ({ level: 'warn' as const, text: `${toIndic(n)} ${n === 1 ? 'صورة' : 'صور'} في «${label}» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة` }));
+  return [...count].map(([label, n]) => ({ level: 'warn' as const, text: `${countOf(n, 'صورة')} في «${label}» لم تُفتح — الملف غير موجود أو تالف، فتخرج البطاقة بلا صورة` }));
 }
 
 function labelOf(el: CanvasElement): string {
@@ -118,13 +118,13 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
       if (empty) {
         issues.push({
           level: empty === cards.length ? 'warn' : 'info',
-          text: `${toIndic(empty)} من ${toIndic(cards.length)} ${cards.length === 1 ? 'بطاقة' : 'بطاقات'} بلا «${ref}»`
+          text: `${countOf(empty, 'بطاقة')} بلا «${ref}» (من ${toIndic(cards.length)})`
         });
       }
     }
     for (const ref of image) {
       const empty = cards.filter((c) => !c[ref]?.trim()).length;
-      if (empty) issues.push({ level: 'warn', text: `${toIndic(empty)} بطاقة بلا صورة في «${ref}»` });
+      if (empty) issues.push({ level: 'warn', text: `${countOf(empty, 'بطاقة')} بلا صورة في «${ref}»` });
     }
   }
 
@@ -147,7 +147,7 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
     const values = el.ref ? cards.map((c) => (c[el.ref!] ?? '').trim()) : [el.value.trim()];
     const bad = values.filter((v) => v && !encodes128(v));
     if (!bad.length) continue;
-    const where = el.ref ? ` في ${toIndic(bad.length)} ${bad.length === 1 ? 'بطاقة' : 'بطاقات'}` : '';
+    const where = el.ref ? ` في ${countIn(bad.length, 'بطاقة')}` : '';
     issues.push({ level: 'warn', text: `«${labelOf(el)}» لا يُطبع${where} (مثل «${bad[0]}»): ${NOT_128}` });
   }
 
@@ -167,7 +167,7 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
         finest = Math.min(finest, mm);
       }
     }
-    const where = (n: number) => (el.ref ? ` في ${toIndic(n)} ${n === 1 ? 'بطاقة' : 'بطاقات'}` : '');
+    const where = (n: number) => (el.ref ? ` في ${countIn(n, 'بطاقة')}` : '');
     if (tooLong) issues.push({ level: 'warn', text: `«${labelOf(el)}» أطول من أن يحمله رمز QR${where(tooLong)} — قصّر ما فيه` });
     if (dense) {
       issues.push({
@@ -189,7 +189,7 @@ export function designPreflight(canvas: Canvas, cards: Record<string, string>[])
         .join('، ');
       issues.push({
         level: 'info',
-        text: `«${labelOf(el)}» يصغر دون ${toIndic(MIN_SHRINK * 100)}٪ من حجمه ليسع في ${toIndic(small.length)} ${small.length === 1 ? 'بطاقة' : 'بطاقات'}: ${names}${small.length > 3 ? ' وغيرها' : ''} — كبّر صندوقه أو اختصر`
+        text: `«${labelOf(el)}» يصغر دون ${toIndic(MIN_SHRINK * 100)}٪ من حجمه ليسع في ${countIn(small.length, 'بطاقة')}: ${names}${small.length > 3 ? ' وغيرها' : ''} — كبّر صندوقه أو اختصر`
       });
     }
   }

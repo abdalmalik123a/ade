@@ -10,7 +10,8 @@ import type { Attachment } from '@shared/api';
 import { SIZE_LIMITS, sizeText } from '@shared/pdfEdit';
 import { errorText } from '../lib/errors';
 import { fitJpeg, rememberLimit, savedLimit } from '../lib/fitImage';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
+import { useEscape } from '../kit/useEscape';
 
 export default function UploadExportDialog({
   attachments,
@@ -23,6 +24,7 @@ export default function UploadExportDialog({
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  useEscape(onClose);
   // الصور وحدها: ملف PDF مستمسكًا يُصغَّر من «ملفات PDF».
   const images = attachments.filter((a) => (a.fileFormat ?? '').toUpperCase() !== 'PDF');
   const [chosen, setChosen] = useState<number[]>(() => images.map((a) => a.id));
@@ -55,7 +57,7 @@ export default function UploadExportDialog({
       }
       setBusy('يُحفظ…');
       const saved = await window.diwan.pdf.saveImages(out);
-      if (saved) onDone(`حُفظت ${toIndic(saved.files.length)} صورة في ${saved.folder} — كلٌّ دون ${sizeText(limit)}`);
+      if (saved) onDone(`حُفظت ${count(saved.files.length, 'صورة')} في ${saved.folder} — كلٌّ دون ${sizeText(limit)}`);
     } catch (e) {
       setError(errorText(e, 'تعذّر التصدير'));
     } finally {

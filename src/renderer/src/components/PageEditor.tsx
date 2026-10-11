@@ -75,7 +75,7 @@ import { fontsIn } from '../lib/fonts';
 import { wrongGenderWords } from '@shared/fieldHints';
 import { GENDER_KEY, isChoiceKey, pickChoice } from '@shared/gender';
 import { sampleValues } from '@shared/letterDraft';
-import { toIndic } from '@shared/arabic';
+import { toIndic, count } from '@shared/arabic';
 
 /** «جرّب باسمٍ آخر»: امرأةٌ وقيمٌ تجريبية — فيُرى ما بقي مذكّرًا أو نصًّا وهو خانة. */
 function trialValues(fields: DocField[], values: Record<string, string> = {}): Record<string, string> {
@@ -1341,7 +1341,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
           {all
             ? 'المحدَّد: الورقة كلّها — كلّ تنسيقٍ يقع عليها'
             : selChars
-              ? `محدَّد ${selChars} حرفًا`
+              ? `محدَّد ${count(selChars, 'حرف')}`
               : head?.mode === 'lines' && !topRule()
                 ? 'اكتب أسطر الترويسة في أعلى الورقة، ثم «خطّ فاصل» يضع الخطّ تحتها'
                 : 'ظلّل عبارةً واضغط F4 لتصير خانة · Shift+Enter سطرٌ في الفقرة نفسها · Ctrl+Enter صفحةٌ جديدة'}

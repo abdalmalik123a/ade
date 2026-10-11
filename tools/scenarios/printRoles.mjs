@@ -85,7 +85,7 @@ export default async function scenario(page, { profile }) {
   await wait(4000);
   await page.eval(`[...document.querySelectorAll('input[type="checkbox"]')].forEach((b) => { if (!b.checked) b.click(); });`);
   await wait(400);
-  await page.clickText('احفظ 1 بطاقة');
+  await page.clickText('احفظ بطاقة واحدة');
   await wait(2500);
 
   // ── الأدوار في الإعدادات ────────────────────────────────────────────
@@ -103,7 +103,7 @@ export default async function scenario(page, { profile }) {
 
   // ── الشبّاك: طابعتان للكتب ← سؤالٌ واحد ─────────────────────────────
   await counterWith(NAMES);
-  await page.clickText('اطبع 3 ورقة');
+  await page.clickText('اطبع ٣ أوراق');
   await wait(700);
   const chooser = await page.eval(`
     const c = document.querySelector('[data-print-chooser="documents"]');
@@ -143,14 +143,14 @@ export default async function scenario(page, { profile }) {
   // ── «اسأل عند كل طباعة»: الإلغاء لا يُصدر، والاختيار يطبع عليه ──────
   await setRoles({ documents: { normal: LASER, color: null, dialog: true } });
   await counterWith(['محمد علي حسين']);
-  await page.clickText('اطبع 1 ورقة');
+  await page.clickText('اطبع ورقة واحدة');
   await wait(1200);
   const list = await page.eval(`return [...document.querySelectorAll('[data-print-chooser="documents"] [data-print-printer]')].map((b) => b.dataset.printPrinter);`);
   ok('«اسأل» يعرض طابعات ويندوز المثبّتة للاختيار', list.length > 0);
   await page.eval(`document.querySelector('[data-act="print-cancel"]').click(); return true;`);
   await wait(800);
-  ok('والإلغاء لا يُصدر شيئًا ويبقى في المراجعة', db((d) => d.prepare('SELECT COUNT(*) AS n FROM documents').get().n) === 3 && (await page.text()).includes('اطبع 1 ورقة'));
-  await page.clickText('اطبع 1 ورقة');
+  ok('والإلغاء لا يُصدر شيئًا ويبقى في المراجعة', db((d) => d.prepare('SELECT COUNT(*) AS n FROM documents').get().n) === 3 && (await page.text()).includes('اطبع ورقة واحدة'));
+  await page.clickText('اطبع ورقة واحدة');
   await wait(1200);
   await page.eval(`
     document.querySelector('[data-print-chooser] [data-print-printer="${list[0]?.replace(/"/g, '\\"')}"]').click();

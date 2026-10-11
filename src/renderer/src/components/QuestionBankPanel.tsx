@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { BankQuestion } from '@shared/api';
-import { toIndic } from '@shared/arabic';
+import { toIndic, countIn } from '@shared/arabic';
 
 export default function QuestionBankPanel({
   subject,
@@ -84,7 +84,7 @@ export default function QuestionBankPanel({
               <span className="font-body-sm text-body-sm text-on-surface whitespace-pre-line line-clamp-4">{q.text}</span>
               <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
                 {q.score !== null && <span>{toIndic(q.score)} درجة</span>}
-                {q.useCount > 0 && <span>· أُدرج {toIndic(q.useCount)} مرّة</span>}
+                {q.useCount > 0 && <span>· أُدرج {countIn(q.useCount, 'مرة')}</span>}
                 <span className="flex-1" />
                 <button
                   className="h-7 px-2 rounded-md hover:text-error"

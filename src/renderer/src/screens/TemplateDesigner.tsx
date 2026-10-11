@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import PageEditor, { type HeadChoice } from '../components/PageEditor';
 import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
-import { normalizeFold } from '@shared/arabic';
+import { normalizeFold, count } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
 import type { TemplateDetail } from '@shared/api';
 import {
@@ -383,7 +383,7 @@ export default function TemplateDesigner({
             )}
             {editing && usage > 0 && (
               <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
-                صدر عنه {usage} كتابًا
+                صدر عنه {count(usage, 'كتاب')}
               </span>
             )}
           </div>
@@ -800,7 +800,7 @@ export default function TemplateDesigner({
               (confirmDelete ? (
                 <div className="flex items-center gap-space-xs">
                   <span className="font-label-sm text-label-sm text-error">
-                    {usage > 0 ? `صدر عنه ${usage} كتابًا — احذف؟` : 'تأكيد الحذف؟'}
+                    {usage > 0 ? `صدر عنه ${count(usage, 'كتاب')} — احذف؟` : 'تأكيد الحذف؟'}
                   </span>
                   <button
                     className="px-space-md h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"

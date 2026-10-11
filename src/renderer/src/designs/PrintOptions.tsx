@@ -9,6 +9,7 @@
  *   جديدة تسبقها ورقةٌ فاصلة باسمها وعددها.
  */
 import type { Imposition } from '@shared/design/imposition';
+import { countIn } from '@shared/arabic';
 
 const toIndic = (n: number) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]!);
 
@@ -89,7 +90,7 @@ export default function PrintOptions({
           {!pickText
             ? `الكلّ (${toIndic(total)}) — أو اكتب أرقام ما تلف فيُعاد وحده`
             : picked
-              ? `${toIndic(picked.length)} من ${toIndic(total)} بطاقة`
+              ? `${toIndic(picked.length)} من ${countIn(total, 'بطاقة')}`
               : 'لم تُفهم الأرقام — اكتبها مفصولةً بفاصلة، والمدى بشرطة'}
         </span>
       </label>

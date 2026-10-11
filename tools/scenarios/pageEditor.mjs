@@ -104,7 +104,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── تظليلٌ يعبر فقرتين، فمائل ──────────────────────────────────────
   await selectAcross(0, 4, 1, 4);
   text = await page.text();
-  ok('التظليل عبر فقرتين يُحصى بالحرف', /محدَّد \d+ حرفًا/.test(text));
+  ok('التظليل عبر فقرتين يُحصى بالحرف', /محدَّد [٠-٩]+ (حرفًا|أحرف)|محدَّد حرف/.test(text));
   await page.key('KeyI', { ctrl: true });
   await wait(300);
   ok('وCtrl+I يميل ما ظُلِّل في الفقرتين معًا', await page.eval(`return document.querySelectorAll('[data-page-editor] > p em').length >= 2;`));

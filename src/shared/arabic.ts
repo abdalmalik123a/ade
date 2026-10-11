@@ -75,3 +75,71 @@ export const toIndic = (n: number | string): string => String(n).replace(/\d/g, 
 
 /** وفي نصٍّ فيه رموزٌ لاتينية: الرقم بعد حرفٍ لاتيني يبقى كما هو («A4»)، وسائر الأرقام تُحوَّل. */
 export const toIndicText = (s: number | string): string => String(s).replace(/(?<![A-Za-z])\d/g, (d) => INDIC_DIGITS[Number(d)]!);
+
+// ── العدد ومعدوده ──────────────────────────────────────────────────
+
+/**
+ * العدد ومعدوده في الواجهة — أداةٌ واحدة (البند ١٧، دليل الواجهة `UI.md`): «ورقةٌ واحدة»، «ورقتان»، «٣ أوراق»،
+ * «١١ ورقة»، «١٠٠ ورقة». كان كلّ موضعٍ يكتبها بيده فخرج «٣ اسمًا» و«1 كتابًا» و«0 نموذجًا».
+ *
+ * والرقم هنديٌّ أبدًا (`toIndic`) فلا تختلط في الجملة «١٢» و«5». ورقم الصادر والمقاسات ليست عدًّا — لا تمرّ من هنا.
+ * والتفقيط بالحروف للورق الرسمي في `tafqeet.ts`، لا هنا.
+ */
+
+/** صيغ المعدود: المفرد مع الواحد، والمثنّى، والجمع (٣–١٠)، والمنصوب (١١–٩٩)، والمجرور (١٠٠، ١٠١…). */
+export type Noun = { one: string; two: string; few: string; many: string; single: string };
+
+const masc = (single: string, two: string, few: string, many = `${single}ًا`): Noun => ({ one: `${single} واحد`, two, few, many, single });
+const fem = (single: string, two: string, few: string): Noun => ({ one: `${single} واحدة`, two, few, many: single, single });
+
+export const NOUNS = {
+  اسم: masc('اسم', 'اسمان', 'أسماء'),
+  كتاب: masc('كتاب', 'كتابان', 'كتب'),
+  نموذج: masc('نموذج', 'نموذجان', 'نماذج'),
+  ملف: masc('ملفّ', 'ملفّان', 'ملفّات', 'ملفًّا'),
+  حقل: masc('حقل', 'حقلان', 'حقول'),
+  مواطن: masc('مواطن', 'مواطنان', 'مواطنين'),
+  حرف: masc('حرف', 'حرفان', 'أحرف'),
+  سؤال: masc('سؤال', 'سؤالان', 'أسئلة'),
+  سطر: masc('سطر', 'سطران', 'أسطر'),
+  عنصر: masc('عنصر', 'عنصران', 'عناصر'),
+  يوم: masc('يوم', 'يومان', 'أيّام'),
+  رقم: masc('رقم', 'رقمان', 'أرقام'),
+  ورقة: fem('ورقة', 'ورقتان', 'أوراق'),
+  بطاقة: fem('بطاقة', 'بطاقتان', 'بطاقات'),
+  نسخة: fem('نسخة', 'نسختان', 'نسخ'),
+  صورة: fem('صورة', 'صورتان', 'صور'),
+  صفحة: fem('صفحة', 'صفحتان', 'صفحات'),
+  مرة: fem('مرّة', 'مرّتان', 'مرّات'),
+  ترويسة: fem('ترويسة', 'ترويستان', 'ترويسات'),
+  كليشة: fem('كليشة', 'كليشتان', 'كليشات'),
+  تصميم: masc('تصميم', 'تصميمان', 'تصاميم'),
+  موظف: masc('موظف', 'موظفان', 'موظفين'),
+  وثيقة: fem('وثيقة', 'وثيقتان', 'وثائق')
+} satisfies Record<string, Noun>;
+
+export type NounKey = keyof typeof NOUNS;
+
+/**
+ * «٣ أسماء» — والصفر «لا أسماء» (أو `zero` إن قيل غيره في جملته).
+ * ومع الواحد والاثنين بلا رقم: «اسمٌ واحد» لا «1 اسم».
+ */
+export function count(n: number, noun: NounKey | Noun, zero?: string): string {
+  const w = typeof noun === 'string' ? NOUNS[noun] : noun;
+  if (n === 0) return zero ?? `لا ${w.few}`;
+  if (n === 1) return w.one;
+  if (n === 2) return w.two;
+  const last = n % 100;
+  const form = last >= 3 && last <= 10 ? w.few : last >= 11 ? w.many : w.single;
+  return `${toIndic(n)} ${form}`;
+}
+
+/**
+ * بعد حرف جرٍّ أو مفعولًا به: المثنّى بالياء — «على ورقتين»، «اطبع ٣ أوراق»، «احفظ بطاقتين»، «طُلب مرّتين».
+ * وما سواه كـ`count`.
+ */
+export function countIn(n: number, noun: NounKey | Noun, zero?: string): string {
+  const said = count(n, noun, zero);
+  return n === 2 ? said.replace(/ان$/, 'ين') : said;
+}
+

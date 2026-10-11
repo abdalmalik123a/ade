@@ -86,7 +86,7 @@ export default async function scenario(page, { profile }) {
   await page.eval(`document.querySelector('[data-act="gender-review-done"]').click(); return true;`);
   await wait(2500);
   // بعد الحفظ شريطٌ يقول ما خرج وأين (ن٩) — بدل «صدرت…».
-  ok('ثم حُفظت الدفعة', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('3 أوراق لـ3 اسمًا'));
+  ok('ثم حُفظت الدفعة', (await page.eval(`return document.querySelector('[data-after-print]')?.innerText ?? '';`)).includes('٣ أوراق — ٣ أسماء'));
   let d = db();
   const bodies = Object.fromEntries(d.prepare('SELECT citizen_name AS n, body_html AS b FROM documents').all().map((r) => [r.n, r.b]));
   const memory = d.prepare('SELECT name, gender FROM name_genders').all();

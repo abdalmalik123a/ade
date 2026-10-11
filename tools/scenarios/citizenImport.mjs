@@ -88,7 +88,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     const text = await page.text();
     return text.includes('أُضيف ٢') ? text : null;
   });
-  ok('واستورد: «أُضيف ٢، وأُكمل ١ ملفًّا موجودًا»', Boolean(toast?.includes('وأُكمل ١')));
+  ok('واستورد: «أُضيف ٢، وأُكمل من الموجود ملفّ واحد»', Boolean(toast?.includes('وأُكمل من الموجود ملفّ واحد')));
   ok('والنافذة أُغلقت', !(await page.eval(`return Boolean(document.querySelector('[data-citizen-import]'));`)));
 
   const db = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
