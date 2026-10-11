@@ -47,15 +47,12 @@ const NAMED: Record<string, number[]> = {
 /** اللون المحفوظ: `#rrggbb` وحده — فلا يدخل نمطَ الورقة غيرُه. */
 export const isHexColor = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 
-/**
- * لون النصّ من CSS إلى `#rrggbb` — أو لا لون. **الأسود ومقاربُه «تلقائي»** (لون الورقة، فلا يُحفظ)، **والأبيض ومقاربُه لا
- * يُقرأ**: الورقة بيضاء أبدًا، ونصٌّ نُسخ من شاشةٍ داكنة يحمل لونًا فاتحًا فيختفي عليها.
- */
-export function cssColor(value: string): string | null {
+/** قنوات اللون من CSS (`#rgb` و`#rrggbb` و`rgb()` واسم Word) — أو لا شيء. والشفّاف لا لون. */
+function rgbOf(value: string): number[] | null {
   const v = value.trim().toLowerCase();
-  let rgb: number[] | null = null;
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(v);
   const fn = /^rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})\s*(?:[,/]\s*([\d.]+)(%?)\s*)?\)$/.exec(v);
+  let rgb: number[] | null = null;
   if (hex) {
     const h = hex[1]!.length === 3 ? [...hex[1]!].map((c) => c + c).join('') : hex[1]!;
     rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -65,10 +62,30 @@ export function cssColor(value: string): string | null {
   } else {
     rgb = NAMED[v] ?? null;
   }
-  if (!rgb || rgb.some((c) => !(c >= 0 && c <= 255))) return null;
-  if (Math.max(...rgb) < 64 || Math.min(...rgb) > 200) return null;
+  return rgb && rgb.every((c) => c >= 0 && c <= 255) ? rgb : null;
+}
+
+const nearBlack = (rgb: number[]) => Math.max(...rgb) < 64;
+const nearWhite = (rgb: number[]) => Math.min(...rgb) > 200;
+
+/**
+ * لون النصّ من CSS إلى `#rrggbb` — أو لا لون. **الأسود ومقاربُه «تلقائي»** (لون الورقة، فلا يُحفظ)، **والأبيض ومقاربُه لا
+ * يُقرأ**: الورقة بيضاء أبدًا، ونصٌّ نُسخ من شاشةٍ داكنة يحمل لونًا فاتحًا فيختفي عليها.
+ */
+export function cssColor(value: string): string | null {
+  const rgb = rgbOf(value);
+  if (!rgb || nearBlack(rgb) || nearWhite(rgb)) return null;
   return `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
+
+/** لونٌ فاتحٌ لا يُقرأ (`cssColor`) — يُكتب أسود، فيُقال في «ما جرى في الاستيراد». */
+export function lightColor(value: string): boolean {
+  const rgb = rgbOf(value);
+  return Boolean(rgb && nearWhite(rgb));
+}
+
+/** لون Word (`<w:color w:val="C00000"/>`) بالقاعدة نفسها — و«auto» وما ليس رقمًا لا لون. */
+export const wordColor = (val: string | undefined): string | null => (val && /^[0-9a-f]{6}$/i.test(val) ? cssColor(`#${val}`) : null);
 
 const lineThrough = (v: unknown) => (/line-through/.test(v as string) ? null : false);
 

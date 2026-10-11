@@ -1,7 +1,8 @@
 /**
  * سيناريو: «ما لم يُنقل من Word» وإحصاء المجلّد (الموجة ٢، «كلفة الانتقال») على التطبيق الحقيقي.
  *
- * ملفّ Word كتبه مكتب: متنٌ، ومربّع نصّ، وكلمةٌ حمراء، وجدولٌ داخل جدول، وتذييلٌ بالعنوان. فيُفتح من المكتبة:
+ * ملفّ Word كتبه مكتب: متنٌ، ومربّع نصّ، وكلمةٌ حمراء (تُنقل بلونها منذ «محرّر الكتاب») وأخرى فاتحة (تُكتب سوداء)، وجدولٌ داخل
+ * جدول، وتذييلٌ بالعنوان. فيُفتح من المكتبة:
  * الورقة بمتنها، وبجانبها لوحٌ يقول ما لم يُنقل (مربّع النصّ أوّلًا) ويُغلق. ثم مجلّدٌ بملفّين منه ومن ملفٍّ نظيف:
  * شاشة المراجعة تقول ما لا يُنقل بعدد ملفّاته — و«احفظ إحصاء الملفّات» يكتب ملفًّا نصّيًّا بالأعداد بلا اسم
  * ملفٍّ ولا كلمةٍ من المتن. (وكانت تقول إنّ استيراد المجلّد يأخذ النصّ وحده — حتى صار بتنسيقه، `importFolder.ts`.)
@@ -43,7 +44,7 @@ const TEXTBOX =
 const LETTER = docx(
   [
     p(r('إلى / مديرية تربية الأنبار')),
-    p(r('نؤيد بأن السيد المذكور موظفٌ لدينا ') + r('حصرًا', '<w:color w:val="C00000"/>')),
+    p(r('نؤيد بأن السيد المذكور موظفٌ لدينا ') + r('حصرًا', '<w:color w:val="C00000"/>') + r(' ملاحظة', '<w:color w:val="E7E6E6"/>')),
     p(TEXTBOX),
     `<w:tbl><w:tr><w:tc>${p(r('المرفقات'))}<w:tbl><w:tr><w:tc>${p(r('صورة الهوية'))}</w:tc></w:tr></w:tbl></w:tc></w:tr></w:tbl>`,
     p(r('مع التقدير'))
@@ -77,8 +78,10 @@ export default async function scenario(page, { shotsDir }) {
   const paper = await page.eval(`return document.querySelector('[data-paper]')?.innerText ?? '';`);
   ok('الملفّ فُتح في المصمّم بمتنه', paper.includes('نؤيد بأن السيد') && paper.includes('مع التقدير'));
   ok('ونصّ مربّع النصّ ليس فيه — فيُقال', !paper.includes('رقم الوصل'));
+  const colored = await page.eval(`return [...document.querySelectorAll('[data-paper] [data-color]')].map((e) => e.innerText.trim() + '|' + e.dataset.color);`);
+  ok(`والكلمة الحمراء بلونها، والفاتحة بلا لون (${colored.join('، ')})`, colored.join() === 'حصرًا|#c00000');
   const single = await losses('[data-word-loss-panel]');
-  ok(`لوح «ما في ملف Word ولم يُنقل»: مربّع النصّ أوّلًا، والتذييل، والجدول داخل الجدول، واللون (${JSON.stringify(single)})`,
+  ok(`لوح «ما في ملف Word ولم يُنقل»: مربّع النصّ أوّلًا، والتذييل، والجدول داخل الجدول، واللون الفاتح (${JSON.stringify(single)})`,
     single[0] === 'textbox' && ['footer', 'nestedTable', 'color'].every((k) => single.includes(k)));
   if (shotsDir) await page.shot(join(shotsDir, 'word-losses-designer.png'));
   await page.eval(`document.querySelector('[data-word-loss-panel] button[aria-label="أغلق"]').click(); return true;`);

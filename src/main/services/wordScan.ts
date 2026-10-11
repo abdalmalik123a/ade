@@ -8,8 +8,9 @@
  * ويُعدّ معها ما يُعرف به عمل المكاتب للإحصاء: الجداول والصور والقوائم ومقاس الورق والخطوط.
  */
 import { strFromU8 } from 'fflate';
-import { parseXml, type XNode } from './docxDoc';
+import { parseXml, type XNode } from './docxXml';
 import type { WordLossKey, WordScan } from '@shared/wordLosses';
+import { lightColor } from '@shared/docPmMarks';
 
 const kid = (n: XNode | undefined, name: string) => n?.kids.find((k) => k.name === name);
 const has = (n: XNode, name: string): boolean => n.kids.some((k) => k.name === name || has(k, name));
@@ -97,16 +98,12 @@ export function scanWord(files: Record<string, Uint8Array>): WordScan {
     } else add('shape');
   };
 
+  // اللون والشطب وأعلى السطر وأسفله يقرؤها القارئ (محادثة «محرّر الكتاب») — إلا اللون الفاتح: يُكتب أسود، فالورقة بيضاء.
   const runProps = (r: XNode) => {
-    const color = kid(r, 'w:color');
-    const hex = (color?.attrs['w:val'] ?? 'auto').toLowerCase();
-    const theme = color?.attrs['w:themeColor'];
-    if (color && ((theme && theme !== 'text1') || (!theme && !['auto', '000000'].includes(hex)))) add('color');
+    const hex = kid(r, 'w:color')?.attrs['w:val'] ?? 'auto';
+    if (/^[0-9a-f]{6}$/i.test(hex) && lightColor(`#${hex}`)) add('color');
     const mark = kid(r, 'w:highlight');
     if ((mark && on(mark)) || shaded(kid(r, 'w:shd'))) add('highlight');
-    if (on(kid(r, 'w:strike')) || on(kid(r, 'w:dstrike'))) add('strike');
-    const va = kid(r, 'w:vertAlign')?.attrs['w:val'];
-    if (va === 'superscript' || va === 'subscript') add('vertAlign');
     fontsOf(kid(r, 'w:rFonts'));
   };
 

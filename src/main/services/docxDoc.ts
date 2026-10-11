@@ -34,83 +34,22 @@ import {
 } from '@shared/doc';
 import { APPLY_THRESHOLD, fixZeroPeriods } from './blanks';
 import { toIndic } from '@shared/arabic';
+import { find, kid, kidsOf, num, parseXml, toggle, val, type XNode } from './docxXml';
+import { wordColor } from '@shared/docPmMarks';
+
+/** والقارئ يُصدَّر من هنا كما كان. */
+export { parseXml, type XNode } from './docxXml';
 
 /** ملف يُنقل من حزمة Word إلى مخزن التطبيق فيعيد مساره النسبي. */
 export type SaveImage = (bytes: Uint8Array, extension: string) => string | null;
 
-// ── قارئ XML صغير ────────────────────────────────────────────────────
-
-/**
- * عقدة XML: اسمٌ وسماتٌ وأبناءٌ ونصّ.
- *
- * ملف Word شجرة — جدولٌ في خليّته فقرة في مقطعها نصّ — والتعابير النمطية تقرؤه
- * سطحًا فتخلط فقرة الخليّة بفقرة المتن. وقارئٌ بأربعين سطرًا يكفي: الملف مولَّدٌ
- * سليم البنية دائمًا.
- */
-export type XNode = { name: string; attrs: Record<string, string>; kids: XNode[]; text: string };
-
-const decode = (s: string) =>
-  s
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
-    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
-    .replace(/&amp;/g, '&');
-
-export function parseXml(xml: string): XNode {
-  const root: XNode = { name: '#root', attrs: {}, kids: [], text: '' };
-  const stack: XNode[] = [root];
-  const re =
-    /<(\/?)([A-Za-z_][\w:.-]*)((?:\s+[^\s=/>]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>|<!\[CDATA\[([\s\S]*?)\]\]>|<[?!][\s\S]*?>|([^<]+)/g;
-
-  for (const m of xml.matchAll(re)) {
-    const top = stack[stack.length - 1]!;
-    if (m[6] !== undefined) {
-      top.text += decode(m[6]);
-      continue;
-    }
-    if (m[5] !== undefined) {
-      top.text += m[5];
-      continue;
-    }
-    if (!m[2]) continue; // تعليق أو تعليمة معالجة
-    if (m[1]) {
-      if (stack.length > 1) stack.pop();
-      continue;
-    }
-    const attrs: Record<string, string> = {};
-    for (const a of (m[3] ?? '').matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-      attrs[a[1]!] = decode(a[2] ?? a[3] ?? '');
-    }
-    const node: XNode = { name: m[2], attrs, kids: [], text: '' };
-    top.kids.push(node);
-    if (!m[4]) stack.push(node);
-  }
-  return root;
-}
-
-const kid = (n: XNode | undefined, name: string) => n?.kids.find((k) => k.name === name);
-const kidsOf = (n: XNode | undefined, name: string) => n?.kids.filter((k) => k.name === name) ?? [];
-const val = (n: XNode | undefined) => n?.attrs['w:val'];
-const num = (s: string | undefined) => (s === undefined || s === '' ? undefined : Number(s));
-/** خاصيةٌ مفتاحية: وجودها تشغيل، إلا أن تُطفأ صراحةً بـ`w:val="0"`. */
-const toggle = (n: XNode | undefined) =>
-  n === undefined ? undefined : !['0', 'false', 'off', 'none'].includes(n.attrs['w:val'] ?? '');
-
-function find(n: XNode, name: string): XNode | undefined {
-  for (const k of n.kids) {
-    if (k.name === name) return k;
-    const deep = find(k, name);
-    if (deep) return deep;
-  }
-  return undefined;
-}
-
 // ── الأنماط: ما لم يُكتب على المقطع يُرث من نمطه ثم من افتراض المستند ──
 
-type RProps = { b?: boolean; bCs?: boolean; i?: boolean; iCs?: boolean; u?: boolean; sz?: number; szCs?: number; rtl?: boolean };
+/** والشطب وأعلى السطر واللون (البند ٣): `''` صريحٌ يُلغي ما ورثه المقطع من نمطه — «على السطر» و«تلقائي». */
+type RProps = {
+  b?: boolean; bCs?: boolean; i?: boolean; iCs?: boolean; u?: boolean; sz?: number; szCs?: number; rtl?: boolean;
+  strike?: boolean; script?: 'sup' | 'sub' | ''; color?: string;
+};
 type PProps = {
   jc?: string;
   bidi?: boolean;
@@ -143,6 +82,13 @@ function readR(rpr: XNode | undefined): RProps {
   if (u) o.u = (val(u) ?? 'single') !== 'none';
   set('sz', num(val(kid(rpr, 'w:sz'))));
   set('szCs', num(val(kid(rpr, 'w:szCs'))));
+  // والشطب المزدوج يُنقل شطبًا واحدًا — والورقة لا ترسم غيره.
+  const strike = toggle(kid(rpr, 'w:strike')) ?? toggle(kid(rpr, 'w:dstrike'));
+  set('strike', strike);
+  const va = val(kid(rpr, 'w:vertAlign'));
+  if (va) o.script = va === 'superscript' ? 'sup' : va === 'subscript' ? 'sub' : '';
+  const color = kid(rpr, 'w:color');
+  if (color) o.color = wordColor(val(color)) ?? '';
   return o;
 }
 
@@ -353,7 +299,7 @@ function mapJc(jc: string | undefined, bidi: boolean): Align {
 // ── الفقرة ───────────────────────────────────────────────────────────
 
 /** حرفٌ بتنسيقه — الوحدة التي تُقصّ عندها الأعمدة وتُصحّح الأصفار. */
-type Cell = { ch: string; bold: boolean; italic: boolean; underline: boolean; px: number };
+type Cell = { ch: string; bold: boolean; italic: boolean; underline: boolean; px: number; strike?: boolean; script?: 'sup' | 'sub'; color?: string };
 type Piece = { kind: 'chars'; cells: Cell[] } | { kind: 'break' } | { kind: 'page' };
 
 type Ctx = {
@@ -482,7 +428,10 @@ function readPieces(
       bold: Boolean(cs ? (rr.bCs ?? false) : rr.b),
       italic: Boolean(cs ? (rr.iCs ?? false) : rr.i),
       underline: Boolean(rr.u),
-      px: sizePx(rr, cs)
+      px: sizePx(rr, cs),
+      ...(rr.strike ? { strike: true } : {}),
+      ...(rr.script ? { script: rr.script } : {}),
+      ...(rr.color ? { color: rr.color } : {})
     });
 
     for (const k of r.kids) {
@@ -546,6 +495,9 @@ function toInlines(pieces: Piece[], basePx: number): Inline[] {
       if (c.italic) marks.italic = true;
       if (c.underline) marks.underline = true;
       if (size !== basePx) marks.size = size;
+      if (c.strike) marks.strike = true;
+      if (c.script) marks.script = c.script;
+      if (c.color) marks.color = c.color;
       const ch = c.ch === '\t' ? '    ' : c.ch;
       const last = out[out.length - 1];
       if (last?.kind === 'run' && JSON.stringify(last.marks ?? {}) === JSON.stringify(marks)) {

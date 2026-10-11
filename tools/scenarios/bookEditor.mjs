@@ -5,7 +5,7 @@
  *     لا تُحفظ في السجلّ — ولم تعد في أعلى الورقة. وحوار الطبع يقول «اطبع ورقتين» بعدد النسخ.
  * ٩ — اسم صاحب العلاقة المكتوب في المتن يُقترح بضغطة (بجانب خانته وفي «قبل الطبع»)، ويصدر به الكتاب.
  * ٣ — الشطب وأعلى السطر ولون النصّ تُرى في المحرّر وتصل الورقة التي تُطبع وتُحفظ؛ والقائمة بشكل «أ) ب)» تُرى في المحرّر
- *     كما تُطبع، لا «1. 2.».
+ *     كما تُطبع، لا «1. 2.»؛ وأرقام الورقة «١ ٢ ٣» من شريطها تقلب علامات الترقيم في المحرّر وفي المطبوعة.
  * ١ — حدّ العمود يُسحب بالفأرة كما في Word: سهما سحبٍ على الحدّ، والعرض يتغيّر ويُحفظ، خطوةً واحدة في التراجع.
  */
 import { join } from 'node:path';
@@ -205,6 +205,10 @@ export default async function scenario(page, { profile, shotsDir }) {
     `);
   ok(`«ترقيم» يُرى كما يُطبع «1-» لا «1.» (${(await markers()).join('، ')})`, (await markers()).join() === '1-,2-');
   ok('وزرّه مضاء والمؤشّر في القائمة', await page.eval(`return document.querySelector('${ed} [data-act="numbers"]').className.includes('bg-secondary-fixed');`));
+  await choose(`${ed} [data-act="numerals"]`, 'indic');
+  await wait(400);
+  ok(`وأرقام الورقة «١ ٢ ٣» من شريطها: «١- ٢-» على الورقة (${(await markers()).join('، ')})`, (await markers()).join() === '١-,٢-');
+  ok('وفي الورقة التي تُطبع', (await sheet()).includes('١-') && (await sheet()).includes('٢-'));
   await choose(`${ed} [data-act="list-style"]`, 'arabicLetter');
   await wait(400);
   ok(`و«شكل الترقيم» حروفًا: «أ) ب)» على الورقة (${(await markers()).join('، ')})`, (await markers()).join() === 'أ),ب)');
@@ -259,7 +263,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     'المسودّة تحفظ الشطب وأعلى السطر واللون',
     runs.some((r) => r.text === 'موظفة' && r.marks?.strike) && runs.some((r) => r.text === '2015' && r.marks?.script === 'sup') && runs.some((r) => r.text === 'دائرتنا' && r.marks?.color === '#c00000')
   );
-  ok(`وشكل القائمة (${JSON.stringify(list?.styles)})`, JSON.stringify(list?.styles) === '["arabicLetter"]' && list.items.length === 2);
+  ok(`وشكل القائمة وأرقام الورقة (${JSON.stringify(list?.styles)} · ${saved?.pageSetup?.numerals})`, JSON.stringify(list?.styles) === '["arabicLetter"]' && list.items.length === 2 && saved?.pageSetup?.numerals === 'indic');
   ok(
     `وأوزان الأعمدة بعد السحب، ومجموعها كما كان (${JSON.stringify(table?.columns)})`,
     table?.columns?.length === 3 && table.columns[0] > 1.4 && table.columns[1] < 0.6 && table.columns[2] === 1 && Math.abs(table.columns.reduce((a, b) => a + b, 0) - 3) < 0.02

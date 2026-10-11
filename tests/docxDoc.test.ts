@@ -203,6 +203,37 @@ describe('Word ← ورقة: حالات لا يحملها الملف المرج�
     expect(b!.size).toBe(26.7); // ٢٠ نقطة
   });
 
+  it('اللون والشطب وأعلى السطر وأسفله تُنقل — وتُرث من النمط، و«تلقائي» و«على السطر» يلغيانها (محادثة «محرّر الكتاب»)', () => {
+    const styles = '<w:styles><w:style w:type="character" w:styleId="Red"><w:rPr><w:color w:val="C00000"/><w:strike/></w:rPr></w:style></w:styles>';
+    const files = docx(
+      p(
+        r('أحمر', '<w:rtl/><w:color w:val="FF0000"/>') +
+          r('مشطوب', '<w:rtl/><w:dstrike/>') +
+          r('2', '<w:rtl/><w:vertAlign w:val="superscript"/>') +
+          r('2', '<w:rtl/><w:vertAlign w:val="subscript"/>') +
+          r('بنمطه', '<w:rStyle w:val="Red"/><w:rtl/>') +
+          r('أسود', '<w:rStyle w:val="Red"/><w:rtl/><w:color w:val="auto"/><w:strike w:val="0"/>') +
+          r('فاتح', '<w:rtl/><w:color w:val="F2F2F2"/>') +
+          r('على السطر', '<w:rtl/><w:vertAlign w:val="baseline"/>')
+      ),
+      { 'word/styles.xml': styles }
+    );
+    const [b] = paras(docxToDoc(files).doc.blocks);
+    // المقاطع المتجاورة بلا تنسيقٍ واحدٌ: فالمقطع بما فيه — والغائب يُسقط الفحص.
+    const marks = (t: string) => {
+      const run = b!.inlines.find((i) => i.kind === 'run' && i.text.includes(t)) as { marks?: unknown } | undefined;
+      if (!run) throw new Error(`لا مقطع فيه «${t}»`);
+      return run.marks;
+    };
+    expect(marks('أحمر')).toEqual({ color: '#ff0000' });
+    expect(marks('مشطوب')).toEqual({ strike: true });
+    expect(b!.inlines.filter((i) => i.kind === 'run' && i.text === '2').map((i) => (i as { marks?: unknown }).marks)).toEqual([{ script: 'sup' }, { script: 'sub' }]);
+    expect(marks('بنمطه')).toEqual({ strike: true, color: '#c00000' });
+    expect(marks('أسود')).toBeUndefined();
+    expect(marks('فاتح')).toBeUndefined();
+    expect(marks('على السطر')).toBeUndefined();
+  });
+
   it('الجدول بأعمدته وخليّته المدموجة، وحدوده مخفيّة إن أُخفيت', () => {
     const cell = (t: string, pr = '') => `<w:tc><w:tcPr>${pr}</w:tcPr>${p(r(t))}</w:tc>`;
     const table =

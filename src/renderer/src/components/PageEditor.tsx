@@ -18,7 +18,7 @@ import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Node as PMNode, MarkType } from 'prosemirror-model';
-import { AllSelection, EditorState, NodeSelection, Plugin, TextSelection, type Command, type Transaction } from 'prosemirror-state';
+import { AllSelection, EditorState, Plugin, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, chainCommands, selectAll, splitBlockAs, toggleMark } from 'prosemirror-commands';
@@ -53,6 +53,7 @@ import {
   type DocField,
   type ListStyle,
   type MarginPreset,
+  type Numerals,
   type PageSetup,
   type PageSize
 } from '@shared/doc';
@@ -74,6 +75,7 @@ import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './
 import { ColumnsView, FieldView, GroupView, ImageView, SpacerView, TableView, pageBreakView } from './pageViews';
 import { listMarkersKey, listMarkersPlugin, tableResizing } from './editorPlugins';
 import ColorTool from './ColorTool';
+import { adoptPastedImages, caretAfterPaste, cleanPastedHtml, pasteImages } from './editorPaste';
 import FieldHints from './FieldHints';
 import FontSelect from './FontSelect';
 import { fontsIn } from '../lib/fonts';
@@ -281,36 +283,6 @@ const placeholder = new Plugin({
       if (state.doc.childCount !== 1 || !first || first.type !== N.paragraph || first.content.size) return null;
       return DecorationSet.create(state.doc, [Decoration.node(0, first.nodeSize, { class: 'pm-empty', 'data-placeholder': 'اكتب هنا، أو الصق من Word…' })]);
     }
-  }
-});
-
-/**
- * ما يلصقه Word من تعليقاتٍ شرطية ووسوم مكتبه لا معنى له هنا.
- *
- * إلا ترقيمه: Word يكتب رقم البند ونقطته بين `<![if !supportLists]>` و`<![endif]>` في
- * `mso-list:Ignore` — فيبقى الرقم نصًّا كما رآه الكاتب، ونقطة خطّ Symbol («·» أو «§») تصير «•».
- */
-function cleanPastedHtml(html: string): string {
-  return html
-    .replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, '')
-    .replace(/<!\[if[^\]]*\]>|<!\[endif\]>/gi, '')
-    .replace(/(<span[^>]*mso-list:\s*Ignore[^>]*>)\s*[·§o\uF0B7\uF0A7]\s*/gi, '$1• ')
-    .replace(/<\/?o:p>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '');
-}
-
-/**
- * بعد اللصق يقف المؤشّر بعد ما لُصق كما في Word — لا على صورةٍ لُصقت آخره فيحلّ محلّها
- * ما يُلصق بعدها. وصورةٌ في آخر الورقة يُفتح بعدها سطر.
- */
-const caretAfterPaste = new Plugin({
-  appendTransaction(trs, _old, state) {
-    if (!trs.some((t) => t.getMeta('paste')) || !(state.selection instanceof NodeSelection)) return null;
-    const end = state.selection.to;
-    const $end = state.doc.resolve(end);
-    const tr = state.tr;
-    if (!$end.nodeAfter || !$end.nodeAfter.isTextblock) tr.insert(end, N.paragraph.create({ id: newUuid() }));
-    return tr.setSelection(TextSelection.create(tr.doc, end + 1));
   }
 });
 
@@ -962,6 +934,18 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
             </select>
             <Tool act="portrait" icon="crop_portrait" title="عمودية" active={doc.pageSetup.orientation === 'portrait'} onRun={() => setPage({ orientation: 'portrait' })} />
             <Tool act="landscape" icon="crop_landscape" title="أفقية" active={doc.pageSetup.orientation === 'landscape'} onRun={() => setPage({ orientation: 'landscape' })} />
+            {/* أرقام الورقة كما في ورقة الأسئلة: الترقيم و«صفحة ١ من ٢» — ونصّ الكتاب كما كُتب (ما بعد البند ٣). */}
+            <select
+              aria-label="أرقام الترقيم والصفحات"
+              className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+              data-act="numerals"
+              title="أرقام الترقيم وأرقام الصفحات — ونصّ الكتاب يبقى كما كُتب"
+              value={doc.pageSetup.numerals}
+              onChange={(e) => setPage({ numerals: e.target.value as Numerals })}
+            >
+              <option value="arabic">1 2 3</option>
+              <option value="indic">١ ٢ ٣</option>
+            </select>
             <ToolSep />
             <span className="font-label-sm text-label-sm text-on-surface-variant">الهوامش</span>
             {(Object.keys(MARGIN_PRESETS) as MarginPreset[]).map((k) => (
@@ -1126,67 +1110,6 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
       )}
     </div>
   );
-}
-
-/** صورٌ من الحافظة تُحفظ في المخزن وتُدرج حيث المؤشّر — بمقاسها، وأعرضها عرض المتن. */
-async function pasteImages(view: EditorView, files: File[], maxWidth: number) {
-  for (const file of files) {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const src = await window.diwan.files.storeImage(bytes);
-    if (!src || view.isDestroyed) continue;
-    let width = 140;
-    try {
-      const bmp = await createImageBitmap(file);
-      width = Math.round(Math.min(bmp.width, maxWidth));
-      bmp.close();
-    } catch {
-      /* مقاسها لا يُقرأ — يبقى الافتراض */
-    }
-    const node = N.image.create({ id: newUuid(), src, width, align: 'center' });
-    view.dispatch(view.state.tr.replaceSelectionWith(node).scrollIntoView());
-  }
-  view.focus();
-}
-
-/** بايتات صورةٍ مضمّنة (`data:image/png;base64,…`) — بلا `fetch` تمنعه سياسة المحتوى. */
-function dataUriBytes(uri: string): Uint8Array {
-  const comma = uri.indexOf(',');
-  const body = uri.slice(comma + 1);
-  if (!/;base64$/i.test(uri.slice(0, comma))) return new TextEncoder().encode(decodeURIComponent(body));
-  const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/**
- * ما لُصق من Word بصوره: الصورة ملفٌّ مؤقّت (`file:`) أو مضمّنة (`data:`) — تُنسخ إلى المخزن
- * ويُشار إليها منه. وما لم يُحفظ يُرفع من الورقة بدل صورةٍ مكسورة.
- */
-async function adoptPastedImages(view: EditorView) {
-  const pending: { id: string; src: string }[] = [];
-  view.state.doc.descendants((node) => {
-    if (node.type === N.image && /^(file:|data:)/i.test(String(node.attrs.src))) pending.push({ id: node.attrs.id as string, src: node.attrs.src as string });
-  });
-  for (const p of pending) {
-    let stored: string | null = null;
-    try {
-      stored = /^data:/i.test(p.src)
-        ? await window.diwan.files.storeImage(dataUriBytes(p.src))
-        : await window.diwan.files.storeImageUrl(p.src);
-    } catch {
-      stored = null;
-    }
-    if (view.isDestroyed) return;
-    let at = -1;
-    view.state.doc.descendants((node, pos) => {
-      if (at < 0 && node.type === N.image && node.attrs.id === p.id && node.attrs.src === p.src) at = pos;
-    });
-    if (at < 0) continue;
-    const node = view.state.doc.nodeAt(at)!;
-    const tr = stored ? view.state.tr.setNodeMarkup(at, null, { ...node.attrs, src: stored }) : view.state.tr.delete(at, at + node.nodeSize);
-    view.dispatch(tr.setMeta('addToHistory', false));
-  }
 }
 
 /** حقلٌ في موضع المؤشّر — للوح الحقول في مصمّم النماذج حين لا تمرّ الشاشة بـ`apiRef`. */
