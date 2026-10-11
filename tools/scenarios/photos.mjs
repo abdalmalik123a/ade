@@ -110,7 +110,7 @@ export default async function scenario(page, { shotsDir }) {
   await wait(1200);
   ok('وتُراجع الورقة: ستّ صورٍ على ورقةٍ واحدة', await page.eval(`
     const o = document.querySelector('[data-sheets]');
-    return o.querySelector('[data-sheets-summary]').innerText.includes('٦ صورة على ١ ورقة') && o.querySelectorAll('.print-page img').length === 6;
+    return o.querySelector('[data-sheets-summary]').innerText.includes('٦ صور على ورقة واحدة') && o.querySelectorAll('.print-page img').length === 6;
   `));
   if (shotsDir) await page.shot(join(shotsDir, 'photos-sheet.png'));
   await click('[data-sheets] [data-act="pdf"]');

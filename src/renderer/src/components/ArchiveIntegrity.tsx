@@ -36,7 +36,8 @@ export default function ArchiveIntegrity({ card, onOpenSerial }: { card: string;
     <section className={card} data-integrity="">
       <div className="flex flex-wrap items-center justify-between gap-space-sm">
         <div className="flex flex-col">
-          <h2 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs">
+          {/* مرساةٌ في فهرس الإعدادات كبقيّة أقسامها (البند ٢٠). */}
+          <h2 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs" data-settings-section="سلامة السجلّ" style={{ scrollMarginTop: 136 }}>
             <span className="material-symbols-outlined text-secondary text-[20px]">verified_user</span>
             سلامة السجلّ
           </h2>

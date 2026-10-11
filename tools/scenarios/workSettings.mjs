@@ -51,7 +51,7 @@ export default async function scenario(page) {
   await page.goto('office-settings');
   await wait(1200);
   const names = await page.eval(`return [...document.querySelectorAll('[data-settings-index] [data-settings-go]')].map((b) => b.innerText.trim());`);
-  ok(`فهرسٌ في أعلى الإعدادات بأسماء أقسامها (${names.join('، ')})`, names.length >= 11 && names[0] === 'التفعيل' && names.includes('البيانات والنسخ الاحتياطية') && names.includes('الطابعات') && names.includes('الاختصارات الثابتة'));
+  ok(`فهرسٌ في أعلى الإعدادات بأسماء أقسامها (${names.join('، ')})`, names.length >= 12 && names[0] === 'التفعيل' && names.includes('سلامة السجلّ') && names.includes('البيانات والنسخ الاحتياطية') && names.includes('الطابعات') && names.includes('الاختصارات الثابتة'));
   const before = await page.eval(`return document.querySelector('[data-settings-section="الاختصارات الثابتة"]').getBoundingClientRect().top;`);
   await click('[data-settings-index] [data-settings-go="الاختصارات الثابتة"]');
   await wait(1200);

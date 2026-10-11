@@ -133,7 +133,7 @@ export default function SheetsPreview({
           <div>
             <div className="font-headline-sm text-headline-sm text-on-surface">مراجعة الأوراق</div>
             <div className="font-label-sm text-label-sm text-on-surface-variant" data-sheets-summary="">
-              {unit === 'بطاقة' ? (cards === 1 ? 'تصميم واحد' : count(cards, 'بطاقة')) : `${toIndic(cards)} ${unit}`} على {countIn(duplex ? pages.length / 2 : pages.length, 'ورقة')}
+              {unit === 'بطاقة' ? (cards === 1 ? 'تصميم واحد' : count(cards, 'بطاقة')) : unit === 'صورة' ? count(cards, 'صورة') : `${toIndic(cards)} ${unit}`} على {countIn(duplex ? pages.length / 2 : pages.length, 'ورقة')}
               {duplex ? ' بوجهين' : ''} — {toIndic(sheet.w)} × {toIndic(sheet.h)} ملم، بعلامات القصّ
             </div>
           </div>

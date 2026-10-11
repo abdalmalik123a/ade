@@ -624,10 +624,17 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     setAutoLight(false);
     setEnhance((e) => ({ ...e, ...patch }));
   };
-  const step = (n: number, title: string, extra?: React.ReactNode) => (
-    <div className="flex items-center justify-between">
-      <span className="font-label-md text-label-md text-on-surface font-semibold">
-        <span className="inline-flex w-5 h-5 me-1 rounded-full bg-secondary-container text-on-secondary-container items-center justify-center text-[11px]">{toIndic(n)}</span>
+  /** خطوةٌ برقمها — و`later` ما لا يُعمل قبل فتح الصورة: باهتةٌ في مكانها، فالأرقام ثابتة (البند ١٨: كانت ١ ثم ٥ ثم ٦). */
+  const step = (n: number, title: string, extra?: React.ReactNode, later = false) => (
+    <div className={`flex items-center justify-between ${later ? 'opacity-50' : ''}`} data-step={n} data-step-later={later ? '' : undefined}>
+      <span className={`font-label-md text-label-md font-semibold ${later ? 'text-on-surface-variant' : 'text-on-surface'}`}>
+        <span
+          className={`inline-flex w-5 h-5 me-1 rounded-full items-center justify-center text-[11px] ${
+            later ? 'bg-surface-container-high text-on-surface-variant' : 'bg-secondary-container text-on-secondary-container'
+          }`}
+        >
+          {toIndic(n)}
+        </span>
         {title}
       </span>
       {extra}
@@ -668,6 +675,16 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               الصق
             </button>
           </div>
+
+          {/* الخطوات بين الصورة والمقاس تُرى قبل فتحها — باهتةً بعناوينها — فلا يقفز الترقيم من ١ إلى ٥. */}
+          {!src && (
+            <div className="space-y-space-xs" data-steps-later="">
+              {step(2, 'الخلفية', undefined, true)}
+              {step(3, 'الإضاءة واللون', undefined, true)}
+              {step(4, 'القاط', undefined, true)}
+              <p className="font-label-sm text-label-sm text-on-surface-variant">تظهر أدواتها بعد فتح الصورة.</p>
+            </div>
+          )}
 
           {src && (
             <>
