@@ -2,7 +2,7 @@
  * قاعدة الإصدار المبيع (خطة Production، ٧٫٣): مكتبٌ اشترى ١٫٠٫٠ وعمل به يحدّث برنامجه — فتُفتح قاعدته
  * بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس) ولا يضيع منها شيء، ويُعمل عليها كما يُعمل.
  *
- * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.6.0.db` كتبها إصدارها
+ * `fixtures/release-1.0.0.db` كتبها ١٫٠٫٠ نفسه، و`release-1.1.0.db` حتى `release-1.7.0.db` كتبها إصدارها
  * (`makeReleaseDb.test.ts`) — ولا تُعاد. ولكلّ إصدارٍ يُباع بعدها قاعدته، ويُضاف إصداره إلى `SOLD`.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
@@ -59,7 +59,7 @@ function openRelease(version: string): { db: Database.Database; dir: string; fil
 }
 
 /** الإصدارات التي لكلٍّ منها قاعدته في `fixtures` — بالمحتوى نفسه، كتبه كلُّ إصدارٍ بشيفرته. */
-const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.5.0', '1.6.0'] as const;
+const SOLD = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.4.1', '1.5.0', '1.6.0', '1.7.0'] as const;
 
 /** إصدارٌ أحدث منه بخطوة — كما يحدّث المكتب برنامجه. */
 const nextPatch = (v: string) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
@@ -78,7 +78,8 @@ describe.each(SOLD)('قاعدة %s المبيعة', (version) => {
     expect(listCitizens(db, {}).map((c) => c.fullName).sort()).toEqual(['أحمد كريم جاسم', 'زينب علي حسن الربيعي'].sort());
     expect((db.prepare('SELECT COUNT(*) AS n FROM attachments').get() as { n: number }).n).toBe(1);
     expect(listLetterheads(db).map((l) => l.name)).toEqual(['مديرية تربية الأنبار']);
-    expect(listTemplates(db).map((t) => t.title)).toEqual(['تأييد استمرار بالخدمة']);
+    // وكتاب علامات النصّ (١٫٧٫٠) في «ما جاء به».
+    expect(listTemplates(db).map((t) => t.title).filter((t) => t !== 'تأييد بعلامات النصّ')).toEqual(['تأييد استمرار بالخدمة']);
     // مسودّة الكتاب — ومسودّة التصميم (١٫٤٫٠) في «ما جاء به».
     expect(listDrafts(db).filter((d) => !isDesignDraft(d.valuesJson))).toHaveLength(1);
     expect(listClips(db).map((c) => c.title)).toEqual(['ختام']);
@@ -208,5 +209,39 @@ describe('ما جاء به ١٫٦٫٠ (التصاميم، المرحلة ٣)', (
     const doc = templateDoc(getTemplate(source, row.id)!);
     const saved = saveTemplate(db, { id: null, code: null, title: row.title, subtitle: null, category: 'تصاميم', subjectLine: null, bodyHtml: '', letterheadId: null, variables: [], doc });
     expect(templateDoc(getTemplate(db, saved.id)!).canvas!.calendars).toEqual({ التاريخ: 'hijri' });
+  });
+});
+
+describe('ما جاء به ١٫٧٫٠ (قائمة التحسينات)', () => {
+  const marksOf = (doc: ReturnType<typeof templateDoc>) => {
+    const first = doc.blocks[0];
+    return first?.kind === 'paragraph' ? first.inlines.map((i) => (i.kind === 'run' ? (i.marks ?? null) : null)) : null;
+  };
+  const MARKS = [null, { strike: true }, null, { script: 'sup' }, { color: '#c00000' }];
+
+  it('قاعدته: كتابٌ بالشطب وأعلى السطر ولون النصّ، وجدولٌ بعرض أعمدته وارتفاع صفوفه — والحزمة صيغتها ٤', () => {
+    const { db, dir } = openRelease('1.7.0');
+    const letter = listTemplates(db, 'ملاك').find((t) => t.title === 'تأييد بعلامات النصّ')!;
+    expect(marksOf(templateDoc(getTemplate(db, letter.id)!))).toEqual(MARKS);
+    const row = listTemplates(db, 'تصاميم', 'print-only').find((t) => t.title === 'جدول دروس مدرسة الرافدين')!;
+    const doc = templateDoc(getTemplate(db, row.id)!);
+    const table = doc.canvas!.elements.find((e) => e.id === 'lessons');
+    expect(table).toMatchObject({ rowHeights: [2, 1], headerHeight: 1.5 });
+    expect(table?.kind === 'table' && table.columns.map((c) => c.widthPercent)).toEqual([30, 35, 35]);
+    expect(designPackLevel(doc)).toBe(4);
+    expect(collectContent(db, join(dir, 'store'), '1.7.0').pkg.format).toBe(4);
+  });
+
+  it('وقاعدة ١٫٦٫٠ يُحفظ فيها الكتاب بعلاماته والجدول بارتفاع صفوفه', () => {
+    const { db } = openRelease('1.6.0');
+    const source = openRelease('1.7.0').db;
+    const copy = (title: string, category: string, issuing?: 'print-only') => {
+      const row = listTemplates(source, category, issuing).find((t) => t.title === title)!;
+      const doc = templateDoc(getTemplate(source, row.id)!);
+      const saved = saveTemplate(db, { id: null, code: null, title, subtitle: null, category, subjectLine: null, bodyHtml: '', letterheadId: null, variables: [], doc });
+      return templateDoc(getTemplate(db, saved.id)!);
+    };
+    expect(marksOf(copy('تأييد بعلامات النصّ', 'ملاك'))).toEqual(MARKS);
+    expect(copy('جدول دروس مدرسة الرافدين', 'تصاميم', 'print-only').canvas!.elements.find((e) => e.id === 'lessons')).toMatchObject({ rowHeights: [2, 1], headerHeight: 1.5 });
   });
 });

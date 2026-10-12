@@ -159,6 +159,39 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
     });
     saveTemplate(db, { id: null, code: null, title: 'إمساكية أسواق النور', subtitle: '210.0 × 297.0 ملم', category: 'تصاميم', subjectLine: null, bodyHtml: 'إمساكية', letterheadId: null, variables: [], doc: canvasDoc(canvas, { title: 'إمساكية أسواق النور', category: 'تصاميم' }) });
   }
+  // ١٫٧٫٠ (قائمة التحسينات): كتابٌ بالشطب وأعلى السطر ولون النصّ (البند ٣)، وتصميمٌ بجدولٍ بعرض أعمدته وارتفاع صفوفه
+  // (البند ٢ — صيغة الحزمة ٤).
+  if (atLeast('1.7.0')) {
+    const letter = docFromLegacy('نؤيد أن السيدة زينب علي حسن تعمل لدينا.');
+    letter.blocks = [
+      { id: 'marks', kind: 'paragraph', align: 'right', inlines: [run('العنوان '), run('السابق', { strike: true }), run(' الجديد'), run('١', { script: 'sup' }), run(' بالأحمر', { color: '#c00000' })] },
+      ...letter.blocks
+    ];
+    saveTemplate(db, { id: null, code: null, title: 'تأييد بعلامات النصّ', subtitle: null, category: 'ملاك', subjectLine: null, bodyHtml: 'تأييد', letterheadId: null, variables: [], doc: letter });
+    const grid = normalizeCanvas({
+      ...emptyCanvas({ w: 210, h: 148 }),
+      elements: [
+        tableElement({
+          id: 'lessons',
+          name: 'جدول الدروس',
+          box: { x: 0.08, y: 0.15, w: 0.84, h: 0.6 },
+          columns: [
+            { title: 'اليوم', widthPercent: 30, align: 'center' as const },
+            { title: 'الأولى', widthPercent: 35, align: 'center' as const },
+            { title: 'الثانية', widthPercent: 35, align: 'center' as const }
+          ],
+          rows: [
+            [run0('الأحد'), run0('عربي'), run0('رياضيات')],
+            [run0('الإثنين'), run0('علوم'), run0('إنكليزي')]
+          ],
+          rowHeights: [2, 1],
+          headerHeight: 1.5,
+          z: 1
+        })
+      ]
+    });
+    saveTemplate(db, { id: null, code: null, title: 'جدول دروس مدرسة الرافدين', subtitle: '210.0 × 148.0 ملم', category: 'تصاميم', subjectLine: null, bodyHtml: 'جدول الدروس', letterheadId: null, variables: [], doc: canvasDoc(grid, { title: 'جدول دروس مدرسة الرافدين', category: 'تصاميم' }) });
+  }
   recordWork(db, '2026-10-03', { sheets: 12, files: 2 });
   recordWork(db, '2026-10-04', { sheets: 5, files: 0 });
 
