@@ -1,6 +1,6 @@
 {
   "name": "diwan",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "ديوان — منظومة الكتب والتحارير",
   "main": "./out/main/index.js",
   "author": "MADA TECH",
