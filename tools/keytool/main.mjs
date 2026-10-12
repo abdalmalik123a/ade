@@ -114,6 +114,8 @@ handle('create-update-key', (password) => {
   needKey();
   core.createUpdateKey(dir, password);
   updateKey = core.loadUpdateKey(dir, password);
+  // الصنع بطيء (كلمة السرّ تُشتقّ أربع مرّات): يُعدّ العمل من آخره لا من أوّله — فلا تُقفل الأداة حال انتهائه.
+  touch();
   return updateInfo();
 });
 
@@ -152,6 +154,7 @@ handle('make-update', async ({ exe, version, notes }) => {
   const out = join(dirname(exe), `diwan-${version}.diwanupdate`);
   // بمفتاح التراخيص (تقرؤه الإصدارات حتى 1.7.1) وبمفتاح التحديث إن صُنع (يقرؤه ما بعدها) — ملفٌّ واحد للكلّ.
   const r = await core.writeUpdateFile({ exe, version, notes, privateKey: needKey(), updateKeys: updateKey ? [updateKey] : [], out });
+  touch(); // ومثبّتٌ بمئات الميغابايت يُكتب دقيقة: العمل من آخره.
   return { out: r.out, size: r.manifest.size, sha256: r.manifest.sha256, withUpdateKey: Boolean(updateKey) };
 });
 

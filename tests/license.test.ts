@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, type LicensePayload } from '../src/main/services/license';
-import { OWNER_KEYS, OWNER_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
+import { OWNER_KEYS, OWNER_PUBLIC_KEY, OWNER_UPDATE_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
 
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
 const pub = publicKey.export({ type: 'spki', format: 'pem' }).toString();
@@ -129,12 +129,21 @@ describe('مفاتيح المالك بأدوارها (و١٠)', () => {
   const full: LicensePayload = { v: 1, device: DEVICE, kind: 'full', issued: '2026-10-09', office: 'مكتب النور' };
 
   it('بصمة القائمة المدمجة «ذهبية» — تعديلٌ غير مقصود يفشل هنا', () => {
-    // المفتاح الأوّل (2026-10-02) بدوره `both`: به صدرت كلّ المفاتيح وكلّ تحديثٍ قائم. لا تُغيَّر هذه البصمة إلا
-    // بإضافة مفتاحٍ أعطاه المالك عمدًا — في إصدارٍ جديد.
-    expect(createHash('sha256').update(JSON.stringify(OWNER_KEYS)).digest('hex')).toBe('e17dcaa17609a43fb66c35d19c975bddea18e5bef9ea68cfc40b94495fd7359d');
-    expect(OWNER_KEYS).toEqual([{ id: 'owner-2026-10-02', role: 'both', publicKey: OWNER_PUBLIC_KEY }]);
+    // البند ٣٣ (١٢ ت١): الأوّل (2026-10-02) صار `license` — به صدرت كلّ مفاتيح التفعيل — ومفتاح التحديث الذي صنعه المالك
+    // `update`. وكانت البصمة e17dcaa1… والأوّل `both` وحده. لا تُغيَّر إلا بمفتاحٍ أعطاه المالك عمدًا — في إصدارٍ جديد.
+    expect(createHash('sha256').update(JSON.stringify(OWNER_KEYS)).digest('hex')).toBe('1e541a13785e7ec89e01f44b38058b4253d61dca751a73902852e97864e8d750');
+    expect(OWNER_KEYS).toEqual([
+      { id: 'owner-2026-10-02', role: 'license', publicKey: OWNER_PUBLIC_KEY },
+      { id: 'update-2026-10-12', role: 'update', publicKey: OWNER_UPDATE_PUBLIC_KEY }
+    ]);
+  });
+
+  it('والمفتاحان مفصولان: التفعيل بالأوّل وحده، والتحديث بمفتاح التحديث وحده — ولا يصلح أحدهما للآخر', () => {
     expect(keysFor('license')).toEqual([OWNER_PUBLIC_KEY]);
-    expect(keysFor('update')).toEqual([OWNER_PUBLIC_KEY]);
+    expect(keysFor('update')).toEqual([OWNER_UPDATE_PUBLIC_KEY]);
+    expect(OWNER_UPDATE_PUBLIC_KEY).not.toBe(OWNER_PUBLIC_KEY);
+    // مفاتيح Ed25519 صالحة.
+    for (const k of [OWNER_PUBLIC_KEY, OWNER_UPDATE_PUBLIC_KEY]) expect(createPublicKey(k).asymmetricKeyType).toBe('ed25519');
   });
 
   it('التفعيل يجرّب `license|both`، والتحديث `update|both`', () => {

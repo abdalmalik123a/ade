@@ -1142,7 +1142,7 @@ src/main/                 عملية Electron: القاعدة، الإصدار،
   errorLog.ts             سجلّ الأخطاء في بيانات المكتب، وخطأ العملية الرئيسة يُقال لا يُسقطها
   fillCard.ts             نافذة بطاقة التعبئة: صغيرةٌ فوق المتصفّح، واحدةٌ لا تتكاثر
   harden.ts               تحصين النوافذ: لا تنقّل ولا نوافذ، والويب وحده إلى المتصفّح، والكاميرا وحدها، والسقوط يُعاد
-  license/ownerKey.ts     المفتاح العامّ للمالك (Ed25519) — به تُقرأ مفاتيح التفعيل
+  license/ownerKey.ts     مفتاحا المالك العامّان (Ed25519) مفصولين (البند ٣٣): الأوّل للتفعيل وحده، ومفتاح التحديث لملفّات التحديث وحده
   db/                     الاتصال (index.ts) وإعداداته (pragmas.ts)، والمخطّط (schema.sql)، وفهارس البحث (search.sql)
   ipc/                    القنوات — لكلّ بابٍ ملفّ: backup · camera · citizens · content · designs · documents
                           · elements · files · fonts · index · letterheads · license · orders · pdf · photos · questions
