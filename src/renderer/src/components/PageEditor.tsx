@@ -17,274 +17,50 @@ import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Node as PMNode, MarkType } from 'prosemirror-model';
-import { AllSelection, EditorState, Plugin, TextSelection, type Command, type Transaction } from 'prosemirror-state';
-import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
-import { keymap } from 'prosemirror-keymap';
-import { baseKeymap, chainCommands, selectAll, splitBlockAs, toggleMark } from 'prosemirror-commands';
-import { history, redo, undo, undoDepth } from 'prosemirror-history';
-import { gapCursor } from 'prosemirror-gapcursor';
-import { addRowAfter, addRowBefore, deleteRow, deleteTable, goToNextCell, splitCell, tableEditing } from 'prosemirror-tables';
+import { AllSelection } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { undoDepth } from 'prosemirror-history';
 import {
-  addColumnKeepWidths,
-  deleteColumnKeepWidths,
-  mergeCellsInRow,
-  resizeColumnBy,
-  selectionSpansRows,
   tableState,
-  toggleHeaderRow,
-  toggleTableBorders
 } from '@shared/docPmTable';
-import { liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list';
-import { listStyleAt, setListStyle, toggleList } from '@shared/docPmList';
-import { blocksToPm, docSchema, pmBlocks } from '@shared/docPm';
+import { listStyleAt } from '@shared/docPmList';
+import { pmBlocks } from '@shared/docPm';
 import {
-  MARGIN_PRESETS,
-  PAGE_NAMES,
   marginPreset,
   newUuid,
-  pageMm,
   paragraph,
-  reconcileFields,
   run,
   type Align,
   type Block,
   type Doc,
   type DocField,
   type ListStyle,
-  type MarginPreset,
-  type Numerals,
   type PageSetup,
-  type PageSize
 } from '@shared/doc';
 import { marker, watermarkHtml } from '@shared/docHtml';
-import { fieldFromText, makeTable } from '@shared/docEdit';
+import { makeTable } from '@shared/docEdit';
 import { HEAD_MAX, findSheetHead } from '@shared/sheetHead';
-import { WORD_SIZES_PT, ptToPx, pxToPt } from '@shared/fontSize';
+import { pxToPt } from '@shared/fontSize';
 import {
   BASE_SIZE,
-  FieldPanel,
   InsertMenu,
-  OFFICIAL_INDENT_MM,
-  Tool,
-  ToolSep,
   type EditorProps,
   type MenuClip
 } from './editorKit';
-import { MM_PX, measurePages, pageFlowKey, pageFlowPlugin, sameBreaks } from './pageFlow';
-import { ColumnsView, FieldView, GroupView, ImageView, SpacerView, TableView, pageBreakView } from './pageViews';
-import { listMarkersKey, listMarkersPlugin, tableResizing } from './editorPlugins';
-import ColorTool from './ColorTool';
-import { adoptPastedImages, caretAfterPaste, cleanPastedHtml, pasteImages } from './editorPaste';
+import { FieldPanel } from './pageEditor/FieldPanel';
+import { MM_PX } from './pageFlow';
 import FieldHints from './FieldHints';
-import FontSelect from './FontSelect';
-import { fontsIn } from '../lib/fonts';
 import { wrongGenderWords } from '@shared/fieldHints';
 import { GENDER_KEY, isChoiceKey, pickChoice } from '@shared/gender';
-import { sampleValues } from '@shared/letterDraft';
 import { toIndic, count } from '@shared/arabic';
-
-/** «جرّب باسمٍ آخر»: امرأةٌ وقيمٌ تجريبية — فيُرى ما بقي مذكّرًا أو نصًّا وهو خانة. */
-function trialValues(fields: DocField[], values: Record<string, string> = {}): Record<string, string> {
-  const named: Record<string, string> = { [GENDER_KEY]: 'أنثى' };
-  for (const f of fields) if (f.role === 'name' || f.source === 'fullName') named[f.key] = 'زينب علي حسين';
-  return sampleValues(fields, { ...values, ...named });
-}
-
-/** يعلّم الكلمات على الورقة — كلمةً كاملة لا جزءَ كلمة. */
-function markWords(doc: PMNode, words: string[]): DecorationSet {
-  if (!words.length) return DecorationSet.empty;
-  const letter = /[ء-يٱ-ۓـ\u064B-\u0652]/;
-  const out: Decoration[] = [];
-  doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return true;
-    const text = node.text;
-    for (const w of words) {
-      for (let at = text.indexOf(w); at >= 0; at = text.indexOf(w, at + w.length)) {
-        const before = text[at - 1];
-        const after = text[at + w.length];
-        if ((before && letter.test(before)) || (after && letter.test(after))) continue;
-        out.push(Decoration.inline(pos + at, pos + at + w.length, { class: 'pm-wrong', 'data-wrong': '' }));
-      }
-    }
-    return false;
-  });
-  return DecorationSet.create(doc, out);
-}
-
-/**
- * ما فوق المتن (قرار ٣ تشرين الأول، ن١٧): ترويسةٌ رسمية من المكتبة، أو أسطرٌ تُكتب في أعلى
- * الورقة نفسها كما في Word، أو لا شيء — ومعها الخطّ الفاصل. وكان الطريقان موجودين ولا يعرفهما
- * الموظفون: فصارا على شريط الورقة. والشاشة تملك الترويسة، والمحرّر يعرض الاختيار.
- */
-export type HeadChoice = {
-  mode: 'formal' | 'lines' | 'none';
-  letterheads: { id: number; name: string }[];
-  letterheadId: number | null;
-  onChoose: (choice: { mode: 'formal'; id: number } | { mode: 'lines' } | { mode: 'none' }) => void;
-  /** خطّ الترويسة الرسمية الفاصل — حيث يملكه الكتاب (نسخته من الترويسة). */
-  divider?: { on: boolean; set: (on: boolean) => void };
-  /** «صمّم ترويسة» أو «حرّر الترويسة». */
-  onEdit?: () => void;
-};
+import { trialValues, N, M, SHEET_GAP, markValue, paragraphValue, insertFieldFallback } from './pageEditor/commands';
+import FormatBar from './pageEditor/FormatBar';
+import SheetBar from './pageEditor/SheetBar';
+import type { HeadChoice } from './pageEditor/types';
+import { usePmEditor } from './pageEditor/usePmEditor';
+export type { HeadChoice } from './pageEditor/types';
 
 export type PageEditorProps = EditorProps & { head?: HeadChoice };
-
-const S = docSchema;
-const N = S.nodes as Record<string, NonNullable<(typeof S.nodes)[string]>>;
-const M = S.marks as Record<string, MarkType>;
-
-/** تباعد الأسطر كما في Word: مفرد، و١٫١٥، ونصف، ومزدوج. */
-const LINE_HEIGHTS = [1, 1.15, 1.5, 2, 2.5];
-/** أشكال الترقيم كما في Word (البند ٣): النقطيّ والرقميّ والحروف «أ)» والترتيبيّ «أولًا:» واللاتينيّ «a)». */
-const LIST_STYLES: ListStyle[] = ['bullet', 'number', 'arabicLetter', 'ordinal', 'latinLetter'];
-/** الفجوة بين ورقتين على الشاشة. */
-const SHEET_GAP = 24;
-
-/** «صفحة واحدة»، «صفحتان»، «٣ صفحات» — كما تُقال. */
-function pagesLabel(n: number): string {
-  if (n === 1) return 'صفحة واحدة';
-  if (n === 2) return 'صفحتان';
-  return n <= 10 ? `${n} صفحات` : `${n} صفحة`;
-}
-
-// ── الأوامر ─────────────────────────────────────────────────────────────
-
-/** فقرات التحديد كلّها — في المتن والخلايا والأعمدة. */
-function selectedParagraphs(state: EditorState): { node: PMNode; pos: number }[] {
-  const out: { node: PMNode; pos: number }[] = [];
-  for (const r of state.selection.ranges) {
-    state.doc.nodesBetween(r.$from.pos, r.$to.pos, (node, pos) => {
-      if (node.type === N.paragraph) out.push({ node, pos });
-      return true;
-    });
-  }
-  return out;
-}
-
-/** صفةٌ لكلّ فقرةٍ في التحديد: المحاذاة والتباعد والبادئة. */
-const setParagraphAttr =
-  (attr: 'align' | 'lineHeight' | 'indent', value: unknown): Command =>
-  (state, dispatch) => {
-    const paras = selectedParagraphs(state);
-    if (!paras.length) return false;
-    if (dispatch) {
-      const tr = state.tr;
-      for (const { node, pos } of paras) tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: value });
-      dispatch(tr.scrollIntoView());
-    }
-    return true;
-  };
-
-/**
- * علامةٌ ذات قيمة (الحجم، الخطّ) على التحديد — أو على ما سيُكتب إن لم يُحدَّد شيء، كما في Word.
- * والفقرة المحدَّدة كلّها تأخذ الحجم صفةً لها أيضًا، فيتبعه السطر الفارغ فيها.
- */
-const setValueMark =
-  (type: MarkType, attrs: Record<string, unknown> | null): Command =>
-  (state, dispatch) => {
-    const { selection } = state;
-    if (!dispatch) return true;
-    const tr = state.tr;
-    if (selection.empty) {
-      tr.removeStoredMark(type);
-      if (attrs) tr.addStoredMark(type.create(attrs));
-      dispatch(tr);
-      return true;
-    }
-    for (const r of selection.ranges) {
-      tr.removeMark(r.$from.pos, r.$to.pos, type);
-      if (attrs) tr.addMark(r.$from.pos, r.$to.pos, type.create(attrs));
-    }
-    if (type === M.size) {
-      for (const { node, pos } of selectedParagraphs(state)) {
-        const whole = pos >= selection.from - 1 && pos + node.nodeSize <= selection.to + 1;
-        if (whole) tr.setNodeMarkup(pos, undefined, { ...node.attrs, size: attrs ? attrs.px : null });
-      }
-    }
-    dispatch(tr.scrollIntoView());
-    return true;
-  };
-
-const clearMarks: Command = (state, dispatch) => {
-  if (state.selection.empty) return false;
-  if (dispatch) {
-    const tr = state.tr;
-    for (const r of state.selection.ranges) for (const t of Object.values(M)) tr.removeMark(r.$from.pos, r.$to.pos, t);
-    dispatch(tr);
-  }
-  return true;
-};
-
-/** Enter: الفقرة تنشطر، والجديدة ترث تنسيقها كما في Word — بمعرّفٍ جديد. */
-const splitParagraph = splitBlockAs((node) => ({ type: node.type, attrs: { ...node.attrs, id: null } }));
-
-const markActive = (state: EditorState, type: MarkType): boolean => {
-  const { from, to, empty, $from } = state.selection;
-  if (empty) return Boolean(type.isInSet(state.storedMarks || $from.marks()));
-  return state.doc.rangeHasMark(from, to, type);
-};
-
-/** قيمة علامةٍ في التحديد إن كانت واحدة فيه — وإلا لا شيء. */
-function markValue(state: EditorState, type: MarkType, attr: string): unknown {
-  const { from, to, empty, $from } = state.selection;
-  if (empty) return type.isInSet(state.storedMarks || $from.marks())?.attrs[attr] ?? null;
-  let value: unknown = undefined;
-  let mixed = false;
-  state.doc.nodesBetween(from, to, (node) => {
-    if (!node.isText) return true;
-    const v = type.isInSet(node.marks)?.attrs[attr] ?? null;
-    if (value === undefined) value = v;
-    else if (value !== v) mixed = true;
-    return false;
-  });
-  return mixed ? null : (value ?? null);
-}
-
-function paragraphValue(state: EditorState, attr: string): unknown {
-  const values = new Set(selectedParagraphs(state).map((p) => p.node.attrs[attr] ?? null));
-  return values.size === 1 ? [...values][0] : undefined;
-}
-
-// ── الإضافات ────────────────────────────────────────────────────────────
-
-/**
- * لكلّ كتلةٍ وحقلٍ معرّفٌ واحد: الانشطار واللصق ينسخان الصفات ومعها المعرّف، فيُعطى
- * المكرَّر والمفقود معرّفًا جديدًا. وفقرة عنصر القائمة معرّفها لعنصرها لا لها.
- */
-const uniqueIds = new Plugin({
-  appendTransaction(trs, _old, state) {
-    if (!trs.some((t) => t.docChanged)) return null;
-    const seen = new Set<string>();
-    let tr: Transaction | null = null;
-    state.doc.descendants((node, pos, parent) => {
-      if (!('id' in node.attrs)) return true;
-      if (node.type === N.paragraph && parent?.type === N.list_item) return true;
-      if (node.type === N.list && node.attrs.nested) return true;
-      const id = node.attrs.id as string | null;
-      if (id && !seen.has(id)) {
-        seen.add(id);
-        return true;
-      }
-      const fresh = newUuid();
-      seen.add(fresh);
-      tr = (tr ?? state.tr).setNodeMarkup(pos, undefined, { ...node.attrs, id: fresh });
-      return true;
-    });
-    return tr;
-  }
-});
-
-/** ورقةٌ فارغة تقول ما يُفعل فيها. */
-const placeholder = new Plugin({
-  props: {
-    decorations(state) {
-      const first = state.doc.firstChild;
-      if (state.doc.childCount !== 1 || !first || first.type !== N.paragraph || first.content.size) return null;
-      return DecorationSet.create(state.doc, [Decoration.node(0, first.nodeSize, { class: 'pm-empty', 'data-placeholder': 'اكتب هنا، أو الصق من Word…' })]);
-    }
-  }
-});
 
 // ── المحرّر ─────────────────────────────────────────────────────────────
 
@@ -338,251 +114,11 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   const labelRef = useRef(labelOf);
   labelRef.current = labelOf;
 
-  /** ما في المحرّر إلى الوثيقة — والحقول تتبع ما على الورقة. */
-  /**
-   * كلّ خانةٍ عُرفت في هذه الجلسة بوصفها: التراجع يرفع الخانة من الورقة فتسقط من القائمة،
-   * والإعادة تردّها — فتعود باسمها ودورها لا مفتاحًا عاريًا.
-   */
-  const fieldMemory = useRef(new Map<string, DocField>());
-  const emit = useCallback((pm: PMNode) => {
-    const blocks = pmBlocks(pm);
-    ownBlocks.current = blocks;
-    const base = docRef.current;
-    for (const f of [...base.fields, ...pendingFields.current]) fieldMemory.current.set(f.key, f);
-    const withPending = { ...base, blocks, fields: [...base.fields, ...pendingFields.current.filter((f) => !base.fields.some((x) => x.key === f.key))] };
-    pendingFields.current = [];
-    const next: Doc = { ...withPending, fields: reconcileFields(withPending, (key) => fieldMemory.current.get(key) ?? {}) };
-    docRef.current = next;
-    onChangeRef.current(next);
-  }, []);
-
-  const nodeViews = useCallback(
-    () => ({
-      field: (node: PMNode) => new FieldView(node, (k) => labelRef.current(k)),
-      image: (node: PMNode, view: EditorView, getPos: () => number | undefined) => new ImageView(node, view, getPos),
-      spacer: (node: PMNode, view: EditorView, getPos: () => number | undefined) => new SpacerView(node, view, getPos),
-      page_break: () => pageBreakView(),
-      table: (node: PMNode) => new TableView(node),
-      columns: (node: PMNode) => new ColumnsView(node),
-      group: (node: PMNode) => new GroupView(node)
-    }),
-    []
-  );
-
-  /** F4: ما ظُلِّل يصير خانةً باسمه — نصًّا متّصلًا في سطرٍ واحد، بلا حقلٍ داخله. */
-  const toField: Command = useCallback((state, dispatch) => {
-    const { $from, $to, from, to, empty } = state.selection;
-    if (empty || !$from.sameParent($to) || !$from.parent.isTextblock) return false;
-    let hasField = false;
-    state.doc.nodesBetween(from, to, (n) => {
-      if (n.type === N.field) hasField = true;
-    });
-    if (hasField) return false;
-    const base = docRef.current;
-    const known = { ...base, fields: [...base.fields, ...pendingFields.current] };
-    const field = fieldFromText(known, state.doc.textBetween(from, to));
-    if (!field) return false;
-    if (dispatch) {
-      pendingFields.current.push(field);
-      dispatch(state.tr.replaceWith(from, to, N.field.create({ ref: field.key, id: newUuid() })));
-    }
-    return true;
-  }, []);
-
-  /** كتلٌ بعد الكتلة التي فيها المؤشّر — والمؤشّر في أوّل سطرٍ يُكتب فيه منها. */
-  const insertBlocks = useCallback((blocks: Block[]) => {
-    const view = viewRef.current;
-    if (!view) return;
-    const { state } = view;
-    const $from = state.selection.$from;
-    const at = $from.depth >= 1 ? $from.after(1) : state.doc.content.size;
-    const nodes = blocksToPm(blocks).content;
-    const tr = state.tr.insert(at, nodes);
-    tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(at + 1, tr.doc.content.size))));
-    view.dispatch(tr.scrollIntoView());
-    view.focus();
-    setMenu(false);
-  }, []);
-
-  const run_ = useCallback((cmd: Command) => {
-    const view = viewRef.current;
-    if (!view) return false;
-    const done = cmd(view.state, view.dispatch, view);
-    view.focus();
-    return done;
-  }, []);
-
-  // المحرّر يُنشأ مرّة؛ وما بعدها يمرّ بالحالة.
-  useEffect(() => {
-    if (!mountRef.current) return;
-    const keys = keymap({
-      'Mod-z': undo,
-      'Mod-y': redo,
-      'Shift-Mod-z': redo,
-      'Mod-b': toggleMark(M.bold),
-      'Mod-i': toggleMark(M.italic),
-      'Mod-u': toggleMark(M.underline),
-      Enter: chainCommands(splitListItem(N.list_item), splitParagraph),
-      'Shift-Enter': (state, dispatch) => {
-        if (dispatch) dispatch(state.tr.replaceSelectionWith(N.hard_break.create()).scrollIntoView());
-        return true;
-      },
-      'Mod-Enter': (state, dispatch) => {
-        const $from = state.selection.$from;
-        const at = $from.depth >= 1 ? $from.after(1) : state.doc.content.size;
-        if (dispatch) {
-          const tr = state.tr.insert(at, [N.page_break.create({ id: newUuid() }), N.paragraph.create({ id: newUuid(), align: $from.parent.attrs.align ?? 'right' })]);
-          tr.setSelection(TextSelection.near(tr.doc.resolve(at + 2)));
-          dispatch(tr.scrollIntoView());
-        }
-        return true;
-      },
-      F4: (state, dispatch) => toField(state, dispatch),
-      Tab: chainCommands(goToNextCell(1), sinkListItem(N.list_item)),
-      'Shift-Tab': chainCommands(goToNextCell(-1), liftListItem(N.list_item))
-    });
-    const view = new EditorView(mountRef.current, {
-      state: EditorState.create({
-        doc: blocksToPm(docRef.current.blocks),
-        plugins: [
-          history({ depth: 200 }),
-          keys,
-          keymap(baseKeymap),
-          gapCursor(),
-          tableResizing(),
-          tableEditing(),
-          listMarkersPlugin(() => docRef.current.pageSetup.numerals),
-          uniqueIds,
-          placeholder,
-          caretAfterPaste,
-          pageFlowPlugin(),
-          new Plugin({ props: { decorations: (state) => markWords(state.doc, wrongRef.current) } })
-        ]
-      }),
-      nodeViews: nodeViews(),
-      attributes: { class: 'pm-page outline-none', dir: 'rtl', 'data-page-editor': '' },
-      transformPastedHTML: cleanPastedHtml,
-      handlePaste(v, event) {
-        // صورةٌ وحدها في الحافظة (لقطة شاشة، أو صورةٌ نُسخت): تُحفظ وتُدرج. ونصٌّ من Word يحمل
-        // معه صورةً لما نُسخ — فالنصّ أولى، ويُلصق كما هو.
-        const data = event.clipboardData;
-        const files = data ? [...data.files].filter((f) => f.type.startsWith('image/')) : [];
-        if (!data || !files.length) return false;
-        const html = data.getData('text/html');
-        const words = (data.getData('text/plain') + html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')).trim();
-        if (words) return false;
-        event.preventDefault();
-        void pasteImages(v, files, contentWidth.current);
-        return true;
-      },
-      dispatchTransaction(tr) {
-        const v = viewRef.current!;
-        const before = v.state.doc;
-        const next = v.state.apply(tr);
-        v.updateState(next);
-        if (next.doc !== before) emit(next.doc);
-        if (tr.getMeta('paste')) void adoptPastedImages(v);
-        setTick((t) => t + 1);
-      }
-    });
-    viewRef.current = view;
-    ownBlocks.current = docRef.current.blocks;
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-    };
-  }, [emit, nodeViews, toField]);
-
-  // وثيقةٌ جاءت من الخارج (فتحُ نموذجٍ آخر، أو حذف حقلٍ من اللوح) تحلّ في المحرّر.
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view || doc.blocks === ownBlocks.current) return;
-    ownBlocks.current = doc.blocks;
-    view.updateState(EditorState.create({ doc: blocksToPm(doc.blocks), plugins: view.state.plugins }));
-    setTick((t) => t + 1);
-  }, [doc.blocks]);
-
-  // قيم الحقول وأسماؤها تتغيّر بلا أن تتغيّر الورقة — فتُعاد رسم الصناديق. وبالبصمة لا
-  // بالمرجع: قائمة الحقول تُبنى من جديد مع كلّ حرف، وإعادة الرسم مع كلّ حرف تُربك الكتابة.
-  const labelSig = useMemo(
-    () => JSON.stringify([doc.fields.map((f) => [f.key, f.label]), shownValues ?? {}]),
-    [doc.fields, shownValues]
-  );
-  // وأرقام الورقة (هندية أو عربية) تُعيد رسم علامات القوائم كما تُطبع — والمتن لم يتغيّر.
-  useEffect(() => {
-    const view = viewRef.current;
-    if (view) view.dispatch(view.state.tr.setMeta(listMarkersKey, true).setMeta('addToHistory', false));
-  }, [doc.pageSetup.numerals]);
-  // والعلامات الحمراء تُرسم حين يُجرَّب الاسم الآخر وتُمحى حين يُترك.
-  useEffect(() => {
-    const view = viewRef.current;
-    if (view) view.dispatch(view.state.tr.setMeta('trial', trying));
-  }, [trying]);
-
-  /** اقتراحاتٌ قُبلت: الوثيقة كلّها خطوةً واحدة في المحرّر — يتراجع عنها Ctrl+Z. */
-  const applyDoc = (next: Doc) => {
-    const view = viewRef.current;
-    if (!view) return;
-    const known = new Set(docRef.current.fields.map((f) => f.key));
-    pendingFields.current.push(...next.fields.filter((f) => !known.has(f.key)));
-    view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, blocksToPm(next.blocks).content));
-    view.focus();
-  };
-  const firstSig = useRef(labelSig);
-  useEffect(() => {
-    if (labelSig === firstSig.current) return;
-    firstSig.current = labelSig;
-    viewRef.current?.setProps({ nodeViews: nodeViews() });
-  }, [labelSig, nodeViews]);
-
-  // ── الصفحات ─────────────────────────────────────────────────────────
-  const page = pageMm(doc.pageSetup);
-  const margins = doc.pageSetup.margins;
-  // كما في `pageCss`: الترقيم يحتاج هامشًا سفليًّا لا يقلّ عن ١٤ ملم.
-  const bottomMm = doc.pageSetup.pageNumbers ? Math.max(margins.bottom, 14) : margins.bottom;
-  const repeatHead = doc.pageSetup.repeatLetterhead && Boolean(header);
-  /** عرض المتن بالبكسل — أعرض ما تُلصق به صورة. */
-  const contentWidth = useRef(0);
-  contentWidth.current = (page.w - margins.left - margins.right) * MM_PX;
-  const geo = useRef({ pageW: 0, pageH: 0, top: 0, bottom: 0, repeat: false });
-  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: bottomMm * MM_PX, repeat: repeatHead };
-  const frame = useRef(0);
-
-  /** يقيس الورقة بعد أن تُرسم، ويضع الفواصل حيث تقسمها الطابعة. */
-  const remeasure = useCallback(() => {
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
-      const view = viewRef.current;
-      const paper = paperRef.current;
-      const mount = mountRef.current;
-      if (!view || !paper || !mount) return;
-      const g = geo.current;
-      const scale = paper.getBoundingClientRect().width / g.pageW || 1;
-      const head = g.repeat && headRef.current ? headRef.current.getBoundingClientRect().height / scale : 0;
-      const { breaks, pages: n } = measurePages(view, paper, mount, { pageW: g.pageW, pageH: g.pageH, gap: SHEET_GAP, top: g.top, bottom: g.bottom, repeatHead: head });
-      setPages(n);
-      if (!sameBreaks(pageFlowKey.getState(view.state)?.breaks ?? [], breaks)) {
-        view.dispatch(view.state.tr.setMeta(pageFlowKey, breaks).setMeta('addToHistory', false));
-      }
-    });
-  }, []);
-
-  // بعد كلّ رسم: كتابةٌ أو تنسيقٌ أو مقاسٌ أو هوامش. والقياس الذي لا يغيّر شيئًا لا يُرسل شيئًا.
-  useEffect(() => {
-    remeasure();
+  // ── قلب المحرّر والصفحات: ProseMirror على الورقة والوثيقة بينهما، والصفحات كما تقسمها الطابعة — `pageEditor/usePmEditor.ts` ──
+  const { margins, run_, insertBlocks, page, toField, repeatHead, bottomMm, applyDoc } = usePmEditor({
+    ownBlocks, docRef, pendingFields, onChangeRef, labelRef, viewRef, setMenu, mountRef, wrongRef, setTick, doc, shownValues,
+    trying, header, paperRef, headRef, setPages
   });
-  // والخطوط حين تكتمل، وكلّ تغيّرٍ في ارتفاع المتن لم يمرّ بالمحرّر.
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-    const ro = new ResizeObserver(() => remeasure());
-    ro.observe(mount);
-    void document.fonts?.ready.then(() => remeasure());
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(frame.current);
-    };
-  }, [remeasure]);
 
   /** الخطّ الفاصل تحت أسطر الرأس: أوّل خطٍّ في أعلى الورقة — أو صورة Word الممطوطة. */
   const topRule = (): { pos: number; size: number } | null => {
@@ -692,322 +228,37 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
       <div className="flex-1 min-w-0 overflow-auto flex flex-col bg-surface-dim/40" data-doc-editor="" data-editor="v2" data-undo-depth={state ? undoDepth(state) : 0}>
         {/* الأدوات وشريط الورقة معًا في أعلى الشاشة، والورقة تمرّ تحتهما. */}
         <div className="sticky top-0 z-10">
-          <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
-            <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
-            <Tool act="redo" icon="redo" title="إعادة (Ctrl+Y)" onRun={() => run_(redo)} />
-            <ToolSep />
-            <FontSelect
-              act="font"
-              blank="خطّ الورقة"
-              className="h-8 w-40 rounded-lg bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
-              title="الخطّ من «خطوط ديوان» — لما حُدِّد، أو لما سيُكتب"
-              used={state ? fontsIn(state.doc, M.font) : []}
-              value={curFont}
-              onChange={(family) => run_(setValueMark(M.font, family ? { family } : null))}
-            />
-            <select
-              aria-label="حجم الخطّ"
-              className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
-              data-act="size"
-              title="حجم الخطّ بالنقطة كما في Word — لما حُدِّد، أو لما سيُكتب"
-              value={String(curPt)}
-              onChange={(e) => {
-                const px = ptToPx(Number(e.target.value));
-                run_(setValueMark(M.size, px === BASE_SIZE ? null : { px }));
-              }}
-            >
-              {[...new Set([...WORD_SIZES_PT, curPt])].sort((a, b) => a - b).map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <ToolSep />
-            <Tool act="bold" icon="format_bold" title="عريض (Ctrl+B)" active={state ? markActive(state, M.bold) : false} onRun={() => run_(toggleMark(M.bold))} />
-            <Tool act="italic" icon="format_italic" title="مائل (Ctrl+I)" active={state ? markActive(state, M.italic) : false} onRun={() => run_(toggleMark(M.italic))} />
-            <Tool act="underline" icon="format_underlined" title="تحته خطّ (Ctrl+U)" active={state ? markActive(state, M.underline) : false} onRun={() => run_(toggleMark(M.underline))} />
-            {/* وما كان ينقص عن Word (البند ٣): الشطب، وأعلى السطر وأسفله (لا يجتمعان)، ولون النصّ — بلا اختصاراتٍ جديدة. */}
-            <Tool act="strike" icon="format_strikethrough" title="يتوسّطه خطّ" active={state ? markActive(state, M.strike) : false} onRun={() => run_(toggleMark(M.strike))} />
-            <Tool act="sup" icon="superscript" title="أعلى السطر" active={state ? markActive(state, M.sup) : false} onRun={() => run_(toggleMark(M.sup))} />
-            <Tool act="sub" icon="subscript" title="أسفل السطر" active={state ? markActive(state, M.sub) : false} onRun={() => run_(toggleMark(M.sub))} />
-            <ColorTool value={state ? (markValue(state, M.color, 'hex') as string | null) : null} onPick={(hex) => run_(setValueMark(M.color, hex ? { hex } : null))} />
-            <ToolSep />
-            {(
-              [
-                { align: 'right', icon: 'format_align_right', title: 'محاذاة يمين' },
-                { align: 'center', icon: 'format_align_center', title: 'توسيط' },
-                { align: 'left', icon: 'format_align_left', title: 'محاذاة يسار' },
-                { align: 'justify', icon: 'format_align_justify', title: 'ضبط الطرفين' }
-              ] as const
-            ).map((a) => (
-              <Tool key={a.align} act={`align-${a.align}`} icon={a.icon} title={a.title} active={curAlign === a.align} onRun={() => run_(setParagraphAttr('align', a.align))} />
-            ))}
-            <select
-              aria-label="تباعد الأسطر"
-              className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
-              data-act="line-height"
-              title="تباعد الأسطر"
-              value={curLh == null ? '' : String(curLh)}
-              onChange={(e) => run_(setParagraphAttr('lineHeight', e.target.value ? Number(e.target.value) : null))}
-            >
-              <option value="">تلقائي</option>
-              {LINE_HEIGHTS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-            <Tool
-              act="indent"
-              icon="format_indent_increase"
-              title="مسافة بادئة ٢ سم لأوّل السطر — كما يُكتب متن الكتاب الرسمي"
-              active={Boolean(curIndent)}
-              onRun={() => run_(setParagraphAttr('indent', curIndent ? null : OFFICIAL_INDENT_MM))}
-            />
-            <Tool act="bullets" icon="format_list_bulleted" title="تعداد نقطي" active={curList === 'bullet'} onRun={() => run_(toggleList('bullet'))} />
-            <Tool act="numbers" icon="format_list_numbered" title="ترقيم" active={curList === 'number'} onRun={() => run_(toggleList('number'))} />
-            <select
-              aria-label="شكل الترقيم"
-              className="h-8 w-24 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface"
-              data-act="list-style"
-              title="شكل الترقيم — كما يُطبع، ولمستوى القائمة الذي فيه المؤشّر"
-              value={curList ?? ''}
-              onChange={(e) => e.target.value && run_(setListStyle(e.target.value as ListStyle))}
-            >
-              <option value="">شكل الترقيم</option>
-              {[...LIST_STYLES, ...(curList && !LIST_STYLES.includes(curList) ? [curList] : [])].map((s) => (
-                <option key={s} value={s}>
-                  {listLabel(s)}
-                </option>
-              ))}
-            </select>
-            <ToolSep />
-            <button
-              className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-primary transition-all shadow-xs"
-              type="button"
-              data-act="insert"
-              title="إدراج جدول أو صورة أو كليشة أو فاصل صفحة"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setMenu(true)}
-            >
-              <span className="material-symbols-outlined text-[16px]">post_add</span>
-              <span>إدراج</span>
-            </button>
-            <Tool act="select-all" icon="select_all" title="تحديد الكلّ (Ctrl+A)" active={all} onRun={() => run_(selectAll)}>
-              <span className="font-label-sm text-label-sm">تحديد الكلّ</span>
-            </Tool>
-            <Tool act="clear" icon="format_clear" title="مسح التنسيق" onRun={() => run_(clearMarks)} />
-            <Tool act="field" icon="data_object" title="اجعل المظلَّل خانة (F4)" onRun={() => run_(toField)}>
-              <span className="font-label-sm text-label-sm">خانة</span>
-            </Tool>
-
-            {table && (
-              <>
-                <ToolSep />
-                {/* أوامر الجدول تحفظ ما تصنعه في الوثيقة (`shared/docPmTable.ts`): الأوزان مع الأعمدة، ولا دمج رأسيّ. */}
-                <Tool act="row-above" icon="add_row_above" title="صفٌّ فوق هذا" onRun={() => run_(addRowBefore)} />
-                <Tool act="row-add" icon="add_row_below" title="صفٌّ تحت هذا" onRun={() => run_(addRowAfter)} />
-                <Tool act="col-right" icon="add_column_right" title="عمودٌ يمين هذا — بعرضه" onRun={() => run_(addColumnKeepWidths('before'))} />
-                <Tool act="col-add" icon="add_column_left" title="عمودٌ يسار هذا — بعرضه" onRun={() => run_(addColumnKeepWidths('after'))} />
-                <Tool act="row-del" icon="remove_road" title="احذف الصفّ" onRun={() => run_(deleteRow)} />
-                <Tool act="col-del" icon="splitscreen_left" title="احذف العمود" onRun={() => run_(deleteColumnKeepWidths)} />
-                <Tool act="col-wider" icon="width_wide" title="وسّع العمود" onRun={() => run_(resizeColumnBy(0.5))} />
-                <Tool act="col-narrower" icon="width_normal" title="ضيّق العمود" onRun={() => run_(resizeColumnBy(-0.5))} />
-                <Tool
-                  act="merge"
-                  icon="call_merge"
-                  title={table.spansRows ? 'تُدمج خلايا الصفّ الواحد — الدمج الرأسي لا تحفظه الورقة' : 'ادمج الخلايا المحدَّدة'}
-                  onRun={() => {
-                    const view = viewRef.current;
-                    if (view && selectionSpansRows(view.state)) {
-                      setNotice('الدمج الرأسي لا تحفظه الورقة ولا يُطبع — تُدمج خلايا الصفّ الواحد');
-                      return;
-                    }
-                    run_(mergeCellsInRow);
-                  }}
-                />
-                <Tool act="split" icon="call_split" title="افصل الخليّة" onRun={() => run_(splitCell)} />
-                <Tool
-                  act="table-borders"
-                  icon={table.borders ? 'border_clear' : 'border_all'}
-                  title={table.borders ? 'أخفِ حدود الجدول — لجدولٍ يرتّب الرأس أو التواقيع لا يُرى' : 'أظهر حدود الجدول'}
-                  active={!table.borders}
-                  onRun={() => run_(toggleTableBorders)}
-                />
-                <Tool act="table-header" icon="title" title="صفّ عناوين يتكرّر في أعلى كلّ صفحة" active={table.header} onRun={() => run_(toggleHeaderRow)} />
-                <Tool act="table-del" icon="delete" title="احذف الجدول كلّه" onRun={() => run_(deleteTable)} />
-              </>
-            )}
-          </div>
+          <FormatBar
+            run_={run_}
+            state={state}
+            curFont={curFont}
+            curPt={curPt}
+            curAlign={curAlign}
+            curLh={curLh}
+            curIndent={curIndent}
+            curList={curList}
+            listLabel={listLabel}
+            setMenu={setMenu}
+            all={all}
+            toField={toField}
+            table={table}
+            viewRef={viewRef}
+            setNotice={setNotice}
+          />
 
           {/* شريط الورقة: المقاس والاتجاه والهوامش — بكلمةٍ لا بأرقام، والأرقام لمن أرادها. */}
-          <div className="flex items-center gap-1 flex-wrap px-space-sm py-1 bg-surface-container-low border-b border-outline-variant/30" data-page-bar="">
-            {head && (
-            <>
-              <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الترويسة</span>
-              {(
-                [
-                  ['formal', 'رسمية', 'ترويسةٌ من المكتبة تُطبع فوق المتن'],
-                  ['lines', 'أسطرٌ في أعلى الورقة', 'تكتب الرأس على الورقة نفسها كما في Word'],
-                  ['none', 'بلا', 'لا شيء فوق المتن']
-                ] as const
-              ).map(([m, label, hint]) => {
-                const noLibrary = m === 'formal' && head.letterheads.length === 0 && !head.onEdit;
-                return (
-                  <button
-                    key={m}
-                    className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors disabled:opacity-40 ${
-                      head.mode === m ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
-                    }`}
-                    data-head={m}
-                    disabled={noLibrary}
-                    title={noLibrary ? 'لا ترويسة في المكتبة بعد — صمّمها من «الترويسات والشعارات»' : hint}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      if (m === 'formal') {
-                        if (head.mode === 'formal') return;
-                        const first = head.letterheads[0];
-                        if (first) head.onChoose({ mode: 'formal', id: first.id });
-                        else head.onEdit?.();
-                      } else head.onChoose({ mode: m });
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-              {head.mode === 'formal' && head.letterheads.length > 1 && (
-                <select
-                  aria-label="الترويسة الرسمية"
-                  className="h-8 max-w-[11rem] rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
-                  data-act="letterhead"
-                  value={head.letterheadId ?? ''}
-                  onChange={(e) => e.target.value && head.onChoose({ mode: 'formal', id: Number(e.target.value) })}
-                >
-                  {head.letterheadId === null && <option value="">ترويسة هذا الكتاب</option>}
-                  {head.letterheads.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {(head.mode === 'lines' || (head.mode === 'formal' && head.divider)) && (
-                <label className="flex items-center gap-1 px-1 font-label-md text-label-md text-on-surface cursor-pointer" title="خطٌّ أفقيّ بين الرأس والمتن">
-                  <input
-                    checked={head.mode === 'lines' ? Boolean(topRule()) : Boolean(head.divider?.on)}
-                    className="w-4 h-4 accent-secondary"
-                    data-act="head-divider"
-                    type="checkbox"
-                    onChange={(e) => (head.mode === 'lines' ? toggleLinesRule() : head.divider?.set(e.target.checked))}
-                  />
-                  خطّ فاصل
-                </label>
-              )}
-              {head.mode === 'formal' && head.onEdit && (
-                <button
-                  className="h-8 px-2 rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-high"
-                  data-act="head-edit"
-                  type="button"
-                  onClick={head.onEdit}
-                >
-                  حرّر الترويسة
-                </button>
-              )}
-              <ToolSep />
-            </>
-          )}
-          <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الورقة</span>
-            <select
-              aria-label="مقاس الورقة"
-              className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
-              data-act="page-size"
-              value={doc.pageSetup.size}
-              onChange={(e) => setPage({ size: e.target.value as PageSize })}
-            >
-              {(Object.keys(PAGE_NAMES) as PageSize[]).map((s) => (
-                <option key={s} value={s}>
-                  {PAGE_NAMES[s]}
-                </option>
-              ))}
-            </select>
-            <Tool act="portrait" icon="crop_portrait" title="عمودية" active={doc.pageSetup.orientation === 'portrait'} onRun={() => setPage({ orientation: 'portrait' })} />
-            <Tool act="landscape" icon="crop_landscape" title="أفقية" active={doc.pageSetup.orientation === 'landscape'} onRun={() => setPage({ orientation: 'landscape' })} />
-            {/* أرقام الورقة كما في ورقة الأسئلة: الترقيم و«صفحة ١ من ٢» — ونصّ الكتاب كما كُتب (ما بعد البند ٣). */}
-            <select
-              aria-label="أرقام الترقيم والصفحات"
-              className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
-              data-act="numerals"
-              title="أرقام الترقيم وأرقام الصفحات — ونصّ الكتاب يبقى كما كُتب"
-              value={doc.pageSetup.numerals}
-              onChange={(e) => setPage({ numerals: e.target.value as Numerals })}
-            >
-              <option value="arabic">1 2 3</option>
-              <option value="indic">١ ٢ ٣</option>
-            </select>
-            <ToolSep />
-            <span className="font-label-sm text-label-sm text-on-surface-variant">الهوامش</span>
-            {(Object.keys(MARGIN_PRESETS) as MarginPreset[]).map((k) => (
-              <button
-                key={k}
-                className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
-                  preset === k && !customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
-                }`}
-                data-margins={k}
-                title={`${MARGIN_PRESETS[k].mm} ملم من كلّ جانب`}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setCustomMargins(false);
-                  const mm = MARGIN_PRESETS[k].mm;
-                  setPage({ margins: { top: mm, right: mm, bottom: mm, left: mm } });
-                }}
-              >
-                {MARGIN_PRESETS[k].label}
-              </button>
-            ))}
-            <button
-              className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
-                preset === null || customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
-              }`}
-              data-margins="custom"
-              title="هامشٌ لكلّ جانبٍ بالملّيمتر"
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setCustomMargins((v) => !v)}
-            >
-              مخصّصة
-            </button>
-            {(customMargins || preset === null) &&
-              (
-                [
-                  ['top', 'أعلى'],
-                  ['right', 'يمين'],
-                  ['bottom', 'أسفل'],
-                  ['left', 'يسار']
-                ] as const
-              ).map(([side, label]) => (
-                <label key={side} className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-                  {label}
-                  <input
-                    className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
-                    data-margin={side}
-                    max={60}
-                    min={0}
-                    type="number"
-                    value={margins[side]}
-                    onChange={(e) => {
-                      const v = Math.max(0, Math.min(60, Number(e.target.value) || 0));
-                      setPage({ margins: { ...margins, [side]: v } });
-                    }}
-                  />
-                </label>
-              ))}
-            <span className="ms-auto font-label-sm text-label-sm text-on-surface-variant tabular" data-page-count={pages}>
-              {pagesLabel(pages)}
-            </span>
-          </div>
+          <SheetBar
+            head={head}
+            topRule={topRule}
+            toggleLinesRule={toggleLinesRule}
+            doc={doc}
+            setPage={setPage}
+            preset={preset}
+            customMargins={customMargins}
+            setCustomMargins={setCustomMargins}
+            margins={margins}
+            pages={pages}
+          />
           {notice && (
             <div className="px-space-sm py-1 bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm" data-editor-notice="" role="status">
               {notice}
@@ -1112,9 +363,3 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   );
 }
 
-/** حقلٌ في موضع المؤشّر — للوح الحقول في مصمّم النماذج حين لا تمرّ الشاشة بـ`apiRef`. */
-function insertFieldFallback(view: EditorView | null, key: string) {
-  if (!view) return;
-  view.dispatch(view.state.tr.replaceSelectionWith(N.field.create({ ref: key, id: newUuid() }), false).scrollIntoView());
-  view.focus();
-}

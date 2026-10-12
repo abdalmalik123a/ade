@@ -1,15 +1,14 @@
 /**
- * أدوات المحرّر المشتركة — الشريط وقائمة الإدراج ولوحة الحقول وخصائصه.
+ * أدوات المحرّر المشتركة — الشريط وقائمة الإدراج. ولوحة الحقول وخصائصه في `pageEditor/FieldPanel.tsx`
+ * (تقسيمه بعد ١٫٧٫٠).
  *
  * كانت في ملفّ المحرّر الأوّل (`DocEditor.tsx`) ويستوردها المحرّر الجديد منه، فلم يُحذف الأوّل
  * إلا بعد أن نُقلت إلى هنا (الموجة ١، المجموعة ج). والمحرّر الآن واحد: `PageEditor.tsx`.
  */
 import { useEffect, useState, type MutableRefObject, type ReactNode } from 'react';
-import { unfield, type Align, type Doc, type DocField } from '@shared/doc';
-import { CALENDAR_LABEL, type Calendar } from '@shared/dates';
+import { type Align, type Doc, type DocField } from '@shared/doc';
 import { ADDRESSING_LABEL, rankByAddressing } from '@shared/addressing';
 import type { Addressing, Seal } from '@shared/api';
-import { patchField, reorderFields } from '@shared/docEdit';
 import { useEscape } from '../kit/useEscape';
 import MenuItem from './editorMenuItem';
 
@@ -287,156 +286,3 @@ export function InsertMenu({
   );
 }
 
-/** لوحة الحقول: ترتيبها هو ترتيب شاشة الإدخال في الشبّاك. */
-export function FieldPanel({
-  doc,
-  onChange,
-  onInsert,
-  top
-}: {
-  doc: Doc;
-  onChange: (doc: Doc) => void;
-  onInsert: (key: string) => void;
-  /** ما يُعرض فوق الحقول — الخانات المقترحة في المحرّر الجديد. */
-  top?: ReactNode;
-}) {
-  const move = (key: string, dir: -1 | 1) => {
-    const keys = doc.fields.map((f) => f.key);
-    const at = keys.indexOf(key);
-    const to = at + dir;
-    if (at < 0 || to < 0 || to >= keys.length) return;
-    [keys[at], keys[to]] = [keys[to]!, keys[at]!];
-    onChange(reorderFields(doc, keys));
-  };
-
-  return (
-    <div className="w-72 shrink-0 overflow-y-auto border-r border-outline-variant p-space-sm flex flex-col gap-space-xs">
-      {top}
-      <span className="font-label-md text-label-md text-on-surface font-semibold">
-        المتغيّرات على الورقة ({doc.fields.length})
-      </span>
-      <span className="font-label-sm text-label-sm text-on-surface-variant">
-        أضفها بتظليل العبارة في الورقة ثم الضغط على F4.
-      </span>
-
-      {doc.fields.length === 0 ? (
-        <span className="py-space-md text-center font-label-sm text-label-sm text-on-surface-variant">
-          ظلّل كلمةً واضغط F4 لتصير حقلًا
-        </span>
-      ) : (
-        doc.fields.map((f) => <FieldRow key={f.key} field={f} doc={doc} onChange={onChange} onInsert={onInsert} onMove={move} />)
-      )}
-    </div>
-  );
-}
-
-function FieldRow({
-  field,
-  doc,
-  onChange,
-  onInsert,
-  onMove
-}: {
-  field: DocField;
-  doc: Doc;
-  onChange: (doc: Doc) => void;
-  onInsert: (key: string) => void;
-  onMove: (key: string, dir: -1 | 1) => void;
-}) {
-  return (
-    <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
-      <div className="flex items-center gap-1">
-        <input
-          className="flex-1 min-w-0 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
-          type="text"
-          value={field.label}
-          onChange={(e) => onChange(patchField(doc, field.key, { label: e.target.value }))}
-        />
-        <button
-          className="w-6 h-6 rounded text-on-surface-variant hover:bg-surface-container-high"
-          title="أعلى"
-          type="button"
-          onClick={() => onMove(field.key, -1)}
-        >
-          <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-        </button>
-        <button
-          className="w-6 h-6 rounded text-on-surface-variant hover:bg-surface-container-high"
-          title="أسفل"
-          type="button"
-          onClick={() => onMove(field.key, 1)}
-        >
-          <span className="material-symbols-outlined text-[14px]">arrow_downward</span>
-        </button>
-      </div>
-      <div className="flex items-center gap-space-xs">
-        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-          <input
-            className="w-3.5 h-3.5 accent-secondary"
-            checked={field.required}
-            type="checkbox"
-            onChange={(e) => onChange(patchField(doc, field.key, { required: e.target.checked }))}
-          />
-          إلزامي
-        </label>
-        <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-          عرضه
-          <input
-            className="w-12 h-7 px-1 rounded bg-surface-container-lowest text-on-surface text-center"
-            min={3}
-            type="number"
-            value={field.width}
-            onChange={(e) =>
-              onChange(patchField(doc, field.key, { width: Math.max(3, Number(e.target.value) || 6) }))
-            }
-          />
-        </label>
-        <span className="flex-1" />
-        <button
-          className="w-6 h-6 rounded text-secondary hover:bg-surface-container-high"
-          title="أدرجه حيث وقف المؤشّر في الورقة"
-          type="button"
-          onClick={() => onInsert(field.key)}
-        >
-          <span className="material-symbols-outlined text-[14px]">add</span>
-        </button>
-        <button
-          className="w-6 h-6 rounded text-error hover:bg-error-container"
-          title="ليس حقلًا — أعِده نقاطًا"
-          type="button"
-          onClick={() => onChange(unfield(doc, field.key))}
-        >
-          <span className="material-symbols-outlined text-[14px]">backspace</span>
-        </button>
-      </div>
-      {/* النوع: التاريخ بتقويمه يُكتب «اليوم» أو من التقويم في الشبّاك والمحرّر. */}
-      <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-        نوعه
-        <select
-          className="flex-1 h-7 px-1 rounded bg-surface-container-lowest text-on-surface cursor-pointer"
-          data-field-kind={field.key}
-          value={field.type === 'date' ? `date:${field.calendar ?? 'gregorian'}` : field.type === 'text' ? 'text' : 'other'}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === 'other') return;
-            onChange(
-              patchField(doc, field.key, v.startsWith('date:') ? { type: 'date', calendar: v.slice(5) as Calendar } : { type: 'text', calendar: undefined })
-            );
-          }}
-        >
-          <option value="text">نصّ</option>
-          {(Object.keys(CALENDAR_LABEL) as Calendar[]).map((c) => (
-            <option key={c} value={`date:${c}`}>
-              تاريخ {CALENDAR_LABEL[c]}
-            </option>
-          ))}
-          {field.type !== 'text' && field.type !== 'date' && (
-            <option disabled value="other">
-              كما هو
-            </option>
-          )}
-        </select>
-      </label>
-    </div>
-  );
-}
