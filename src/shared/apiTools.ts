@@ -6,6 +6,7 @@ import type { LetterheadLayout } from './letterhead';
 import type { Doc } from './doc';
 import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
+import type { Face } from './portraitFace';
 import type { CustomSuit } from './suits';
 import type { ImportedTemplate, InboxFile } from './apiTemplates';
 
@@ -140,8 +141,8 @@ export type ToolApis = {
     modelReady(): Promise<boolean>;
     /** صورة الحافظة محفوظةً في المخزن — ومسارها، أو `null` إن لم تكن فيها صورة. */
     clipboardImage(): Promise<string | null>;
-    /** الشخص مفصولًا: قناعه (بايتٌ لكلّ بكسل) وألوانه بلا هالة الخلفية — بمقاس ما أُرسل. */
-    cutout(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number }>;
+    /** الشخص مفصولًا: قناعه (بايتٌ لكلّ بكسل) وألوانه بلا هالة الخلفية — بمقاس ما أُرسل؛ ووجهه وذقنه أو `null`. */
+    cutout(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number; face: Face | null }>;
     /** الشيء مفصولًا (المنتج والشعار في التصاميم، DESIGNS.md ٢٫٣) — بالصيغة نفسها، بنموذج الأشياء. */
     cutoutObject(input: { pixels: Uint8Array; width: number; height: number }): Promise<{ alpha: Uint8Array; pixels: Uint8Array; ms: number }>;
     presets(): Promise<PhotoPreset[]>;

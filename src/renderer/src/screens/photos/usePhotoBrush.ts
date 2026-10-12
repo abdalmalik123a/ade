@@ -9,7 +9,8 @@ import { type BrushMode, strokeAlpha, landmarks, type SuitTransform, type Landma
 import type { Work } from '../../lib/portraitCanvas';
 import { useColorErase } from '../../lib/useColorErase';
 import { useRepair } from '../../lib/useRepair';
-import type { Tool, Worn } from './photoShared';
+import { withFace } from '@shared/portraitFace';
+import type { Cut, Tool, Worn } from './photoShared';
 
 export function usePhotoBrush(
   ctx: {
@@ -18,7 +19,7 @@ export function usePhotoBrush(
     natural: Size | null;
     crop: Crop;
     work: MutableRefObject<Work | null>;
-    cut: MutableRefObject<{ alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray; } | null>;
+    cut: MutableRefObject<Cut | null>;
     brush: number;
     rebuildSubject: (rect?: { x: number; y: number; w: number; h: number; }) => void;
     draw: () => void;
@@ -46,7 +47,7 @@ export function usePhotoBrush(
   const erase = useColorErase({
     target: () => (work.current && cut.current ? { pixels: cut.current.pixels, alpha: cut.current.alpha, width: work.current.width, height: work.current.height } : null),
     changed: () => {
-      if (work.current && cut.current) setLm(landmarks(cut.current.alpha, work.current.width, work.current.height));
+      if (work.current && cut.current) setLm(withFace(landmarks(cut.current.alpha, work.current.width, work.current.height), cut.current.face));
       setCutVersion((v) => v + 1);
     },
     ready: cutState === 'done',
@@ -135,7 +136,7 @@ export function usePhotoBrush(
     }
     // بعد الفرشاة تُعاد المعالم: شعرةٌ أُبقيت أو ظلٌّ مُسح يغيّر قمّة الرأس أو الرقبة.
     if (d && (d.tool === 'keep' || d.tool === 'remove') && work.current && cut.current)
-      setLm(landmarks(cut.current.alpha, work.current.width, work.current.height));
+      setLm(withFace(landmarks(cut.current.alpha, work.current.width, work.current.height), cut.current.face));
   }
 
   function onWheel(e: React.WheelEvent) {
@@ -150,7 +151,7 @@ export function usePhotoBrush(
     if (!w || !c) return;
     erase.reset();
     c.alpha.set(c.model);
-    setLm(landmarks(c.alpha, w.width, w.height));
+    setLm(withFace(landmarks(c.alpha, w.width, w.height), c.face));
     rebuildSubject();
     draw();
     setCutVersion((v) => v + 1); // ألوان الحافّة كما خرجت من التفريغ — فيُعاد التحسين منها

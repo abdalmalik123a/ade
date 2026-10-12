@@ -1,6 +1,7 @@
 /**
  * الياقة تلقائيًّا (البند ٣٩) — تحت الذقن في فتحة القاط الجلد وحده، والقاط يرتفع إلى الذقن إن ظهرت فوقه ملابس. على شخصٍ
  * يرسمه الاختبار (وجهٌ بلون البشرة، ورقبةٌ في ظلّ الذقن، وياقةٌ بيضاء مرتفعة) ثم على صورة المعاملة المولَّدة بالنموذج الحقيقي.
+ * وبوجهٍ معروف (إصلاح البند ٣٩، `@shared/portraitFace`): الذقن الحقيقيّ حدّ القصّ، والرقبة المضاءة وظلّها الأحمر جلد.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,6 +9,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { closePortrait, cutout } from '../src/main/services/portrait';
 import { landmarks, type Landmarks } from '../src/shared/portraitMask';
 import { clothesTop, jawLine, neckSkin, raiseSuit, skinAt, skinSample, skinWeight } from '../src/shared/portraitSkin';
+import { faceChin, withFace, type Face, type FaceBox } from '../src/shared/portraitFace';
 import { readPngRgba } from './helpers';
 
 const SKIN = [224, 178, 150];
@@ -99,6 +101,49 @@ describe('الياقة تلقائيًّا', () => {
     const m2 = skinSample(open.px, open.alpha, W, H, open.lm)!;
     expect(clothesTop(open.px, open.alpha, W, open.lm, m2, at.y)).toBeNull();
     expect(raiseSuit(at, null, lm.chin)).toBe(at);
+  });
+});
+
+describe('بوجهٍ معروف — إصلاح البند ٣٩', () => {
+  // وجه الشخص المرسوم كما يجده النموذج: العينان والفم حيث رُسما، والرأس ينتهي على الصفّ ٢٣٠.
+  const box: FaceBox = { x: 138, y: 90, w: 124, h: 140, eyes: [{ x: 178, y: 135 }, { x: 222, y: 135 }], nose: { x: 200, y: 165 }, mouth: [{ x: 184, y: 190 }, { x: 216, y: 190 }], score: 0.9 };
+  const faced = (p: ReturnType<typeof person>, chin?: number) => {
+    const face: Face = { ...box, chin: chin ?? faceChin(box, p.px, W, H) };
+    return { face, lm: withFace(p.lm, face)! };
+  };
+
+  it('الرقبة المضاءة أكثر من الوجه، وظلّها الأحمر الداكن جلد؛ والرماديّ القريب ليس جلدًا', () => {
+    const m = { r: 224 / 552, g: 178 / 552, spread: 0.012, lum: 120 };
+    expect(skinWeight(m, 202, 160, 135)).toBe(1); // أفتح من الوجه بأربعة أعشار
+    expect(skinWeight(m, 78, 55, 38)).toBe(1); // ظلٌّ تحت الذقن: أحمر وأعتم
+    expect(skinWeight({ ...m, spread: 0.019, lum: 140 }, 73, 69, 68)).toBe(0); // قميصٌ رماديّ مخلوط
+    expect(skinWeight(m, 30, 30, 38)).toBe(0);
+  });
+
+  it('الذقن على نهاية الرأس واللحية، والقصّ يبدأ عنده: الرقبة تبقى والوجه لا يُمسّ', () => {
+    const b = person(null, 245, true);
+    const { face, lm } = faced(b);
+    expect(Math.abs(lm.chin - 230)).toBeLessThanOrEqual(3);
+    const m = skinSample(b.px, b.alpha, W, H, lm, face)!;
+    const mask = neckSkin(b.px, W, H, lm, m, lm.chin + lm.neckWidth * 2.5, lm.neckWidth / 2 + 1, face)!;
+    expect(mask.y0).toBe(Math.ceil(lm.chin));
+    for (const y of [Math.round(lm.chin) + 4, 260, 280]) expect(skinAt(mask, 200, y)).toBe(1);
+    expect(skinAt(mask, 200, 220)).toBe(1); // اللحية فوق الذقن خارج القناع
+  });
+
+  it('والياقة البيضاء تحت الذقن تُقصّ، وما بقي من اللحية تحت ذقنٍ قُدِّر أعلى قليلًا يبقى', () => {
+    const high = person([240, 240, 238], 236);
+    const { face, lm } = faced(high);
+    const m = skinSample(high.px, high.alpha, W, H, lm, face)!;
+    const mask = neckSkin(high.px, W, H, lm, m, lm.chin + lm.neckWidth * 2.5, lm.neckWidth / 2 + 1, face)!;
+    for (const y of [245, 260, 290]) expect(skinAt(mask, 200, y)).toBe(0);
+    expect(skinAt(mask, 200, 225)).toBe(1);
+    // ذقنٌ أعلى من نهاية اللحية بستّة صفوف (خطأٌ أسوأ من المقيس): اللحية الداكنة تحته تبقى.
+    const b = person(null, 245, true);
+    const early = faced(b, 224);
+    const m2 = skinSample(b.px, b.alpha, W, H, early.lm, early.face)!;
+    const mask2 = neckSkin(b.px, W, H, early.lm, m2, early.lm.chin + early.lm.neckWidth * 2.5, early.lm.neckWidth / 2 + 1, early.face)!;
+    expect(skinAt(mask2, 200, 228)).toBeGreaterThan(0.9);
   });
 });
 

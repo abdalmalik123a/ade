@@ -222,6 +222,12 @@
     "home": "https://github.com/ZhengPeng7/BiRefNet"
   },
   {
+    "name": "YuNet — الوجه والذقن في «الصور الشخصية» (resources/models)",
+    "version": "2023mar",
+    "license": "MIT — Copyright (c) 2020 Shiqi Yu",
+    "home": "https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet"
+  },
+  {
     "name": "Tesseract — بيانات قراءة العربية والإنكليزية (resources/tessdata)",
     "version": "4.x",
     "license": "Apache-2.0",

@@ -7,10 +7,11 @@ import { useRef, useEffect } from 'react';
 import { type Landmarks, landmarks, autoCrop, fitSuit, rowWidths } from '@shared/portraitMask';
 import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
 import { clothesTop, raiseSuit, skinSample } from '@shared/portraitSkin';
+import { withFace } from '@shared/portraitFace';
 import { errorText } from '../../lib/errors';
 import { workPixels, loadImage, dataUrlOf, loadSuit, fallbackPlace, type Work, type Suit } from '../../lib/portraitCanvas';
 import { CENTER, type Crop, type Size } from '@shared/photoSheet';
-import { CUSTOM_ID, type Worn, type Tool, type PhotoIncoming, type Bg } from './photoShared';
+import { CUSTOM_ID, type Cut, type Worn, type Tool, type PhotoIncoming, type Bg } from './photoShared';
 import type { PhotoPreset } from '@shared/photoPresets';
 import type { CustomSuit, SuitCategory } from '@shared/suits';
 import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
@@ -22,7 +23,7 @@ export function usePhotoSteps(
     preset: PhotoPreset;
     work: MutableRefObject<Work | null>;
     setCutState: Dispatch<SetStateAction<'none' | 'running' | 'done'>>;
-    cut: MutableRefObject<{ alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray; } | null>;
+    cut: MutableRefObject<Cut | null>;
     setLm: Dispatch<SetStateAction<Landmarks | null>>;
     autoLight: boolean;
     setEnhance: Dispatch<SetStateAction<Enhance>>;
@@ -73,8 +74,9 @@ export function usePhotoSteps(
       const res = await window.diwan.photos.cutout({ pixels: new Uint8Array(w.pixels.buffer, w.pixels.byteOffset, w.pixels.byteLength), width: w.width, height: w.height });
       if (work.current !== w) return null; // فُتحت صورةٌ أخرى في أثنائه
       const alpha = Uint8Array.from(res.alpha);
-      cut.current = { alpha, model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength) };
-      const l = landmarks(alpha, w.width, w.height);
+      cut.current = { alpha, model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength), face: res.face };
+      // الذقن من الوجه إن وُجد (إصلاح البند ٣٩): تقدير القناع يقع على الشفة في صورٍ حقيقية.
+      const l = withFace(landmarks(alpha, w.width, w.height), res.face);
       const p = presetRef.current;
       setLm(l);
       setCutState('done');
@@ -197,8 +199,8 @@ export function usePhotoSteps(
       const c = cut.current;
       const fitted = l && c ? fitSuit(s.anchor, s.rows, rowWidths(c.alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
       // ياقة الزبون أو كنزته ظاهرةٌ بين ذقنه والقاط: يرتفع القاط حتى يغطّيها، والذقن حدّه.
-      const skin = l && c ? skinSample(c.pixels, c.alpha, w.width, w.height, l) : null;
-      const base = l && c && skin ? raiseSuit(fitted, clothesTop(c.pixels, c.alpha, w.width, l, skin, fitted.y), l.chin) : fitted;
+      const skin = l && c ? skinSample(c.pixels, c.alpha, w.width, w.height, l, c.face) : null;
+      const base = l && c && skin ? raiseSuit(fitted, clothesTop(c.pixels, c.alpha, w.width, l, skin, fitted.y, c.face), l.chin) : fitted;
       setWorn({ suit: s, at: base, base });
       setTool('suit');
       if (bg.kind === 'original') setBg({ kind: 'white' });

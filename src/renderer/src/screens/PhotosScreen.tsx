@@ -28,7 +28,7 @@ import { savedLimit } from '../lib/fitImage';
 import { type Suit, type Work } from '../lib/portraitCanvas';
 import { toIndic } from '@shared/arabic';
 import PresetsDialog from './PhotoPresetsDialog';
-import { CUSTOM_ID, frameFor, pct, type Bg, type PhotoIncoming, type Tool, type Worn } from './photos/photoShared';
+import { CUSTOM_ID, frameFor, pct, type Bg, type Cut, type PhotoIncoming, type Tool, type Worn } from './photos/photoShared';
 import PhotoAdjustSteps from './photos/PhotoAdjustSteps';
 import PhotoSizeOutput from './photos/PhotoSizeOutput';
 import PhotoFrame from './photos/PhotoFrame';
@@ -81,7 +81,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
   const work = useRef<Work | null>(null);
   /** القناع (يُعدَّل بالفرشاة)، وقناع النموذج (لـ«أعِد القناع»)، وألوان الحافّة بلا هالة. */
-  const cut = useRef<{ alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray } | null>(null);
+  const cut = useRef<Cut | null>(null);
   const toned = useRef<Uint8ClampedArray | null>(null);
   const subject = useRef<HTMLCanvasElement | null>(null);
   /** حدّ الشخص تحت القاط لكلّ عمود (`neckLine`) — ومداه الرأسيّ، فيُعاد ما تغيّر من الصفوف وحده. */

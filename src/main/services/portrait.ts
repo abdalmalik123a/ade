@@ -10,6 +10,7 @@
 import { availableParallelism } from 'node:os';
 import type { InferenceSession } from 'onnxruntime-node';
 import { decontaminate, modelInput, modelSize, sharpenAlpha, upsampleAlpha } from '@shared/portraitMask';
+import { decodeFaces, FACE_SIZE, faceChin, faceInput, type Face } from '@shared/portraitFace';
 
 type Ort = typeof import('onnxruntime-node');
 
@@ -79,7 +80,21 @@ export async function cutout(modelPath: string, pixels: Uint8Array | Uint8Clampe
   return { alpha, pixels: decontaminate(pixels, alpha, width, height), ms: Date.now() - t0 };
 }
 
-/** يُطلق النموذجين عند الإغلاق. */
+/**
+ * الوجه الأوثق في الصورة بنموذج YuNet (`@shared/portraitFace`) وذقنه — أو `null` إن لم يُوجد. يُسأل مع الفصل نفسه:
+ * الذقن الحقيقيّ منه لا من عرض القناع.
+ */
+export async function detectFace(modelPath: string, pixels: Uint8Array | Uint8ClampedArray, width: number, height: number): Promise<Face | null> {
+  const s = await modelSession(modelPath);
+  const { Tensor } = await loadOrt();
+  const { data, scale } = faceInput(pixels, width, height);
+  const out = await s.run({ [s.inputNames[0]!]: new Tensor('float32', data, [1, 3, FACE_SIZE, FACE_SIZE]) });
+  const raw = Object.fromEntries(s.outputNames.map((k) => [k, out[k]!.data as Float32Array]));
+  const best = decodeFaces(raw, scale)[0];
+  return best ? { ...best, chin: faceChin(best, pixels, width, height) } : null;
+}
+
+/** يُطلق النماذج عند الإغلاق. */
 export async function closePortrait(): Promise<void> {
   const open = [...sessions.values()];
   sessions.clear();

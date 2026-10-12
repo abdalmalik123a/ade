@@ -8,7 +8,7 @@ import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
 import { SUIT_CATEGORIES, BUILTIN_SUITS, type SuitCategory, type CustomSuit } from '@shared/suits';
 import { toIndic } from '@shared/arabic';
 import type { Landmarks } from '@shared/portraitMask';
-import type { Bg, Tool, Worn } from './photoShared';
+import type { Bg, Cut, Tool, Worn } from './photoShared';
 import type { Work } from '../../lib/portraitCanvas';
 import { ColorEraseHint } from '../../components/ColorEraseBar';
 import type { ColorErase } from '../../lib/useColorErase';
@@ -28,7 +28,7 @@ type Props = {
   work: MutableRefObject<Work | null>;
   setAutoLight: Dispatch<SetStateAction<boolean>>;
   setEnhance: Dispatch<SetStateAction<Enhance>>;
-  cut: MutableRefObject<{ alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray; } | null>;
+  cut: MutableRefObject<Cut | null>;
   autoLight: boolean;
   slider: (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, act: string, shown?: string) => JSX.Element;
   enhance: Enhance;

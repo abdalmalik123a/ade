@@ -1,5 +1,5 @@
 /**
- * صورة المعاملة — القنوات: فصل الشخص عن خلفيّته بالنموذج المحلّي، وقوالب المكتب، وقاطه.
+ * صورة المعاملة — القنوات: فصل الشخص عن خلفيّته بالنموذج المحلّي (ووجهه وذقنه بنموذج الوجه)، وقوالب المكتب، وقاطه.
  *
  * النموذج في `resources/models` كبيانات القارئ الضوئي: في المثبّت خارج الحزمة (`extraResources`)،
  * وفي التطوير من المستودع. والصورة تأتي بكسلاتٍ من الواجهة وتعود قناعًا — لا ملفّ يُكتب ولا شبكة.
@@ -10,7 +10,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
-import { cutout } from '../services/portrait';
+import { cutout, detectFace } from '../services/portrait';
 import { objectCutout } from '../services/objectCutout';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
@@ -21,6 +21,8 @@ import { parseCustomSuits, pngTransparency, type CustomSuit } from '@shared/suit
 const MODEL = 'modnet-portrait-q8.onnx';
 /** نموذج الأشياء (DESIGNS.md ٢٫٣) — للتصاميم؛ والأشخاص لـMODNet. */
 const OBJECT_MODEL = 'birefnet-lite-matting-q8.onnx';
+/** نموذج الوجه (YuNet): الذقن الحقيقيّ للياقة و«رمّم» ودليل الرأس (إصلاح البند ٣٩). */
+const FACE_MODEL = 'face_detection_yunet_2023mar.onnx';
 
 function modelPath(file: string): string {
   const candidates = [
@@ -48,12 +50,25 @@ const writeSetting = (key: string, value: unknown): void => {
 export function registerPhotoIpc(): void {
   ipcMain.handle('photos:modelReady', () => existsSync(portraitModelPath()));
 
-  /** الشخص مفصولًا عن خلفيّته: القناع، وألوان الحافّة بلا هالة. */
+  /**
+   * الشخص مفصولًا عن خلفيّته: القناع، وألوان الحافّة بلا هالة — ووجهه وذقنه إن وُجد. وتعذّر الوجه لا يُفشل الفصل: تبقى
+   * المعالم على تقدير القناع كما كانت.
+   */
   ipcMain.handle('photos:cutout', async (_e, input: { pixels: Uint8Array; width: number; height: number }) => {
     const path = portraitModelPath();
     if (!existsSync(path)) throw new Error('نموذج إزالة الخلفية غير مثبّت مع البرنامج');
     if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
-    return cutout(path, input.pixels, input.width, input.height);
+    const facePath = modelPath(FACE_MODEL);
+    const [cut, face] = await Promise.all([
+      cutout(path, input.pixels, input.width, input.height),
+      existsSync(facePath)
+        ? detectFace(facePath, input.pixels, input.width, input.height).catch((e: unknown) => {
+            console.error('[photos] تعذّر كشف الوجه', e);
+            return null;
+          })
+        : null
+    ]);
+    return { ...cut, face };
   });
 
   /** الشيء مفصولًا عن خلفيّته (المنتج والكوب والشعار في التصاميم) — بنموذج الأشياء وحده. */

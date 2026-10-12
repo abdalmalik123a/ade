@@ -5,6 +5,7 @@
 import type { PhotoBackground } from '@shared/photoPresets';
 import type { Size } from '@shared/photoSheet';
 import type { BrushMode, SuitTransform } from '@shared/portraitMask';
+import type { Face } from '@shared/portraitFace';
 import type { Suit } from '../../lib/portraitCanvas';
 import { toIndic } from '@shared/arabic';
 
@@ -18,6 +19,8 @@ export type Bg = PhotoBackground | { kind: 'original' };
 /** `color`: «امسح لونًا» (البند ٣٨) — ضغطةٌ على لونٍ تزيله؛ و`repair`: «رمّم» (البند ٤٠) — تحت الذقن وحده. */
 export type Tool = 'move' | 'suit' | BrushMode | 'color' | 'repair';
 export type Worn = { suit: Suit; at: SuitTransform; base: SuitTransform };
+/** الشخص مفصولًا: القناع (تصحّحه الفرشاة) وقناع النموذج كما خرج، والألوان بلا هالة — ووجهه وذقنه إن وُجد (إصلاح البند ٣٩). */
+export type Cut = { alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray; face: Face | null };
 
 /** الإطار على الشاشة بنسبة المقاس — والعريض يُحدّ عرضه. */
 export function frameFor(photo: Size): Size {

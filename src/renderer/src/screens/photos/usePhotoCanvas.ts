@@ -5,10 +5,11 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { keepAbove, neckLine, type Landmarks } from '@shared/portraitMask';
 import { neckSkin, skinAt, skinSample, type SkinMask } from '@shared/portraitSkin';
+import { faceFloor } from '@shared/portraitFace';
 import { type Scene, drawScene, type Work } from '../../lib/portraitCanvas';
 import { applyEnhance, type Enhance } from '@shared/portraitEnhance';
 import type { Size, Crop } from '@shared/photoSheet';
-import type { Worn } from './photoShared';
+import type { Cut, Worn } from './photoShared';
 import type { Dispatch, SetStateAction, MutableRefObject, RefObject } from 'react';
 
 export function usePhotoCanvas(
@@ -17,7 +18,7 @@ export function usePhotoCanvas(
     toned: MutableRefObject<Uint8ClampedArray<ArrayBufferLike> | null>;
     subject: MutableRefObject<HTMLCanvasElement | null>;
     maskOn: MutableRefObject<boolean>;
-    cut: MutableRefObject<{ alpha: Uint8Array; model: Uint8Array; pixels: Uint8ClampedArray; } | null>;
+    cut: MutableRefObject<Cut | null>;
     line: MutableRefObject<{ line: Float32Array; lo: number; hi: number; } | null>;
     feather: MutableRefObject<number>;
     natural: Size | null;
@@ -129,6 +130,9 @@ export function usePhotoCanvas(
       // الرقبة بعرضها المقيس (أضيقها) — وما جاوزها ولو قليلًا ياقة الزبون ولباسه.
       const neck = lm ? { x: lm.neckCenterX, half: lm.neckWidth * 0.5 + 1, from: lm.chin } : undefined;
       const l = neckLine(worn.suit.tops, worn.suit.anchor, worn.at, w.width, feather.current + 1, neck);
+      // وخارج الرقبة يُقصّ من أسفل الوجه لا من صفّ الذقن: كتفان يعلوان الذقن في صورةٍ قريبة لباسٌ يغطّيه القاط.
+      const face = cut.current?.face;
+      if (face && lm && neck) for (let x = 0; x < l.length; x++) if (Math.abs(x - neck.x) > neck.half) l[x] = Math.min(l[x]!, faceFloor(face, lm.chin, x));
       let lo = Infinity;
       let hi = -Infinity;
       for (const v of l) {
@@ -140,8 +144,8 @@ export function usePhotoCanvas(
       const key = lm && cut.current ? `${cutVersion}|${lm.chin}|${lm.neckCenterX}|${lm.neckWidth}` : '';
       if (skin.current.key !== key) {
         const c = cut.current;
-        const model = c && lm ? skinSample(c.pixels, c.alpha, w.width, w.height, lm) : null;
-        skin.current = { key, mask: model && lm && neck ? neckSkin(c!.pixels, w.width, w.height, lm, model, lm.chin + lm.neckWidth * 2.5, neck.half) : null };
+        const model = c && lm ? skinSample(c.pixels, c.alpha, w.width, w.height, lm, c.face) : null;
+        skin.current = { key, mask: model && lm && neck ? neckSkin(c!.pixels, w.width, w.height, lm, model, lm.chin + lm.neckWidth * 2.5, neck.half, c!.face) : null };
       }
     } else line.current = null;
     const now = line.current;

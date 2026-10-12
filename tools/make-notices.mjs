@@ -46,6 +46,7 @@ for (const name of [...new Set(BUNDLED)].sort()) {
 items.push(
   { name: 'MODNet — فصل الشخص عن خلفيّته (resources/models)', version: 'q8', license: 'Apache-2.0', home: 'https://github.com/ZHKKe/MODNet' },
   { name: 'BiRefNet_lite-matting — فصل الأشياء عن خلفيّتها (resources/models)', version: 'q8', license: 'MIT', home: 'https://github.com/ZhengPeng7/BiRefNet' },
+  { name: 'YuNet — الوجه والذقن في «الصور الشخصية» (resources/models)', version: '2023mar', license: 'MIT — Copyright (c) 2020 Shiqi Yu', home: 'https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet' },
   { name: 'Tesseract — بيانات قراءة العربية والإنكليزية (resources/tessdata)', version: '4.x', license: 'Apache-2.0', home: 'https://github.com/tesseract-ocr/tessdata' },
   { name: 'صور القاط في «الصور الشخصية»', version: '—', license: 'من مكتبةٍ مفتوحة المصدر — مسموحٌ استعمالها (قرار المالك)', home: '' }
 );
