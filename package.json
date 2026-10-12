@@ -44,7 +44,11 @@
       "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**",
       "!node_modules/onnxruntime-node/bin/napi-v6/win32/x64/{DirectML,dxcompiler,dxil}.dll",
       "!node_modules/onnxruntime-node/{script,node_modules}/**",
-      "!node_modules/{global-agent,adm-zip}/**"
+      "!node_modules/{global-agent,adm-zip}/**",
+      "!node_modules/exceljs/dist/**",
+      "!node_modules/pdf-lib/{dist,es,src}/**",
+      "!node_modules/tesseract.js-core/*.wasm.js",
+      "!**/*.map"
     ],
     "extraResources": [
       {
@@ -68,6 +72,7 @@
       "enableEmbeddedAsarIntegrityValidation": true,
       "onlyLoadAppFromAsar": true
     },
+    "electronLanguages": ["ar", "en-US"],
     "asarUnpack": [
       "**/*.node",
       "**/onnxruntime-node/bin/**/*.dll"
