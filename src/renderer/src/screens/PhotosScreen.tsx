@@ -8,55 +8,40 @@
  * تنحيف ولا تغيير ملامح. والمعاينة والحفظ والطباعة من رسمٍ واحد (`lib/portraitCanvas.ts`)
  * ببكسلات الدقّة الحقيقية (`pixelSize`).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { SIZE_LIMITS, sizeText } from '@shared/pdfEdit';
-import { CENTER, PAPERS, cropBox, photoLayout, photoSheetsHtml, sourceRect, type Crop, type Size } from '@shared/photoSheet';
+import { useEffect, useRef, useState } from 'react';
+import { CENTER, PAPERS, cropBox, photoLayout, sourceRect, type Crop, type Size } from '@shared/photoSheet';
 import {
-  BACKGROUND_COLORS,
   BUILTIN_PRESETS,
   backgroundColor,
   effectiveDpi,
   pixelSize,
-  setJpegDpi,
-  type PhotoBackground,
   type PhotoPreset
 } from '@shared/photoPresets';
-import { autoCrop, fitSuit, keepAbove, landmarks, neckLine, rowWidths, strokeAlpha, type BrushMode, type Landmarks, type SuitTransform } from '@shared/portraitMask';
-import { NEUTRAL, applyEnhance, autoEnhance, type Enhance } from '@shared/portraitEnhance';
-import { BUILTIN_SUITS, SUIT_CATEGORIES, type CustomSuit, type SuitCategory } from '@shared/suits';
+import { type Landmarks, type SuitTransform } from '@shared/portraitMask';
+import { NEUTRAL, type Enhance } from '@shared/portraitEnhance';
+import { BUILTIN_SUITS, type CustomSuit, type SuitCategory } from '@shared/suits';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
-import { papersWord, type Outcome } from '../components/OutputBar';
-import { ToolHeader, ToolOutput, useToolNav } from '../components/ToolFrame';
+import { type Outcome } from '../components/OutputBar';
+import { ToolHeader, useToolNav } from '../components/ToolFrame';
 import SheetsPreview from '../designs/SheetsPreview';
-import { errorText } from '../lib/errors';
-import { choosePrinter } from '../lib/printChoice';
-import { fitJpeg, rememberLimit, savedLimit } from '../lib/fitImage';
-import { dataUrlOf, drawScene, fallbackPlace, loadImage, loadSuit, renderJpeg, workPixels, type Scene, type Suit, type Work } from '../lib/portraitCanvas';
-import { toIndic, count as countOf } from '@shared/arabic';
+import { savedLimit } from '../lib/fitImage';
+import { type Suit, type Work } from '../lib/portraitCanvas';
+import { toIndic } from '@shared/arabic';
 import PresetsDialog from './PhotoPresetsDialog';
+import { CUSTOM_ID, frameFor, pct, type Bg, type PhotoIncoming, type Tool, type Worn } from './photos/photoShared';
+import PhotoAdjustSteps from './photos/PhotoAdjustSteps';
+import PhotoSizeOutput from './photos/PhotoSizeOutput';
+import PhotoFrame from './photos/PhotoFrame';
+import { usePhotoCanvas } from './photos/usePhotoCanvas';
+import { usePhotoSteps } from './photos/usePhotoSteps';
+import { usePhotoBrush } from './photos/usePhotoBrush';
+import { usePhotoOutput } from './photos/usePhotoOutput';
 
 /** القاط المدمج صورٌ مضمّنة (data:) تُحمَّل عند فتح الشاشة — فلا تُقفَل اللوحة بأصل ملفٍّ محلّي. */
 const SUIT_FILES = import.meta.glob('../assets/suits/*.webp', { query: '?inline', import: 'default' }) as Record<string, () => Promise<string>>;
 
-const pct = (v: number) => toIndic(Math.round(v * 100));
-const FRAME_H = 520;
-const CUSTOM_ID = 'custom';
-/** دون هذه الدقّة الفعلية تُطبع الصورة ليّنة — يُنبَّه الموظف ليطلب صورةً أقرب. */
-const LOW_DPI = 300;
-
-type Bg = PhotoBackground | { kind: 'original' };
-type Tool = 'move' | 'suit' | BrushMode;
-type Worn = { suit: Suit; at: SuitTransform; base: SuitTransform };
-
-/** الإطار على الشاشة بنسبة المقاس — والعريض يُحدّ عرضه. */
-function frameFor(photo: Size): Size {
-  const w = (FRAME_H * photo.w) / photo.h;
-  return w <= 600 ? { w, h: FRAME_H } : { w: 600, h: (600 * photo.h) / photo.w };
-}
-
-/** صورةٌ فتحها الشبّاك من «الملفّات» — محفوظةً في المخزن، تُفتح مرّةً بمفتاحها. */
-export type PhotoIncoming = { key: number; path: string };
-let photoIncomingSeen = 0;
+/** صورةٌ فتحها الشبّاك من «الملفّات» — نوعها في `photos/photoShared.ts`. */
+export type { PhotoIncoming } from './photos/photoShared';
 
 export default function PhotosScreen({ incoming = null }: { incoming?: PhotoIncoming | null } = {}) {
   const [src, setSrc] = useState<string | null>(null);
@@ -142,456 +127,36 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
   // ── الرسم ─────────────────────────────────────────────────────────────
 
-  /** الشخص بلونه المحسّن وشفافيّته في لوحة العمل — كلّها أو مستطيلٌ منها (أثر الفرشاة). */
-  const rebuildSubject = useCallback((rect?: { x: number; y: number; w: number; h: number }) => {
-    const w = work.current;
-    const t = toned.current;
-    if (!w || !t) return;
-    let c = subject.current;
-    if (!c) c = subject.current = document.createElement('canvas');
-    if (c.width !== w.width || c.height !== w.height) {
-      c.width = w.width;
-      c.height = w.height;
-      rect = undefined;
-    }
-    const x0 = rect ? Math.max(0, Math.floor(rect.x)) : 0;
-    const y0 = rect ? Math.max(0, Math.floor(rect.y)) : 0;
-    const x1 = rect ? Math.min(w.width, Math.ceil(rect.x + rect.w)) : w.width;
-    const y1 = rect ? Math.min(w.height, Math.ceil(rect.y + rect.h)) : w.height;
-    if (x1 <= x0 || y1 <= y0) return;
-    const rw = x1 - x0;
-    const img = new ImageData(rw, y1 - y0);
-    const d = img.data;
-    const a = maskOn.current && cut.current ? cut.current.alpha : null;
-    const under = a ? line.current : null;
-    const f = feather.current;
-    for (let y = y0; y < y1; y++) {
-      const plain = !under || y < under.lo - f;
-      for (let x = x0; x < x1; x++) {
-        const i = y * w.width + x;
-        const o = ((y - y0) * rw + (x - x0)) * 4;
-        d[o] = t[i * 4]!;
-        d[o + 1] = t[i * 4 + 1]!;
-        d[o + 2] = t[i * 4 + 2]!;
-        d[o + 3] = a ? (plain ? a[i]! : a[i]! * keepAbove(under!.line, x, y, f)) : 255;
-      }
-    }
-    c.getContext('2d')!.putImageData(img, x0, y0);
-  }, []);
-
-  const sceneRef = useRef<Omit<Scene, 'subject'> | null>(null);
-  sceneRef.current = natural ? { natural, crop, background: bgColor, suit: worn && { suit: worn.suit, at: worn.at } } : null;
-  const frameRef = useRef(frame);
-  frameRef.current = frame;
-
-  const draw = useCallback(() => {
-    const c = view.current;
-    const s = sceneRef.current;
-    const sub = subject.current;
-    if (!c || !s || !sub) return;
-    const f = frameRef.current;
-    const dpr = window.devicePixelRatio || 1;
-    const bw = Math.round(f.w * dpr);
-    const bh = Math.round(f.h * dpr);
-    if (c.width !== bw || c.height !== bh) {
-      c.width = bw;
-      c.height = bh;
-    }
-    const ctx = c.getContext('2d')!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawScene(ctx, f, { ...s, subject: sub });
-  }, []);
-
-  useEffect(draw, [draw, natural, crop, bgColor, worn, frame.w, frame.h]);
-
-  // التحسين يُعاد من الأصل كلّما تغيّر (بعد توقّف المنزلق قليلًا) — والأصل لا يُمسّ.
-  useEffect(() => {
-    const w = work.current;
-    if (!w) return;
-    const t = window.setTimeout(() => {
-      toned.current = applyEnhance(cut.current?.pixels ?? w.pixels, w.width, w.height, enhance);
-      rebuildSubject();
-      draw();
-    }, 80);
-    return () => window.clearTimeout(t);
-  }, [enhance, cutVersion, rebuildSubject, draw]);
-
-  // الشفافية: القناع إن أُزيلت الخلفية، وقصٌّ على حدّ القاط إن لُبس — وما تغيّر من الصفوف وحده يُعاد.
-  useEffect(() => {
-    const w = work.current;
-    if (!w) return;
-    const before = line.current;
-    const whole = maskOn.current !== useMask || !before || !worn;
-    maskOn.current = useMask;
-    feather.current = Math.max(3, Math.round(w.height / 500));
-    if (useMask && worn) {
-      // الرقبة بعرضها المقيس (أضيقها) — وما جاوزها ولو قليلًا ياقة الزبون ولباسه.
-      const neck = lm ? { x: lm.neckCenterX, half: lm.neckWidth * 0.5 + 1, from: lm.chin } : undefined;
-      const l = neckLine(worn.suit.tops, worn.suit.anchor, worn.at, w.width, feather.current + 1, neck);
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (const v of l) {
-        if (v < lo) lo = v;
-        if (v > hi) hi = v;
-      }
-      line.current = { line: l, lo, hi };
-    } else line.current = null;
-    const now = line.current;
-    if (whole || !now) rebuildSubject();
-    else {
-      const top = Math.floor(Math.min(before.lo, now.lo)) - feather.current - 2;
-      const bottom = Math.ceil(Math.max(before.hi, now.hi)) + 2;
-      rebuildSubject({ x: 0, y: top, w: w.width, h: bottom - top });
-    }
-    draw();
-  }, [useMask, worn, lm, cutVersion, rebuildSubject, draw]);
-
-  // حصر المركز يثبت في الحالة لا في الرسم وحده — وإلا بقي السحب «يدفع» حافّةً لا تتحرّك.
-  useEffect(() => {
-    if (box && (Math.abs(box.x - crop.x) > 1e-6 || Math.abs(box.y - crop.y) > 1e-6)) setCrop((c) => ({ ...c, x: box.x, y: box.y }));
-  }, [box, crop.x, crop.y]);
+  // ── الرسم: الشخص ولوحة العمل والإطار — `photos/usePhotoCanvas.ts` ──
+  const { rebuildSubject, draw } = usePhotoCanvas({
+    work, toned, subject, maskOn, cut, line, feather, natural, crop, bgColor, worn, frame, view, enhance, cutVersion, useMask, lm,
+    box, setCrop
+  });
 
   // ── الخطوات ───────────────────────────────────────────────────────────
 
-  const presetRef = useRef(preset);
-  presetRef.current = preset;
-
-  async function removeBackground(): Promise<Landmarks | null> {
-    const w = work.current;
-    if (!w) return null;
-    setCutState('running');
-    try {
-      const res = await window.diwan.photos.cutout({ pixels: new Uint8Array(w.pixels.buffer, w.pixels.byteOffset, w.pixels.byteLength), width: w.width, height: w.height });
-      if (work.current !== w) return null; // فُتحت صورةٌ أخرى في أثنائه
-      const alpha = Uint8Array.from(res.alpha);
-      cut.current = { alpha, model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength) };
-      const l = landmarks(alpha, w.width, w.height);
-      const p = presetRef.current;
-      setLm(l);
-      setCutState('done');
-      if (autoLight) setEnhance(autoEnhance(cut.current.pixels, alpha, w.width, w.height));
-      if (l && l.shoulderY !== null && p.head) setCrop(autoCrop(l, { w: w.width, h: w.height }, { w: p.widthMm, h: p.heightMm }, p.head));
-      setCutVersion((v) => v + 1);
-      if (!l) say('أُزيلت الخلفية — ولم يُعرف الرأس من الكتفين: قُصّ باليد', true);
-      return l;
-    } catch (e) {
-      if (work.current === w) setCutState('none');
-      say(errorText(e, 'تعذّرت إزالة الخلفية'), true);
-      return null;
-    }
-  }
-
-  async function load(path: string) {
-    setBusy('تُفتح الصورة…');
-    try {
-      const w = workPixels(await loadImage(`diwan://store/${path}`));
-      work.current = w;
-      cut.current = null;
-      toned.current = w.pixels;
-      maskOn.current = false;
-      line.current = null;
-      setSrc(path);
-      setNatural({ w: w.width, h: w.height });
-      setCrop(CENTER);
-      setLm(null);
-      setCutState('none');
-      setWorn(null);
-      setTool('move');
-      setReview(null);
-      setEnhance(autoLight ? autoEnhance(w.pixels, null, w.width, w.height) : NEUTRAL);
-      rebuildSubject();
-      setCutVersion((v) => v + 1);
-      if (modelReady) void removeBackground();
-    } catch (e) {
-      say(errorText(e, 'تعذّر فتح الصورة'), true);
-    } finally {
-      setBusy(null);
-    }
-  }
-  const loadRef = useRef(load);
-  loadRef.current = load;
-
-  useEffect(() => {
-    if (!incoming || incoming.key === photoIncomingSeen) return;
-    photoIncomingSeen = incoming.key;
-    void loadRef.current(incoming.path);
-  }, [incoming]);
-
-  async function open() {
-    const path = await window.diwan.files.pickImage('photos');
-    if (path) await load(path);
-  }
-
-  async function pasteButton() {
-    try {
-      const path = await window.diwan.photos.clipboardImage();
-      if (path) await load(path);
-      else say('لا صورة في الحافظة — انسخ الصورة أوّلًا (من واتساب أو المتصفّح)', true);
-    } catch (e) {
-      say(errorText(e, 'تعذّر لصق الصورة'), true);
-    }
-  }
-
-  // Ctrl+V في الشاشة: صورة الحافظة تُحفظ في المخزن كأيّ صورةٍ تُفتح — إلا في خانة كتابة.
-  useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest?.('input, textarea, [contenteditable="true"]')) return;
-      const file = Array.from(e.clipboardData?.files ?? []).find((f) => f.type.startsWith('image/'));
-      if (!file) return;
-      e.preventDefault();
-      void (async () => {
-        let dataUrl: string;
-        if (file.type === 'image/png' || file.type === 'image/jpeg') dataUrl = await dataUrlOf(file);
-        else {
-          const bmp = await createImageBitmap(file);
-          const c = document.createElement('canvas');
-          c.width = bmp.width;
-          c.height = bmp.height;
-          c.getContext('2d')!.drawImage(bmp, 0, 0);
-          bmp.close();
-          dataUrl = c.toDataURL('image/png');
-        }
-        await loadRef.current(await window.diwan.camera.store(dataUrl));
-      })().catch((err) => say(errorText(err, 'تعذّر لصق الصورة'), true));
-    };
-    window.addEventListener('paste', onPaste);
-    return () => window.removeEventListener('paste', onPaste);
-  }, []);
-
-  function choosePreset(id: string) {
-    setPresetId(id);
-    setCount(null);
-    setReview(null);
-    const p = id === CUSTOM_ID ? null : presets.find((x) => x.id === id);
-    if (p) setBg((b) => (b.kind === 'original' ? b : p.background));
-    if (p?.head && lm && natural) setCrop(autoCrop(lm, natural, { w: p.widthMm, h: p.heightMm }, p.head));
-  }
-
-  async function chooseSuit(key: string | null, url?: string) {
-    if (!key || !url) {
-      setWorn(null);
-      if (tool === 'suit') setTool('move');
-      return;
-    }
-    const w = work.current;
-    if (!w) return;
-    setBusy('يُلبَس القاط…');
-    try {
-      let l = lm;
-      if (cutState === 'none' && modelReady) l = await removeBackground();
-      let s = suitCache.current.get(key);
-      if (!s) {
-        s = await loadSuit(key, url);
-        suitCache.current.set(key, s);
-      }
-      const alpha = cut.current?.alpha;
-      const base = l && alpha ? fitSuit(s.anchor, s.rows, rowWidths(alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
-      setWorn({ suit: s, at: base, base });
-      setTool('suit');
-      if (bg.kind === 'original') setBg({ kind: 'white' });
-    } catch (e) {
-      say(errorText(e, 'تعذّر تحميل القاط'), true);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function importSuit() {
-    try {
-      const s = await window.diwan.photos.importSuit();
-      if (!s) return;
-      setCustomSuits((list) => [...list, s]);
-      setSuitTab('custom');
-      say(`أُضيف «${s.name}» إلى القاط`);
-      await chooseSuit(s.id, `diwan://store/${s.path}`);
-    } catch (e) {
-      say(errorText(e, 'تعذّر استيراد القاط'), true);
-    }
-  }
-
-  async function deleteSuit(id: string) {
-    setCustomSuits(await window.diwan.photos.deleteSuit(id));
-    suitCache.current.delete(id);
-    if (worn?.suit.key === id) setWorn(null);
-  }
+  // ── الخطوات: الفتح واللصق، وإزالة الخلفية، والمقاس، والقاط — `photos/usePhotoSteps.ts` ──
+  const { open, pasteButton, removeBackground, importSuit, chooseSuit, deleteSuit, choosePreset } = usePhotoSteps({
+    preset, work, setCutState, cut, setLm, autoLight, setEnhance, setCrop, setCutVersion, say, setBusy, toned, maskOn, line,
+    setSrc, setNatural, setWorn, setTool, setReview, rebuildSubject, modelReady, incoming, setPresetId, setCount, presets, setBg,
+    lm, natural, tool, cutState, suitCache, bg, setCustomSuits, setSuitTab, worn
+  });
 
   // ── السحب والفرشاة ─────────────────────────────────────────────────────
 
-  const at = (e: React.MouseEvent) => {
-    const r = frameEl.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
-  const toImage = (p: { x: number; y: number }) => {
-    const b = cropBox(frame, natural!, crop);
-    const k = b.width / natural!.w;
-    return { x: (p.x - b.left) / k, y: (p.y - b.top) / k, k };
-  };
-
-  function paint(from: { x: number; y: number }, to: { x: number; y: number }, k: number, mode: BrushMode) {
-    const w = work.current;
-    const c = cut.current;
-    if (!w || !c) return;
-    const rect = strokeAlpha(c.alpha, w.width, w.height, from, to, brush / k, mode);
-    rebuildSubject(rect);
-    draw();
-  }
-
-  function onDown(e: React.MouseEvent) {
-    if (!natural) return;
-    e.preventDefault();
-    const p = at(e);
-    const img = toImage(p);
-    drag.current = { tool, x: e.clientX, y: e.clientY, crop, at: worn?.at ?? null, last: img };
-    if ((tool === 'keep' || tool === 'remove') && cut.current) paint(img, img, img.k, tool);
-  }
-
-  function onMove(e: React.MouseEvent) {
-    if (tool === 'keep' || tool === 'remove') setCursor(frameEl.current ? at(e) : null);
-    const d = drag.current;
-    if (!d || !box || !natural) return;
-    const dx = e.clientX - d.x;
-    const dy = e.clientY - d.y;
-    if (d.tool === 'move') {
-      // سحب الصورة يمينًا يعني أن الإطار يرى ما على يسارها: المركز ينقص.
-      setCrop({ ...d.crop, x: d.crop.x - dx / box.width, y: d.crop.y - dy / box.height });
-    } else if (d.tool === 'suit' && d.at) {
-      const k = box.width / natural.w;
-      const from = d.at;
-      setWorn((s) => s && { ...s, at: { ...from, x: from.x + dx / k, y: from.y + dy / k } });
-    } else if ((d.tool === 'keep' || d.tool === 'remove') && d.last) {
-      const img = toImage(at(e));
-      paint(d.last, img, img.k, d.tool);
-      d.last = img;
-    }
-  }
-
-  function onUp() {
-    const d = drag.current;
-    drag.current = null;
-    // بعد الفرشاة تُعاد المعالم: شعرةٌ أُبقيت أو ظلٌّ مُسح يغيّر قمّة الرأس أو الرقبة.
-    if (d && (d.tool === 'keep' || d.tool === 'remove') && work.current && cut.current)
-      setLm(landmarks(cut.current.alpha, work.current.width, work.current.height));
-  }
-
-  function onWheel(e: React.WheelEvent) {
-    if (tool === 'move') setCrop((c) => ({ ...c, zoom: Math.max(1, Math.min(6, c.zoom - e.deltaY * 0.0015)) }));
-    else if (tool === 'suit') setWorn((s) => s && { ...s, at: { ...s.at, scale: Math.max(s.base.scale * 0.4, Math.min(s.base.scale * 2.5, s.at.scale * (1 - e.deltaY * 0.001))) } });
-    else setBrush((b) => Math.max(3, Math.min(80, b - e.deltaY * 0.03)));
-  }
-
-  function resetMask() {
-    const w = work.current;
-    const c = cut.current;
-    if (!w || !c) return;
-    c.alpha.set(c.model);
-    setLm(landmarks(c.alpha, w.width, w.height));
-    rebuildSubject();
-    draw();
-  }
+  // ── السحب والفرشاة — `photos/usePhotoBrush.ts` ──
+  const { resetMask, onUp, onMove, onDown, onWheel } = usePhotoBrush({
+    frameEl, frame, natural, crop, work, cut, brush, rebuildSubject, draw, drag, tool, worn, setCursor, box, setCrop, setWorn,
+    setLm, setBrush
+  });
 
   // ── الإخراج ───────────────────────────────────────────────────────────
 
-  const scene = (): Scene => {
-    if (!natural || !subject.current) throw new Error('افتح صورة الزبون أوّلًا');
-    return { subject: subject.current, natural, crop, background: bgColor, suit: worn && { suit: worn.suit, at: worn.at } };
-  };
-  const finalJpeg = () => renderJpeg(scene(), px, preset.dpi);
-  const fileBase = `صورة ${preset.widthMm}×${preset.heightMm}`.replace(/[\\/:*?"<>|]/g, '-');
-
-  async function run(label: string, job: () => Promise<void>) {
-    setBusy(label);
-    try {
-      await job();
-    } catch (e) {
-      say(errorText(e, 'تعذّر الحفظ'), true);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const openReview = () =>
-    run('تُجهَّز الورقة…', async () => {
-      const path = await window.diwan.camera.store(await dataUrlOf(await finalJpeg()));
-      setReview({ path, px });
-    });
-
-  const saveImage = () =>
-    run('تُحفظ الصورة…', async () => {
-      const blob = await finalJpeg();
-      const path = await window.diwan.files.saveAs({ data: new Uint8Array(await blob.arrayBuffer()), suggestedName: `${fileBase}.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
-      if (path) say(`حُفظت: ${toIndic(px.w)}×${toIndic(px.h)} بكسل بدقّة ${toIndic(preset.dpi)} — ${sizeText(blob.size)}`);
-    });
-
-  const saveUpload = () =>
-    run('تُصغَّر للرفع…', async () => {
-      const blob = await finalJpeg();
-      const fit = await fitJpeg(blob, limit, false);
-      if ('smallest' in fit) {
-        say(`أصغر ما بلغته ${sizeText(fit.smallest)} — أكبر من الحدّ`, true);
-        return;
-      }
-      // التصغير يرسم من جديد فتضيع الدقّة المكتوبة: تُكتب بما صارت إليه، والمقاس بالملّم كما هو.
-      const bmp = await createImageBitmap(fit.blob);
-      const dpi = (preset.dpi * bmp.width) / px.w;
-      bmp.close();
-      const bytes = setJpegDpi(new Uint8Array(await fit.blob.arrayBuffer()), dpi);
-      rememberLimit(limit);
-      const path = await window.diwan.files.saveAs({ data: bytes, suggestedName: `${fileBase} للرفع.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
-      if (path) say(`حُفظت للرفع: ${sizeText(bytes.length)}`);
-    });
-
-  const linkCitizen = (id: number) =>
-    run('تُحفظ في ملف المواطن…', async () => {
-      setPicking(false);
-      const detail = await window.diwan.citizens.get(id);
-      if (!detail) throw new Error('المواطن غير موجود في السجل');
-      const dataUrl = await dataUrlOf(await finalJpeg());
-      const path = await window.diwan.camera.store(dataUrl);
-      const { attachments: _attachments, documents: _documents, ...input } = detail;
-      await window.diwan.citizens.save({ ...input, photoPath: path });
-      await window.diwan.attachments.addFromDataUrl(id, `صورة شخصية ${preset.name}`, dataUrl);
-      say(`صارت صورة ${detail.fullName} في ملفّه`);
-    });
-
-  const pages = review
-    ? photoSheetsHtml({ src: review.path, natural: review.px, crop: CENTER, photo, paper, count: copies }, (s) => `diwan://store/${s}`)
-    : [];
-
-  async function print() {
-    const pick = await choosePrinter('photos', { allowSystem: true });
-    if (!pick) return;
-    await send({ html: pages.join(''), count: pages.length, paper, printer: pick.printer, system: pick.system });
-  }
-
-  /** الورقة إلى الطابعة — ثم تُغلق المعاينة ويقول شريط الإخراج ما خرج وأين. */
-  async function send(job: { html: string; count: number; paper: Size; printer: string; system: boolean }) {
-    setPrinting(true);
-    try {
-      const out = await window.diwan.output.print({ sheetHtml: job.html, printer: job.printer, copies: 1, silent: !job.system, page: job.paper });
-      if (!out.ok) {
-        say(out.reason || 'لم تتم الطباعة', true);
-        return;
-      }
-      lastPrint.current = job;
-      setReview(null);
-      setAfter({ what: papersWord(job.count), printer: job.printer });
-    } catch (e) {
-      say(errorText(e, 'تعذّرت الطباعة'), true);
-    } finally {
-      setPrinting(false);
-    }
-  }
-
-  async function pdf() {
-    setPrinting(true);
-    try {
-      const path = await window.diwan.output.savePdf({ sheetHtml: pages.join(''), suggestedName: 'صور شخصية', page: paper });
-      if (path) say('حُفظ PDF بمقاس الورق');
-    } finally {
-      setPrinting(false);
-    }
-  }
+  // ── الإخراج: الطباعة والمراجعة وPDF والصورة وللرفع وفي ملفّ الزبون — `photos/usePhotoOutput.ts` ──
+  const { send, openReview, saveImage, linkCitizen, saveUpload, pages, pdf, print } = usePhotoOutput({
+    natural, subject, crop, bgColor, worn, px, preset, setBusy, say, setReview, limit, setPicking, review, photo, paper, copies,
+    setPrinting, lastPrint, setAfter
+  });
 
   // ── فحوصٌ تُرى ────────────────────────────────────────────────────────
 
@@ -687,355 +252,104 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
           )}
 
           {src && (
-            <>
-              {step(
-                2,
-                'الخلفية',
-                cutState !== 'done' && (
-                  <button className={small} data-act="remove-bg" disabled={!modelReady || cutState === 'running'} type="button" onClick={() => void removeBackground()}>
-                    {cutState === 'running' ? 'تُزال…' : 'أزل الخلفية'}
-                  </button>
-                )
-              )}
-              {!modelReady && <p className="font-label-sm text-label-sm text-error">نموذج إزالة الخلفية غير مثبّت مع البرنامج — تُقصّ الصورة بخلفيّتها</p>}
-              <div className="flex flex-wrap gap-1">
-                {(
-                  [
-                    { kind: 'white', label: 'أبيض', color: BACKGROUND_COLORS.white },
-                    { kind: 'lightBlue', label: 'أزرق فاتح', color: BACKGROUND_COLORS.lightBlue },
-                    { kind: 'custom', label: 'لونٌ آخر', color: customColor },
-                    { kind: 'original', label: 'الأصلية', color: null }
-                  ] as const
-                ).map((b) => (
-                  <button
-                    key={b.kind}
-                    className={`${chip(bg.kind === b.kind)} flex items-center gap-1`}
-                    data-bg={b.kind}
-                    disabled={b.kind !== 'original' && cutState !== 'done'}
-                    type="button"
-                    onClick={() => setBg(b.kind === 'custom' ? { kind: 'custom', color: customColor } : { kind: b.kind })}
-                  >
-                    {b.color && <span className="w-3.5 h-3.5 rounded-full border border-outline-variant" style={{ background: b.color }} />}
-                    {b.label}
-                  </button>
-                ))}
-                {bg.kind === 'custom' && (
-                  <input
-                    className="w-9 h-9 rounded-lg border border-outline-variant bg-transparent"
-                    data-bg-color=""
-                    type="color"
-                    value={customColor}
-                    onChange={(e) => {
-                      setCustomColor(e.target.value);
-                      setBg({ kind: 'custom', color: e.target.value });
-                    }}
-                  />
-                )}
-              </div>
-              {cutState === 'done' && (
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  الشعر أو الكتف ناقص؟ «أبقِ» وامسح عليه؛ وبقايا خلفية؟ «امسح» —{' '}
-                  <button className="underline" data-act="reset-mask" type="button" onClick={resetMask}>
-                    أعِد القناع
-                  </button>
-                </p>
-              )}
-
-              {step(
-                3,
-                'الإضاءة واللون',
-                <span className="flex gap-1">
-                  <button
-                    className={small}
-                    data-act="auto-enhance"
-                    type="button"
-                    onClick={() => {
-                      const w = work.current;
-                      if (!w) return;
-                      setAutoLight(true);
-                      setEnhance(autoEnhance(cut.current?.pixels ?? w.pixels, cut.current?.alpha ?? null, w.width, w.height));
-                    }}
-                  >
-                    تلقائي{autoLight ? ' ✓' : ''}
-                  </button>
-                  <button
-                    className={small}
-                    data-act="reset-enhance"
-                    type="button"
-                    onClick={() => {
-                      setAutoLight(false);
-                      setEnhance(NEUTRAL);
-                    }}
-                  >
-                    الأصل
-                  </button>
-                </span>
-              )}
-              {slider('الإضاءة', enhance.exposure, (v) => light({ exposure: v }), -1, 1, 0.01, 'exposure')}
-              {slider('التباين', enhance.contrast, (v) => light({ contrast: v }), -1, 1, 0.01, 'contrast')}
-              {slider('الظلال', enhance.shadows, (v) => light({ shadows: v }), 0, 1, 0.01, 'shadows')}
-              {slider('الدفء', enhance.warmth, (v) => light({ warmth: v }), -1, 1, 0.01, 'warmth')}
-              {slider('الضجيج', enhance.denoise, (v) => light({ denoise: v }), 0, 1, 0.01, 'denoise')}
-
-              {step(
-                4,
-                'القاط',
-                <button className={small} data-act="import-suit" type="button" onClick={() => void importSuit()}>
-                  استيراد بدلة خاصة
-                </button>
-              )}
-              <div className="flex flex-wrap gap-1" data-suit-tabs="">
-                {SUIT_CATEGORIES.map((c) => (
-                  <button
-                    key={c.key}
-                    className={`h-7 px-2.5 rounded-full font-label-sm text-label-sm ${suitTab === c.key ? 'bg-secondary-container text-on-secondary-container font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`}
-                    data-suit-tab={c.key}
-                    type="button"
-                    onClick={() => setSuitTab(c.key)}
-                  >
-                    {c.label} {toIndic(c.key === 'custom' ? customSuits.length : BUILTIN_SUITS.filter((b) => b.category === c.key).length)}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-4 gap-1">
-                <button
-                  className={`aspect-square rounded-lg border-2 flex items-center justify-center font-label-sm text-label-sm ${!worn ? 'border-secondary' : 'border-transparent bg-surface-container-lowest'}`}
-                  data-suit="none"
-                  type="button"
-                  onClick={() => void chooseSuit(null)}
-                >
-                  بلا قاط
-                </button>
-                {(suitTab === 'custom'
-                  ? customSuits.map((s) => ({ id: s.id, name: s.name, url: `diwan://store/${s.path}` as string | undefined, custom: true }))
-                  : BUILTIN_SUITS.filter((s) => s.category === suitTab).map((s) => ({ id: s.id, name: s.name, url: thumbs[s.id], custom: false }))
-                ).map((s) => (
-                  <div key={s.id} className="relative group">
-                    <button
-                      className={`w-full aspect-square rounded-lg border-2 bg-white overflow-hidden ${worn?.suit.key === s.id ? 'border-secondary' : 'border-transparent'}`}
-                      data-suit={s.id}
-                      disabled={!s.url}
-                      title={s.name}
-                      type="button"
-                      onClick={() => void chooseSuit(s.id, s.url)}
-                    >
-                      {s.url && <img alt={s.name} className="w-full h-full object-contain" src={s.url} />}
-                    </button>
-                    {s.custom && (
-                      <button
-                        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-surface/90 text-on-surface-variant hidden group-hover:flex items-center justify-center"
-                        title="احذف من القاط"
-                        type="button"
-                        onClick={() => void deleteSuit(s.id)}
-                      >
-                        <span className="material-symbols-outlined text-[14px]">close</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {suitTab === 'custom' && !customSuits.length && (
-                <p className="font-label-sm text-label-sm text-on-surface-variant">لا قاط للمكتب بعد — «استيراد بدلة خاصة» يضيف صورة PNG شفّافة الخلفية والعنق</p>
-              )}
-              {worn && (
-                <div className="space-y-space-xs">
-                  {slider('الحجم', worn.at.scale / worn.base.scale, (v) => setWorn({ ...worn, at: { ...worn.at, scale: worn.base.scale * v } }), 0.5, 2, 0.01, 'suit-scale')}
-                  {slider('الميل', worn.at.angle, (v) => setWorn({ ...worn, at: { ...worn.at, angle: v } }), -20, 20, 0.5, 'suit-angle', `${toIndic(Math.round(worn.at.angle))}°`)}
-                  <button className={small} data-act="suit-reset" type="button" onClick={() => setWorn({ ...worn, at: worn.base })}>
-                    أعِد موضعه
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          {step(5, 'المقاس', <button className={small} data-act="presets" type="button" onClick={() => setPresetsOpen(true)}>قوالب المكتب</button>)}
-          <div className="flex flex-wrap gap-1">
-            {presets.map((p) => (
-              <button key={p.id} className={chip(presetId === p.id)} data-size-key={p.id} title={p.name} type="button" onClick={() => choosePreset(p.id)}>
-                {p.builtin ? `${toIndic(p.widthMm / 10)} × ${toIndic(p.heightMm / 10)} سم`.replace(/\./g, '٫') : p.name}
-              </button>
-            ))}
-            <button className={chip(presetId === CUSTOM_ID)} data-size-key={CUSTOM_ID} type="button" onClick={() => choosePreset(CUSTOM_ID)}>
-              مقاسٌ آخر
-            </button>
-          </div>
-          {presetId === CUSTOM_ID ? (
-            <div className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
-              عرض
-              <input className={numInput} value={custom.w} onChange={(e) => setCustom({ ...custom, w: Math.max(10, Number(e.target.value) || 10) })} />
-              ارتفاع
-              <input className={numInput} value={custom.h} onChange={(e) => setCustom({ ...custom, h: Math.max(10, Number(e.target.value) || 10) })} />
-              ملم
-            </div>
-          ) : (
-            <p className="font-label-sm text-label-sm text-on-surface-variant" data-preset-source="">
-              {preset.source ? `المصدر: ${preset.source}` : 'مقاسٌ شائع لا معيار منشورًا له — تُسأل الجهة عن اشتراطها'}
-              {preset.notes && preset.notes !== 'مقاسٌ شائع — تُسأل الجهة عن اشتراطها' ? ` · ${preset.notes}` : ''}
-            </p>
-          )}
-          {src && (
-            <div className="flex items-center gap-space-xs">
-              <div className="flex-1">{slider('التكبير', crop.zoom, (v) => setCrop({ ...crop, zoom: v }), 1, 6, 0.01, 'zoom')}</div>
-              <button
-                className={small}
-                data-act="auto-crop"
-                disabled={!plausible || !preset.head || !natural}
-                title="يضع الرأس في دليل المقاس"
-                type="button"
-                onClick={() => lm && natural && preset.head && setCrop(autoCrop(lm, natural, photo, preset.head))}
-              >
-                على الدليل
-              </button>
-            </div>
-          )}
-          {head && preset.head && (
-            <p className={`font-label-sm text-label-sm ${headOk ? 'text-secondary' : 'text-error'}`} data-head-check={headOk ? 'ok' : 'off'}>
-              {headOk ? '✓' : '⚠'} الرأس {pct(head.ratio)}٪ من الارتفاع — المطلوب {pct(preset.head.min)}–{pct(preset.head.max)}٪
-            </p>
-          )}
-          {src && effDpi < LOW_DPI && (
-            <p className="font-label-sm text-label-sm text-error" data-dpi-warn="">
-              ⚠ تفاصيل الصورة تعادل {toIndic(effDpi)} نقطة في الإنش بهذا المقاس — قد تُطبع ليّنة؛ اطلب صورةً أقرب
-            </p>
-          )}
-
-          {step(6, 'الإخراج')}
-          <div className="flex flex-wrap gap-1">
-            {PAPERS.map((p) => (
-              <button key={p.key} className={chip(paperKey === p.key)} data-paper={p.key} type="button" onClick={() => setPaperKey(p.key)}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
-            عدد النسخ
-            <input
-              className="w-20 h-9 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant text-center tabular"
-              data-photo-count=""
-              inputMode="numeric"
-              value={copies}
-              onChange={(e) => setCount(Number(e.target.value.replace(/[^\d]/g, '')) || null)}
+            <PhotoAdjustSteps
+              step={step}
+              cutState={cutState}
+              small={small}
+              modelReady={modelReady}
+              removeBackground={removeBackground}
+              customColor={customColor}
+              chip={chip}
+              bg={bg}
+              setBg={setBg}
+              setCustomColor={setCustomColor}
+              resetMask={resetMask}
+              work={work}
+              setAutoLight={setAutoLight}
+              setEnhance={setEnhance}
+              cut={cut}
+              autoLight={autoLight}
+              slider={slider}
+              enhance={enhance}
+              light={light}
+              importSuit={importSuit}
+              suitTab={suitTab}
+              setSuitTab={setSuitTab}
+              customSuits={customSuits}
+              worn={worn}
+              chooseSuit={chooseSuit}
+              thumbs={thumbs}
+              deleteSuit={deleteSuit}
+              setWorn={setWorn}
             />
-            <span data-photo-layout="">
-              {layout.per ? `${toIndic(layout.per)} في الورقة — ${countOf(Math.ceil(copies / layout.per), 'ورقة')}` : 'المقاس أكبر من الورقة'}
-            </span>
-          </label>
-          <ToolOutput
+          )}
+
+          <PhotoSizeOutput
+            step={step}
+            small={small}
+            setPresetsOpen={setPresetsOpen}
+            presets={presets}
+            chip={chip}
+            presetId={presetId}
+            choosePreset={choosePreset}
+            numInput={numInput}
+            custom={custom}
+            setCustom={setCustom}
+            preset={preset}
+            src={src}
+            slider={slider}
+            crop={crop}
+            setCrop={setCrop}
+            plausible={plausible}
+            natural={natural}
+            lm={lm}
+            photo={photo}
+            head={head}
+            headOk={headOk}
+            effDpi={effDpi}
+            paperKey={paperKey}
+            setPaperKey={setPaperKey}
+            copies={copies}
+            setCount={setCount}
+            layout={layout}
             after={after}
-            role="photos"
-            onDismiss={() => setAfter(null)}
-            onReprint={lastPrint.current ? () => void send(lastPrint.current!) : undefined}
-          >
-          <button
-            className="w-full h-11 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
-            data-act="review-photos"
-            disabled={!src || !layout.per || Boolean(busy) || cutState === 'running'}
-            type="button"
-            onClick={() => void openReview()}
-          >
-            <span className="material-symbols-outlined text-[18px]">grid_view</span>
-            راجع الورقة واطبع
-          </button>
-          <div className="grid grid-cols-2 gap-space-xs">
-            <button className={`${small} bg-surface-container-lowest h-10`} data-act="save-photo" disabled={!src || Boolean(busy)} type="button" onClick={() => void saveImage()}>
-              احفظ الصورة ({toIndic(preset.dpi)} نقطة)
-            </button>
-            <button
-              className={`${small} bg-surface-container-lowest h-10 truncate`}
-              data-act="link-citizen"
-              disabled={!src || Boolean(busy)}
-              type="button"
-              // جاءت الأداة لزبونٍ من الشبّاك: في ملفّه مباشرة — وإلا يُختار صاحبها.
-              onClick={() => (nav.customer ? void linkCitizen(nav.customer.id) : setPicking(true))}
-            >
-              {nav.customer ? `في ملفّ ${nav.customer.name || 'الزبون'}` : 'في ملف مواطن'}
-            </button>
-          </div>
-          <div className="flex items-center gap-space-xs">
-            <select
-              className="h-10 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm"
-              data-upload-limit=""
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-            >
-              {SIZE_LIMITS.map((l) => (
-                <option key={l.bytes} value={l.bytes}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-            <button className={`${small} flex-1 bg-surface-container-lowest h-10`} data-act="save-upload" disabled={!src || Boolean(busy)} type="button" onClick={() => void saveUpload()}>
-              احفظها للرفع بهذا الحدّ
-            </button>
-          </div>
-          </ToolOutput>
+            setAfter={setAfter}
+            lastPrint={lastPrint}
+            send={send}
+            busy={busy}
+            cutState={cutState}
+            openReview={openReview}
+            saveImage={saveImage}
+            nav={nav}
+            linkCitizen={linkCitizen}
+            setPicking={setPicking}
+            limit={limit}
+            setLimit={setLimit}
+            saveUpload={saveUpload}
+          />
         </section>
 
-        <section className="flex-1 min-w-0 flex items-center justify-center" onMouseLeave={() => (onUp(), setCursor(null))} onMouseMove={onMove} onMouseUp={onUp}>
-          {src && box ? (
-            <div className="flex flex-col items-center gap-space-sm">
-              <div className="flex gap-1" data-tools="">
-                {tools.map((t) => (
-                  <button key={t.key} className={`${chip(tool === t.key)} flex items-center gap-1`} data-tool={t.key} disabled={!t.on} type="button" onClick={() => setTool(t.key)}>
-                    <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
-                    {t.label}
-                  </button>
-                ))}
-                {(tool === 'keep' || tool === 'remove') && (
-                  <input className="w-28" data-act="brush-size" max={80} min={3} type="range" value={brush} onChange={(e) => setBrush(Number(e.target.value))} />
-                )}
-              </div>
-              <div
-                ref={frameEl}
-                className={`relative overflow-hidden bg-white shadow-2xl select-none ${tool === 'move' || tool === 'suit' ? 'cursor-grab active:cursor-grabbing' : 'cursor-none'}`}
-                data-cutout={cutState}
-                data-photo-frame=""
-                style={{ width: frame.w, height: frame.h }}
-                onMouseDown={onDown}
-                onWheel={onWheel}
-              >
-                <canvas ref={view} data-box={JSON.stringify(box)} data-photo-canvas="" style={{ position: 'absolute', inset: 0, width: frame.w, height: frame.h }} />
-                {/* دليل الرأس — لا يُطبع: قمّة الرأس على الخطّ، والذقن في الشريط. */}
-                {preset.head ? (
-                  <>
-                    <div className="absolute pointer-events-none left-0 right-0 border-t-2 border-dashed border-sky-500/80" style={{ top: `${preset.head.top * 100}%` }} />
-                    <div
-                      className="absolute pointer-events-none left-0 right-0 bg-sky-500/10 border-y border-dashed border-sky-500/70"
-                      style={{ top: `${(preset.head.top + preset.head.min) * 100}%`, height: `${(preset.head.max - preset.head.min) * 100}%` }}
-                    />
-                  </>
-                ) : (
-                  <div
-                    className="absolute pointer-events-none rounded-[50%] border-2 border-dashed border-white/90"
-                    style={{ left: '20%', width: '60%', top: '12%', height: '58%', boxShadow: '0 0 0 9999px rgba(0,0,0,0.18)' }}
-                  />
-                )}
-                {cursor && (tool === 'keep' || tool === 'remove') && (
-                  <div
-                    className={`absolute pointer-events-none rounded-full border-2 ${tool === 'keep' ? 'border-emerald-500' : 'border-rose-500'}`}
-                    style={{ left: cursor.x - brush, top: cursor.y - brush, width: brush * 2, height: brush * 2 }}
-                  />
-                )}
-                {cutState === 'running' && (
-                  <div className="absolute inset-x-0 bottom-0 py-1 text-center bg-black/55 text-white font-label-sm text-label-sm">تُزال الخلفية على الجهاز…</div>
-                )}
-              </div>
-              <span className="font-label-sm text-label-sm text-on-surface-variant">
-                {tool === 'move'
-                  ? 'اسحب الصورة وكبّرها بعجلة الفأرة حتى يقع الرأس في الدليل — والدليل لا يُطبع'
-                  : tool === 'suit'
-                    ? 'اسحب القاط حتى تلتقي ياقته بالرقبة، وكبّره بالعجلة'
-                    : 'امسح بالفأرة — وحجم الفرشاة بالعجلة'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-space-sm text-on-surface-variant">
-              <span className="material-symbols-outlined text-[56px]">portrait</span>
-              <span className="font-body-md text-body-md">افتح صورة الزبون أو الصقها (Ctrl+V) — من هاتفه أو الماسح</span>
-            </div>
-          )}
-        </section>
+        <PhotoFrame
+          onUp={onUp}
+          setCursor={setCursor}
+          onMove={onMove}
+          src={src}
+          box={box}
+          tools={tools}
+          chip={chip}
+          tool={tool}
+          setTool={setTool}
+          brush={brush}
+          setBrush={setBrush}
+          frameEl={frameEl}
+          cutState={cutState}
+          frame={frame}
+          onDown={onDown}
+          onWheel={onWheel}
+          view={view}
+          preset={preset}
+          cursor={cursor}
+        />
       </div>
 
       {review && (
