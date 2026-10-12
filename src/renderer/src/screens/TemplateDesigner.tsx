@@ -6,8 +6,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import PageEditor, { type HeadChoice } from '../components/PageEditor';
-import { APPLY_THRESHOLD, docFromLegacy, docText, emptyDoc, normalizeDoc, type Doc, type Suggestion, type Watermark } from '@shared/doc';
-import { normalizeFold, count } from '@shared/arabic';
+import { docFromLegacy, docText, type Doc, type Watermark } from '@shared/doc';
+import { normalizeFold } from '@shared/arabic';
 import type { Clip, Seal } from '@shared/api';
 import type { TemplateDetail } from '@shared/api';
 import {
@@ -17,19 +17,18 @@ import {
 } from '@shared/template';
 import {
   normalizeLayout, type Letterhead } from '@shared/letterhead';
-import { HEAD_MAX, findSheetHead, headFingerprint, splitSheetHead } from '@shared/sheetHead';
 import LetterheadView from '../components/LetterheadView';
-import AddressingPicker from '../components/AddressingPicker';
-import RevisionsMenu from '../components/RevisionsMenu';
 import { errorText } from '../lib/errors';
 import { useLeaveGuard } from '../kit/useLeaveGuard';
-import SpellingPanel from '../components/SpellingPanel';
 import WordLossPanel from '../components/WordLosses';
 import type { WordScan } from '@shared/wordLosses';
-import { docSpelling, fixDocSpelling } from '@shared/spelling';
-
-const inputCls =
-  'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+import { docSpelling } from '@shared/spelling';
+import DesignerHeader from './templateDesigner/DesignerHeader';
+import TemplateFields from './templateDesigner/TemplateFields';
+import WatermarkSection from './templateDesigner/WatermarkSection';
+import PagesSection from './templateDesigner/PagesSection';
+import DesignerFooter from './templateDesigner/DesignerFooter';
+import { useSheetHead } from './templateDesigner/useSheetHead';
 
 export type DesignerProps = {
   initial: TemplateDetail | null;
@@ -205,85 +204,10 @@ export default function TemplateDesigner({
    * والحدّ يُقترح مما اختاره المكتب لكتب هذه الجهة من قبل (بصمة أعلى الورقة، ج١٣) —
    * وإلا فمن الكاشف. ويُزاد سطرًا ويُنقص، وما صحّحه الموظف يُقيَّد فيُقترح في المرّة القادمة.
    */
-  const detected = useMemo(() => (letterheadId ? 0 : findSheetHead(doc)), [doc, letterheadId]);
-  const fingerprint = useMemo(() => headFingerprint(doc), [doc]);
-  const [edgeHabit, setEdgeHabit] = useState<Suggestion<string> | null>(null);
-  useEffect(() => {
-    if (letterheadId || !fingerprint) {
-      setEdgeHabit(null);
-      return;
-    }
-    let alive = true;
-    void window.diwan.learning
-      .suggest('letterheadEdge', fingerprint)
-      .then((s) => alive && setEdgeHabit(s))
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [fingerprint, letterheadId]);
-  const [headCount, setHeadCount] = useState<number | null>(null);
-  useEffect(() => setHeadCount(null), [fingerprint]);
-  const habitCount = edgeHabit && edgeHabit.confidence >= APPLY_THRESHOLD ? Number(edgeHabit.value) || 0 : 0;
-  const headLines = headCount ?? (habitCount || detected);
-  const headSplit = useMemo(
-    () => (letterheadId || headLines <= 0 ? null : splitSheetHead(doc, headLines)),
-    [doc, letterheadId, headLines]
-  );
-  const canGrow = headLines < HEAD_MAX && !letterheadId && Boolean(splitSheetHead(doc, headLines + 1));
-
-  /** تصنيفٌ يُقترح من العنوان: من نماذج المكتب المصنَّفة، وما صحّحه (ج١٣). */
-  const [catSuggest, setCatSuggest] = useState<Suggestion<string> | null>(null);
-  useEffect(() => {
-    if (!title.trim()) {
-      setCatSuggest(null);
-      return;
-    }
-    let alive = true;
-    const timer = setTimeout(() => {
-      void window.diwan.learning
-        .category(title)
-        .then((s) => alive && setCatSuggest(s))
-        .catch(() => undefined);
-    }, 300);
-    return () => {
-      alive = false;
-      clearTimeout(timer);
-    };
-  }, [title]);
-  const [headName, setHeadName] = useState('');
-  useEffect(() => setHeadName(headSplit?.name ?? ''), [headSplit?.name]);
-
-  /**
-   * «احفظ أعلى الورقة ترويسةً»: الرأس ينتقل كما هو إلى ترويسة، والورقة تختارها.
-   * فما يُرى على الورقة لا يتغيّر — والجديد أن كتابًا آخر للجهة يبدأ برأسها.
-   */
-  async function saveHead() {
-    if (!headSplit) return;
-    try {
-      const saved = await window.diwan.letterheads.save({
-        id: null,
-        name: headName.trim() || headSplit.name,
-        authorityId: null,
-        layout: headSplit.layout,
-        category: category.trim() || null
-      });
-      setSavedHead(saved);
-      setDoc(headSplit.doc);
-      setLetterheadId(saved.id);
-      // حدٌّ غير ما خمّنه الكاشف: يُقيَّد لبصمة هذا الرأس، فيُقترح لكتب الجهة القادمة.
-      if (headLines !== detected) {
-        void window.diwan.learning.record({
-          kind: 'letterheadEdge',
-          input: fingerprint,
-          suggested: String(detected),
-          chosen: String(headLines)
-        });
-      }
-    } catch (e) {
-      setError(errorText(e, 'تعذّر حفظ الترويسة'));
-    }
-  }
+  // ── رأس الورقة المكتشَف: أسطره بعادة المكتب، وتصنيفه المقترح، وحفظه ترويسة — `templateDesigner/useSheetHead.ts` ──
+  const { catSuggest, headSplit, headLines, setHeadCount, canGrow, habitCount, headCount, edgeHabit, headName, setHeadName, saveHead } = useSheetHead({
+    letterheadId, doc, title, category, setSavedHead, setDoc, setLetterheadId, setError
+  });
 
   async function save(): Promise<boolean> {
     setError(null);
@@ -350,403 +274,75 @@ export default function TemplateDesigner({
     <div className="fixed inset-0 z-50 flex items-stretch bg-scrim/40 backdrop-blur-[2px]">
       <div className="m-auto w-[min(1520px,98vw)] h-[min(880px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         {/* الترويسة */}
-        <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-space-sm">
-            <span className="p-1 rounded-lg bg-primary-container text-on-primary">
-              <span className="material-symbols-outlined text-[18px]">data_object</span>
-            </span>
-            <span className="font-headline-sm text-headline-sm text-on-surface">
-              {editing ? 'تعديل النموذج' : initial ? 'نموذج مستورد' : 'مصمّم النماذج والمُعاملات'}
-            </span>
-            {editing && initial && (
-              <RevisionsMenu
-                current={initial.revision}
-                id={initial.id}
-                kind="template"
-                onRestore={(p, revision) => {
-                  setTitle(p.title);
-                  setCode(p.code ?? '');
-                  setSubtitle(p.subtitle ?? '');
-                  setCategory(p.category ?? '');
-                  setSubjectLine(p.subjectLine ?? '');
-                  setLetterheadId(p.letterheadId);
-                  let restoredDoc: Doc;
-                  try {
-                    restoredDoc = p.docJson ? normalizeDoc(JSON.parse(p.docJson)) : docFromLegacy(p.bodyHtml, legacyFieldMeta);
-                  } catch {
-                    restoredDoc = docFromLegacy(p.bodyHtml, legacyFieldMeta);
-                  }
-                  setDoc(restoredDoc);
-                  setRestored(revision);
-                }}
-              />
-            )}
-            {editing && usage > 0 && (
-              <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
-                صدر عنه {count(usage, 'كتاب')}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-space-sm">
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
-              type="button"
-              onClick={() => void importFile()}
-            >
-              <span className="material-symbols-outlined text-[18px]">file_upload</span>
-              <span>استيراد DOCX / XML</span>
-            </button>
-            <span className="relative">
-              <button
-                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
-                data-act="spelling"
-                type="button"
-                onClick={() => setSpellOpen((o) => !o)}
-              >
-                <span className="material-symbols-outlined text-[18px]">spellcheck</span>
-                <span>تدقيق إملائي{spelling.length ? ` (${spelling.length})` : ' ✓'}</span>
-              </button>
-              {spellOpen && (
-                <div className="absolute left-0 top-11 z-10 w-96 shadow-xl rounded-xl bg-surface-container-lowest">
-                  {spelling.length ? (
-                    <SpellingPanel
-                      issues={spelling}
-                      note="اقتراحاتٌ على نصّ النموذج — اختر ما تريد، والحقول لا تُمسّ"
-                      onFix={(chosen) => {
-                        setDoc((d) => fixDocSpelling(d, chosen));
-                        setSpellOpen(false);
-                      }}
-                    />
-                  ) : (
-                    <div className="p-space-sm font-label-md text-label-md text-on-surface-variant">لا اقتراحات — النصّ سليم.</div>
-                  )}
-                </div>
-              )}
-            </span>
-            <button
-              className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
-              type="button"
-              onClick={() => void saveAsClip()}
-            >
-              <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
-              <span>حفظ ككليشة</span>
-            </button>
-            <button
-              className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
-              title="إغلاق"
-              type="button"
-              onClick={() => void closeDesigner()}
-            >
-              <span className="material-symbols-outlined text-[20px]">close</span>
-            </button>
-          </div>
-        </div>
+        <DesignerHeader
+          editing={editing}
+          initial={initial}
+          setTitle={setTitle}
+          setCode={setCode}
+          setSubtitle={setSubtitle}
+          setCategory={setCategory}
+          setSubjectLine={setSubjectLine}
+          setLetterheadId={setLetterheadId}
+          setDoc={setDoc}
+          setRestored={setRestored}
+          usage={usage}
+          importFile={importFile}
+          setSpellOpen={setSpellOpen}
+          spelling={spelling}
+          spellOpen={spellOpen}
+          saveAsClip={saveAsClip}
+          closeDesigner={closeDesigner}
+        />
 
         <div className="flex-1 flex overflow-hidden">
           {/* لوح التحرير */}
           <div className="w-[360px] shrink-0 overflow-y-auto p-space-md bg-surface-container-lowest">
             {wordScan && !lossesSeen && <WordLossPanel scan={wordScan} onClose={() => setLossesSeen(true)} />}
-            <section className="bg-surface-container-low rounded-xl p-space-md space-y-space-sm">
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">تعريف النموذج</h3>
-              <div className="grid grid-cols-2 gap-space-sm">
-                <div className="flex flex-col gap-1 col-span-2">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    العنوان الإداري <span className="text-error">*</span>
-                  </label>
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={title}
-                    placeholder="مثال: تأييد استمرار بالخدمة"
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1 col-span-2">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    وصف مختصر
-                  </label>
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={subtitle}
-                    placeholder="لمن يوجَّه هذا الكتاب ولأي غرض"
-                    onChange={(e) => setSubtitle(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    كود النموذج
-                  </label>
-                  <input
-                    className={`${inputCls} font-mono`}
-                    type="text"
-                    value={code}
-                    placeholder="اختياري"
-                    onChange={(e) => setCode(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    التصنيف
-                  </label>
-                  <input
-                    className={inputCls}
-                    type="text"
-                    list="template-categories"
-                    value={category}
-                    placeholder="تصنيف جديد أو قائم"
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                  <datalist id="template-categories">
-                    {categories.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                  {catSuggest && !category.trim() && (
-                    <button
-                      className="self-start font-label-sm text-label-sm text-secondary hover:underline text-right"
-                      data-category-suggest={catSuggest.value}
-                      title={catSuggest.reason}
-                      type="button"
-                      onClick={() => setCategory(catSuggest.value)}
-                    >
-                      مقترح: «{catSuggest.value}» — {catSuggest.reason}
-                    </button>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 col-span-2">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    سطر الموضوع (م /)
-                  </label>
-                  <input
-                    className={inputCls}
-                    type="text"
-                    value={subjectLine}
-                    placeholder="مثال: تأييد استمرار بالخدمة"
-                    onChange={(e) => setSubjectLine(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-1 col-span-2">
-                  <label className="font-label-sm text-label-sm text-on-surface-variant">
-                    الترويسة المعتمدة
-                  </label>
-                  <select
-                    className={`${inputCls} cursor-pointer`}
-                    value={letterheadId ?? ''}
-                    onChange={(e) => setLetterheadId(e.target.value ? Number(e.target.value) : null)}
-                  >
-                    <option value="">— بلا ترويسة محدّدة —</option>
-                    {heads.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <AddressingPicker
-                    value={doc.meta.addressing ?? null}
-                    onChange={(a) => setDoc((d) => ({ ...d, meta: { ...d.meta, addressing: a ?? undefined } }))}
-                  />
-                </div>
-                {headSplit && (
-                  <div
-                    className="col-span-2 flex flex-col gap-space-xs p-space-sm rounded-lg bg-surface-container-lowest"
-                    data-head-offer=""
-                  >
-                    <span className="font-label-md text-label-md text-on-surface font-semibold">
-                      أعلى الورقة يصلح ترويسة
-                    </span>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant">
-                      تُحفظ كما هي، فتختارها لكتبٍ أخرى من الجهة نفسها. ولا يتغيّر شيءٌ على هذه الورقة.
-                    </span>
-                    {/* الحدّ: كم سطرًا من أعلى الورقة رأس — يُزاد ويُنقص، ويُرى ما يدخل فيه */}
-                    <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface" data-head-edge={headLines}>
-                      <span>الرأس {headLines} {headLines === 1 ? 'سطر' : 'أسطر'}</span>
-                      <button
-                        className="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-30"
-                        data-act="head-less"
-                        title="سطرٌ أقلّ في الرأس"
-                        type="button"
-                        disabled={headLines <= 1}
-                        onClick={() => setHeadCount(headLines - 1)}
-                      >
-                        −
-                      </button>
-                      <button
-                        className="w-7 h-7 rounded bg-surface-container-high hover:bg-surface-container-highest disabled:opacity-30"
-                        data-act="head-more"
-                        title="سطرٌ أكثر في الرأس"
-                        type="button"
-                        disabled={!canGrow}
-                        onClick={() => setHeadCount(headLines + 1)}
-                      >
-                        +
-                      </button>
-                      {habitCount > 0 && headCount === null && (
-                        <span className="text-on-surface-variant" title={edgeHabit?.reason}>
-                          — كما فصلتَه لكتب هذه الجهة
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-0.5 p-space-xs rounded bg-surface-container-low font-label-sm text-label-sm text-on-surface-variant max-h-24 overflow-y-auto" data-head-preview="">
-                      {(headSplit.layout.sheet ?? []).map((b, i) => {
-                        const line = docText({ ...emptyDoc(), blocks: [b] }).replace(/\s+/g, ' ').trim();
-                        return <span key={i} className="truncate">{line || '— سطرٌ فارغ —'}</span>;
-                      })}
-                    </div>
-                    <input
-                      className={inputCls}
-                      type="text"
-                      value={headName}
-                      data-head-name=""
-                      onChange={(e) => setHeadName(e.target.value)}
-                    />
-                    <button
-                      className="h-9 rounded-lg bg-secondary-fixed text-on-secondary-fixed hover:brightness-95 font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs"
-                      data-act="save-head"
-                      type="button"
-                      onClick={() => void saveHead()}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">vertical_align_top</span>
-                      احفظ أعلى الورقة ترويسةً
-                    </button>
-                  </div>
-                )}
-              </div>
-            </section>
+            <TemplateFields
+              title={title}
+              setTitle={setTitle}
+              subtitle={subtitle}
+              setSubtitle={setSubtitle}
+              code={code}
+              setCode={setCode}
+              category={category}
+              setCategory={setCategory}
+              categories={categories}
+              catSuggest={catSuggest}
+              subjectLine={subjectLine}
+              setSubjectLine={setSubjectLine}
+              letterheadId={letterheadId}
+              setLetterheadId={setLetterheadId}
+              heads={heads}
+              doc={doc}
+              setDoc={setDoc}
+              headSplit={headSplit}
+              headLines={headLines}
+              setHeadCount={setHeadCount}
+              canGrow={canGrow}
+              habitCount={habitCount}
+              headCount={headCount}
+              edgeHabit={edgeHabit}
+              headName={headName}
+              setHeadName={setHeadName}
+              saveHead={saveHead}
+            />
 
             {/* العلامة المائية — من الورقة لا من المتن، وتُطبع خلفه باهتةً. */}
-            <section className="mt-space-md bg-surface-container-low rounded-xl p-space-md space-y-space-sm">
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">العلامة المائية</h3>
-              <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-surface-container-lowest">
-                {(
-                  [
-                    { key: 'none', label: 'بلا' },
-                    { key: 'text', label: 'نصّ' },
-                    { key: 'image', label: 'شعار' }
-                  ] as const
-                ).map((o) => {
-                  const on =
-                    o.key === 'none'
-                      ? !watermark && !wantImage
-                      : o.key === 'text'
-                        ? watermark?.kind === 'text'
-                        : watermark?.kind === 'image' || (wantImage && !watermark);
-                  return (
-                    <button
-                      key={o.key}
-                      className={`h-8 rounded-md font-label-md text-label-md transition-colors ${
-                        on
-                          ? 'bg-primary-container text-on-primary font-semibold'
-                          : 'text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
-                      data-act={`wm-${o.key}`}
-                      type="button"
-                      onClick={() => {
-                        setWantImage(o.key === 'image');
-                        if (o.key === 'none') setWatermark(null);
-                        else if (o.key === 'text')
-                          setWatermark({
-                            kind: 'text',
-                            text: watermark?.kind === 'text' ? watermark.text : 'مسودة'
-                          });
-                        else {
-                          const first = sealImages[0] ?? null;
-                          setWatermark(first ? { kind: 'image', src: first.imagePath! } : null);
-                        }
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {watermark?.kind === 'text' && (
-                <>
-                  <input
-                    className={inputCls}
-                    maxLength={40}
-                    type="text"
-                    value={watermark.text}
-                    onChange={(e) => setWatermark({ kind: 'text', text: e.target.value })}
-                  />
-                  <div className="flex flex-wrap gap-1">
-                    {['مسودة', 'نسخة', 'سري', 'للاستعمال الرسمي'].map((t) => (
-                      <button
-                        key={t}
-                        className="h-7 px-2 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
-                        type="button"
-                        onClick={() => setWatermark({ kind: 'text', text: t })}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {(watermark?.kind === 'image' || wantImage) &&
-                (sealImages.length === 0 ? (
-                  <p className="font-label-sm text-label-sm text-on-surface-variant">
-                    لا شعار محفوظ — ارفعه من «الترويسات والشعارات» ثم اختره هنا.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1">
-                    {sealImages.map((s) => (
-                      <button
-                        key={s.id}
-                        className={`p-1 rounded-lg flex flex-col items-center gap-0.5 ${
-                          watermark?.kind === 'image' && watermark.src === s.imagePath
-                            ? 'bg-secondary-fixed ring-2 ring-secondary'
-                            : 'bg-surface-container-lowest hover:bg-surface-container-high'
-                        }`}
-                        type="button"
-                        onClick={() => setWatermark({ kind: 'image', src: s.imagePath! })}
-                      >
-                        <img alt="" className="w-12 h-12 object-contain" src={`diwan://store/${s.imagePath}`} />
-                        <span className="font-label-sm text-label-sm truncate w-full text-center">{s.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                تُرسم خلف المتن باهتةً فلا تحجب حرفًا — وتُطبع كما تراها.
-              </p>
-            </section>
+            <WatermarkSection
+              watermark={watermark}
+              wantImage={wantImage}
+              setWantImage={setWantImage}
+              setWatermark={setWatermark}
+              sealImages={sealImages}
+            />
 
             {/* الصفحات — لكتابٍ يطول فتقسمه الطابعة. ويرثها كل كتابٍ من هذا النموذج. */}
-            <section className="mt-space-md bg-surface-container-low rounded-xl p-space-md space-y-space-sm" data-designer-page="">
-              <h3 className="font-headline-sm text-headline-sm text-on-surface">الصفحات</h3>
-              <label className="flex items-center gap-space-xs cursor-pointer font-label-md text-label-md text-on-surface">
-                <input
-                  checked={doc.pageSetup.pageNumbers}
-                  className="w-4 h-4 accent-secondary"
-                  data-act="page-numbers"
-                  type="checkbox"
-                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, pageNumbers: e.target.checked } }))}
-                />
-                ترقيم الصفحات («صفحة ١ من ٢» أسفل كلٍّ منها)
-              </label>
-              <label
-                className={`flex items-center gap-space-xs font-label-md text-label-md ${letterhead ? 'cursor-pointer text-on-surface' : 'text-on-surface-variant'}`}
-              >
-                <input
-                  checked={doc.pageSetup.repeatLetterhead && Boolean(letterhead)}
-                  className="w-4 h-4 accent-secondary"
-                  data-act="repeat-head"
-                  disabled={!letterhead}
-                  type="checkbox"
-                  onChange={(e) => setDoc((d) => ({ ...d, pageSetup: { ...d.pageSetup, repeatLetterhead: e.target.checked } }))}
-                />
-                الترويسة في أعلى كل صفحة
-              </label>
-              {!letterhead && (
-                <p className="font-label-sm text-label-sm text-on-surface-variant">تكرار الترويسة لنموذجٍ له ترويسة مختارة.</p>
-              )}
-            </section>
+            <PagesSection
+              doc={doc}
+              setDoc={setDoc}
+              letterhead={letterhead}
+            />
           </div>
 
           {/* الورقة هي مساحة التأليف الوحيدة؛ المتغيّرات ترافقها في اللوح الجانبي. */}
@@ -780,71 +376,18 @@ export default function TemplateDesigner({
         </div>
 
         {/* التذييل */}
-        <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
-          <div className="flex items-center gap-space-sm min-w-0">
-            {restored !== null && !error && (
-              <span className="flex items-center gap-space-xs font-label-md text-label-md text-secondary truncate" data-restored="">
-                <span className="material-symbols-outlined text-[18px]">history</span>
-                حُمّلت النسخة {restored} — احفظ لتعتمدها، أو أغلق لتبقى الحالية
-              </span>
-            )}
-            {error && (
-              <span className="flex items-center gap-space-xs font-label-md text-label-md text-error truncate">
-                <span className="material-symbols-outlined text-[18px]">warning</span>
-                {error}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-space-sm shrink-0">
-            {editing &&
-              (confirmDelete ? (
-                <div className="flex items-center gap-space-xs">
-                  <span className="font-label-sm text-label-sm text-error">
-                    {usage > 0 ? `صدر عنه ${count(usage, 'كتاب')} — احذف؟` : 'تأكيد الحذف؟'}
-                  </span>
-                  <button
-                    className="px-space-md h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"
-                    type="button"
-                    onClick={() => void remove()}
-                  >
-                    نعم، احذف
-                  </button>
-                  <button
-                    className="px-space-md h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    تراجع
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="px-space-md h-9 rounded-lg text-error hover:bg-error-container transition-colors font-label-md text-label-md flex items-center gap-space-xs"
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                  <span>حذف النموذج</span>
-                </button>
-              ))}
-            <button
-              className="px-space-md h-9 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
-              type="button"
-              onClick={() => void closeDesigner()}
-            >
-              إلغاء
-            </button>
-            <button
-              className="px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-space-xs transition-all disabled:opacity-40"
-              type="button"
-              disabled={saving}
-              onClick={() => void save()}
-            >
-              <span className="material-symbols-outlined text-[18px]">save</span>
-              <span>{saving ? 'جارٍ الحفظ...' : 'حفظ النموذج'}</span>
-            </button>
-          </div>
-        </div>
+        <DesignerFooter
+          restored={restored}
+          error={error}
+          editing={editing}
+          confirmDelete={confirmDelete}
+          usage={usage}
+          remove={remove}
+          setConfirmDelete={setConfirmDelete}
+          closeDesigner={closeDesigner}
+          saving={saving}
+          save={save}
+        />
       </div>
     </div>
   );
