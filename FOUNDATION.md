@@ -1339,7 +1339,9 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     TemplatesScreen.tsx   مكتبة النماذج والمسودات
     TemplateDesigner.tsx  مصمّم النماذج
     ArchiveScreen.tsx     «الصادر» في السجلّ: الكتب والبحث فيها (ArchiveHits.tsx نتائج البحث الشامل)
-    CitizensScreen.tsx    «الأشخاص» في الزبائن: ملفّاتهم ومستمسكاتهم (CitizenBits.tsx الشريحة وزرّ الأيقونة)
+    CitizensScreen.tsx    «الأشخاص» في الزبائن: ملفّاتهم ومستمسكاتهم (CitizenBits.tsx الشريحة وزرّ الأيقونة) — وأجزاؤه في citizens/
+    citizens/             أجزاء الزبائن (تقسيمها بعد ١٫٧٫٠): CitizensHeader وCitizensStats وCitizenFile (وفيه AttachmentVault
+                          وCitizenDocuments) وCitizenDirectory وAttachmentPreview وOcrPanel، وuseCitizenActions، وshared
     CitizenForm.tsx       نموذج ملف المواطن بخاناته
     OrdersScreen.tsx      الطلبات بحالاتها (OrderCard.tsx بطاقة الطلب ولون موعده)
     ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»
@@ -1349,7 +1351,12 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر (papersTree.ts تحويلات شجرة الأسئلة)
     DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج (PhotoPresetsDialog.tsx قوالب المكتب)
-    PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة
+    photos/               أجزاء الصور (تقسيمها بعد ١٫٧٫٠): PhotoAdjustSteps (الخطوات ٢–٤) وPhotoSizeOutput (٥ و٦) وPhotoFrame،
+                          وusePhotoCanvas الرسم وusePhotoSteps الخطوات وusePhotoBrush السحب والفرشاة وusePhotoOutput الإخراج، وphotoShared
+    PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة — وأجزاؤها في pdf/
+    pdf/                  أجزاء محرّر PDF (تقسيمه بعد ١٫٧٫٠): PdfToolbar وPdfEmpty وPagesRail وPageStage وPropsPanel وPdfOutputBar
+                          وLogoPicker، وخطّافاته usePdfHistory وusePdfOpen وusePdfThumbs وusePdfPageOps وusePdfAdditions وusePdfDrag
+                          وusePdfOutput، وpdfPages رسم الصفحات وأنواعها
     AuditScreen.tsx       سجلّ التدقيق وسلامة الأرشيف
     SettingsScreen.tsx    الإعدادات — وفهرسٌ بأقسامها في أعلاها (البند ٢٠)
     FillCard.tsx          بطاقة التعبئة في نافذتها (mode=fillcard)

@@ -886,6 +886,32 @@
   `preload/` وأنواعها في بابها من `@shared/api*` — ولا شيء في App إلا أن تحتاج حالًا منه (ملفٌّ يُمرَّر إليها، كـPDF والصور).
 - **بقي**: `master` و`production` عند ١٫٧٫٠ — التقسيم على `packs` وحده حتى يقرّر المالك الإصدار التالي.
 
+### تقسيم الشاشات الثلاث الباقية (١٢ ت١ — قال المالك «افهمها ثم افعل ما فعلناه سابقًا») ✅
+
+PdfScreen ١٣٢٧ وCitizensScreen ١٢٨٦ وPhotosScreen ١٠٨٢ — **فهمتُ كلًّا أوّلًا** (أقسام عرضها ومنطقها المعلَّمة، وما في مستوى وحدتها، والسيناريوهات
+التي تمرّ بها) ثم قسمتُها بالطريقة نفسها: العرض مكوّناتٍ والمنطق خطّافاتٍ، منقولًا حرفيًّا والقيم بأسمائها. وصارت كلّها **تحت ٤٠٠ وخرجت من
+`structure.allow.json`**، وكلّ جزءٍ تحت ٤٠٠.
+
+- **وبأداةٍ جديدة** (في المجلّد المؤقّت، لا في المستودع): تأخذ أنواع ما يمرّ إلى الجزء **من مدقّق TypeScript نفسه** (لا تُكتب باليد)، وتجد
+  استيراداته، وتنقل المقطع بعلاماته النصّية — مقطعَ عرضٍ (وسمًا أو مدًى يُلفّ في `<>`) أو كتلة منطقٍ إلى خطّاف؛ و**تتوقّف إن كان نداء
+  الخطّاف سيقرأ قيمةً قبل تعريفها أو تستعمل الشاشة ما يعيده قبل موضعه** (خطأ وقت الرسم). وما في مستوى الوحدة يُنقل أوّلًا إلى ملفٍّ مشترك،
+  وما يُكتب فيه منه (`pdfIncomingSeen` و`photoIncomingSeen`) ينتقل مع خطّافه.
+1. `7dad806` — **الزبائن** ١٢٨٦ ← ٣٩٣ (`screens/citizens/`): CitizensHeader وCitizensStats وCitizenFile (وفيه AttachmentVault وCitizenDocuments)
+   وCitizenDirectory وAttachmentPreview وOcrPanel، وuseCitizenActions، وshared. ١٥ سيناريو ✓٤٢٧: citizens ✓٣٦، citizenImport ✓١٤، idTools ✓٢١،
+   idSheet ✓٧، mrzRead ✓١٢، transientScans ✓٩، audit ✓٨، backup ✓٢٠، deleteGuards ✓٣٣، empty ✓١٢، issue ✓١١٣، leaveGuards ✓٤٥، screens ✓١٨،
+   uiGuide ✓١٦، service ✓٦٣.
+2. `9c814cf` — **PDF** ١٣٢٧ ← ٣٣١ (`screens/pdf/`): سبعة أجزاء عرض، وسبعة خطّافات (التراجع، والفتح، والرسم، وعمليات الصفحات، والإضافات، والسحب
+   والقصّ، والحفظ)، وpdfPages. pdfTools ✓٢٧، pdfForm ✓٥.
+3. `423ae26` — **الصور** ١٠٨٢ ← ٣٩٦ (`screens/photos/`، بنهايات CRLF كما كانت): PhotoAdjustSteps وPhotoSizeOutput وPhotoFrame، وأربعة خطّافات
+   (الرسم، والخطوات، والسحب والفرشاة، والإخراج)، وphotoShared — و`SUIT_FILES` باقٍ في الشاشة (مفاتيحه مساراتٌ نسبيّة إلى ملفّها). photos ✓٨،
+   photoSteps ✓٥، portrait ✓١٧، studio ✓٨.
+   ومعهما: inbox ✓١٠، leaveGuards ✓٤٥، screens ✓١٨، resilience ✓٢٠ — على البناء بالشاشات الثلاث، وكلٌّ بعدده قبل التقسيم.
+
+- **والأنواع ✓ والوحدة ✓١٧٤٠** بعد الثلاث.
+- **وما بقي فوق ٤٠٠ في الواجهة**: TemplatesScreen ١٢٦٤، وPageEditor ١١٢٠، وPapersScreen ١٠٦٨، وLetterheadScreen ٨٨٦، وTemplateDesigner ٨٥١،
+  وOrdersScreen ٧٣٢، وEditorScreen ٧٠٤، وIdDuplexDialog ٦٥٦، وArchiveScreen ٦٥٥، وServiceScreen ٦٤٨، وLetterheadDesigner ٦٢٦، وSettingsScreen ٥٧٥،
+  وغيرها دون ذلك — تُقسم بالطريقة نفسها بأمر المالك.
+
 ## ٦. الموجة ٣ — «التفوّق» ⬜
 
 - ✅ تاريخٌ بتقويمه (ميلادي/هجري/كلاهما) في التصاميم والدفعات — بالتصاميم ٣٫٤ (`valuesInCalendars`، ١١ ت١).
