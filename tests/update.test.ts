@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { extractInstaller, readUpdate } from '../src/main/services/update';
+import { extractEntry, readZipIndex } from '../src/main/services/zip';
 
 const TOOL = join(process.cwd(), 'tools', 'license', 'keygen.mjs');
 
@@ -76,4 +77,46 @@ describe('التحديث بمفاتيح المالك (و١٠)', () => {
     expect((await readUpdate(s.file, ['ليس مفتاحًا', s.pub], '1.0.0', join(s.dir, 'work2'))).manifest.version).toBe('1.1.0');
     await expect(readUpdate(s.file, [], '1.0.0', s.dir)).rejects.toThrow(/غير موقّعٍ من المطوّر/);
   }, 30_000);
+});
+
+/** `update.json` كما في الملفّ — بقارئ البرنامج نفسه. */
+async function head(file: string, dir: string): Promise<{ signature: string; signatures?: string[] }> {
+  const entry = (await readZipIndex(file)).find((e) => e.name === 'update.json')!;
+  const out = join(dir, `head-${Date.now()}.json`);
+  await extractEntry(file, entry, out);
+  return JSON.parse(readFileSync(out, 'utf8'));
+}
+
+/** مفتاحٌ آخر بأداة المالك — ملفّه وعامُّه. */
+function extraKey(dir: string, name: string): { key: string; pub: string } {
+  const key = join(dir, `${name}.pem`);
+  execFileSync(process.execPath, [TOOL, 'init', '--key', key]);
+  return { key, pub: createPublicKey(createPrivateKey(readFileSync(key, 'utf8'))).export({ type: 'spki', format: 'pem' }).toString() };
+}
+
+describe('مفتاح التحديث بجانب مفتاح التراخيص (البند ٣٣)', { timeout: 60_000 }, () => {
+  it('ملفٌّ واحد بتوقيعين: يقبله القديم (مفتاح التراخيص) والجديد (مفتاح التحديث وحده)، ويرفضه ثالث', async () => {
+    const s = setup();
+    const upd = extraKey(s.dir, 'update');
+    const out = join(s.dir, 'dual.diwanupdate');
+    execFileSync(process.execPath, [TOOL, 'update', s.exe, '--version', '1.1.0', '--notes', join(s.dir, 'notes.md'), '--key', s.key, '--update-key', upd.key, '--out', out]);
+    expect((await head(out, s.dir)).signatures).toHaveLength(1);
+    // إصدارٌ حتى 1.7.1 يعرف مفتاح التراخيص وحده (`both`) — فيقرأ `signature`.
+    expect((await readUpdate(out, [s.pub], '1.0.0', join(s.dir, 'w1'))).manifest.version).toBe('1.1.0');
+    // وما بعده يقبل التحديث بمفتاح التحديث وحده — فيقرأ `signatures`.
+    expect((await readUpdate(out, [upd.pub], '1.0.0', join(s.dir, 'w2'))).manifest.version).toBe('1.1.0');
+    await expect(readUpdate(out, [extraKey(s.dir, 'third').pub], '1.0.0', s.dir)).rejects.toThrow(/غير موقّعٍ من المطوّر/);
+    // والملفّ بلا مفتاح تحديثٍ كما كان: بلا `signatures`.
+    expect((await head(s.file, s.dir)).signatures).toBeUndefined();
+  });
+
+  it('وتوقيعٌ بمفتاحٍ لا يعرفه البرنامج في القائمة لا يقبل الملفّ ولا يمنع قبوله بالمعروف', async () => {
+    const s = setup();
+    const stranger = extraKey(s.dir, 'stranger');
+    const out = join(s.dir, 'stranger.diwanupdate');
+    execFileSync(process.execPath, [TOOL, 'update', s.exe, '--version', '1.1.0', '--notes', join(s.dir, 'notes.md'), '--key', s.key, '--update-key', stranger.key, '--out', out]);
+    const other = extraKey(s.dir, 'other');
+    await expect(readUpdate(out, [other.pub], '1.0.0', s.dir)).rejects.toThrow(/غير موقّعٍ من المطوّر/);
+    expect((await readUpdate(out, [other.pub, s.pub], '1.0.0', join(s.dir, 'w3'))).manifest.version).toBe('1.1.0');
+  });
 });

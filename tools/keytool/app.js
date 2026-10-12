@@ -59,6 +59,7 @@ function enter(res) {
       : 'تنبيه: هذا المفتاح الخاص لا يطابق المفتاح العامّ في البرنامج — ما يصدر منه لن يُقبل.';
     m.classList.toggle('warn', !res.matches);
     setSummary(res.summary);
+    setUpdateKey(res.update);
   }
   for (const id of ['pw', 'newPw', 'newPw2']) $(id).value = '';
   $('loginMsg').textContent = '';
@@ -277,6 +278,41 @@ function renderLedger() {
 }
 $('ledgerQ').oninput = renderLedger;
 
+// ── مفتاح التحديث (البند ٣٣) ───────────────────────────────────────────
+
+let updatePublic = '';
+
+function setUpdateKey(u) {
+  const exists = Boolean(u && u.exists);
+  $('ukNone').classList.toggle('hidden', exists);
+  $('ukDone').classList.toggle('hidden', !exists);
+  updatePublic = exists ? u.publicKey : '';
+  $('ukPub').textContent = updatePublic;
+  $('ukState').textContent = !exists
+    ? ''
+    : u.matches
+      ? 'البرنامج يعرف هذا المفتاح — ملفّات التحديث تُوقَّع به.'
+      : 'صُنع المفتاح — ولا يعرفه البرنامج بعد: أرسل عامّه أدناه إلى المطوّر. وإلى أن يصدر إصدارٌ يعرفه تبقى ملفّات التحديث تُقبل بمفتاح التراخيص.';
+  $('updKeys').textContent = exists
+    ? 'يُوقَّع الملفّ بمفتاحين: مفتاح التحديث (للإصدارات التي تعرفه) ومفتاح التراخيص (للإصدارات حتى 1.7.1) — ملفٌّ واحد للمكاتب كلّها.'
+    : 'يُوقَّع الملفّ بمفتاح التراخيص — واصنع «مفتاح التحديث» ليُوقَّع به أيضًا.';
+}
+
+$('ukBtn').onclick = () =>
+  run($('ukBtn'), $('ukMsg'), async () => {
+    $('ukBtn').textContent = 'يُصنع…';
+    setUpdateKey(await call('createUpdateKey', $('ukPw').value));
+    $('ukPw').value = '';
+  });
+$('ukPw').onkeydown = (e) => {
+  if (e.key === 'Enter') $('ukBtn').click();
+};
+$('ukCopy').onclick = async () => {
+  if (!updatePublic) return;
+  await call('copy', updatePublic);
+  $('ukCopied').textContent = '✓ نُسخ';
+};
+
 // ── ملفّ التحديث ────────────────────────────────────────────────────────
 
 let exe = null;
@@ -297,7 +333,7 @@ $('makeUpd').onclick = () =>
     $('makeUpd').textContent = 'يُصنع…';
     const r = await call('makeUpdate', { exe, version: $('version').value.trim(), notes: $('relNotes').value });
     const msg = $('updMsg');
-    msg.textContent = `✓ ${r.out} — ${(r.size / 1024 / 1024).toFixed(1)} م.ب `;
+    msg.textContent = `✓ ${r.out} — ${(r.size / 1024 / 1024).toFixed(1)} م.ب${r.withUpdateKey ? ' — بالمفتاحين' : ''} `;
     msg.classList.add('ok');
     const b = document.createElement('button');
     b.textContent = 'اعرضه في مجلّده';
@@ -307,7 +343,7 @@ $('makeUpd').onclick = () =>
     msg.appendChild(b);
   });
 
-for (const el of [$('createMsg'), $('loginMsg'), $('issueMsg'), $('updMsg'), $('changeMsg')]) el.dataset.baseClass = el.className;
+for (const el of [$('createMsg'), $('loginMsg'), $('issueMsg'), $('updMsg'), $('changeMsg'), $('ukMsg')]) el.dataset.baseClass = el.className;
 
 start().catch((e) => {
   document.body.textContent = e.message;

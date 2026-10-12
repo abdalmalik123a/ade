@@ -8,8 +8,10 @@
  * - **المفتاح الذي يصدر** بصيغة البرنامج نفسها (src/main/services/license.ts): الحقول بترتيبٍ ثابت، وتوقيع Ed25519.
  * - **السجلّ** (`سجل المفاتيح المصدرة.csv`) سطرٌ لكلّ مفتاح، ويُعدّ منه مشترو مدى الحياة — أوّل عشرة.
  * - **ملفّ التحديث «أ+»** أرشيفٌ يقرؤه البرنامج: `update.json` الموقّع، والمثبّت كما هو.
+ * - **مفتاح التحديث** (البند ٣٣): مفتاحٌ ثانٍ يصنعه المالك مرّةً بالأداة، مشفّرًا بكلمته نفسها — به تُوقَّع ملفّات التحديث،
+ *   فلا يصلح مفتاح التراخيص لتحديثٍ ولا مفتاح التحديث لترخيص في الإصدارات التي تعرفه.
  */
-import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, randomBytes, scryptSync, sign } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, scryptSync, sign } from 'node:crypto';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, writeSync, closeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { crc32 } from 'node:zlib';
@@ -18,6 +20,9 @@ export const KEY_FILE = 'diwan-owner-private.key';
 export const PLAIN_KEY_FILE = 'diwan-owner-private.pem';
 export const LEDGER_FILE = 'سجل المفاتيح المصدرة.csv';
 export const TEXT_COPY_FILE = '٢ - المفتاح الخاص (نسخة نصية).txt';
+export const UPDATE_KEY_FILE = 'diwan-update-private.key';
+export const UPDATE_TEXT_COPY_FILE = '٧ - مفتاح التحديث الخاص (نسخة نصية).txt';
+export const UPDATE_PUBLIC_FILE = '٨ - مفتاح التحديث العام.txt';
 export const EARLY_LIFETIME = 10;
 
 const SCRYPT = { N: 1 << 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
@@ -43,7 +48,7 @@ export function normalizeDevice(code) {
 // ── المفتاح الخاص ──────────────────────────────────────────────────────
 
 export function keyState(dir) {
-  return { encrypted: existsSync(join(dir, KEY_FILE)), plain: existsSync(join(dir, PLAIN_KEY_FILE)) };
+  return { encrypted: existsSync(join(dir, KEY_FILE)), plain: existsSync(join(dir, PLAIN_KEY_FILE)), update: existsSync(join(dir, UPDATE_KEY_FILE)) };
 }
 
 function seal(text, password) {
@@ -118,28 +123,86 @@ export function encryptExistingKey(dir, password) {
   return before;
 }
 
-/** تغيير كلمة السرّ: يُفكّ بالقديمة ويُشفَّر بالجديدة، ويُتحقّق قبل أن يُستبدل. */
+/**
+ * تغيير كلمة السرّ: يُفكّ بالقديمة ويُشفَّر بالجديدة، ويُتحقّق قبل أن يُستبدل — **والمفتاحان معًا** (التراخيص والتحديث)،
+ * فلا يبقى للمالك كلمتان. ويُفكّ الاثنان ويُتحقّق منهما قبل أن يُكتب أيٌّ منهما.
+ */
 export function changePassword(dir, oldPassword, newPassword) {
   if (String(newPassword).length < 8) throw new KeyToolError('كلمة السرّ ثمانية أحرفٍ أقلّها');
-  const enc = join(dir, KEY_FILE);
-  const pem = unseal(readFileSync(enc, 'utf8'), oldPassword);
-  const armored = seal(pem, newPassword);
-  if (publicKeyPem(createPrivateKey(unseal(armored, newPassword))) !== publicKeyPem(createPrivateKey(pem))) throw new KeyToolError('تعذّر التحقّق — لم يُمسّ شيء');
-  writeFileSync(`${enc}.part`, armored);
-  renameSync(`${enc}.part`, enc);
-  writeTextCopy(dir, armored);
+  const files = [KEY_FILE, UPDATE_KEY_FILE].map((f) => join(dir, f)).filter((f) => existsSync(f));
+  const resealed = files.map((enc) => {
+    const pem = unseal(readFileSync(enc, 'utf8'), oldPassword);
+    const armored = seal(pem, newPassword);
+    if (publicKeyPem(createPrivateKey(unseal(armored, newPassword))) !== publicKeyPem(createPrivateKey(pem))) throw new KeyToolError('تعذّر التحقّق — لم يُمسّ شيء');
+    return { enc, armored };
+  });
+  for (const { enc, armored } of resealed) {
+    writeFileSync(`${enc}.part`, armored);
+    renameSync(`${enc}.part`, enc);
+    if (enc.endsWith(UPDATE_KEY_FILE)) writeUpdateTextCopy(dir, armored);
+    else writeTextCopy(dir, armored);
+  }
 }
 
-function writeTextCopy(dir, armored) {
-  const text = [
-    'المفتاح الخاص لديوان — مشفّرٌ بكلمة سرّ المالك (scrypt + AES-256-GCM).',
+const textCopy = (title, keyFile, armored) =>
+  [
+    title,
     'لا يُفكّ بغير الكلمة، فتسرّبه لا يُصدر مفتاحًا. ومن نسي الكلمة فقده: احفظها مكتوبةً بعيدًا عن الفلاشة.',
-    `إن ضاع ملف ${KEY_FILE} فانسخ الأسطر بين الخطّين — ومعها سطرا BEGIN وEND — إلى ملفٍّ بذلك الاسم.`,
+    `إن ضاع ملف ${keyFile} فانسخ الأسطر بين الخطّين — ومعها سطرا BEGIN وEND — إلى ملفٍّ بذلك الاسم.`,
     '------------------------------------------------------------',
     armored.trim(),
     '------------------------------------------------------------'
   ].join('\r\n');
+
+function writeTextCopy(dir, armored) {
+  const text = textCopy('المفتاح الخاص لديوان — مشفّرٌ بكلمة سرّ المالك (scrypt + AES-256-GCM).', KEY_FILE, armored);
   writeFileSync(join(dir, TEXT_COPY_FILE), Buffer.from('﻿' + text + '\r\n', 'utf8'));
+}
+
+function writeUpdateTextCopy(dir, armored) {
+  const text = textCopy('مفتاح التحديث الخاص لديوان — به تُوقَّع ملفّات التحديث، مشفّرٌ بكلمة سرّ المالك نفسها.', UPDATE_KEY_FILE, armored);
+  writeFileSync(join(dir, UPDATE_TEXT_COPY_FILE), Buffer.from('﻿' + text + '\r\n', 'utf8'));
+}
+
+// ── مفتاح التحديث (البند ٣٣) ───────────────────────────────────────────
+
+/**
+ * يصنع مفتاح التحديث **مرّةً**: بكلمة المالك نفسها (يُفكّ بها مفتاح التراخيص أوّلًا — فهي كلمته)، ويُتحقّق أنّه يُفكّ
+ * إلى المفتاح نفسه قبل أن يُكتب، ولا يُكتب فوق مفتاحٍ قائم أبدًا. ويُكتب بجانبه عامُّه نصًّا — ليس سرًّا: يُرسل إلى
+ * المطوّر فيضعه في البرنامج.
+ */
+export function createUpdateKey(dir, password) {
+  const enc = join(dir, UPDATE_KEY_FILE);
+  if (existsSync(enc)) throw new KeyToolError('مفتاح التحديث موجودٌ قبلُ — لا يُصنع ثانيةً');
+  if (!existsSync(join(dir, KEY_FILE))) throw new KeyToolError('شفّر مفتاح التراخيص بكلمة السرّ أوّلًا');
+  const license = loadPrivateKey(dir, password);
+  const { privateKey } = generateKeyPairSync('ed25519');
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const pub = publicKeyPem(privateKey);
+  if (pub === publicKeyPem(license)) throw new KeyToolError('تعذّر صنع مفتاحٍ مختلف — لم يُكتب شيء');
+  const armored = seal(pem, password);
+  if (publicKeyPem(createPrivateKey(unseal(armored, password))) !== pub) throw new KeyToolError('تعذّر التحقّق من التشفير — لم يُكتب شيء');
+  writeFileSync(`${enc}.part`, armored, { flag: 'wx' });
+  renameSync(`${enc}.part`, enc);
+  if (publicKeyPem(loadUpdateKey(dir, password)) !== pub) throw new KeyToolError('تعذّر التحقّق من ملف مفتاح التحديث');
+  writeUpdateTextCopy(dir, armored);
+  const note = [
+    'مفتاح التحديث العامّ لديوان — ليس سرًّا.',
+    'أرسل الأسطر بين الخطّين (ومعها BEGIN وEND) إلى المطوّر ليضعها في البرنامج: بها يقبل البرنامج ملفّات التحديث.',
+    '------------------------------------------------------------',
+    pub,
+    '------------------------------------------------------------'
+  ].join('\r\n');
+  writeFileSync(join(dir, UPDATE_PUBLIC_FILE), Buffer.from('﻿' + note + '\r\n', 'utf8'));
+  return pub;
+}
+
+/** مفتاح التحديث في الذاكرة — بكلمة المالك. */
+export function loadUpdateKey(dir, password) {
+  const enc = join(dir, UPDATE_KEY_FILE);
+  if (!existsSync(enc)) throw new KeyToolError('لا مفتاح تحديثٍ بعد — اصنعه من «مفتاح التحديث»');
+  if (!password) throw new KeyToolError('المفتاح مشفّر — اكتب كلمة السرّ');
+  return createPrivateKey(unseal(readFileSync(enc, 'utf8'), password));
 }
 
 // ── المفتاح الذي يصدر ──────────────────────────────────────────────────
@@ -342,16 +405,23 @@ async function hashAndCrc(path) {
   return { sha256: hash.digest('hex'), crc: crc >>> 0 };
 }
 
-/** أرشيفٌ بمدخلين مخزَّنين (لا ضغط): `update.json` ثم `setup.exe` — يقرؤه البرنامج من فهرسه. */
-export async function writeUpdateFile({ exe, version, notes, privateKey, out }) {
+/**
+ * أرشيفٌ بمدخلين مخزَّنين (لا ضغط): `update.json` ثم `setup.exe` — يقرؤه البرنامج من فهرسه.
+ *
+ * `signature` بـ`privateKey` — ما تقرؤه الإصدارات كلّها. و`updateKeys` (البند ٣٣) توقيعاتٌ أخرى في `signatures`: الإصدار
+ * الذي يعرف مفتاح التحديث يقبل الملفّ بها، والأقدم لا يقرؤها فيكفيه `signature` — فملفٌّ واحد للمكاتب كلّها.
+ */
+export async function writeUpdateFile({ exe, version, notes, privateKey, updateKeys = [], out }) {
   if (!existsSync(exe)) throw new KeyToolError('اختر ملف المثبّت');
   if (!/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new KeyToolError('رقم الإصدار مثل 1.1.0');
   if (!String(notes ?? '').trim()) throw new KeyToolError('اكتب «ما الجديد» في هذا الإصدار');
   const size = statSync(exe).size;
   const { sha256, crc } = await hashAndCrc(exe);
   const manifest = { app: 'diwan', kind: 'update', version, sha256, size, notes: String(notes).trim(), issued: today() };
-  const signature = sign(null, Buffer.from(canonicalManifest(manifest), 'utf8'), privateKey).toString('base64url');
-  const json = Buffer.from(JSON.stringify({ manifest, signature }, null, 2));
+  const signed = (k) => sign(null, Buffer.from(canonicalManifest(manifest), 'utf8'), k).toString('base64url');
+  const signature = signed(privateKey);
+  const signatures = updateKeys.map(signed);
+  const json = Buffer.from(JSON.stringify(signatures.length ? { manifest, signature, signatures } : { manifest, signature }, null, 2));
 
   const fd = openSync(`${out}.part`, 'w');
   let pos = 0;

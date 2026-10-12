@@ -72,6 +72,7 @@
       <button class="on" data-tab="issue">مفتاح جديد</button>
       <button data-tab="ledger">السجلّ</button>
       <button data-tab="update">ملفّ تحديث</button>
+      <button data-tab="updkey">مفتاح التحديث</button>
       <button data-tab="password">كلمة السرّ</button>
     </div>
 
@@ -124,11 +125,29 @@
     <div class="card hidden" data-pane="update">
       <h2>ملفّ تحديث «أ+»</h2>
       <p class="muted">اختر مثبّت الإصدار الجديد (بعد npm run release)، فيُصنع بجانبه ملفٌّ يُرسل إلى المكاتب — يُثبَّت من «الإعدادات ← التحديث».</p>
+      <p class="muted" id="updKeys" data-update-keys></p>
       <p><button id="pickExe" data-act="pick-installer">اختر المثبّت…</button> <span class="ltr" id="exePath"></span></p>
       <div class="row"><div><label>رقم الإصدار</label><input class="ltr" id="version" data-field="version" /></div></div>
       <label>ما الجديد</label><textarea id="relNotes" rows="7" data-field="release-notes"></textarea>
       <p><button class="primary" id="makeUpd" data-act="make-update">اصنع ملفّ التحديث</button></p>
       <p id="updMsg" data-update-msg></p>
+    </div>
+
+    <div class="card hidden" data-pane="updkey">
+      <h2>مفتاح التحديث</h2>
+      <div id="ukNone" data-update-key-none>
+        <p class="note">مفتاحٌ ثانٍ تُوقَّع به ملفّات التحديث وحدها، ومفتاحك الأوّل للتراخيص وحدها — فإن تسرّب أحدهما لم يُغنِ عن الآخر. يُصنع <b>مرّةً واحدة</b>، مشفّرًا بكلمة سرّك نفسها، في هذا المجلّد بجانب مفتاح التراخيص.</p>
+        <label>اكتب كلمة السرّ ليُشفَّر بها</label><input type="password" id="ukPw" data-field="update-key-password" />
+        <p><button class="primary" id="ukBtn" data-act="create-update-key">اصنع مفتاح التحديث</button></p>
+        <p id="ukMsg" data-update-key-msg></p>
+      </div>
+      <div id="ukDone" class="hidden" data-update-key-done>
+        <p class="note" id="ukState" data-update-key-state></p>
+        <label>المفتاح العامّ — ليس سرًّا: أرسله إلى المطوّر ليضعه في البرنامج</label>
+        <div class="keybox" id="ukPub" data-update-key-public></div>
+        <p><button id="ukCopy" data-act="copy-update-key">انسخه</button> <span class="muted" id="ukCopied"></span></p>
+        <p class="muted">وفي المجلّد: <span class="ltr">diwan-update-private.key</span> (المشفّر) ونسخته النصّية، وعامُّه في «٨ - مفتاح التحديث العام.txt» — احفظها مع بقيّة المجلّد على الفلاشة وGoogle Drive.</p>
+      </div>
     </div>
 
     <div class="card hidden" data-pane="password">

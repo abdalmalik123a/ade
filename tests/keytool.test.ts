@@ -144,3 +144,44 @@ describe('مفتاح العرض (و٩)', () => {
     expect(other.warnings).toEqual([]);
   });
 });
+
+describe('مفتاح التحديث (البند ٣٣)', () => {
+  it('يُصنع مرّةً بكلمة المالك نفسها: مشفّرًا، وغير مفتاح التراخيص، ومعه نسخته النصّية وعامُّه — ولا يُصنع ثانيةً', () => {
+    const v = vault();
+    expect(() => core.createUpdateKey(v.dir, 'كلمة-سر-طويلة')).toThrow(/شفّر مفتاح التراخيص/);
+    core.encryptExistingKey(v.dir, 'كلمة-سر-طويلة');
+    expect(core.keyState(v.dir).update).toBe(false);
+    // بغير كلمة المالك لا يُصنع ولا يُكتب شيء.
+    expect(() => core.createUpdateKey(v.dir, 'كلمة-أخرى-123')).toThrow(/خاطئة/);
+    expect(existsSync(join(v.dir, core.UPDATE_KEY_FILE))).toBe(false);
+
+    const pub = core.createUpdateKey(v.dir, 'كلمة-سر-طويلة');
+    expect(pub).toContain('BEGIN PUBLIC KEY');
+    expect(pub).not.toBe(v.publicPem);
+    const armored = readFileSync(join(v.dir, core.UPDATE_KEY_FILE), 'utf8');
+    expect(armored).toContain('BEGIN DIWAN ENCRYPTED KEY');
+    expect(armored).not.toContain('PRIVATE KEY-----');
+    expect(readFileSync(join(v.dir, core.UPDATE_TEXT_COPY_FILE), 'utf8')).toContain(armored.trim().split('\n')[1]);
+    expect(readFileSync(join(v.dir, core.UPDATE_PUBLIC_FILE), 'utf8')).toContain(pub.split('\n')[1]);
+    expect(core.publicKeyPem(core.loadUpdateKey(v.dir, 'كلمة-سر-طويلة'))).toBe(pub);
+    expect(core.keyState(v.dir).update).toBe(true);
+
+    expect(() => core.createUpdateKey(v.dir, 'كلمة-سر-طويلة')).toThrow(/موجودٌ قبلُ/);
+    expect(readFileSync(join(v.dir, core.UPDATE_KEY_FILE), 'utf8')).toBe(armored);
+    // ومفتاح التراخيص كما هو.
+    expect(core.publicKeyPem(core.loadPrivateKey(v.dir, 'كلمة-سر-طويلة'))).toBe(v.publicPem);
+  }, 60_000);
+
+  it('وتغيير الكلمة يغيّرها للمفتاحين معًا — فلا يبقى للمالك كلمتان', () => {
+    const v = vault();
+    core.encryptExistingKey(v.dir, 'القديمة-12345');
+    const pub = core.createUpdateKey(v.dir, 'القديمة-12345');
+    core.changePassword(v.dir, 'القديمة-12345', 'الجديدة-67890');
+    expect(core.publicKeyPem(core.loadPrivateKey(v.dir, 'الجديدة-67890'))).toBe(v.publicPem);
+    expect(core.publicKeyPem(core.loadUpdateKey(v.dir, 'الجديدة-67890'))).toBe(pub);
+    expect(() => core.loadUpdateKey(v.dir, 'القديمة-12345')).toThrow(/خاطئة/);
+    // وكلمةٌ قديمةٌ خاطئة لا تمسّ أيًّا منهما.
+    expect(() => core.changePassword(v.dir, 'ليست-هي-123', 'ثالثة-000000')).toThrow(/خاطئة/);
+    expect(core.publicKeyPem(core.loadUpdateKey(v.dir, 'الجديدة-67890'))).toBe(pub);
+  }, 120_000);
+});

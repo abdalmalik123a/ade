@@ -181,6 +181,48 @@ export default async function scenario(page, { shotsDir }) {
   const badUpd = await page.eval(`return await window.keytool.makeUpdate({ exe: ${JSON.stringify(join(DIR, 'setup.exe'))}, version: '1.1', notes: 'x' });`);
   ok('ورقم إصدارٍ ناقص يُرفض', !badUpd.ok && badUpd.error.includes('1.1.0'));
 
+  // ── مفتاح التحديث (البند ٣٣) ─────────────────────────────────────
+  await page.eval(`document.querySelector('[data-tab="update"]').click(); return true;`);
+  ok('لسان «ملفّ تحديث» يقول: بمفتاح التراخيص — واصنع مفتاح التحديث', (await text('[data-update-keys]')).includes('واصنع «مفتاح التحديث»'));
+  await page.eval(`document.querySelector('[data-tab="updkey"]').click(); return true;`);
+  await wait(300);
+  ok('لسان «مفتاح التحديث»: لم يُصنع بعد، ويُشرح لماذا', (await page.eval(`return !document.getElementById('ukNone').classList.contains('hidden');`)) && (await text('[data-update-key-none]')).includes('مرّةً واحدة'));
+  await setVal('ukPw', 'wrong-pass-000');
+  await click('ukBtn', 2500);
+  ok('بكلمةٍ خاطئة لا يُصنع ولا يُكتب شيء', (await text('[data-update-key-msg]')).includes('خاطئة') && !existsSync(join(DIR, 'diwan-update-private.key')));
+  await setVal('ukPw', PASSWORD);
+  await click('ukBtn', 3500);
+  const ukPub = await text('[data-update-key-public]');
+  ok('وبكلمة المالك يُصنع: عامُّه ظاهرٌ يُنسخ', ukPub.includes('BEGIN PUBLIC KEY') && (await page.eval(`return !document.getElementById('ukDone').classList.contains('hidden');`)));
+  ok('ويُقال إنّ البرنامج لا يعرفه بعد — فيُرسل عامُّه إلى المطوّر', (await text('[data-update-key-state]')).includes('لا يعرفه البرنامج بعد'));
+  ok(
+    'وفي المجلّد: المشفّر ونسخته النصّية وعامُّه',
+    readFileSync(join(DIR, 'diwan-update-private.key'), 'utf8').includes('BEGIN DIWAN ENCRYPTED KEY') &&
+      existsSync(join(DIR, '٧ - مفتاح التحديث الخاص (نسخة نصية).txt')) &&
+      readFileSync(join(DIR, '٨ - مفتاح التحديث العام.txt'), 'utf8').includes(ukPub.split('\n')[1])
+  );
+  const again = await page.eval(`return await window.keytool.createUpdateKey(${JSON.stringify(PASSWORD)});`);
+  ok('ولا يُصنع ثانيةً ولو طُلب من خلف الواجهة', !again.ok && again.error.includes('موجودٌ قبلُ'));
+  await click('ukCopy', 300);
+  ok('و«انسخه» يُقال', (await text('#ukCopied')).includes('نُسخ'));
+  const dual = await page.eval(
+    `return await window.keytool.makeUpdate({ exe: ${JSON.stringify(join(DIR, 'setup.exe'))}, version: '1.0.2', notes: 'بالمفتاحين' });`
+  );
+  let dualOk = false;
+  if (dual.ok) {
+    const f = readFileSync(dual.value.out);
+    const nameLen = f.readUInt16LE(26);
+    const json = JSON.parse(f.subarray(30 + nameLen, 30 + nameLen + f.readUInt32LE(18)).toString('utf8'));
+    const m = json.manifest;
+    const canon = Buffer.from(JSON.stringify({ app: m.app, kind: m.kind, version: m.version, sha256: m.sha256, size: m.size, notes: m.notes, issued: m.issued }), 'utf8');
+    dualOk =
+      dual.value.withUpdateKey &&
+      verify(null, canon, publicKey, Buffer.from(json.signature, 'base64url')) &&
+      verify(null, canon, ukPub, Buffer.from(json.signatures?.[0] ?? '', 'base64url'));
+  }
+  ok('وملفّ التحديث بعده بتوقيعين: مفتاح التراخيص للقديم ومفتاح التحديث للجديد', dualOk);
+  await shot('3b-update-key');
+
   // ── كلمة السرّ ────────────────────────────────────────────────────
   await page.eval(`document.querySelector('[data-tab="password"]').click(); return true;`);
   await setVal('oldPw', 'wrong-pass-000');
@@ -205,6 +247,7 @@ export default async function scenario(page, { shotsDir }) {
   await page.key('Enter');
   await wait(2000);
   ok('والجديدة تفتح — بـEnter', await visible('app'));
+  ok('ومفتاح التحديث تغيّرت كلمته معه: يُفتح بالجديدة وعامُّه كما كان', (await text('[data-update-key-public]')) === ukPub);
   await shot('4-app');
 
   // ── الخمول ───────────────────────────────────────────────────────

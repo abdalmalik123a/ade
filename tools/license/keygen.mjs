@@ -9,8 +9,9 @@
  *   node tools/license/keygen.mjs extend DWN-XXXX-XXXX-XXXX-XXXX --until 2026-11-30
  *       تمديد المدّة التجريبية لذلك الجهاز إلى يومٍ بعينه (شاملًا).
  *
- *   node tools/license/keygen.mjs update release/diwan-1.1.0-setup.exe --version 1.1.0 [--notes ملف]
- *       ملفّ التحديث «أ+» بجانب المثبّت — «ما الجديد» من CHANGELOG.md إن لم يُعطَ ملف.
+ *   node tools/license/keygen.mjs update release/diwan-1.1.0-setup.exe --version 1.1.0 [--notes ملف] [--update-key مسار]
+ *       ملفّ التحديث «أ+» بجانب المثبّت — «ما الجديد» من CHANGELOG.md إن لم يُعطَ ملف. ويُوقَّع أيضًا بمفتاح التحديث
+ *       (البند ٣٣) إن كان في مجلّد المالك، أو من `--update-key` (PEM غير مشفّر، للاختبار).
  *
  *   node tools/license/keygen.mjs init --key مسار
  *       زوج مفاتيح للاختبار (غير مشفّر) في المسار المعطى. ومفتاح المالك صُنع مرّةً ولا يُصنع ثانيةً.
@@ -30,6 +31,7 @@ import {
   keyState,
   loadPrivateKey,
   loadPrivateKeyFile,
+  loadUpdateKey,
   normalizeDevice,
   writeUpdateFile
 } from '../keytool/core.mjs';
@@ -48,6 +50,12 @@ const fail = (msg) => {
 };
 
 const privateKey = () => (flag('key') ? loadPrivateKeyFile(flag('key')) : loadPrivateKey(OWNER_DIR, process.env.DIWAN_OWNER_PASSWORD));
+/** مفتاح التحديث (البند ٣٣): من `--update-key`، وإلا من مجلّد المالك إن صُنع — ومع `--key` وحده لا يُبحث في مجلّد المالك. */
+const updateKeys = () => {
+  if (flag('update-key')) return [loadPrivateKeyFile(flag('update-key'))];
+  if (flag('key') || !keyState(OWNER_DIR).update) return [];
+  return [loadUpdateKey(OWNER_DIR, process.env.DIWAN_OWNER_PASSWORD)];
+};
 
 async function main() {
   const [cmd, device] = args;
@@ -74,11 +82,12 @@ async function main() {
     const version = flag('version');
     const notes = flag('notes') ? (await import('node:fs')).readFileSync(flag('notes'), 'utf8') : changelogSection(join(ROOT, 'CHANGELOG.md'), version);
     const out = flag('out') ?? join(dirname(exe ?? '.'), `diwan-${version}.diwanupdate`);
-    const { manifest } = await writeUpdateFile({ exe, version, notes, privateKey: privateKey(), out });
-    console.log(`✓ ${out}\n  الإصدار ${version} — ${(manifest.size / 1024 / 1024).toFixed(1)} م.ب — SHA-256 ${manifest.sha256}`);
+    const extra = updateKeys();
+    const { manifest } = await writeUpdateFile({ exe, version, notes, privateKey: privateKey(), updateKeys: extra, out });
+    console.log(`✓ ${out}\n  الإصدار ${version} — ${(manifest.size / 1024 / 1024).toFixed(1)} م.ب — SHA-256 ${manifest.sha256}${extra.length ? ' — وبمفتاح التحديث' : ''}`);
   } else if (cmd === 'status') {
     const s = keyState(OWNER_DIR);
-    console.log(`مجلّد المالك: ${OWNER_DIR}\n  مشفّر: ${s.encrypted ? 'نعم' : 'لا'} — غير مشفّر: ${s.plain ? 'نعم (افتح الأداة المكتبية لتشفيره)' : 'لا'}`);
+    console.log(`مجلّد المالك: ${OWNER_DIR}\n  مشفّر: ${s.encrypted ? 'نعم' : 'لا'} — غير مشفّر: ${s.plain ? 'نعم (افتح الأداة المكتبية لتشفيره)' : 'لا'} — مفتاح التحديث: ${s.update ? 'نعم' : 'لا'}`);
   } else {
     console.log('الأوامر: issue · extend · update · status · init --key   — والمالك يستعمل «أداة مفاتيح ديوان»');
     process.exit(cmd ? 1 : 0);

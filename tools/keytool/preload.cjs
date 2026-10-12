@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('keytool', {
   copy: call('copy'),
   pickInstaller: call('pick-installer'),
   makeUpdate: call('make-update'),
+  createUpdateKey: call('create-update-key'),
   showFile: call('show-file'),
   changePassword: call('change-password'),
   openFolder: call('open-folder'),

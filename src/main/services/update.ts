@@ -35,23 +35,28 @@ export async function readUpdate(path: string, publicKeys: string | readonly str
   if (!head || !installer || head.size > 1 << 20) throw new Error('الملف ليس تحديثًا لديوان');
   mkdirSync(workDir, { recursive: true });
   const file = join(workDir, `update-${process.pid}-${Date.now()}.json`);
-  let parsed: { manifest: UpdateManifest; signature: string };
+  let parsed: { manifest: UpdateManifest; signature: string; signatures?: unknown };
   try {
     await extractEntry(path, head, file);
-    parsed = JSON.parse(readFileSync(file, 'utf8')) as { manifest: UpdateManifest; signature: string };
+    parsed = JSON.parse(readFileSync(file, 'utf8')) as { manifest: UpdateManifest; signature: string; signatures?: unknown };
   } catch {
     throw new Error('ملف التحديث معطوب');
   } finally {
     rmSync(file, { force: true });
   }
   const m = parsed?.manifest;
-  // بأيٍّ من مفاتيح التحديث (و١٠: `update|both`) — ومفتاحٌ عامٌّ تالف لا يُسقط الفحص بغيره.
+  // بأيٍّ من مفاتيح التحديث (و١٠: `update|both`) وأيٍّ من التوقيعات: `signature` تقرؤه الإصدارات كلّها، و`signatures`
+  // (البند ٣٣) بمفتاح التحديث — فملفٌّ واحد للقديم والجديد. ومفتاحٌ عامٌّ تالف أو توقيعٌ تالف لا يُسقط الفحص بغيره.
+  const signatures = [parsed?.signature, ...(Array.isArray(parsed?.signatures) ? parsed.signatures : [])].map((s) => String(s));
   let signed = false;
   for (const publicKey of typeof publicKeys === 'string' ? [publicKeys] : publicKeys) {
-    try {
-      signed = verify(null, Buffer.from(canonicalManifest(m), 'utf8'), createPublicKey(publicKey), Buffer.from(String(parsed.signature), 'base64url'));
-    } catch {
-      signed = false;
+    for (const signature of signatures) {
+      try {
+        signed = verify(null, Buffer.from(canonicalManifest(m), 'utf8'), createPublicKey(publicKey), Buffer.from(signature, 'base64url'));
+      } catch {
+        signed = false;
+      }
+      if (signed) break;
     }
     if (signed) break;
   }

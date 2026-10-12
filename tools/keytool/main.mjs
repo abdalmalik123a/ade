@@ -11,7 +11,7 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as core from './core.mjs';
-import { APP_PUBLIC_KEY } from './appKey.mjs';
+import { APP_PUBLIC_KEY, APP_UPDATE_KEY } from './appKey.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // عشر دقائق — والاختبار يقصّرها ولا يطيلها.
@@ -30,12 +30,15 @@ function ownerDir() {
 
 const dir = ownerDir();
 let key = null;
+/** مفتاح التحديث (البند ٣٣) — يُفكّ مع مفتاح التراخيص بالكلمة نفسها إن صُنع. */
+let updateKey = null;
 let idle = null;
 let failures = 0;
 let blockedUntil = 0;
 
 const lock = () => {
   key = null;
+  updateKey = null;
   if (idle) clearTimeout(idle);
   idle = null;
 };
@@ -68,29 +71,50 @@ function summary() {
   return { lifetime: core.countLifetime(dir), demo: rows.filter((r) => r.kind === core.DEMO_KIND).length, monthly: count('شهري'), yearly: count('سنوي'), total: rows.length, early: core.EARLY_LIFETIME };
 }
 
+/** مفتاح التحديث: أصُنع؟ وعامُّه، وأيعرفه البرنامج المبنيّة منه هذه الأداة؟ */
+function updateInfo() {
+  if (!updateKey) return { exists: false };
+  const publicKey = core.publicKeyPem(updateKey);
+  return { exists: true, publicKey, matches: Boolean(APP_UPDATE_KEY) && publicKey === APP_UPDATE_KEY.trim() };
+}
+
+/** بعد فتح القفل: المفتاحان بالكلمة نفسها. */
+function openKeys(password) {
+  key = core.loadPrivateKey(dir, password);
+  updateKey = core.keyState(dir).update ? core.loadUpdateKey(dir, password) : null;
+  touch();
+  return { matches: core.publicKeyPem(key) === APP_PUBLIC_KEY.trim(), update: updateInfo(), summary: summary() };
+}
+
 handle('state', () => ({ dir, ...core.keyState(dir), unlocked: Boolean(key) }));
 
 handle('create-password', (password, confirm) => {
   if (password !== confirm) throw new core.KeyToolError('الكلمتان لا تتطابقان');
   core.encryptExistingKey(dir, password);
-  key = core.loadPrivateKey(dir, password);
-  touch();
-  return { matches: core.publicKeyPem(key) === APP_PUBLIC_KEY.trim(), summary: summary() };
+  return openKeys(password);
 });
 
 handle('unlock', async (password) => {
   const wait = blockedUntil - Date.now();
   if (wait > 0) throw new core.KeyToolError(`محاولاتٌ خاطئة كثيرة — انتظر ${Math.ceil(wait / 1000)} ثانية`);
+  let opened;
   try {
-    key = core.loadPrivateKey(dir, password);
+    opened = openKeys(password);
   } catch (e) {
+    lock();
     failures++;
     if (failures >= 5) blockedUntil = Date.now() + 30_000;
     throw e;
   }
   failures = 0;
-  touch();
-  return { matches: core.publicKeyPem(key) === APP_PUBLIC_KEY.trim(), summary: summary() };
+  return opened;
+});
+
+handle('create-update-key', (password) => {
+  needKey();
+  core.createUpdateKey(dir, password);
+  updateKey = core.loadUpdateKey(dir, password);
+  return updateInfo();
 });
 
 handle('lock', () => lock());
@@ -126,8 +150,9 @@ handle('pick-installer', async () => {
 
 handle('make-update', async ({ exe, version, notes }) => {
   const out = join(dirname(exe), `diwan-${version}.diwanupdate`);
-  const r = await core.writeUpdateFile({ exe, version, notes, privateKey: needKey(), out });
-  return { out: r.out, size: r.manifest.size, sha256: r.manifest.sha256 };
+  // بمفتاح التراخيص (تقرؤه الإصدارات حتى 1.7.1) وبمفتاح التحديث إن صُنع (يقرؤه ما بعدها) — ملفٌّ واحد للكلّ.
+  const r = await core.writeUpdateFile({ exe, version, notes, privateKey: needKey(), updateKeys: updateKey ? [updateKey] : [], out });
+  return { out: r.out, size: r.manifest.size, sha256: r.manifest.sha256, withUpdateKey: Boolean(updateKey) };
 });
 
 handle('show-file', (path) => shell.showItemInFolder(path));
@@ -135,8 +160,7 @@ handle('show-file', (path) => shell.showItemInFolder(path));
 handle('change-password', (oldPassword, newPassword, confirm) => {
   if (newPassword !== confirm) throw new core.KeyToolError('الكلمتان الجديدتان لا تتطابقان');
   core.changePassword(dir, oldPassword, newPassword);
-  key = core.loadPrivateKey(dir, newPassword);
-  touch();
+  openKeys(newPassword);
 });
 
 handle('open-folder', () => shell.openPath(dir));
