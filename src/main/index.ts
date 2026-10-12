@@ -198,10 +198,11 @@ function createWindow(): void {
   });
 
   // تسجيل أخطاء الواجهة لسرعة التشخيص
-  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    console.log(`[RENDERER ${level}] ${message} (${sourceId}:${line})`);
+  // بتوقيع Electron الجديد (البند ٢٩): التفاصيل في الحدث نفسه، والمستوى كلمةٌ لا رقم — والوسائط المنفصلة مهجورة.
+  mainWindow.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+    console.log(`[RENDERER ${level}] ${message} (${sourceId}:${lineNumber})`);
     // أخطاء الواجهة في سجلّ الأخطاء أيضًا — فعطلٌ يصفه الموظف يُرى بسياقه.
-    if (level >= 3) logError('renderer', new Error(`${message} (${sourceId}:${line})`));
+    if (level === 'error') logError('renderer', new Error(`${message} (${sourceId}:${lineNumber})`));
   });
 
   const devUrl = rendererDevUrl();

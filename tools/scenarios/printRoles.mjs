@@ -4,7 +4,8 @@
  * لا ورق ولا طابعة: المِقْود يكتب كلّ طلب طباعةٍ في سجلّ (`DIWAN_TEST_PRINT_LOG`)، وطابعةٌ اسمها
  * «تتوقّف…» تقف مرّةً عند ورقتها الثالثة. فيُصدر الشبّاك دفعةً من ثلاثة أسماء على دورٍ له طابعتان:
  * أيُسأل «عادي أم ملوّن؟» مرّةً واحدة؟ أيقول «طُبعت ٢ من ٣» حين تقف، ويُكمل من الثالثة لا من
- * الأولى؟ وإلغاء السؤال لا يُصدر شيئًا، وإعادة الطبع من الأرشيف تذهب إلى طابعة الدور بأنماط الكتاب.
+ * الأولى؟ وإلغاء السؤال لا يُصدر شيئًا، وإعادة الطبع من الأرشيف تذهب إلى طابعة الدور بأنماط الكتاب — وأكثر من كتابٍ
+ * بلا طابعةٍ مختارة يُرفض عند القناة (المحادثة ٦، البند ٦).
  */
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -170,6 +171,15 @@ export default async function scenario(page, { profile }) {
   const reprinted = printed().filter((l) => l.printer === 'ليزر الأرشيف');
   ok('طابعةٌ واحدة للدور: إعادة الطبع تذهب إليها مباشرةً بلا سؤال', reprinted.length === 1 && reprinted[0].silent);
   ok('وبأنماط الكتاب المحفوظة معه', reprinted[0]?.style === true);
+
+  // ── أكثر من كتابٍ بلا طابعةٍ مختارة يُرفض عند القناة (المحادثة ٦، البند ٦): لا نافذة طباعةٍ لكلّ كتاب ──
+  const pair = db((d) => d.prepare('SELECT id FROM documents ORDER BY id LIMIT 2').all().map((r) => r.id));
+  const sentBefore = printed().length;
+  const bulkErr = await page.eval(`
+    try { await window.diwan.documents.reprint(${JSON.stringify(pair)}, 1, null); return 'no-error'; }
+    catch (e) { return String(e?.message ?? e); }
+  `);
+  ok('وأكثر من كتابٍ بلا طابعةٍ مختارة يُرفض ولا يُرسل شيئًا — لا نافذة طباعةٍ لكلّ كتاب', pair.length === 2 && bulkErr.includes('طابعةً مختارة') && printed().length === sentBefore);
 
   // ── خطٌّ لم يُحمَّل لا يُرسم بديله (٢٫٥) ─────────────────────────────
   // سجلّ الطباعة يتجاوز الرسم، وPDF يمرّ به: تُكسر روابط خطوط الأنماط المحفوظة فيُطلب PDF الكتاب.

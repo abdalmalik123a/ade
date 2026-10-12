@@ -30,57 +30,37 @@ const COLUMNS: Record<IndexName, string[]> = {
   attachments: ['doc_type', 'ocr_text']
 };
 
-/** الصفوف كما تُفهرس — مطبَّعةً — من جدولها. `id` المعطى يقصرها على صفّ. */
-const SOURCE: Record<IndexName, (db: Database, id?: number) => { id: number; cols: (string | null)[] }[]> = {
-  documents: (db, id) =>
-    (
-      db
-        .prepare(
-          `SELECT id, serial, doc_type AS docType, destination, purpose,
-                  TRIM(COALESCE(citizen_name, '') || ' ' || COALESCE(citizen_nid, '')) AS name, body_html AS body
-           FROM documents ${id === undefined ? '' : 'WHERE id = ?'}`
-        )
-        .all(...(id === undefined ? [] : [id])) as {
-        id: number;
-        serial: string;
-        docType: string | null;
-        destination: string | null;
-        purpose: string | null;
-        name: string;
-        body: string;
-      }[]
-    ).map((r) => ({ id: r.id, cols: [r.serial, r.docType, r.destination, r.purpose, r.name, htmlToText(r.body)] })),
-  citizens: (db, id) =>
-    (
-      db
-        .prepare(
-          `SELECT id, full_name, national_id, job_title, workplace, employee_code, phone FROM citizens
-           ${id === undefined ? '' : 'WHERE id = ?'}`
-        )
-        .all(...(id === undefined ? [] : [id])) as Record<string, string | null>[]
-    ).map((r) => ({
-      id: Number(r.id),
-      cols: [r.full_name, r.national_id, r.job_title, r.workplace, r.employee_code, r.phone].map((v) => v ?? null)
-    })),
-  templates: (db, id) =>
-    (
-      db
-        .prepare(
-          `SELECT id, code, title, subtitle, category, body_html FROM templates
-           WHERE is_active = 1 ${id === undefined ? '' : 'AND id = ?'}`
-        )
-        .all(...(id === undefined ? [] : [id])) as Record<string, string | null>[]
-    ).map((r) => ({
-      id: Number(r.id),
-      cols: [r.code, r.title, r.subtitle, r.category, htmlToText(r.body_html ?? '')]
-    })),
-  attachments: (db, id) =>
-    (
-      db
-        .prepare(`SELECT id, doc_type, ocr_text FROM attachments ${id === undefined ? '' : 'WHERE id = ?'}`)
-        .all(...(id === undefined ? [] : [id])) as { id: number; doc_type: string; ocr_text: string | null }[]
-    ).map((r) => ({ id: r.id, cols: [r.doc_type, r.ocr_text] }))
+type Row = Record<string, string | null>;
+
+/** الصفوف كما تُفهرس من جدولها: استعلامها، وشرطٌ دائم (النماذج النشطة وحدها)، وأعمدتها بترتيب `COLUMNS`. */
+const SOURCE: Record<IndexName, { sql: string; where?: string; cols: (r: Row) => (string | null)[] }> = {
+  documents: {
+    sql: `SELECT id, serial, doc_type AS docType, destination, purpose,
+                 TRIM(COALESCE(citizen_name, '') || ' ' || COALESCE(citizen_nid, '')) AS name, body_html AS body
+          FROM documents`,
+    cols: (r) => [r.serial, r.docType, r.destination, r.purpose, r.name, htmlToText(r.body ?? '')]
+  },
+  citizens: {
+    sql: 'SELECT id, full_name, national_id, job_title, workplace, employee_code, phone FROM citizens',
+    cols: (r) => [r.full_name, r.national_id, r.job_title, r.workplace, r.employee_code, r.phone].map((v) => v ?? null)
+  },
+  templates: {
+    sql: 'SELECT id, code, title, subtitle, category, body_html FROM templates',
+    where: 'is_active = 1',
+    cols: (r) => [r.code, r.title, r.subtitle, r.category, htmlToText(r.body_html ?? '')]
+  },
+  attachments: { sql: 'SELECT id, doc_type, ocr_text FROM attachments', cols: (r) => [r.doc_type, r.ocr_text] }
 };
+
+/** صفوف الفهرس بشرط: صفٌّ واحد (`id = ?`)، أو دفعةٌ بعد معرّف (`id > ?` مرتّبةً ومحدودة). */
+function sourceRows(db: Database, name: IndexName, cond: string, args: unknown[], tail = '') {
+  const src = SOURCE[name];
+  const where = [src.where, cond].filter(Boolean).join(' AND ');
+  return (db.prepare(`${src.sql} WHERE ${where}${tail}`).all(...args) as Row[]).map((r) => ({
+    id: Number(r.id),
+    cols: src.cols(r)
+  }));
+}
 
 const TABLE: Record<IndexName, string> = {
   documents: 'documents',
@@ -151,11 +131,20 @@ export function syncIndexes(db: Database): IndexName[] {
   return rebuilt;
 }
 
+/** صفوف إعادة البناء في كلّ دفعة — فلا يُحمَّل الجدول كلّه بمتونه في الذاكرة معًا (البند ٢٣: خمسون ألف كتاب). */
+export const REBUILD_BATCH = 500;
+
 export function rebuildIndex(db: Database, name: IndexName): void {
   db.transaction(() => {
     db.exec(`DELETE FROM ${fts(name)}`);
     const insert = insertStmt(db, name);
-    for (const r of SOURCE[name](db)) insert.run(r.id, ...r.cols.map(fold));
+    // دفعاتٌ بالمعرّف لا بـ`OFFSET`: كلّ دفعةٍ تبدأ بعد آخر صفٍّ في سابقتها، فلا يُعاد مسح ما قبلها.
+    for (let after = Number.MIN_SAFE_INTEGER; ; ) {
+      const rows = sourceRows(db, name, 'id > ?', [after, REBUILD_BATCH], ' ORDER BY id LIMIT ?');
+      for (const r of rows) insert.run(r.id, ...r.cols.map(fold));
+      if (rows.length < REBUILD_BATCH) break;
+      after = rows[rows.length - 1]!.id;
+    }
   })();
 }
 
@@ -176,7 +165,7 @@ function insertStmt(db: Database, name: IndexName) {
 export function indexRow(db: Database, name: IndexName, id: number): void {
   if (!prepareSearch(db)) return;
   try {
-    const rows = SOURCE[name](db, id);
+    const rows = sourceRows(db, name, 'id = ?', [id]);
     if (rows.length === 0) {
       db.prepare(`DELETE FROM ${fts(name)} WHERE rowid = ?`).run(id);
       return;
@@ -198,7 +187,8 @@ export function unindexRow(db: Database, name: IndexName, id: number): void {
 
 /**
  * معرّفات ما يطابق السؤال في فهرس — أو `null` إن لم يُستطع (فيُمسح بالطريق القديم).
- * بلا ترتيب: الجدول الأصلي يرتّب بما يعنيه (تاريخ الإصدار، آخر استعمال).
+ * الجدول الأصلي يرتّب بما يعنيه (تاريخ الإصدار، آخر استعمال)؛ وإن زادت المطابقات على الحدّ
+ * بقي **الأحدث** (البند ٢٢) — وكانت تُؤخذ بلا ترتيب فقد يسقط أحدثها.
  */
 export function matchIds(db: Database, name: IndexName, raw: string, limit = 2000): number[] | null {
   const q = toFtsQuery(raw);
@@ -206,10 +196,28 @@ export function matchIds(db: Database, name: IndexName, raw: string, limit = 200
   if (!prepareSearch(db)) return null;
   try {
     return (
-      db.prepare(`SELECT rowid AS id FROM ${fts(name)} WHERE ${fts(name)} MATCH ? LIMIT ?`).all(q, limit) as {
-        id: number;
-      }[]
+      db
+        .prepare(`SELECT rowid AS id FROM ${fts(name)} WHERE ${fts(name)} MATCH ? ORDER BY rowid DESC LIMIT ?`)
+        .all(q, limit) as { id: number }[]
     ).map((r) => r.id);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * المطابقة استعلامًا فرعيًّا بلا حدّ (البند ٢٢) — لسجلّ الصادر: يُضمّ إلى استعلامه فيرتّب ويقصر
+ * هو، فلا تسقط مطابقةٌ وإن كثرت ولا مع حصر التاريخ. و`null` إن لم يُستطع (فيُمسح بالطريق القديم).
+ */
+export function matchSql(db: Database, name: IndexName, raw: string): { sql: string; args: string[] } | null {
+  const q = toFtsQuery(raw);
+  if (!q) return { sql: 'SELECT NULL WHERE 0', args: [] };
+  if (!prepareSearch(db)) return null;
+  const sql = `SELECT rowid FROM ${fts(name)} WHERE ${fts(name)} MATCH ?`;
+  try {
+    // يُجرَّب السؤال هنا: سؤالٌ لا يقبله FTS5 يُسقط الاستعلام كلّه إن ضُمّ إليه.
+    db.prepare(`${sql} LIMIT 1`).all(q);
+    return { sql, args: [q] };
   } catch {
     return null;
   }

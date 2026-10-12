@@ -4,7 +4,7 @@ import { normalizeFold } from '@shared/arabic';
 import { canonicalNationalId } from '@shared/idChecks';
 import { LIST_LIMITS } from '@shared/limits';
 import { touchLetterhead } from './letterheads';
-import { digitsOf, indexRow, matchIds } from './searchIndex';
+import { digitsOf, indexRow, matchSql } from './searchIndex';
 import type {
   ArchiveCheck,
   ArchiveStats,
@@ -591,13 +591,15 @@ function legacySlots(html: string): string {
 
 export function verifyArchive(db: Database): ArchiveCheck {
   prepareDocuments(db);
+  // صفًّا صفًّا (`iterate`) لا الكلّ معًا (البند ٢٣): خمسون ألف كتابٍ بمتونها لا تُحمَّل في الذاكرة — يبقى من كلّ صفٍّ رقمه.
+  // ولا يُسأل الاتصال عن غيره أثناء المرور: البصمة والسلسلة حسابٌ لا قاعدة.
   const rows = db
     .prepare(
       `SELECT id, serial, serial_year AS year, serial_seq AS seq, body_html AS body, gregorian_date AS date,
               citizen_name AS name, destination, sha256, chain
        FROM documents ORDER BY id`
     )
-    .all() as {
+    .iterate() as IterableIterator<{
     id: number;
     serial: string;
     year: number;
@@ -608,10 +610,13 @@ export function verifyArchive(db: Database): ArchiveCheck {
     destination: string | null;
     sha256: string;
     chain: string | null;
-  }[];
+  }>;
 
   const problems: ArchiveCheck['problems'] = [];
+  const years = new Map<number, { prefix: string; seqs: Set<number> }>();
   let prev = CHAIN_GENESIS;
+  let checked = 0;
+  let head: string | null = null;
   for (const r of rows) {
     const hash = (body: string) =>
       fingerprint({
@@ -626,37 +631,31 @@ export function verifyArchive(db: Database): ArchiveCheck {
     }
     const link = chainLink(prev, r.sha256, r.serial);
     if (r.chain !== link) {
-      problems.push({
-        id: r.id,
-        serial: r.serial,
-        kind: 'chain',
-        text: 'السلسلة مكسورة عنده: كتابٌ قبله حُذف أو أُقحم، أو بُدّلت بصمته'
-      });
+      problems.push({ id: r.id, serial: r.serial, kind: 'chain', text: 'السلسلة مكسورة عنده: كتابٌ قبله حُذف أو أُقحم، أو بُدّلت بصمته' });
     }
     // ما بعد الكسر يُقاس بحلقته المقيَّدة — فيُذكر موضع الكسر مرّةً لا في كل كتابٍ بعده.
     prev = r.chain ?? link;
+    checked++;
+    head = r.chain ?? null;
+    // وبادئة السنة من أوّل كتابٍ فيها — لاسم الرقم الغائب.
+    if (!years.has(r.year)) years.set(r.year, { prefix: r.serial.split('/')[0] ?? '', seqs: new Set() });
+    years.get(r.year)!.seqs.add(r.seq);
   }
 
   // الأرقام: لكل سنةٍ من ١ إلى أكبرها، بلا ثقب.
-  const years = new Map<number, Set<number>>();
-  for (const r of rows) {
-    if (!years.has(r.year)) years.set(r.year, new Set());
-    years.get(r.year)!.add(r.seq);
-  }
-  const prefix = (year: number) => rows.find((r) => r.year === year)?.serial.split('/')[0] ?? '';
-  for (const [year, seqs] of years) {
+  for (const [year, { prefix, seqs }] of years) {
     // بحلقةٍ لا بـ`Math.max(...)`: النشر يضع كلّ رقمٍ وسيطًا على المكدّس، فيفيض فوق
     // نحو ١٢٥ ألف كتابٍ في السنة (التدقيق المستقل).
     let top = 0;
     for (const n of seqs) if (n > top) top = n;
     for (let n = 1; n <= top; n++) {
       if (!seqs.has(n)) {
-        problems.push({ id: null, serial: `${prefix(year)}/${year}/${n}`, kind: 'gap', text: 'رقمٌ غائب من سجلّ الصادر' });
+        problems.push({ id: null, serial: `${prefix}/${year}/${n}`, kind: 'gap', text: 'رقمٌ غائب من سجلّ الصادر' });
       }
     }
   }
 
-  return { checked: rows.length, problems, head: rows.length ? (rows[rows.length - 1]!.chain ?? null) : null };
+  return { checked, problems, head };
 }
 
 /** سجلّ التدقيق (د٤): الأحدث أولًا، ولقيد الكتاب رقمُ صادره. */
@@ -807,17 +806,16 @@ export function listDocuments(db: Database, opts: ListOptions = {}): DocumentRow
   } else if (q) {
     // الفهرس أولًا (بدايات الكلمات في المتن والاسم والجهة)، ورقم الصادر ووسطُ الرقم
     // الوطني مسحًا في أعمدتهما القصيرة. وإن تعذّر الفهرس فالمسح القديم كلّه.
-    const ids = matchIds(db, 'documents', q);
-    if (ids === null) {
+    // والمطابقة استعلامٌ فرعيّ بلا حدّ (البند ٢٢): يرتّب هذا الاستعلام ويقصر، فلا يسقط الأحدث ولا ما في التاريخ المحصور.
+    const match = matchSql(db, 'documents', q);
+    if (match === null) {
       where.push('(d.search_fold LIKE ? OR d.serial LIKE ?)');
       args.push(`%${normalizeFold(q)}%`, `%${q}%`);
     } else {
       const digits = digitsOf(q);
-      where.push(
-        `(d.id IN (SELECT value FROM json_each(?)) OR d.serial LIKE ? OR (? IS NOT NULL AND d.citizen_nid LIKE ?))`
-      );
+      where.push(`(d.id IN (${match.sql}) OR d.serial LIKE ? OR (? IS NOT NULL AND d.citizen_nid LIKE ?))`);
       const nid = digits.length >= 3 ? `%${digits}%` : null;
-      args.push(JSON.stringify(ids), `%${q}%`, nid, nid);
+      args.push(...match.args, `%${q}%`, nid, nid);
     }
   }
 

@@ -1,6 +1,6 @@
 {
-  "src/main/ipc/documents.ts": 475,
-  "src/main/services/documents.ts": 914,
+  "src/main/ipc/documents.ts": 473,
+  "src/main/services/documents.ts": 912,
   "src/main/services/docxDoc.ts": 919,
   "src/main/services/excelDoc.ts": 690,
   "src/main/services/import.ts": 553,
@@ -26,7 +26,6 @@
   "src/renderer/src/screens/SettingsScreen.tsx": 575,
   "src/renderer/src/screens/TemplateDesigner.tsx": 851,
   "src/renderer/src/screens/TemplatesScreen.tsx": 1264,
-  "src/shared/api.ts": 1238,
   "src/shared/blanks.ts": 658,
   "src/shared/deskew.ts": 467,
   "src/shared/doc.ts": 892,

@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { OfficeSettings } from '../src/shared/api';
 import { OFFICE_SETTING_KEYS, SETTING_KEYS_COMPLETE, assertSettingsPatch } from '../src/shared/settingsKeys';
-import { keyList } from '../src/main/services/license';
+import { keyList, storedLicense } from '../src/main/services/license';
 
 /** إعداداتٌ كاملة: حقلٌ يُضاف إلى `OfficeSettings` يجعل هذا الكائن ناقصًا فلا يُبنى الاختبار حتى يُضاف هنا وفي القائمة. */
 const FULL: OfficeSettings = {
@@ -68,5 +68,19 @@ describe('قائمة مفاتيح التفعيل (و٣)', () => {
     expect(keyList(null)).toEqual([]);
     expect(keyList(42)).toEqual([]);
     expect(keyList(['DW1-a', 7, null, '', '  ', { k: 1 }])).toEqual(['DW1-a']);
+  });
+});
+
+describe('ملفّ الترخيص التالف لا يُسقط الحال (المحادثة ٦، البند ٢٦)', () => {
+  it('ليس كائنًا: لا شيء منه — ولا خطأ', () => {
+    for (const raw of [null, [], 'نصّ', 5, true]) expect(storedLicense(raw)).toEqual({ keys: [] });
+  });
+  it('وقيمٌ بغير نوعها تُترك، والصحيح يُؤخذ', () => {
+    expect(storedLicense({ trialStart: 5, lastSeen: 'ليس تاريخًا', keys: 'DWN-1' })).toEqual({ trialStart: undefined, lastSeen: undefined, keys: [] });
+    expect(storedLicense({ trialStart: '2026-10-01T00:00:00.000Z', lastSeen: '2026-10-12T00:00:00.000Z', keys: ['DWN-1', 7] })).toEqual({
+      trialStart: '2026-10-01T00:00:00.000Z',
+      lastSeen: '2026-10-12T00:00:00.000Z',
+      keys: ['DWN-1']
+    });
   });
 });

@@ -7,7 +7,7 @@ import { freshDb } from './helpers';
 import { issueDocument, listDocuments, prepareDocuments } from '../src/main/services/documents';
 import { deleteCitizen, ensureSearchColumn, listCitizens, saveCitizen } from '../src/main/services/citizens';
 import { deleteTemplate, saveTemplate } from '../src/main/services/templates';
-import { matchIds, prepareSearch, syncIndexes } from '../src/main/services/searchIndex';
+import { matchIds, prepareSearch, REBUILD_BATCH, rebuildIndex, syncIndexes } from '../src/main/services/searchIndex';
 import type { CitizenInput, IssueInput } from '../src/shared/api';
 
 const issue = (name: string, body: string, patch: Partial<IssueInput> = {}): IssueInput => ({
@@ -155,5 +155,44 @@ describe('فهرس المواطنين والنماذج', () => {
     expect(matchIds(db, 'templates', 'تربيه')).toEqual([t.id]);
     deleteTemplate(db, t.id);
     expect(matchIds(db, 'templates', 'استمرار')).toEqual([]);
+  });
+});
+
+describe('أرشيفٌ كثير المطابقات (المحادثة ٦، البندان ٢٢ و٢٣)', () => {
+  // ٢٠٥٠ كتابًا بالكلمة نفسها — أكثر من حدّ المطابقة (٢٠٠٠) ومن أربع دفعاتٍ لإعادة البناء. تُدرج مباشرةً: المقيس البحث لا الإصدار.
+  const crowded = () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    const add = db.prepare(
+      `INSERT INTO documents (serial, serial_year, serial_seq, citizen_name, body_html, gregorian_date, sha256, issued_at)
+       VALUES (?, 2026, ?, ?, '<p>تأييد استمرار بالخدمة</p>', 'x', 'x', ?)`
+    );
+    db.transaction(() => {
+      for (let i = 1; i <= 2050; i++) add.run(`م/2026/${i}`, i, `مواطن ${i}`, i === 1 ? '2024-03-01 09:00:00' : '2026-09-01 09:00:00');
+    })();
+    expect(prepareSearch(db)).toBe(true);
+    return db;
+  };
+
+  it('إعادة البناء دفعاتٌ لا الجدول كلّه معًا — ولا يسقط منها صفّ', () => {
+    const db = crowded();
+    expect(2050).toBeGreaterThan(REBUILD_BATCH * 4);
+    db.exec('DELETE FROM documents_fts');
+    rebuildIndex(db, 'documents');
+    expect((db.prepare('SELECT COUNT(*) AS n FROM documents_fts').get() as { n: number }).n).toBe(2050);
+    expect(syncIndexes(db)).toEqual([]);
+    expect(matchIds(db, 'documents', 'مواطن', 5000)).toHaveLength(2050);
+  });
+
+  it('وإن زادت المطابقات على الحدّ بقي الأحدث', () => {
+    const db = crowded();
+    expect(matchIds(db, 'documents', 'تأييد', 3)).toEqual([2050, 2049, 2048]);
+    expect(matchIds(db, 'documents', 'تأييد')).toHaveLength(2000);
+  });
+
+  it('وسجلّ الصادر بلا حدٍّ للمطابقة: أحدثها أوّلًا، وأقدمها يُجد بحصر تاريخه', () => {
+    const db = crowded();
+    expect(listDocuments(db, { query: 'تأييد', limit: 2 }).map((d) => d.serial)).toEqual(['م/2026/2050', 'م/2026/2049']);
+    expect(listDocuments(db, { query: 'تأييد', from: '2024-01-01', to: '2024-12-31' }).map((d) => d.serial)).toEqual(['م/2026/1']);
   });
 });

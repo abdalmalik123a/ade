@@ -144,6 +144,18 @@ export function keyList(raw: unknown): string[] {
   return Array.isArray(value) ? value.filter((k): k is string => typeof k === 'string' && k.trim() !== '') : [];
 }
 
+/**
+ * ملفّ الترخيص (`diwan-license.json`) مقروءًا بأنواعه (المحادثة ٦، البند ٢٦): وما فسد منه — ليس كائنًا (`null` أو قائمة أو نصّ)،
+ * أو تاريخٌ ليس تاريخًا، أو مفاتيح ليست قائمة نصوص — يُترك ولا يُسقط حال الترخيص. كان `null` في الملفّ يرمي عند أوّل حقلٍ يُقرأ
+ * فيتوقّف «التفعيل» وما يمرّ به من طباعةٍ وحفظ.
+ */
+export function storedLicense(raw: unknown): { trialStart?: string; lastSeen?: string; keys: string[] } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { keys: [] };
+  const r = raw as Record<string, unknown>;
+  const date = (v: unknown) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : undefined);
+  return { trialStart: date(r.trialStart), lastSeen: date(r.lastSeen), keys: keyList(r.keys) };
+}
+
 export type LicenseState =
   | { status: 'activated'; office: string | null; issued: string }
   | { status: 'subscribed'; plan: SubscriptionPlan; daysLeft: number; lastDay: string; office: string | null; issued: string }

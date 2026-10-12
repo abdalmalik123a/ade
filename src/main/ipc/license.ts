@@ -20,7 +20,7 @@ import { app, ipcMain } from 'electron';
 import { now } from '../clock';
 import { dataDir, getDb } from '../db';
 import { keysFor } from '../license/ownerKey';
-import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, type LicensePayload, type LicenseState } from '../services/license';
+import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, storedLicense, type LicensePayload, type LicenseState } from '../services/license';
 import { logAudit } from '../services/documents';
 import type { LicenseStatus } from '@shared/api';
 import { DEVELOPER } from '@shared/brand';
@@ -59,9 +59,10 @@ type Stored = { trialStart?: string; lastSeen?: string; keys?: string[] };
 const fileOf = () => join(dataDir(), 'diwan-license.json');
 const REG = 'HKCU\\Software\\Diwan';
 
+/** وما فسد من الملفّ (`null`، أو قيمٌ بغير نوعها) يُترك لا يُسقط الحال (`storedLicense`). */
 function readFileStore(): Stored {
   try {
-    return JSON.parse(readFileSync(fileOf(), 'utf8')) as Stored;
+    return storedLicense(JSON.parse(readFileSync(fileOf(), 'utf8')) as unknown);
   } catch {
     return {};
   }

@@ -167,11 +167,9 @@ export function registerDocumentIpc(): void {
     async (e, ids: number[], copies: number, printer?: string | null): Promise<{ printed: number; failed: number; voided: number }> => {
       const db = getDb();
       const target = printer ?? null;
-      const operator = (
-        db.prepare("SELECT value FROM settings WHERE key = 'operatorName'").get() as
-          | { value: string }
-          | undefined
-      )?.value;
+      // بلا طابعةٍ مختارة تُفتح نافذة طباعةٍ لكلّ كتاب (البند ٦) — والشاشات تسأل عنها مرّةً للمهمّة (`choosePrinter`).
+      if (!target && ids.length > 1) throw new Error('طباعة أكثر من كتابٍ تحتاج طابعةً مختارة');
+      const operator = (db.prepare("SELECT value FROM settings WHERE key = 'operatorName'").get() as { value: string } | undefined)?.value;
 
       let printed = 0;
       let failed = 0;
