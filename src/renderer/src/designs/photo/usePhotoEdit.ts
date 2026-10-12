@@ -1,12 +1,14 @@
 /**
  * «حسّن الصورة» (DESIGNS.md ٢٫٢): الصورة بحدّ العمل (`workPixels` كالصور الشخصية) ← تعديلاتٌ تُرى فورًا على معاينةٍ مصغَّرة ←
  * «استعمل» يرسمها بمقاسها كاملًا ويحفظها في المخزن (`files:storeImage`) فتحلّ محلّ صورة العنصر، والتراجع يعيدها.
+ * و«رمّم» (البند ٤٠، `lib/useRepair.ts`) يملأ ما تمسحه الفرشاة من جواره في الأصل نفسه — قبل الهندسة والضوء.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { autoEnhance, NEUTRAL } from '@shared/portraitEnhance';
 import { isEdited, NO_EDIT, type PhotoEdit } from '@shared/photoEdit';
 import { loadImage, workPixels } from '../../lib/portraitCanvas';
 import { encodeEdit, renderEdit, renderPreview } from './photoCanvas';
+import { useRepair } from '../../lib/useRepair';
 
 export function usePhotoEdit(src: string) {
   const [edit, setEdit] = useState<PhotoEdit>(NO_EDIT);
@@ -15,6 +17,17 @@ export function usePhotoEdit(src: string) {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<HTMLCanvasElement | null>(null);
   const source = useRef<{ canvas: HTMLCanvasElement; w: number; h: number; pixels: Uint8ClampedArray } | null>(null);
+  /** ما تغيّر في الأصل بالترميم يُعاد إلى لوحته، والمعاينة تُرسم ثانيةً. */
+  const [repaired, setRepaired] = useState(0);
+  const repair = useRepair({
+    target: () => (source.current ? { pixels: source.current.pixels, width: source.current.w, height: source.current.h } : null),
+    changed: (r) => {
+      const s = source.current;
+      if (!s) return;
+      s.canvas.getContext('2d')!.putImageData(new ImageData(s.pixels as Uint8ClampedArray<ArrayBuffer>, s.w, s.h), 0, 0, r.x, r.y, r.w, r.h);
+      setRepaired((n) => n + 1);
+    }
+  });
 
   useEffect(() => {
     let alive = true;
@@ -39,7 +52,7 @@ export function usePhotoEdit(src: string) {
     if (!ready || !s) return;
     const id = requestAnimationFrame(() => setPreview(renderPreview(s.canvas, s.w, s.h, edit)));
     return () => cancelAnimationFrame(id);
-  }, [ready, edit]);
+  }, [ready, edit, repaired]);
 
   const patch = useCallback((p: Partial<PhotoEdit>) => setEdit((e) => ({ ...e, ...p })), []);
   const light = useCallback((p: Partial<PhotoEdit['enhance']>) => setEdit((e) => ({ ...e, enhance: { ...e.enhance, ...p } })), []);
@@ -48,13 +61,17 @@ export function usePhotoEdit(src: string) {
     const s = source.current;
     if (s) setEdit((e) => ({ ...e, enhance: autoEnhance(s.pixels, null, s.w, s.h) }));
   }, []);
-  const reset = useCallback(() => setEdit(NO_EDIT), []);
+  const reset = useCallback(() => {
+    setEdit(NO_EDIT);
+    repair.undoAll();
+  }, [repair.undoAll]);
+  const edited = isEdited(edit) || repair.applied > 0;
   const resetLight = useCallback(() => setEdit((e) => ({ ...e, enhance: NEUTRAL, saturation: 0, smooth: 0 })), []);
 
   /** الصورة المعدَّلة في المخزن — ومسارها؛ و`null` إن لم يتغيّر شيء أو تعذّر. */
   const save = useCallback(async (): Promise<string | null> => {
     const s = source.current;
-    if (!s || !isEdited(edit)) return null;
+    if (!s || !edited) return null;
     setSaving(true);
     try {
       const bytes = await encodeEdit(renderEdit(s.canvas, s.w, s.h, edit));
@@ -64,7 +81,7 @@ export function usePhotoEdit(src: string) {
     } finally {
       setSaving(false);
     }
-  }, [edit]);
+  }, [edit, edited]);
 
-  return { edit, patch, light, auto, reset, resetLight, ready, saving, error, preview, size: source.current ? { w: source.current.w, h: source.current.h } : null, save };
+  return { edit, patch, light, auto, reset, resetLight, ready, saving, error, preview, size: source.current ? { w: source.current.w, h: source.current.h } : null, save, repair, edited };
 }

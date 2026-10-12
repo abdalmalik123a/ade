@@ -1,9 +1,10 @@
 /**
  * رسم الصورة الشخصية (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PhotosScreen` كما هو: الشخص بلونه المحسّن وشفافيّته، والمشهد في
- * الإطار بخلفيّته وقاطه وقصّه، وحصر المركز في الحالة.
+ * الإطار بخلفيّته وقاطه وقصّه، وحصر المركز في الحالة. وتحت الذقن في فتحة القاط الجلد وحده (البند ٣٩، `@shared/portraitSkin`).
  */
 import { useCallback, useRef, useEffect } from 'react';
 import { keepAbove, neckLine, type Landmarks } from '@shared/portraitMask';
+import { neckSkin, skinAt, skinSample, type SkinMask } from '@shared/portraitSkin';
 import { type Scene, drawScene, type Work } from '../../lib/portraitCanvas';
 import { applyEnhance, type Enhance } from '@shared/portraitEnhance';
 import type { Size, Crop } from '@shared/photoSheet';
@@ -38,6 +39,9 @@ export function usePhotoCanvas(
     setCrop
   } = ctx;
 
+  /** قناع الجلد تحت الذقن (يُضرب في الشفافية والقاط ملبوس) — يُحسب مرّةً لكلّ قناعٍ ومعالم، لا مع كلّ سحبةٍ للقاط. */
+  const skin = useRef<{ key: string; mask: SkinMask | null }>({ key: '', mask: null });
+
   /** الشخص بلونه المحسّن وشفافيّته في لوحة العمل — كلّها أو مستطيلٌ منها (أثر الفرشاة). */
   const rebuildSubject = useCallback((rect?: { x: number; y: number; w: number; h: number }) => {
     const w = work.current;
@@ -60,6 +64,7 @@ export function usePhotoCanvas(
     const d = img.data;
     const a = maskOn.current && cut.current ? cut.current.alpha : null;
     const under = a ? line.current : null;
+    const neck = under ? skin.current.mask : null;
     const f = feather.current;
     for (let y = y0; y < y1; y++) {
       const plain = !under || y < under.lo - f;
@@ -69,7 +74,7 @@ export function usePhotoCanvas(
         d[o] = t[i * 4]!;
         d[o + 1] = t[i * 4 + 1]!;
         d[o + 2] = t[i * 4 + 2]!;
-        d[o + 3] = a ? (plain ? a[i]! : a[i]! * keepAbove(under!.line, x, y, f)) : 255;
+        d[o + 3] = a ? (plain ? a[i]! : a[i]! * keepAbove(under!.line, x, y, f) * skinAt(neck, x, y)) : 255;
       }
     }
     c.getContext('2d')!.putImageData(img, x0, y0);
@@ -131,6 +136,13 @@ export function usePhotoCanvas(
         if (v > hi) hi = v;
       }
       line.current = { line: l, lo, hi };
+      // الجلد وحده في الفتحة: عيّنته من الوجه، وإلى عمق الفتحة أيًّا كان موضع القاط (ضعفا الرقبة ونصف تحت الذقن).
+      const key = lm && cut.current ? `${cutVersion}|${lm.chin}|${lm.neckCenterX}|${lm.neckWidth}` : '';
+      if (skin.current.key !== key) {
+        const c = cut.current;
+        const model = c && lm ? skinSample(c.pixels, c.alpha, w.width, w.height, lm) : null;
+        skin.current = { key, mask: model && lm && neck ? neckSkin(c!.pixels, w.width, w.height, lm, model, lm.chin + lm.neckWidth * 2.5, neck.half) : null };
+      }
     } else line.current = null;
     const now = line.current;
     if (whole || !now) rebuildSubject();

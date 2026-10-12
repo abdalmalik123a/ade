@@ -1,11 +1,13 @@
 /**
  * «حسّن الصورة» لصورةٍ في التصميم (DESIGNS.md ٢٫٢): تدويرٌ وقلبٌ واستقامة، وقصٌّ حرٌّ أو بنسبة (مربّع، ٤:٣، ٣:٤، ١٦:٩،
  * ومثل إطار العنصر)، وإضاءةٌ وتباينٌ وظلالٌ ودفءٌ وتشبّعٌ وتنعيمٌ وضجيج — تُرى فورًا، ثم «استعمل الصورة».
+ * و«رمّم» (البند ٤٠): فرشاةٌ تُمسح على شائبةٍ أو شيءٍ صغير فيُملأ مكانه من جواره بلونه وملمسه.
  */
 import { useEffect, useRef, useState } from 'react';
-import { cropForRatio, FULL, isEdited } from '@shared/photoEdit';
+import { cropForRatio, FULL } from '@shared/photoEdit';
 import CropOverlay from './CropOverlay';
-import { straightFrame } from './photoCanvas';
+import RepairStroke from '../../components/RepairStroke';
+import { straightFrame, toSource } from './photoCanvas';
 import { usePhotoEdit } from './usePhotoEdit';
 import { useEscape } from '../../kit/useEscape';
 
@@ -23,6 +25,10 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
   const { edit } = p;
   const [ratio, setRatio] = useState<number | null>(null);
   const view = useRef<HTMLCanvasElement | null>(null);
+  const [repairOn, setRepairOn] = useState(false);
+  const [brush, setBrush] = useState(14);
+  const [stroke, setStroke] = useState<{ x: number; y: number }[] | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const c = view.current;
@@ -42,6 +48,18 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
     setRatio(null);
     p.patch({ quarter: ((edit.quarter + by) % 4) as 0 | 1 | 2 | 3, crop: FULL });
   };
+  /** موضع الفأرة على المعاينة ← بكسل الأصل (عكس التدوير والقلب والاستقامة)، ونسبة بكسل الأصل إلى بكسل الشاشة. */
+  const toSrc = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const screen = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const src = toSource(p.size!.w, p.size!.h, edit, (screen.x / r.width) * frame.w, (screen.y / r.height) * frame.h);
+    return { src, k: frame.w / r.width, screen };
+  };
+  const endStroke = () => {
+    if (!p.repair.painting()) return;
+    setStroke(null);
+    p.repair.end();
+  };
   const slider = (label: string, act: string, value: number, min: number, max: number, set: (v: number) => void) => (
     <label className="flex items-center gap-space-sm">
       <span className="w-16 font-label-sm text-label-sm text-on-surface-variant">{label}</span>
@@ -55,7 +73,9 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
       <div className="w-full max-w-5xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">حسّن الصورة</h2>
-          <p className="font-label-md text-label-md text-on-surface-variant">{p.error ?? 'ما تراه هنا هو ما يُحفظ — والأصل باقٍ: التراجع يعيده'}</p>
+          <p className="font-label-md text-label-md text-on-surface-variant">
+            {p.error ?? (repairOn ? 'امسح على شائبةٍ أو شيءٍ صغير فيُملأ مكانه من جواره — و«تراجع» يعيده' : 'ما تراه هنا هو ما يُحفظ — والأصل باقٍ: التراجع يعيده')}
+          </p>
         </div>
 
         <div className="flex-1 min-h-0 flex overflow-hidden">
@@ -64,6 +84,29 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
               <div className="relative">
                 <canvas ref={view} className="block max-w-full max-h-[64vh]" data-photo-preview="" />
                 <CropOverlay crop={edit.crop} frame={frame} ratio={ratio} onChange={(crop) => p.patch({ crop })} />
+                {repairOn && (
+                  <div
+                    className="absolute inset-0 cursor-none"
+                    data-repair-layer=""
+                    onMouseDown={(e) => {
+                      const { src, k, screen } = toSrc(e);
+                      p.repair.begin(src, brush * k);
+                      setStroke([screen]);
+                    }}
+                    onMouseLeave={() => (endStroke(), setCursor(null))}
+                    onMouseMove={(e) => {
+                      const { src, k, screen } = toSrc(e);
+                      setCursor(screen);
+                      if (!p.repair.painting() || !(e.buttons & 1)) return;
+                      p.repair.extend(src, brush * k);
+                      setStroke((s) => (s ? [...s, screen] : [screen]));
+                    }}
+                    onMouseUp={endStroke}
+                  >
+                    <RepairStroke points={stroke} radius={brush} />
+                    {cursor && <div className="absolute pointer-events-none rounded-full border-2 border-amber-500" style={{ left: cursor.x - brush, top: cursor.y - brush, width: brush * 2, height: brush * 2 }} />}
+                  </div>
+                )}
               </div>
             ) : (
               <span className="material-symbols-outlined text-[48px] text-on-surface-variant animate-spin">progress_activity</span>
@@ -118,6 +161,28 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
               {slider('التنعيم', 'photo-smooth', edit.smooth, 0, 1, (smooth) => p.patch({ smooth }))}
               {slider('الضجيج', 'photo-denoise', edit.enhance.denoise, 0, 1, (denoise) => p.light({ denoise }))}
             </section>
+
+            <section className="space-y-space-xs">
+              <div className="flex items-center justify-between">
+                <h3 className="font-label-md text-label-md font-semibold text-on-surface">رمّم</h3>
+                <button className={BTN} data-act="photo-repair-undo" disabled={!p.repair.canUndo} type="button" onClick={p.repair.undo}>
+                  <span className="material-symbols-outlined text-[18px]">undo</span>
+                  تراجع
+                </button>
+              </div>
+              <button
+                className={`${BTN} w-full justify-center ${repairOn ? '!bg-primary-container !text-on-primary' : ''}`}
+                data-act="photo-repair"
+                disabled={!p.ready}
+                title="امسح على شائبةٍ أو شيءٍ صغير فيُملأ مكانه من جواره بلونه وملمسه"
+                type="button"
+                onClick={() => setRepairOn((v) => !v)}
+              >
+                <span className="material-symbols-outlined text-[18px]">healing</span>
+                {repairOn ? 'الفرشاة مختارة — امسح على المعاينة' : 'فرشاة الترميم'}
+              </button>
+              {repairOn && slider('الفرشاة', 'photo-repair-brush', brush, 3, 60, setBrush)}
+            </section>
           </aside>
         </div>
 
@@ -132,7 +197,7 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
           <button
             className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="photo-done"
-            disabled={!p.ready || p.saving || !isEdited(edit)}
+            disabled={!p.ready || p.saving || !p.edited}
             type="button"
             onClick={async () => {
               const path = await p.save();

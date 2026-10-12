@@ -8,8 +8,10 @@ import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
 import { SUIT_CATEGORIES, BUILTIN_SUITS, type SuitCategory, type CustomSuit } from '@shared/suits';
 import { toIndic } from '@shared/arabic';
 import type { Landmarks } from '@shared/portraitMask';
-import type { Bg, Worn } from './photoShared';
+import type { Bg, Tool, Worn } from './photoShared';
 import type { Work } from '../../lib/portraitCanvas';
+import { ColorEraseHint } from '../../components/ColorEraseBar';
+import type { ColorErase } from '../../lib/useColorErase';
 
 type Props = {
   step: (n: number, title: string, extra?: React.ReactNode, later?: boolean) => JSX.Element;
@@ -40,9 +42,11 @@ type Props = {
   thumbs: Record<string, string>;
   deleteSuit: (id: string) => Promise<void>;
   setWorn: Dispatch<SetStateAction<Worn | null>>;
+  erase: ColorErase;
+  setTool: Dispatch<SetStateAction<Tool>>;
 };
 
-export default function PhotoAdjustSteps({ step, cutState, small, modelReady, removeBackground, customColor, chip, bg, setBg, setCustomColor, resetMask, work, setAutoLight, setEnhance, cut, autoLight, slider, enhance, light, importSuit, suitTab, setSuitTab, customSuits, worn, chooseSuit, thumbs, deleteSuit, setWorn }: Props) {
+export default function PhotoAdjustSteps({ step, cutState, small, modelReady, removeBackground, customColor, chip, bg, setBg, setCustomColor, resetMask, work, setAutoLight, setEnhance, cut, autoLight, slider, enhance, light, importSuit, suitTab, setSuitTab, customSuits, worn, chooseSuit, thumbs, deleteSuit, setWorn, erase, setTool }: Props) {
   return (
     <>
       {step(
@@ -91,12 +95,13 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
       </div>
       {cutState === 'done' && (
         <p className="font-label-sm text-label-sm text-on-surface-variant">
-          الشعر أو الكتف ناقص؟ «أبقِ» وامسح عليه؛ وبقايا خلفية؟ «امسح» —{' '}
+          الشعر أو الكتف ناقص؟ «أبقِ» وامسح عليه؛ وبقايا خلفية؟ «امسح»، أو «امسح لونًا» واضغط عليها —{' '}
           <button className="underline" data-act="reset-mask" type="button" onClick={resetMask}>
             أعِد القناع
           </button>
         </p>
       )}
+      {cutState === 'done' && <ColorEraseHint erase={erase} onAccept={() => setTool('color')} />}
 
       {step(
         3,

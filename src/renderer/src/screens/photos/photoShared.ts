@@ -15,7 +15,8 @@ export const CUSTOM_ID = 'custom';
 export const LOW_DPI = 300;
 
 export type Bg = PhotoBackground | { kind: 'original' };
-export type Tool = 'move' | 'suit' | BrushMode;
+/** `color`: «امسح لونًا» (البند ٣٨) — ضغطةٌ على لونٍ تزيله؛ و`repair`: «رمّم» (البند ٤٠) — تحت الذقن وحده. */
+export type Tool = 'move' | 'suit' | BrushMode | 'color' | 'repair';
 export type Worn = { suit: Suit; at: SuitTransform; base: SuitTransform };
 
 /** الإطار على الشاشة بنسبة المقاس — والعريض يُحدّ عرضه. */

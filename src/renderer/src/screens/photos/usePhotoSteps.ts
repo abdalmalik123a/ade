@@ -1,10 +1,12 @@
 /**
  * خطوات الصورة الشخصية (تقسيم الشاشة بعد ١٫٧٫٠) — منقولةٌ من `PhotosScreen` كما هي: الفتح واللصق (وما جاء من «الملفّات» مرّةً
- * بمفتاحه)، وإزالة الخلفية على الجهاز، والمقاس من القوالب، والقاط ولبسه واستيراده.
+ * بمفتاحه)، وإزالة الخلفية على الجهاز، والمقاس من القوالب، والقاط ولبسه واستيراده — ويرتفع إلى الذقن إن ظهرت فوقه ملابس
+ * الزبون (البند ٣٩، `@shared/portraitSkin`).
  */
 import { useRef, useEffect } from 'react';
 import { type Landmarks, landmarks, autoCrop, fitSuit, rowWidths } from '@shared/portraitMask';
 import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
+import { clothesTop, raiseSuit, skinSample } from '@shared/portraitSkin';
 import { errorText } from '../../lib/errors';
 import { workPixels, loadImage, dataUrlOf, loadSuit, fallbackPlace, type Work, type Suit } from '../../lib/portraitCanvas';
 import { CENTER, type Crop, type Size } from '@shared/photoSheet';
@@ -192,8 +194,11 @@ export function usePhotoSteps(
         s = await loadSuit(key, url);
         suitCache.current.set(key, s);
       }
-      const alpha = cut.current?.alpha;
-      const base = l && alpha ? fitSuit(s.anchor, s.rows, rowWidths(alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
+      const c = cut.current;
+      const fitted = l && c ? fitSuit(s.anchor, s.rows, rowWidths(c.alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
+      // ياقة الزبون أو كنزته ظاهرةٌ بين ذقنه والقاط: يرتفع القاط حتى يغطّيها، والذقن حدّه.
+      const skin = l && c ? skinSample(c.pixels, c.alpha, w.width, w.height, l) : null;
+      const base = l && c && skin ? raiseSuit(fitted, clothesTop(c.pixels, c.alpha, w.width, l, skin, fitted.y), l.chin) : fitted;
       setWorn({ suit: s, at: base, base });
       setTool('suit');
       if (bg.kind === 'original') setBg({ kind: 'white' });

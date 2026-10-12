@@ -142,15 +142,11 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     lm, natural, tool, cutState, suitCache, bg, setCustomSuits, setSuitTab, worn
   });
 
-  // ── السحب والفرشاة ─────────────────────────────────────────────────────
-
-  // ── السحب والفرشاة — `photos/usePhotoBrush.ts` ──
-  const { resetMask, onUp, onMove, onDown, onWheel } = usePhotoBrush({
+  // ── السحب والفرشاة، و«امسح لونًا» — `photos/usePhotoBrush.ts` ──
+  const { resetMask, onUp, onMove, onDown, onWheel, erase, repair } = usePhotoBrush({
     frameEl, frame, natural, crop, work, cut, brush, rebuildSubject, draw, drag, tool, worn, setCursor, box, setCrop, setWorn,
-    setLm, setBrush
+    setLm, setBrush, setCutVersion, cutState, say, lm
   });
-
-  // ── الإخراج ───────────────────────────────────────────────────────────
 
   // ── الإخراج: الطباعة والمراجعة وPDF والصورة وللرفع وفي ملفّ الزبون — `photos/usePhotoOutput.ts` ──
   const { send, openReview, saveImage, linkCitizen, saveUpload, pages, pdf, print } = usePhotoOutput({
@@ -209,7 +205,9 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     { key: 'move', label: 'الصورة', icon: 'open_with', on: true },
     { key: 'suit', label: 'القاط', icon: 'checkroom', on: Boolean(worn) },
     { key: 'keep', label: 'أبقِ', icon: 'brush', on: cutState === 'done' },
-    { key: 'remove', label: 'امسح', icon: 'ink_eraser', on: cutState === 'done' }
+    { key: 'remove', label: 'امسح', icon: 'ink_eraser', on: cutState === 'done' },
+    { key: 'color', label: 'امسح لونًا', icon: 'format_color_reset', on: cutState === 'done' },
+    { key: 'repair', label: 'رمّم', icon: 'healing', on: cutState === 'done' && Boolean(lm) }
   ];
 
   return (
@@ -281,6 +279,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               thumbs={thumbs}
               deleteSuit={deleteSuit}
               setWorn={setWorn}
+              erase={erase}
+              setTool={setTool}
             />
           )}
 
@@ -349,6 +349,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
           view={view}
           preset={preset}
           cursor={cursor}
+          erase={erase}
+          repair={repair}
         />
       </div>
 

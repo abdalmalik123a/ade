@@ -1,11 +1,14 @@
 /**
  * السحب والفرشاة في الصورة الشخصية (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PhotosScreen` كما هو: نقل الصورة والقاط وتكبيرهما،
- * و«أبقِ» و«امسح» بالفرشاة على القناع، وإعادته.
+ * و«أبقِ» و«امسح» بالفرشاة على القناع، وإعادته — و«امسح لونًا» (البند ٣٨، `lib/useColorErase.ts`): ضغطةٌ على لونٍ تزيله،
+ * و«رمّم» (البند ٤٠، `lib/useRepair.ts`): ما يُمسح عليه تحت الذقن يُملأ من جواره — والوجه لا يُمسّ.
  */
-import type { Dispatch, SetStateAction, MutableRefObject, RefObject } from 'react';
+import { useState, type Dispatch, type SetStateAction, type MutableRefObject, type RefObject } from 'react';
 import { cropBox, type Size, type Crop } from '@shared/photoSheet';
 import { type BrushMode, strokeAlpha, landmarks, type SuitTransform, type Landmarks } from '@shared/portraitMask';
 import type { Work } from '../../lib/portraitCanvas';
+import { useColorErase } from '../../lib/useColorErase';
+import { useRepair } from '../../lib/useRepair';
 import type { Tool, Worn } from './photoShared';
 
 export function usePhotoBrush(
@@ -28,12 +31,38 @@ export function usePhotoBrush(
     setWorn: Dispatch<SetStateAction<Worn | null>>;
     setLm: Dispatch<SetStateAction<Landmarks | null>>;
     setBrush: Dispatch<SetStateAction<number>>;
+    setCutVersion: Dispatch<SetStateAction<number>>;
+    cutState: 'none' | 'running' | 'done';
+    say: (text: string, warn?: boolean) => void;
+    lm: Landmarks | null;
   }
 ) {
   const {
     frameEl, frame, natural, crop, work, cut, brush, rebuildSubject, draw, drag, tool, worn, setCursor, box, setCrop, setWorn, setLm,
-    setBrush
+    setBrush, setCutVersion, cutState, say, lm
   } = ctx;
+
+  // «امسح لونًا»: ما تغيّر يعيد المعالم (جدارٌ بقي حول الكتف يوسّعها)، والحافّة تتغيّر ألوانها فيُعاد التحسين منها.
+  const erase = useColorErase({
+    target: () => (work.current && cut.current ? { pixels: cut.current.pixels, alpha: cut.current.alpha, width: work.current.width, height: work.current.height } : null),
+    changed: () => {
+      if (work.current && cut.current) setLm(landmarks(cut.current.alpha, work.current.width, work.current.height));
+      setCutVersion((v) => v + 1);
+    },
+    ready: cutState === 'done',
+    active: tool === 'color',
+    sides: 'portrait'
+  });
+
+  // «رمّم»: تحت الذقن وحده، ومن الشخص وحده (لا الخلفية القديمة) — والألوان تتغيّر فيُعاد التحسين وقناع الجلد منها.
+  const repair = useRepair({
+    target: () => (work.current && cut.current ? { pixels: cut.current.pixels, width: work.current.width, height: work.current.height } : null),
+    changed: () => setCutVersion((v) => v + 1),
+    allow: () => (cut.current ? Uint8Array.from(cut.current.alpha, (a) => (a >= 250 ? 1 : 0)) : undefined),
+    minY: () => lm?.chin ?? Infinity
+  });
+  /** أثر الفرشاة على الإطار وهي تمرّ. */
+  const [stroke, setStroke] = useState<{ x: number; y: number }[] | null>(null);
 
   const at = (e: React.MouseEvent) => {
     const r = frameEl.current!.getBoundingClientRect();
@@ -59,12 +88,21 @@ export function usePhotoBrush(
     e.preventDefault();
     const p = at(e);
     const img = toImage(p);
+    if (tool === 'color') {
+      if (cut.current && !erase.pick(img.x, img.y)) say('لا لون هنا يُمسح — اضغط على ما بقي من الخلفية في الصورة', true);
+      return;
+    }
+    if (tool === 'repair') {
+      if (!lm || !cut.current) return;
+      repair.begin(img, brush / img.k);
+      setStroke([p]);
+    }
     drag.current = { tool, x: e.clientX, y: e.clientY, crop, at: worn?.at ?? null, last: img };
     if ((tool === 'keep' || tool === 'remove') && cut.current) paint(img, img, img.k, tool);
   }
 
   function onMove(e: React.MouseEvent) {
-    if (tool === 'keep' || tool === 'remove') setCursor(frameEl.current ? at(e) : null);
+    if (tool === 'keep' || tool === 'remove' || tool === 'repair') setCursor(frameEl.current ? at(e) : null);
     const d = drag.current;
     if (!d || !box || !natural) return;
     const dx = e.clientX - d.x;
@@ -76,6 +114,11 @@ export function usePhotoBrush(
       const k = box.width / natural.w;
       const from = d.at;
       setWorn((s) => s && { ...s, at: { ...from, x: from.x + dx / k, y: from.y + dy / k } });
+    } else if (d.tool === 'repair' && repair.painting()) {
+      const p = at(e);
+      const img = toImage(p);
+      repair.extend(img, brush / img.k);
+      setStroke((s) => (s ? [...s, p] : [p]));
     } else if ((d.tool === 'keep' || d.tool === 'remove') && d.last) {
       const img = toImage(at(e));
       paint(d.last, img, img.k, d.tool);
@@ -86,6 +129,10 @@ export function usePhotoBrush(
   function onUp() {
     const d = drag.current;
     drag.current = null;
+    if (d?.tool === 'repair' && repair.painting()) {
+      setStroke(null);
+      if (!repair.end()) say('«رمّم» تحت الذقن وحده — الوجه لا يُمسّ', true);
+    }
     // بعد الفرشاة تُعاد المعالم: شعرةٌ أُبقيت أو ظلٌّ مُسح يغيّر قمّة الرأس أو الرقبة.
     if (d && (d.tool === 'keep' || d.tool === 'remove') && work.current && cut.current)
       setLm(landmarks(cut.current.alpha, work.current.width, work.current.height));
@@ -94,18 +141,24 @@ export function usePhotoBrush(
   function onWheel(e: React.WheelEvent) {
     if (tool === 'move') setCrop((c) => ({ ...c, zoom: Math.max(1, Math.min(6, c.zoom - e.deltaY * 0.0015)) }));
     else if (tool === 'suit') setWorn((s) => s && { ...s, at: { ...s.at, scale: Math.max(s.base.scale * 0.4, Math.min(s.base.scale * 2.5, s.at.scale * (1 - e.deltaY * 0.001))) } });
-    else setBrush((b) => Math.max(3, Math.min(80, b - e.deltaY * 0.03)));
+    else if (tool !== 'color') setBrush((b) => Math.max(3, Math.min(80, b - e.deltaY * 0.03)));
   }
 
   function resetMask() {
     const w = work.current;
     const c = cut.current;
     if (!w || !c) return;
+    erase.reset();
     c.alpha.set(c.model);
     setLm(landmarks(c.alpha, w.width, w.height));
     rebuildSubject();
     draw();
+    setCutVersion((v) => v + 1); // ألوان الحافّة كما خرجت من التفريغ — فيُعاد التحسين منها
   }
 
-  return { resetMask, onUp, onMove, onDown, onWheel };
+  /** حدّ «رمّم» على الإطار: الذقن. */
+  const shown = natural ? cropBox(frame, natural, crop) : null;
+  const lineY = lm && natural && shown ? shown.top + lm.chin * (shown.width / natural.w) : null;
+
+  return { resetMask, onUp, onMove, onDown, onWheel, erase, repair: { ...repair, stroke, lineY } };
 }

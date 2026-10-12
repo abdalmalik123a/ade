@@ -4,16 +4,19 @@
  * PNG شفّافة في المخزن (`files:storeImage`) تحلّ محلّ صورة العنصر، والتراجع يعيدها.
  *
  * وما كان شفّافًا في الأصل (شعارٌ PNG) يبقى شفّافًا: القناع يُضرب بشفافيّة الأصل. والألوان خارج الحافّة كما هي —
- * فما تعيده «أبقِ» يعود بلونه.
+ * فما تعيده «أبقِ» يعود بلونه. و«امسح لونًا» (البند ٣٨، `lib/useColorErase.ts`) لما عدّه النموذج من الشيء وهو خلفيّته
+ * (شعارٌ على بطاقةٍ بيضاء) — ويُقترح وحده إن بقيت حوافّ الصورة لونًا واحدًا.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { strokeAlpha, type BrushMode } from '@shared/portraitMask';
 import { loadImage, workPixels, type Work } from '../../lib/portraitCanvas';
+import { useColorErase } from '../../lib/useColorErase';
 
 export type CutoutPhase = 'loading' | 'running' | 'ready' | 'saving' | 'error';
 type Rect = { x: number; y: number; w: number; h: number };
 
-export function useCutout(src: string) {
+/** `colorActive`: أداة «امسح لونًا» مختارة — فمنزلقاتها تعيد آخر ضغطة. */
+export function useCutout(src: string, colorActive = false) {
   const [phase, setPhase] = useState<CutoutPhase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [ms, setMs] = useState(0);
@@ -65,6 +68,14 @@ export function useCutout(src: string) {
     };
   }, [src]);
 
+  const erase = useColorErase({
+    target: () => (work.current && cut.current ? { pixels: cut.current.pixels, alpha: cut.current.alpha, width: work.current.width, height: work.current.height } : null),
+    changed: (r) => draw(r),
+    ready: phase === 'ready',
+    active: colorActive,
+    sides: 'all'
+  });
+
   /** اللوحة حين تظهر: بمقاس الصورة العاملة، ثم الصورة كلّها. */
   const mount = useCallback(
     (el: HTMLCanvasElement | null) => {
@@ -90,9 +101,10 @@ export function useCutout(src: string) {
 
   /** «أعِد»: قناع النموذج كما خرج. */
   const reset = useCallback(() => {
+    erase.reset();
     cut.current?.alpha.set(cut.current.model);
     draw();
-  }, [draw]);
+  }, [draw, erase.reset]);
 
   /** الصورة الشفّافة في المخزن — ومسارها، أو `null` إن تعذّر. */
   const save = useCallback(async (): Promise<string | null> => {
@@ -108,5 +120,5 @@ export function useCutout(src: string) {
     return path;
   }, []);
 
-  return { phase, error, ms, size: work.current ? { w: work.current.width, h: work.current.height } : null, mount, paint, reset, save };
+  return { phase, error, ms, size: work.current ? { w: work.current.width, h: work.current.height } : null, mount, paint, reset, save, erase };
 }

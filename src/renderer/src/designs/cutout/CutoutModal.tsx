@@ -1,19 +1,21 @@
 /**
  * «أزل الخلفية» لصورةٍ في التصميم (DESIGNS.md ٢٫٣): المنتج أو الكوب أو الشعار يُفصل عن خلفيّته على الجهاز، فيظهر على
  * مربّعاتٍ رمادية (الشفافية)، و«أبقِ» لما نقص و«امسح» لما بقي من الخلفية — كما في «الصور الشخصية» — ثم «استعمل الصورة».
+ * و«امسح لونًا» (البند ٣٨): ضغطةٌ على لونٍ بقي (البطاقة البيضاء حول الشعار) تزيله، ويُقترح وحده إن بقيت حوافّ الصورة لونًا واحدًا.
  */
 import { useRef, useState } from 'react';
 import type { BrushMode } from '@shared/portraitMask';
 import { useCutout } from './useCutout';
 import { useEscape } from '../../kit/useEscape';
+import ColorEraseBar, { ColorEraseHint } from '../../components/ColorEraseBar';
 
 const CHECKER = 'repeating-conic-gradient(#d4d4d4 0% 25%, #f5f5f5 0% 50%) 50% / 20px 20px';
 const TOOL = 'h-9 px-space-sm rounded-lg flex items-center gap-1 font-label-md text-label-md transition-colors';
 
 export default function CutoutModal({ src, onClose, onDone }: { src: string; onClose: () => void; onDone: (src: string) => void }) {
   useEscape(onClose);
-  const c = useCutout(src);
-  const [tool, setTool] = useState<BrushMode>('remove');
+  const [tool, setTool] = useState<BrushMode | 'color'>('remove');
+  const c = useCutout(src, tool === 'color');
   const [brush, setBrush] = useState(18);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const last = useRef<{ x: number; y: number } | null>(null);
@@ -36,8 +38,15 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
               ? 'يُفصل الشيء عن خلفيّته على هذا الجهاز… ثوانٍ قليلة'
               : c.phase === 'error'
                 ? c.error
-                : `تمّ في ${(c.ms / 1000).toFixed(1)} ثانية — «أبقِ» وامسح على ما نقص، و«امسح» على ما بقي من الخلفية`}
+                : tool === 'color'
+                  ? 'اضغط على لونٍ بقي من الخلفية فيُمسح — والسماحية تضبط كم يُمسح معه، و«الصورة كلّها» لما بين الحروف'
+                  : `تمّ في ${(c.ms / 1000).toFixed(1)} ثانية — «أبقِ» وامسح على ما نقص، و«امسح» على ما بقي من الخلفية، أو «امسح لونًا»`}
           </p>
+          {ready && (
+            <div className="mt-space-xs">
+              <ColorEraseHint erase={c.erase} onAccept={() => setTool('color')} />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto p-space-md flex items-center justify-center bg-surface-container">
@@ -45,18 +54,19 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
             <div className="relative" style={{ background: CHECKER }}>
               <canvas
                 ref={c.mount}
-                className="block max-w-full max-h-[62vh] cursor-none"
+                className={`block max-w-full max-h-[62vh] ${tool === 'color' ? 'cursor-crosshair' : 'cursor-none'}`}
                 data-cutout-canvas
                 onMouseDown={(e) => {
                   if (!ready) return;
                   const { p, k } = at(e);
+                  if (tool === 'color') return void c.erase.pick(p.x, p.y);
                   last.current = p;
                   c.paint(p, p, brush * k, tool);
                 }}
                 onMouseMove={(e) => {
                   const { p, k, screen } = at(e);
                   setCursor(screen);
-                  if (!last.current || !(e.buttons & 1)) return;
+                  if (!last.current || !(e.buttons & 1) || tool === 'color') return;
                   c.paint(last.current, p, brush * k, tool);
                   last.current = p;
                 }}
@@ -66,7 +76,7 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
                   setCursor(null);
                 }}
               />
-              {cursor && (
+              {cursor && tool !== 'color' && (
                 <div
                   className={`pointer-events-none absolute rounded-full border-2 ${tool === 'keep' ? 'border-secondary' : 'border-error'}`}
                   style={{ left: cursor.x - brush, top: cursor.y - brush, width: brush * 2, height: brush * 2 }}
@@ -95,10 +105,25 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
               {m === 'keep' ? 'أبقِ' : 'امسح'}
             </button>
           ))}
-          <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-            حجم الفرشاة
-            <input className="w-28" data-act="cutout-brush" disabled={!ready} max={80} min={3} type="range" value={brush} onChange={(e) => setBrush(Number(e.target.value))} />
-          </label>
+          <button
+            className={`${TOOL} ${tool === 'color' ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface'}`}
+            data-cutout-tool="color"
+            disabled={!ready}
+            title="اضغط على لونٍ بقي من الخلفية فيُمسح"
+            type="button"
+            onClick={() => setTool('color')}
+          >
+            <span className="material-symbols-outlined text-[18px]">format_color_reset</span>
+            امسح لونًا
+          </button>
+          {tool === 'color' && ready ? (
+            <ColorEraseBar erase={c.erase} />
+          ) : (
+            <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+              حجم الفرشاة
+              <input className="w-28" data-act="cutout-brush" disabled={!ready} max={80} min={3} type="range" value={brush} onChange={(e) => setBrush(Number(e.target.value))} />
+            </label>
+          )}
           <button className={`${TOOL} bg-surface-container-high text-on-surface`} data-act="cutout-reset" disabled={!ready} title="القناع كما خرج من النموذج" type="button" onClick={c.reset}>
             <span className="material-symbols-outlined text-[18px]">restart_alt</span>
             أعِد

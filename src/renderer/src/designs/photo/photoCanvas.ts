@@ -1,7 +1,7 @@
 /**
  * «حسّن الصورة» على اللوحة (DESIGNS.md ٢٫٢): الهندسة رسمٌ واحد — ربع الدورة ثم القلب في إطارها ثم الاستقامة حول الوسط
  * مكبَّرةً بقدر ما يُخفي زواياها الفارغة (`straightenScale`) ثم القصّ — والضوء واللون بعدها على البكسلات (`applyColor`).
- * المعاينة بالرسم نفسه مصغَّرًا، فما يُرى هو ما يُحفظ.
+ * المعاينة بالرسم نفسه مصغَّرًا، فما يُرى هو ما يُحفظ. و`toSource` عكس الهندسة: موضعٌ في الإطار ← بكسلٌ في الأصل (لفرشاة «رمّم»).
  */
 import { applyColor, FULL, straightenScale, turned, type CropRect, type PhotoEdit } from '@shared/photoEdit';
 
@@ -17,6 +17,17 @@ export function straightFrame(sw: number, sh: number, edit: Pick<PhotoEdit, 'qua
   const t = turned(sw, sh, edit.quarter);
   const k = straightenScale(t.w, t.h, edit.straighten);
   return { w: t.w * k, h: t.h * k };
+}
+
+/** عكس الهندسة: نقطةٌ في الإطار المستقيم (قبل القصّ، ببكسلات الأصل) ← موضعها في الصورة الأصلية — فما تمسحه الفرشاة على
+ * معاينةٍ مدوَّرةٍ أو مقلوبة يقع على بكسله. */
+export function toSource(sw: number, sh: number, edit: Pick<PhotoEdit, 'quarter' | 'straighten' | 'flip'>, fx: number, fy: number): { x: number; y: number } {
+  const frame = straightFrame(sw, sh, edit);
+  const rot = (x: number, y: number, rad: number) => [x * Math.cos(rad) - y * Math.sin(rad), x * Math.sin(rad) + y * Math.cos(rad)] as const;
+  let [x, y] = rot(fx - frame.w / 2, fy - frame.h / 2, (-edit.straighten * Math.PI) / 180);
+  if (edit.flip) x = -x;
+  [x, y] = rot(x, y, (-edit.quarter * Math.PI) / 2);
+  return { x: x + sw / 2, y: y + sh / 2 };
 }
 
 /**
