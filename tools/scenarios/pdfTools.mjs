@@ -230,7 +230,10 @@ export default async function scenario(page, { shotsDir }) {
   await wait(300);
   await page.type('[data-pdf-split]', '1؛ 2-4');
   await click('[data-act="pdf-split-go"]');
-  await wait(4000);
+  // حتى يظهر الملفّان (ثلاثون ثانيةً أقصاها) — لا أربع ثوانٍ ثابتة: تحت حمل الفحص الشامل على المحزوم تأخّر القسم فلم يُرَ شيء
+  // (١٫٧٫٢: سقط مرّتين في الفحص، ونجح وحده ✓٢٧).
+  for (let i = 0; i < 60 && fresh().filter((f) => f.endsWith('.pdf')).length < 2; i++) await wait(500);
+  await wait(500);
   const parts = fresh().filter((f) => f.endsWith('.pdf')).sort();
   const sizes = [];
   for (const p of parts) sizes.push((await inspect(join(OUT, p))).length);
