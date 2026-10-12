@@ -15,47 +15,34 @@
  * تختلف ورقة المحرّر عن ورقة الشبّاك. ولا توقيع ولا ختم ولا رمز تحقّق: الجهة توقّع
  * وتختم بيدها. ورقم القيد للأرشيف وحده، و«العدد» على الكتاب ما أعطاه الزبون (§١).
  */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, TemplateSummary } from '@shared/api';
-import { formatGregorian, formatHijri } from '@shared/dates';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { IssueOutcome, OfficeSettings, TemplateSummary } from '@shared/api';
 import { normalizeFold } from '@shared/arabic';
-import { docText, emptyDoc, makeField, paragraph, type Doc, type DocField } from '@shared/doc';
-import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
-import type { CatalogField } from '@shared/letterFields';
-import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
-import { GENDER_KEY, docHasChoices, guessGender } from '@shared/gender';
+import { docText, type Doc } from '@shared/doc';
+import { emptyLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
-import { docSpelling } from '@shared/spelling';
-import { fieldHints } from '@shared/fieldHints';
-import { NO_REGISTRY, draftTitle, letterChecks, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
+import { NO_REGISTRY, draftTitle, type Registry } from '@shared/letterDraft';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import type { HeadChoice } from '../components/PageEditor';
 import type { EditorApi } from '../components/editorKit';
 import LetterheadView from '../components/LetterheadView';
-import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterSheet, { gapAfter } from '../components/LetterSheet';
 import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { describeRole } from '@shared/printRoles';
-import { AsTemplateDialog, IssueDialog, IssuedDialog, Modal, SaveLayoutDialog } from './EditorDialogs';
+import { AsTemplateDialog, IssueDialog, IssuedDialog, SaveLayoutDialog } from './EditorDialogs';
 import { CitizenPicker, FieldPicker } from './EditorPickers';
-import TemplateSection from './editor/TemplateSection';
-import RegistrySection from './editor/RegistrySection';
-import ValuesSection from './editor/ValuesSection';
-import ChecksSection from './editor/ChecksSection';
-import PrintBar from './editor/PrintBar';
 import SheetArea from './editor/SheetArea';
 import { useSheetMeasure } from './editor/useSheetMeasure';
 import { useEditorDraft } from './editor/useEditorDraft';
 import { useEditorOutput } from './editor/useEditorOutput';
-
-
-/** كتابٌ جديد: سطرٌ فارغ واحد — والبرنامج لا يزرع متنًا (المبدأ ١). */
-function blankLetter(): Doc {
-  const doc = emptyDoc();
-  doc.blocks = [paragraph([])];
-  return doc;
-}
+import { blankLetter } from './editor/shared';
+import { useEditorDocument } from './editor/useEditorDocument';
+import { useEditorValues } from './editor/useEditorValues';
+import { useEditorRegistry } from './editor/useEditorRegistry';
+import { useEditorChecks } from './editor/useEditorChecks';
+import EditorPanel from './editor/EditorPanel';
+import HeadDesignerModal from './editor/HeadDesignerModal';
 
 export type EditorHandle = {
   saveDraft: () => void;
@@ -129,283 +116,33 @@ function EditorScreen(
   /** الورقة كما جاءت من نموذجٍ أو مسودّةٍ — فما يختلف عنها كتبه الموظف بيده (ج٣). */
   const baseDoc = useRef<Doc | null>(null);
 
-  const setDoc = useCallback((next: Doc | ((d: Doc) => Doc)) => {
-    dirty.current = true;
-    setDocState(next);
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      const [s, lhs, tpls, cl] = await Promise.all([
-        window.diwan.settings.get(),
-        window.diwan.letterheads.list(),
-        window.diwan.templates.list(),
-        window.diwan.clips.list()
-      ]);
-      setSettings(s);
-      setLetterheads(lhs);
-      setTemplates(tpls);
-      setClips(cl);
-      // الترويسة الافتراضية لكتابٍ جديد — ما لم يأتِ الكتاب بترويسته.
-      if (templateId === null && draftId === null && documentId === null) {
-        const initial = lhs.find((x) => x.isDefault) ?? null;
-        if (initial) applyLetterhead(initial, true);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 5000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  // ── الترويسة ─────────────────────────────────────────────────────────
-  const letterhead = letterheads.find((x) => x.id === letterheadId) ?? null;
-
-  /** ترويسةٌ من المكتبة تُنسخ إلى الكتاب؛ وكتابٌ فارغٌ يأخذ هوامشها معها. */
-  /** `keepMargins`: نموذجٌ يُفتح بهوامشه المحفوظة — فلا تطمسها هوامش ترويسته. */
-  function applyLetterhead(found: Letterhead | null, blank = false, keepMargins = false) {
-    setLetterheadId(found?.id ?? null);
-    setLayoutDirty(false);
-    const next = found ? normalizeLayout(found.layout) : emptyLayout();
-    setLayout(next);
-    if (found && !keepMargins && (blank || !docText(doc).trim())) {
-      setDocState((d) => ({ ...d, pageSetup: { ...d.pageSetup, margins: { ...next.margins } } }));
-    }
-  }
-
-  async function storeLayout(name: string, asNew: boolean) {
-    const saved = await window.diwan.letterheads.save({
-      id: asNew ? null : letterheadId,
-      name: name.trim() || 'ترويسة بلا اسم',
-      authorityId: letterhead?.authorityId ?? null,
-      layout
-    });
-    setLetterheads(await window.diwan.letterheads.list());
-    setLetterheadId(saved.id);
-    setLayoutDirty(false);
-    setSaveLayoutOpen(false);
-    setToast(asNew ? `حُفظت الترويسة «${saved.name}» في المكتبة` : 'حُدّثت الترويسة المحفوظة');
-  }
-
-  // ── النموذج والمسودة والكتاب المكرَّر ─────────────────────────────────
-  /** نموذجٌ من المكتبة يُفتح بكتله كما حُفظ — جداوله وتنسيقه — لا ظلَّه النصّي. */
-  async function loadTemplate(id: number | null) {
-    setActiveTemplate(id);
-    if (id === null) return;
-    const [detail, tdoc] = await Promise.all([window.diwan.templates.get(id), window.diwan.templates.doc(id)]);
-    if (!detail) return;
-    const opened = tdoc ?? blankLetter();
-    baseDoc.current = opened;
-    setDoc(opened);
-    setDocType(detail.title);
-    if (detail.letterheadId) {
-      // القائمة تُجلب هنا لا من حالة الشاشة: تُنادى هذه الدالّة من أوّل تصيير وحالتها فارغة،
-      // فكان النموذج المربوط بترويسةٍ يُفتح بلا رأس الجهة (مراجعة ٧ ت١).
-      const lhs = await window.diwan.letterheads.list();
-      applyLetterhead(lhs.find((l) => l.id === detail.letterheadId) ?? null, false, true);
-    }
-    setToast(`فُتح النموذج «${detail.title}» — اكتب على الورقة واملأ قيمه من الجانب`);
-  }
-
-  useEffect(() => {
-    if (templateId !== null && letterheads !== undefined) void loadTemplate(templateId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId]);
-
-  /** ما حُفظ (مسودةً أو كتابًا صادرًا) يعود بورقته وقيمه وترويسته. */
-  function restore(raw: string, keepNumber: boolean) {
-    const saved = readSavedLetter(raw);
-    if (!saved) {
-      setError('تعذّرت قراءة الكتاب المحفوظ — فُتح فارغًا');
-      return;
-    }
-    baseDoc.current = saved.doc;
-    setDocState(saved.doc);
-    setValues(saved.values);
-    setRegistry(keepNumber ? saved.registry : { ...saved.registry, number: '' });
-    setDocType(saved.docType);
-    setOwner(saved.owner);
-    if (saved.layout) setLayout(saved.layout);
-  }
-
-  useEffect(() => {
-    if (draftId === null) return;
-    void window.diwan.drafts.list().then((rows) => {
-      const row = rows.find((d) => d.id === draftId);
-      if (!row) return;
-      setDraft(row.id);
-      setActiveTemplate(row.templateId);
-      setLinkedCitizen(row.citizenId);
-      restore(row.valuesJson, true);
-      dirty.current = false;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftId]);
-
-  /** «كرّره»: نسخةٌ تصدر برقمٍ جديد، والأصل في الأرشيف كما صدر. */
-  useEffect(() => {
-    if (documentId === null) return;
-    void window.diwan.documents.get(documentId).then((d: DocumentDetail | null) => {
-      if (!d) return;
-      setActiveTemplate(d.templateId);
-      setLinkedCitizen(d.citizenId);
-      restore(d.valuesJson, false);
-      setToast(`نسخة عن ${d.serial} — تصدر برقم قيدٍ جديد، والأصل كما صدر`);
-      dirty.current = true;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentId]);
+  // ── الوثيقة والترويسة، وفتح النموذج والمسودّة والكتاب المكرَّر — `editor/useEditorDocument.ts` ──
+  const { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout } = useEditorDocument({
+    dirty, setDocState, setSettings, setLetterheads, setTemplates, setClips, templateId, draftId, documentId, toast, setToast,
+    letterheads, letterheadId, setLetterheadId, setLayoutDirty, setLayout, doc, layout, setSaveLayoutOpen, setActiveTemplate,
+    baseDoc, setDocType, setError, setValues, setRegistry, setOwner, setDraft, setLinkedCitizen
+  });
 
   // ── القيم ────────────────────────────────────────────────────────────
-  const nameField = nameFieldOf(doc);
-  const ownerName = (nameField ? values[nameField.key] : owner)?.trim() ?? '';
-  const byRole = (role: DocField['role']) => {
-    const f = doc.fields.find((x) => x.role === role);
-    return f ? (values[f.key]?.trim() ?? '') : '';
-  };
-  const setValue = (key: string, value: string) => {
-    dirty.current = true;
-    setError(null);
-    setValues((prev) => ({ ...prev, [key]: value }));
-  };
-
-  /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه — وما كُتب باليد لا يُطمس. */
-  function fillFromCitizen(c: CitizenDetail) {
-    const citizen = c as unknown as Record<string, unknown>;
-    setLinkedCitizen(c.id);
-    setValues((prev) => {
-      const next = { ...prev };
-      for (const f of doc.fields) {
-        const raw = f.source ? citizen[f.source] : f.role === 'name' ? c.fullName : f.role === 'nationalId' ? c.nationalId : null;
-        if (typeof raw === 'string' && raw.trim() && !next[f.key]?.trim()) next[f.key] = raw;
-      }
-      return next;
-    });
-    if (!nameField) setOwner(c.fullName);
-    dirty.current = true;
-    setToast('استُوردت بيانات المواطن');
-  }
-
-  useEffect(() => {
-    if (citizenId === null) return;
-    void window.diwan.citizens.get(citizenId).then((c) => c && fillFromCitizen(c));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [citizenId, doc.fields.length]);
-
-  /**
-   * الاسم مكتوبٌ في الكتاب نفسه («…بأن السيدة زينب علي حسن…»): يُقترح لصاحب العلاقة بضغطة، فلا يُكتب مرّتين (البند ٩).
-   * بكاشف الاسم الذي يقترح خانة «الاسم» في المصمّم (`fieldHints`) — حين لا خانة للاسم على الورقة ولم يُكتب بعد. اقتراحٌ لا قرار.
-   */
-  const ownerHints = useMemo(
-    () => (nameField || owner.trim() ? [] : fieldHints(doc).flatMap((h) => (h.kind === 'name' ? [h.text] : [])).slice(0, 3)),
-    [doc, nameField, owner]
-  );
-  const takeOwner = (name: string) => {
-    dirty.current = true;
-    setError(null);
-    setOwner(name);
-  };
-
-  /** الجنس لـ«{الطالب|الطالبة}»: مقترحٌ من الاسم ما لم يختره الموظف، ويُقلب بضغطة. */
-  const needsGender = useMemo(() => docHasChoices(doc), [doc]);
-  useEffect(() => {
-    if (!needsGender || genderByHand || !ownerName) return;
-    const g = guessGender(ownerName, learned);
-    if (g && values[GENDER_KEY] !== g.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: g.gender }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGender, genderByHand, ownerName, learned]);
-
-  const keys = useMemo(() => doc.fields.map((f) => f.key), [doc.fields]);
-  /** القيم كما تُطبع: ما كُتب، وحقول «كتابةً» الفارغة من أرقامها. */
-  const effective = useMemo(() => derivedWords(values, keys), [values, keys]);
-  const shown = useMemo(() => (trial ? sampleValues(doc.fields, effective) : effective), [trial, doc.fields, effective]);
-
-  /** حقول التفقيط بصيغتها: المفتاح وسمٌ، والقيمة معه. */
-  const named = useMemo(
-    () => doc.fields.map((f) => ({ id: f.key, token: f.key.replace(/\s+/g, '_'), label: f.label, value: values[f.key] ?? '' })),
-    [doc.fields, values]
-  );
-  function writeWords(key: string) {
-    const field = named.find((n) => n.id === key);
-    if (!field) return;
-    const words = wordsForField(field, named);
-    if (!words) return;
-    const partner = amountWordsField(field, named);
-    if (partner) {
-      setValue(partner.id, words);
-      setToast(`كُتب «${words}» في «${partner.label}»`);
-    } else {
-      void window.diwan.ui.copyText(words);
-      setToast('لا حقلَ «كتابة» لهذا الرقم — نُسخت كلماته، فالصقها حيث تريد');
-    }
-  }
-
-  /** حقلٌ من كتالوج المعاملات: يُعرَّف ويُدرج في الورقة حيث وقف المؤشّر. */
-  function addCatalogField(c: CatalogField) {
-    let key = c.label;
-    for (let n = 2; doc.fields.some((f) => f.key === key); n++) key = `${c.label} ${n}`;
-    const f = makeField({ key, label: c.label, source: c.source ?? null, role: c.role ?? null, required: c.role === 'name', ...(c.date ? { type: 'date' as const } : {}) });
-    if (api.current) api.current.insertNewField(f);
-    else setDoc((d) => ({ ...d, fields: [...d.fields, f] }));
-    setFieldPickerOpen(false);
-    setToast(`أُدرج الحقل «${c.label}» في الورقة`);
-  }
+  // ── القيم: صاحب العلاقة والحقول والجنس والكتابة ومن ملفّ الزبون — `editor/useEditorValues.ts` ──
+  const { shown, effective, ownerName, needsGender, byRole, nameField, ownerHints, takeOwner, setValue, named, writeWords, fillFromCitizen, addCatalogField } = useEditorValues({
+    doc, values, owner, dirty, setError, setValues, setLinkedCitizen, setOwner, setToast, citizenId, genderByHand, learned, trial,
+    api, setDoc, setFieldPickerOpen
+  });
 
   // ── العدد والتاريخ ────────────────────────────────────────────────────
-  const setReg = (patch: Partial<Registry>) => {
-    dirty.current = true;
-    setRegistry((r) => ({ ...r, ...patch }));
-  };
-  const stampToday = () => {
-    const now = new Date();
-    setReg({ dateGreg: formatGregorian(now), dateHijri: formatHijri(now) });
-  };
-  /** حقول الترويسة التلقائية — والعدد ما أعطاه الزبون لا رقم المكتب (§١). */
-  const resolveHead = (text: string): string =>
-    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
-      const key = raw.trim();
-      if (key === 'رقم_الصادر') return registry.number;
-      if (key === 'التاريخ_الميلادي') return registry.dateGreg;
-      if (key === 'التاريخ_الهجري') return registry.dateHijri;
-      return shown[key] ?? shown[key.replace(/_/g, ' ')] ?? '';
-    });
-  /** وحقولها في الورقة التي تُطبع وتُصدَّر — بالقيم الحقيقية لا بما تعرضه المعاينة. */
-  const resolvePrinted = (text: string): string =>
-    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
-      const key = raw.trim();
-      if (key === 'رقم_الصادر') return registry.number;
-      if (key === 'التاريخ_الميلادي') return registry.dateGreg;
-      if (key === 'التاريخ_الهجري') return registry.dateHijri;
-      return effective[key] ?? effective[key.replace(/_/g, ' ')] ?? '';
-    });
-  const headLayout = isLayoutEmpty(layout) ? null : layout;
-  const regValues = { number: registry.number, date: registry.dateGreg };
+  // ── العدد والتاريخ وحقول الترويسة — `editor/useEditorRegistry.ts` ──
+  const { headLayout, resolvePrinted, regValues, resolveHead, setReg, stampToday } = useEditorRegistry({
+    dirty, setRegistry, registry, shown, effective, layout
+  });
 
   // ── القياس: ارتفاع الترويسة وعدد الصفحات، من الورقة التي تُطبع — `editor/useSheetMeasure.ts` ──
   const { measure } = useSheetMeasure({ printRef, doc, shown, layout, registry });
 
-  const spelling = useMemo(() => docSpelling(doc), [doc]);
-  const checks = useMemo(
-    () =>
-      letterChecks({
-        doc,
-        values: effective,
-        owner: ownerName,
-        spelling: spelling.length,
-        registryPrinted: asksLetterNumber(headLayout),
-        number: registry.number,
-        headRatio: measure.headRatio,
-        pages: measure.pages,
-        genderUnsure: needsGender && !genderByHand && ownerName && guessGender(ownerName, learned)?.sure === false
-          ? ownerName.trim().split(/\s+/)[0] ?? ownerName
-          : null
-      }),
-    [doc, effective, ownerName, spelling.length, headLayout, registry.number, measure, needsGender, genderByHand, learned]
-  );
-  const blocked = checks.some((c) => c.level === 'block');
+  // ── قبل الطبع: الإملاء وقائمة التحقّق — `editor/useEditorChecks.ts` ──
+  const { checks, spelling, blocked } = useEditorChecks({
+    doc, effective, ownerName, headLayout, registry, measure, needsGender, genderByHand, learned
+  });
 
   // ── المسودات ─────────────────────────────────────────────────────────
   const hasContent = Boolean(docText(doc).trim() || ownerName);
@@ -503,90 +240,55 @@ function EditorScreen(
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="editor">
       <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
         {/* ── اللوح: ما يُعمل عليه بالترتيب ─────────────────────────── */}
-        <aside className="w-[400px] shrink-0 h-full flex flex-col bg-surface-container-low" data-editor-panel="">
-          <div className="flex-1 min-h-0 overflow-y-auto p-space-md flex flex-col gap-space-md" data-editor-steps="">
-            {/* ١ — النموذج والترويسة */}
-            <TemplateSection
-              activeTemplate={activeTemplate}
-              switchTemplate={switchTemplate}
-              templates={templates}
-              letterheadId={letterheadId}
-              applyLetterhead={applyLetterhead}
-              letterheads={letterheads}
-              setDesignerOpen={setDesignerOpen}
-              layoutDirty={layoutDirty}
-              layout={layout}
-              setSaveLayoutOpen={setSaveLayoutOpen}
-              docType={docType}
-              dirty={dirty}
-              setDocType={setDocType}
-              doc={doc}
-              setDoc={setDoc}
-            />
-
-            {/* ٢ — العدد والتاريخ والصفحة */}
-            <RegistrySection
-              registry={registry}
-              setReg={setReg}
-              stampToday={stampToday}
-              doc={doc}
-              setDoc={setDoc}
-            />
-
-            {/* ٣ — القيم */}
-            <ValuesSection
-              setPickerOpen={setPickerOpen}
-              nameField={nameField}
-              owner={owner}
-              dirty={dirty}
-              setOwner={setOwner}
-              ownerHints={ownerHints}
-              takeOwner={takeOwner}
-              needsGender={needsGender}
-              values={values}
-              setGenderByHand={setGenderByHand}
-              setValue={setValue}
-              doc={doc}
-              setDoc={setDoc}
-              named={named}
-              api={api}
-              writeWords={writeWords}
-              setFieldPickerOpen={setFieldPickerOpen}
-            />
-
-            {/* ٤ — قبل الطبع */}
-            <ChecksSection
-              checks={checks}
-              ownerHints={ownerHints}
-              takeOwner={takeOwner}
-              setSpellOpen={setSpellOpen}
-              setGenderByHand={setGenderByHand}
-              setValue={setValue}
-              spellOpen={spellOpen}
-              spelling={spelling}
-              setDoc={setDoc}
-            />
-          </div>
-
-          {/*
-           * «اطبع» ظاهرٌ أبدًا (البند ٤، UI.md ٦): كان في آخر اللوح فيختفي تحت حافّة شاشة ١٣٦٦×٧٦٨، ويبقى «طباعة تجريبية» في
-           * أعلى الورقة — وهي لا تُحفظ في السجلّ، فيخرج كتابٌ بلا أثر. فصار «اطبع» في أسفل اللوح لا يمرّ مع ما فوقه، والتجريبية
-           * تحته أصغر ومكتوبٌ عليها ذلك. ورسائل الخطأ والنجاح معه: تُرى أينما وقف التمرير.
-           */}
-          <PrintBar
-            error={error}
-            setError={setError}
-            toast={toast}
-            busy={busy}
-            requestIssue={requestIssue}
-            blocked={blocked}
-            measure={measure}
-            printDraftSheet={printDraftSheet}
-            saving={saving}
-            savedAt={savedAt}
-            hasContent={hasContent}
-          />
-        </aside>
+        <EditorPanel
+          activeTemplate={activeTemplate}
+          switchTemplate={switchTemplate}
+          templates={templates}
+          letterheadId={letterheadId}
+          applyLetterhead={applyLetterhead}
+          letterheads={letterheads}
+          setDesignerOpen={setDesignerOpen}
+          layoutDirty={layoutDirty}
+          layout={layout}
+          setSaveLayoutOpen={setSaveLayoutOpen}
+          docType={docType}
+          dirty={dirty}
+          setDocType={setDocType}
+          doc={doc}
+          setDoc={setDoc}
+          registry={registry}
+          setReg={setReg}
+          stampToday={stampToday}
+          setPickerOpen={setPickerOpen}
+          nameField={nameField}
+          owner={owner}
+          setOwner={setOwner}
+          ownerHints={ownerHints}
+          takeOwner={takeOwner}
+          needsGender={needsGender}
+          values={values}
+          setGenderByHand={setGenderByHand}
+          setValue={setValue}
+          named={named}
+          api={api}
+          writeWords={writeWords}
+          setFieldPickerOpen={setFieldPickerOpen}
+          checks={checks}
+          setSpellOpen={setSpellOpen}
+          spellOpen={spellOpen}
+          spelling={spelling}
+          error={error}
+          setError={setError}
+          toast={toast}
+          busy={busy}
+          requestIssue={requestIssue}
+          blocked={blocked}
+          measure={measure}
+          printDraftSheet={printDraftSheet}
+          saving={saving}
+          savedAt={savedAt}
+          hasContent={hasContent}
+        />
 
         {/* ── الورقة ─────────────────────────────────────────────────── */}
         <SheetArea
@@ -636,25 +338,13 @@ function EditorScreen(
       {pickerOpen && <CitizenPicker onClose={() => setPickerOpen(false)} onPick={(c) => (fillFromCitizen(c), setPickerOpen(false))} />}
       {fieldPickerOpen && <FieldPicker existing={doc.fields.map((f) => f.label)} onClose={() => setFieldPickerOpen(false)} onPick={addCatalogField} />}
       {designerOpen && (
-        <Modal title="ترويسة هذا الكتاب" onClose={() => setDesignerOpen(false)}>
-          <div className="max-h-[70vh] overflow-y-auto">
-            <LetterheadDesigner
-              layout={layout}
-              onChange={(next) => {
-                setLayout(next);
-                setLayoutDirty(true);
-                dirty.current = true;
-              }}
-              showPageOptions
-            />
-          </div>
-          <div className="flex items-center justify-between pt-space-md">
-            <span className="font-label-sm text-label-sm text-on-surface-variant">التعديل يخصّ هذا الكتاب. لإبقائه لكتب أخرى احفظه في المكتبة.</span>
-            <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" type="button" onClick={() => setDesignerOpen(false)}>
-              تم
-            </button>
-          </div>
-        </Modal>
+        <HeadDesignerModal
+          setDesignerOpen={setDesignerOpen}
+          layout={layout}
+          setLayout={setLayout}
+          setLayoutDirty={setLayoutDirty}
+          dirty={dirty}
+        />
       )}
       {saveLayoutOpen && <SaveLayoutDialog current={letterhead} onClose={() => setSaveLayoutOpen(false)} onSave={(n, asNew) => void storeLayout(n, asNew)} />}
       {templateOpen && <AsTemplateDialog initial={docType} onClose={() => setTemplateOpen(false)} onSave={(t) => void saveAsTemplate(t)} />}
