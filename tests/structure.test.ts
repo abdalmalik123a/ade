@@ -132,7 +132,8 @@ describe('اختبار الهيكل (ز١)', () => {
   });
 
   it('٤ — القنوات متطابقة بين الجسر والعملية الرئيسة', () => {
-    const preload = SOURCES.find((s) => s.path === 'src/preload/index.ts')!.text;
+    // والجسر أبوابٌ في ملفّاتها (تقسيمه بعد ١٫٧٫٠) — فتُقرأ كلّها.
+    const preload = under('src/preload/').map((s) => s.text).join('\n');
     const main = under('src/main/').map((s) => s.text).join('\n');
     const set = (text: string, rx: RegExp) => new Set([...text.matchAll(rx)].map((m) => m[1]!));
     const invoked = set(preload, /\binvoke(?:<[^>]*>)?\(\s*'([^']+)'/g);
