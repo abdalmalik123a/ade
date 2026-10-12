@@ -1119,6 +1119,11 @@ tools/
   release.mjs             بعد npm run dist: الإصدار وقسمه في CHANGELOG، وSHA256SUMS.txt (npm run release)
   drive.mjs               يقود التطبيق المبني عبر CDP
   scenarios/              سيناريوهات الفحص — واحدٌ لكلّ باب (TESTING.md)
+  split/                  أدوات تقسيم الملفّات الكبيرة **حرفيًّا** (تقسيم الواجهة بعد ١٫٧٫٠) — الأنواع من مدقّق TypeScript لا باليد،
+                          وكلٌّ يتوقّف عند خطر: outline يُري بنية الملفّ ومراسي عرضه · render مقاطع العرض ← مكوّنات بالأسماء نفسها ·
+                          hook جملٌ ← خطّاف `useX(ctx)` في موضعها (ويتوقّف إن قُرئت قيمةٌ قبل تعريفها) · move تعريفات مستوى
+                          الوحدة ← ملفٌّ (أو يُضاف إلى مشترك) · prune يحذف ما لم يعد مستعملًا ويضمّ استيرادات الوحدة الواحدة.
+                          الطريقة: outline ← spec.json ← الأداة ← prune ← npm run typecheck ← السيناريوهات المتأثّرة
   mrz-fixture.mjs         يرسم ظهر بطاقةٍ مخترع لاختبار قارئه (tests/fixtures)
   psd-layers.mjs          طبقات ملف Photoshop صورًا PNG شفّافة — بقارئ البرنامج نفسه
   prepare-suits.py        القاط المدمج من مكتبة المالك: خلفيةٌ بيضاء تصير شفّافة، وبقعٌ وثقوب، وإطار الصدر (Pillow)
@@ -1326,29 +1331,47 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     service/              أجزاء الشبّاك، منقولةٌ منه كما هي (تقسيمه بعد ١٫٧٫٠) — والحال في الشاشة تمرّ إليها بأسمائها:
                           CounterPick «اختر»، وCounterFill «املأ»، وCounterReview «راجع» (مركّبةٌ دائمًا: منها تُؤخذ الأوراق)،
                           وDecisionBar شريط القرار، وCounterBars الخطوات و«نسخة عن…» وتقدّم الطباعة والرسالة العابرة،
-                          وtypes أنواعه المشتركة (Parked منها). وخطّافاته: useCounterLibrary النماذج والبحث والتصنيف، وuseSchoolFile
+                          وCounterDialogs نوافذه (الزبون والمدرسة وأسماء الدمج والجنس وواتساب والمستمسكات)، وtypes أنواعه المشتركة
+                          (Parked وخصائص الشاشة و«كرّره» منها). وخطّافاته: useCounterLibrary النماذج والبحث والتصنيف، وuseSchoolFile
                           «هات المدرسة»، وuseNewCitizen حفظ الزبون الجديد، وuseParked المعلّقة، وuseIssue الإصدار والدمج،
-                          وusePrintRun طباعة ما صدر ورقةً ورقة
+                          وusePrintRun طباعة ما صدر ورقةً ورقة، وuseCounterError الخطأ الباقي، وuseCounterFields الحقول والجنس،
+                          وuseFillLoader تحميل المختارات، وuseCitizenFill «هات الزبون»، وuseFillDerived صاحب العلاقة والناقص ورأس
+                          الورقة وأسماء الدمج، وuseAfterIssue ما خرج الآن، وuseCustomerReturn الزبون عائدًا من أداة، وuseCounterChecks
+                          الإملاء وما يمنع الإصدار
     EditorScreen.tsx      المحرّر ومعاينة A4: حال الكتاب وقيمه وترويسته، وربط أجزائه — ومنطقه وعرضه في editor/
     editor/               أجزاء المحرّر، منقولةٌ منه كما هي (تقسيمه بعد ١٫٧٫٠): أقسام اللوح TemplateSection وRegistrySection
                           وValuesSection وChecksSection (وpanelUi صندوقها وعنوانها)، وPrintBar «اطبع» الظاهر أبدًا (البند ٤)،
-                          وSheetArea الورقة وأدواتها؛ وخطّافاته useSheetMeasure القياس، وuseEditorDraft المسودة، وuseEditorOutput
-                          الإخراج والإصدار
+                          وSheetArea الورقة وأدواتها، وEditorPanel اللوح كلّه، وHeadDesignerModal «ترويسة هذا الكتاب» في نافذة، وshared الكتاب الفارغ؛
+                          وخطّافاته useSheetMeasure القياس، وuseEditorDraft المسودة، وuseEditorOutput الإخراج والإصدار،
+                          وuseEditorDocument الوثيقة وترويستها ومصدرها، وuseEditorValues القيم وصاحب العلاقة، وuseEditorRegistry العدد والتاريخ،
+                          وuseEditorChecks الإملاء وما يمنع
     EditorDialogs.tsx     نوافذ محرّر الكتاب: «اطبع الكتاب» و«صدر الكتاب» وحفظ الترويسة و«اجعله نموذجًا»
     EditorPickers.tsx     لوح المحرّر: البحث والاستبدال، و«هات الزبون»، و«أضف حقلًا إلى الكتاب»
-    TemplatesScreen.tsx   مكتبة النماذج والمسودات
-    TemplateDesigner.tsx  مصمّم النماذج
-    ArchiveScreen.tsx     «الصادر» في السجلّ: الكتب والبحث فيها (ArchiveHits.tsx نتائج البحث الشامل)
+    TemplatesScreen.tsx   مكتبة النماذج والمسودات — وأجزاؤها في templates/
+    templates/            أجزاء المكتبة (تقسيمها بعد ١٫٧٫٠): LibraryHeader وLibraryFilters وTemplateGrid (TemplateCard وMiniSheet
+                          وChip) وLibraryEmpty وLibraryFooter، وPreviewModal وPacksModal وImportedLetterhead، وuseTemplateImports
+                          الاستيراد والتصدير، وshared
+    TemplateDesigner.tsx  مصمّم النماذج — وأجزاؤه في templateDesigner/
+    templateDesigner/     أجزاء المصمّم (تقسيمه بعد ١٫٧٫٠): DesignerHeader وTemplateFields وWatermarkSection وPagesSection
+                          وDesignerFooter، وuseSheetHead رأس الورقة، وshared
+    ArchiveScreen.tsx     «الصادر» في السجلّ: الكتب والبحث فيها (ArchiveHits.tsx نتائج البحث الشامل) — وأجزاؤه في archive/
+    archive/              أجزاء الأرشيف (تقسيمه بعد ١٫٧٫٠): ArchiveToolbar المدّة والبحث والأوامر، وSearchOthers ما ليس كتابًا،
+                          وDocumentInspect تدقيق الكتاب وإبطاله، وDocumentsTable الجدول، وshared الأعمدة والمدد
     CitizensScreen.tsx    «الأشخاص» في الزبائن: ملفّاتهم ومستمسكاتهم (CitizenBits.tsx الشريحة وزرّ الأيقونة) — وأجزاؤه في citizens/
     citizens/             أجزاء الزبائن (تقسيمها بعد ١٫٧٫٠): CitizensHeader وCitizensStats وCitizenFile (وفيه AttachmentVault
                           وCitizenDocuments) وCitizenDirectory وAttachmentPreview وOcrPanel، وuseCitizenActions، وshared
     CitizenForm.tsx       نموذج ملف المواطن بخاناته
-    OrdersScreen.tsx      الطلبات بحالاتها (OrderCard.tsx بطاقة الطلب ولون موعده)
-    ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»
-    LetterheadScreen.tsx  الترويسات والشعارات والكليشات
+    OrdersScreen.tsx      الطلبات بحالاتها (OrderCard.tsx بطاقة الطلب ولون موعده) — ونافذة الطلب في orders/OrderDialog
+                          (تقسيمها بعد ١٫٧٫٠، ومعها shared)
+    ClientsScreen.tsx     الجهات — وملفّ المدرسة إن فُعّل «ملفّ المدارس»؛ وأجزاؤها في clients/ (تقسيمها بعد ١٫٧٫٠): ClientsList
+                          القائمة، وClientSchoolFile ملفّ المدرسة، وClientOrders طلباتها، وshared المسودّة ولون الشعار
+    LetterheadScreen.tsx  الترويسات والشعارات والكليشات — وأجزاؤها في letterhead/ (تقسيمها بعد ١٫٧٫٠): LetterheadTab
+                          وClipsTab وLetterheadPreview، وshared
     FontsScreen.tsx       «المكتبة ← الخطوط»: المحزوم والمستورد، واستيراد ملفٍّ، وخطوط Windows بضغطة
     ElementsScreen.tsx    «المكتبة ← العناصر»: رسومات ديوان، وما يُستورد SVG أو PNG بصنفه
-    PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر (papersTree.ts تحويلات شجرة الأسئلة)
+    PapersScreen.tsx      الأسئلة: الأوراق وبنكها والدوائر (papersTree.ts تحويلات شجرة الأسئلة) — وأجزاؤها في papers/
+    papers/               أجزاء الأسئلة (تقسيمها بعد ١٫٧٫٠): PaperHead وPaperBody (QuestionNode السؤال) وSavedPapers وPreviewBar
+                          وPaperOutput، وusePaperTree الشجرة وusePaperOutput الإخراج، وshared
     DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج (PhotoPresetsDialog.tsx قوالب المكتب)
     photos/               أجزاء الصور (تقسيمها بعد ١٫٧٫٠): PhotoAdjustSteps (الخطوات ٢–٤) وPhotoSizeOutput (٥ و٦) وPhotoFrame،
@@ -1358,24 +1381,31 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           وLogoPicker، وخطّافاته usePdfHistory وusePdfOpen وusePdfThumbs وusePdfPageOps وusePdfAdditions وusePdfDrag
                           وusePdfOutput، وpdfPages رسم الصفحات وأنواعها
     AuditScreen.tsx       سجلّ التدقيق وسلامة الأرشيف
-    SettingsScreen.tsx    الإعدادات — وفهرسٌ بأقسامها في أعلاها (البند ٢٠)
+    SettingsScreen.tsx    الإعدادات — وفهرسٌ بأقسامها في أعلاها (البند ٢٠)؛ وبطاقاتها في settings/ (تقسيمها بعد ١٫٧٫٠):
+                          OfficeCard المكتب، وCounterCardsSetting بطاقات الشبّاك، وBasmalaSetting البسملة، وPrivacyCard وShortcutsCard،
+                          وshared
     FillCard.tsx          بطاقة التعبئة في نافذتها (mode=fillcard)
-    DeskewModal.tsx       تسوية المستمسك وتنظيفه (deskewSteps.ts البكسلات والأركان و«المسح النظيف»)
-    IdDuplexDialog.tsx    «استنساخ هوية»: الوجه والظهر بمقاسهما الحقيقي
+    DeskewModal.tsx       تسوية المستمسك وتنظيفه (deskewSteps.ts البكسلات والأركان و«المسح النظيف») — ولوح أدواته
+                          deskew/DeskewControls (تقسيمه بعد ١٫٧٫٠)
+    IdDuplexDialog.tsx    «استنساخ هوية»: الوجه والظهر بمقاسهما الحقيقي — وأجزاؤه في idDuplex/ (تقسيمه بعد ١٫٧٫٠): IdOptionsPanel
+                          الخيارات (IdWatermark العلامة المائية)، وIdPreview المعاينة، وIdActions الأزرار
     WhatsAppPasteDialog.tsx  بيانات المواطن من رسالة واتساب
   src/components/         المكوّنات المشتركة
-    PageEditor.tsx        المحرّر: الورقة وثيقةٌ واحدة (ProseMirror)، والصفحات كما تُطبع
+    PageEditor.tsx        المحرّر: الورقة وثيقةٌ واحدة (ProseMirror)، والصفحات كما تُطبع — وأجزاؤه في pageEditor/
+    pageEditor/           أجزاء المحرّر (تقسيمه بعد ١٫٧٫٠): usePmEditor قلبه والصفحات، وcommands أوامر التنسيق والحقول، وFormatBar
+                          شريط التنسيق، وSheetBar شريط الورقة، وFieldPanel لوحة الحقول (من editorKit)، وtypes
     pageViews.ts          عرض العقد كما تُطبع: الحقل والصورة والمسافة والفاصل والجدول والعمودان والمجموعة
     editorPlugins.ts      سحب حدّ العمود بالفأرة (البند ١)، وعلامات القوائم كما تُطبع (البند ٣)
     ColorTool.tsx         لون النصّ: ألوان Word العشرة و«تلقائي» (البند ٣)
     editorPaste.ts        اللصق: تنظيف ما يلصقه Word، والمؤشّر بعد ما لُصق، والصور الملصوقة إلى المخزن
-    editorKit.tsx         أدوات المحرّر: الشريط وقائمة الإدراج ولوحة الحقول (editorMenuItem.tsx زرّ القائمة)
+    editorKit.tsx         أدوات المحرّر: الشريط وقائمة الإدراج (editorMenuItem.tsx زرّ القائمة)
     LetterSheet.tsx       ورقة الكتاب كما تُطبع — للشبّاك والمحرّر معًا
     LetterheadView.tsx    الترويسة كما تُطبع
     FontSelect.tsx        اختيار الخطّ من «خطوط ديوان» — والغائب باسمه، ويُضاف من Windows بضغطة
     PendingCard.tsx       بطاقة ما لم يكتمل في «قيد العمل»: مسودّة كتابٍ أو تصميم، أو معاملةٌ معلّقة
     CounterEmpty.tsx      الشبّاك بلا نموذجٍ يطابق: «اكتبه على ورقة فارغة» و«استورد نماذج» (البند ٧)
-    LetterheadDesigner.tsx  مصمّم الترويسة بالأقسام
+    LetterheadDesigner.tsx  مصمّم الترويسة بالأقسام — وأجزاؤه في letterheadDesigner/ (تقسيمه بعد ١٫٧٫٠): SectionBlocks كتل
+                          القسم، وBasmalaOptions البسملة، وRegistryOptions العدد والتاريخ، وPageOptions الخطّ والفاصل والهوامش، وshared
     ErrorBar.tsx          شريط الأخطاء: كلّ فشلٍ لم يُلتقط يُقال بسببه
     ErrorBoundary.tsx     الشاشة التي تسقط تُقال ولا تُسقط التطبيق
     BackupPanel.tsx       النسخة الاحتياطية واسترجاعها في الإعدادات، واختيار نسخة القاعدة من المرآة
