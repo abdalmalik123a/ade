@@ -6,49 +6,23 @@
  * لها باسمها لا بكتابته كل مرّة.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { dominantColor, paletteFrom } from '@shared/design/kit';
-import { dueLabel, statusOf, type Client, type Order } from '@shared/orders';
-import { academicYearText, SCHOOL_GENDERS, SCHOOL_KINDS } from '@shared/schoolFile';
+import { paletteFrom } from '@shared/design/kit';
+import { type Client, type Order } from '@shared/orders';
+import { SCHOOL_KINDS } from '@shared/schoolFile';
 import { errorText } from '../lib/errors';
 import { useToast } from '../kit/useToast';
 import { localToday } from '@shared/dates';
 import ClientBrandFields from '../components/ClientBrandFields';
-
-const KINDS = ['مدرسة', 'روضة', 'إعدادية', 'ثانوية', 'دائرة', 'مديرية', 'شركة', 'جامعة', 'مركز'];
-
-async function logoColor(path: string): Promise<string | null> {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = `diwan://store/${path}`;
-  await img.decode();
-  const c = document.createElement('canvas');
-  c.width = 64;
-  c.height = 64;
-  const ctx = c.getContext('2d');
-  if (!ctx) return null;
-  ctx.drawImage(img, 0, 0, 64, 64);
-  return dominantColor(ctx.getImageData(0, 0, 64, 64).data);
-}
+import { type Draft, EMPTY, logoColor, KINDS } from './clients/shared';
+import ClientsList from './clients/ClientsList';
+import ClientSchoolFile from './clients/ClientSchoolFile';
+import ClientOrders from './clients/ClientOrders';
 
 export type ClientsScreenProps = {
   /** «صمّم لها»: المعرض بشعار الجهة ولونها واسمها. */
   onDesignFor: (client: Client) => void;
   onChanged?: () => void;
 };
-
-type Draft = {
-  name: string;
-  kind: string;
-  phone: string;
-  address: string;
-  color: string;
-  notes: string;
-  schoolGender: string;
-  governorate: string;
-  principal: string;
-  font: string;
-};
-const EMPTY: Draft = { name: '', kind: '', phone: '', address: '', color: '', notes: '', schoolGender: '', governorate: '', principal: '', font: '' };
 
 export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenProps) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -132,58 +106,14 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
       <div className="flex h-[calc(100vh-4rem)]">
-        <aside className="w-[340px] shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col">
-          <div className="p-space-md space-y-space-sm">
-            <div className="flex items-center justify-between">
-              <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">الجهات</h1>
-              <button
-                className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
-                data-act="new-client"
-                type="button"
-                onClick={() => setSelected('new')}
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                جهة جديدة
-              </button>
-            </div>
-            <input
-              className={input}
-              placeholder="بحث بالاسم أو الهاتف…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex-1 overflow-auto px-space-sm pb-space-md space-y-1">
-            {clients.map((c) => (
-              <button
-                key={c.id}
-                className={`w-full p-space-sm rounded-lg text-right flex items-center gap-space-sm ${selected === c.id ? 'bg-primary-container text-on-primary' : 'hover:bg-surface-container-high text-on-surface'}`}
-                data-client={c.id}
-                type="button"
-                onClick={() => setSelected(c.id)}
-              >
-                <span className="w-9 h-9 rounded-lg bg-white shrink-0 flex items-center justify-center overflow-hidden" style={c.color ? { boxShadow: `inset 0 -3px 0 ${c.color}` } : undefined}>
-                  {c.logo ? (
-                    <img alt="" className="w-full h-full object-contain" src={`diwan://store/${c.logo}`} />
-                  ) : (
-                    <span className="material-symbols-outlined text-[20px] text-on-surface-variant">domain</span>
-                  )}
-                </span>
-                <span className="flex flex-col min-w-0 flex-1">
-                  <span className="font-label-md text-label-md font-semibold truncate">{c.name}</span>
-                  <span className={`font-label-sm text-label-sm truncate ${selected === c.id ? 'opacity-80' : 'text-on-surface-variant'}`}>
-                    {[c.kind, c.openOrders ? `${c.openOrders} طلب مفتوح` : null].filter(Boolean).join(' · ') || '—'}
-                  </span>
-                </span>
-              </button>
-            ))}
-            {clients.length === 0 && (
-              <p className="p-space-md text-center font-label-md text-label-md text-on-surface-variant">
-                {query ? 'لا جهة بهذا الاسم' : 'أضف المدارس والدوائر التي تعمل لها — مرّةً واحدة'}
-              </p>
-            )}
-          </div>
-        </aside>
+        <ClientsList
+          setSelected={setSelected}
+          input={input}
+          query={query}
+          setQuery={setQuery}
+          clients={clients}
+          selected={selected}
+        />
 
         <section className="flex-1 overflow-auto p-space-xl">
           {selected === null ? (
@@ -259,58 +189,11 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
 
               {/* ملفّ المدرسة (الموجة ٢): خيارٌ من الإعدادات — يُكتب مرّةً ويملأ كتبها في الشبّاك. */}
               {schoolFiles && (SCHOOL_KINDS.includes(draft.kind) || draft.schoolGender || draft.governorate || draft.principal) && (
-                <div className="rounded-xl bg-surface-container-low p-space-md space-y-space-sm" data-school-file="">
-                  <h2 className="font-body-md text-body-md text-on-surface font-semibold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-secondary">school</span>
-                    ملفّ المدرسة — يملأ كتبها في الشبّاك بـ«هات المدرسة»
-                  </h2>
-                  <div className="grid grid-cols-2 gap-space-md">
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-md text-label-md text-on-surface font-semibold">جنس المدرسة — كما يُطبع تحت اسمها</span>
-                      <input
-                        className={input}
-                        data-school-gender=""
-                        value={draft.schoolGender}
-                        onChange={(e) => setDraft({ ...draft, schoolGender: e.target.value })}
-                      />
-                      <span className="flex flex-wrap gap-1">
-                        {SCHOOL_GENDERS.map((g) => (
-                          <button
-                            key={g}
-                            className={`h-7 px-3 rounded-full font-label-sm text-label-sm ${draft.schoolGender === g ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
-                            data-school-gender-chip={g}
-                            type="button"
-                            onClick={() => setDraft({ ...draft, schoolGender: g })}
-                          >
-                            {g}
-                          </button>
-                        ))}
-                      </span>
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="font-label-md text-label-md text-on-surface font-semibold">المحافظة أو المديرية — كما تُكتب بعد «لتربية»</span>
-                      <input
-                        className={input}
-                        data-school-governorate=""
-                        placeholder="مثال: بغداد الكرخ الأولى"
-                        value={draft.governorate}
-                        onChange={(e) => setDraft({ ...draft, governorate: e.target.value })}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1 col-span-2">
-                      <span className="font-label-md text-label-md text-on-surface font-semibold">اسم مدير المدرسة — يُطبع في التوقيع</span>
-                      <input
-                        className={input}
-                        data-school-principal=""
-                        value={draft.principal}
-                        onChange={(e) => setDraft({ ...draft, principal: e.target.value })}
-                      />
-                    </label>
-                  </div>
-                  <p className="font-label-sm text-label-sm text-on-surface-variant">
-                    والعام الدراسي يُكتب وحده من التاريخ ({academicYearText(new Date())})، واسم المدرسة اسم الجهة أعلاه كما يُطبع.
-                  </p>
-                </div>
+                <ClientSchoolFile
+                  input={input}
+                  draft={draft}
+                  setDraft={setDraft}
+                />
               )}
 
               {error && <p className="font-label-md text-label-md text-error">{error}</p>}
@@ -366,29 +249,11 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
               </div>
 
               {current && (
-                <div className="space-y-space-sm">
-                  <h2 className="font-body-md text-body-md text-on-surface font-semibold">
-                    طلباتها {orders.length > 0 && <span className="text-on-surface-variant font-normal">({orders.length})</span>}
-                  </h2>
-                  {orders.length === 0 ? (
-                    <p className="font-label-md text-label-md text-on-surface-variant">لا طلبات لها بعد — تُسجَّل من شاشة «الطلبات».</p>
-                  ) : (
-                    <ul className="rounded-xl bg-surface-container-low divide-y divide-outline-variant/50">
-                      {orders.map((o) => (
-                        <li key={o.id} className="px-space-md py-space-sm flex items-center justify-between gap-space-sm">
-                          <span className="font-label-md text-label-md text-on-surface font-semibold">{o.title}</span>
-                          <span className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
-                            {o.status !== 'delivered' && o.status !== 'cancelled' && <span>{dueLabel(o.dueDate, today).text}</span>}
-                            <span className="px-2 py-0.5 rounded-full bg-surface-container-high">{statusOf(o.status).label}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="font-label-sm text-label-sm text-on-surface-variant">
-                    ترويساتها: {current.letterheads || 'لا شيء بعد'}
-                  </p>
-                </div>
+                <ClientOrders
+                  orders={orders}
+                  today={today}
+                  current={current}
+                />
               )}
             </div>
           )}
