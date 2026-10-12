@@ -22,25 +22,16 @@ import {
 } from 'react';
 import type { TemplateSummary } from '@shared/api';
 import {
-  itemScore,
   listScore,
-  newUuid,
   type Dir,
   type ListItem,
   type Numerals
 } from '@shared/doc';
-import { marker, renderDocHtml } from '@shared/docHtml';
-import { secondRound } from '@shared/examAnalysis';
+import { renderDocHtml } from '@shared/docHtml';
 import {
-  EXAM_CATEGORY,
-  EXAM_PRESETS,
-  EXAM_STYLES,
-  HEAD_INPUTS,
-  MAX_DEPTH,
   emptyHead,
   examDoc,
   examList,
-  headOf,
   newQuestion,
   paperTitle,
   questionsOf,
@@ -48,214 +39,18 @@ import {
   versionItems
 } from '@shared/examPaper';
 import { errorText } from '../lib/errors';
-import { choosePrinter } from '../lib/printChoice';
-import { ToolHeader, ToolOutput } from '../components/ToolFrame';
-import type { Outcome } from '../components/OutputBar';
-import QuestionBankPanel from '../components/QuestionBankPanel';
+import { ToolHeader } from '../components/ToolFrame';
 import SymbolPalette from '../components/SymbolPalette';
-import OmrPanel from '../components/OmrPanel';
-import { confirmAction } from '../kit/ask';
-import { useLeaveGuard } from '../kit/useLeaveGuard';
 import type { OmrSpec } from '@shared/omr';
-import { count } from '@shared/arabic';
-import { flatten, inlinesOf, mapTree, moveIn, textOf } from './papersTree';
-
-const newOmr = (): OmrSpec => ({ questions: 20, choices: 4, idDigits: 3, key: [] });
-
-/** رموزُ المواد: رياضياتٌ وفيزياءُ وكيمياء — تُدرج عند المؤشّر. */
-
-const SHEET_WIDTH = 794;
-
-type Toast = { text: string; tone: 'ok' | 'warn' } | null;
-
-// ── شجرة الأسئلة: تحويلاتٌ خالصة ─────────────────────────────────────
-
-// ── السؤال الواحد ────────────────────────────────────────────────────
-
-type NodeProps = {
-  item: ListItem;
-  index: number;
-  depth: number;
-  numerals: Numerals;
-  answers: boolean;
-  dir: Dir;
-  onPatch: (id: string, patch: Partial<ListItem>) => void;
-  onBranch: (id: string) => void;
-  onRemove: (id: string) => void;
-  onMove: (id: string, step: -1 | 1) => void;
-  /** يحفظ السؤال (بفروعه) في بنك الأسئلة — للأسئلة الأمّ وحدها. */
-  onBank?: (item: ListItem) => void;
-  onFocusInput: (el: HTMLTextAreaElement | HTMLInputElement) => void;
-};
-
-const NUM_INPUT =
-  'w-16 h-8 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
-const ICON_BTN =
-  'w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center justify-center';
-
-function QuestionNode(props: NodeProps) {
-  const { item, index, depth, numerals, answers, dir, onPatch } = props;
-  const kids = item.items ?? [];
-  const style = EXAM_STYLES[Math.min(depth, EXAM_STYLES.length - 1)] ?? 'number';
-  const head = marker(style, index, numerals);
-  const computed = itemScore(item);
-  const canBranch = depth + 1 < MAX_DEPTH;
-
-  return (
-    <div
-      className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-space-sm space-y-space-xs ${
-        depth ? 'mr-space-lg' : ''
-      }`}
-      data-question={depth === 0 ? 'root' : 'branch'}
-    >
-      {/* الترتيب كما يكتبه المدرّس: العلامة، ثم الدرجة، ثم النصّ. */}
-      <div className="flex items-center gap-space-sm">
-        <span className="min-w-12 font-label-lg text-label-lg font-bold text-secondary tabular">
-          {head}
-        </span>
-
-        <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
-          الدرجة
-          <input
-            className={NUM_INPUT}
-            inputMode="numeric"
-            title="درجة السؤال"
-            value={item.score ?? ''}
-            placeholder={kids.length ? String(computed) : '—'}
-            onFocus={(e) => props.onFocusInput(e.currentTarget)}
-            onChange={(e) => {
-              const raw = e.target.value.replace(/[^\d.]/g, '');
-              onPatch(item.id, { score: raw === '' ? undefined : Number(raw) });
-            }}
-          />
-        </label>
-
-        {kids.length > 1 && (
-          <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
-            أجب عن
-            <input
-              className={NUM_INPUT}
-              inputMode="numeric"
-              title="أجب عن ن من فروعه فقط"
-              value={item.pick ?? ''}
-              placeholder="الكل"
-              onFocus={(e) => props.onFocusInput(e.currentTarget)}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/[^\d]/g, '');
-                onPatch(item.id, {
-                  pick: raw === '' ? undefined : Number(raw)
-                });
-              }}
-            />
-            من فروعه
-          </label>
-        )}
-
-        <div className="flex-1" />
-
-        {depth === 0 && props.onBank && (
-          <button
-            className={ICON_BTN}
-            data-act="bank-save"
-            title="احفظه في بنك الأسئلة — بفروعه ودرجته"
-            type="button"
-            onClick={() => props.onBank!(item)}
-          >
-            <span className="material-symbols-outlined text-[18px]">bookmark_add</span>
-          </button>
-        )}
-        <button
-          className={ICON_BTN}
-          title="ارفع"
-          type="button"
-          onClick={() => props.onMove(item.id, -1)}
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
-        </button>
-        <button
-          className={ICON_BTN}
-          title="أنزل"
-          type="button"
-          onClick={() => props.onMove(item.id, 1)}
-        >
-          <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
-        </button>
-        <button
-          className={ICON_BTN}
-          title="احذف"
-          type="button"
-          onClick={() => props.onRemove(item.id)}
-        >
-          <span className="material-symbols-outlined text-[18px]">delete</span>
-        </button>
-      </div>
-
-      <textarea
-        className="w-full min-h-[44px] px-space-sm py-1.5 rounded-lg bg-surface-container-low border border-outline-variant font-body-md text-body-md text-on-surface resize-y"
-        dir={dir}
-        data-question-text={item.id}
-        placeholder={depth === 0 ? 'نصّ السؤال' : 'نصّ الفرع'}
-        value={textOf(item.inlines)}
-        rows={1}
-        onFocus={(e) => props.onFocusInput(e.currentTarget)}
-        onChange={(e) => onPatch(item.id, { inlines: inlinesOf(e.target.value) })}
-      />
-
-      {answers && (
-        <input
-          className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-dashed border-outline-variant font-body-sm text-body-sm text-on-surface"
-          dir={dir}
-          data-answer={item.id}
-          placeholder="الإجابة النموذجية — تظهر في ورقة المصحّح وحدها"
-          value={textOf(item.answer ?? [])}
-          onFocus={(e) => props.onFocusInput(e.currentTarget)}
-          onChange={(e) => {
-            const text = e.target.value;
-            onPatch(item.id, { answer: text ? inlinesOf(text) : undefined });
-          }}
-        />
-      )}
-
-      {kids.length > 0 && (
-        <div className="space-y-space-xs pt-space-xs">
-          {kids.map((kid, i) => (
-            <QuestionNode {...props} key={kid.id} item={kid} index={i} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-
-      {canBranch && (
-        <button
-          className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors"
-          title="أضف فرعًا"
-          type="button"
-          onClick={() => props.onBranch(item.id)}
-        >
-          <span className="material-symbols-outlined text-[16px]">subdirectory_arrow_left</span>
-          <span>أضف فرعًا</span>
-        </button>
-      )}
-    </div>
-  );
-}
-
-/**
- * «الدور الثاني» من البنك (د٩): الأسئلة نفسها عددًا ودرجاتٍ، من البنك في مادّتها وصفّها،
- * لا من الدور الأول. وتُفتح ورقةً جديدة غير محفوظة — فلا تُكتب فوق ورقة الدور الأول.
- */
-export function roundTwoHead(head: Record<string, string>): Record<string, string> {
-  return { ...head, الدور: 'الثاني' };
-}
-
-/** نسخةٌ من سؤال البنك بمعرّفاتٍ جديدة — فلا تشترك ورقتان في عقدةٍ واحدة. */
-function freshCopy(item: ListItem): ListItem {
-  return {
-    ...item,
-    id: newUuid(),
-    inlines: item.inlines.map((n) => (n.kind === 'field' ? { ...n, id: newUuid() } : n)),
-    items: item.items?.map(freshCopy)
-  };
-}
+import { flatten, textOf } from './papersTree';
+import { newOmr, type Toast, SHEET_WIDTH } from './papers/shared';
+import PaperHead from './papers/PaperHead';
+import PaperBody from './papers/PaperBody';
+import SavedPapers from './papers/SavedPapers';
+import PreviewBar from './papers/PreviewBar';
+import PaperOutput from './papers/PaperOutput';
+import { usePaperTree } from './papers/usePaperTree';
+import { usePaperOutput } from './papers/usePaperOutput';
 
 // ── الشاشة ───────────────────────────────────────────────────────────
 
@@ -420,230 +215,18 @@ function PapersScreenInner(
   const dirty = baseline !== null && signature !== baseline;
 
   // ── تحريرُ الشجرة ──────────────────────────────────────────────────
-  const patchItem = useCallback((id: string, patch: Partial<ListItem>) => {
-    setItems((prev) => mapTree(prev, id, (it) => ({ ...it, ...patch })));
-  }, []);
-
-  const branch = useCallback((id: string) => {
-    setItems((prev) =>
-      mapTree(prev, id, (it) => ({
-        ...it,
-        items: [...(it.items ?? []), newQuestion()]
-      }))
-    );
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setItems((prev) => {
-      const next = mapTree(prev, id, () => null);
-      // لا تبقى ورقةٌ بلا سؤال — وإلا اختفى المؤلِّف ولا سبيل إلى إعادته.
-      return next.length ? next : [newQuestion()];
-    });
-  }, []);
-
-  const move = useCallback((id: string, step: -1 | 1) => {
-    setItems((prev) => moveIn(prev, id, step));
-  }, []);
-
-  /** بنك الأسئلة: يُحفظ السؤال بمادة الورقة وصفّها، ويُدرج منه بنسخةٍ جديدة. */
-  const [bankOpen, setBankOpen] = useState(false);
-  const [bankTick, setBankTick] = useState(0);
-  const saveToBank = useCallback(
-    (item: ListItem) => {
-      void window.diwan.bank
-        .save({ item, subject: head['المادة'] || null, grade: head['الصف'] || null })
-        .then(() => {
-          setBankTick((t) => t + 1);
-          say(`حُفظ في بنك الأسئلة${head['المادة'] ? ` — ${head['المادة']}` : ''}`);
-        })
-        .catch((e: unknown) => say(e instanceof Error ? e.message : 'تعذّر الحفظ في البنك', 'warn'));
-    },
-    [head, say]
-  );
-
-  const addQuestion = useCallback(() => {
-    const fresh = newQuestion();
-    setItems((prev) => [...prev, fresh]);
-    window.setTimeout(() => {
-      document.querySelector<HTMLTextAreaElement>(`[data-question-text="${fresh.id}"]`)?.focus();
-    }, 0);
-  }, []);
-
-  /** الرمز يُدرج عند المؤشّر في آخر خانةٍ لمسها المدرّس — لا في آخر السطر. */
-  const insertSymbol = useCallback(
-    (sym: string) => {
-      const el = focused.current;
-      if (!el) {
-        say('المس خانة السؤال أولًا ثم اختر الرمز', 'warn');
-        return;
-      }
-      const at = el.selectionStart ?? el.value.length;
-      const to = el.selectionEnd ?? at;
-      const setter = Object.getOwnPropertyDescriptor(
-        el instanceof HTMLTextAreaElement
-          ? HTMLTextAreaElement.prototype
-          : HTMLInputElement.prototype,
-        'value'
-      )?.set;
-      setter?.call(el, el.value.slice(0, at) + sym + el.value.slice(to));
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.focus();
-      el.selectionStart = el.selectionEnd = at + sym.length;
-    },
-    [say]
-  );
+  // ── تحرير شجرة الأسئلة: الفروع والحذف والترتيب والبنك والرموز — `papers/usePaperTree.ts` ──
+  const { patchItem, branch, remove, move, saveToBank, addQuestion, setBankOpen, bankOpen, bankTick, insertSymbol } = usePaperTree({
+    setItems, head, say, focused
+  });
 
   // ── الحفظ والطباعة ─────────────────────────────────────────────────
-  const save = useCallback(async (): Promise<boolean> => {
-    if (!written.length) {
-      say('اكتب نصّ سؤالٍ واحدٍ على الأقل قبل الحفظ', 'warn');
-      return false;
-    }
-    const savedSignature = signatureNow.current;
-    setBusy(true);
-    try {
-      const saved = await window.diwan.templates.save({
-        id: paperId,
-        code: null,
-        title,
-        subtitle: head['المدرسة']?.trim() || null,
-        category: EXAM_CATEGORY,
-        subjectLine: null,
-        bodyHtml: written.map((it) => textOf(it.inlines)).join('\n'),
-        letterheadId: null,
-        variables: [],
-        // مفتاح الدوائر يُحفظ مع الورقة ولا يغيّر صورتها.
-        doc: omr.key.length ? { ...doc, meta: { ...doc.meta, omr } } : doc
-      });
-      setPaperId(saved.id);
-      setBaseline(savedSignature);
-      await loadPapers();
-      onChanged?.();
-      say('حُفظت الورقة في قسم الأسئلة');
-      return true;
-    } catch (e) {
-      say(errorText(e, 'تعذّر حفظ الورقة'), 'warn');
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say]);
-
-  const leave = useLeaveGuard({ label: 'أوراق الأسئلة', dirty, save });
-
-  /** ما خرج آخر مرّة — يقوله شريط الإخراج، ومنه «أعد الطبع» بالنسخ نفسها (المرحلة ٥). */
-  const [after, setAfter] = useState<Outcome | null>(null);
-  const lastJob = useRef<{ sheetHtml: string; copies: number; printer: string; system: boolean; what: string } | null>(null);
-
-  const send = useCallback(
-    async (job: { sheetHtml: string; copies: number; printer: string; system: boolean; what: string }) => {
-      setBusy(true);
-      try {
-        // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
-        const out = await window.diwan.output.print({ sheetHtml: job.sheetHtml, printer: job.printer, copies: job.copies, silent: !job.system });
-        if (!out.ok) {
-          say(out.reason || 'لم تتم الطباعة', 'warn');
-          return;
-        }
-        lastJob.current = job;
-        setAfter({ what: job.what, printer: job.printer });
-      } catch (e) {
-        say(errorText(e, 'تعذّرت الطباعة'), 'warn');
-      } finally {
-        setBusy(false);
-      }
-    },
-    [say]
-  );
-
-  const print = useCallback(async () => {
-    const sheets = sheetsFor();
-    if (!sheets) return;
-    const pick = await choosePrinter('papers', { allowSystem: true });
-    if (!pick) return;
-    await send({
-      sheetHtml: sheets.html,
-      copies: sheets.copies,
-      printer: pick.printer,
-      system: pick.system,
-      what: versions ? `${count(copies, 'نسخة')} («أ» و«ب» بالتناوب)` : count(copies, 'نسخة')
-    });
-  }, [copies, versions, sheetsFor, send]);
-
-  const exportPdf = useCallback(async () => {
-    // PDF النموذجين ورقتان: «أ» ثم «ب» — للمدرّس يطبع منه ما شاء.
-    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
-    if (!node) return;
-    node.style.transform = '';
-    const html = versions ? versionPage(node, 'أ') + versionPage(node, 'ب') : node.outerHTML;
-    try {
-      const path = await window.diwan.output.savePdf({
-        sheetHtml: html,
-        suggestedName: versions ? `${title} — نموذجان` : title
-      });
-      if (path) say('حُفظت نسخة PDF');
-    } catch (e) {
-      say(errorText(e, 'تعذّر حفظ PDF'), 'warn');
-    }
-  }, [title, versions, versionPage, say]);
-
-  const openPaper = useCallback(
-    async (id: number) => {
-      if (!(await leave())) return;
-      try {
-        const loaded = await window.diwan.templates.doc(id);
-        const list = questionsOf(loaded);
-        setHead(headOf(loaded));
-        setItems(list?.items.length ? list.items : [newQuestion()]);
-        setPick(list?.pick);
-        setDir(list?.dir === 'ltr' ? 'ltr' : 'rtl');
-        setNumerals(loaded.pageSetup.numerals);
-        setOmr(loaded.meta.omr ?? newOmr());
-        setOmrEpoch((n) => n + 1);
-        setPaperId(id);
-        setRebase(true);
-        say('فُتحت الورقة');
-      } catch (e) {
-        say(errorText(e, 'تعذّر فتح الورقة'), 'warn');
-      }
-    },
-    [say, leave]
-  );
-
-  const fresh = useCallback(async () => {
-    if (!(await leave())) return;
-    setHead(emptyHead());
-    setItems([newQuestion()]);
-    setPick(undefined);
-    setOmr(newOmr());
-    setOmrEpoch((n) => n + 1);
-    setPaperId(null);
-    setRebase(true);
-    say('ورقة جديدة');
-  }, [say, leave]);
-
-  /** «الدور الثاني» من البنك (د٩) — ورقةٌ جديدة لا تُكتب فوق الأولى. */
-  async function secondRoundPaper() {
-    if (!(await leave())) return;
-    const bank = await window.diwan.bank.list({ subject: head['المادة'] || null, grade: head['الصف'] || null });
-    const { picks, missing } = secondRound(items, bank);
-    if (!picks.length) {
-      say('لا أسئلة في البنك لهذه المادة والصفّ غير أسئلة هذه الورقة — احفظ أسئلةً في البنك أولًا', 'warn');
-      return;
-    }
-    setItems(picks.map((p) => freshCopy(p.item)));
-    setHead((h) => roundTwoHead(h));
-    setPaperId(null);
-    // ورقةٌ جديدة لم تُحفظ قطّ — فتبقى «غير محفوظة» حتى تُحفظ باسمها.
-    setBaseline('');
-    for (const p of picks) void window.diwan.bank.used(p.id);
-    say(
-      missing.length
-        ? `ورقة الدور الثاني: ${count(picks.length, 'سؤال')} من البنك — ولم يُوجد بديلٌ للسؤال ${missing.join('، ')}؛ أكمله بيدك`
-        : `ورقة الدور الثاني: ${count(picks.length, 'سؤال')} من البنك بدرجاتها — احفظها باسمها`,
-      missing.length ? 'warn' : 'ok'
-    );
-  }
+  // ── الحفظ والطباعة وPDF وفتح ورقةٍ محفوظة والدور الثاني — `papers/usePaperOutput.ts` ──
+  const { print, save, exportPdf, fresh, secondRoundPaper, openPaper, after, setAfter, lastJob, send } = usePaperOutput({
+    written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
+    sheetsFor, versions, copies, sheetRef, versionPage, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch,
+    setRebase, items
+  });
 
   useImperativeHandle(
     ref,
@@ -675,184 +258,43 @@ function PapersScreenInner(
           </ToolHeader>
 
           {/* ── الرأس الثابت ──────────────────────────────────────── */}
-          <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-space-sm">
-                <span className="material-symbols-outlined text-secondary text-[20px]">lock</span>
-                <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                  الرأس ثابت (تعبئة تلقائية)
-                </h2>
-              </div>
-            </div>
-            {/* نماذج وزارية سريعة لتعبئة ترويسة الامتحان */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {EXAM_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  className="h-7 px-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors flex items-center gap-1 shadow-sm"
-                  type="button"
-                  title={preset.description}
-                  onClick={() => {
-                    setHead((h) => {
-                      const next = { ...h };
-                      for (const [k, v] of Object.entries(preset.head)) {
-                        if (v !== undefined) next[k] = v;
-                      }
-                      return next;
-                    });
-                  }}
-                >
-                  <span className="text-secondary font-bold">⚡ {preset.name}</span>
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-space-sm">
-              {HEAD_INPUTS.map((input) => (
-                <label
-                  key={input.key}
-                  className={`flex flex-col gap-1 ${
-                    input.key === 'الملاحظة' || input.key === 'التمنيات' ? 'col-span-2' : ''
-                  }`}
-                >
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">
-                    {input.label}
-                  </span>
-                  <input
-                    className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
-                    data-head={input.key}
-                    placeholder={input.hint}
-                    value={head[input.key] ?? ''}
-                    onFocus={(e) => (focused.current = e.currentTarget)}
-                    onChange={(e) => setHead((h) => ({ ...h, [input.key]: e.target.value }))}
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
+          <PaperHead
+            setHead={setHead}
+            head={head}
+            focused={focused}
+          />
 
           {/* ── المتن ─────────────────────────────────────────────── */}
-          <div className="space-y-space-sm">
-            {/* ضبطُ المتن حيث يُكتب المتن — لا في شريط المعاينة. */}
-            <div className="flex items-center gap-space-sm flex-wrap">
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">الأسئلة</h2>
-              <div className="flex-1" />
-              <select
-                className="h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
-                title="أرقام الترقيم"
-                value={numerals}
-                onChange={(e) => setNumerals(e.target.value as Numerals)}
-              >
-                <option value="arabic">1 2 3</option>
-                <option value="indic">١ ٢ ٣</option>
-              </select>
-              <select
-                className="h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
-                title="اتجاه المتن"
-                value={dir}
-                onChange={(e) => setDir(e.target.value as Dir)}
-              >
-                <option value="rtl">من اليمين</option>
-                <option value="ltr">من اليسار</option>
-              </select>
-              <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
-                أجب عن
-                <input
-                  className={NUM_INPUT}
-                  inputMode="numeric"
-                  title="أجب عن ن أسئلة فقط"
-                  value={pick ?? ''}
-                  placeholder="الكل"
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/[^\d]/g, '');
-                    setPick(raw === '' ? undefined : Number(raw));
-                  }}
-                />
-                أسئلة فقط
-              </label>
-            </div>
-
-            <div className="space-y-space-sm">
-              {items.map((item, i) => (
-                <QuestionNode
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  depth={0}
-                  dir={dir}
-                  numerals={numerals}
-                  answers={answers}
-                  onPatch={patchItem}
-                  onBranch={branch}
-                  onRemove={remove}
-                  onMove={move}
-                  onBank={saveToBank}
-                  onFocusInput={(el) => (focused.current = el)}
-                />
-              ))}
-            </div>
-
-            <button
-              className="w-full h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5 shadow-md"
-              type="button"
-              onClick={addQuestion}
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              أضف سؤالًا
-            </button>
-            <button
-              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
-              data-act="bank-open"
-              type="button"
-              onClick={() => setBankOpen((o) => !o)}
-            >
-              <span className="material-symbols-outlined text-[18px] text-secondary">inventory_2</span>
-              {bankOpen ? 'أخفِ بنك الأسئلة' : 'أدرج من بنك الأسئلة'}
-            </button>
-            {bankOpen && (
-              <QuestionBankPanel
-                grade={head['الصف'] ?? ''}
-                refreshKey={bankTick}
-                subject={head['المادة'] ?? ''}
-                onClose={() => setBankOpen(false)}
-                onInsert={(q) => {
-                  const fresh = freshCopy(q.item);
-                  // ورقةٌ فيها سؤالٌ واحد فارغ (البداية): يحلّ المُدرَج محلّه.
-                  setItems((prev) => (prev.length === 1 && !textOf(prev[0]!.inlines).trim() && !prev[0]!.items?.length ? [fresh] : [...prev, fresh]));
-                  void window.diwan.bank.used(q.id);
-                  say('أُدرج السؤال في آخر الورقة');
-                }}
-              />
-            )}
-            <button
-              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
-              data-act="second-round"
-              title="ورقةٌ بالبنية نفسها من أسئلة البنك التي لم تُطبع في هذا الدور"
-              type="button"
-              onClick={() => void secondRoundPaper()}
-            >
-              <span className="material-symbols-outlined text-[18px] text-secondary">autorenew</span>
-              ورقة الدور الثاني من البنك
-            </button>
-            <button
-              className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
-              data-act="omr-open"
-              type="button"
-              onClick={() => setOmrOpen((o) => !o)}
-            >
-              <span className="material-symbols-outlined text-[18px] text-secondary">checklist</span>
-              {omrOpen ? 'أخفِ تصحيح الدوائر' : 'ورقة إجابة بالدوائر وتصحيحها'}
-            </button>
-            {omrOpen && (
-              <OmrPanel
-                key={omrEpoch}
-                lines={[head['المدرسة'], head['الدور']].map((l) => l?.trim() ?? '').filter(Boolean)}
-                spec={omr}
-                title={title}
-                onSay={say}
-                onSpec={setOmr}
-              />
-            )}
-          </div>
+          <PaperBody
+            numerals={numerals}
+            setNumerals={setNumerals}
+            dir={dir}
+            setDir={setDir}
+            pick={pick}
+            setPick={setPick}
+            items={items}
+            answers={answers}
+            patchItem={patchItem}
+            branch={branch}
+            remove={remove}
+            move={move}
+            saveToBank={saveToBank}
+            focused={focused}
+            addQuestion={addQuestion}
+            setBankOpen={setBankOpen}
+            bankOpen={bankOpen}
+            head={head}
+            bankTick={bankTick}
+            setItems={setItems}
+            say={say}
+            secondRoundPaper={secondRoundPaper}
+            setOmrOpen={setOmrOpen}
+            omrOpen={omrOpen}
+            omrEpoch={omrEpoch}
+            omr={omr}
+            title={title}
+            setOmr={setOmr}
+          />
 
           {/* ── الرموز ────────────────────────────────────────────── */}
           <div className="rounded-xl bg-surface-container-lowest p-space-sm">
@@ -864,113 +306,30 @@ function PapersScreenInner(
 
           {/* ── الأوراق المحفوظة ──────────────────────────────────── */}
           {papers.length > 0 && (
-            <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-xs">
-              <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
-                أوراقٌ محفوظة ({papers.length})
-              </h2>
-              {papers.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-lg px-space-sm py-1.5 hover:bg-surface-container-high"
-                >
-                  <button
-                    className="text-right flex-1 font-body-sm text-body-sm text-on-surface"
-                    type="button"
-                    onClick={() => void openPaper(p.id)}
-                  >
-                    {p.title}
-                    {p.subtitle && <span className="text-on-surface-variant"> — {p.subtitle}</span>}
-                  </button>
-                  <button
-                    className={ICON_BTN}
-                    title="احذف الورقة"
-                    type="button"
-                    onClick={async () => {
-                      // ورقةُ أسئلةٍ محفوظة بنقرة: تُمحى ونسخها السابقة (ج٢).
-                      const ok = await confirmAction({
-                        title: `حذف الورقة «${p.title}»؟`,
-                        message: 'تُمحى ورقة الأسئلة المحفوظة ونسخها السابقة. لا رجعة بعد الحذف.',
-                        confirm: 'احذفها نهائيًّا',
-                        danger: true
-                      });
-                      if (!ok) return;
-                      await window.diwan.templates.delete(p.id);
-                      if (paperId === p.id) setPaperId(null);
-                      await loadPapers();
-                      onChanged?.();
-                      say('حُذفت الورقة');
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
-                </div>
-              ))}
-            </div>
+            <SavedPapers
+              papers={papers}
+              openPaper={openPaper}
+              paperId={paperId}
+              setPaperId={setPaperId}
+              loadPapers={loadPapers}
+              onChanged={onChanged}
+              say={say}
+            />
           )}
         </section>
 
         {/* ── المعاينة ─────────────────────────────────────────────── */}
         <section className="flex-1 flex flex-col min-w-0">
           {/* يلتفّ سطرين إن ضاق — كان يُمرَّر أفقيًّا فتختفي «اطبع» و«حفظ» خلف طرف النافذة. */}
-          <div className="min-h-14 px-space-lg py-space-xs flex flex-wrap items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest">
-            <span
-              className={`px-space-sm py-0.5 rounded-full font-label-sm text-label-sm font-bold shrink-0 whitespace-nowrap ${
-                total === 100
-                  ? 'bg-secondary text-on-secondary'
-                  : 'bg-surface-container-high text-on-surface-variant'
-              }`}
-              data-total
-            >
-              المجموع {total}
-              {total !== 100 && ' — لم يبلغ المئة'}
-            </span>
-
-            <div className="flex-1" />
-            <div className="flex flex-wrap items-center justify-end gap-space-sm">
-              <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
-                <input
-                  checked={answers}
-                  type="checkbox"
-                  onChange={(e) => setAnswers(e.target.checked)}
-                />
-                ورقة المصحّح
-              </label>
-
-              <label
-                className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"
-                title="الفروع بترتيبين، والنسخ تتناوب أ، ب، أ، ب — فلا ينقل الطالب عن جاره"
-              >
-                <input
-                  checked={versions}
-                  data-act="versions"
-                  type="checkbox"
-                  onChange={(e) => {
-                    setVersions(e.target.checked);
-                    setShowB(false);
-                  }}
-                />
-                نموذجان أ و ب
-              </label>
-              {versions && (
-                <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-version-view="">
-                  {['أ', 'ب'].map((v) => (
-                    <button
-                      key={v}
-                      className={`h-7 px-3 rounded-md font-label-md text-label-md ${
-                        (v === 'ب') === showB ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
-                      }`}
-                      data-version={v}
-                      type="button"
-                      onClick={() => setShowB(v === 'ب')}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-            </div>
-          </div>
+          <PreviewBar
+            total={total}
+            answers={answers}
+            setAnswers={setAnswers}
+            versions={versions}
+            setVersions={setVersions}
+            setShowB={setShowB}
+            showB={showB}
+          />
 
           <div
             ref={deskRef}
@@ -996,58 +355,18 @@ function PapersScreenInner(
             </div>
           </div>
 
-          <ToolOutput
-            bar
+          <PaperOutput
             after={after}
-            role="papers"
-            onDismiss={() => setAfter(null)}
-            onReprint={lastJob.current ? () => void send(lastJob.current!) : undefined}
-          >
-            <div className="flex-1" />
-              <label className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap">
-                نسخ
-                <input
-                  className={NUM_INPUT}
-                  inputMode="numeric"
-                  title="عدد النسخ"
-                  value={copies}
-                  onChange={(e) => setCopies(Number(e.target.value.replace(/[^\d]/g, '')) || 1)}
-                />
-              </label>
-
-              <button
-                className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
-                data-act="save"
-                title="احفظ ورقة الأسئلة"
-                type="button"
-                disabled={busy}
-                onClick={() => void save()}
-              >
-                <span className="material-symbols-outlined text-[18px]">save</span>
-                حفظ
-              </button>
-              <button
-                className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
-                data-act="pdf"
-                title="احفظ نسخة PDF"
-                type="button"
-                onClick={() => void exportPdf()}
-              >
-                <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-                PDF
-              </button>
-              <button
-                className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
-                data-act="print"
-                title="اطبع الورقة بعدد النسخ — بلا إصدار"
-                type="button"
-                disabled={busy}
-                onClick={() => void print()}
-              >
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                اطبع
-              </button>
-          </ToolOutput>
+            setAfter={setAfter}
+            lastJob={lastJob}
+            send={send}
+            copies={copies}
+            setCopies={setCopies}
+            busy={busy}
+            save={save}
+            exportPdf={exportPdf}
+            print={print}
+          />
         </section>
       </div>
 
