@@ -58,7 +58,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await click('button[data-act="open-sheet"]');
   await wait(1500);
   const summary = await page.eval(`return document.querySelector('[data-batch-summary]')?.innerText ?? '';`);
-  ok('قائمة الصفّ من ملف Excel: عشرة أسماء في ورقتين', summary.includes('١٠') && summary.includes('٢'));
+  ok('قائمة الصفّ من ملف Excel: عشرة أسماء في ورقتين', summary.includes('١٠ أسماء') && summary.includes('ورقتان'));
 
   await click('button[data-act="sheets"]');
   await wait(1800);
@@ -66,7 +66,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     const o = document.querySelector('[data-sheets]');
     return { summary: o.querySelector('[data-sheets-summary]').innerText, footer: o.innerText };
   `);
-  ok('والأوراق بوجهين: ١٠ بطاقات على ورقتين بوجهين', sheets.summary.includes('ورقة') && sheets.summary.includes('بوجهين') && sheets.summary.includes('٢ ورقة'));
+  ok('والأوراق بوجهين: ١٠ بطاقات على ورقتين بوجهين', sheets.summary.includes('١٠ بطاقات على ورقتين بوجهين'));
   ok('والأولى وجهٌ', sheets.footer.includes('الوجه'));
   const front = await page.eval(`
     const cells = [...document.querySelectorAll('[data-sheets] .print-page > div[style*="overflow:hidden"]')];

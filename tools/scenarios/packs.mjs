@@ -85,7 +85,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1500);
 
   const t1 = await toast();
-  ok('استُوردت حزمة التربية بالعدد الكامل (٦ نماذج، ٤ كليشات)', t1.includes('أُضيف 6 نموذجًا') && t1.includes('4 كليشة'));
+  ok('استُوردت حزمة التربية بالعدد الكامل (٦ نماذج، ٤ كليشات)', t1.includes('أُضيف: ٦ نماذج') && t1.includes('٤ كليشات'));
   ok('عُلّمت الحزمة كمستوردة في الواجهة', await page.eval(`return Boolean(document.querySelector('[data-pack-imported="education"]'));`));
 
   // ٤) إعادة استيراد الحزمة لا تكرر شيئًا
@@ -93,7 +93,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1500);
 
   const t2 = await toast();
-  ok('إعادة الاستيراد تترك ما في المكتب ولا تكرّر (أُضيف 0)', t2.includes('أُضيف 0 نموذجًا') && t2.includes('موجودٌ في المكتب'));
+  ok('إعادة الاستيراد تترك ما في المكتب ولا تكرّر (لا جديد)', t2.includes('أُضيف: لا نماذج') && t2.includes('موجودٌ في المكتب'));
 
   const initialCounts = db((d) => ({
     t: d.prepare('SELECT COUNT(*) AS n FROM templates').get().n,
@@ -236,7 +236,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وحزمة «مخاطبات المدارس الرسمية» في القائمة', (await page.eval(`return document.querySelector('[data-packs-modal]')?.innerText ?? '';`)).includes('مخاطبات المدارس الرسمية'));
   await page.eval(`document.querySelector('[data-act="import-bundled-school-letters"]').click(); return true;`);
   await wait(2500);
-  ok('واستُوردت بكتبها الخمسة والأربعين', (await toast()).includes('أُضيف 45 نموذجًا'));
+  ok('واستُوردت بكتبها الخمسة والأربعين', (await toast()).includes('أُضيف: ٤٥ نموذجًا'));
   ok('والقاعدة فيها ٥١ نموذجًا (٦ + ٤٥)', db((d) => d.prepare('SELECT COUNT(*) AS n FROM templates').get().n) === 51);
   await page.key('Escape');
   await wait(400);

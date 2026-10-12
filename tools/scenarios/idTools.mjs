@@ -157,7 +157,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   );
 
   // ── العلامة المائية فوق نسخة الهوية (هـ٣) ─────────────────────────────
-  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.title?.includes('بوجهين 1:1'))?.click(); return true;`);
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.title?.includes('بوجهيها بمقاسها الحقيقي'))?.click(); return true;`);
   await wait(1200);
   await click('[data-act="id-watermark"]');
   await wait(300);

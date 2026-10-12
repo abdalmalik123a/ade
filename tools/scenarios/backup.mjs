@@ -80,7 +80,7 @@ export default async function scenario(page, { profile }) {
   await page.eval(`document.querySelector('[data-act="backup-inspect"]').click(); return true;`);
   await wait(1500);
   const summary = await page.eval(`return document.querySelector('[data-backup-summary]')?.innerText ?? '';`);
-  ok(`وبالصحيحة يُرى ما فيها قبل الموافقة (${summary.split('\n')[0]})`, summary.includes('النسخة سليمة') && summary.includes('1 مواطنًا'));
+  ok(`وبالصحيحة يُرى ما فيها قبل الموافقة (${summary.split('\n')[0]})`, summary.includes('النسخة سليمة') && summary.includes('مواطن واحد'));
   ok('ويُقال إنها تحلّ محلّ البيانات، وما عليه يُنقل جانبًا', summary.includes('تحلّ محلّ بيانات هذا الجهاز كلّها') && summary.includes('لا يُحذف'));
   ok('ومعها وقتها وإصدار البرنامج الذي أخذها', summary.includes('أُخذت') && summary.includes('بالإصدار'));
 

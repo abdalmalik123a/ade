@@ -212,7 +212,7 @@ export default async function scenario(page) {
   await page.clickText('طباعة المحددة');
   await wait(500);
   q = await dialog();
-  ok(`وطباعتها تسأل بعددها (${q?.title})`, Boolean(q) && q.title.includes('12'));
+  ok(`وطباعتها تسأل بعددها (${q?.title})`, Boolean(q) && q.title.includes('١٢ كتابًا'));
   await choose('no');
   ok('و«ألغِ» لا تُرسل شيئًا', (await dialog()) === null && !(await page.eval(`return Boolean(document.querySelector('[data-print-chooser]'));`)));
   return steps.join('\n');

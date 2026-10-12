@@ -51,7 +51,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   let text = await page.text();
   ok('فُتحت مكتبة النماذج', text.includes('مكتبة النماذج والمسودات') || text.includes('مكتبة النماذج فارغة'));
   ok('تعلن أنها فارغة', text.includes('مكتبة النماذج فارغة'));
-  ok('والعدد صفر', text.includes('0 نموذجًا'));
+  ok('والعدد صفر', text.includes('لا نماذج بعد'));
 
   // ── فتح المصمّم ──────────────────────────────────────────────────
   await page.clickText('ورقة فارغة', '[data-act$="new-blank"]');

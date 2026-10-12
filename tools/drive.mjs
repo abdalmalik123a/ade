@@ -270,7 +270,9 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
 
     // `kill` يقتل البرنامج فورًا من خارج البروتوكول: والعملية الرئيسة مشغولةٌ بقيدٍ
     // متزامن لا تمرّر رسائل البروتوكول حتى تفرغ — فلا يُقتل «في منتصف القيد» من داخله.
-    const result = await scenario(page, { profile, shotsDir, kill: () => killTree(child) });
+    const raw = await scenario(page, { profile, shotsDir, kill: () => killTree(child) });
+    // وسيناريو يعيد فحوصه قائمةً تُجمع نصًّا: كانت تُطبع قائمةً فلا يعدّها الفحص الشامل ولا يُسقطه ✗ فيها (إصدار ١٫٧٫٠).
+    const result = Array.isArray(raw) ? raw.join('\n') : raw;
     await sleep(300);
     ws.close();
     // خطأٌ لم يلتقطه أحد يُقال — ولو مرّت فحوص السيناريو كلّها.
