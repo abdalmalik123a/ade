@@ -1,26 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ROUTES, type RouteKey } from '@shared/routes';
+import type { RouteKey } from '@shared/routes';
 import type { LicenseStatus, OfficeSettings, PrinterInfo, SidebarCounts } from '@shared/api';
 import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
 import Onboarding, { type StartAction } from './shell/Onboarding';
 import ServiceScreen, { type RepeatRequest } from './screens/ServiceScreen';
-import EditorScreen, { type EditorHandle } from './screens/EditorScreen';
-import ArchiveScreen from './screens/ArchiveScreen';
-import CitizensScreen from './screens/CitizensScreen';
-import TemplatesScreen, { type WordIncoming } from './screens/TemplatesScreen';
-import PapersScreen, { type PapersHandle } from './screens/PapersScreen';
-import DesignsScreen, { type DesignRequest } from './screens/DesignsScreen';
-import OrdersScreen from './screens/OrdersScreen';
-import ClientsScreen from './screens/ClientsScreen';
-import PhotosScreen, { type PhotoIncoming } from './screens/PhotosScreen';
-import PdfScreen, { type PdfIncoming } from './screens/PdfScreen';
-import LetterheadScreen from './screens/LetterheadScreen';
-import FontsScreen from './screens/FontsScreen';
-import ElementsScreen from './screens/ElementsScreen';
-import AuditScreen from './screens/AuditScreen';
-import SettingsScreen from './screens/SettingsScreen';
 import IdDuplexDialog from './screens/IdDuplexDialog';
+import { NO_TARGET, renderScreen, type DesignRequest, type EditorHandle, type EditorStatus, type EditorTarget, type PapersHandle, type PdfIncoming, type PhotoIncoming, type WordIncoming } from './shell/routeScreens';
+import { openCounterTool, openInboxFile } from './shell/counterTools';
+import { tabBarFor } from './shell/TabBar';
 import IdSheetDialog from './components/IdSheetDialog';
 import AboutDialog from './components/AboutDialog';
 import WhatsNewDialog from './components/WhatsNewDialog';
@@ -34,29 +22,12 @@ import PageHelp from './components/PageHelp';
 import Overview from './components/Overview';
 import { overviewSteps } from '@shared/overview';
 import { setHijriOffset } from '@shared/dates';
-import { tabsOf } from './lib/destinations';
 import type { TodayAgenda } from '@shared/api';
 import { isCombo, shortcut } from '@shared/shortcuts';
 import ClosingOverlay from './shell/ClosingOverlay';
 import NoticeHost from './kit/NoticeHost';
-import { notice } from './kit/notice';
 import ConfirmHost from './kit/ConfirmHost';
 import { canLeaveAll, hasUnsaved, onUnsavedLabel } from './kit/leaveGuard';
-
-/** ما يفتح به المحرر: نموذج، أو مواطن، أو مسودة، أو كتاب صادر يُنسخ. */
-type EditorTarget = {
-  templateId: number | null;
-  citizenId: number | null;
-  draftId: number | null;
-  documentId: number | null;
-};
-
-const NO_TARGET: EditorTarget = {
-  templateId: null,
-  citizenId: null,
-  draftId: null,
-  documentId: null
-};
 
 export default function App() {
   /**
@@ -104,11 +75,7 @@ export default function App() {
   const [whatsNew, setWhatsNew] = useState<{ from: string; to: string } | null>(null);
   /** المدّة التجريبية أو التفعيل (خطة Production، ٦٫٢) — تُسأل عند الإقلاع وكلّ عشر دقائق وبعد كلّ تغيير. */
   const [license, setLicense] = useState<LicenseStatus | null>(null);
-  const [editorStatus, setEditorStatus] = useState<{
-    transaction: string | null;
-    busy: boolean;
-    exporting: boolean;
-  }>({ transaction: null, busy: false, exporting: false });
+  const [editorStatus, setEditorStatus] = useState<EditorStatus>({ transaction: null, busy: false, exporting: false });
 
   /** أدوات المحرر التي يناديها الشريط العلوي — تُسجَّل ما دام المحرر معروضًا. */
   const editorRef = useRef<EditorHandle | null>(null);
@@ -241,30 +208,8 @@ export default function App() {
   }, [handlePrint]);
 
 
-  /** تبويبات الوجهة (الزبائن: أشخاص وجهات…) في رأس الشاشة — بمساراتها، فيصلها الرابط والسيناريو. */
-  const tabs = tabsOf(route);
-  const tabBar = tabs ? (
-    <nav className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-tabs="">
-      {tabs.map((t) => (
-        <a
-          key={t.route}
-          aria-current={t.route === route ? 'page' : undefined}
-          className={`h-8 px-space-md rounded-lg flex items-center font-label-md text-label-md transition-colors ${
-            t.route === route ? 'bg-primary-container text-on-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-          }`}
-          data-path={ROUTES[t.route]}
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            setSearch('');
-            navigate(t.route);
-          }}
-        >
-          {t.label}
-        </a>
-      ))}
-    </nav>
-  ) : undefined;
+  /** تبويبات الوجهة في رأس الشاشة (`shell/TabBar.tsx`). */
+  const tabBar = tabBarFor({ route, setSearch, navigate });
 
   /** الإطار الواحد للأداة: الزبون الذي فُتحت له، والرجوع إلى الشبّاك (المرحلة ٥). */
   const toolNav = {
@@ -276,111 +221,6 @@ export default function App() {
       navigate('service');
     }
   };
-
-  function renderScreen() {
-    switch (route) {
-      case 'service':
-        // مركّبٌ دائمًا خارج هذا الاختيار — فلا تضيع المعاملة بالانتقال.
-        return null;
-      case 'editor':
-        return (
-          <EditorScreen
-            ref={editorRef}
-            templateId={target.templateId}
-            citizenId={target.citizenId}
-            draftId={target.draftId}
-            documentId={target.documentId}
-            onStatus={setEditorStatus}
-            onIssued={() => void refresh()}
-            onLeave={(d) =>
-              notice(`حُفظ ما كتبته في «قيد العمل»: «${d.title}»`, { label: 'افتحه', run: () => openEditor({ draftId: d.id }) })
-            }
-          />
-        );
-      case 'templates':
-        return (
-          <TemplatesScreen
-            incoming={wordIncoming}
-            request={libraryRequest}
-            onOpenDesign={(templateId) => openDesigns({ templateId })}
-            onOpenInEditor={(id) => openEditor({ templateId: id })}
-            onImportDesign={() => openDesigns({ action: 'import' })}
-            onChanged={() => void refresh()}
-          />
-        );
-      case 'archive':
-        return (
-          <ArchiveScreen
-            query={search}
-            request={archiveRequest}
-            onOpenInEditor={(id) => void repeatDocument(id)}
-            onOpenCitizen={(id) => {
-              setCitizenFocus({ key: Date.now(), citizenId: id });
-              navigate('citizens');
-            }}
-            onOpenTemplate={(id) => openEditor({ templateId: id })}
-            onChanged={() => void refresh()}
-          />
-        );
-      case 'citizens':
-        return (
-          <CitizensScreen
-            focus={citizenFocus}
-            onInsertIntoEditor={(id) => openEditor({ citizenId: id })}
-            onRepeatDocument={(id) => void repeatDocument(id)}
-            onChanged={() => void refresh()}
-          />
-        );
-      case 'papers':
-        return <PapersScreen ref={papersRef} onChanged={() => void refresh()} />;
-      case 'designs':
-        return <DesignsScreen request={designRequest} onChanged={() => void refresh()} />;
-      case 'orders':
-        return (
-          <OrdersScreen
-            request={orderRequest}
-            onChanged={() => void refresh()}
-            onOpenDraft={(id) => openEditor({ draftId: id })}
-            onOpenDesignDraft={(id) => openDesigns({ draftId: id })}
-            onResumeParked={(parkedKey) => {
-              setResumeRequest({ key: Date.now(), parkedKey });
-              navigate('service');
-            }}
-            onOpenDesign={(order) =>
-              openDesigns({
-                templateId: order.templateId ?? undefined,
-                batchText: order.batchText,
-                clientId: order.clientId ?? undefined,
-                order: { id: order.id, title: order.title, quantity: order.quantity }
-              })
-            }
-          />
-        );
-      case 'photos':
-        return <PhotosScreen incoming={photoIncoming} />;
-      case 'pdf':
-        return <PdfScreen incoming={pdfIncoming} />;
-      case 'clients':
-        return <ClientsScreen onChanged={() => void refresh()} onDesignFor={(client) => openDesigns({ clientId: client.id })} />;
-      case 'letterhead':
-        return <LetterheadScreen />;
-      case 'fonts':
-        return <FontsScreen />;
-      case 'elements':
-        return <ElementsScreen />;
-      case 'audit':
-        return (
-          <AuditScreen
-            onOpenSerial={(serial) => {
-              setSearch(serial);
-              navigate('archive');
-            }}
-          />
-        );
-      case 'settings':
-        return <SettingsScreen onChanged={() => void refresh()} />;
-    }
-  }
 
   return (
     <>
@@ -484,36 +324,23 @@ export default function App() {
               onOpenActivation={() => navigate('settings')}
               settingsKey={settings}
               onIssued={() => void refresh()}
-              onOpenTool={(t, citizenId) => {
-                setToolCustomer(citizenId);
-                if ('route' in t) {
-                  if (t.route === 'editor') openEditor({});
-                  // «طلبٌ يُسلَّم لاحقًا» (د٨): طلبٌ جديد مباشرةً، ومعه زبون الشبّاك إن كان — لا قائمة الطلبات.
-                  else if (t.route === 'orders') {
-                    setOrderRequest({ key: Date.now(), citizenId });
-                    navigate('orders');
-                  }
-                  else navigate(t.route);
-                } else if (t.dialog === 'id-copy') setIdDuplexOpen(true);
-                else setIdSheetOpen(true);
-              }}
-              onOpenFile={async (f, as) => {
-                if (as === 'pdf') {
-                  setPdfIncoming({ key: Date.now(), ...(await window.diwan.inbox.openPdf([f.id])) });
-                  navigate('pdf');
-                } else if (as === 'photo') {
-                  setPhotoIncoming({ key: Date.now(), path: await window.diwan.inbox.toPhotos(f.id) });
-                  navigate('photos');
-                } else {
-                  setWordIncoming({ key: Date.now(), imported: await window.diwan.inbox.importWord(f.id) });
-                  navigate('templates');
-                }
-              }}
+              onOpenTool={(t, citizenId) =>
+                openCounterTool(t, citizenId, { setToolCustomer, openEditor, setOrderRequest, navigate, setIdDuplexOpen, setIdSheetOpen })
+              }
+              onOpenFile={(f, as) => openInboxFile(f, as, { setPdfIncoming, setPhotoIncoming, setWordIncoming, navigate })}
             />
           </ErrorBoundary>
         </div>
         <ToolNavProvider value={toolNav}>
-          {route !== 'service' && <ErrorBoundary key={route}>{renderScreen()}</ErrorBoundary>}
+          {route !== 'service' && (
+            <ErrorBoundary key={route}>
+              {renderScreen({
+                route, navigate, refresh, editorRef, papersRef, target, setEditorStatus, openEditor, openDesigns, repeatDocument,
+                search, setSearch, citizenFocus, setCitizenFocus, wordIncoming, libraryRequest, archiveRequest, designRequest,
+                orderRequest, setResumeRequest, photoIncoming, pdfIncoming
+              })}
+            </ErrorBoundary>
+          )}
         </ToolNavProvider>
       </div>
 

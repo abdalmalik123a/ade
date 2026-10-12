@@ -6,7 +6,6 @@
   "src/main/services/import.ts": 553,
   "src/main/services/importFolder.ts": 418,
   "src/main/services/render.ts": 471,
-  "src/renderer/src/App.tsx": 562,
   "src/renderer/src/components/ImportPlanDialog.tsx": 444,
   "src/renderer/src/components/LetterheadDesigner.tsx": 626,
   "src/renderer/src/components/PageEditor.tsx": 1120,
