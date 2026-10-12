@@ -29,13 +29,12 @@ import { formatGregorian } from '@shared/dates';
 /** رقم المطوّر للتفعيل — واتساب واتصال (قرار المالك). */
 const DEVELOPER_PHONE = DEVELOPER.phoneDisplay;
 
-const test = (name: string): string | undefined => (app.isPackaged ? undefined : process.env[name]);
 /**
  * مفاتيح المالك العامّة لعملٍ (و١٠): التفعيل أو التحديث «أ+» — بأدوارها من `OWNER_KEYS`. وتحت المِقْود مفتاح الاختبار
  * وحده، في غير المثبّت وحده.
  */
 const publicKeys = (role: 'license' | 'update'): string[] => {
-  const testKey = test('DIWAN_TEST_LICENSE_PUBKEY');
+  const testKey = __DIWAN_TEST_DOORS__ && !app.isPackaged ? process.env['DIWAN_TEST_LICENSE_PUBKEY'] : undefined;
   return testKey ? [testKey] : keysFor(role);
 };
 export const ownerPublicKeys = publicKeys;
@@ -43,7 +42,8 @@ export const ownerPublicKeys = publicKeys;
 let machine: string | null = null;
 /** معرّف ويندوز للجهاز — يُقرأ بلا صلاحيات مدير. وإن تعذّر فاسم الجهاز والمستخدم. */
 function machineId(): string {
-  if (test('DIWAN_TEST_MACHINE_ID')) return test('DIWAN_TEST_MACHINE_ID')!;
+  const testMachine = __DIWAN_TEST_DOORS__ && !app.isPackaged ? process.env['DIWAN_TEST_MACHINE_ID'] : undefined;
+  if (testMachine) return testMachine;
   if (machine) return machine;
   try {
     const out = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { encoding: 'utf8', windowsHide: true });

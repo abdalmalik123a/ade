@@ -96,7 +96,7 @@ function forget(db: Database, files: string[]): void {
  * (`DIWAN_TEST_WINDOWS_FONTS`) مجلّدٌ واحد يُعدّه السيناريو — فلا يتعلّق الاختبار بما ثُبّت على الجهاز.
  */
 function windowsFontDirs(): string[] {
-  const test = process.env['DIWAN_TEST_WINDOWS_FONTS'];
+  const test = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_WINDOWS_FONTS'] : undefined;
   if (test) return [test];
   const dirs = [join(process.env['WINDIR'] ?? 'C:\\Windows', 'Fonts')];
   if (process.env['LOCALAPPDATA']) dirs.push(join(process.env['LOCALAPPDATA'], 'Microsoft', 'Windows', 'Fonts'));

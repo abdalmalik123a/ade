@@ -84,7 +84,7 @@ function removableDrives(): Promise<string[]> {
  * «downloads=…|whatsapp=…|flash=…» — فلا يقرأ الاختبار ملفّات صاحب الجهاز.
  */
 async function sources(): Promise<Dir[]> {
-  const test = process.env['DIWAN_TEST_INBOX'];
+  const test = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_INBOX'] : undefined;
   if (test) {
     return test
       .split('|')

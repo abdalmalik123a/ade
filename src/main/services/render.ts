@@ -242,7 +242,7 @@ export type PrintRequest = {
  * الورق) — ليُختبر ما يُقال حين لا تُطبع ورقة، والاستئناف من حيث وقفت.
  */
 function testPrintLog(req: PrintRequest, page: PageMm): { ok: boolean; reason?: string } | null {
-  const file = process.env['DIWAN_TEST_PRINT_LOG'];
+  const file = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_PRINT_LOG'] : undefined;
   if (!file) return null;
   const printer = req.deviceName ?? null;
   let before = 0;

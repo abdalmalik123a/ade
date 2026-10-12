@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { app } from 'electron';
 
 export function now(): Date {
-  const file = app.isPackaged ? undefined : process.env['DIWAN_TEST_NOW_FILE'];
+  const file = __DIWAN_TEST_DOORS__ && !app.isPackaged ? process.env['DIWAN_TEST_NOW_FILE'] : undefined;
   if (file) {
     try {
       const t = new Date(readFileSync(file, 'utf8').trim());

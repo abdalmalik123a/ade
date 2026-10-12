@@ -83,7 +83,7 @@ const thisYear = () => new Date().getFullYear();
  * فيُقتل البرنامج والدفعة في منتصف قيدها — ويُفحص أنها لم تصدر نصفًا. ولا أثر له بدونه.
  */
 const testPause = (): (() => void) | undefined => {
-  const ms = Number(process.env['DIWAN_TEST_SLOW_ISSUE'] ?? 0);
+  const ms = Number((__DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_SLOW_ISSUE'] : undefined) ?? 0);
   if (!ms) return undefined;
   const cell = new Int32Array(new SharedArrayBuffer(4));
   return () => void Atomics.wait(cell, 0, 0, ms);

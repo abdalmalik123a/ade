@@ -23,7 +23,7 @@ installMainErrorHandlers();
 
 // المِقْود وحده (tools/drive.mjs): كاميرا مصنوعةٌ يرسمها Chromium — فيُختبر
 // استوديو التصوير على التطبيق الحقيقي بلا كاميرا موصولة.
-if (process.env['DIWAN_TEST_FAKE_CAMERA']) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+if (__DIWAN_TEST_DOORS__ && process.env['DIWAN_TEST_FAKE_CAMERA']) app.commandLine.appendSwitch('use-fake-device-for-media-stream');
 
 // نسخةٌ واحدة من البرنامج (خطة Production، ١٫٤): نقرتان على الأيقونة كانتا تفتحان نسختين على
 // القاعدة نفسها — نافذتان، وقائمة المعاملات المعلّقة تكتبها كلٌّ فوق الأخرى، ونسختان احتياطيتان
@@ -60,7 +60,7 @@ ipcMain.on('app:requestClose', (e) => BrowserWindow.fromWebContents(e.sender)?.c
  * وللمِقْود أجوبةٌ جاهزة (`DIWAN_TEST_CLOSE_ANSWER`: `stay,leave` — بالترتيب، وآخرها يتكرّر): حوار النظام لا يُضغط آليًّا.
  */
 let unsavedLabel: string | null = null;
-const closeAnswers = (process.env['DIWAN_TEST_CLOSE_ANSWER'] ?? '')
+const closeAnswers = ((__DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_CLOSE_ANSWER'] : undefined) ?? '')
   .split(',')
   .map((x) => x.trim())
   .filter(Boolean);

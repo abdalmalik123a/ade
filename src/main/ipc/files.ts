@@ -41,7 +41,7 @@ export async function pickSavePath(
   window: BrowserWindow,
   options: { title: string; defaultName: string; filterName: string; ext: string; defaultDir?: string }
 ): Promise<string | null> {
-  const testDir = process.env['DIWAN_TEST_SAVE_DIR'];
+  const testDir = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_SAVE_DIR'] : undefined;
   if (testDir) return join(testDir, options.defaultName);
 
   const result = await dialog.showSaveDialog(window, {
@@ -62,7 +62,7 @@ export async function pickOpenPath(
   window: BrowserWindow,
   options: { title: string; buttonLabel: string; filterName: string; extensions: string[] }
 ): Promise<string | null> {
-  const testFile = process.env['DIWAN_TEST_OPEN_FILE'];
+  const testFile = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_OPEN_FILE'] : undefined;
   if (testFile) return testFile;
 
   const result = await dialog.showOpenDialog(window, {
@@ -83,9 +83,9 @@ export async function pickOpenPaths(
   window: BrowserWindow,
   options: { title: string; buttonLabel: string; filterName: string; extensions: string[] }
 ): Promise<string[]> {
-  const many = process.env['DIWAN_TEST_OPEN_FILES'];
+  const many = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_OPEN_FILES'] : undefined;
   if (many) return many.split('|').filter(Boolean);
-  const one = process.env['DIWAN_TEST_OPEN_FILE'];
+  const one = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_OPEN_FILE'] : undefined;
   if (one) return [one];
 
   const result = await dialog.showOpenDialog(window, {
@@ -99,7 +99,7 @@ export async function pickOpenPaths(
 
 /** مجلّدٌ تُحفظ فيه ملفّاتٌ كثيرة (أجزاء ملفٍّ مقسوم، أو صفحاتٌ صورًا) — والاستثناء نفسه تحت المِقْود. */
 export async function pickSaveFolder(window: BrowserWindow, title: string): Promise<string | null> {
-  const testDir = process.env['DIWAN_TEST_SAVE_DIR'];
+  const testDir = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_SAVE_DIR'] : undefined;
   if (testDir) return testDir;
   const result = await dialog.showOpenDialog(window, {
     title,
@@ -119,7 +119,7 @@ export async function pickFolderPath(
   window: BrowserWindow,
   options: { title: string; buttonLabel: string }
 ): Promise<string | null> {
-  const testDir = process.env['DIWAN_TEST_OPEN_DIR'];
+  const testDir = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_OPEN_DIR'] : undefined;
   if (testDir) return testDir;
 
   const result = await dialog.showOpenDialog(window, {

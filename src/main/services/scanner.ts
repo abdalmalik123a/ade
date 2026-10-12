@@ -182,9 +182,10 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
 
   // للسيناريوهات وحدها: صورةٌ جاهزة بدل الماسح، أو «none» ماسحٌ غائب — فالسيناريو لا يتبع
   // ما وُصل بجهاز الاختبار (ماسحٌ موصول مسح بطاقةً حقيقية في سيناريو «بلا ماسح»).
-  if (process.env.DIWAN_TEST_SCAN_FILE === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
-  if (process.env.DIWAN_TEST_SCAN_FILE) {
-    await copyFile(process.env.DIWAN_TEST_SCAN_FILE, target);
+  const scanFile = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_SCAN_FILE'] : undefined;
+  if (scanFile === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
+  if (scanFile) {
+    await copyFile(scanFile, target);
     return { relativePath: `${folder}/${name}`, dpi, format: 'PNG' };
   }
 

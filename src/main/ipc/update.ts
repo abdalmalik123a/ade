@@ -39,7 +39,7 @@ export function registerUpdateIpc(): void {
     mkdirSync(dir, { recursive: true });
     const installer = await extractInstaller(String(path), opened, join(dir, `diwan-${opened.manifest.version}-setup.exe`));
     // تحت المِقْود (غير المثبّت وحده): يُفكّ ويُتحقّق ولا يُشغَّل.
-    if (!app.isPackaged && process.env['DIWAN_TEST_UPDATE_NO_LAUNCH']) return { installer, launched: false };
+    if (__DIWAN_TEST_DOORS__ && !app.isPackaged && process.env['DIWAN_TEST_UPDATE_NO_LAUNCH']) return { installer, launched: false };
     spawn(installer, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     // المثبّت يستبدل البرنامج — فيُغلق بعد أن يصل الجواب، والإغلاق يأخذ نسخته التلقائية كعادته.
     setTimeout(() => app.quit(), 600);
