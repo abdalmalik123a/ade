@@ -10,6 +10,7 @@
  */
 import { useEffect, useState } from 'react';
 import { cleanError } from '../lib/errors';
+import ProblemReportDialog from './ProblemReportDialog';
 
 const ARABIC = /[ء-ي]/;
 
@@ -25,6 +26,8 @@ function messageOf(reason: unknown): string {
 
 export default function ErrorBar() {
   const [errors, setErrors] = useState<string[]>([]);
+  /** «أرسل تقرير المشكلة» (البند ٣٢) — ومعه آخر خطأ. */
+  const [report, setReport] = useState<string | null>(null);
 
   useEffect(() => {
     const push = (m: string) => {
@@ -43,6 +46,7 @@ export default function ErrorBar() {
     };
   }, []);
 
+  if (report !== null) return <ProblemReportDialog error={report} onClose={() => setReport(null)} />;
   if (!errors.length) return null;
   const last = errors[errors.length - 1]!;
   const readable = ARABIC.test(last);
@@ -58,13 +62,24 @@ export default function ErrorBar() {
           تعذّر إتمام العملية{errors.length > 1 ? ` (${errors.length})` : ''}
         </p>
         <p className="font-body-md text-body-md" data-error-message="">
-          {readable ? last : 'خطأٌ داخلي — سُجّل في سجلّ الأخطاء. أعد المحاولة، وإن تكرّر فأخبرنا به.'}
+          {readable ? last : 'خطأٌ داخلي — سُجّل في سجلّ الأخطاء. أعد المحاولة، وإن تكرّر فأرسل تقرير المشكلة.'}
         </p>
         {!readable && (
           <p className="font-mono text-[11px] opacity-80 truncate" dir="ltr" title={last}>
             {last}
           </p>
         )}
+        <button
+          className="mt-1 font-label-sm text-label-sm font-semibold underline underline-offset-2 hover:opacity-80"
+          data-act="problem-report"
+          type="button"
+          onClick={() => {
+            setReport(last);
+            setErrors([]);
+          }}
+        >
+          أرسل تقرير المشكلة
+        </button>
       </div>
       <button className="w-8 h-8 rounded-lg hover:bg-on-error-container/10 flex items-center justify-center" title="إغلاق" type="button" onClick={() => setErrors([])}>
         <span className="material-symbols-outlined text-[18px]">close</span>

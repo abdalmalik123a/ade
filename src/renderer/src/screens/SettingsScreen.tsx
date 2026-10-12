@@ -21,6 +21,7 @@ import { BasmalaSetting } from './settings/BasmalaSetting';
 import OfficeCard from './settings/OfficeCard';
 import PrivacyCard from './settings/PrivacyCard';
 import ShortcutsCard from './settings/ShortcutsCard';
+import SupportCard from './settings/SupportCard';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
@@ -239,6 +240,9 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               title={title}
               info={info}
             />
+
+            {/* ── مشكلة في البرنامج؟ (البند ٣٢) ───────────────────────────── */}
+            <SupportCard card={card} title={title} />
 
             {/* ── الاختصارات ──────────────────────────────────────────── */}
             <ShortcutsCard

@@ -39,14 +39,14 @@ const IMAGE_FILTERS = [{ name: 'صور', extensions: ['png', 'jpg', 'jpeg', 'web
  */
 export async function pickSavePath(
   window: BrowserWindow,
-  options: { title: string; defaultName: string; filterName: string; ext: string }
+  options: { title: string; defaultName: string; filterName: string; ext: string; defaultDir?: string }
 ): Promise<string | null> {
   const testDir = process.env['DIWAN_TEST_SAVE_DIR'];
   if (testDir) return join(testDir, options.defaultName);
 
   const result = await dialog.showSaveDialog(window, {
     title: options.title,
-    defaultPath: options.defaultName,
+    defaultPath: options.defaultDir ? join(options.defaultDir, options.defaultName) : options.defaultName,
     filters: [{ name: options.filterName, extensions: [options.ext] }]
   });
   return result.canceled || !result.filePath ? null : result.filePath;

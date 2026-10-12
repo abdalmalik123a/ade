@@ -198,6 +198,10 @@ export type OfficeApis = {
     /** النسخ واللصق بحافظة النظام — تعمل والنافذة في الخلف (بطاقة التعبئة فوق المتصفّح). */
     copyText(text: string): Promise<void>;
     pasteText(): Promise<string>;
+    /** «أرسل تقرير المشكلة» (البند ٣٢): يُحفظ التقرير حيث يختار الموظف — ومساره، أو `null` إن أُلغي الحفظ. */
+    problemReport(note: string): Promise<string | null>;
+    /** يُري آخر تقريرٍ حُفظ في مجلّده — ليُرسل بواتساب. */
+    showProblemReport(): Promise<void>;
     /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
     onError(listener: (message: string) => void): () => void;
     /**
