@@ -10,30 +10,11 @@
  *
  * ولا أداة تصميم هنا: من أراد أن يبني استمارة فمكانه الورشة.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mergeFields, type DocField } from '@shared/doc';
+import { useEffect, useRef, useState } from 'react';
 import { count } from '@shared/arabic';
-import { asksLetterNumber, normalizeLayout } from '@shared/letterhead';
 import type { Attachment } from '@shared/api';
-import { formatGregorian, formatHijri } from '@shared/dates';
-import WhatsAppPasteDialog from './WhatsAppPasteDialog';
-import { valuesFromMessage } from '@shared/whatsappParser';
-import { derivedWords } from '@shared/tafqeet';
-import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey } from '@shared/gender';
-import { useLearnedGenders } from '../lib/useLearnedGenders';
-import GenderReview from '../components/GenderReview';
-import CitizenMultiPicker from '../components/CitizenMultiPicker';
-import { docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
-import { choosePrinter } from '../lib/printChoice';
-import IdSheetDialog from '../components/IdSheetDialog';
-import type { CounterCard } from '@shared/counterCards';
-import type { InboxOpen } from '../components/InboxPanel';
-import { CitizenPicker, SchoolPicker } from './ServicePickers';
-import { formValues } from '@shared/imageForm';
 import { papersWord } from '../components/OutputBar';
-import type { InboxFile } from '@shared/api';
 import { useToast } from '../kit/useToast';
-import { errorText } from '../lib/errors';
 import mark from '../assets/brand/mt-mark.png';
 import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
 import { usePrintRun } from './service/usePrintRun';
@@ -46,39 +27,19 @@ import CounterPick from './service/CounterPick';
 import CounterFill from './service/CounterFill';
 import CounterReview from './service/CounterReview';
 import DecisionBar from './service/DecisionBar';
-import type { AfterIssue, Loaded, RepeatOf, Step } from './service/types';
+import type { Loaded, RepeatOf, ServiceScreenProps, Step } from './service/types';
+import { useCounterError } from './service/useCounterError';
+import { useCounterFields } from './service/useCounterFields';
+import { useFillLoader } from './service/useFillLoader';
+import { useCitizenFill } from './service/useCitizenFill';
+import { useFillDerived } from './service/useFillDerived';
+import { useAfterIssue } from './service/useAfterIssue';
+import { useCustomerReturn } from './service/useCustomerReturn';
+import { useCounterChecks } from './service/useCounterChecks';
+import CounterDialogs from './service/CounterDialogs';
 
-export type ServiceScreenProps = {
-  onIssued?: () => void;
-  /**
-   * الشبّاك لا يُهدم حين يُترك: يبقى مركّبًا مخفيًّا فتبقى المعاملة كما تُركت —
-   * كان الموظف يذهب إلى «المواطنين» ليتحقّق من رقمٍ فيعود إلى شاشةٍ فارغة.
-   * و`active` يقول أهو المعروض: فيُعاد تحميل النماذج عند العودة، ولا يستجيب
-   * لاختصاراته وهو مخفيّ.
-   */
-  active?: boolean;
-  /** «كرّره» من الأرشيف: نماذج معاملةٍ صدرت وقيمها — تُفتح نسخةً جديدة للتعديل. */
-  repeat?: RepeatRequest | null;
-  /** بطاقةٌ تفتح أداةً (الصور، PDF، الأسئلة…) أو نافذة (استنساخ الهوية) — المرحلة ٢. ومعها الزبون
-   * الواقف إن عُرف، فتقوله الأداة في رأسها وتحفظ في ملفّه (المرحلة ٥). */
-  onOpenTool?: (target: CounterCard['target'], citizenId: number | null) => void;
-  /** ملفٌّ من «الملفّات» يُفتح في أداته — ويُرفض بخطأٍ يقوله اللوح. */
-  onOpenFile?: (file: InboxFile, as: InboxOpen) => Promise<void>;
-  /** «افتح التفعيل» على رسالة انتهاء المدّة (د١٠): الشبّاك لا ينتقل بنفسه، فتُمرَّر من App. */
-  onOpenActivation?: () => void;
-  /** «استأنف» من قيد العمل: معاملةٌ معلّقة بمفتاحها (المرحلة ٣). */
-  resumeRequest?: { key: number; parkedKey: number } | null;
-  /** «شيءٌ آخر لنفس الزبون» من أداة: يعود الزبون، وتُملأ حقوله من ملفّه حين يُختار ما يريده. */
-  customerRequest?: { key: number; citizenId: number } | null;
-  /** إعدادات المكتب كما حفظها غيره (المعالج، الإعدادات) — تغيُّرها يُعيد قراءتها: بطاقات «ابدأ جاهزًا». */
-  settingsKey?: unknown;
-};
-
-/** «كرّره»: نماذج كتابٍ صدر بقيمه — و`id` الكتاب الأصل، فيُبطَل إن اختار الموظف (د٤). */
-export type RepeatRequest = { key: number; id: number; serial: string; templateIds: number[]; values: Record<string, string> };
-
-/** المعاملة المعلّقة — نوعها في `service/types.ts` (وتقرؤه «قيد العمل»). */
-export type { Parked } from './service/types';
+/** المعاملة المعلّقة، وخصائص الشاشة و«كرّره» — أنواعها في `service/types.ts` (وتقرؤها «قيد العمل» وApp). */
+export type { Parked, RepeatRequest, ServiceScreenProps } from './service/types';
 
 export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, onOpenActivation, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
@@ -90,31 +51,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const [at, setAt] = useState(0);
   const [busy, setBusy] = useState(false);
   const { toast, say, dismiss } = useToast(3200);
-  /**
-   * خطأٌ يُقال بالعربية ويبقى حتى يغلقه الموظف (د١٠): كانت رسالة الإصدار تُعرض خامًا (قد تبدأ بـ«Error invoking
-   * remote method») وتختفي بعد ثلاث ثوانٍ — ورسالة انتهاء المدّة طويلة. ومعها «افتح التفعيل».
-   */
-  const sayError = useCallback(
-    (e: unknown, fallback: string) => {
-      const text = errorText(e, fallback);
-      const expired = text.includes('الإعدادات ← التفعيل');
-      say(
-        text,
-        'warn',
-        expired && onOpenActivation
-          ? {
-              label: 'افتح التفعيل',
-              run: () => {
-                dismiss();
-                onOpenActivation();
-              }
-            }
-          : undefined,
-        { sticky: true }
-      );
-    },
-    [say, dismiss, onOpenActivation]
-  );
+  // ── الخطأ بالعربية يبقى حتى يُغلق، ومعه «افتح التفعيل» — `service/useCounterError.ts` ──
+  const { sayError } = useCounterError({ say, onOpenActivation, dismiss });
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
 
@@ -169,135 +107,28 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, step, picked, query]);
 
-  /** الحقول التي تُعرض: اتحاد ما تطلبه المختارات، بلا تكرار. */
-  const fields: DocField[] = useMemo(() => mergeFields(loaded.map((l) => l.doc)), [loaded]);
-
-  /**
-   * القيم كما تُطبع: ما كتبه الموظف، وحقولُ «الكتابة» الفارغة مملوءةً من أرقامها —
-   * «الدرجة» ٩٥ تكتب «خمس وتسعون درجة»، و«المبلغ» يُفقَّط. وما كُتب باليد يغلب.
-   */
-  const keys = useMemo(() => fields.map((f) => f.key), [fields]);
-
-  /** أفي الأوراق المختارة «{الطالب|الطالبة}»؟ فيُسأل عن الجنس — ويُقترح من الاسم. */
-  const needsGender = useMemo(() => loaded.some((l) => docHasChoices(l.doc)), [loaded]);
-  /** اختاره الموظف بيده؟ فلا يغيّره الاقتراح بعدها. */
-  const [genderByHand, setGenderByHand] = useState(false);
-  /** ما تعلّمه المكتب من التذكير والتأنيث — ويُضاف إليه ما يُجاب هنا (ج٤). */
-  const [learned, remember] = useLearnedGenders();
-  /** اختيار أسماء القائمة من السجل (د١٢). */
-  const [mergePicker, setMergePicker] = useState(false);
-  /** أسماء القائمة التي لم يُعرف جنسها — تُسأل قبل أن تُطبع الدفعة. */
-  const [genderReview, setGenderReview] = useState<{ names: string[]; print: boolean } | null>(null);
-  // والاستمارة المصوّرة: المجموع يُجمع والمربّع ✓ قبل أن تُكتب الأرقام كلماتٍ (المرحلة ٤).
-  const asPrinted = useCallback((v: Record<string, string>) => derivedWords(formValues(fields, v), keys), [keys, fields]);
-  const effective = useMemo(() => asPrinted(values), [asPrinted, values]);
+  // ── الحقول والجنس والقيم كما تُطبع — `service/useCounterFields.ts` ──
+  const { fields, needsGender, genderByHand, learned, setGenderByHand, asPrinted, remember, setGenderReview, effective, setMergePicker, mergePicker, genderReview } = useCounterFields({
+    loaded, values
+  });
 
   const toggle = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-  /** تحميل تفاصيل المختارات مرّة عند الانتقال — لا مع كل ضغطة. */
-  async function goFill(ids: number[] = picked) {
-    setBusy(true);
-    try {
-      const details = await Promise.all(ids.map((id) => window.diwan.templates.get(id)));
-      const next: Loaded[] = [];
-      for (const detail of details) {
-        if (!detail) continue;
-        // الملخّص من القائمة، وإلا من التفاصيل نفسها — نموذجٌ مُكرَّر قد لا يكون فيها.
-        const summary =
-          items.find((t) => t.id === detail.id) ?? { ...detail, variables: detail.variables.map((v) => v.token) };
-        const lh = letterheads.find((x) => x.id === detail.letterheadId) ?? null;
-        next.push({
-          summary,
-          detail,
-          doc: await window.diwan.templates.doc(detail.id),
-          layout: lh ? normalizeLayout(lh.layout) : null
-        });
-      }
-      setLoaded(next);
-      setStep('fill');
-    } catch {
-      say('تعذّر تحميل النماذج', 'warn');
-    } finally {
-      setBusy(false);
-    }
-  }
+  // ── تحميل المختارات عند الانتقال إلى «املأ» — `service/useFillLoader.ts` ──
+  const { goFill } = useFillLoader({ picked, setBusy, items, letterheads, setLoaded, setStep, say });
 
   // ── «ملفّ المدارس»: «هات المدرسة» والعام الدراسي — `service/useSchoolFile.ts` ──
   const { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, useSchool } =
     useSchoolFile({ settings, fields, step, values, setValues, say });
 
-  /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه من الحقول. */
-  async function useCitizen(id: number) {
-    const citizen = (await window.diwan.citizens.get(id)) as Record<string, unknown> | null;
-    if (!citizen) return;
-    setCitizenId(id);
-    setValues((prev) => {
-      const next = { ...prev };
-      for (const f of fields) {
-        if (!f.source) continue;
-        const raw = citizen[f.source];
-        // ما كتبه الموظف بيده لا يُطمس.
-        if (typeof raw === 'string' && raw.trim() && !next[f.key]?.trim()) next[f.key] = raw;
-      }
-      const name = citizen.fullName;
-      const byRole = fields.find((f) => f.role === 'name');
-      if (byRole && typeof name === 'string' && !next[byRole.key]?.trim()) next[byRole.key] = name;
-      return next;
-    });
-    setPicker(false);
-    say('استُوردت بيانات المواطن');
-  }
+  // ── F2: المواطن من السجلّ يملأ حقوله — `service/useCitizenFill.ts` ──
+  const { useCitizen } = useCitizenFill({ setCitizenId, setValues, fields, setPicker, say });
 
-  const byRole = (role: DocField['role']) => {
-    const f = fields.find((x) => x.role === role);
-    return f ? (values[f.key]?.trim() ?? '') : '';
-  };
-
-  /** اسم صاحب العلاقة: من حقلٍ بدوره، وإلا من أول حقل مملوء. */
-  // وخانةُ «{الطالب|الطالبة}» ليست حقلًا يُملأ، فلا تُعدّ أوّلَ الحقول.
-  const firstField = fields.find((f) => f.source === 'fullName') ?? fields.find((f) => !isChoiceKey(f.key));
-  const citizenName =
-    byRole('name') || values[firstField?.key ?? '']?.trim() || '';
-
-  const missing = fields.filter((f) => f.required && !isChoiceKey(f.key) && !values[f.key]?.trim());
-
-  /** رأس الورقة: تاريخ اليوم، والعدد كما أعطاه الزبون — وفارغًا فراغٌ منقوط للجهة. */
-  const registry = { number: letterNo.trim(), date: formatGregorian(new Date()) };
-  const printsRegistry = loaded.some((l) => asksLetterNumber(l.layout));
-
-  /**
-   * حقول الترويسة التلقائية: التاريخان، والعدد على الكتاب، وما سواها من قيم
-   * المعاملة. وما لا قيمة له يُطبع فارغًا — لا وسمًا بين قوسين على الورق.
-   */
-  const resolveHead = (text: string): string =>
-    text.replace(/\{([^{}]+)\}/g, (_m, raw: string) => {
-      const key = raw.trim();
-      if (key === 'رقم_الصادر') return letterNo.trim();
-      if (key === 'التاريخ_الميلادي') return formatGregorian(new Date());
-      if (key === 'التاريخ_الهجري') return formatHijri(new Date());
-      return values[key] ?? values[key.replace(/_/g, ' ')] ?? '';
-    });
-
-  // الجنس يُقترح من الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة.
-  useEffect(() => {
-    if (!needsGender || genderByHand || !citizenName) return;
-    const guess = guessGender(citizenName, learned);
-    if (guess && values[GENDER_KEY] !== guess.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGender, genderByHand, citizenName, learned]);
-
-  /** حقل الاسم: عليه يدور الدمج، وبغيره لا معنى لقائمة أسماء. */
-  const nameField = fields.find((f) => f.role === 'name') ?? null;
-
-  /** أسماء القائمة: سطرٌ لكل اسم، وتُهمل الفارغة والمكرَّرة. */
-  const rows = useMemo(() => {
-    const seen = new Set<string>();
-    return names
-      .split('\n')
-      .map((n) => n.trim())
-      .filter((n) => n && !seen.has(n) && seen.add(n));
-  }, [names]);
+  // ── صاحب العلاقة والناقص ورأس الورقة وأسماء الدمج — `service/useFillDerived.ts` ──
+  const { byRole, citizenName, nameField, rows, missing, printsRegistry, registry, resolveHead } = useFillDerived({
+    fields, values, letterNo, loaded, needsGender, genderByHand, learned, setValues, names
+  });
 
   // ── طباعة ما صدر (خطة Production، ٢٫٣): ورقةً ورقة بسجلٍّ يُستأنف — `service/usePrintRun.ts` ──
   const { printRun, printIssued, resumePrint, dropPrint } = usePrintRun(say);
@@ -313,38 +144,12 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     if (detail) setIdSheet({ name: detail.fullName, attachments: detail.attachments });
   }
 
+  // ── ما خرج الآن: «أعد الطبع» وPDF و«شيءٌ آخر لنفس الزبون» — `service/useAfterIssue.ts` ──
+  const { setAfter, after, reprintAfter, pdfAfter, sameCustomer } = useAfterIssue({
+    printIssued, say, setValues, setCitizenId, setGenderByHand
+  });
+
   /** معاملةٌ جديدة: كل ما كُتب يُمحى، والنماذج المختارة معه. */
-  /**
-   * ما خرج الآن (ن٩): يُقال في شريطٍ بعد الطبع — وأين خرج، وبرقمه في السجلّ — ومنه «أعد الطبع»
-   * و«شيءٌ آخر لنفس الزبون» (تعود قيمه إلى ورقة الإدخال للمختار التالي).
-   */
-  const [after, setAfter] = useState<AfterIssue | null>(null);
-
-  async function reprintAfter() {
-    if (!after) return;
-    const printer = after.outcome.printer ?? (await choosePrinter('documents'))?.printer;
-    if (!printer) return;
-    setAfter({ ...after, outcome: { ...after.outcome, printer } });
-    await printIssued(after.ids, printer, after.mode, after.label, after.copies);
-  }
-
-  /** ما قُيِّد الآن ملفًّا للزبون (واتساب، بريد) — كلّ كتابٍ ملفّه، من السجلّ كما صدر. */
-  async function pdfAfter() {
-    if (!after) return;
-    let saved = 0;
-    for (const id of after.ids) if (await window.diwan.documents.exportPdf(id)) saved++;
-    if (saved) say(saved === 1 ? 'حُفظ PDF من السجلّ كما صدر' : `حُفظت من السجلّ ${count(saved, 'ملف')} PDF`);
-  }
-
-  function sameCustomer() {
-    if (!after?.customer) return;
-    setValues(after.customer.values);
-    setCitizenId(after.customer.citizenId);
-    setGenderByHand(after.customer.genderByHand);
-    setAfter(null);
-    say('الزبون نفسه — اختر ما يريده بعدُ، وحقوله مملوءة');
-  }
-
   function reset() {
     setStep('pick');
     setPicked([]);
@@ -386,25 +191,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setStep, setPicked, setValues, setLetterNo, setCitizenId, setMerge, setNames, setValuesOnly, setGenderByHand, setAt, resumeRequest
   });
 
-  // الزبون عائدًا من أداة: يبقى زبون الشبّاك، وحقول ما يختاره بعدُ تُملأ من ملفّه.
-  const fillFrom = useRef<number | null>(null);
-  useEffect(() => {
-    if (!customerRequest) return;
-    setCitizenId(customerRequest.citizenId);
-    fillFrom.current = customerRequest.citizenId;
-    if (step === 'fill' && fields.length) {
-      fillFrom.current = null;
-      void useCitizen(customerRequest.citizenId);
-    } else say('الزبون نفسه — اختر ما يريده بعدُ، وحقوله تُملأ من ملفّه');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerRequest?.key]);
-  useEffect(() => {
-    if (step !== 'fill' || !fields.length || fillFrom.current === null) return;
-    const id = fillFrom.current;
-    fillFrom.current = null;
-    void useCitizen(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, fields]);
+  // ── الزبون عائدًا من أداة — `service/useCustomerReturn.ts` ──
+  useCustomerReturn({ customerRequest, setCitizenId, step, fields, useCitizen, say });
 
   // ── الإصدار: المعاملة والدمج ثم الطباعة — `service/useIssue.ts` ──
   const { issue, issueMerged } = useIssue({
@@ -413,40 +201,10 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setNewCitizen, reset, setBusy, onIssued, say, sayError
   });
 
-  /**
-   * التنبيه الإملائي قبل الطباعة: ما كتبه الموظف يُصلح هنا بضغطة، وما في نصّ
-   * النموذج نفسه يُقال ويُصلح في الورشة — فالشبّاك لا يعدّل النماذج.
-   */
-  const typedSpelling = useMemo(
-    () =>
-      spellingIssues(
-        Object.entries(values)
-          .filter(([k]) => k !== GENDER_KEY)
-          .map(([, v]) => v)
-          .join('\n')
-      ),
-    [values]
-  );
-  const templateSpelling = useMemo(() => {
-    const merged = new Map<string, SpellIssue>();
-    for (const issue of loaded.flatMap((l) => docSpelling(l.doc))) {
-      const key = `${issue.word}→${issue.fix}`;
-      const prev = merged.get(key);
-      merged.set(key, prev ? { ...prev, count: prev.count + issue.count } : issue);
-    }
-    return [...merged.values()];
-  }, [loaded]);
-
-  const current = loaded[Math.min(at, loaded.length - 1)];
-  /**
-   * الجنس لم يُعرف يقينًا من الاسم ولم يختره الموظف: يُسأل قبل الطباعة (ج٤) —
-   * «ذكرٌ» صامتًا كان يُخرج «الطالب رسل».
-   */
-  const genderGuess = needsGender && citizenName ? guessGender(citizenName, learned) : null;
-  const genderUnsure = !merge && needsGender && !genderByHand && genderGuess !== null && !genderGuess.sure;
-
-  /** ما يمنع الإصدار: حقلٌ إلزامي فارغ، أو جنسٌ لم يُحسم، أو دمجٌ بلا أسماء. */
-  const blocked = merge ? rows.length === 0 : missing.length > 0 || genderUnsure;
+  // ── قبل الطباعة: الإملاء والجنس وما يمنع الإصدار — `service/useCounterChecks.ts` ──
+  const { typedSpelling, templateSpelling, current, genderUnsure, blocked } = useCounterChecks({
+    values, loaded, at, needsGender, citizenName, learned, merge, genderByHand, rows, missing
+  });
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
@@ -585,60 +343,33 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         />
       </div>
 
-      {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
-      {schoolPicker && <SchoolPicker schools={schools} onClose={() => setSchoolPicker(false)} onPick={(s) => useSchool(s)} />}
-      {schoolOn && (
-        <datalist id="diwan-schools">
-          {schools.map((s) => (
-            <option key={s.id} value={s.name} />
-          ))}
-        </datalist>
-      )}
-
-      {mergePicker && (
-        <CitizenMultiPicker
-          confirmLabel="أضفهم إلى القائمة"
-          title="قائمة الدمج من الزبائن — ورقةٌ لكلّ اسم"
-          onClose={() => setMergePicker(false)}
-          onPick={(ids) => {
-            setMergePicker(false);
-            void window.diwan.citizens.records(ids).then((records) => {
-              const have = new Set(rows);
-              const added = records.map((r) => r.fullName.trim()).filter((n) => n && !have.has(n));
-              setNames((prev) => [prev.trim(), ...added].filter(Boolean).join('\n'));
-              say(`أُضيف من الزبائن ${count(added.length, 'اسم')}`);
-            });
-          }}
-        />
-      )}
-
-      {genderReview && (
-        <GenderReview
-          learned={learned}
-          names={genderReview.names}
-          onCancel={() => setGenderReview(null)}
-          onDone={(decisions) => {
-            const print = genderReview.print;
-            setGenderReview(null);
-            remember(Object.entries(decisions).map(([name, gender]) => ({ name, gender })));
-            void issueMerged(print, decisions);
-          }}
-        />
-      )}
-
-      <WhatsAppPasteDialog
-        isOpen={pasteOpen}
-        onClose={() => setPasteOpen(false)}
-        onApply={(extracted) => {
-          const filled = valuesFromMessage(fields, extracted, values);
-          const n = Object.keys(filled).length;
-          setValues((prev) => ({ ...prev, ...filled }));
-          setPasteOpen(false);
-          say(n ? `مُلئ من الرسالة ${count(n, 'حقل')} — راجعها قبل الطباعة` : 'لم يطابق شيءٌ من الرسالة حقول هذه الأوراق', n ? 'ok' : 'warn');
-        }}
+      <CounterDialogs
+        picker={picker}
+        setPicker={setPicker}
+        useCitizen={useCitizen}
+        schoolPicker={schoolPicker}
+        schools={schools}
+        setSchoolPicker={setSchoolPicker}
+        useSchool={useSchool}
+        schoolOn={schoolOn}
+        mergePicker={mergePicker}
+        setMergePicker={setMergePicker}
+        rows={rows}
+        setNames={setNames}
+        say={say}
+        genderReview={genderReview}
+        learned={learned}
+        setGenderReview={setGenderReview}
+        remember={remember}
+        issueMerged={issueMerged}
+        pasteOpen={pasteOpen}
+        setPasteOpen={setPasteOpen}
+        fields={fields}
+        values={values}
+        setValues={setValues}
+        idSheet={idSheet}
+        setIdSheet={setIdSheet}
       />
-
-      {idSheet && <IdSheetDialog citizenName={idSheet.name} attachments={idSheet.attachments} onClose={() => setIdSheet(null)} />}
 
       {printRun && <PrintRunBar printRun={printRun} resumePrint={resumePrint} dropPrint={dropPrint} />}
 
