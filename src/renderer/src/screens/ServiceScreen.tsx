@@ -11,16 +11,14 @@
  * ولا أداة تصميم هنا: من أراد أن يبني استمارة فمكانه الورشة.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isDateField, mergeFields, type Doc, type DocField } from '@shared/doc';
+import { isDateField, mergeFields, type DocField } from '@shared/doc';
 import { normalizeFold, toIndic, count, countIn } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
-import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead } from '@shared/letterhead';
 import type {
   Attachment,
   CitizenInput,
   OfficeSettings,
-  PrintJobResult,
-  TemplateDetail,
   TemplateSummary,
   TransactionSheet
 } from '@shared/api';
@@ -57,15 +55,9 @@ import { onBeforeClose } from '../lib/beforeClose';
 import { useToast } from '../kit/useToast';
 import { errorText } from '../lib/errors';
 import mark from '../assets/brand/mt-mark.png';
-
-type Step = 'pick' | 'fill' | 'review';
-
-type Loaded = {
-  summary: TemplateSummary;
-  detail: TemplateDetail;
-  doc: Doc;
-  layout: LetterheadLayout | null;
-};
+import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
+import { usePrintRun } from './service/usePrintRun';
+import type { Loaded, RepeatOf, Step } from './service/types';
 
 export type ServiceScreenProps = {
   onIssued?: () => void;
@@ -114,12 +106,6 @@ export type Parked = {
   valuesOnly: boolean;
   genderByHand: boolean;
 };
-
-const STEPS: { key: Step; label: string; hint: string }[] = [
-  { key: 'pick', label: 'اختر', hint: 'ما يطلبه الزبون' },
-  { key: 'fill', label: 'املأ', hint: 'مرّةً واحدة للجميع' },
-  { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
-];
 
 export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, onOpenActivation, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
@@ -179,7 +165,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
    * «نسخة عن …» (د٤): الكتاب الأصل، و«وأبطل الأصل» — **غير مؤشَّرة افتراضيًّا** — بسببها. فإن أُشِّرت أُبطل الأصل بعد
    * نجاح إصدار هذه النسخة: كتابٌ خاطئ يُصحَّح بخطوةٍ واحدة لا بتكرارٍ ثم إبطالٍ في الأرشيف وسببٍ يُكتب مرّتين.
    */
-  const [repeatOf, setRepeatOf] = useState<{ id: number; serial: string; voidIt: boolean; reason: string } | null>(null);
+  const [repeatOf, setRepeatOf] = useState<RepeatOf | null>(null);
   /** الدمج: سطرٌ لكل اسم، ولكلٍّ معاملتُه وأوراقُه. */
   const [merge, setMerge] = useState(false);
   const [names, setNames] = useState('');
@@ -521,63 +507,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     }
   }
 
-  // ── طباعة ما صدر (خطة Production، ٢٫٣) ───────────────────────────
-  /**
-   * الأوراق تُرسل ورقةً ورقة بسجلٍّ على القرص، والموظف يرى كم طُبع: «طُبعت ٣ من ٥». وما توقّف
-   * (طابعةٌ لا تستجيب، ورقٌ نفد) يبقى معروضًا ليُكمَل من حيث وقف أو يُترك — الكتب صدرت وفي
-   * الأرشيف، فلا تُصدر ثانيةً لتُطبع.
-   */
-  const [printRun, setPrintRun] = useState<{
-    id?: string;
-    sent: number;
-    total: number;
-    reason?: string;
-    running: boolean;
-  } | null>(null);
-
-  async function followPrint(run: () => Promise<PrintJobResult>, total: number, from = 0) {
-    setPrintRun((r) => ({ id: r?.id, sent: from, total, running: true }));
-    const off = window.diwan.output.onPrintProgress((p) =>
-      setPrintRun((r) => (r ? { ...r, id: p.id, sent: p.sent, total: p.total } : r))
-    );
-    try {
-      const out = await run();
-      if (out.ok) {
-        setPrintRun(null);
-        say(`طُبعت ${out.sent} من ${out.total}`);
-      } else {
-        setPrintRun({ id: out.id, sent: out.sent, total: out.total, reason: out.reason, running: false });
-      }
-    } catch (e) {
-      setPrintRun((r) => ({
-        id: r?.id,
-        sent: r?.sent ?? from,
-        total,
-        reason: errorText(e, 'تعذّرت الطباعة'),
-        running: false
-      }));
-    } finally {
-      off();
-    }
-  }
-
-  const printIssued = (ids: number[], printer: string, mode: 'full' | 'values', label: string, n = 1) =>
-    followPrint(() => window.diwan.documents.printIssued({ ids, printer, mode, label, copies: n }), ids.length * n);
+  // ── طباعة ما صدر (خطة Production، ٢٫٣): ورقةً ورقة بسجلٍّ يُستأنف — `service/usePrintRun.ts` ──
+  const { printRun, printIssued, resumePrint, dropPrint } = usePrintRun(say);
 
   /** «ورقتان» — أو «ورقتان × ٣ نسخ» حين تُطبع نسخ. */
   const papersWithCopies = (papers: number, n: number) => (n > 1 ? `${papersWord(papers)} × ${count(n, 'نسخة')}` : papersWord(papers));
-
-  async function resumePrint() {
-    const run = printRun;
-    if (!run?.id) return;
-    await followPrint(() => window.diwan.output.resumeJob(run.id!, run.sent), run.total, run.sent);
-  }
-
-  async function dropPrint() {
-    if (printRun?.id) await window.diwan.output.discardJob(printRun.id);
-    setPrintRun(null);
-    say('تُركت الطباعة — الكتب صدرت، وتُعاد طباعتها من الأرشيف');
-  }
 
   /** ورقة مستمسكات صاحب العلاقة (خطة Production، المرحلة ٥) — من ملفّه في السجل والزبون واقف. */
   const [idSheet, setIdSheet] = useState<{ name: string; attachments: Attachment[] } | null>(null);
@@ -952,36 +886,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       />
       <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         {/* الخطوات الثلاث */}
-        <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-md">
-          {STEPS.map((s, i) => (
-            <div key={s.key} className="flex items-center gap-space-xs">
-              <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center font-label-md text-label-md font-bold ${
-                  step === s.key
-                    ? 'bg-primary-container text-on-primary'
-                    : 'bg-surface-container text-on-surface-variant'
-                }`}
-              >
-                {i + 1}
-              </span>
-              <div className="flex flex-col leading-tight">
-                <span className="font-label-lg text-label-lg text-on-surface">{s.label}</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">{s.hint}</span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <span className="material-symbols-outlined text-[18px] text-outline-variant mx-space-xs">
-                  chevron_left
-                </span>
-              )}
-            </div>
-          ))}
-          <span className="flex-1" />
-          {picked.length > 0 && (
-            <span className="font-label-md text-label-md text-on-surface">
-              المختار: {count(picked.length, 'ورقة')}
-            </span>
-          )}
-        </div>
+        <StepsHeader step={step} picked={picked} />
 
         <div className="flex-1 min-h-0 overflow-y-auto p-space-lg">
           {/* ١ — اختر */}
@@ -1529,37 +1434,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         </div>
 
         {/* «نسخة عن …» (د٤): والأصل يبقى كما خرج — إلا أن يُختار إبطاله بسببه. */}
-        {repeatOf && step !== 'pick' && !merge && (
-          <div
-            className="shrink-0 px-space-lg py-space-xs bg-tertiary-container text-on-tertiary-container flex flex-wrap items-center gap-space-sm font-label-md text-label-md"
-            data-repeat-of={repeatOf.serial}
-          >
-            <span className="material-symbols-outlined text-[18px]">content_copy</span>
-            <span>
-              نسخة عن <b className="tabular">{repeatOf.serial}</b> برقمٍ جديد — والأصل يبقى في السجلّ كما خرج.
-            </span>
-            <label className="flex items-center gap-1 cursor-pointer" title="بعد أن تصدر هذه النسخة يُبطَل الأصل بسببه — ولا يُحذف ولا يُعاد طبعه">
-              <input
-                checked={repeatOf.voidIt}
-                className="w-4 h-4 accent-secondary"
-                data-act="void-original"
-                type="checkbox"
-                onChange={(e) => setRepeatOf({ ...repeatOf, voidIt: e.target.checked })}
-              />
-              وأبطل الأصل لأنّه صدر خطأً
-            </label>
-            {repeatOf.voidIt && (
-              <input
-                aria-label="سبب الإبطال"
-                className="h-8 w-56 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
-                data-void-reason=""
-                placeholder="سبب الإبطال"
-                value={repeatOf.reason}
-                onChange={(e) => setRepeatOf({ ...repeatOf, reason: e.target.value })}
-              />
-            )}
-          </div>
-        )}
+        {repeatOf && step !== 'pick' && !merge && <RepeatOfBar repeatOf={repeatOf} setRepeatOf={setRepeatOf} />}
 
         {/* شريط القرار */}
         <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-sm">
@@ -1764,82 +1639,9 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
       {idSheet && <IdSheetDialog citizenName={idSheet.name} attachments={idSheet.attachments} onClose={() => setIdSheet(null)} />}
 
-      {printRun && (
-        <div
-          className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-space-sm px-space-md py-space-sm rounded-xl shadow-lg bg-surface-container-highest text-on-surface font-label-md text-label-md"
-          data-print-run={printRun.running ? 'running' : 'stopped'}
-          data-print-sent={printRun.sent}
-          data-print-total={printRun.total}
-        >
-          <span className={`material-symbols-outlined text-[20px] ${printRun.running ? 'animate-spin text-secondary' : 'text-error'}`}>
-            {printRun.running ? 'progress_activity' : 'print_error'}
-          </span>
-          {printRun.running ? (
-            <span>
-              يُطبع… {printRun.sent} من {printRun.total}
-            </span>
-          ) : (
-            <>
-              <span>
-                توقّفت الطباعة: طُبعت {printRun.sent} من {printRun.total}
-                {printRun.reason ? ` — ${printRun.reason}` : ''}
-              </span>
-              {printRun.id && (
-                <button
-                  className="h-8 px-space-md rounded-lg bg-secondary text-on-secondary font-bold"
-                  data-act="print-resume"
-                  type="button"
-                  onClick={() => void resumePrint()}
-                >
-                  أكمل الطباعة
-                </button>
-              )}
-              <button
-                className="h-8 px-space-sm rounded-lg hover:bg-surface-container-high"
-                data-act="print-drop"
-                type="button"
-                onClick={() => void dropPrint()}
-              >
-                اتركها
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      {printRun && <PrintRunBar printRun={printRun} resumePrint={resumePrint} dropPrint={dropPrint} />}
 
-      {toast && (
-        <div
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[min(90vw,48rem)] px-space-md py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'warn'
-              ? 'bg-error-container text-on-error-container'
-              : 'bg-primary-container text-on-primary'
-          }`}
-        >
-          {toast.text}
-          {toast.action && (
-            <button
-              className="mr-space-md underline font-bold"
-              data-act="toast-action"
-              type="button"
-              onClick={toast.action.run}
-            >
-              {toast.action.label}
-            </button>
-          )}
-          {toast.sticky && (
-            <button
-              aria-label="أغلق الرسالة"
-              className="mr-space-sm align-middle w-7 h-7 rounded-full hover:bg-black/10 inline-flex items-center justify-center"
-              data-act="toast-close"
-              title="أغلق"
-              type="button"
-              onClick={dismiss}
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-            </button>
-          )}
-        </div>
-      )}
+      {toast && <CounterToast toast={toast} dismiss={dismiss} />}
     </main>
   );
 }
