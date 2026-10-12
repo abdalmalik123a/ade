@@ -22,7 +22,7 @@
   "src/renderer/src/screens/PapersScreen.tsx": 1107,
   "src/renderer/src/screens/PdfScreen.tsx": 1335,
   "src/renderer/src/screens/PhotosScreen.tsx": 1213,
-  "src/renderer/src/screens/ServiceScreen.tsx": 1213,
+  "src/renderer/src/screens/ServiceScreen.tsx": 1046,
   "src/renderer/src/screens/SettingsScreen.tsx": 575,
   "src/renderer/src/screens/TemplateDesigner.tsx": 851,
   "src/renderer/src/screens/TemplatesScreen.tsx": 1264,

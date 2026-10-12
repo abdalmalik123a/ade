@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mergeFields, type DocField } from '@shared/doc';
-import { normalizeFold, toIndic, count, countIn } from '@shared/arabic';
+import { normalizeFold, count, countIn } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
 import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead } from '@shared/letterhead';
 import type {
@@ -23,7 +23,6 @@ import type {
   TransactionSheet
 } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
-import LetterSheet from '../components/LetterSheet';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
 import { derivedWords } from '@shared/tafqeet';
@@ -31,8 +30,7 @@ import { GENDER_KEY, docHasChoices, guessGender, isChoiceKey, unsureNames, type 
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import GenderReview from '../components/GenderReview';
 import CitizenMultiPicker from '../components/CitizenMultiPicker';
-import { applySpelling, docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
-import SpellingPanel from '../components/SpellingPanel';
+import { docSpelling, spellingIssues, type SpellIssue } from '@shared/spelling';
 import { choosePrinter } from '../lib/printChoice';
 import IdSheetDialog from '../components/IdSheetDialog';
 import type { CounterCard } from '@shared/counterCards';
@@ -43,7 +41,7 @@ import { applySchool, hasSchoolFields, schoolSlotOf, schoolValues } from '@share
 import type { Client } from '@shared/orders';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
-import { PrinterNote, papersWord } from '../components/OutputBar';
+import { papersWord } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
 import { onBeforeClose } from '../lib/beforeClose';
 import { useToast } from '../kit/useToast';
@@ -53,6 +51,8 @@ import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/C
 import { usePrintRun } from './service/usePrintRun';
 import CounterPick from './service/CounterPick';
 import CounterFill from './service/CounterFill';
+import CounterReview from './service/CounterReview';
+import DecisionBar from './service/DecisionBar';
 import type { AfterIssue, Loaded, NewCitizen, Parked, RepeatOf, Step } from './service/types';
 
 export type ServiceScreenProps = {
@@ -933,221 +933,54 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
           )}
 
           {/* ٣ — راجع */}
-          <div className={step === 'review' ? 'flex flex-col items-center gap-space-md' : 'hidden'}>
-            {(typedSpelling.length > 0 || templateSpelling.length > 0) && (
-              <div className="w-full max-w-3xl flex flex-col gap-space-xs">
-                <SpellingPanel
-                  issues={typedSpelling}
-                  title="فيما كُتب في الحقول"
-                  onFix={(chosen) =>
-                    setValues((prev) =>
-                      Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, k === GENDER_KEY ? v : applySpelling(v, chosen)]))
-                    )
-                  }
-                />
-                <SpellingPanel
-                  issues={templateSpelling}
-                  title="في نصّ النموذج نفسه"
-                  note="يُصلح من «المكتبة» (تدقيق إملائي في مصمّم النماذج) — فالشبّاك لا يعدّل النماذج"
-                />
-              </div>
-            )}
-            {merge && rows.length > 0 && (
-              <span className="font-label-md text-label-md text-on-surface-variant">
-                معاينة الاسم الأول ({rows[0]}) — وبقيّة الأسماء {rows.length - 1} مثلها
-              </span>
-            )}
-            {loaded.length > 1 && (
-              <div className="flex items-center gap-space-sm">
-                <button
-                  className="w-9 h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={at === 0}
-                  type="button"
-                  onClick={() => setAt((n) => n - 1)}
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
-                <span className="font-label-md text-label-md text-on-surface">
-                  ورقة {at + 1} من {loaded.length} — {current?.summary.title}
-                </span>
-                <button
-                  className="w-9 h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={at >= loaded.length - 1}
-                  type="button"
-                  onClick={() => setAt((n) => n + 1)}
-                >
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                </button>
-              </div>
-            )}
-
-            {loaded.map((l, i) => (
-              <div key={l.summary.id} className={i === at ? '' : 'hidden'}>
-                <LetterSheet
-                  sheetRef={(el) => {
-                    sheets.current.set(l.summary.id, el);
-                  }}
-                  className={valuesOnly ? 'values-preview' : ''}
-                  doc={l.doc}
-                  layout={l.layout}
-                  values={effective}
-                  registry={registry}
-                  resolve={resolveHead}
-                />
-              </div>
-            ))}
-          </div>
+          <CounterReview
+            step={step}
+            typedSpelling={typedSpelling}
+            templateSpelling={templateSpelling}
+            setValues={setValues}
+            merge={merge}
+            rows={rows}
+            loaded={loaded}
+            at={at}
+            setAt={setAt}
+            current={current}
+            sheets={sheets}
+            valuesOnly={valuesOnly}
+            effective={effective}
+            registry={registry}
+            resolveHead={resolveHead}
+          />
         </div>
 
         {/* «نسخة عن …» (د٤): والأصل يبقى كما خرج — إلا أن يُختار إبطاله بسببه. */}
         {repeatOf && step !== 'pick' && !merge && <RepeatOfBar repeatOf={repeatOf} setRepeatOf={setRepeatOf} />}
 
         {/* شريط القرار */}
-        <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-sm">
-          {step !== 'pick' && (
-            <button
-              className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
-              type="button"
-              onClick={() => setStep(step === 'review' ? 'fill' : 'pick')}
-            >
-              رجوع
-            </button>
-          )}
-          {step !== 'pick' && (
-            <button
-              className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
-              data-act="park"
-              title="الزبون ذهب ليجلب مستمسكًا؟ علّقها واخدم غيره، ثم استأنفها من حيث تُركت"
-              type="button"
-              disabled={busy}
-              onClick={park}
-            >
-              <span className="material-symbols-outlined text-[18px]">pause_circle</span>
-              علّق المعاملة
-            </button>
-          )}
-          {step !== 'pick' && (
-            <button
-              className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container font-label-md text-label-md flex items-center gap-1"
-              data-act="discard"
-              title="زبونٌ عدل عن طلبه: تُمحى المعاملة ويُفتح الشبّاك نظيفًا — ولا يُقيَّد شيء"
-              type="button"
-              disabled={busy}
-              onClick={discardTransaction}
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-              ألغِ المعاملة
-            </button>
-          )}
-          <span className="flex-1" />
-
-          {step === 'review' && (
-            <>
-              <label
-                className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface cursor-pointer"
-                title="الاستمارة الحكومية المطبوعة في الطابعة: تُطبع القيم وحدها في فراغاتها المنقّطة، والأرشيف يقيّد الورقة كاملة. اضبط إزاحة الطابعة من الإعدادات إن لزم."
-              >
-                <input
-                  checked={valuesOnly}
-                  className="w-4 h-4 accent-secondary"
-                  data-act="values-only"
-                  type="checkbox"
-                  onChange={(e) => setValuesOnly(e.target.checked)}
-                />
-                على استمارةٍ مطبوعة — القيم وحدها
-              </label>
-              {merge ? (
-                <span className="font-label-md text-label-md text-on-surface">
-                  {count(rows.length * loaded.length, 'ورقة')} — {count(rows.length, 'اسم')}
-                </span>
-              ) : missing.length > 0 ? (
-                <span className="font-label-md text-label-md text-error">
-                  حقولٌ إلزامية فارغة: {toIndic(missing.length)}
-                </span>
-              ) : (
-                genderUnsure && (
-                  <span className="flex items-center gap-space-xs font-label-md text-label-md text-error" data-gender-unsure="">
-                    «{citizenName.split(/\s+/)[0]}»: ذكرٌ أم أنثى؟
-                    {(['ذكر', 'أنثى'] as const).map((g) => (
-                      <button
-                        key={g}
-                        className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-                        data-gender-choose={g}
-                        type="button"
-                        onClick={() => {
-                          setGenderByHand(true);
-                          setValues((prev) => ({ ...prev, [GENDER_KEY]: g }));
-                        }}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </span>
-                )
-              )}
-            </>
-          )}
-
-          {step === 'pick' && (
-            <button
-              className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
-              type="button"
-              disabled={picked.length === 0 || busy}
-              onClick={() => void goFill()}
-            >
-              املأ {picked.length > 0 ? `(${picked.length})` : ''}
-            </button>
-          )}
-          {step === 'fill' && (
-            <button
-              className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setAt(0);
-                setStep('review');
-              }}
-            >
-              راجع الأوراق
-            </button>
-          )}
-          {step === 'review' && (
-            <>
-              <PrinterNote role="documents" roles={settings?.printRoles} />
-              <label className="flex items-center gap-1 font-label-md text-label-md text-on-surface-variant" title="كم نسخةً من كلّ ورقة — تُطبع مجموعاتٍ مرتّبة">
-                النسخ
-                <input
-                  className="w-14 h-10 rounded-lg bg-surface-container-low text-center text-on-surface tabular"
-                  data-copies=""
-                  inputMode="numeric"
-                  max={99}
-                  min={1}
-                  type="number"
-                  value={copies}
-                  onChange={(e) => setCopies(Math.min(99, Math.max(1, Math.round(Number(e.target.value) || 1))))}
-                />
-              </label>
-              <button
-                className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
-                type="button"
-                disabled={busy || blocked}
-                onClick={() => void issue(false)}
-              >
-                احفظ بلا طباعة
-              </button>
-              <button
-                className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
-                type="button"
-                disabled={busy || blocked}
-                onClick={() => void issue(true)}
-              >
-                {busy
-                  ? 'لحظة…'
-                  : `اطبع ${countIn((merge ? rows.length * loaded.length : loaded.length) * copies, 'ورقة')}`}
-              </button>
-            </>
-          )}
-        </div>
+        <DecisionBar
+          step={step}
+          setStep={setStep}
+          busy={busy}
+          picked={picked}
+          goFill={goFill}
+          setAt={setAt}
+          park={park}
+          discardTransaction={discardTransaction}
+          valuesOnly={valuesOnly}
+          setValuesOnly={setValuesOnly}
+          merge={merge}
+          rows={rows}
+          loaded={loaded}
+          missing={missing}
+          genderUnsure={genderUnsure}
+          citizenName={citizenName}
+          setGenderByHand={setGenderByHand}
+          setValues={setValues}
+          settings={settings}
+          copies={copies}
+          setCopies={setCopies}
+          blocked={blocked}
+          issue={issue}
+        />
       </div>
 
       {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
