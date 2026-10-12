@@ -14,7 +14,7 @@
   "src/renderer/src/screens/CitizensScreen.tsx": 1334,
   "src/renderer/src/screens/ClientsScreen.tsx": 415,
   "src/renderer/src/screens/DeskewModal.tsx": 528,
-  "src/renderer/src/screens/EditorScreen.tsx": 1266,
+  "src/renderer/src/screens/EditorScreen.tsx": 930,
   "src/renderer/src/screens/IdDuplexDialog.tsx": 659,
   "src/renderer/src/screens/LetterheadScreen.tsx": 886,
   "src/renderer/src/screens/OrdersScreen.tsx": 840,
