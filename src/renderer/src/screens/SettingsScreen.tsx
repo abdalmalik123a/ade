@@ -6,30 +6,23 @@
  * باسمها، ومعها سياسة الخصوصية (أين البيانات وما يُحفظ) والاختصارات الثابتة
  * ورقم الإصدار.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { OfficeSettings, PrinterInfo } from '@shared/api';
-import { COUNTER_CARDS, type CounterCardId } from '@shared/counterCards';
-import { normalizeLayout } from '@shared/letterhead';
-import { SHORTCUTS } from '@shared/shortcuts';
-import { formatGregorian, formatHijri } from '@shared/dates';
 import { academicYearText } from '@shared/schoolFile';
-import { UI_SCALES } from '../shell/Onboarding';
 import { PrintRolesTable, PrinterCalibration, calibrationPrinters } from '../components/SettingsPrinters';
 import SettingsIndex from '../components/SettingsIndex';
-
-/** إزاحة الهجري بالأيام — يُختار منها ما يطابق ما أُعلن في العراق. */
-const HIJRI_OFFSETS = [-2, -1, 0, 1, 2] as const;
 import BackupPanel from '../components/BackupPanel';
 import ArchiveIntegrity from '../components/ArchiveIntegrity';
 import LicenseCard from '../components/LicenseCard';
 import AboutDialog from '../components/AboutDialog';
 import UpdateCard from '../components/UpdateCard';
-import { toIndic } from '@shared/arabic';
+import { CounterCardsSetting } from './settings/CounterCardsSetting';
+import { BasmalaSetting } from './settings/BasmalaSetting';
+import OfficeCard from './settings/OfficeCard';
+import PrivacyCard from './settings/PrivacyCard';
+import ShortcutsCard from './settings/ShortcutsCard';
 
 type Toast = { text: string; tone: 'ok' | 'warn' } | null;
-
-const input =
-  'w-full h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
 
 export default function SettingsScreen({ onChanged }: { onChanged?: () => void }) {
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
@@ -121,97 +114,15 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
             <UpdateCard card={card} title={title('system_update_alt', 'التحديث')} version={info?.version ?? null} />
 
             {/* ── المكتب ─────────────────────────────────────────────── */}
-            <section className={card}>
-              <div className="flex items-center justify-between">
-                {title('storefront', 'المكتب')}
-                {dirty && (
-                  <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold">
-                    غير محفوظة
-                  </span>
-                )}
-              </div>
-              <label className="flex flex-col gap-1">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">اسم المكتب</span>
-                <input className={input} data-setting="officeName" value={settings.officeName} onChange={(e) => patch({ officeName: e.target.value })} />
-              </label>
-              <div className="grid grid-cols-2 gap-space-sm">
-                <label className="flex flex-col gap-1">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">هاتف المكتب</span>
-                  <input className={input} data-setting="officePhone" dir="ltr" value={settings.officePhone} onChange={(e) => patch({ officePhone: e.target.value })} />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">عنوان المكتب</span>
-                  <input className={input} data-setting="officeAddress" value={settings.officeAddress} onChange={(e) => patch({ officeAddress: e.target.value })} />
-                </label>
-              </div>
-              <label className="flex flex-col gap-1">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">اسم المشغّل — يُقيَّد مع كل كتاب</span>
-                <input className={input} data-setting="operatorName" value={settings.operatorName} onChange={(e) => patch({ operatorName: e.target.value })} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  بادئة رقم القيد في أرشيف المكتب — والسنة سنة يوم الإصدار، والرقم لا يُطبع على الكتاب
-                </span>
-                <input className={input} data-setting="serialPrefix" value={settings.serialPrefix} onChange={(e) => patch({ serialPrefix: e.target.value })} />
-              </label>
-              <div className="flex items-center justify-between gap-space-sm" data-ui-scale="">
-                <span className="font-label-sm text-label-sm text-on-surface-variant">حجم الخطّ في البرنامج</span>
-                <div className="flex p-0.5 rounded-lg bg-surface-container-low">
-                  {UI_SCALES.map((o) => (
-                    <button
-                      key={o.value}
-                      className={`h-8 px-3 rounded-md font-label-md text-label-md ${
-                        (settings.uiScale || 1) === o.value
-                          ? 'bg-primary-container text-on-primary font-semibold'
-                          : 'text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
-                      data-scale={o.value}
-                      type="button"
-                      onClick={() => {
-                        // يُطبَّق ويُحفظ فورًا — تغييرٌ يُرى لا يحتاج «حفظ».
-                        window.diwan.ui.setZoom(o.value);
-                        void window.diwan.settings.set({ uiScale: o.value }).then((next) =>
-                          setSettings((cur) => (cur ? { ...cur, uiScale: next.uiScale } : next))
-                        );
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1" data-hijri-offset="">
-                <div className="flex items-center justify-between gap-space-sm">
-                  <span className="font-label-sm text-label-sm text-on-surface-variant">إزاحة التاريخ الهجري</span>
-                  <div className="flex p-0.5 rounded-lg bg-surface-container-low">
-                    {HIJRI_OFFSETS.map((d) => (
-                      <button
-                        key={d}
-                        className={`h-8 px-2.5 rounded-md font-label-md text-label-md tabular ${
-                          (settings.hijriOffset ?? 0) === d
-                            ? 'bg-primary-container text-on-primary font-semibold'
-                            : 'text-on-surface-variant hover:bg-surface-container-high'
-                        }`}
-                        data-hijri={d}
-                        title={d === 0 ? 'كما يحسبه تقويم أمّ القرى' : `${d > 0 ? 'بعده' : 'قبله'} ${d === 1 || d === -1 ? 'بيوم' : 'بيومين'}`}
-                        type="button"
-                        onClick={() => {
-                          // يُطبَّق ويُحفظ فورًا كحجم الخطّ — والواجهة تأخذه من ساعتها (App.tsx).
-                          setSettings((cur) => (cur ? { ...cur, hijriOffset: d } : cur));
-                          void window.diwan.settings.set({ hijriOffset: d }).then(() => onChanged?.());
-                        }}
-                      >
-                        {d === 0 ? 'كما هو' : `${d > 0 ? '+' : '−'}${toIndic(Math.abs(d))}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <span className="font-label-sm text-label-sm text-on-surface-variant" data-hijri-preview="">
-                  اليوم {formatGregorian(new Date())} م — {formatHijri(new Date(), settings.hijriOffset ?? 0)} هـ. الميلادي هو الأصل،
-                  والهجري يُحسب بأمّ القرى فيُزاح يومًا أو يومين ليطابق ما يُعلن في العراق.
-                </span>
-              </div>
-            </section>
+            <OfficeCard
+              card={card}
+              title={title}
+              dirty={dirty}
+              settings={settings}
+              patch={patch}
+              setSettings={setSettings}
+              onChanged={onChanged}
+            />
 
             {/* ── الطابعات ────────────────────────────────────────────── */}
             <section className={`${card} lg:col-span-2`}>
@@ -323,59 +234,17 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
             </div>
 
             {/* ── الخصوصية ────────────────────────────────────────────── */}
-            <section className={card} data-privacy="">
-              {title('shield_lock', 'سياسة الخصوصية')}
-              <ul className="font-body-sm text-body-sm text-on-surface flex flex-col gap-space-xs list-disc pr-5 leading-7">
-                <li>
-                  <b>البيانات كلّها على هذا الجهاز</b>، في مجلّد واحد:{' '}
-                  <span className="font-mono text-label-sm break-all" dir="ltr">
-                    {info?.dataDir ?? '…'}
-                  </span>
-                </li>
-                <li>
-                  <b>البرنامج لا يتّصل بالإنترنت أبدًا</b>: لا حساب، ولا خدمة، ولا تحديث تلقائي، ولا يُرسَل شيءٌ إلى
-                  أحد.
-                </li>
-                <li>
-                  يُحفظ فيه: النماذج والترويسات والكليشات، وسجلّ الكتب الصادرة، وسجلّ المواطنين ومستمسكاتهم الممسوحة،
-                  والطلبات والجهات والتصاميم.
-                </li>
-                <li>
-                  <b>الكتاب الصادر لا يُحذف</b>: هو قيدٌ في الأرشيف ببصمته. وحذف مواطنٍ يحذف مستمسكاته الممسوحة من
-                  المخزن، وتبقى الكتب التي صدرت باسمه شاهدًا.
-                </li>
-                <li>
-                  <b>النسخة الاحتياطية تحوي ذلك كلّه</b> — ومنه صور المستمسكات — وهي غير مشفّرة: احفظها في مكانٍ
-                  آمن، ولا تتركها على ذاكرةٍ يتداولها الناس.
-                </li>
-                <li>من يستعمل هذا الجهاز يرى بياناته: احمِ حساب ويندوز بكلمة مرور، وأقفله حين تبتعد.</li>
-              </ul>
-            </section>
+            <PrivacyCard
+              card={card}
+              title={title}
+              info={info}
+            />
 
             {/* ── الاختصارات ──────────────────────────────────────────── */}
-            <section className={card} data-shortcuts="">
-              {title('keyboard', 'الاختصارات الثابتة')}
-              <p className="font-label-sm text-label-sm text-on-surface-variant">
-                تعمل ولوحة المفاتيح عربيةٌ أو إنجليزية. ولكلّ اختصارٍ زرٌّ ظاهر يفعل الشيء نفسه.
-              </p>
-              <table className="w-full font-label-md text-label-md">
-                <tbody>
-                  {SHORTCUTS.map((s) => (
-                    <tr key={s.id} className="border-t border-outline-variant/40">
-                      <td className="py-1.5 pl-space-sm whitespace-nowrap">
-                        <kbd className="font-mono text-[12px] px-1.5 py-0.5 rounded bg-surface-container-high" dir="ltr">
-                          {s.keys}
-                        </kbd>
-                      </td>
-                      <td className="py-1.5 text-on-surface">{s.label}</td>
-                      <td className="py-1.5 text-on-surface-variant font-label-sm text-label-sm">
-                        {s.where} — {s.button}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <ShortcutsCard
+              card={card}
+              title={title}
+            />
           </div>
         )}
       </div>
@@ -395,181 +264,3 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   );
 }
 
-/**
- * بطاقات الشبّاك (المرحلة ٢، ن١): ما يقدّمه المكتب يظهر، وما لا يقدّمه يُخفى — ولا يُمحى منه شيء،
- * والترتيب ثابتٌ بيد المكتب لا يتعلّم من الاستعمال. وحلّت محلّ «الأقسام الظاهرة» و«تثبيت الشريط»:
- * السكّة خمس وجهاتٍ ظاهرة دائمًا، والأدوات بطاقات.
- */
-function CounterCardsSetting({
-  card,
-  title,
-  cards,
-  onChange
-}: {
-  card: string;
-  title: ReactNode;
-  cards: CounterCardId[];
-  onChange: (next: Pick<OfficeSettings, 'counterCards'>) => void;
-}) {
-  // الظاهرة بترتيبها أوّلًا، ثم المخفيّة — فتُعاد من مكانها.
-  const ordered = [...cards.map((id) => COUNTER_CARDS.find((c) => c.id === id)!), ...COUNTER_CARDS.filter((c) => !cards.includes(c.id))];
-  const move = (id: CounterCardId, dir: -1 | 1) => {
-    const at = cards.indexOf(id);
-    const to = at + dir;
-    if (at < 0 || to < 0 || to >= cards.length) return;
-    const next = [...cards];
-    [next[at], next[to]] = [next[to]!, next[at]!];
-    onChange({ counterCards: next });
-  };
-  return (
-    <section className={card} data-counter-cards="">
-      {title}
-      <p className="font-label-sm text-label-sm text-on-surface-variant">
-        ما يقدّمه مكتبك يظهر في الشبّاك بهذا الترتيب. وما لا تقدّمه أخفِه — ولا يُمحى شيء، ويعود من هنا.
-      </p>
-      <div className="flex flex-col gap-1">
-        {ordered.map((c) => {
-          const on = cards.includes(c.id);
-          return (
-            <div key={c.id} className={`flex items-center gap-space-xs p-1.5 rounded-lg ${on ? 'bg-surface-container-low' : ''}`} data-card-row={c.id}>
-              <label className={`flex-1 min-w-0 flex items-center gap-space-xs font-label-md text-label-md cursor-pointer ${on ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-                <input
-                  checked={on}
-                  className="w-4 h-4 accent-secondary"
-                  data-card={c.id}
-                  type="checkbox"
-                  onChange={(e) => onChange({ counterCards: e.target.checked ? [...cards, c.id] : cards.filter((x) => x !== c.id) })}
-                />
-                <span className="material-symbols-outlined text-[18px] text-secondary">{c.icon}</span>
-                <span className="truncate">{c.label}</span>
-              </label>
-              {on && (
-                <>
-                  <button className="w-7 h-7 rounded text-on-surface-variant hover:bg-surface-container-high" data-act="card-up" title="قبل" type="button" onClick={() => move(c.id, -1)}>
-                    <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                  </button>
-                  <button className="w-7 h-7 rounded text-on-surface-variant hover:bg-surface-container-high" data-act="card-down" title="بعد" type="button" onClick={() => move(c.id, 1)}>
-                    <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/**
- * البسملة تفضيلٌ للمكتب (FOUNDATION §٥): تُشعل وتُطفأ هنا، وبها تبدأ كل ترويسةٍ
- * جديدة. وما حُفظ من الترويسات لا يتغيّر وحده — فمن الجهات ما يكتب بها ومنها ما
- * لا يكتب — وإنما بزرٍّ صريح يذكر عددها قبل أن يُمسّ شيء.
- */
-function BasmalaSetting({
-  value,
-  card,
-  title,
-  onChange,
-  say
-}: {
-  value: boolean | null;
-  card: string;
-  title: ReactNode;
-  onChange: (next: boolean) => void;
-  say: (text: string, tone?: 'ok' | 'warn') => void;
-}) {
-  const on = value === true;
-  /** الترويسات المحفوظة المخالفة للتفضيل — ورأسٌ فُصل من ورقة بسملته في كتله فلا يُعدّ. */
-  const [differ, setDiffer] = useState<number | null>(null);
-  const [confirm, setConfirm] = useState(false);
-
-  const differing = async (want: boolean) =>
-    (await window.diwan.letterheads.list()).filter((l) => {
-      const layout = normalizeLayout(l.layout);
-      return !layout.sheet?.length && layout.basmala.show !== want;
-    });
-
-  useEffect(() => {
-    setConfirm(false);
-    void differing(on).then((list) => setDiffer(list.length));
-  }, [on]);
-
-  async function toggle(next: boolean) {
-    const saved = await window.diwan.settings.set({ basmala: next });
-    onChange(saved.basmala === true);
-  }
-
-  async function applyAll() {
-    const list = await differing(on);
-    for (const l of list) {
-      const layout = normalizeLayout(l.layout);
-      await window.diwan.letterheads.save({
-        id: l.id,
-        name: l.name,
-        authorityId: l.authorityId ?? null,
-        layout: { ...layout, basmala: { ...layout.basmala, show: on } },
-        category: l.category ?? null
-      });
-    }
-    setConfirm(false);
-    setDiffer(0);
-    say(on ? `أُضيفت البسملة إلى ${list.length} ترويسة` : `أُزيلت البسملة من ${list.length} ترويسة`);
-  }
-
-  return (
-    <section className={card} data-basmala-setting="">
-      {title}
-      <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
-        <input
-          checked={on}
-          className="w-4 h-4 accent-secondary"
-          data-setting="basmala"
-          type="checkbox"
-          onChange={(e) => void toggle(e.target.checked)}
-        />
-        كل ترويسةٍ جديدة تبدأ بـ«بسم الله الرحمن الرحيم»
-      </label>
-      <p className="font-label-sm text-label-sm text-on-surface-variant">
-        {value === null
-          ? 'لم يختر المكتب بعد — وأوّل مرّةٍ تُشعلها في ترويسةٍ تصير تفضيله.'
-          : 'وتبقى لكل ترويسةٍ بسملتها تُشعل وتُطفأ من شاشة الترويسات.'}
-      </p>
-      {differ !== null && differ > 0 && (
-        <div className="flex items-center gap-space-xs flex-wrap">
-          {confirm ? (
-            <>
-              <span className="font-label-sm text-label-sm text-on-surface">
-                {on ? `تُضاف البسملة إلى ${differ} ترويسة محفوظة` : `تُزال البسملة من ${differ} ترويسة محفوظة`} — تأكيد؟
-              </span>
-              <button
-                className="h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
-                data-act="basmala-apply-confirm"
-                type="button"
-                onClick={() => void applyAll()}
-              >
-                نعم
-              </button>
-              <button
-                className="h-8 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
-                type="button"
-                onClick={() => setConfirm(false)}
-              >
-                تراجع
-              </button>
-            </>
-          ) : (
-            <button
-              className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
-              data-act="basmala-apply"
-              type="button"
-              onClick={() => setConfirm(true)}
-            >
-              {on ? `أضِفها إلى الترويسات المحفوظة (${differ})` : `أزِلها من الترويسات المحفوظة (${differ})`}
-            </button>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
