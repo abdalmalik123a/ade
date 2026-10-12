@@ -185,3 +185,36 @@ describe('مفتاح التحديث (البند ٣٣)', () => {
     expect(core.publicKeyPem(core.loadUpdateKey(v.dir, 'الجديدة-67890'))).toBe(pub);
   }, 120_000);
 });
+
+describe('تجديد الاشتراك من السجلّ (البند ٣٤)', () => {
+  it('آخر اشتراكٍ للجهاز بخطّته ومكتبه وهاتفه، والجديد من اليوم التالي لنهايته', () => {
+    const v = vault();
+    const key = core.loadPrivateKey(v.dir);
+    core.issue(v.dir, key, { device: DEVICE, plan: 'monthly', start: '2026-10-03', issued: '2026-10-03', office: 'مكتب الفرات', phone: '07801234567' });
+    core.issue(v.dir, key, { device: DEVICE, plan: 'monthly', start: '2026-11-03', issued: '2026-11-01', office: 'مكتب الفرات', phone: '07801234567', renewal: true });
+    const r = core.renewalFor(v.dir, DEVICE.toLowerCase(), '2026-11-20');
+    expect(r).toMatchObject({ device: DEVICE, plan: 'monthly', office: 'مكتب الفرات', phone: '07801234567', previousUntil: '2026-12-02', start: '2026-12-03', until: '2027-01-02' });
+  });
+
+  it('وإن كان قد انتهى فالجديد من اليوم — والسنوي سنويّ', () => {
+    const v = vault();
+    core.issue(v.dir, core.loadPrivateKey(v.dir), { device: DEVICE, plan: 'yearly', start: '2025-01-10', issued: '2025-01-10' });
+    expect(core.renewalFor(v.dir, DEVICE, '2026-10-12')).toMatchObject({ plan: 'yearly', previousUntil: '2026-01-09', start: '2026-10-12', until: '2027-10-11' });
+  });
+
+  it('ولا اشتراك للجهاز (مدى الحياة وحده أو لا شيء) يُقال بسببه', () => {
+    const v = vault();
+    core.issue(v.dir, core.loadPrivateKey(v.dir), { device: DEVICE, plan: 'lifetime' });
+    expect(() => core.renewalFor(v.dir, DEVICE)).toThrow(/لا اشتراك لهذا الجهاز/);
+  });
+
+  it('ومفتاح التجديد بلا تنبيه «صدر له قبلُ»، ويُقيَّد «تجديد» — والبرنامج يقرؤه اشتراكًا إلى يومه', () => {
+    const v = vault();
+    const key = core.loadPrivateKey(v.dir);
+    core.issue(v.dir, key, { device: DEVICE, plan: 'monthly', start: '2026-10-03', issued: '2026-10-03', office: 'مكتب الفرات' });
+    const again = core.issue(v.dir, key, { device: DEVICE, plan: 'monthly', start: '2026-11-03', office: 'مكتب الفرات', renewal: true, notes: 'نقدًا' });
+    expect(again.warnings).toEqual([]);
+    expect(core.readLedger(v.dir).at(-1).notes).toBe('تجديد — نقدًا');
+    expect(readKey(again.key, v.publicPem)).toMatchObject({ ok: true, payload: { kind: 'sub', plan: 'monthly', until: '2026-12-02' } });
+  });
+});

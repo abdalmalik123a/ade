@@ -130,6 +130,12 @@ handle('issue', (input) => {
   return { key: out.key, buyer: out.buyer, message: out.message, payload: out.payload, warnings: out.warnings, demo: input?.plan === 'demo', summary: summary() };
 });
 
+// «جدّد» من السجلّ (البند ٣٤): الجهاز ومكتبه وهاتفه وخطّته ويوم البدء — والمفتاح يصدر بـ«ولّد» كالمعتاد.
+handle('renewal', (device) => {
+  needKey();
+  return core.renewalFor(dir, device);
+});
+
 handle('ledger', () => {
   needKey();
   return { rows: core.readLedger(dir).reverse(), summary: summary() };

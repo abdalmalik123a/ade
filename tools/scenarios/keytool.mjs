@@ -145,6 +145,27 @@ export default async function scenario(page, { shotsDir }) {
   ok('لسان «السجلّ»: كلّ المفاتيح، الأحدث أوّلًا', (await page.eval(`return document.querySelectorAll('[data-ledger] tr').length;`)) === 13 && (await text('[data-ledger] tr')).includes('مكتب الحادي عشر'));
   await setVal('ledgerQ', 'الفرات');
   ok('والبحث يُضيّقه', (await page.eval(`return document.querySelectorAll('[data-ledger] tr').length;`)) === 1 && (await text('[data-ledger]')).includes('شهري'));
+
+  // ── البند ٣٤: «جدّد» من صفّ الاشتراك — بلا رمز جهازٍ يُرسل ثانيةً ──
+  ok('صفّ الاشتراك فيه «جدّد»', await page.eval(`return Boolean(document.querySelector('[data-ledger] [data-act="renew"]'));`));
+  await page.eval(`document.querySelector('[data-ledger] [data-act="renew"]').click(); return true;`);
+  await wait(800);
+  const renewForm = await page.eval(
+    `return { tab: !document.querySelector('[data-pane="issue"]').classList.contains('hidden'), device: document.getElementById('device').value, office: document.getElementById('office').value, start: document.getElementById('start').value, until: document.getElementById('until').value, monthly: document.querySelector('input[name=plan][value=monthly]').checked };`
+  );
+  ok(
+    `«جدّد» يملأ «مفتاح جديد»: الجهاز والمكتب والشهري، ويبدأ بعد نهايته (${renewForm.start} ← ${renewForm.until})`,
+    renewForm.tab && renewForm.device === DEVICE && renewForm.office === 'مكتب الفرات' && renewForm.monthly && renewForm.start === '2027-03-01' && renewForm.until === '2027-03-31'
+  );
+  ok('ويقول إنّه تجديد', (await text('[data-renew-note]')).includes('تجديد اشتراك مكتب الفرات'));
+  await click('issueBtn');
+  const renewed = readKey(await text('[data-result-key]'));
+  ok('و«ولّد»: اشتراكٌ شهريٌّ إلى يومه الجديد', renewed?.kind === 'sub' && renewed.until === '2027-03-31' && renewed.device === DEVICE);
+  ok('بلا تنبيه «صدر له قبلُ»، والملاحظة تختفي', (await page.eval(`return document.getElementById('resultWarn').classList.contains('hidden') && document.getElementById('renewNote').classList.contains('hidden');`)));
+  const renewRow = readFileSync(join(DIR, 'سجل المفاتيح المصدرة.csv'), 'utf8').split(/\r?\n/).filter(Boolean).pop() ?? '';
+  ok('وفي السجلّ «تجديد»', renewRow.includes('"تجديد"') && renewRow.includes('"2027-03-31"'));
+  await page.eval(`document.querySelector('[data-tab="ledger"]').click(); return true;`);
+  await wait(600);
   await setVal('ledgerQ', '');
   await shot('3-ledger');
 

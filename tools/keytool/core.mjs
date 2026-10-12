@@ -288,8 +288,8 @@ export function issue(dir, privateKey, input, opts = {}) {
   } else throw new KeyToolError('اختر الخطّة: مدى الحياة أو عرض أو شهري أو سنوي أو تمديد');
   const key = signKey(payload, privateKey);
   const buyer = plan === 'lifetime' ? countLifetime(dir) + 1 : null;
-  // قبل أن يُقيَّد هذا المفتاح نفسه.
-  const warnings = repeatsOf(dir, { device, office, phone: input.phone });
+  // قبل أن يُقيَّد هذا المفتاح نفسه. والتجديد (`renewal`) يكرّر الجهاز عمدًا — فلا تنبيه.
+  const warnings = input.renewal ? [] : repeatsOf(dir, { device, office, phone: input.phone });
   if (opts.record !== false) {
     appendLedger(dir, {
       date: issued,
@@ -306,7 +306,9 @@ export function issue(dir, privateKey, input, opts = {}) {
           ? `مفتاح عرض — لا يُعدّ من أوّل ${EARLY_LIFETIME}${input.notes ? ` — ${input.notes}` : ''}`
           : buyer && buyer <= EARLY_LIFETIME
             ? `من أوّل ${EARLY_LIFETIME} مشترين${input.notes ? ` — ${input.notes}` : ''}`
-            : input.notes,
+            : input.renewal
+              ? `تجديد${input.notes ? ` — ${input.notes}` : ''}`
+              : input.notes,
       key
     });
   }
@@ -365,6 +367,29 @@ export function readLedger(dir) {
   const rows = parseCsv(readFileSync(file, 'utf8').replace(/^﻿/, ''));
   const head = rows.shift() ?? [];
   return rows.map((r) => Object.fromEntries(head.map((h, i) => [FIELDS[LEDGER_COLUMNS.indexOf(h)] ?? h, r[i] ?? ''])));
+}
+
+const PLAN_OF_LABEL = { [PLAN_LABEL.monthly]: 'monthly', [PLAN_LABEL.yearly]: 'yearly' };
+const nextDay = (iso) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * تجديد الاشتراك من السجلّ (البند ٣٤، قرار المالك ١٢ ت١): المكتب لا يرسل رمز جهازه ثانيةً — رمزه ومكتبه وهاتفه في السجلّ.
+ * فيُؤخذ **آخر اشتراكٍ لهذا الجهاز** (أبعده يومًا) بخطّته، ويبدأ الجديد في اليوم التالي لنهايته — أو اليوم إن كان قد انتهى.
+ * والبرنامج يأخذ أبعد يومٍ في مفاتيح الجهاز، فالمفتاح الجديد يُضاف ولا يُلغي ما قبله.
+ */
+export function renewalFor(dir, device, todayIso = today()) {
+  const code = normalizeDevice(device);
+  const subs = readLedger(dir).filter((r) => r.device === code && PLAN_OF_LABEL[r.plan] && /^\d{4}-\d{2}-\d{2}$/.test(r.until ?? ''));
+  if (!subs.length) throw new KeyToolError('لا اشتراك لهذا الجهاز في السجلّ يُجدَّد');
+  const last = subs.reduce((a, b) => (b.until > a.until ? b : a));
+  const plan = PLAN_OF_LABEL[last.plan];
+  const after = nextDay(last.until);
+  const start = after > todayIso ? after : todayIso;
+  return { device: code, plan, office: last.office ?? '', phone: last.phone ?? '', start, until: subscriptionUntil(plan, start), previousUntil: last.until };
 }
 
 export function countLifetime(dir) {

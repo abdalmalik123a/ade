@@ -178,6 +178,33 @@ $('device').onblur = async () => {
 };
 
 let last = null;
+/** «جدّد» من السجلّ (البند ٣٤): رمز الجهاز الذي يُجدَّد له — فلا تنبيه «صدر له قبلُ»، ويُقيَّد «تجديد». */
+let renewing = null;
+
+function endRenewal() {
+  renewing = null;
+  $('renewNote').classList.add('hidden');
+}
+
+function startRenewal(r) {
+  tab('issue');
+  document.querySelector(`input[name=plan][value=${r.plan}]`).checked = true;
+  onPlan();
+  $('device').value = r.device;
+  $('office').value = r.office;
+  $('phone').value = r.phone;
+  $('start').value = r.start;
+  untilTouched = false;
+  void previewUntil();
+  renewing = r.device;
+  $('renewNote').textContent = `تجديد اشتراك ${r.office || r.device} (${r.plan === 'yearly' ? 'سنوي' : 'شهري'}): الحاليّ إلى ${r.previousUntil}، والجديد من ${r.start} إلى ${r.until} — راجعه ثم «ولّد».`;
+  $('renewNote').classList.remove('hidden');
+  $('renewNote').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+// رمزٌ آخر يُكتب: لم يعد تجديدًا.
+$('device').oninput = () => {
+  if (renewing && $('device').value.trim() !== renewing) endRenewal();
+};
 
 $('issueBtn').onclick = () =>
   run($('issueBtn'), $('issueMsg'), async () => {
@@ -192,7 +219,9 @@ $('issueBtn').onclick = () =>
     };
     if (p === 'monthly' || p === 'yearly') Object.assign(input, { start: $('start').value || todayIso(), until: $('until').value });
     if (p === 'extend') input.until = $('extUntil').value;
+    if (renewing && $('device').value.trim() === renewing && (p === 'monthly' || p === 'yearly')) input.renewal = true;
     last = await call('issue', input);
+    endRenewal();
     setSummary(last.summary);
     const pl = last.payload;
     $('resultTitle').textContent = last.demo
@@ -262,6 +291,21 @@ function renderLedger() {
       b.textContent = '✓ نُسخ';
     };
     td.appendChild(b);
+    // الاشتراك يُجدَّد من صفّه: رمز الجهاز والمكتب والهاتف من السجلّ (البند ٣٤).
+    if (r.plan === 'شهري' || r.plan === 'سنوي') {
+      const renew = document.createElement('button');
+      renew.textContent = 'جدّد';
+      renew.dataset.act = 'renew';
+      renew.style.marginInlineStart = '6px';
+      renew.onclick = async () => {
+        try {
+          startRenewal(await call('renewal', r.device));
+        } catch (e) {
+          renew.textContent = e.message;
+        }
+      };
+      td.appendChild(renew);
+    }
     tr.appendChild(td);
     tr.title = [r.device, r.price && `السعر: ${r.price}`, r.notes].filter(Boolean).join(' — ');
     body.appendChild(tr);

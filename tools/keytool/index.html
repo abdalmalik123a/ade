@@ -79,6 +79,7 @@
     <div class="card" data-pane="issue">
       <h2>مفتاحٌ لمكتب</h2>
       <p class="muted" id="counter" data-counter></p>
+      <p class="note hidden" id="renewNote" data-renew-note></p>
       <label>رمز الجهاز — من «الإعدادات ← التفعيل» في البرنامج</label>
       <input class="ltr" id="device" data-field="device" placeholder="DWN-XXXX-XXXX-XXXX-XXXX" />
       <p class="muted" id="deviceMsg"></p>
@@ -118,6 +119,7 @@
     <div class="card hidden" data-pane="ledger">
       <h2>المفاتيح المصدرة</h2>
       <p class="muted" id="ledgerSum" data-ledger-sum></p>
+      <p class="muted">لتجديد اشتراك: ابحث عن المكتب أو هاتفه، ثم «جدّد» — لا حاجة لأن يرسل رمز جهازه ثانيةً.</p>
       <input id="ledgerQ" placeholder="ابحث: مكتب، هاتف، رمز جهاز…" />
       <table><thead><tr><th>التاريخ</th><th>الخطّة</th><th>رقم</th><th>المكتب</th><th>الهاتف</th><th>حتى</th><th></th></tr></thead><tbody id="ledgerBody" data-ledger></tbody></table>
     </div>

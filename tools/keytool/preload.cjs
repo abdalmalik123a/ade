@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('keytool', {
   normalizeDevice: call('normalize-device'),
   issue: call('issue'),
   ledger: call('ledger'),
+  renewal: call('renewal'),
   copy: call('copy'),
   pickInstaller: call('pick-installer'),
   makeUpdate: call('make-update'),
