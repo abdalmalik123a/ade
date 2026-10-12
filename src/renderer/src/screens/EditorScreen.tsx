@@ -15,28 +15,25 @@
  * تختلف ورقة المحرّر عن ورقة الشبّاك. ولا توقيع ولا ختم ولا رمز تحقّق: الجهة توقّع
  * وتختم بيدها. ورقم القيد للأرشيف وحده، و«العدد» على الكتاب ما أعطاه الزبون (§١).
  */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { CitizenDetail, DocumentDetail, IssueOutcome, OfficeSettings, TemplateSummary } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
 import { normalizeFold } from '@shared/arabic';
-import { docText, emptyDoc, makeField, pageMm, paragraph, type Doc, type DocField } from '@shared/doc';
-import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, resolveLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
+import { docText, emptyDoc, makeField, paragraph, type Doc, type DocField } from '@shared/doc';
+import { emptyLayout, isLayoutEmpty, normalizeLayout, asksLetterNumber, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
 import type { CatalogField } from '@shared/letterFields';
 import { derivedWords, amountWordsField, wordsForField } from '@shared/tafqeet';
-import { GENDER_KEY, docHasChoices, guessGender, type Gender } from '@shared/gender';
+import { GENDER_KEY, docHasChoices, guessGender } from '@shared/gender';
 import { useLearnedGenders } from '../lib/useLearnedGenders';
 import { docSpelling } from '@shared/spelling';
 import { fieldHints } from '@shared/fieldHints';
-import { NO_REGISTRY, draftTitle, letterChecks, letterValues, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
+import { NO_REGISTRY, draftTitle, letterChecks, nameFieldOf, readSavedLetter, sampleValues, type Registry } from '@shared/letterDraft';
 import { isCombo, shortcut } from '@shared/shortcuts';
-import { errorText } from '../lib/errors';
 import type { HeadChoice } from '../components/PageEditor';
 import type { EditorApi } from '../components/editorKit';
-import { printedPages } from '../components/pageFlow';
 import LetterheadView from '../components/LetterheadView';
 import LetterheadDesigner from '../components/LetterheadDesigner';
 import LetterSheet, { gapAfter } from '../components/LetterSheet';
-import { onBeforeClose } from '../lib/beforeClose';
 import { confirmAction } from '../kit/ask';
 import { choosePrinter } from '../lib/printChoice';
 import { describeRole } from '@shared/printRoles';
@@ -48,9 +45,10 @@ import ValuesSection from './editor/ValuesSection';
 import ChecksSection from './editor/ChecksSection';
 import PrintBar from './editor/PrintBar';
 import SheetArea from './editor/SheetArea';
+import { useSheetMeasure } from './editor/useSheetMeasure';
+import { useEditorDraft } from './editor/useEditorDraft';
+import { useEditorOutput } from './editor/useEditorOutput';
 
-const AUTOSAVE_MS = 4000;
-const MM_PX = 96 / 25.4;
 
 /** كتابٌ جديد: سطرٌ فارغ واحد — والبرنامج لا يزرع متنًا (المبدأ ١). */
 function blankLetter(): Doc {
@@ -386,32 +384,8 @@ function EditorScreen(
   const headLayout = isLayoutEmpty(layout) ? null : layout;
   const regValues = { number: registry.number, date: registry.dateGreg };
 
-  // ── القياس: ارتفاع الترويسة وعدد الصفحات، من الورقة التي تُطبع ─────────
-  const [measure, setMeasure] = useState<{ headRatio: number | null; pages: number | null }>({ headRatio: null, pages: null });
-  useLayoutEffect(() => {
-    const sheet = printRef.current;
-    if (!sheet) return;
-    const page = pageMm(doc.pageSetup);
-    const m = doc.pageSetup.margins;
-    const pagePx = page.h * MM_PX;
-    const head = sheet.querySelector<HTMLElement>('[data-letterhead]');
-    const body = sheet.querySelector<HTMLElement>('[data-body]');
-    // الصفحات بمحاكاة الطابعة نفسها التي يعرض بها المحرّر صفحاته (`pageFlow.ts`) — لا بقسمة
-    // الارتفاع: تلك لا ترى فاصل الصفحة ولا السطر الذي ينزل وحده.
-    const bottomMm = doc.pageSetup.pageNumbers ? Math.max(m.bottom, 14) : m.bottom;
-    setMeasure({
-      headRatio: head ? head.getBoundingClientRect().height / pagePx : null,
-      pages: body
-        ? printedPages(sheet, body, {
-            pageW: page.w * MM_PX,
-            pageH: pagePx,
-            top: m.top * MM_PX,
-            bottom: bottomMm * MM_PX,
-            head: doc.pageSetup.repeatLetterhead ? head : null
-          })
-        : null
-    });
-  }, [doc, shown, layout, registry]);
+  // ── القياس: ارتفاع الترويسة وعدد الصفحات، من الورقة التي تُطبع — `editor/useSheetMeasure.ts` ──
+  const { measure } = useSheetMeasure({ printRef, doc, shown, layout, registry });
 
   const spelling = useMemo(() => docSpelling(doc), [doc]);
   const checks = useMemo(
@@ -456,219 +430,19 @@ function EditorScreen(
   }
   const savedLetter = () => ({ doc, values, registry, layout, docType, owner });
   const draftName = draftTitle({ docType, owner: ownerName, doc, values });
-  /** المسودّة الحاضرة — تُقرأ بعد أن تُفكّ الشاشة عند المغادرة، فلا تنتظر رسمًا. */
-  const draftRef = useRef<number | null>(draftId);
-  draftRef.current = draft;
-  const saveDraft = useCallback(
-    async (silent: boolean) => {
-      if (!hasContent) {
-        if (!silent) setError('لا تُحفظ مسودة فارغة — اكتب في الورقة أو اسم صاحب العلاقة أولًا');
-        return;
-      }
-      setSaving(true);
-      try {
-        const id = await window.diwan.drafts.save({
-          id: draft,
-          templateId: activeTemplate,
-          citizenId: linkedCitizen,
-          title: draftName,
-          values: letterValues(savedLetter()),
-          bodyHtml: docText(doc, values)
-        });
-        setDraft(id);
-        draftRef.current = id;
-        setSavedAt(new Date());
-        dirty.current = false;
-        if (!silent) setToast('حُفظت المسودة');
-      } catch (e) {
-        setError(errorText(e, 'تعذّر حفظ المسودة'));
-      } finally {
-        setSaving(false);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasContent, draft, activeTemplate, linkedCitizen, draftName, doc, values, registry, layout, owner]
-  );
+  // ── حفظ المسودة: تلقائيًّا وبـCtrl+S وعند المغادرة والإغلاق — `editor/useEditorDraft.ts` ──
+  const { saveDraft } = useEditorDraft({
+    draftId, draft, setDraft, hasContent, setError, setSaving, activeTemplate, linkedCitizen, draftName, savedLetter, doc, values,
+    setSavedAt, dirty, setToast, registry, layout, owner, onLeave
+  });
 
-  useEffect(() => {
-    if (!dirty.current || !hasContent) return;
-    const timer = setTimeout(() => void saveDraft(true), AUTOSAVE_MS);
-    return () => clearTimeout(timer);
-  }, [doc, values, registry, hasContent, saveDraft]);
-
-  /**
-   * ما لم يُحفظ بعد يُحفظ عند مغادرة المحرّر وعند إغلاق البرنامج (خطة Production، ١٫٥).
-   *
-   * مؤقّت الحفظ يُعاد مع كلّ حرف ويُلغى مع الشاشة، فكان ما كُتب منذ آخر توقّفٍ عن الكتابة يضيع
-   * بنقرةٍ على الشريط — بلا تنبيه. والحفظ هنا هو الحفظ التلقائيّ نفسه. وكان صامتًا: ما كُتب في «قيد العمل» ولا يعرف الموظف
-   * ذلك، فيظنّه ضاع (البند ١٠) — فالمغادرة تقول أين صار، بعنوانه، ويُفتح منها بضغطة (`onLeave`).
-   */
-  const flushDraft = useRef<() => Promise<void>>(async () => undefined);
-  flushDraft.current = async () => {
-    if (dirty.current && hasContent) await saveDraft(true);
-  };
-  const leave = useRef({ draftName, onLeave });
-  leave.current = { draftName, onLeave };
-  useEffect(() => {
-    const unregister = onBeforeClose(() => flushDraft.current());
-    return () => {
-      unregister();
-      const { draftName: left, onLeave: told } = leave.current;
-      void flushDraft.current().then(() => draftRef.current !== null && told?.({ id: draftRef.current, title: left }));
-    };
-  }, []);
-
-  // ── الإخراج والإصدار ──────────────────────────────────────────────────
-  /** علامات الورقة كما تُطبع — وتُقيَّد كما هي، فلا شيء يُملأ فيها بعد الإصدار. */
-  const sheetHtml = () => printRef.current?.outerHTML ?? '';
-  const sheetName = docType || ownerName || 'كتاب';
-  const pageOf = () => pageMm(doc.pageSetup);
-
-  async function run(label: string, work: () => Promise<string | null | undefined | void>) {
-    setExporting(true);
-    setError(null);
-    try {
-      const path = await work();
-      if (path) setToast(`${label}: ${path}`);
-    } catch (e) {
-      setError(errorText(e, 'تعذّر إتمام العملية'));
-    } finally {
-      setExporting(false);
-    }
-  }
-  const exportPdf = () => run('حُفظ PDF', () => window.diwan.output.savePdf({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
-  // من الوثيقة وقيمها وترويستها — فيخرج Word بجداوله وأعمدته ومحاذاته (تعميق الموجود ٩).
-  const exportWord = () =>
-    run('حُفظ مستند Word', () =>
-      window.diwan.output.saveDocx({
-        doc,
-        values: effective,
-        head: headLayout ? { layout: resolveLayout(headLayout, resolvePrinted), registry: regValues } : null,
-        suggestedName: sheetName,
-        title: docType || 'كتاب رسمي'
-      })
-    );
-  const exportPng = () =>
-    run('حُفظت صورة بدقة 300 نقطة/إنش', () => window.diwan.output.savePng300({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
-
-  /** الإصدار: قائمة التحقّق أولًا — وما يمنعه يُقال ولا يُفتح الحوار. */
-  function requestIssue() {
-    setTrial(false);
-    const first = checks.find((c) => c.level === 'block');
-    if (first) {
-      setError(`لا يصدر الكتاب بعد: ${first.text}`);
-      return;
-    }
-    setError(null);
-    setIssueOpen(true);
-  }
-
-  async function issue(opts: { copies: number; copyKind: string; print: boolean }) {
-    if (!settings) return;
-    // الطابعة قبل الإصدار: تُقيَّد مع الكتاب، وإلغاء السؤال لا يُصدر شيئًا.
-    const pick = opts.print ? await choosePrinter('documents', { allowSystem: true }) : null;
-    if (opts.print && !pick) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const outcome = await window.diwan.documents.issue(
-        {
-          sheetHtml: sheetHtml(),
-          templateId: activeTemplate,
-          citizenId: linkedCitizen,
-          authorityId: letterhead?.authorityId ?? null,
-          citizenName: ownerName,
-          nationalId: byRole('nationalId') || null,
-          docType: docType.trim() || null,
-          destination: byRole('destination') || null,
-          purpose: byRole('purpose') || null,
-          values: letterValues(savedLetter()),
-          copies: opts.copies,
-          copyKind: opts.copyKind,
-          fee: 0,
-          gregorianDate: registry.dateGreg || formatGregorian(new Date()),
-          hijriDate: registry.dateHijri || null,
-          operator: settings.operatorName || null,
-          printer: pick?.printer ?? null,
-          printDialog: pick?.system ?? false,
-          serialPrefix: settings.serialPrefix,
-          serialYear: settings.serialYear,
-          letterheadId
-        },
-        opts.print
-      );
-      setIssued(outcome);
-      setIssueOpen(false);
-      dirty.current = false;
-      // الصياغة التي تتكرّر (لا الأسماء): فقراتُ الورقة بقيمها تُقارن بما صدر.
-      void window.diwan.clips
-        .repeated(docText(doc, effective).split('\n'))
-        .then(setRepeated)
-        .catch(() => setRepeated([]));
-      // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
-      const chosen = values[GENDER_KEY] as Gender | undefined;
-      const guessed = guessGender(ownerName, learned);
-      if (needsGender && genderByHand && chosen && (!guessed?.sure || guessed.gender !== chosen)) {
-        remember([{ name: ownerName, gender: chosen }]);
-      }
-      if (draft !== null) {
-        await window.diwan.drafts.delete(draft);
-        setDraft(null);
-      }
-      onIssued?.();
-      if (outcome.archiveError) {
-        setError(
-          `صدر الكتاب برقم ${outcome.serial}، لكن نسخته PDF لم تُحفظ في الأرشيف (${outcome.archiveError}) — متنه محفوظ في السجل.`
-        );
-      } else if (outcome.printed === 'failed') {
-        setError(
-          `صدر الكتاب برقم ${outcome.serial} وقُيّد، لكن الطباعة لم تتم${outcome.printError ? ` (${outcome.printError})` : ''} — أعِدها من الأرشيف.`
-        );
-      }
-    } catch (e) {
-      setError(errorText(e, 'تعذّر الطبع'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  /** طباعة للمراجعة — بلا قيدٍ في الأرشيف. */
-  async function printDraftSheet() {
-    const pick = await choosePrinter('documents', { allowSystem: true });
-    if (!pick) return;
-    setBusy(true);
-    try {
-      const r = await window.diwan.output.print({ sheetHtml: sheetHtml(), printer: pick.printer, copies: 1, silent: !pick.system, page: pageOf() });
-      if (!r.ok && r.reason) setError(`تعذّرت الطباعة: ${r.reason}`);
-    } catch (e) {
-      setError(errorText(e, 'تعذّرت الطباعة'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  /** «اجعله نموذجًا»: الكتاب يصير نموذجًا في المكتبة — بحقوله فارغةً لا بقيمه (§١٠، البند ٦). */
-  async function saveAsTemplate(title: string) {
-    try {
-      await window.diwan.templates.save({
-        id: null,
-        code: null,
-        title,
-        subtitle: null,
-        category: null,
-        subjectLine: null,
-        bodyHtml: docText(doc),
-        letterheadId,
-        variables: doc.fields.map((f) => ({ token: f.key, label: f.label, source: f.source ? 'citizen' : 'manual', required: f.required })),
-        doc
-      });
-      setTemplates(await window.diwan.templates.list());
-      setTemplateOpen(false);
-      setToast(`حُفظ «${title}» نموذجًا في المكتبة — يُملأ مرارًا من الشبّاك`);
-    } catch (e) {
-      setError(errorText(e, 'تعذّر الحفظ نموذجًا'));
-    }
-  }
+  // ── الإخراج والإصدار: PDF وWord والصورة، و«اطبع» والتجريبية، و«اجعله نموذجًا» — `editor/useEditorOutput.ts` ──
+  const { exportPdf, exportWord, exportPng, requestIssue, issue, printDraftSheet, saveAsTemplate } = useEditorOutput({
+    printRef, doc, docType, ownerName, values, effective, headLayout, resolvePrinted, regValues, registry, checks, settings,
+    activeTemplate, linkedCitizen, letterhead, letterheadId, byRole, savedLetter, learned, needsGender, genderByHand, remember,
+    draft, setDraft, dirty, setExporting, setBusy, setError, setToast, setTrial, setIssueOpen, setIssued, setRepeated,
+    setTemplates, setTemplateOpen, onIssued
+  });
 
   const transaction = docType || null;
   useEffect(() => {
