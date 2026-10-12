@@ -12,16 +12,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mergeFields, type DocField } from '@shared/doc';
-import { normalizeFold, count, countIn } from '@shared/arabic';
+import { count, countIn } from '@shared/arabic';
 import { renderDocHtml } from '@shared/docHtml';
-import { asksLetterNumber, normalizeLayout, printsHijri, type Letterhead } from '@shared/letterhead';
-import type {
-  Attachment,
-  CitizenInput,
-  OfficeSettings,
-  TemplateSummary,
-  TransactionSheet
-} from '@shared/api';
+import { asksLetterNumber, normalizeLayout, printsHijri } from '@shared/letterhead';
+import type { Attachment, TransactionSheet } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
 import WhatsAppPasteDialog from './WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
@@ -37,23 +31,24 @@ import type { CounterCard } from '@shared/counterCards';
 import type { InboxOpen } from '../components/InboxPanel';
 import { CitizenPicker, SchoolPicker } from './ServicePickers';
 import { formValues } from '@shared/imageForm';
-import { applySchool, hasSchoolFields, schoolSlotOf, schoolValues } from '@shared/schoolFile';
-import type { Client } from '@shared/orders';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { papersWord } from '../components/OutputBar';
 import type { InboxFile } from '@shared/api';
-import { onBeforeClose } from '../lib/beforeClose';
 import { useToast } from '../kit/useToast';
 import { errorText } from '../lib/errors';
 import mark from '../assets/brand/mt-mark.png';
 import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
 import { usePrintRun } from './service/usePrintRun';
+import { useCounterLibrary } from './service/useCounterLibrary';
+import { useSchoolFile } from './service/useSchoolFile';
+import { useNewCitizen } from './service/useNewCitizen';
+import { useParked } from './service/useParked';
 import CounterPick from './service/CounterPick';
 import CounterFill from './service/CounterFill';
 import CounterReview from './service/CounterReview';
 import DecisionBar from './service/DecisionBar';
-import type { AfterIssue, Loaded, NewCitizen, Parked, RepeatOf, Step } from './service/types';
+import type { AfterIssue, Loaded, RepeatOf, Step } from './service/types';
 
 export type ServiceScreenProps = {
   onIssued?: () => void;
@@ -89,12 +84,6 @@ export type { Parked } from './service/types';
 
 export default function ServiceScreen({ onIssued, active = true, repeat = null, onOpenTool, onOpenFile, onOpenActivation, resumeRequest = null, customerRequest = null, settingsKey }: ServiceScreenProps) {
   const [step, setStep] = useState<Step>('pick');
-  const [items, setItems] = useState<TemplateSummary[]>([]);
-  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [letterheads, setLetterheads] = useState<Letterhead[]>([]);
-  const [settings, setSettings] = useState<OfficeSettings | null>(null);
-  const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<number[]>([]);
   const [loaded, setLoaded] = useState<Loaded[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -130,10 +119,6 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   );
   const [citizenId, setCitizenId] = useState<number | null>(null);
   const [picker, setPicker] = useState(false);
-  /** «هات المدرسة» (ملفّ المدارس، الموجة ٢): المدارس من «الجهات»، وما ملأه آخر اختيار — فتبديلها يبدّل قيمها. */
-  const [schoolPicker, setSchoolPicker] = useState(false);
-  const [schools, setSchools] = useState<Client[]>([]);
-  const schoolFilled = useRef<Record<string, string>>({});
 
   /** رسالة الزبون من واتساب تُلصق كما هي فتتوزّع على الحقول. */
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -152,43 +137,9 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
   const sheets = useRef(new Map<number, HTMLDivElement | null>());
 
-  // النماذج والترويسات والإعدادات تُقرأ عند كل عودةٍ إلى الشبّاك — فما أُضيف في
-  // المكتبة يظهر — والمعاملة الجارية لا تُمسّ.
-  useEffect(() => {
-    if (!active) return;
-    void (async () => {
-      const [list, cats, lhs, s] = await Promise.all([
-        window.diwan.templates.list(null),
-        window.diwan.templates.categories(),
-        window.diwan.letterheads.list(),
-        window.diwan.settings.get()
-      ]);
-      setItems(list);
-      setCategories(cats);
-      setLetterheads(lhs);
-      setSettings(s);
-    })();
-  }, [active, settingsKey]);
-
-  const topFavorites = useMemo(() => {
-    return [...items].sort((a, b) => b.printCount - a.printCount).slice(0, 4);
-  }, [items]);
-
-  const shown = useMemo(() => {
-    let res = items;
-    if (activeCategory) {
-      res = res.filter((t) => t.category === activeCategory);
-    }
-    // متساهلٌ مع الهمزة والتاء المربوطة: «تاييد» تجد «تأييد».
-    const q = normalizeFold(query.trim());
-    if (q) {
-      res = res.filter((t) => normalizeFold(`${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`).includes(q));
-    }
-    return res;
-  }, [items, activeCategory, query]);
-
-  /** البطاقات بترتيب عرضها: الأكثر طلبًا أولًا — وأوّل تسعٍ منها بأرقامها (د١١). */
-  const ordered = useMemo(() => [...shown].sort((a, b) => b.printCount - a.printCount), [shown]);
+  // ── مكتبة الشبّاك: النماذج والبحث والتصنيف — `service/useCounterLibrary.ts` ──
+  const { items, categories, activeCategory, setActiveCategory, letterheads, settings, query, setQuery, topFavorites, shown, ordered } =
+    useCounterLibrary({ active, settingsKey });
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   /**
@@ -274,32 +225,9 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     }
   }
 
-  /** «ملفّ المدارس» مفعّلٌ، وفي الأوراق خانةٌ من ملفّ المدرسة — فيُعرض «هات المدرسة». */
-  const schoolOn = Boolean(settings?.schoolFiles) && hasSchoolFields(fields);
-  const schoolNameKey = useMemo(() => fields.find((f) => schoolSlotOf(f.key, f.source) === 'name')?.key ?? null, [fields]);
-  useEffect(() => {
-    if (schoolOn) void window.diwan.clients.list().then(setSchools);
-  }, [schoolOn]);
-
-  // والعام الدراسي يُكتب وحده من التاريخ (والخيار مفعّل) — في خانته الفارغة، فما كتبه الموظف لا يُمسّ.
-  useEffect(() => {
-    if (!settings?.schoolFiles || step !== 'fill') return;
-    const year = schoolValues(fields, null, new Date());
-    if (!Object.keys(year).length) return;
-    setValues((prev) => {
-      const missing = Object.entries(year).filter(([key]) => !prev[key]?.trim());
-      return missing.length ? { ...prev, ...Object.fromEntries(missing) } : prev;
-    });
-  }, [fields, settings?.schoolFiles, step]);
-
-  /** ملفّ المدرسة يملأ خاناتها — وما كتبه الموظف بيده لا يُطمس، وما ملأته مدرسةٌ سابقة يُستبدل. */
-  function useSchool(school: Client, base: Record<string, string> = values, filled: Record<string, string> = schoolFilled.current) {
-    const out = applySchool(base, schoolValues(fields, school, new Date()), filled);
-    schoolFilled.current = out.filled;
-    setValues(out.values);
-    setSchoolPicker(false);
-    say(`مُلئت بيانات ${school.name}`);
-  }
+  // ── «ملفّ المدارس»: «هات المدرسة» والعام الدراسي — `service/useSchoolFile.ts` ──
+  const { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, useSchool } =
+    useSchoolFile({ settings, fields, step, values, setValues, say });
 
   /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه من الحقول. */
   async function useCitizen(id: number) {
@@ -550,43 +478,8 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     setAt(0);
   }
 
-  // ── الزبون الجديد إلى السجل ───────────────────────────────────────
-  /**
-   * صدرت المعاملة لاسمٍ كُتب باليد لا في السجل؟ يُعرض حفظه — بما كُتب في حقوله
-   * (كل حقلٍ يعرف خانته في ملف المواطن: `source`) — وتُربط كتبه به. عرضٌ لا
-   * حفظٌ صامت: قد يكون زبونًا عابرًا لا يريد المكتب ملفًّا له.
-   */
-  const [newCitizen, setNewCitizen] = useState<NewCitizen | null>(null);
-
-  function offerToRegistry(transactionId: number) {
-    const input: CitizenInput = {
-      id: null, fullName: citizenName, nationalId: null, jobTitle: null, workplace: null, employeeCode: null,
-      serviceStatus: null, birthDate: null, birthPlace: null, enrollmentDept: null, address: null,
-      housingCardNo: null, landmark: null, phone: null, photoPath: null, category: null, notes: null, verified: false
-    };
-    for (const f of fields) {
-      const v = values[f.key]?.trim();
-      if (!v || !f.source || !(f.source in input) || f.source === 'id' || f.source === 'verified') continue;
-      (input as unknown as Record<string, string>)[f.source] = v;
-    }
-    input.nationalId ||= byRole('nationalId') || null;
-    input.fullName = citizenName;
-    setNewCitizen({ transactionId, input });
-  }
-
-  async function saveNewCitizen() {
-    if (!newCitizen) return;
-    try {
-      const saved = await window.diwan.citizens.save(newCitizen.input);
-      await window.diwan.documents.linkCitizen(newCitizen.transactionId, saved.id);
-      say(`حُفظ «${saved.fullName}» في الزبائن، ورُبطت به كتبه`);
-      setNewCitizen(null);
-      // «شيءٌ آخر لنفس الزبون» بعدها يحمل ملفّه الجديد — فتعرفه الأداة التي يُفتح لها (المرحلة ٥).
-      setAfter((a) => (a?.customer ? { ...a, customer: { ...a.customer, citizenId: saved.id } } : a));
-    } catch (e) {
-      sayError(e, 'تعذّر الحفظ في السجل');
-    }
-  }
+  // ── الزبون الجديد إلى السجل — `service/useNewCitizen.ts` ──
+  const { newCitizen, setNewCitizen, offerToRegistry, saveNewCitizen } = useNewCitizen({ fields, values, byRole, citizenName, say, sayError, setAfter });
 
   // ── «كرّره» من الأرشيف ─────────────────────────────────────────────
   // «اطبع لي مثل كتاب أمس وبدّل الاسم»: تُفتح نماذج تلك المعاملة بقيمها، والجارية
@@ -603,134 +496,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repeat?.key]);
 
-  // ── المعاملات المعلّقة ─────────────────────────────────────────────
-  const [parked, setParkedState] = useState<Parked[]>([]);
-  useEffect(() => {
-    void window.diwan.service
-      .parked()
-      .then((list) => setParkedState(list as Parked[]))
-      .catch(() => undefined);
-  }, []);
-  /** كلّ تغييرٍ يُحفظ في القاعدة — فالمعلّقة لا تضيع بإغلاق البرنامج ولا بانقطاع الكهرباء. */
-  const setParked = (update: (list: Parked[]) => Parked[]) =>
-    setParkedState((list) => {
-      const next = update(list);
-      void window.diwan.service.setParked(next).catch(() => say('تعذّر حفظ المعاملات المعلّقة', 'warn'));
-      return next;
-    });
-
-  const snapshot = (): Parked => ({
-    key: Date.now(),
-    label: citizenName || loaded.map((l) => l.summary.title).join('، ') || 'معاملة',
-    step,
-    picked: loaded.map((l) => l.detail.id),
-    values,
-    letterNo,
-    citizenId,
-    merge,
-    names,
-    valuesOnly,
-    genderByHand
+  // ── المعاملات المعلّقة: تُعلَّق وتُستأنف وتُلغى بـ«تراجع» — `service/useParked.ts` ──
+  const { parked, park, resume, discardTransaction, dropParked } = useParked({
+    say, dismiss, citizenName, loaded, step, values, letterNo, citizenId, merge, names, valuesOnly, genderByHand, reset, goFill,
+    setStep, setPicked, setValues, setLetterNo, setCitizenId, setMerge, setNames, setValuesOnly, setGenderByHand, setAt, resumeRequest
   });
-
-  /**
-   * ما يُترك قبل أن يكتمل يصل قيد العمل وحده (ن١٤): برنامجٌ يُغلق ومعاملةٌ في وسطها — نماذجها
-   * مختارة وفي ورقة الإدخال أو المراجعة — تُعلَّق قبل الإغلاق، فتنتظر صاحبها في «قيد العمل».
-   */
-  const closeFlush = useRef<() => unknown>(() => undefined);
-  closeFlush.current = () => (loaded.length > 0 && step !== 'pick' ? window.diwan.service.setParked([...parked, snapshot()]) : undefined);
-  useEffect(() => onBeforeClose(() => closeFlush.current()), []);
-
-  /** تُعلَّق المعاملة كما هي، ويُفتح الشبّاك لزبونٍ آخر. */
-  function park() {
-    setParked((list) => [...list, snapshot()]);
-    reset();
-    say('عُلّقت المعاملة — تُستأنف من «معاملات معلّقة» حين يعود صاحبها');
-  }
-
-  /**
-   * تُستأنف معلّقةٌ من حيث تُركت — والجارية إن كان فيها شيء تُعلَّق مكانها. والنماذج تُحمَّل
-   * من جديد: ما حُذف منها منذ التعليق يُقال.
-   */
-  async function resume(key: number, from: Parked[] = parked) {
-    const p = from.find((x) => x.key === key);
-    if (!p) return;
-    const current = loaded.length > 0 ? snapshot() : null;
-    const found = (await Promise.all(p.picked.map((id) => window.diwan.templates.get(id).catch(() => null)))).filter(Boolean).length;
-    if (!found) {
-      say(`نماذج معاملة ${p.label} حُذفت منذ عُلّقت — لا تُستأنف`, 'warn');
-      return;
-    }
-    // الزبون الذي عُلّقت له قد يُحذف منذ ذاك (أو يُستبدل السجلّ باسترجاع): لا يُقيَّد كتابٌ بمفتاحٍ لا وجود له
-    // فيفشل القيد بخطأ قاعدةٍ لا يفهمه الموظف.
-    const owner = p.citizenId === null ? null : await window.diwan.citizens.get(p.citizenId).catch(() => null);
-    const ownerGone = p.citizenId !== null && !owner;
-    setParked((list) => [...list.filter((x) => x.key !== key), ...(current ? [current] : [])]);
-    await goFill(p.picked);
-    setStep(p.step);
-    setPicked(p.picked);
-    setValues(p.values);
-    setLetterNo(p.letterNo);
-    setCitizenId(ownerGone ? null : p.citizenId);
-    setMerge(p.merge);
-    setNames(p.names);
-    setValuesOnly(p.valuesOnly);
-    setGenderByHand(p.genderByHand);
-    setAt(0);
-    const notes = [
-      found < p.picked.length ? 'وحُذف من نماذجها ما لم يعد في المكتبة' : '',
-      ownerGone ? 'والزبون الذي عُلّقت له لم يعد في السجلّ فلا تُربط به' : ''
-    ].filter(Boolean);
-    say(`استُؤنفت معاملة ${p.label}${notes.length ? ` — ${notes.join('، ')}` : ''}`, ownerGone ? 'warn' : 'ok');
-  }
-
-  /** آخر `resume` — فـ«تراجع» يُنادى بعد ثوانٍ، ولا يقرأ حالةً قديمة. */
-  const resumeNow = useRef(resume);
-  resumeNow.current = resume;
-
-  /**
-   * «ألغِ المعاملة»: تُمحى فورًا — وتبقى ثوانيَ يُتراجع عنها: زرّها ملاصقٌ لـ«علّق» وقد يُنقر بالخطأ (ج٢).
-   * و«تراجع» يستأنفها بما استأنفت به المعلّقة: ما في الشبّاك الآن إن كان فيه عملٌ يُعلَّق مكانها فلا يضيع.
-   */
-  function discardTransaction() {
-    const gone = snapshot();
-    reset();
-    say('أُلغيت المعاملة — لم يُقيَّد شيء', 'ok', {
-      label: 'تراجع',
-      run: () => {
-        dismiss();
-        void resumeNow.current(gone.key, [gone]);
-      }
-    });
-  }
-
-  /** × على معاملةٍ معلّقة: تُحذف فورًا وتعود بـ«تراجع» إلى مكانها في الصفّ. */
-  function dropParked(p: Parked) {
-    const index = parked.findIndex((x) => x.key === p.key);
-    setParked((list) => list.filter((x) => x.key !== p.key));
-    say(`أُلغيت المعاملة المعلّقة «${p.label}»`, 'ok', {
-      label: 'تراجع',
-      run: () => {
-        dismiss();
-        setParked((list) => {
-          if (list.some((x) => x.key === p.key)) return list;
-          const at = index < 0 ? list.length : Math.min(index, list.length);
-          return [...list.slice(0, at), p, ...list.slice(at)];
-        });
-      }
-    });
-  }
-
-  // «استأنف» من قيد العمل: القائمة من القاعدة (قد عُلّقت عند الإغلاق بعد أن قُرئت هنا) ثم الاستئناف.
-  useEffect(() => {
-    if (!resumeRequest) return;
-    void window.diwan.service.parked().then((list) => {
-      const fresh = list as Parked[];
-      setParkedState(fresh);
-      void resume(resumeRequest.parkedKey, fresh);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeRequest?.key]);
 
   // الزبون عائدًا من أداة: يبقى زبون الشبّاك، وحقول ما يختاره بعدُ تُملأ من ملفّه.
   const fillFrom = useRef<number | null>(null);
