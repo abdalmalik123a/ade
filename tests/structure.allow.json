@@ -11,7 +11,6 @@
   "src/renderer/src/components/PageEditor.tsx": 1120,
   "src/renderer/src/components/editorKit.tsx": 466,
   "src/renderer/src/screens/ArchiveScreen.tsx": 674,
-  "src/renderer/src/screens/CitizensScreen.tsx": 1334,
   "src/renderer/src/screens/ClientsScreen.tsx": 415,
   "src/renderer/src/screens/DeskewModal.tsx": 528,
   "src/renderer/src/screens/EditorScreen.tsx": 704,
