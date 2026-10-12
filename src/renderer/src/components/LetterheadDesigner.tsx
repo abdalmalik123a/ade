@@ -10,44 +10,16 @@ import { useState } from 'react';
 import {
   defaultAlign,
   newId,
-  fontFamilyOf,
   HEADER_FIELDS,
-  type Align,
   type BlockKind,
-  type ColumnCount,
   type LetterheadBlock,
   type LetterheadLayout
 } from '@shared/letterhead';
-import FontSelect from './FontSelect';
-
-const KIND_META: { kind: BlockKind; icon: string; label: string }[] = [
-  { kind: 'text', icon: 'title', label: 'سطر نصّي' },
-  { kind: 'image', icon: 'image', label: 'شعار أو صورة' },
-  { kind: 'field', icon: 'data_object', label: 'حقل تلقائي' },
-  { kind: 'divider', icon: 'horizontal_rule', label: 'خط فاصل' },
-  { kind: 'spacer', icon: 'height', label: 'فراغ' }
-];
-
-const ALIGN_META: { value: Align; icon: string; title: string }[] = [
-  { value: 'right', icon: 'format_align_right', title: 'يمين' },
-  { value: 'center', icon: 'format_align_center', title: 'وسط' },
-  { value: 'left', icon: 'format_align_left', title: 'يسار' }
-];
-
-const COLUMN_CHOICES: { value: ColumnCount; label: string; hint: string }[] = [
-  { value: 1, label: 'قسم واحد', hint: 'بعرض الورقة' },
-  { value: 2, label: 'قسمان', hint: 'يمين ويسار' },
-  { value: 3, label: 'ثلاثة أقسام', hint: 'يمين ووسط ويسار' }
-];
-
-const SECTION_NAMES = ['القسم الأول', 'القسم الثاني', 'القسم الثالث'];
-
-function sectionPlace(index: number, columns: ColumnCount): string {
-  if (columns === 1) return 'بعرض الورقة';
-  if (index === 0) return 'يمين الورقة';
-  if (index === columns - 1) return 'يسار الورقة';
-  return 'وسط الورقة';
-}
+import { COLUMN_CHOICES, SECTION_NAMES, sectionPlace, KIND_META } from './letterheadDesigner/shared';
+import SectionBlocks from './letterheadDesigner/SectionBlocks';
+import BasmalaOptions from './letterheadDesigner/BasmalaOptions';
+import RegistryOptions from './letterheadDesigner/RegistryOptions';
+import PageOptions from './letterheadDesigner/PageOptions';
 
 export type LetterheadDesignerProps = {
   layout: LetterheadLayout;
@@ -307,320 +279,36 @@ export default function LetterheadDesigner({
           </div>
         ) : null
       ) : (
-        <div className="space-y-space-xs">
-          {shown.map((block) => (
-            <div
-              key={block.id}
-              className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs"
-            >
-              <div className="flex items-center gap-space-xs">
-                <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                  {KIND_META.find((k) => k.kind === block.kind)?.icon ?? 'title'}
-                </span>
-
-                {block.kind === 'text' && (
-                  <input
-                    className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
-                    placeholder="اكتب محتوى السطر"
-                    type="text"
-                    value={block.value}
-                    onChange={(e) => patchBlock(block.id, { value: e.target.value })}
-                  />
-                )}
-
-                {block.kind === 'field' && (
-                  <select
-                    className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md"
-                    value={block.value}
-                    onChange={(e) => patchBlock(block.id, { value: e.target.value })}
-                  >
-                    {HEADER_FIELDS.map((f) => (
-                      <option key={f.token} value={f.token}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-
-                {block.kind === 'image' && (
-                  <button
-                    className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-sm text-label-sm text-right truncate"
-                    type="button"
-                    onClick={() => void pickImage(block.id)}
-                  >
-                    {block.value ? 'تغيير الصورة' : 'اختر صورة من الحاسوب'}
-                  </button>
-                )}
-
-                {block.kind === 'spacer' && (
-                  <input
-                    className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md"
-                    min={2}
-                    type="number"
-                    value={block.gap ?? 12}
-                    onChange={(e) => patchBlock(block.id, { gap: Number(e.target.value) || 12 })}
-                  />
-                )}
-
-                {block.kind === 'divider' && (
-                  <span className="flex-1 font-label-sm text-label-sm text-on-surface-variant">
-                    خط فاصل داخل القسم
-                  </span>
-                )}
-
-                <button
-                  className="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={section.blocks.indexOf(block) === 0}
-                  title="أعلى"
-                  type="button"
-                  onClick={() => moveBlock(block.id, -1)}
-                >
-                  <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-                </button>
-                <button
-                  className="w-7 h-7 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30"
-                  disabled={section.blocks.indexOf(block) === section.blocks.length - 1}
-                  title="أسفل"
-                  type="button"
-                  onClick={() => moveBlock(block.id, 1)}
-                >
-                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                </button>
-                <button
-                  className="w-7 h-7 rounded flex items-center justify-center text-error hover:bg-error-container"
-                  title="حذف"
-                  type="button"
-                  onClick={() => removeBlock(block.id)}
-                >
-                  <span className="material-symbols-outlined text-[16px]">delete</span>
-                </button>
-              </div>
-
-              {(block.kind === 'text' || block.kind === 'field' || block.kind === 'image') && (
-                <div className="flex items-center gap-space-sm pr-6">
-                  <div className="flex items-center gap-0.5">
-                    {ALIGN_META.map((a) => (
-                      <button
-                        key={a.value}
-                        className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
-                          block.align === a.value
-                            ? 'bg-surface-container-high text-on-surface'
-                            : 'text-on-surface-variant hover:bg-surface-container-high'
-                        }`}
-                        title={a.title}
-                        type="button"
-                        onClick={() => patchBlock(block.id, { align: a.value })}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">{a.icon}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {block.kind === 'image' ? (
-                    <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-                      العرض
-                      <input
-                        className="w-16 h-7 px-1 rounded bg-surface-container-lowest text-on-surface text-center"
-                        min={20}
-                        max={400}
-                        type="number"
-                        value={block.width ?? 90}
-                        onChange={(e) =>
-                          patchBlock(block.id, { width: Number(e.target.value) || 90 })
-                        }
-                      />
-                    </label>
-                  ) : (
-                    <>
-                      <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-                        الحجم
-                        <input
-                          className="w-14 h-7 px-1 rounded bg-surface-container-lowest text-on-surface text-center"
-                          min={8}
-                          max={40}
-                          type="number"
-                          value={block.size}
-                          onChange={(e) =>
-                            patchBlock(block.id, { size: Number(e.target.value) || 14 })
-                          }
-                        />
-                      </label>
-                      <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant cursor-pointer">
-                        <input
-                          className="w-4 h-4 accent-secondary"
-                          checked={block.bold}
-                          type="checkbox"
-                          onChange={(e) => patchBlock(block.id, { bold: e.target.checked })}
-                        />
-                        غامق
-                      </label>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <SectionBlocks
+          shown={shown}
+          patchBlock={patchBlock}
+          pickImage={pickImage}
+          section={section}
+          moveBlock={moveBlock}
+          removeBlock={removeBlock}
+        />
       )}
 
       {/* البسملة: سطر فوق الأقسام كلّها، ومطفأة في الأصل */}
-      <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
-        <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
-          <input
-            className="w-4 h-4 accent-secondary"
-            checked={layout.basmala.show}
-            data-act="basmala"
-            type="checkbox"
-            onChange={(e) => {
-              onChange({ ...layout, basmala: { ...layout.basmala, show: e.target.checked } });
-              if (e.target.checked) void adoptBasmala();
-            }}
-          />
-          البسملة فوق الترويسة
-        </label>
-        {basmalaNote && (
-          <span className="font-label-sm text-label-sm text-on-surface-variant" data-basmala-note="">
-            صارت البسملة تفضيل المكتب: كل ترويسةٍ جديدة تبدأ بها — وتُطفأ من الإعدادات.
-          </span>
-        )}
-
-        {layout.basmala.show && (
-          <div className="flex items-center gap-space-xs">
-            <input
-              className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
-              type="text"
-              value={layout.basmala.text}
-              onChange={(e) =>
-                onChange({ ...layout, basmala: { ...layout.basmala, text: e.target.value } })
-              }
-            />
-            <input
-              className="w-14 h-8 px-1 rounded bg-surface-container-lowest text-on-surface text-center font-label-md text-label-md"
-              min={8}
-              max={40}
-              type="number"
-              value={layout.basmala.size}
-              onChange={(e) =>
-                onChange({
-                  ...layout,
-                  basmala: { ...layout.basmala, size: Number(e.target.value) || 14 }
-                })
-              }
-            />
-            <div className="flex items-center gap-0.5">
-              {ALIGN_META.map((a) => (
-                <button
-                  key={a.value}
-                  className={`w-7 h-7 rounded flex items-center justify-center transition-colors ${
-                    layout.basmala.align === a.value
-                      ? 'bg-surface-container-high text-on-surface'
-                      : 'text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                  title={a.title}
-                  type="button"
-                  onClick={() =>
-                    onChange({ ...layout, basmala: { ...layout.basmala, align: a.value } })
-                  }
-                >
-                  <span className="material-symbols-outlined text-[16px]">{a.icon}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <BasmalaOptions
+        layout={layout}
+        onChange={onChange}
+        adoptBasmala={adoptBasmala}
+        basmalaNote={basmalaNote}
+      />
 
       {/* العدد والتاريخ: موضعهما القسم الأخير، وهما اختياريان */}
-      <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
-        <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
-          <input
-            className="w-4 h-4 accent-secondary"
-            checked={layout.registry.show}
-            type="checkbox"
-            onChange={(e) =>
-              onChange({ ...layout, registry: { ...layout.registry, show: e.target.checked } })
-            }
-          />
-          إظهار التاريخ والعدد في {layout.columns === 1 ? 'الترويسة' : 'القسم الأخير'}
-        </label>
-
-        {layout.registry.show && (
-          <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg">
-            {(
-              [
-                { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
-                { value: 'printed', label: 'مطبوعان', hint: 'من الصادر' }
-              ] as const
-            ).map((c) => (
-              <button
-                key={c.value}
-                className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
-                  layout.registry.mode === c.value
-                    ? 'bg-primary-container text-on-primary font-semibold'
-                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                }`}
-                type="button"
-                onClick={() => onChange({ ...layout, registry: { ...layout.registry, mode: c.value } })}
-              >
-                <span>{c.label}</span>
-                <span className="text-[10px] opacity-80">{c.hint}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        <span className="font-label-sm text-label-sm text-on-surface-variant">
-          التاريخ فوق العدد. والكتاب يُقيَّد في الأرشيف برقمه في الحالين — الاختيار في ما
-          يُطبع على الورقة فقط.
-        </span>
-      </div>
+      <RegistryOptions
+        layout={layout}
+        onChange={onChange}
+      />
 
       {/* خيارات الورقة */}
-      <div className="flex flex-wrap items-center gap-space-md pt-space-xs">
-        <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
-          الخط
-          <FontSelect
-            act="letterhead-font"
-            className="h-8 px-2 rounded bg-surface-container-low text-on-surface font-label-md text-label-md"
-            title="خطّ الترويسة كلّها — من «خطوط ديوان»"
-            value={fontFamilyOf(layout.font)}
-            onChange={(family) => family && onChange({ ...layout, font: family })}
-          />
-        </label>
-
-        <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface cursor-pointer">
-          <input
-            className="w-4 h-4 accent-secondary"
-            checked={layout.divider}
-            type="checkbox"
-            onChange={(e) => onChange({ ...layout, divider: e.target.checked })}
-          />
-          خط فاصل أسفل الترويسة
-        </label>
-
-        {showPageOptions &&
-          (['top', 'right', 'bottom', 'left'] as const).map((side) => (
-            <label
-              key={side}
-              className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant"
-            >
-              {{ top: 'أعلى', right: 'يمين', bottom: 'أسفل', left: 'يسار' }[side]}
-              <input
-                className="w-14 h-7 px-1 rounded bg-surface-container-low text-on-surface text-center"
-                min={0}
-                max={60}
-                type="number"
-                value={layout.margins[side]}
-                onChange={(e) =>
-                  onChange({
-                    ...layout,
-                    margins: { ...layout.margins, [side]: Number(e.target.value) || 0 }
-                  })
-                }
-              />
-              ملم
-            </label>
-          ))}
-      </div>
+      <PageOptions
+        layout={layout}
+        onChange={onChange}
+        showPageOptions={showPageOptions}
+      />
     </div>
   );
 }
