@@ -8,7 +8,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, readMachineGuid, type LicensePayload } from '../src/main/services/license';
+import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, readMachineGuid, RENEW_WARN_DAYS, MACHINE_GRACE_DAYS, type LicensePayload } from '../src/main/services/license';
 import { getMachineInfo, resetMachineIdCacheForTesting } from '../src/main/ipc/license';
 import { OWNER_KEYS, OWNER_PUBLIC_KEY, OWNER_UPDATE_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
 
@@ -324,6 +324,13 @@ describe('معرّف الجهاز البديل وفشل القراءة ومهل�
       office: 'مكتب الرافدين',
       issued: '2026-10-05'
     });
+  });
+});
+
+describe('ثوابت الترخيص الموحّدة (المرحلة A — ٤٫٧)', () => {
+  it('ثابت التنبيه قبل نهاية الاشتراك ٧ أيام وثابت مهلة السماح ٧ أيام', () => {
+    expect(RENEW_WARN_DAYS).toBe(7);
+    expect(MACHINE_GRACE_DAYS).toBe(7);
   });
 });
 

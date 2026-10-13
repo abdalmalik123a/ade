@@ -4,6 +4,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LicenseStatus } from '@shared/api';
+import { RENEW_WARN_DAYS } from '@shared/license';
 import { DEVELOPER } from '@shared/brand';
 import { formatGregorian } from '@shared/dates';
 import { errorText } from '../lib/errors';
@@ -81,7 +82,9 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
       ? 'text-secondary'
       : status.status === 'expired' || status.status === 'unverified'
         ? 'text-error'
-        : 'text-on-surface';
+        : status.status === 'subscribed' && status.daysLeft <= RENEW_WARN_DAYS
+          ? 'text-error'
+          : 'text-on-surface';
   return (
     <section className={card} data-license={status.status}>
       {title}
