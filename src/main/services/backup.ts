@@ -83,7 +83,7 @@ async function encryptingSink(path: string, password: string): Promise<Sink & { 
  * ملفّات المخزن نسبيّةً إليه — بلا ما هو عابر: مسوح الهويّات في `tmp/`، وكتاباتٌ انقطعت (`*.part`).
  * فصور هويّات الزبائن لا تنتقل إلى الفلاشة بلا سجلٍّ يدلّ عليها (مراجعة ٧ ت١).
  */
-function walkStore(root: string): string[] {
+export function walkStore(root: string): string[] {
   const out: string[] = [];
   if (!existsSync(root)) return out;
   const visit = (dir: string, prefix: string) => {

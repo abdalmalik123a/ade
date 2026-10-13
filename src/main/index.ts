@@ -5,7 +5,8 @@ import { getDb, closeDb, dataDir, storeDir } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
 import { guardDataVersion, stampDataVersion } from './services/dataVersion';
-import { rememberStartup } from './ipc/update';
+import { handleNewerDataRejection, rememberStartup } from './ipc/update';
+import { createPreUpdateBackup } from './services/preUpdateBackup';
 import { registerIpc } from './ipc';
 import { autoBackupConfigured, runConfiguredAutoBackup } from './ipc/backup';
 import { prepareDocuments } from './services/documents';
@@ -213,7 +214,7 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // النسخة الثانية تخرج قبل أن تفتح القاعدة أو نافذة.
   if (!primary) return;
   hardenSession();
@@ -275,13 +276,19 @@ app.whenReady().then(() => {
       snapshotDir: join(dataDir(), 'before-update')
     });
     if (guard.kind === 'newer') {
-      dialog.showErrorBox(
-        'بيانات المكتب من إصدارٍ أحدث',
-        `بيانات هذا الجهاز فتحها «ديوان ${guard.from}»، وهذا البرنامج ${app.getVersion()} — أقدم منه.\n\n` +
-          'لا تُفتح حتى لا يُفسدها إصدارٌ لا يعرف ما أُضيف إليها. ثبّت الإصدار الأحدث (أو الأحدث منه) ثم افتحها.'
-      );
-      app.quit();
+      await handleNewerDataRejection({
+        dataDir: dataDir(),
+        currentVersion: app.getVersion(),
+        guardFrom: guard.from
+      });
       return;
+    }
+    if (guard.kind === 'upgrade' && guard.from) {
+      try {
+        await createPreUpdateBackup({ dataDir: dataDir(), currentVersion: guard.from });
+      } catch (err) {
+        logError('preUpdateBackup', err);
+      }
     }
     rememberStartup(guard);
     getDb();

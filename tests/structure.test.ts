@@ -99,6 +99,7 @@ describe('اختبار الهيكل (ز١)', () => {
       'DIWAN_TEST_OPEN_FILE',
       'DIWAN_TEST_OPEN_FILES',
       'DIWAN_TEST_PRINT_LOG',
+      'DIWAN_TEST_ROLLBACK_ACTION',
       'DIWAN_TEST_SAVE_DIR',
       'DIWAN_TEST_SCAN_FILE',
       'DIWAN_TEST_SLOW_ISSUE',
