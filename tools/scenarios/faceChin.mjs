@@ -88,19 +88,21 @@ export default async function scenario(page, { shotsDir }) {
   const beardPlain = await settled(192, 200);
   const faceBefore = await settled(192, 120);
   ok(`بلا قاطٍ تظهر اللحية تحت الذقن (${beardPlain})`, dark(beardPlain));
-  await click('[data-suit="suit-brown-gold-tie"]');
-  await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000);
-  await wait(800);
-  const beardSuit = await settled(192, 200);
-  ok(`وبالقاط تبقى اللحية — لا لون الخلفية في موضعها (${beardPlain} ← ${beardSuit})`, dark(beardSuit) && !near(beardSuit, BLUE, 30));
-  ok(`والوجه لا يتغيّر (${faceBefore} ← ${await settled(192, 120)})`, near(await settled(192, 120), faceBefore, 2));
-  const neck = await settled(192, 214);
-  ok(`والرقبة تحت اللحية جلدٌ باقٍ (${neck})`, skin(neck));
-  if (shotsDir) await page.shot(join(shotsDir, 'face-chin.png'));
-
-  // خطّ «رمّم» على الذقن من الوجه: تحت اللحية لا عند ١٩٤.
-  await click('[data-suit="none"]');
-  await wait(400);
+  const hasSuit = await click('[data-suit="suit-brown-gold-tie"]');
+  if (hasSuit) {
+    await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000);
+    await wait(800);
+    const beardSuit = await settled(192, 200);
+    ok(`وبالقاط تبقى اللحية — لا لون الخلفية في موضعها (${beardPlain} ← ${beardSuit})`, dark(beardSuit) && !near(beardSuit, BLUE, 30));
+    ok(`والوجه لا يتغيّر (${faceBefore} ← ${await settled(192, 120)})`, near(await settled(192, 120), faceBefore, 2));
+    const neck = await settled(192, 214);
+    ok(`والرقبة تحت اللحية جلدٌ باقٍ (${neck})`, skin(neck));
+    if (shotsDir) await page.shot(join(shotsDir, 'face-chin.png'));
+    await click('[data-suit="none"]');
+    await wait(400);
+  } else {
+    ok('البدلات المدمجة مفرّغة لعدم ثبوت التراخيص (المرحلة A — ٢)', true);
+  }
   await click('[data-tool="repair"]');
   await wait(300);
   const lineAt = await page.eval(`

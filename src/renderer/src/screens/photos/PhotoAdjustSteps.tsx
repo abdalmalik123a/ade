@@ -199,6 +199,9 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
       {suitTab === 'custom' && !customSuits.length && (
         <p className="font-label-sm text-label-sm text-on-surface-variant">لا قاط للمكتب بعد — «استيراد بدلة خاصة» يضيف صورة PNG شفّافة الخلفية والعنق</p>
       )}
+      {suitTab !== 'custom' && !BUILTIN_SUITS.filter((s) => s.category === suitTab).length && (
+        <p className="font-label-sm text-label-sm text-on-surface-variant">لا توجد بدلات مدمجة حاليًا — يرجى استخدام «استيراد بدلة خاصة» لإضافة قاط للمكتب</p>
+      )}
       {worn && (
         <div className="space-y-space-xs">
           {slider('الحجم', worn.at.scale / worn.base.scale, (v) => setWorn({ ...worn, at: { ...worn.at, scale: worn.base.scale * v } }), 0.5, 2, 0.01, 'suit-scale')}

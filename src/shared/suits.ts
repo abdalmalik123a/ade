@@ -19,24 +19,11 @@ export const SUIT_CATEGORIES: { key: SuitCategory; label: string }[] = [
 
 export type BuiltinSuit = { id: string; name: string; category: Exclude<SuitCategory, 'custom'>; file: string };
 
-export const BUILTIN_SUITS: BuiltinSuit[] = [
-  { id: 'suit-gray-bowtie', name: 'قاطٌ رمادي بربطة فراشة', category: 'suit', file: 'suit-gray-bowtie.webp' },
-  { id: 'suit-navy-dark-tie', name: 'قاطٌ كحلي بربطةٍ داكنة', category: 'suit', file: 'suit-navy-dark-tie.webp' },
-  { id: 'suit-black-pink-tie', name: 'قاطٌ أسود بربطةٍ مخطّطة ومنديل', category: 'suit', file: 'suit-black-pink-tie.webp' },
-  { id: 'suit-brown-gold-tie', name: 'سترةٌ بنّية بربطةٍ ذهبية', category: 'suit', file: 'suit-brown-gold-tie.webp' },
-  { id: 'suit-black-red-stripe', name: 'قاطٌ أسود بربطةٍ حمراء مخطّطة', category: 'suit', file: 'suit-black-red-stripe.webp' },
-  { id: 'suit-black-bw-stripe', name: 'قاطٌ أسود بربطةٍ مخطّطة بالأبيض', category: 'suit', file: 'suit-black-bw-stripe.webp' },
-  { id: 'suit-navy', name: 'قاطٌ كحلي', category: 'suit', file: 'suit-navy.webp' },
-  { id: 'suit-vest-brown-tie', name: 'قاطٌ مقلّم بصديريٍّ وربطةٍ بنّية', category: 'suit', file: 'suit-vest-brown-tie.webp' },
-  { id: 'suit-vest-red-tie', name: 'قاطٌ مقلّم بصديريٍّ وربطةٍ حمراء', category: 'suit', file: 'suit-vest-red-tie.webp' },
-  { id: 'suit-charcoal-silver-tie', name: 'قاطٌ فحمي بربطةٍ فضّية', category: 'suit', file: 'suit-charcoal-silver-tie.webp' },
-  { id: 'suit-pinstripe-red-tie', name: 'قاطٌ مقلّم بربطةٍ حمراء', category: 'suit', file: 'suit-pinstripe-red-tie.webp' },
-  { id: 'suit-pinstripe-gold-tie', name: 'قاطٌ مقلّم بربطةٍ صفراء', category: 'suit', file: 'suit-pinstripe-gold-tie.webp' },
-  { id: 'suit-black-blue-shirt', name: 'قاطٌ أسود بقميصٍ أزرق', category: 'suit', file: 'suit-black-blue-shirt.webp' },
-  { id: 'suit-navy-gray-tie', name: 'قاطٌ كحلي بربطةٍ رمادية', category: 'suit', file: 'suit-navy-gray-tie.webp' },
-  { id: 'shirt-white', name: 'قميصٌ أبيض', category: 'shirt', file: 'shirt-white.webp' },
-  { id: 'shirt-black', name: 'قميصٌ أسود', category: 'shirt', file: 'shirt-black.webp' }
-];
+/**
+ * البدلات والقمصان المدمجة: مفرّغة بالكامل لعدم ثبوت مصادر وتراخيص تجارية موثّقة
+ * للصور السابقة (القرار B من البند ٢). يعتمد البرنامج على استيراد قاط المكتب المخصّص (`custom`).
+ */
+export const BUILTIN_SUITS: BuiltinSuit[] = [];
 
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */
 export type CustomSuit = { id: string; name: string; path: string; createdAt: string };
