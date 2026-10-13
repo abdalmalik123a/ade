@@ -13,7 +13,6 @@
  * لا تجاوز في النسخة المثبّتة.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { hostname, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { app, ipcMain } from 'electron';
@@ -129,7 +128,7 @@ function readFileStore(): Stored {
   return readWithBackup(
     fileOf(),
     (raw) => storedLicense(JSON.parse(raw) as unknown),
-    {}
+    { keys: [] }
   );
 }
 
@@ -294,7 +293,7 @@ export function registerLicenseIpc(): void {
     }
     const file = readFileStore();
     try {
-      writeFileSync(fileOf(), JSON.stringify({ ...file, keys, ...(mInfo.verified ? { lastVerified: nowIso } : {}) }, null, 2));
+      atomicWriteJson(fileOf(), { ...file, keys, ...(mInfo.verified ? { lastVerified: nowIso } : {}) });
     } catch {
       // في القاعدة يكفي.
     }

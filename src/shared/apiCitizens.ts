@@ -165,7 +165,7 @@ export type CitizenApis = {
     readMrz(id: number): Promise<{ result: MrzResult | null; lines: string[] }>;
     print(id: number, printer: string | null): Promise<boolean>;
     copyToClipboard(id: number): Promise<boolean>;
-    exportZip(citizenId: number): Promise<{ path: string; count: number } | null>;
+    exportZip(citizenId: number): Promise<ExportZipResult | null>;
     delete(id: number): Promise<void>;
   };
   scanner: {
@@ -175,3 +175,34 @@ export type CitizenApis = {
     ocrAvailable(): Promise<boolean>;
   };
 };
+
+export type ExportZipFailure = { docType: string; reason: string };
+
+export type ExportZipResult = {
+  path: string;
+  total: number;
+  count: number;
+  failed: ExportZipFailure[];
+  message: string;
+};
+
+/**
+ * صياغة رسالة نتيجة تصدير المستمسكات مع تفصيل المتعذّر وعدم استخدام «تمّ» عند أي فشل (المرحلة A، ٤٫٦).
+ */
+export function formatExportZipMessage(
+  total: number,
+  count: number,
+  failed: ExportZipFailure[]
+): string {
+  if (failed.length === 0) {
+    return total === 1 ? 'صُدّر مستمسك واحد في حزمة' : `صُدّرت ${count} مستمسكات في حزمة`;
+  }
+  const failedList = failed.map((f) => f.docType).join('، ');
+  const reasons = [...new Set(failed.map((f) => f.reason))].join('، ');
+  const reasonSuffix = reasons ? ` (${reasons})` : '';
+  if (count === 0) {
+    return `تعذّر تصدير المستمسكات: ${failedList}${reasonSuffix}`;
+  }
+  return `صُدّرت ${count} من ${total} — تعذّر: ${failedList}${reasonSuffix}`;
+}
+

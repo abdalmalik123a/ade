@@ -17,6 +17,7 @@ import type { CitizenImportOptions, CitizenInput } from '@shared/api';
 import { ADDED_COLUMNS, CITIZEN_FIELDS } from '@shared/citizenSchema';
 import { cleanRows } from '@shared/citizenImport';
 import { importCitizens, planCitizenImport, readImportMap, saveImportMap } from '../services/citizenImport';
+import { formatExportZipMessage, type ExportZipFailure, type ExportZipResult } from '@shared/apiCitizens';
 
 /** خانات الاستمارات الحكومية — تُصدَّر إن مُلئت، والأصلية ولو فارغة. */
 const ADDED_LABELS = new Set(CITIZEN_FIELDS.filter((f) => (ADDED_COLUMNS as readonly string[]).includes(f.column)).map((f) => f.label));
@@ -259,8 +260,8 @@ export function registerCitizenIpc(): void {
     return true;
   });
 
-  /** تصدير كل مستمسكات المواطن في حزمة واحدة. */
-  ipcMain.handle('attachments:exportZip', async (e, citizenId: number) => {
+  /** تصدير كل مستمسكات المواطن في حزمة واحدة مع تفصيل المتعذّر إن وجد. */
+  ipcMain.handle('attachments:exportZip', async (e, citizenId: number): Promise<ExportZipResult | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
     const db = getDb();
@@ -269,6 +270,7 @@ export function registerCitizenIpc(): void {
     if (citizen.attachments.length === 0) throw new Error('لا مستمسكات لتصديرها');
 
     const entries: Record<string, Uint8Array> = {};
+    const failed: ExportZipFailure[] = [];
     for (const [i, a] of citizen.attachments.entries()) {
       try {
         const bytes = await readFile(absolute(a.filePath));
@@ -276,10 +278,16 @@ export function registerCitizenIpc(): void {
         const safe = a.docType.replace(/[\\/:*?"<>|]/g, '-').slice(0, 50);
         entries[`${String(i + 1).padStart(2, '0')}-${safe}${ext}`] = new Uint8Array(bytes);
       } catch {
-        // ملف مفقود من المخزن — يُتخطّى ولا يُفشل الحزمة كلها
+        // ملف مفقود من المخزن أو تعذّرت قراءته
+        failed.push({ docType: a.docType, reason: 'مفقود من المخزن' });
       }
     }
-    if (Object.keys(entries).length === 0) throw new Error('ملفات المستمسكات مفقودة من المخزن');
+
+    const total = citizen.attachments.length;
+    const count = Object.keys(entries).length;
+    if (count === 0) {
+      throw new Error(formatExportZipMessage(total, 0, failed));
+    }
 
     const safeName = citizen.fullName.replace(/[\\/:*?"<>|]/g, '-').slice(0, 50);
     const result = await dialog.showSaveDialog(win, {
@@ -289,7 +297,13 @@ export function registerCitizenIpc(): void {
     });
     if (result.canceled || !result.filePath) return null;
     await writeFile(result.filePath, Buffer.from(zipSync(entries, { level: 6 })));
-    return { path: result.filePath, count: Object.keys(entries).length };
+    return {
+      path: result.filePath,
+      total,
+      count,
+      failed,
+      message: formatExportZipMessage(total, count, failed)
+    };
   });
 
   ipcMain.handle('attachments:delete', async (_e, id: number) => {

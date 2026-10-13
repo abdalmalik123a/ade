@@ -4,7 +4,7 @@
  */
 import type { Dispatch, SetStateAction } from 'react';
 import { count } from '@shared/arabic';
-import { nf, storeUrl } from './shared';
+import { storeUrl } from './shared';
 import { IconBtn } from '../CitizenBits';
 import { choosePrinter } from '../../lib/printChoice';
 import { confirmAction } from '../../kit/ask';
@@ -83,7 +83,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             onClick={() =>
               void withBusy('zip', async () => {
                 const r = await window.diwan.attachments.exportZip(detail.id);
-                if (r) say(`صُدّرت ${nf.format(r.count)} مستمسكات في حزمة`);
+                if (r) say(r.message);
               })
             }
           >

@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { atomicWriteJson, atomicWriteWithBackup, readWithBackup } from '../src/main/services/stateFile';
+import { atomicWriteJson, readWithBackup } from '../src/main/services/stateFile';
 
 describe('الكتابة الذرية لملفات الحالة ومقاومة انقطاع الكهرباء (٤٫٥)', () => {
   it('كتابة الملف ذريًّا وقراءته بنجاح مع عدم بقاء أي ملفات مؤقتة', () => {

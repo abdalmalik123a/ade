@@ -11,7 +11,7 @@
  * ٤. إن تعثّر شيءٌ في ٢ أو ٣ عاد ما نُقل جانبًا إلى مكانه (`services/restoreSwap.ts`).
  * ثم تُعاد الواجهة فتقرأ البيانات الجديدة من أوّلها.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
