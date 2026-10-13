@@ -14,6 +14,7 @@ import Database from 'better-sqlite3';
 import { compareVersions } from '@shared/version';
 import { walkStore } from './backup';
 import { readDataVersion } from './dataVersion';
+import { writeIncompleteMarker, INCOMPLETE_MARKER } from './restoreSwap';
 
 export const PRE_UPDATE_DIR = 'pre-update-backups';
 export const MANIFEST_NAME = 'backup-manifest.json';
@@ -262,6 +263,7 @@ export function rollbackToPreUpdateBackup(opts: {
   dataDir: string;
   backupDir: string;
   now?: Date;
+  onBeforeCopy?: () => void;
 }): { asideDir: string; restoredVersion: string } {
   const verify = verifyPreUpdateBackup(opts.backupDir);
   if (!verify.ok || !verify.version) {
@@ -277,12 +279,20 @@ export function rollbackToPreUpdateBackup(opts: {
   const backupDb = join(opts.backupDir, 'diwan.db');
   const backupStore = join(opts.backupDir, 'store');
 
+  // كتابة أثر الاسترجاع قبل نقل أو تعديل الملفات لضمان التعافي عند انقطاع الكهرباء
+  writeIncompleteMarker(opts.dataDir, { aside: asideDir, reason: 'تراجعٌ إلى نسخة ما قبل التحديث' });
+
   for (const suffix of DB_SUFFIXES) {
     const f = currentDb + suffix;
     if (existsSync(f)) renameSync(f, join(asideDir, `diwan.db${suffix}`));
   }
   if (existsSync(currentStore)) {
     renameSync(currentStore, join(asideDir, 'store'));
+  }
+
+  // نقطة حراسة لاختبار الانقطاع في منتصف التراجع
+  if (opts.onBeforeCopy) {
+    opts.onBeforeCopy();
   }
 
   try {
@@ -305,18 +315,31 @@ export function rollbackToPreUpdateBackup(opts: {
     } finally {
       testDb.close();
     }
+
+    // إزالة أثر الاسترجاع بعد نجاح العملية بالكامل
+    rmSync(join(opts.dataDir, INCOMPLETE_MARKER), { force: true });
   } catch (err) {
     for (const suffix of DB_SUFFIXES) rmSync(currentDb + suffix, { force: true });
     rmSync(currentStore, { recursive: true, force: true });
 
-    for (const suffix of DB_SUFFIXES) {
-      const src = join(asideDir, `diwan.db${suffix}`);
-      if (existsSync(src)) renameSync(src, currentDb + suffix);
+    let restoredBack = false;
+    try {
+      for (const suffix of DB_SUFFIXES) {
+        const src = join(asideDir, `diwan.db${suffix}`);
+        if (existsSync(src)) renameSync(src, currentDb + suffix);
+      }
+      if (existsSync(join(asideDir, 'store'))) {
+        renameSync(join(asideDir, 'store'), currentStore);
+      }
+      restoredBack = true;
+      rmSync(join(opts.dataDir, INCOMPLETE_MARKER), { force: true });
+    } catch {
+      // إذا تعذّر نقل الملفات عائدةً، يبقى الأثر لتعيده recoverIncompleteRestore في الإقلاع القادم
     }
-    if (existsSync(join(asideDir, 'store'))) {
-      renameSync(join(asideDir, 'store'), currentStore);
-    }
-    throw new Error(`تعذّر التراجع إلى بيانات ما قبل التحديث، وأُعيدت بياناتك كما كانت: ${err instanceof Error ? err.message : String(err)}`);
+    const recoveryNote = restoredBack
+      ? 'وأُعيدت بياناتك كما كانت'
+      : 'وتُستعاد بياناتك تلقائيًّا عند الإقلاع القادم';
+    throw new Error(`تعذّر التراجع إلى بيانات ما قبل التحديث، ${recoveryNote}: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return { asideDir, restoredVersion: verify.version };

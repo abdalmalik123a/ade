@@ -16,6 +16,7 @@ import {
   PRE_UPDATE_DIR
 } from '../src/main/services/preUpdateBackup';
 import { guardDataVersion, readDataVersion, runBootSequence } from '../src/main/services/dataVersion';
+import { INCOMPLETE_MARKER, recoverIncompleteRestore } from '../src/main/services/restoreSwap';
 
 function setupOffice(version: string = '1.0.0') {
   const dir = mkdtempSync(join(tmpdir(), 'diwan-preupdate-test-'));
@@ -279,6 +280,49 @@ describe('النسخ الاحتياطي قبل التحديث (٤٫٣)', () => {
     // findLatestPreUpdateBackup لإصدار 1.7.0 يجب ألا يعرضها للتراجع إطلاقًا
     const candidate = findLatestPreUpdateBackup(dir, '1.7.0');
     expect(candidate).toBeNull();
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('صمود التراجع للانقطاع في منتصفه واسترجاع البيانات الأصلية بأمان دون فتح قاعدة فارغة', async () => {
+    const { dir, dbFile } = setupOffice('1.7.0');
+    // أخذ نسخة ما قبل التحديث الخاصة بـ 1.7.0 قبل الترقية
+    const backupCandidate = await createPreUpdateBackup({ dataDir: dir, currentVersion: '1.7.0' });
+    if (backupCandidate.kind !== 'created') throw new Error('Expected created');
+
+    // ترقية القاعدة إلى 1.7.2 وإضافة بيانات جديدة قبل محاولة التراجع
+    const db = new Database(dbFile);
+    db.prepare("INSERT INTO documents (serial, issued_at) VALUES ('م/2026/999', datetime('now'))").run();
+    db.prepare("UPDATE settings SET value = '1.7.2' WHERE key = 'appVersion'").run();
+    db.close();
+
+    // محاكاة انقطاع الكهرباء أو تحطم العملية في منتصف التراجع (بعد نقل الملفات إلى aside وقبل اكتمال النسخ)
+    expect(() => {
+      rollbackToPreUpdateBackup({
+        dataDir: dir,
+        backupDir: backupCandidate.backupDir,
+        onBeforeCopy: () => {
+          throw new Error('انقطاع مفاجئ للتيار الكهربائي في منتصف التراجع');
+        }
+      });
+    }).toThrow('انقطاع مفاجئ للتيار الكهربائي في منتصف التراجع');
+
+    // التأكد من وجود أثر الاسترجاع غير المكتمل
+    expect(existsSync(join(dir, INCOMPLETE_MARKER))).toBe(true);
+
+    // محاكاة إعادة تشغيل البرنامج (الإقلاع ينادي recoverIncompleteRestore أولاً)
+    const recovery = recoverIncompleteRestore(dir);
+    expect(recovery.state).toBe('recovered');
+
+    // التأكد من استعادة القاعدة الأصلية بالكامل وعدم فتح قاعدة فارغة
+    expect(existsSync(dbFile)).toBe(true);
+    expect(readDataVersion(dbFile)).toBe('1.7.2');
+    const restoredDb = new Database(dbFile, { readonly: true });
+    expect(restoredDb.prepare("SELECT serial FROM documents WHERE serial = 'م/2026/999'").get()).toBeDefined();
+    restoredDb.close();
+
+    // التأكد من تنظيف علامة الاسترجاع بعد التعافي
+    expect(existsSync(join(dir, INCOMPLETE_MARKER))).toBe(false);
 
     rmSync(dir, { recursive: true, force: true });
   });
