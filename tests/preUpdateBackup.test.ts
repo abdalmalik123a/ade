@@ -1,7 +1,7 @@
 /**
  * اختبارات النسخ الاحتياطي قبل التحديث والتراجع الآمن (المرحلة A، ٤٫٣).
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
@@ -11,9 +11,11 @@ import {
   findLatestPreUpdateBackup,
   rollbackToPreUpdateBackup,
   verifyPreUpdateBackup,
+  sha256File,
   MANIFEST_NAME,
   PRE_UPDATE_DIR
 } from '../src/main/services/preUpdateBackup';
+import { guardDataVersion, readDataVersion, runBootSequence } from '../src/main/services/dataVersion';
 
 function setupOffice(version: string = '1.0.0') {
   const dir = mkdtempSync(join(tmpdir(), 'diwan-preupdate-test-'));
@@ -127,6 +129,9 @@ describe('النسخ الاحتياطي قبل التحديث (٤٫٣)', () => {
       currentVersion: '1.0.0',
       now: new Date('2026-10-01T10:00:00Z')
     });
+    const db2 = new Database(join(dir, 'diwan.db'));
+    db2.prepare("UPDATE settings SET value = '1.1.0' WHERE key = 'appVersion'").run();
+    db2.close();
     const res2 = await createPreUpdateBackup({
       dataDir: dir,
       currentVersion: '1.1.0',
@@ -201,6 +206,80 @@ describe('النسخ الاحتياطي قبل التحديث (٤٫٣)', () => {
     expect(dirs).toHaveLength(3);
     expect(dirs.some((d) => d.startsWith('1.0.1-'))).toBe(false);
     expect(dirs.some((d) => d.startsWith('1.0.4-'))).toBe(true);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('ترقية ثم رجوع إلى الإصدار القديم: القاعدة المستعادة يفتحها الإصدار القديم دون رفض', async () => {
+    const { dir, dbFile } = setupOffice('1.7.0');
+    const snapshotDir = join(dir, 'before-update');
+
+    // أخذ نسخة ما قبل التحديث قبل الترقية كما يفعل الإقلاع الجديد
+    const preBackup = await createPreUpdateBackup({ dataDir: dir, currentVersion: '1.7.0' });
+    expect(preBackup.kind).toBe('created');
+
+    // ترقية القاعدة إلى 1.7.2 عبر تسلسل الإقلاع
+    const bootResult = runBootSequence({
+      dbFile,
+      currentVersion: '1.7.2',
+      snapshotDir,
+      openDb: (f) => new Database(f),
+      migrations: [
+        (db) => {
+          db.prepare("INSERT INTO documents (serial, issued_at) VALUES ('م/2026/72', datetime('now'))").run();
+        }
+      ]
+    });
+    expect(bootResult.kind).toBe('ready');
+    (bootResult as { db: Database.Database }).db.close();
+    expect(readDataVersion(dbFile)).toBe('1.7.2');
+
+    // محاكاة تشغيل الإصدار القديم 1.7.0: يرفض القاعدة لأنها أحدث (1.7.2)
+    const oldBoot = guardDataVersion({ file: dbFile, current: '1.7.0', snapshotDir });
+    expect(oldBoot.kind).toBe('newer');
+    expect((oldBoot as { from: string }).from).toBe('1.7.2');
+
+    // الإصدار القديم 1.7.0 يبحث عن نسخة صالحة: يجد نسخة 1.7.0 ويتأكد من appVersion داخلها
+    const backupCandidate = findLatestPreUpdateBackup(dir, '1.7.0');
+    expect(backupCandidate).not.toBeNull();
+    expect(backupCandidate?.version).toBe('1.7.0');
+
+    // التراجع إلى النسخة المستعادة
+    const rollback = rollbackToPreUpdateBackup({
+      dataDir: dir,
+      backupDir: backupCandidate!.dir
+    });
+    expect(rollback.restoredVersion).toBe('1.7.0');
+
+    // الآن الإصدار القديم 1.7.0 يفتح القاعدة المستعادة بنجاح ودون أي رفض
+    const oldBootAfterRollback = guardDataVersion({ file: dbFile, current: '1.7.0', snapshotDir });
+    expect(oldBootAfterRollback.kind).toBe('same');
+    expect((oldBootAfterRollback as { version: string }).version).toBe('1.7.0');
+    expect(readDataVersion(dbFile)).toBe('1.7.0');
+
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('تجاهل أي نسخة يدعي وصفها إصدارًا قديمًا لكن قاعدتها تحتوي بيانات أحدث', async () => {
+    const { dir } = setupOffice('1.7.0');
+    const res = await createPreUpdateBackup({ dataDir: dir, currentVersion: '1.7.0' });
+    if (res.kind !== 'created') throw new Error('Expected created');
+
+    // التلاعب بالقاعدة داخل مجلد النسخة لتصبح بإصدار 1.7.2
+    const backupDb = join(res.backupDir, 'diwan.db');
+    const db = new Database(backupDb);
+    db.prepare("UPDATE settings SET value = '1.7.2' WHERE key = 'appVersion'").run();
+    db.close();
+
+    const manifestFile = join(res.backupDir, MANIFEST_NAME);
+    const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+    manifest.dbSize = statSync(backupDb).size;
+    manifest.dbSha256 = sha256File(backupDb);
+    writeFileSync(manifestFile, JSON.stringify(manifest, null, 2), 'utf8');
+
+    // findLatestPreUpdateBackup لإصدار 1.7.0 يجب ألا يعرضها للتراجع إطلاقًا
+    const candidate = findLatestPreUpdateBackup(dir, '1.7.0');
+    expect(candidate).toBeNull();
+
     rmSync(dir, { recursive: true, force: true });
   });
 });

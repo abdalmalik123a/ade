@@ -4,7 +4,9 @@ import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, dataDir, storeDir } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
-import { runBootSequence } from './services/dataVersion';
+import { existsSync } from 'node:fs';
+import { runBootSequence, readDataVersion } from './services/dataVersion';
+import { compareVersions } from '@shared/version';
 import { handleNewerDataRejection, rememberStartup } from './ipc/update';
 import { createPreUpdateBackup } from './services/preUpdateBackup';
 import { registerIpc } from './ipc';
@@ -269,9 +271,25 @@ app.whenReady().then(async () => {
         });
       }
     }
+    // أخذ نسخة كاملة قبل التحديث قبل أي ترقية أو مساس بالقاعدة (المرحلة A، ٤٫٣).
+    const dbFile = join(dataDir(), 'diwan.db');
+    if (existsSync(dbFile)) {
+      const existingVersion = readDataVersion(dbFile);
+      if (existingVersion === null || compareVersions(existingVersion, app.getVersion()) < 0) {
+        try {
+          await createPreUpdateBackup({
+            dataDir: dataDir(),
+            currentVersion: existingVersion ?? '1.0.0'
+          });
+        } catch (err) {
+          logError('preUpdateBackup', err);
+        }
+      }
+    }
+
     // إصدارٌ أقدم لا يفتح بيانات أحدث، والترقيات تُنفّذ داخل معاملةٍ قبل تسجيل الإصدار (المرحلة A، ٤٫٤).
     const boot = runBootSequence({
-      dbFile: join(dataDir(), 'diwan.db'),
+      dbFile,
       currentVersion: app.getVersion(),
       snapshotDir: join(dataDir(), 'before-update'),
       openDb: () => getDb(),
@@ -287,13 +305,6 @@ app.whenReady().then(async () => {
         guardFrom: boot.from
       });
       return;
-    }
-    if (boot.guard.kind === 'upgrade' && boot.guard.from) {
-      try {
-        await createPreUpdateBackup({ dataDir: dataDir(), currentVersion: boot.guard.from });
-      } catch (err) {
-        logError('preUpdateBackup', err);
-      }
     }
     rememberStartup(boot.guard);
     // مسوح الهويّات العابرة وكتاباتٌ انقطعت: لا شيء من جلسةٍ سابقة قيد الاستعمال (مراجعة ٧ ت١).

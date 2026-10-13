@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { compareVersions } from '@shared/version';
 import { walkStore } from './backup';
+import { readDataVersion } from './dataVersion';
 
 export const PRE_UPDATE_DIR = 'pre-update-backups';
 export const MANIFEST_NAME = 'backup-manifest.json';
@@ -92,6 +93,10 @@ export function verifyPreUpdateBackup(backupDir: string): BackupVerification {
     const hasTable = (name: string) => Boolean(db!.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
     if (!hasTable('documents') || !hasTable('citizens') || !hasTable('templates')) {
       return { ok: false, reason: 'القاعدة لا تحتوي على جداول ديوان الأساسية' };
+    }
+    const dbVersion = readDataVersion(dbFile);
+    if (dbVersion && compareVersions(dbVersion, manifest.version) > 0) {
+      return { ok: false, reason: `إصدار قاعدة النسخة (${dbVersion}) أحدث من الإصدار المسجّل في الوصف (${manifest.version})` };
     }
   } catch (err) {
     return { ok: false, reason: `تعذّر فتح قاعدة النسخة: ${err instanceof Error ? err.message : String(err)}` };
@@ -235,8 +240,13 @@ export function findLatestPreUpdateBackup(
     const dir = join(rootDir, name);
     const v = verifyPreUpdateBackup(dir);
     if (v.ok && v.version && v.createdAt) {
+      const dbFile = join(dir, 'diwan.db');
+      const dbVersion = existsSync(dbFile) ? readDataVersion(dbFile) : null;
+      if (dbVersion && maxVersion && compareVersions(dbVersion, maxVersion) > 0) {
+        continue;
+      }
       if (!maxVersion || compareVersions(v.version, maxVersion) <= 0) {
-        return { dir, version: v.version, createdAt: v.createdAt };
+        return { dir, version: dbVersion ?? v.version, createdAt: v.createdAt };
       }
     }
   }
