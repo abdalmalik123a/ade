@@ -9,7 +9,7 @@ import { NEUTRAL, applyEnhance, autoEnhance, denoiseChroma, toneCurve } from '..
 import { BUILTIN_SUITS, parseCustomSuits, pngTransparency } from '../src/shared/suits';
 import { cropBox } from '../src/shared/photoSheet';
 import { imageMeta } from '../src/main/services/imageSize';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 
@@ -393,16 +393,11 @@ describe('التحسين محافظٌ لا يغيّر الهوية', () => {
 // ── القاط ────────────────────────────────────────────────────────────
 
 describe('مكتبة القاط', () => {
-  it('المدمج صورٌ موجودة، وحُذفت البدلات النظامية بالكامل (المرحلة A — ٢ والجواب ٤)', () => {
-    for (const s of BUILTIN_SUITS) {
-      const file = join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'suits', s.file);
-      expect(existsSync(file), s.file).toBe(true);
-      expect(readFileSync(file).subarray(8, 12).toString('ascii')).toBe('WEBP');
-    }
-    // كلّ ملفٍّ في المجلّد في الفهرس وكلّ ما في الفهرس ملفّ — فلا يُحزم قاطٌ لا يُرى، ولا يُرى ما لم يُحزم.
+  it('البدلات المدمجة مفرّغة لعدم ثبوت التراخيص، والزي النظامي محذوف بالكامل (المرحلة A — ٢)', () => {
+    // جميع البدلات المدمجة مفرّغة حتى توفير بدائل موثّقة المصدر والترخيص
+    expect(BUILTIN_SUITS).toHaveLength(0);
     const dir = join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'suits');
-    expect(readdirSync(dir).filter((f) => f.endsWith('.webp')).sort()).toEqual(BUILTIN_SUITS.map((s) => s.file).sort());
-    expect(new Set(BUILTIN_SUITS.map((s) => s.id)).size).toBe(BUILTIN_SUITS.length);
+    expect(readdirSync(dir).filter((f) => f.endsWith('.webp'))).toEqual([]);
     const uniforms = BUILTIN_SUITS.filter((s) => (s as { category: string }).category === 'uniform');
     expect(uniforms).toHaveLength(0);
   });

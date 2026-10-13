@@ -4,6 +4,7 @@
  */
 import type { MrzResult } from './mrz';
 import type { ImportMap, ImportRow } from './citizenImport';
+import { count, toIndic } from './arabic';
 
 export type CitizenSummary = {
   id: number;
@@ -188,21 +189,26 @@ export type ExportZipResult = {
 
 /**
  * صياغة رسالة نتيجة تصدير المستمسكات مع تفصيل المتعذّر وعدم استخدام «تمّ» عند أي فشل (المرحلة A، ٤٫٦).
+ * تتبع قواعد دليل الواجهة (UI.md §٣): الرقم هنديٌّ في الجملة كلّها (`toIndic`) والعدد بـ`count()`.
  */
 export function formatExportZipMessage(
   total: number,
-  count: number,
+  exportedCount: number,
   failed: ExportZipFailure[]
 ): string {
   if (failed.length === 0) {
-    return total === 1 ? 'صُدّر مستمسك واحد في حزمة' : `صُدّرت ${count} مستمسكات في حزمة`;
+    return exportedCount === 1
+      ? 'صُدّر مستمسك واحد في حزمة'
+      : `صُدّرت ${count(exportedCount, 'مستمسك')} في حزمة`;
   }
-  const failedList = failed.map((f) => f.docType).join('، ');
-  const reasons = [...new Set(failed.map((f) => f.reason))].join('، ');
-  const reasonSuffix = reasons ? ` (${reasons})` : '';
-  if (count === 0) {
-    return `تعذّر تصدير المستمسكات: ${failedList}${reasonSuffix}`;
+  const allSameReason = failed.length > 1 && failed.every((f) => f.reason === failed[0]!.reason);
+  const failedDetails = allSameReason
+    ? `${failed.map((f) => f.docType).join('، ')}${failed[0]!.reason ? ` (${failed[0]!.reason})` : ''}`
+    : failed.map((f) => (f.reason ? `${f.docType} (${f.reason})` : f.docType)).join('، ');
+
+  if (exportedCount === 0) {
+    return `تعذّر تصدير المستمسكات: ${failedDetails}`;
   }
-  return `صُدّرت ${count} من ${total} — تعذّر: ${failedList}${reasonSuffix}`;
+  return `صُدّرت ${toIndic(exportedCount)} من ${toIndic(total)} — تعذّر: ${failedDetails}`;
 }
 

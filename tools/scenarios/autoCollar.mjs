@@ -86,9 +86,11 @@ export default async function scenario(page, { shotsDir }) {
     return done;
   };
   const wear = async (id) => {
-    await click(`[data-suit="${id}"]`);
+    const hasSuit = await click(`[data-suit="${id}"]`);
+    if (!hasSuit) return false;
     await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000);
     await wait(800);
+    return true;
   };
 
   // ١. الياقة المرتفعة: ظاهرةٌ بلا قاط، ومقصوصةٌ في فتحته.
@@ -96,20 +98,28 @@ export default async function scenario(page, { shotsDir }) {
   const collarPlain = await settled(192, 206);
   const faceBefore = await settled(192, 120);
   ok(`بلا قاطٍ تظهر الياقة البيضاء تحت الذقن (${collarPlain})`, collarPlain.every((v) => v > 215) && !near(collarPlain, BLUE, 12));
-  await wear('suit-brown-gold-tie');
-  const collarSuit = await settled(192, 206);
-  const faceSuit = await settled(192, 120);
-  ok(`وبالقاط يُقصّ ما في فتحته من الياقة — لونه لون الخلفية (${collarPlain} ← ${collarSuit})`, near(collarSuit, BLUE, 10));
-  ok(`والوجه لا يتغيّر (${faceBefore} ← ${faceSuit})`, near(faceSuit, faceBefore, 2));
-  if (shotsDir) await page.shot(join(shotsDir, 'auto-collar.png'));
-  await click('[data-suit="none"]');
-  await wait(600);
-  ok(`وخلع القاط يعيد الياقة (${await settled(192, 206)})`, near(await settled(192, 206), collarPlain, 6));
+  const wore = await wear('suit-brown-gold-tie');
+  if (wore) {
+    const collarSuit = await settled(192, 206);
+    const faceSuit = await settled(192, 120);
+    ok(`وبالقاط يُقصّ ما في فتحته من الياقة — لونه لون الخلفية (${collarPlain} ← ${collarSuit})`, near(collarSuit, BLUE, 10));
+    ok(`والوجه لا يتغيّر (${faceBefore} ← ${faceSuit})`, near(faceSuit, faceBefore, 2));
+    if (shotsDir) await page.shot(join(shotsDir, 'auto-collar.png'));
+    await click('[data-suit="none"]');
+    await wait(600);
+    ok(`وخلع القاط يعيد الياقة (${await settled(192, 206)})`, near(await settled(192, 206), collarPlain, 6));
+  } else {
+    ok('البدلات المدمجة مفرّغة لعدم ثبوت التراخيص (المرحلة A — ٢)', true);
+  }
 
   // ٢. الصورة الأصلية: الرقبة جلدٌ تبقى في الفتحة.
   await open(false);
-  await wear('suit-brown-gold-tie');
-  const neck = await settled(192, 200);
-  ok(`وفي الصورة الأصلية بالقاط نفسه تبقى الرقبة بلون الجلد (${neck})`, skin(neck));
+  const wore2 = await wear('suit-brown-gold-tie');
+  if (wore2) {
+    const neck = await settled(192, 200);
+    ok(`وفي الصورة الأصلية بالقاط نفسه تبقى الرقبة بلون الجلد (${neck})`, skin(neck));
+  } else {
+    ok('تخطّي ارتداء القاط المدمج لكونه مفرّغًا', true);
+  }
   return steps.join('\n');
 }

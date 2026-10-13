@@ -196,30 +196,34 @@ export default async function scenario(page, { shotsDir }) {
   await wait(300);
   const face = await settled(() => color(0.4, 0.3, 0.6, 0.4));
 
-  // ٤. القاط: يُلبَس تحت الرقبة، ويُكبَّر.
+  // ٤. القاط: يُلبَس تحت الرقبة، ويُكبَّر إن وُجدت بدلات مدمجة.
   const chestBefore = await settled(band);
-  await click('[data-suit="suit-brown-gold-tie"]');
-  ok('ويُلبَس القاط', await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000));
-  // يُنتظر رسم القاط لا وقتٌ ثابت: أوّل قاطٍ يُفكّ من حزمته، والجهاز قد يكون مشغولًا.
-  let chestSuit = await band();
-  for (let t = 0; t < 20 && diff(chestSuit, chestBefore) <= 10; t++) {
-    await wait(200);
-    chestSuit = await band();
+  const hasSuit = await click('[data-suit="suit-brown-gold-tie"]');
+  if (hasSuit) {
+    ok('ويُلبَس القاط', await until(`document.querySelector('[data-tool="suit"]') && !document.querySelector('[data-tool="suit"]').disabled`, 8000));
+    // يُنتظر رسم القاط لا وقتٌ ثابت: أوّل قاطٍ يُفكّ من حزمته، والجهاز قد يكون مشغولًا.
+    let chestSuit = await band();
+    for (let t = 0; t < 20 && diff(chestSuit, chestBefore) <= 10; t++) {
+      await wait(200);
+      chestSuit = await band();
+    }
+    const faceSuit = await settled(() => color(0.4, 0.3, 0.6, 0.4));
+    const chestMoved = diff(chestSuit, chestBefore);
+    const faceSame = near(faceSuit, face, 1);
+    ok(`فيتغيّر الصدر ولا يتغيّر الوجه${chestMoved > 10 && faceSame ? '' : ` (الصدر ${chestMoved.toFixed(1)}، الوجه ${face.map((v) => v.toFixed(1))} ← ${faceSuit.map((v) => v.toFixed(1))})`}`, chestMoved > 10 && faceSame);
+    await setValue('input[data-act="suit-scale"]', 1.3);
+    let chestBig = await band();
+    for (let t = 0; t < 20 && diff(chestBig, chestSuit) <= 3; t++) {
+      await wait(200);
+      chestBig = await band();
+    }
+    ok('ومنزلق الحجم يغيّره', diff(chestBig, chestSuit) > 3);
+    await click('[data-act="suit-reset"]');
+    await wait(300);
+    if (shotsDir) await page.shot(join(shotsDir, 'portrait-suit.png'));
+  } else {
+    ok('البدلات المدمجة مفرّغة لعدم ثبوت التراخيص (المرحلة A — ٢)', true);
   }
-  const faceSuit = await settled(() => color(0.4, 0.3, 0.6, 0.4));
-  const chestMoved = diff(chestSuit, chestBefore);
-  const faceSame = near(faceSuit, face, 1);
-  ok(`فيتغيّر الصدر ولا يتغيّر الوجه${chestMoved > 10 && faceSame ? '' : ` (الصدر ${chestMoved.toFixed(1)}، الوجه ${face.map((v) => v.toFixed(1))} ← ${faceSuit.map((v) => v.toFixed(1))})`}`, chestMoved > 10 && faceSame);
-  await setValue('input[data-act="suit-scale"]', 1.3);
-  let chestBig = await band();
-  for (let t = 0; t < 20 && diff(chestBig, chestSuit) <= 3; t++) {
-    await wait(200);
-    chestBig = await band();
-  }
-  ok('ومنزلق الحجم يغيّره', diff(chestBig, chestSuit) > 3);
-  await click('[data-act="suit-reset"]');
-  await wait(300);
-  if (shotsDir) await page.shot(join(shotsDir, 'portrait-suit.png'));
 
   // ٥. الحفظ: بكسلات المقاس بدقّته الحقيقية، والدقّة مكتوبةٌ في الملف.
   await click('[data-act="save-photo"]');

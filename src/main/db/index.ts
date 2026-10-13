@@ -49,8 +49,14 @@ export function getDb(): Database.Database {
   db = new Database(file);
   configureConnection(db);
 
-  db.exec(sqlFile('schema.sql'));
-  db.exec(sqlFile('search.sql'));
+  /**
+   * تهيئة المخطط الأساسي وجداول البحث (DDL) داخل معاملة ذرية متكاملة عند أول اتصال.
+   * الجداول تنشأ بصيغة IF NOT EXISTS وتكتمل ذريًا أو تُلغى بالكامل.
+   */
+  db.transaction(() => {
+    db!.exec(sqlFile('schema.sql'));
+    db!.exec(sqlFile('search.sql'));
+  })();
 
   return db;
 }

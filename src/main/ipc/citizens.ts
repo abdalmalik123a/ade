@@ -277,9 +277,19 @@ export function registerCitizenIpc(): void {
         const ext = extname(a.filePath) || '.png';
         const safe = a.docType.replace(/[\\/:*?"<>|]/g, '-').slice(0, 50);
         entries[`${String(i + 1).padStart(2, '0')}-${safe}${ext}`] = new Uint8Array(bytes);
-      } catch {
-        // ملف مفقود من المخزن أو تعذّرت قراءته
-        failed.push({ docType: a.docType, reason: 'مفقود من المخزن' });
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        let reason = 'تعذّرت قراءته';
+        if (code === 'ENOENT') {
+          reason = 'مفقودٌ من المخزن';
+        } else if (code === 'EACCES' || code === 'EPERM') {
+          reason = 'ممنوع الوصول';
+        } else if (code === 'EBUSY') {
+          reason = 'مفتوح في برنامج آخر';
+        } else if (err instanceof Error && err.message) {
+          reason = err.message;
+        }
+        failed.push({ docType: a.docType, reason });
       }
     }
 

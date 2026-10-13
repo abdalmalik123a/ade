@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { guardDataVersion, readDataVersion, runBootSequence, stampDataVersion } from '../src/main/services/dataVersion';
+import { prepareSearch } from '../src/main/services/searchIndex';
 
 function office(version: string | null) {
   const dir = mkdtempSync(join(tmpdir(), 'diwan-dataversion-'));
@@ -183,6 +184,25 @@ describe('إصدار البيانات', () => {
       expect(res).toEqual({ kind: 'newer', from: '2.0.0' });
       expect(ranMigration).toBe(false);
       expect(readDataVersion(o.file)).toBe('2.0.0');
+    });
+
+    it('فشل فهارس البحث لا يوقف الإقلاع ولا يسقط العملية', () => {
+      const o = office('1.0.0');
+      const boot = runBootSequence({
+        dbFile: o.file,
+        currentVersion: '1.1.0',
+        snapshotDir: o.snapshots,
+        openDb: (file) => new Database(file),
+        migrations: []
+      });
+      expect(boot.kind).toBe('ready');
+
+      const db = (boot as { db: Database.Database }).db;
+      expect(() => {
+        const ok = prepareSearch(db);
+        expect(typeof ok).toBe('boolean');
+      }).not.toThrow();
+      db.close();
     });
   });
 });
