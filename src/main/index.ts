@@ -294,8 +294,7 @@ app.whenReady().then(async () => {
       snapshotDir: join(dataDir(), 'before-update'),
       openDb: () => getDb(),
       migrations: [
-        (db) => prepareDocuments(db),
-        (db) => prepareSearch(db)
+        (db) => prepareDocuments(db)
       ]
     });
     if (boot.kind === 'newer') {
@@ -314,6 +313,12 @@ app.whenReady().then(async () => {
       // الكنس لا يوقف الإقلاع.
     }
     registerIpc();
+    // الفهارس تُطابَق جداولها ولا تُسقط الإقلاع إن تعذّرت: البحث يعود إلى المسح القديم (services/searchIndex.ts)
+    try {
+      prepareSearch(getDb());
+    } catch {
+      // تعذّر الفهرس لا يوقف الإقلاع — والبحث يعود إلى المسح
+    }
   } catch (e) {
     dialog.showErrorBox(
       'تعذّر تشغيل ديوان',
