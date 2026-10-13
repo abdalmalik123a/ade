@@ -40,22 +40,7 @@ KEEP = [
     ('psd:021', 'suit-black-blue-shirt', 'قاطٌ أسود بقميصٍ أزرق', 'suit'),
     ('imgbin_tuxedo-suit-clothing-lapel-single-breasted-png.png', 'suit-navy-gray-tie', 'قاطٌ كحلي بربطةٍ رمادية', 'suit'),
     ('psd:013', 'shirt-white', 'قميصٌ أبيض', 'shirt'),
-    ('psd:017', 'shirt-black', 'قميصٌ أسود', 'shirt'),
-    ('IMG-20220126-WA0003.jpg', 'uniform-desert-collar', 'مرقّطٌ صحراويّ بياقة', 'uniform'),
-    ('IMG-20220126-WA0004.jpg', 'uniform-dark-camo', 'مرقّطٌ رماديّ داكن', 'uniform'),
-    ('IMG-20220126-WA0005.jpg', 'uniform-desert-stand', 'مرقّطٌ صحراويّ بياقةٍ واقفة', 'uniform'),
-    ('IMG-20220126-WA0006.jpg', 'uniform-urban-camo', 'مرقّطٌ أزرق رماديّ', 'uniform'),
-    ('IMG-20220126-WA0007.jpg', 'uniform-navy-camo', 'مرقّطٌ كحليّ', 'uniform'),
-    ('IMG-20220126-WA0008.jpg', 'uniform-multicam-dark', 'مرقّطٌ متعدّد داكن', 'uniform'),
-    ('IMG-20220126-WA0010.jpg', 'uniform-black-tactical', 'تكتيكيٌّ أسود', 'uniform'),
-    ('IMG-20220126-WA0011.jpg', 'uniform-black-stand', 'تكتيكيٌّ أسود بياقةٍ واقفة', 'uniform'),
-    ('IMG-20220126-WA0012.jpg', 'uniform-woodland-shirt', 'مرقّطٌ غابيّ بياقة', 'uniform'),
-    ('IMG-20220126-WA0014.jpg', 'uniform-multicam', 'مرقّطٌ متعدّد', 'uniform'),
-    ('IMG-20220126-WA0016.jpg', 'uniform-digital-woodland', 'مرقّطٌ رقميّ غابيّ', 'uniform'),
-    ('photo_12_2024-04-20_16-22-41.jpg', 'uniform-desert-three', 'صحراويٌّ ثلاثيّ', 'uniform'),
-    ('photo_13_2024-04-20_16-22-41.jpg', 'uniform-woodland-open', 'مرقّطٌ غابيّ مفتوح', 'uniform'),
-    ('photo_7_2024-04-20_16-22-41.jpg', 'uniform-sand-stand', 'مرقّطٌ رمليّ بياقةٍ واقفة', 'uniform'),
-    ('photo_9_2024-04-20_16-22-41.jpg', 'uniform-woodland-green', 'مرقّطٌ غابيّ أخضر', 'uniform'),
+    ('psd:017', 'shirt-black', 'قميصٌ أسود', 'shirt')
 ]
 
 # ما لا يُحزم وسببه — ليُعرف أنه تُرك عمدًا لا سهوًا.

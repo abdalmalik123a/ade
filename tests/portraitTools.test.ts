@@ -393,7 +393,7 @@ describe('التحسين محافظٌ لا يغيّر الهوية', () => {
 // ── القاط ────────────────────────────────────────────────────────────
 
 describe('مكتبة القاط', () => {
-  it('المدمج صورٌ موجودة، ولا بدلة نظامية باسم جهةٍ أو رتبة', () => {
+  it('المدمج صورٌ موجودة، وحُذفت البدلات النظامية بالكامل (المرحلة A — ٢ والجواب ٤)', () => {
     for (const s of BUILTIN_SUITS) {
       const file = join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'suits', s.file);
       expect(existsSync(file), s.file).toBe(true);
@@ -403,8 +403,8 @@ describe('مكتبة القاط', () => {
     const dir = join(__dirname, '..', 'src', 'renderer', 'src', 'assets', 'suits');
     expect(readdirSync(dir).filter((f) => f.endsWith('.webp')).sort()).toEqual(BUILTIN_SUITS.map((s) => s.file).sort());
     expect(new Set(BUILTIN_SUITS.map((s) => s.id)).size).toBe(BUILTIN_SUITS.length);
-    const uniforms = BUILTIN_SUITS.filter((s) => s.category === 'uniform').map((s) => s.name).join(' ');
-    expect(uniforms).not.toMatch(/ضابط|شرطة|جيش|رتبة|مكافحة|اتحادية/);
+    const uniforms = BUILTIN_SUITS.filter((s) => (s as { category: string }).category === 'uniform');
+    expect(uniforms).toHaveLength(0);
   });
 
   it('الاستيراد: PNG شفّافة وحدها — والمعتمة وغير PNG تُرفض بسببها', () => {

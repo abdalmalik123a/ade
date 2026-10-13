@@ -9,12 +9,11 @@
  * نفسها (`suitAnchor` في `portraitMask.ts`) — فلا يُضبط يدويًّا لكلّ قاط.
  */
 
-export type SuitCategory = 'suit' | 'shirt' | 'uniform' | 'custom';
+export type SuitCategory = 'suit' | 'shirt' | 'custom';
 
 export const SUIT_CATEGORIES: { key: SuitCategory; label: string }[] = [
   { key: 'suit', label: 'قاط' },
   { key: 'shirt', label: 'قميص' },
-  { key: 'uniform', label: 'نظامي بلا شارات' },
   { key: 'custom', label: 'قاط المكتب' }
 ];
 
@@ -36,22 +35,7 @@ export const BUILTIN_SUITS: BuiltinSuit[] = [
   { id: 'suit-black-blue-shirt', name: 'قاطٌ أسود بقميصٍ أزرق', category: 'suit', file: 'suit-black-blue-shirt.webp' },
   { id: 'suit-navy-gray-tie', name: 'قاطٌ كحلي بربطةٍ رمادية', category: 'suit', file: 'suit-navy-gray-tie.webp' },
   { id: 'shirt-white', name: 'قميصٌ أبيض', category: 'shirt', file: 'shirt-white.webp' },
-  { id: 'shirt-black', name: 'قميصٌ أسود', category: 'shirt', file: 'shirt-black.webp' },
-  { id: 'uniform-desert-collar', name: 'مرقّطٌ صحراويّ بياقة', category: 'uniform', file: 'uniform-desert-collar.webp' },
-  { id: 'uniform-dark-camo', name: 'مرقّطٌ رماديّ داكن', category: 'uniform', file: 'uniform-dark-camo.webp' },
-  { id: 'uniform-desert-stand', name: 'مرقّطٌ صحراويّ بياقةٍ واقفة', category: 'uniform', file: 'uniform-desert-stand.webp' },
-  { id: 'uniform-urban-camo', name: 'مرقّطٌ أزرق رماديّ', category: 'uniform', file: 'uniform-urban-camo.webp' },
-  { id: 'uniform-navy-camo', name: 'مرقّطٌ كحليّ', category: 'uniform', file: 'uniform-navy-camo.webp' },
-  { id: 'uniform-multicam-dark', name: 'مرقّطٌ متعدّد داكن', category: 'uniform', file: 'uniform-multicam-dark.webp' },
-  { id: 'uniform-black-tactical', name: 'تكتيكيٌّ أسود', category: 'uniform', file: 'uniform-black-tactical.webp' },
-  { id: 'uniform-black-stand', name: 'تكتيكيٌّ أسود بياقةٍ واقفة', category: 'uniform', file: 'uniform-black-stand.webp' },
-  { id: 'uniform-woodland-shirt', name: 'مرقّطٌ غابيّ بياقة', category: 'uniform', file: 'uniform-woodland-shirt.webp' },
-  { id: 'uniform-multicam', name: 'مرقّطٌ متعدّد', category: 'uniform', file: 'uniform-multicam.webp' },
-  { id: 'uniform-digital-woodland', name: 'مرقّطٌ رقميّ غابيّ', category: 'uniform', file: 'uniform-digital-woodland.webp' },
-  { id: 'uniform-desert-three', name: 'صحراويٌّ ثلاثيّ', category: 'uniform', file: 'uniform-desert-three.webp' },
-  { id: 'uniform-woodland-open', name: 'مرقّطٌ غابيّ مفتوح', category: 'uniform', file: 'uniform-woodland-open.webp' },
-  { id: 'uniform-sand-stand', name: 'مرقّطٌ رمليّ بياقةٍ واقفة', category: 'uniform', file: 'uniform-sand-stand.webp' },
-  { id: 'uniform-woodland-green', name: 'مرقّطٌ غابيّ أخضر', category: 'uniform', file: 'uniform-woodland-green.webp' }
+  { id: 'shirt-black', name: 'قميصٌ أسود', category: 'shirt', file: 'shirt-black.webp' }
 ];
 
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */
