@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { guardDataVersion, readDataVersion, stampDataVersion } from '../src/main/services/dataVersion';
+import { guardDataVersion, readDataVersion, runBootSequence, stampDataVersion } from '../src/main/services/dataVersion';
 
 function office(version: string | null) {
   const dir = mkdtempSync(join(tmpdir(), 'diwan-dataversion-'));
@@ -62,5 +62,127 @@ describe('إصدار البيانات', () => {
     const left = readdirSync(o.snapshots).sort();
     expect(left).toHaveLength(3);
     expect(left.some((f) => f.startsWith('1.0.0-'))).toBe(false);
+  });
+
+  describe('حراسة ترقيات قاعدة البيانات وتسلسل الإقلاع (٤٫٤)', () => {
+    it('تنفيذ الترقيات بالترتيب وتسجيل الإصدار بعد اكتمالها بنجاح', () => {
+      const o = office('1.0.0');
+      const order: string[] = [];
+
+      const res = runBootSequence({
+        dbFile: o.file,
+        currentVersion: '1.1.0',
+        snapshotDir: o.snapshots,
+        openDb: (file) => new Database(file),
+        migrations: [
+          (db) => {
+            order.push('step1');
+            db.exec('CREATE TABLE migration_1 (id INT PRIMARY KEY)');
+          },
+          (db) => {
+            order.push('step2');
+            db.exec("INSERT INTO migration_1 VALUES (100)");
+          }
+        ]
+      });
+
+      expect(res.kind).toBe('ready');
+      expect(order).toEqual(['step1', 'step2']);
+
+      const db = (res as { db: Database.Database }).db;
+      expect(readDataVersion(o.file)).toBe('1.1.0');
+      expect(db.prepare('SELECT id FROM migration_1').get()).toEqual({ id: 100 });
+      db.close();
+    });
+
+    it('التراجع الكامل (Rollback) عند فشل أي ترقية وعدم تسجيل الإصدار الجديد', () => {
+      const o = office('1.0.0');
+
+      expect(() => {
+        runBootSequence({
+          dbFile: o.file,
+          currentVersion: '1.1.0',
+          snapshotDir: o.snapshots,
+          openDb: (file) => new Database(file),
+          migrations: [
+            (db) => {
+              db.exec('CREATE TABLE partial_table (val TEXT)');
+              db.exec("INSERT INTO partial_table VALUES ('will_be_undone')");
+            },
+            () => {
+              throw new Error('عطل متعمّد في الترقية الثانية');
+            }
+          ]
+        });
+      }).toThrow('تعذّرت ترقية قاعدة البيانات');
+
+      // لم يُكتب الإصدار الجديد وبقي الإصدار السابق
+      expect(readDataVersion(o.file)).toBe('1.0.0');
+
+      // الجدول الذي أنشأته الخطوة الأولى أُلغي تمامًا بالتراجع
+      const db = new Database(o.file, { readonly: true });
+      const hasTable = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'partial_table'").get());
+      expect(hasTable).toBe(false);
+      db.close();
+    });
+
+    it('أمان إعادة التشغيل بعد فشل الترقية ثم نجاحها لاحقًا', () => {
+      const o = office('1.0.0');
+
+      // المحاولة الأولى تفشل
+      expect(() => {
+        runBootSequence({
+          dbFile: o.file,
+          currentVersion: '1.1.0',
+          snapshotDir: o.snapshots,
+          openDb: (file) => new Database(file),
+          migrations: [
+            () => {
+              throw new Error('خطأ مؤقت');
+            }
+          ]
+        });
+      }).toThrow();
+
+      expect(readDataVersion(o.file)).toBe('1.0.0');
+
+      // إعادة التشغيل والمحاولة الثانية تنجح (إصلاح العطل)
+      const retry = runBootSequence({
+        dbFile: o.file,
+        currentVersion: '1.1.0',
+        snapshotDir: o.snapshots,
+        openDb: (file) => new Database(file),
+        migrations: [
+          (db) => {
+            db.exec('CREATE TABLE fixed_table (id INT)');
+          }
+        ]
+      });
+
+      expect(retry.kind).toBe('ready');
+      expect(readDataVersion(o.file)).toBe('1.1.0');
+      (retry as { db: Database.Database }).db.close();
+    });
+
+    it('رفض الإقلاع إذا كانت البيانات من إصدار أحدث دون تشغيل ترقيات أو كتابة', () => {
+      const o = office('2.0.0');
+      let ranMigration = false;
+
+      const res = runBootSequence({
+        dbFile: o.file,
+        currentVersion: '1.5.0',
+        snapshotDir: o.snapshots,
+        openDb: (file) => new Database(file),
+        migrations: [
+          () => {
+            ranMigration = true;
+          }
+        ]
+      });
+
+      expect(res).toEqual({ kind: 'newer', from: '2.0.0' });
+      expect(ranMigration).toBe(false);
+      expect(readDataVersion(o.file)).toBe('2.0.0');
+    });
   });
 });

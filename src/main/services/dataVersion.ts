@@ -42,6 +42,7 @@ export function guardDataVersion(opts: { file: string; current: string; snapshot
   if (from && compareVersions(from, opts.current) === 0) return { kind: 'same', version: from };
   mkdirSync(opts.snapshotDir, { recursive: true });
   const snapshot = join(opts.snapshotDir, `${from ?? 'قبل-1.0'}-الى-${opts.current}-${stamp(opts.now ?? new Date())}.db`);
+  if (existsSync(snapshot)) rmSync(snapshot, { force: true });
   const db = new Database(opts.file, { readonly: true, fileMustExist: true });
   try {
     db.exec(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
@@ -63,3 +64,58 @@ export function stampDataVersion(db: Database.Database, current: string): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
   ).run(current);
 }
+
+export type BootSequenceResult =
+  | { kind: 'newer'; from: string }
+  | { kind: 'ready'; guard: DataGuard; db: Database.Database };
+
+/**
+ * تسلسل الإقلاع وحراسة ترقيات قاعدة البيانات قبل تسجيل الإصدار الجديد (المرحلة A، ٤٫٤).
+ *
+ * ١. فحص إصدار البيانات قبل فتحها للكتابة: إن كانت من إصدارٍ أحدث تُرفض ولا تُمسّ.
+ * ٢. إن كانت أقدم، تُؤخذ نسخةٌ قبل الترحيل.
+ * ٣. تُفتح القاعدة وتُنفّذ جميع دوالّ الترحيل / التهيئة داخل معاملة SQLite آمنة.
+ * ٤. إن نجحت كلّ الترقيات دون استثناء: يُسجّل رقم الإصدار الجديد (`stampDataVersion`) ويُعتمد الحفظ (`COMMIT`).
+ * ٥. إن تعثّرت أيّ ترقية: يُلغى التغيير بالكامل (`ROLLBACK`)، ولا يُكتب رقم الإصدار الجديد إطلاقًا،
+ *    ويُرمى الخطأ ليتوقّف الإقلاع بأمان وتبقى البيانات بإصدارها السابق الصالح.
+ */
+export function runBootSequence(opts: {
+  dbFile: string;
+  currentVersion: string;
+  snapshotDir: string;
+  openDb: (file: string) => Database.Database;
+  migrations: ((db: Database.Database) => void)[];
+  now?: Date;
+}): BootSequenceResult {
+  const guard = guardDataVersion({
+    file: opts.dbFile,
+    current: opts.currentVersion,
+    snapshotDir: opts.snapshotDir,
+    now: opts.now
+  });
+
+  if (guard.kind === 'newer') {
+    return { kind: 'newer', from: guard.from };
+  }
+
+  const db = opts.openDb(opts.dbFile);
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    for (const migration of opts.migrations) {
+      migration(db);
+    }
+    stampDataVersion(db, opts.currentVersion);
+    db.exec('COMMIT');
+  } catch (err) {
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // إذا كانت المعاملة قد أُلغيت بالفعل
+    }
+    throw new Error(`تعذّرت ترقية قاعدة البيانات: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  return { kind: 'ready', guard, db };
+}
+

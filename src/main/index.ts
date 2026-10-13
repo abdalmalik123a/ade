@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, dataDir, storeDir } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
-import { guardDataVersion, stampDataVersion } from './services/dataVersion';
+import { runBootSequence } from './services/dataVersion';
 import { handleNewerDataRejection, rememberStartup } from './ipc/update';
 import { createPreUpdateBackup } from './services/preUpdateBackup';
 import { registerIpc } from './ipc';
@@ -269,29 +269,33 @@ app.whenReady().then(async () => {
         });
       }
     }
-    // إصدارٌ أقدم لا يفتح بيانات أحدث، والتحديث يأخذ نسخةً قبل الترحيل (خطة Production، ٧٫٢).
-    const guard = guardDataVersion({
-      file: join(dataDir(), 'diwan.db'),
-      current: app.getVersion(),
-      snapshotDir: join(dataDir(), 'before-update')
+    // إصدارٌ أقدم لا يفتح بيانات أحدث، والترقيات تُنفّذ داخل معاملةٍ قبل تسجيل الإصدار (المرحلة A، ٤٫٤).
+    const boot = runBootSequence({
+      dbFile: join(dataDir(), 'diwan.db'),
+      currentVersion: app.getVersion(),
+      snapshotDir: join(dataDir(), 'before-update'),
+      openDb: () => getDb(),
+      migrations: [
+        (db) => prepareDocuments(db),
+        (db) => prepareSearch(db)
+      ]
     });
-    if (guard.kind === 'newer') {
+    if (boot.kind === 'newer') {
       await handleNewerDataRejection({
         dataDir: dataDir(),
         currentVersion: app.getVersion(),
-        guardFrom: guard.from
+        guardFrom: boot.from
       });
       return;
     }
-    if (guard.kind === 'upgrade' && guard.from) {
+    if (boot.guard.kind === 'upgrade' && boot.guard.from) {
       try {
-        await createPreUpdateBackup({ dataDir: dataDir(), currentVersion: guard.from });
+        await createPreUpdateBackup({ dataDir: dataDir(), currentVersion: boot.guard.from });
       } catch (err) {
         logError('preUpdateBackup', err);
       }
     }
-    rememberStartup(guard);
-    getDb();
+    rememberStartup(boot.guard);
     // مسوح الهويّات العابرة وكتاباتٌ انقطعت: لا شيء من جلسةٍ سابقة قيد الاستعمال (مراجعة ٧ ت١).
     try {
       sweepTransient(storeDir());
@@ -299,12 +303,6 @@ app.whenReady().then(async () => {
       // الكنس لا يوقف الإقلاع.
     }
     registerIpc();
-    // الفهارس تُطابَق جداولها (وتُبنى أوّل مرّة على قاعدة مكتبٍ قائمة). ولا تُسقط
-    // الإقلاع إن تعذّرت: البحث يعود إلى المسح (services/searchIndex.ts).
-    prepareDocuments(getDb());
-    prepareSearch(getDb());
-    // رُحّلت كلّها: يُكتب فيها هذا الإصدار.
-    stampDataVersion(getDb(), app.getVersion());
   } catch (e) {
     dialog.showErrorBox(
       'تعذّر تشغيل ديوان',
