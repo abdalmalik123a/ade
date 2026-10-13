@@ -67,6 +67,7 @@ export type ScreenContext = {
   setResumeRequest: Dispatch<SetStateAction<{ key: number; parkedKey: number } | null>>;
   photoIncoming: PhotoIncoming | null;
   pdfIncoming: PdfIncoming | null;
+  onIssued?: () => void;
 };
 
 /** الشاشة المعروضة لمسارها — وللشبّاك لا شيء (مركّبٌ في App). */
@@ -92,7 +93,8 @@ export function renderScreen({
   orderRequest,
   setResumeRequest,
   photoIncoming,
-  pdfIncoming
+  pdfIncoming,
+  onIssued
 }: ScreenContext) {
   switch (route) {
     case 'service':
@@ -107,7 +109,7 @@ export function renderScreen({
           draftId={target.draftId}
           documentId={target.documentId}
           onStatus={setEditorStatus}
-          onIssued={() => void refresh()}
+          onIssued={onIssued ?? (() => void refresh())}
           onLeave={(d) =>
             notice(`حُفظ ما كتبته في «قيد العمل»: «${d.title}»`, { label: 'افتحه', run: () => openEditor({ draftId: d.id }) })
           }

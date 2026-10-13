@@ -13,6 +13,7 @@
  */
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { open } from 'node:fs/promises';
+import { markAutoBackupPromptShown, shouldPromptAutoBackupAfterFirstIssue } from '../services/backupPrompt';
 import { join } from 'node:path';
 import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
 import { closeDb, dataDir, dbLocked, getDb, lockDb } from '../db';
@@ -348,12 +349,7 @@ export function registerBackupIpc(): void {
   ipcMain.handle('backup:pick', async (e): Promise<{ path: string; encrypted: boolean } | null> => {
     const w = win(e);
     if (!w) return null;
-    const path = await pickOpenPath(w, {
-      title: 'استرجاع نسخة احتياطية',
-      buttonLabel: 'افحصها',
-      filterName: 'نسخة ديوان',
-      extensions: ['zip', 'diwan']
-    });
+    const path = await pickOpenPath(w, { title: 'استرجاع نسخة احتياطية', buttonLabel: 'افحصها', filterName: 'نسخة ديوان', extensions: ['zip', 'diwan'] });
     if (!path) return null;
     // أوّل الملف وحده — كان يُقرأ كلّه ليُعرف أمشفّرٌ هو.
     const head = Buffer.alloc(16);
@@ -372,24 +368,27 @@ export function registerBackupIpc(): void {
     return summary;
   });
 
-  ipcMain.handle(
-    'backup:restore',
-    async (_e, path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
-      const { opened, dbFile, summary, done } = await openAndInspect(path, password ?? null);
-      let aside: string;
-      try {
-        assertRestorable(summary, app.getVersion());
-        // القاعدة المفكوكة تُنقل إلى مكانها (على القرص نفسه)، والمخزن يُفكّ ملفًّا ملفًّا.
-        aside = await applyRestore((target) => renameSync(dbFile, target), (store) => opened.extractStore(store));
-      } finally {
-        done();
-      }
-      logAudit(getDb(), 'backup', 'restore', `${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
-      // الواجهة تُعاد لتقرأ البيانات الجديدة من أوّلها — بعد أن يصلها الجواب.
-      setTimeout(() => {
-        for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
-      }, 400);
-      return { summary, aside };
+  ipcMain.handle('backup:restore', async (_e, path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
+    const { opened, dbFile, summary, done } = await openAndInspect(path, password ?? null);
+    let aside: string;
+    try {
+      assertRestorable(summary, app.getVersion());
+      // القاعدة المفكوكة تُنقل إلى مكانها (على القرص نفسه)، والمخزن يُفكّ ملفًّا ملفًّا.
+      aside = await applyRestore((target) => renameSync(dbFile, target), (store) => opened.extractStore(store));
+    } finally {
+      done();
     }
-  );
+    logAudit(getDb(), 'backup', 'restore', `${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
+    // الواجهة تُعاد لتقرأ البيانات الجديدة من أوّلها — بعد أن يصلها الجواب.
+    setTimeout(() => {
+      for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
+    }, 400);
+    return { summary, aside };
+  });
+
+  ipcMain.handle('backup:shouldPromptAfterFirstIssue', () => shouldPromptAutoBackupAfterFirstIssue(getDb()));
+  ipcMain.handle('backup:markFirstIssuePromptShown', () => {
+    markAutoBackupPromptShown(getDb());
+    return true;
+  });
 }

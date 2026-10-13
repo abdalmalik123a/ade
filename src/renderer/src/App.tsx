@@ -28,6 +28,7 @@ import ClosingOverlay from './shell/ClosingOverlay';
 import NoticeHost from './kit/NoticeHost';
 import ConfirmHost from './kit/ConfirmHost';
 import { canLeaveAll, hasUnsaved, onUnsavedLabel } from './kit/leaveGuard';
+import { checkFirstDocumentBackupPrompt } from './lib/backupPrompt';
 
 export default function App() {
   /**
@@ -184,6 +185,11 @@ export default function App() {
     [navigate, openEditor]
   );
 
+  const handleIssued = useCallback(() => {
+    void refresh();
+    void checkFirstDocumentBackupPrompt(navigate);
+  }, [refresh, navigate]);
+
   /**
    * `Ctrl+P` يطبع المعروض: الكتاب في المحرّر، والورقة في الأسئلة.
    *
@@ -323,7 +329,7 @@ export default function App() {
               customerRequest={customerRequest}
               onOpenActivation={() => navigate('settings')}
               settingsKey={settings}
-              onIssued={() => void refresh()}
+              onIssued={handleIssued}
               onOpenTool={(t, citizenId) =>
                 openCounterTool(t, citizenId, { setToolCustomer, openEditor, setOrderRequest, navigate, setIdDuplexOpen, setIdSheetOpen })
               }
@@ -337,7 +343,7 @@ export default function App() {
               {renderScreen({
                 route, navigate, refresh, editorRef, papersRef, target, setEditorStatus, openEditor, openDesigns, repeatDocument,
                 search, setSearch, citizenFocus, setCitizenFocus, wordIncoming, libraryRequest, archiveRequest, designRequest,
-                orderRequest, setResumeRequest, photoIncoming, pdfIncoming
+                orderRequest, setResumeRequest, photoIncoming, pdfIncoming, onIssued: handleIssued
               })}
             </ErrorBoundary>
           )}

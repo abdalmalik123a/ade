@@ -283,6 +283,9 @@ export type OfficeApis = {
     /** `snapshot`: نسخة القاعدة المختارة من المجلّد — وبلا اختيارٍ آخرها. */
     mirrorInspect(path: string, password?: string | null, snapshot?: string | null): Promise<BackupSummary>;
     mirrorRestore(path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }>;
+    /** تنبيه النسخ التلقائي بعد أول كتاب رسمي (المرحلة A، ٣ والجواب ٢). */
+    shouldPromptAfterFirstIssue(): Promise<boolean>;
+    markFirstIssuePromptShown(): Promise<boolean>;
   };
   /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
   update: {

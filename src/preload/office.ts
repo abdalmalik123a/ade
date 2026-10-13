@@ -81,7 +81,9 @@ export const officeApi: OfficeApis = {
     autoAdopt: () => invoke('backup:autoAdopt'),
     mirrorPick: () => invoke('backup:mirrorPick'),
     mirrorInspect: (path, password, snapshot) => invoke('backup:mirrorInspect', path, password ?? null, snapshot ?? null),
-    mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null)
+    mirrorRestore: (path, password, snapshot) => invoke('backup:mirrorRestore', path, password ?? null, snapshot ?? null),
+    shouldPromptAfterFirstIssue: () => invoke('backup:shouldPromptAfterFirstIssue'),
+    markFirstIssuePromptShown: () => invoke('backup:markFirstIssuePromptShown')
   },
   update: {
     pick: () => invoke('update:pick'),
