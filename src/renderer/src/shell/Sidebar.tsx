@@ -1,6 +1,6 @@
 import { ROUTES, type RouteKey } from '@shared/routes';
 import type { SidebarCounts } from '@shared/api';
-import mark from '../assets/brand/mt-mark.png';
+import logo from '../assets/brand/diwan-icon.png';
 import { useEffect, useRef, useState } from 'react';
 import { channels } from '@shared/brand';
 import { toIndic } from '@shared/arabic';
@@ -71,8 +71,8 @@ export default function Sidebar({ active, onNavigate, counts, version, onAbout, 
         type="button"
         onClick={onAbout}
       >
-        <span className="w-11 h-11 rounded-xl bg-surface-container-high flex items-center justify-center" data-brand-mark="">
-          <img alt="MT" className="w-8 object-contain" src={mark} />
+        <span className="w-11 h-11 rounded-xl overflow-hidden" data-brand-mark="">
+          <img alt="ديوان" className="w-full h-full" src={logo} />
         </span>
         <span className="font-headline-sm text-[15px] leading-5 font-bold text-on-surface">ديوان</span>
         <span className="text-[8px] leading-3 tracking-[0.12em] text-on-surface-variant" dir="ltr">

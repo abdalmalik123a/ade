@@ -3,86 +3,48 @@
 
     python tools/make-brand.py
 
-هوية «منتصف الليل» (خطّة الترقية، المرحلة ٦):
-
-- **أيقونة «ديوان»**: «د» أبيض على مربّعٍ كحليّ مستدير الأركان، يقطعه من أسفله قطعٌ مائل بتدرّج MADA
-  (‎#1570DA ← ‎#1446D8) على حدّه خيطٌ من الوهج (‎#22D3EE). تُرسم هنا لا تُقصّ من صورة — فتبقى حادّةً في
-  كلّ مقاس — ثم أيقونة ويندوز بمقاساتها، وصورةٌ للواجهة. والحرف بخطّ Segoe UI العريض من خطوط ويندوز.
-- **شعار MADA TECH**: الأصل (resources/brand/source/madatech-logo.jpg) على خلفيّةٍ سوداء؛ فالأسود يصير
+- **شعار «ديوان» وأيقونته** (أرسله المالك ١٣ ت١ ٢٠٢٦): الأصل `resources/brand/source/diwan-logo.ico` بمقاساته السبعة
+  (١٦ إلى ٢٥٦) كما رسمها مصمّمه — فأيقونة ويندوز (`resources/icon.ico`) نسخته كما هي بلا إعادة تصغير، و`icon.png` وصورة الواجهة
+  (`diwan-icon.png`) مقاسه الأكبر ٢٥٦ بلا تكبير. و**علامته** للعلامة المائية الخافتة في الشبّاك (`diwan-mark.png`) هو نفسه بلا خلفيّته
+  الكحليّة («اللون إلى شفافيّة» من لون الزاوية — فلا يبقى مربّعٌ باهت خلف العمل).
+- **شعار MADA TECH** (المطوّر): الأصل (resources/brand/source/madatech-logo.jpg) على خلفيّةٍ سوداء؛ فالأسود يصير
   شفّافًا («اللون إلى شفافيّة»: الشفافيّة من أسطع القنوات، واللون يُقسم عليها فلا يبقى هالةٌ رمادية)،
   ويُقصّ على ما فيه. وحروفه البيضاء لا تُرى على ورقٍ فاتح — فيُعرض على بطاقةٍ داكنة.
-- **علامة MT**: أعلى الشعار وحده (الحرفان فوق «MADA TECH») — لرأس السكّة وللعلامة المائية في الشبّاك.
 
 والأصول لا تُحزم في المثبّت؛ ما يُحزم هو ما يُكتب هنا.
 """
+import shutil
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / 'resources' / 'brand' / 'source'
 UI = ROOT / 'src' / 'renderer' / 'src' / 'assets' / 'brand'
-
-NAVY_TOP = (16, 28, 64)  # ‎#101C40
-NAVY_BOTTOM = (6, 11, 26)  # ‎#060B1A
-MADA_FROM = (21, 112, 218)  # ‎#1570DA
-MADA_TO = (20, 70, 216)  # ‎#1446D8
-GLOW = (34, 211, 238)  # ‎#22D3EE
-FONTS = [Path('C:/Windows/Fonts') / n for n in ('segoeuib.ttf', 'arialbd.ttf', 'tahomabd.ttf')]
-
-# علامة MT في الأصل (١٢٥٤ مربّعًا): فوق «MADA TECH».
-MT_BOX = (340, 300, 960, 700)
+LOGO = SRC / 'diwan-logo.ico'
 
 
-def rounded_mask(size: int, radius: int, scale: int = 4) -> Image.Image:
-    big = Image.new('L', (size * scale, size * scale), 0)
-    ImageDraw.Draw(big).rounded_rectangle((0, 0, size * scale - 1, size * scale - 1), radius=radius * scale, fill=255)
-    return big.resize((size, size), Image.LANCZOS)
+def logo_at(size: int) -> Image.Image:
+    """مقاسٌ من الأيقونة كما رسمه مصمّمها — لا تصغيرٌ من الأكبر."""
+    im = Image.open(LOGO)
+    im.size = (size, size)
+    im.load()
+    return im.convert('RGBA')
 
 
-def gradient(size: int, a: tuple[int, int, int], b: tuple[int, int, int], diagonal: bool) -> Image.Image:
-    """تدرّجٌ من a إلى b — عموديًّا، أو مائلًا من أعلى اليسار إلى أسفل اليمين."""
-    g = Image.new('RGB', (size, size))
-    px = g.load()
-    for y in range(size):
-        for x in range(size):
-            t = (x + y) / (2 * (size - 1)) if diagonal else y / (size - 1)
-            px[x, y] = tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
-    return g
-
-
-def icon(size: int = 1024) -> Image.Image:
-    out = gradient(size, NAVY_TOP, NAVY_BOTTOM, diagonal=False).convert('RGBA')
-
-    # القطع المائل: ما تحت خطٍّ من يسار الثلث الأسفل إلى يمين الثلث الأعلى، بتدرّج MADA.
-    cut = Image.new('L', (size, size), 0)
-    left, right = round(size * 0.80), round(size * 0.46)
-    ImageDraw.Draw(cut).polygon([(0, left), (size, right), (size, size), (0, size)], fill=255)
-    out.paste(gradient(size, MADA_FROM, MADA_TO, diagonal=True), (0, 0), cut)
-    # وعلى حدّه خيطٌ من الوهج.
-    line = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(line).line([(0, left), (size, right)], fill=GLOW + (210,), width=max(2, size // 90))
-    out.alpha_composite(line.filter(ImageFilter.GaussianBlur(size / 700)))
-
-    # «د» أبيض في الوسط — بظلٍّ خفيف يفصله عن القطع.
-    font_path = next((p for p in FONTS if p.exists()), None)
-    if font_path is None:
-        raise SystemExit('لا خطّ عربيّ عريض في C:/Windows/Fonts (segoeuib أو arialbd أو tahomabd)')
-    font = ImageFont.truetype(str(font_path), round(size * 0.62))
-    glyph = Image.new('L', (size, size), 0)
-    d = ImageDraw.Draw(glyph)
-    x0, y0, x1, y1 = d.textbbox((0, 0), 'د', font=font)
-    pos = ((size - (x1 - x0)) / 2 - x0, (size - (y1 - y0)) / 2 - y0 - size * 0.03)
-    d.text(pos, 'د', font=font, fill=255)
-    shadow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    shadow.putalpha(glyph.filter(ImageFilter.GaussianBlur(size / 60)).point(lambda v: v * 0.55))
-    out.alpha_composite(shadow, (0, round(size * 0.012)))
-    white = Image.new('RGBA', (size, size), (255, 255, 255, 255))
-    white.putalpha(glyph)
-    out.alpha_composite(white)
-
-    out.putalpha(rounded_mask(size, round(size * 0.22)))
-    return out
+def without_background(im: Image.Image) -> Image.Image:
+    """الخلفية (لون الزاوية) شفّافة: الشفافيّة من بُعد البكسل عن لونها (أقصى فرقٍ في قناة) — ما دون ٨ خلفيةٌ تامّة، وما فوق
+    ٤٠ معتمٌ تامّ. والقسمة على قنوات الكحليّ الصغيرة (الأحمر ٤) كانت تضخّم فروق الضغط الخفيفة نقاطًا ظاهرة — فلا قسمة."""
+    bg = im.getpixel((0, 0))[:3]
+    out = []
+    pixels = im.get_flattened_data() if hasattr(im, 'get_flattened_data') else im.getdata()
+    for r, g, b, _ in pixels:
+        d = max(abs(r - bg[0]), abs(g - bg[1]), abs(b - bg[2]))
+        a = max(0.0, min(1.0, (d - 8) / 32))
+        out.append((r, g, b, round(a * 255)) if a else (0, 0, 0, 0))
+    res = Image.new('RGBA', im.size)
+    res.putdata(out)
+    return res
 
 
 def transparent(src: Image.Image) -> Image.Image:
@@ -112,25 +74,21 @@ def trim(rgba: Image.Image, pad_share: float) -> Image.Image:
 
 def main() -> None:
     UI.mkdir(parents=True, exist_ok=True)
-    ic = icon()
-    ic.resize((512, 512), Image.LANCZOS).save(ROOT / 'resources' / 'icon.png')
-    ic.resize((256, 256), Image.LANCZOS).save(
-        ROOT / 'resources' / 'icon.ico', sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
-    )
-    ic.resize((256, 256), Image.LANCZOS).save(UI / 'diwan-icon.png', optimize=True)
+    shutil.copyfile(LOGO, ROOT / 'resources' / 'icon.ico')
+    big = logo_at(256)
+    big.save(ROOT / 'resources' / 'icon.png', optimize=True)
+    big.save(UI / 'diwan-icon.png', optimize=True)
+    mark = trim(without_background(big), 0.02)
+    mark.save(UI / 'diwan-mark.png', optimize=True)
 
     full = transparent(Image.open(SRC / 'madatech-logo.jpg').convert('RGB'))
     lg = trim(full, 0.04)
     w = min(900, lg.width)
     lg.resize((w, round(lg.height * w / lg.width)), Image.LANCZOS).save(UI / 'madatech-logo.png', optimize=True)
 
-    mt = trim(full.crop(MT_BOX), 0.02)
-    h = 256
-    mt.resize((round(mt.width * h / mt.height), h), Image.LANCZOS).save(UI / 'mt-mark.png', optimize=True)
-
-    print('icon:', ic.size, '-> resources/icon.ico, resources/icon.png, assets/brand/diwan-icon.png')
+    print('icon:', LOGO.name, '-> resources/icon.ico, resources/icon.png, assets/brand/diwan-icon.png')
+    print('mark:', mark.size, '-> assets/brand/diwan-mark.png')
     print('logo:', lg.size, '-> assets/brand/madatech-logo.png')
-    print('mark:', mt.size, '-> assets/brand/mt-mark.png')
 
 
 if __name__ == '__main__':

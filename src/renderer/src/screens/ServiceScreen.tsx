@@ -15,7 +15,7 @@ import { count } from '@shared/arabic';
 import type { Attachment } from '@shared/api';
 import { papersWord } from '../components/OutputBar';
 import { useToast } from '../kit/useToast';
-import mark from '../assets/brand/mt-mark.png';
+import mark from '../assets/brand/diwan-mark.png';
 import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
 import { usePrintRun } from './service/usePrintRun';
 import { useCounterLibrary } from './service/useCounterLibrary';
@@ -208,7 +208,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
-      {/* علامة MT خافتةً في الشبّاك (المرحلة ٦) — خلف العمل، لا تُلمس ولا تُطبع. */}
+      {/* علامة «ديوان» خافتةً في الشبّاك (المرحلة ٦، والشعار الجديد ١٣ ت١) — خلف العمل، لا تُلمس ولا تُطبع. */}
       <img
         alt=""
         aria-hidden

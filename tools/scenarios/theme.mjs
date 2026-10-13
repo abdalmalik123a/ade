@@ -20,7 +20,7 @@ export default async function scenario(page, { shotsDir }) {
   ok(`والسكّة كحليّة (${await style('[data-sidebar="rail"]', 'backgroundColor')})`, (await style('[data-sidebar="rail"]', 'backgroundColor')) === 'rgb(22, 34, 63)');
   ok('ونصّ السكّة فاتح', ((await style('[data-sidebar="rail"] [data-dest]:not([aria-current]) span:last-child', 'color')) ?? '') === 'rgb(179, 190, 214)');
   const head = await page.eval(`return document.querySelector('[data-act="sidebar-about"]')?.innerText ?? '';`);
-  ok('رأس السكّة: علامة MT و«ديوان» و«MADA TECH»', head.includes('ديوان') && head.includes('MADA TECH') && (await page.eval(`return Boolean(document.querySelector('[data-brand-mark] img'));`)));
+  ok('رأس السكّة: شعار «ديوان» واسمه و«MADA TECH»', head.includes('ديوان') && head.includes('MADA TECH') && (await page.eval(`return Boolean(document.querySelector('[data-brand-mark] img'));`)));
   ok(`والمحدَّد فيها بلون الفعل بلا تدرّج (${await style('[data-dest][aria-current="page"]', 'backgroundColor')})`,
     (await style('[data-dest][aria-current="page"]', 'backgroundColor')) === 'rgb(62, 102, 219)' && (await style('[data-dest][aria-current="page"]', 'backgroundImage')) === 'none');
   ok('وفي الشبّاك علامةٌ خافتة', Number(await style('[data-watermark]', 'opacity')) <= 0.1);
