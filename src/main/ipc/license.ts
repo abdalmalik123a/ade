@@ -22,6 +22,7 @@ import { dataDir, getDb } from '../db';
 import { keysFor } from '../license/ownerKey';
 import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, readMachineGuid, storedLicense, type LicensePayload, type LicenseState } from '../services/license';
 import { logAudit } from '../services/documents';
+import { atomicWriteJson, readWithBackup } from '../services/stateFile';
 import type { LicenseStatus } from '@shared/api';
 import { DEVELOPER } from '@shared/brand';
 import { formatGregorian } from '@shared/dates';
@@ -123,13 +124,13 @@ type Stored = { trialStart?: string; lastSeen?: string; lastVerified?: string; k
 const fileOf = () => join(dataDir(), 'diwan-license.json');
 const REG = 'HKCU\\Software\\Diwan';
 
-/** وما فسد من الملفّ (`null`، أو قيمٌ بغير نوعها) يُترك لا يُسقط الحال (`storedLicense`). */
+/** وما فسد من الملفّ يُقرأ من احتياطه .bak أو يُترك لا يُسقط الحال (`storedLicense`). */
 function readFileStore(): Stored {
-  try {
-    return storedLicense(JSON.parse(readFileSync(fileOf(), 'utf8')) as unknown);
-  } catch {
-    return {};
-  }
+  return readWithBackup(
+    fileOf(),
+    (raw) => storedLicense(JSON.parse(raw) as unknown),
+    {}
+  );
 }
 
 function readRegistry(): Stored {
@@ -232,7 +233,7 @@ export function licenseStatus(fresh = false): LicenseStatus {
     keyList(file.keys).length !== keys.length
   ) {
     try {
-      writeFileSync(fileOf(), JSON.stringify({ trialStart, lastSeen: seen, lastVerified, keys }, null, 2));
+      atomicWriteJson(fileOf(), { trialStart, lastSeen: seen, lastVerified, keys });
     } catch {
       // مكانٌ من ثلاثة.
     }

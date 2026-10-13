@@ -25,6 +25,7 @@ import { prepareLetterheads } from '../services/letterheads';
 import { prepareTemplates } from '../services/templates';
 import { prepareSearch } from '../services/searchIndex';
 import { swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
+import { atomicWriteJson, readWithBackup } from '../services/stateFile';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
 import { backupPasswordProblem } from '@shared/backupPassword';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
@@ -182,23 +183,19 @@ type AutoState = {
 const stateFile = () => join(dataDir(), 'auto-backup.json');
 
 export function autoBackupState(): AutoState {
-  try {
-    const s = JSON.parse(readFileSync(stateFile(), 'utf8')) as Partial<AutoState>;
-    return {
-      lastAt: s.lastAt ?? null,
-      lastError: s.lastError ?? null,
-      foreign: s.foreign === true,
-      mirrorId: s.mirrorId ?? null,
-      mirrorDir: s.mirrorDir ?? null
-    };
-  } catch {
-    return { lastAt: null, lastError: null, foreign: false, mirrorId: null, mirrorDir: null };
-  }
+  return readWithBackup(
+    stateFile(),
+    (raw) => {
+      const s = JSON.parse(raw) as Partial<AutoState>;
+      return { lastAt: s.lastAt ?? null, lastError: s.lastError ?? null, foreign: s.foreign === true, mirrorId: s.mirrorId ?? null, mirrorDir: s.mirrorDir ?? null };
+    },
+    { lastAt: null, lastError: null, foreign: false, mirrorId: null, mirrorDir: null }
+  );
 }
 
 /** يدمج ما تغيّر في حال النسخة التلقائية — فلا تضيع هويّة المرآة بكتابة الباقي. */
 function saveAutoState(patch: Partial<AutoState>): void {
-  writeFileSync(stateFile(), JSON.stringify({ ...autoBackupState(), ...patch }));
+  atomicWriteJson(stateFile(), { ...autoBackupState(), ...patch });
 }
 
 function readSetting(key: string): string | null {
