@@ -8,7 +8,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, type LicensePayload } from '../src/main/services/license';
+import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, readMachineGuid, type LicensePayload } from '../src/main/services/license';
+import { getMachineInfo, resetMachineIdCacheForTesting } from '../src/main/ipc/license';
 import { OWNER_KEYS, OWNER_PUBLIC_KEY, OWNER_UPDATE_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
 
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
@@ -169,3 +170,160 @@ describe('مفاتيح المالك بأدوارها (و١٠)', () => {
     expect(readKeyWith(by(k1), [])).toMatchObject({ ok: false });
   });
 });
+
+describe('معرّف الجهاز البديل وفشل القراءة ومهلة السماح (المرحلة A — ٤٫٢ والجواب ١)', () => {
+  const start = at('2026-10-02');
+  const now = at('2026-10-20');
+  const fullKey: LicensePayload = { v: 1, device: DEVICE, kind: 'full', issued: '2026-10-05', office: 'مكتب الرافدين' };
+  const fallbackRaw = 'testhost|testuser';
+  const fallbackDevice = deviceCode(fallbackRaw);
+  const fallbackKey: LicensePayload = { v: 1, device: fallbackDevice, kind: 'full', issued: '2026-10-05', office: 'مكتب الرافدين' };
+
+  it('دالّة قراءة معرّف الجهاز تعيد المحاولة عند الفشل المؤقت', () => {
+    let attempts = 0;
+    const flakeyReader = () => {
+      attempts++;
+      if (attempts < 3) throw new Error('temporary failure');
+      return 'guid-1234';
+    };
+    expect(readMachineGuid(flakeyReader, 3)).toBe('guid-1234');
+    expect(attempts).toBe(3);
+
+    const failingReader = () => {
+      throw new Error('permanent failure');
+    };
+    expect(readMachineGuid(failingReader, 3)).toBeNull();
+  });
+
+  it('ثبات المعرّف داخل الجلسة: ما قُرئ بنجاح لا يغيّره فشلٌ عابر', () => {
+    resetMachineIdCacheForTesting();
+    const info1 = getMachineInfo(false, () => 'my-guid-111');
+    expect(info1.verified).toBe(true);
+    expect(info1.rawMachineId).toBe('my-guid-111');
+
+    // محاولة تالية بقارئ يفشل: المعرّف المحفوظ يبقى
+    const info2 = getMachineInfo(false, () => null);
+    expect(info2.verified).toBe(true);
+    expect(info2.rawMachineId).toBe('my-guid-111');
+    resetMachineIdCacheForTesting();
+  });
+
+  it('فشل القراءة والتجربة سارية: تستمر التجربة مع تنبيه هادئ', () => {
+    const res = evaluate({
+      now: at('2026-10-10'),
+      trialStart: start,
+      keys: [],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false
+    });
+    expect(res).toMatchObject({
+      status: 'trial',
+      daysLeft: 6,
+      unverified: true,
+      deviceWarning: 'تعذّر التحقّق من الجهاز'
+    });
+  });
+
+  it('ما فُعّل على البديل hostname|username يبقى مفعّلًا بلا مهلة', () => {
+    const res = evaluate({
+      now,
+      trialStart: start,
+      keys: [fallbackKey],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false
+    });
+    expect(res).toEqual({
+      status: 'activated',
+      office: 'مكتب الرافدين',
+      issued: '2026-10-05'
+    });
+  });
+
+  it('مفتاح سبق التحقق منه داخل مهلة السماح (٧ أيام) يعمل مع تحذير', () => {
+    const res = evaluate({
+      now: at('2026-10-20'),
+      trialStart: start,
+      keys: [fullKey],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false,
+      lastVerified: at('2026-10-15')
+    });
+    expect(res).toMatchObject({
+      status: 'activated',
+      unverified: true,
+      deviceWarning: expect.stringContaining('تعذّر التحقّق من الجهاز')
+    });
+  });
+
+  it('بعد انتهاء مهلة السماح (أكثر من ٧ أيام) يُحجب بحالة تعذّر قراءة المعرّف لا انتهاء الصلاحية', () => {
+    const res = evaluate({
+      now: at('2026-10-25'),
+      trialStart: start,
+      keys: [fullKey],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false,
+      lastVerified: at('2026-10-15')
+    });
+    expect(res).toEqual({
+      status: 'unverified',
+      reason: 'machine_error',
+      deviceWarning: 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر'
+    });
+  });
+
+  it('فشل دائم بلا مفتاح سابق بعد انتهاء التجربة: حالة unverified وزر المحاولة', () => {
+    const res = evaluate({
+      now,
+      trialStart: start,
+      keys: [],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false
+    });
+    expect(res).toEqual({
+      status: 'unverified',
+      reason: 'machine_error',
+      lastDay: '2026-10-15',
+      deviceWarning: 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر'
+    });
+  });
+
+  it('الحماية من التلاعب: أقدم تاريخ بين المخازن هو المعتمد', () => {
+    const earliest = (xs: (string | undefined)[]) => xs.filter((x): x is string => Boolean(x && !Number.isNaN(Date.parse(x)))).sort()[0];
+    const fileLastVerified = '2026-10-24T10:00:00Z';
+    const regLastVerified = '2026-10-10T10:00:00Z';
+    const effective = earliest([fileLastVerified, regLastVerified]);
+    expect(effective).toBe(regLastVerified);
+
+    const res = evaluate({
+      now: at('2026-10-25'),
+      trialStart: start,
+      keys: [fullKey],
+      device: fallbackDevice,
+      fallbackDevice,
+      machineGuidVerified: false,
+      lastVerified: new Date(effective!)
+    });
+    expect(res.status).toBe('unverified');
+  });
+
+  it('قراءة ناجحة بعد الفشل تعيد الحال الطبيعية كاملة', () => {
+    const res = evaluate({
+      now,
+      trialStart: start,
+      keys: [fullKey],
+      device: DEVICE,
+      machineGuidVerified: true
+    });
+    expect(res).toEqual({
+      status: 'activated',
+      office: 'مكتب الرافدين',
+      issued: '2026-10-05'
+    });
+  });
+});
+

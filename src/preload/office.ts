@@ -89,7 +89,7 @@ export const officeApi: OfficeApis = {
     whatsNew: () => invoke('app:whatsNew')
   },
   license: {
-    status: () => invoke('license:status'),
+    status: (fresh?: boolean) => invoke('license:status', fresh),
     activate: (key) => invoke('license:activate', key)
   },
   content: {

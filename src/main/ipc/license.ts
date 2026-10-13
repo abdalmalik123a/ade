@@ -20,7 +20,7 @@ import { app, ipcMain } from 'electron';
 import { now } from '../clock';
 import { dataDir, getDb } from '../db';
 import { keysFor } from '../license/ownerKey';
-import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, storedLicense, type LicensePayload, type LicenseState } from '../services/license';
+import { dayNumber, deviceCode, evaluate, keyList, readKeyWith, readMachineGuid, storedLicense, type LicensePayload, type LicenseState } from '../services/license';
 import { logAudit } from '../services/documents';
 import type { LicenseStatus } from '@shared/api';
 import { DEVELOPER } from '@shared/brand';
@@ -34,28 +34,92 @@ const DEVELOPER_PHONE = DEVELOPER.phoneDisplay;
  * وحده، في غير المثبّت وحده.
  */
 const publicKeys = (role: 'license' | 'update'): string[] => {
-  const testKey = __DIWAN_TEST_DOORS__ && !app.isPackaged ? process.env['DIWAN_TEST_LICENSE_PUBKEY'] : undefined;
+  const testKey = __DIWAN_TEST_DOORS__ && !app?.isPackaged ? process.env['DIWAN_TEST_LICENSE_PUBKEY'] : undefined;
   return testKey ? [testKey] : keysFor(role);
 };
 export const ownerPublicKeys = publicKeys;
 
-let machine: string | null = null;
-/** معرّف ويندوز للجهاز — يُقرأ بلا صلاحيات مدير. وإن تعذّر فاسم الجهاز والمستخدم. */
-function machineId(): string {
-  const testMachine = __DIWAN_TEST_DOORS__ && !app.isPackaged ? process.env['DIWAN_TEST_MACHINE_ID'] : undefined;
-  if (testMachine) return testMachine;
-  if (machine) return machine;
-  try {
-    const out = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { encoding: 'utf8', windowsHide: true });
-    machine = /MachineGuid\s+REG_SZ\s+(\S+)/.exec(out)?.[1] ?? null;
-  } catch {
-    machine = null;
-  }
-  machine ??= `${hostname()}|${userInfo().username}`;
-  return machine;
+let cachedVerifiedGuid: string | null = null;
+
+export function resetMachineIdCacheForTesting(): void {
+  cachedVerifiedGuid = null;
+  cached = null;
 }
 
-type Stored = { trialStart?: string; lastSeen?: string; keys?: string[] };
+export function readSystemMachineGuid(): string | null {
+  try {
+    const out = execFileSync('reg', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Cryptography', '/v', 'MachineGuid'], { encoding: 'utf8', windowsHide: true });
+    return /MachineGuid\s+REG_SZ\s+(\S+)/.exec(out)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function getMachineInfo(
+  fresh = false,
+  guidReader: () => string | null = readSystemMachineGuid
+): {
+  device: string;
+  fallbackDevice: string;
+  verified: boolean;
+  rawMachineId: string;
+} {
+  const testMachine = __DIWAN_TEST_DOORS__ && !app?.isPackaged ? process.env['DIWAN_TEST_MACHINE_ID'] : undefined;
+  const fallbackRaw = `${hostname()}|${userInfo().username}`;
+  const fallbackDevice = deviceCode(fallbackRaw);
+
+  if (testMachine) {
+    return {
+      device: deviceCode(testMachine),
+      fallbackDevice,
+      verified: true,
+      rawMachineId: testMachine
+    };
+  }
+
+  if (cachedVerifiedGuid && !fresh) {
+    return {
+      device: deviceCode(cachedVerifiedGuid),
+      fallbackDevice,
+      verified: true,
+      rawMachineId: cachedVerifiedGuid
+    };
+  }
+
+  const guid = readMachineGuid(guidReader, 3);
+  if (guid) {
+    cachedVerifiedGuid = guid;
+    return {
+      device: deviceCode(guid),
+      fallbackDevice,
+      verified: true,
+      rawMachineId: guid
+    };
+  }
+
+  if (cachedVerifiedGuid) {
+    return {
+      device: deviceCode(cachedVerifiedGuid),
+      fallbackDevice,
+      verified: true,
+      rawMachineId: cachedVerifiedGuid
+    };
+  }
+
+  return {
+    device: fallbackDevice,
+    fallbackDevice,
+    verified: false,
+    rawMachineId: fallbackRaw
+  };
+}
+
+/** معرّف ويندوز للجهاز — يُقرأ بلا صلاحيات مدير. وإن تعذّر فاسم الجهاز والمستخدم. */
+export function machineId(): string {
+  return getMachineInfo().rawMachineId;
+}
+
+type Stored = { trialStart?: string; lastSeen?: string; lastVerified?: string; keys?: string[] };
 const fileOf = () => join(dataDir(), 'diwan-license.json');
 const REG = 'HKCU\\Software\\Diwan';
 
@@ -78,14 +142,15 @@ function readRegistry(): Stored {
       return undefined;
     }
   };
-  return { trialStart: value('TrialStart'), lastSeen: value('LastSeen') };
+  return { trialStart: value('TrialStart'), lastSeen: value('LastSeen'), lastVerified: value('LastVerified') };
 }
 
 function writeRegistry(s: Stored): void {
   if (!app.isPackaged) return;
   for (const [name, v] of [
     ['TrialStart', s.trialStart],
-    ['LastSeen', s.lastSeen]
+    ['LastSeen', s.lastSeen],
+    ['LastVerified', s.lastVerified]
   ] as const) {
     if (!v) continue;
     try {
@@ -124,39 +189,78 @@ export function licenseStatus(fresh = false): LicenseStatus {
   // أحدث يومٍ رآه البرنامج — يُكتب يومًا بيوم، لا مع كلّ سؤال.
   const stored = latest([setting('lastSeen'), file.lastSeen, reg.lastSeen]);
   const seen = !stored || dayNumber(t) > dayNumber(new Date(stored)) ? iso(t) : stored;
+  const storedVerified = earliest([setting('lastVerified'), file.lastVerified, reg.lastVerified]);
   // وما فسد من القائمتين فارغٌ لا خطأ (و٣): كان يرمي هنا فيتوقّف الإصدار كلّه.
   const keys = [...new Set([...keyList(setting('licenseKeys')), ...keyList(file.keys)])];
+
+  const mInfo = getMachineInfo(fresh);
+  const device = mInfo.device;
+  const fallbackDevice = mInfo.fallbackDevice;
+  const machineGuidVerified = mInfo.verified;
+
+  const valid: LicensePayload[] = [];
+  for (const k of keys) {
+    const r = readKeyWith(k, publicKeys('license'));
+    if (r.ok) valid.push(r.payload);
+  }
+
+  const lastVerifiedDate = storedVerified ? new Date(storedVerified) : null;
+  const state: LicenseState = evaluate({
+    now: t,
+    trialStart: new Date(trialStart),
+    lastSeen: new Date(seen),
+    keys: valid,
+    device,
+    fallbackDevice,
+    machineGuidVerified,
+    lastVerified: lastVerifiedDate
+  });
+
+  let lastVerified = storedVerified;
+  if (machineGuidVerified && (state.status === 'activated' || state.status === 'subscribed')) {
+    lastVerified = iso(t);
+    if (setting('lastVerified') !== lastVerified) putSetting('lastVerified', lastVerified);
+  }
 
   // يُكتب ما تغيّر وحده.
   if (setting('trialStart') !== trialStart) putSetting('trialStart', trialStart);
   if (setting('lastSeen') !== seen) putSetting('lastSeen', seen);
-  if (file.trialStart !== trialStart || file.lastSeen !== seen || keyList(file.keys).length !== keys.length) {
+  if (
+    file.trialStart !== trialStart ||
+    file.lastSeen !== seen ||
+    file.lastVerified !== lastVerified ||
+    keyList(file.keys).length !== keys.length
+  ) {
     try {
-      writeFileSync(fileOf(), JSON.stringify({ trialStart, lastSeen: seen, keys }, null, 2));
+      writeFileSync(fileOf(), JSON.stringify({ trialStart, lastSeen: seen, lastVerified, keys }, null, 2));
     } catch {
       // مكانٌ من ثلاثة.
     }
   }
-  if (reg.trialStart !== trialStart || reg.lastSeen?.slice(0, 10) !== seen.slice(0, 10)) writeRegistry({ trialStart, lastSeen: seen });
-
-  const device = deviceCode(machineId());
-  const valid: LicensePayload[] = [];
-  for (const k of keys) {
-    const r = readKeyWith(k, publicKeys('license'));
-    if (r.ok && r.payload.device === device) valid.push(r.payload);
+  if (
+    reg.trialStart !== trialStart ||
+    reg.lastSeen?.slice(0, 10) !== seen.slice(0, 10) ||
+    reg.lastVerified !== lastVerified
+  ) {
+    writeRegistry({ trialStart, lastSeen: seen, lastVerified });
   }
-  const state: LicenseState = evaluate({ now: t, trialStart: new Date(trialStart), lastSeen: new Date(seen), keys: valid, device });
+
   const status: LicenseStatus = { ...state, device, phone: DEVELOPER.phone, trialStart };
   cached = { at: Date.now(), status };
   return status;
 }
 
 /**
- * ما يُنتج ورقةً أو ملفًّا يُسلَّم (الإصدار والطباعة وPDF وWord والصورة) يتوقّف بعد المدّة التجريبية.
+ * ما يُنتج ورقةً أو ملفًّا يُسلَّم (الإصدار والطباعة وPDF وWord والصورة) يتوقّف بعد المدّة التجريبية أو عند تعذّر قراءة المعرّف.
  * والعرض والبحث والنسخ الاحتياطي وتصدير البيانات تبقى — فلا تُقفل بيانات أحد.
  */
 export function requireProductive(): void {
-  const s = licenseStatus();
+  const s = licenseStatus(true);
+  if (s.status === 'unverified') {
+    throw new Error(
+      `تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر: ${DEVELOPER_PHONE} (واتساب واتصال)`
+    );
+  }
   if (s.status !== 'expired') return;
   const day = formatGregorian(new Date(`${s.lastDay}T12:00:00`));
   throw new Error(
@@ -175,18 +279,26 @@ export function registerLicenseIpc(): void {
   ipcMain.handle('license:activate', (_e, raw: string): LicenseStatus => {
     const r = readKeyWith(String(raw ?? ''), publicKeys('license'));
     if (!r.ok) throw new Error(r.reason);
-    const device = deviceCode(machineId());
-    if (r.payload.device !== device) {
-      throw new Error(`هذا المفتاح لجهازٍ آخر (${r.payload.device}) — ورمز هذا الجهاز ${device}`);
+    const mInfo = getMachineInfo(true);
+    const targetDevice = mInfo.verified ? mInfo.device : mInfo.fallbackDevice;
+    if (r.payload.device !== targetDevice && r.payload.device !== mInfo.fallbackDevice) {
+      throw new Error(`هذا المفتاح لجهازٍ آخر (${r.payload.device}) — ورمز هذا الجهاز ${targetDevice}`);
     }
     const key = String(raw).replace(/\s+/g, '');
     const keys = [...new Set([...keyList(setting('licenseKeys')), key])];
     putSetting('licenseKeys', JSON.stringify(keys));
+    const nowIso = iso(now());
+    if (mInfo.verified) {
+      putSetting('lastVerified', nowIso);
+    }
     const file = readFileStore();
     try {
-      writeFileSync(fileOf(), JSON.stringify({ ...file, keys: [...new Set([...keyList(file.keys), key])] }, null, 2));
+      writeFileSync(fileOf(), JSON.stringify({ ...file, keys, ...(mInfo.verified ? { lastVerified: nowIso } : {}) }, null, 2));
     } catch {
       // في القاعدة يكفي.
+    }
+    if (mInfo.verified) {
+      writeRegistry({ trialStart: file.trialStart, lastSeen: file.lastSeen, lastVerified: nowIso });
     }
     const p = r.payload;
     if (p.kind === 'full') logAudit(getDb(), 'license', 'activate', p.office ?? null);

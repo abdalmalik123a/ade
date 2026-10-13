@@ -149,22 +149,43 @@ export function keyList(raw: unknown): string[] {
  * أو تاريخٌ ليس تاريخًا، أو مفاتيح ليست قائمة نصوص — يُترك ولا يُسقط حال الترخيص. كان `null` في الملفّ يرمي عند أوّل حقلٍ يُقرأ
  * فيتوقّف «التفعيل» وما يمرّ به من طباعةٍ وحفظ.
  */
-export function storedLicense(raw: unknown): { trialStart?: string; lastSeen?: string; keys: string[] } {
+export { RENEW_WARN_DAYS, MACHINE_GRACE_DAYS } from '@shared/license';
+import { MACHINE_GRACE_DAYS } from '@shared/license';
+
+/**
+ * دالّة قراءة معرّف الجهاز (HKLM MachineGuid) القابلة للحقن مع إعادة المحاولة.
+ */
+export function readMachineGuid(reader: () => string | null, retries = 3): string | null {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const guid = reader();
+      if (guid && typeof guid === 'string' && guid.trim()) {
+        return guid.trim();
+      }
+    } catch {
+      // إعادة المحاولة عند الفشل المؤقت
+    }
+  }
+  return null;
+}
+
+/**
+ * ملفّ الترخيص (`diwan-license.json`) مقروءًا بأنواعه: وما فسد منه يُترك ولا يُسقط حال الترخيص.
+ */
+export function storedLicense(raw: unknown): { trialStart?: string; lastSeen?: string; lastVerified?: string; keys: string[] } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { keys: [] };
   const r = raw as Record<string, unknown>;
   const date = (v: unknown) => (typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : undefined);
-  return { trialStart: date(r.trialStart), lastSeen: date(r.lastSeen), keys: keyList(r.keys) };
+  return { trialStart: date(r.trialStart), lastSeen: date(r.lastSeen), lastVerified: date(r.lastVerified), keys: keyList(r.keys) };
 }
 
 export type LicenseState =
-  | { status: 'activated'; office: string | null; issued: string }
-  | { status: 'subscribed'; plan: SubscriptionPlan; daysLeft: number; lastDay: string; office: string | null; issued: string }
-  | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean }
+  | { status: 'activated'; office: string | null; issued: string; unverified?: boolean; deviceWarning?: string }
+  | { status: 'subscribed'; plan: SubscriptionPlan; daysLeft: number; lastDay: string; office: string | null; issued: string; unverified?: boolean; deviceWarning?: string; graceDaysLeft?: number }
+  | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean; unverified?: boolean; deviceWarning?: string }
   /** `ended`: ما انتهى — المدّة التجريبية أم الاشتراك — فيُقال لصاحبه ما يفعل. */
-  | { status: 'expired'; lastDay: string; ended: 'trial' | 'subscription' };
-
-/** قبل نهاية الاشتراك بهذا يُنبَّه في الشريط العلوي. */
-export const RENEW_WARN_DAYS = 7;
+  | { status: 'expired'; lastDay: string; ended: 'trial' | 'subscription' }
+  | { status: 'unverified'; reason: 'machine_error'; lastDay?: string; deviceWarning?: string };
 
 /** رقم اليوم بتقويم الجهاز — فالمدّة أيّامٌ تقويمية لا ساعات. */
 export function dayNumber(d: Date): number {
@@ -174,27 +195,115 @@ const dayOf = (s: string) => Math.floor(Date.UTC(Number(s.slice(0, 4)), Number(s
 const dayString = (n: number) => new Date(n * 86_400_000).toISOString().slice(0, 10);
 
 /**
- * حال البرنامج على هذا الجهاز. و`lastSeen` أحدث يومٍ رآه البرنامج: ساعةٌ أُرجعت لا تُطيل المدّة.
- * والمفاتيح ما تحقّق توقيعه منها لهذا الجهاز وحده.
+ * حال البرنامج على هذا الجهاز مع معالجة فشل قراءة معرّف الجهاز (المرحلة A — ٤٫٢ والجواب ١ في §٨):
+ * ١. إن تعذّرت القراءة وكانت التجربة سارية: تستمر التجربة مع تنبيه هادئ.
+ * ٢. إن تعذّرت ومع البرنامج مفتاح سبق التحقق منه: مهلة سماح ٧ أيام من أقدم تاريخ تحقق محفوظ.
+ * ٣. بعد انتهاء المهلة أو بلا مفتاح سابق: حجب المخرجات برسالة تعذر القراءة لا انتهاء الصلاحية.
+ * ٤. ما فُعّل على البديل hostname|username يبقى مفعّلًا.
  */
-export function evaluate(opts: { now: Date; trialStart: Date; lastSeen?: Date | null; keys: LicensePayload[]; device: string }): LicenseState {
-  const mine = opts.keys.filter((k) => k.device === opts.device);
-  const full = mine.filter((k) => k.kind === 'full').sort((a, b) => a.issued.localeCompare(b.issued))[0];
-  if (full) return { status: 'activated', office: full.office ?? null, issued: full.issued };
-  const today = Math.max(dayNumber(opts.now), opts.lastSeen ? dayNumber(opts.lastSeen) : -Infinity);
+export function evaluate(opts: {
+  now: Date;
+  trialStart: Date;
+  lastSeen?: Date | null;
+  keys: LicensePayload[];
+  device: string;
+  fallbackDevice?: string;
+  machineGuidVerified?: boolean;
+  lastVerified?: Date | null;
+}): LicenseState {
+  const isMachineVerified = opts.machineGuidVerified !== false;
+  let matchedOnFallback = false;
+  let mine: LicensePayload[] = [];
 
-  // الاشتراك: أبعد يومٍ في مفاتيحه — فالتجديد مفتاحٌ جديدٌ إلى يومٍ أبعد يُضاف ولا يُلغي ما قبله.
+  if (isMachineVerified) {
+    mine = opts.keys.filter((k) => k.device === opts.device || (opts.fallbackDevice && k.device === opts.fallbackDevice));
+  } else {
+    // فشلت قراءة معرّف الجهاز
+    if (opts.fallbackDevice && opts.keys.some((k) => k.device === opts.fallbackDevice)) {
+      mine = opts.keys.filter((k) => k.device === opts.fallbackDevice);
+      matchedOnFallback = true;
+    } else if (opts.lastVerified) {
+      // مفتاح سبق التحقق منه على هذا الجهاز ومعه تاريخ آخر تحقق
+      mine = opts.keys;
+    }
+  }
+
+  const today = Math.max(dayNumber(opts.now), opts.lastSeen ? dayNumber(opts.lastSeen) : -Infinity);
+  const trialEnd = dayNumber(opts.trialStart) + TRIAL_DAYS;
+  const full = mine.filter((k) => k.kind === 'full').sort((a, b) => a.issued.localeCompare(b.issued))[0];
+
+  if (full) {
+    if (!isMachineVerified && !matchedOnFallback) {
+      const daysSinceVerified = opts.lastVerified ? Math.max(0, today - dayNumber(opts.lastVerified)) : Infinity;
+      if (daysSinceVerified <= MACHINE_GRACE_DAYS) {
+        return {
+          status: 'activated',
+          office: full.office ?? null,
+          issued: full.issued,
+          unverified: true,
+          deviceWarning: 'تعذّر التحقّق من الجهاز — أعد تشغيل البرنامج، وإن استمرّ فاتّصل بالمطوّر'
+        };
+      }
+      return {
+        status: 'unverified',
+        reason: 'machine_error',
+        deviceWarning: 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر'
+      };
+    }
+    return { status: 'activated', office: full.office ?? null, issued: full.issued };
+  }
+
+  // الاشتراك: أبعد يومٍ في مفاتيحه
   const subs = mine.filter((k) => k.kind === 'sub').sort((a, b) => a.until!.localeCompare(b.until!));
   const latest = subs.at(-1);
   const subEnd = latest ? dayOf(latest.until!) + 1 : -Infinity;
   if (latest && today < subEnd) {
+    if (!isMachineVerified && !matchedOnFallback) {
+      const daysSinceVerified = opts.lastVerified ? Math.max(0, today - dayNumber(opts.lastVerified)) : Infinity;
+      if (daysSinceVerified <= MACHINE_GRACE_DAYS) {
+        return {
+          status: 'subscribed',
+          plan: latest.plan!,
+          daysLeft: subEnd - today,
+          lastDay: latest.until!,
+          office: latest.office ?? null,
+          issued: latest.issued,
+          unverified: true,
+          graceDaysLeft: MACHINE_GRACE_DAYS - daysSinceVerified,
+          deviceWarning: 'تعذّر التحقّق من الجهاز — أعد تشغيل البرنامج، وإن استمرّ فاتّصل بالمطوّر'
+        };
+      }
+      return {
+        status: 'unverified',
+        reason: 'machine_error',
+        deviceWarning: 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر'
+      };
+    }
     return { status: 'subscribed', plan: latest.plan!, daysLeft: subEnd - today, lastDay: latest.until!, office: latest.office ?? null, issued: latest.issued };
   }
 
-  const trialEnd = dayNumber(opts.trialStart) + TRIAL_DAYS;
   const extended = Math.max(...mine.filter((k) => k.kind === 'extend').map((k) => dayOf(k.until!) + 1), -Infinity);
   const end = Math.max(trialEnd, extended);
-  if (today < end) return { status: 'trial', daysLeft: end - today, lastDay: dayString(end - 1), extended: extended > trialEnd };
+  if (today < end) {
+    return {
+      status: 'trial',
+      daysLeft: end - today,
+      lastDay: dayString(end - 1),
+      extended: extended > trialEnd,
+      unverified: !isMachineVerified,
+      deviceWarning: !isMachineVerified ? 'تعذّر التحقّق من الجهاز' : undefined
+    };
+  }
+
+  if (!isMachineVerified) {
+    return {
+      status: 'unverified',
+      reason: 'machine_error',
+      lastDay: dayString(end - 1),
+      deviceWarning: 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر'
+    };
+  }
+
   return latest && subEnd >= end
     ? { status: 'expired', lastDay: latest.until!, ended: 'subscription' }
     : { status: 'expired', lastDay: dayString(end - 1), ended: 'trial' };

@@ -154,7 +154,8 @@ export type LicenseStatus = (
   | { status: 'subscribed'; plan: 'monthly' | 'yearly'; daysLeft: number; lastDay: string; office: string | null; issued: string }
   | { status: 'trial'; daysLeft: number; lastDay: string; extended: boolean }
   | { status: 'expired'; lastDay: string; ended: 'trial' | 'subscription' }
-) & { device: string; phone: string; trialStart: string };
+  | { status: 'unverified'; reason: 'machine_error'; lastDay?: string }
+) & { device: string; phone: string; trialStart: string; unverified?: boolean; deviceWarning?: string; graceDaysLeft?: number };
 
 export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };
 /** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
@@ -292,7 +293,7 @@ export type OfficeApis = {
   };
   /** التفعيل بلا شبكة: الحال، ومفتاحٌ يُلصق — كاملٌ أو تمديد — لهذا الجهاز وحده. */
   license: {
-    status(): Promise<LicenseStatus>;
+    status(fresh?: boolean): Promise<LicenseStatus>;
     activate(key: string): Promise<LicenseStatus>;
   };
   /**

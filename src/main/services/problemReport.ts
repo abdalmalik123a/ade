@@ -47,6 +47,8 @@ export function licenseLine(l: LicenseStatus | null): string {
       return `تجربة: بقي ${count(l.daysLeft, 'يوم')} (حتى ${l.lastDay}) — ${device}`;
     case 'expired':
       return `${l.ended === 'trial' ? 'انتهت التجربة' : 'انتهى الاشتراك'} في ${l.lastDay} — ${device}`;
+    case 'unverified':
+      return `تعذّر قراءة معرّف الجهاز — ${device}`;
   }
 }
 

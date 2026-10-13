@@ -14,14 +14,21 @@ const day = (iso: string) => formatGregorian(new Date(`${iso}T12:00:00`));
 const days = (n: number) => `${n} ${n === 1 ? 'يوم' : n <= 10 ? 'أيام' : 'يومًا'}`;
 
 export function licenseLine(s: LicenseStatus): string {
-  if (s.status === 'activated') return `مفعَّل مدى الحياة${s.office ? ` — ${s.office}` : ''} (صدر المفتاح ${day(s.issued)})`;
+  if (s.status === 'unverified') {
+    return s.deviceWarning ?? 'تعذّر قراءة معرّف الجهاز — أعد المحاولة، وإن استمرّ العطل فاتّصل بالمطوّر';
+  }
+  if (s.status === 'activated') {
+    return `${s.unverified ? 'تعذّر التحقّق من الجهاز (مهلة سماح) — ' : ''}مفعَّل مدى الحياة${s.office ? ` — ${s.office}` : ''} (صدر المفتاح ${day(s.issued)})`;
+  }
   if (s.status === 'subscribed') {
-    return `اشتراك ${s.plan === 'yearly' ? 'سنوي' : 'شهري'}${s.office ? ` — ${s.office}` : ''} حتى ${day(s.lastDay)} (بقي ${days(s.daysLeft)})`;
+    return `${s.unverified ? 'تعذّر التحقّق من الجهاز (مهلة سماح) — ' : ''}اشتراك ${s.plan === 'yearly' ? 'سنوي' : 'شهري'}${s.office ? ` — ${s.office}` : ''} حتى ${day(s.lastDay)} (بقي ${days(s.daysLeft)})`;
   }
   if (s.status === 'expired' && s.ended === 'subscription') {
     return `انتهى الاشتراك يوم ${day(s.lastDay)} — العرض والبحث والنسخ تعمل، والإصدار والطباعة تتوقّف حتى التجديد`;
   }
-  if (s.status === 'trial') return `نسخة تجريبية — بقي ${s.daysLeft} ${s.daysLeft === 1 ? 'يوم' : s.daysLeft <= 10 ? 'أيام' : 'يومًا'} (حتى ${day(s.lastDay)})${s.extended ? ' بتمديد' : ''}`;
+  if (s.status === 'trial') {
+    return `${s.unverified ? 'تعذّر التحقّق من الجهاز — ' : ''}نسخة تجريبية — بقي ${s.daysLeft} ${s.daysLeft === 1 ? 'يوم' : s.daysLeft <= 10 ? 'أيام' : 'يومًا'} (حتى ${day(s.lastDay)})${s.extended ? ' بتمديد' : ''}`;
+  }
   return `انتهت المدّة التجريبية يوم ${day(s.lastDay)} — العرض والبحث والنسخ تعمل، والإصدار والطباعة تتوقّف حتى التفعيل`;
 }
 
@@ -34,6 +41,24 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
   useEffect(() => {
     void window.diwan.license.status().then(setStatus).catch(() => setStatus(null));
   }, []);
+
+  async function retryDetect() {
+    setBusy(true);
+    try {
+      const next = await window.diwan.license.status(true);
+      setStatus(next);
+      onChanged?.(next);
+      if (next.status !== 'unverified' && !next.unverified) {
+        setNote({ text: 'تمّ التعرّف على الجهاز بنجاح' });
+      } else {
+        setNote({ text: 'ما زال معرّف الجهاز متعذّرًا', warn: true });
+      }
+    } catch (e) {
+      setNote({ text: errorText(e, 'تعذّرت المحاولة'), warn: true });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function activate() {
     setBusy(true);
@@ -51,13 +76,32 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
   }
 
   if (!status) return null;
-  const tone = status.status === 'activated' ? 'text-secondary' : status.status === 'expired' ? 'text-error' : 'text-on-surface';
+  const tone =
+    status.status === 'activated'
+      ? 'text-secondary'
+      : status.status === 'expired' || status.status === 'unverified'
+        ? 'text-error'
+        : 'text-on-surface';
   return (
     <section className={card} data-license={status.status}>
       {title}
       <p className={`font-label-md text-label-md font-semibold ${tone}`} data-license-line="">
         {licenseLine(status)}
       </p>
+      {(status.status === 'unverified' || status.unverified) && (
+        <div className="flex items-center justify-between p-2 rounded-lg bg-error-container/30 text-on-error-container" data-unverified-warning="">
+          <span className="font-label-sm text-label-sm">{status.deviceWarning ?? 'تعذّر قراءة معرّف الجهاز'}</span>
+          <button
+            className="h-8 px-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm font-semibold shrink-0"
+            data-act="retry-device"
+            disabled={busy}
+            type="button"
+            onClick={() => void retryDetect()}
+          >
+            أعِد المحاولة
+          </button>
+        </div>
+      )}
       {status.status === 'subscribed' && (
         <p className="font-label-sm text-label-sm text-on-surface-variant">للتجديد: أرسل رمز الجهاز إلى المطوّر، والصق مفتاح التجديد هنا قبل يوم الانتهاء أو بعده.</p>
       )}

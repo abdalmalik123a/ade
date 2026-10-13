@@ -119,7 +119,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   const [expired, setExpired] = useState(false);
 
   useEffect(() => {
-    void window.diwan.license.status().then((s) => setExpired(s.status === 'expired'));
+    void window.diwan.license.status().then((s) => setExpired(s.status === 'expired' || s.status === 'unverified'));
     void window.diwan.photos.modelReady().then(setModelReady);
     void window.diwan.photos.presets().then(setCustomPresets);
     void window.diwan.photos.suits().then(setCustomSuits);
