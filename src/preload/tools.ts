@@ -65,7 +65,13 @@ export const toolsApi: ToolApis = {
     deletePreset: (id: string) => invoke('photos:deletePreset', id),
     suits: () => invoke('photos:suits'),
     importSuit: () => invoke('photos:importSuit'),
-    deleteSuit: (id: string) => invoke('photos:deleteSuit', id)
+    deleteSuit: (id: string) => invoke('photos:deleteSuit', id),
+    pickPhoto: () => invoke('photos:pickPhoto'),
+    storePasted: (dataUrl: string) => invoke('photos:storePasted', dataUrl),
+    storeReview: (dataUrl: string) => invoke('photos:storeReview', dataUrl),
+    saveImage: (payload: unknown) => invoke('photos:saveImage', payload),
+    saveUpload: (payload: unknown) => invoke('photos:saveUpload', payload),
+    saveToCitizen: (payload: unknown) => invoke('photos:saveToCitizen', payload)
   },
   camera: {
     store: (dataUrl: string) => invoke('camera:store', dataUrl),

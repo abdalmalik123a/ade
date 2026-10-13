@@ -62,14 +62,14 @@ export function usePhotoOutput(
 
   const openReview = () =>
     run('تُجهَّز الورقة…', async () => {
-      const path = await window.diwan.camera.store(await dataUrlOf(await finalJpeg()));
+      const path = await window.diwan.photos.storeReview(await dataUrlOf(await finalJpeg()));
       setReview({ path, px });
     });
 
   const saveImage = () =>
     run('تُحفظ الصورة…', async () => {
       const blob = await finalJpeg();
-      const path = await window.diwan.files.saveAs({ data: new Uint8Array(await blob.arrayBuffer()), suggestedName: `${fileBase}.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
+      const path = await window.diwan.photos.saveImage({ data: new Uint8Array(await blob.arrayBuffer()), suggestedName: `${fileBase}.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
       if (path) say(`حُفظت: ${toIndic(px.w)}×${toIndic(px.h)} بكسل بدقّة ${toIndic(preset.dpi)} — ${sizeText(blob.size)}`);
     });
 
@@ -87,21 +87,16 @@ export function usePhotoOutput(
       bmp.close();
       const bytes = setJpegDpi(new Uint8Array(await fit.blob.arrayBuffer()), dpi);
       rememberLimit(limit);
-      const path = await window.diwan.files.saveAs({ data: bytes, suggestedName: `${fileBase} للرفع.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
+      const path = await window.diwan.photos.saveUpload({ data: bytes, suggestedName: `${fileBase} للرفع.jpg`, filterName: 'صورة JPEG', ext: 'jpg' });
       if (path) say(`حُفظت للرفع: ${sizeText(bytes.length)}`);
     });
 
   const linkCitizen = (id: number) =>
     run('تُحفظ في ملف المواطن…', async () => {
       setPicking(false);
-      const detail = await window.diwan.citizens.get(id);
-      if (!detail) throw new Error('المواطن غير موجود في السجل');
       const dataUrl = await dataUrlOf(await finalJpeg());
-      const path = await window.diwan.camera.store(dataUrl);
-      const { attachments: _attachments, documents: _documents, ...input } = detail;
-      await window.diwan.citizens.save({ ...input, photoPath: path });
-      await window.diwan.attachments.addFromDataUrl(id, `صورة شخصية ${preset.name}`, dataUrl);
-      say(`صارت صورة ${detail.fullName} في ملفّه`);
+      const res = await window.diwan.photos.saveToCitizen({ citizenId: id, label: `صورة شخصية ${preset.name}`, dataUrl });
+      say(`صارت صورة ${res.fullName} في ملفّه`);
     });
 
   const pages = review

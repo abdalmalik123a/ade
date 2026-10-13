@@ -52,10 +52,19 @@ export const PRODUCTIVE_CHANNELS = [
   'output:savePng300',
   'output:saveImage',
   'output:saveDocx',
+  'templates:export',
   'attachments:print',
   'pdf:save',
   'pdf:saveMany',
-  'pdf:saveImages'
+  'pdf:saveImages',
+  'photos:cutout',
+  'photos:clipboardImage',
+  'photos:pickPhoto',
+  'photos:storePasted',
+  'photos:storeReview',
+  'photos:saveImage',
+  'photos:saveUpload',
+  'photos:saveToCitizen'
 ] as const;
 
 const gated = new Set<string>(PRODUCTIVE_CHANNELS);

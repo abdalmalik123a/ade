@@ -129,7 +129,7 @@ export function usePhotoSteps(
   }, [incoming]);
 
   async function open() {
-    const path = await window.diwan.files.pickImage('photos');
+    const path = await window.diwan.photos.pickPhoto();
     if (path) await load(path);
   }
 
@@ -163,7 +163,7 @@ export function usePhotoSteps(
           bmp.close();
           dataUrl = c.toDataURL('image/png');
         }
-        await loadRef.current(await window.diwan.camera.store(dataUrl));
+        await loadRef.current(await window.diwan.photos.storePasted(dataUrl));
       })().catch((err) => say(errorText(err, 'تعذّر لصق الصورة'), true));
     };
     window.addEventListener('paste', onPaste);

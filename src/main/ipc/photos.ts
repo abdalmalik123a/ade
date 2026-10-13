@@ -14,7 +14,8 @@ import { cutout, detectFace } from '../services/portrait';
 import { objectCutout } from '../services/objectCutout';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
-import { importFile, pickOpenPath } from './files';
+import { importFile, pickOpenPath, pickSavePath } from './files';
+import { getCitizen, saveCitizen, addAttachment } from '../services/citizens';
 import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPresets';
 import { parseCustomSuits, pngTransparency, type CustomSuit } from '@shared/suits';
 
@@ -137,4 +138,117 @@ export function registerPhotoIpc(): void {
     await Promise.all(unreferenced(getDb(), [gone?.path]).map(removeStoreFile));
     return next;
   });
+
+  /** فتح صورة شخصية من القرص بمصادقة بوّابة الترخيص. */
+  ipcMain.handle('photos:pickPhoto', async (e): Promise<string | null> => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const source = await pickOpenPath(win, {
+      title: 'اختر صورة شخصية',
+      buttonLabel: 'إدراج',
+      filterName: 'صور',
+      extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp']
+    });
+    return source ? importFile(source, 'photos') : null;
+  });
+
+  /** حفظ صورة ملصوقة عبر الواجهة في المخزن. */
+  ipcMain.handle('photos:storePasted', async (_e, dataUrl: string): Promise<string> => {
+    const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || !matches[2]) throw new Error('صيغة الصورة غير صالحة');
+    const buffer = Buffer.from(matches[2], 'base64');
+    const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
+    const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
+    const name = `${hash}${ext}`;
+    await writeFile(join(storeDir('photos'), name), buffer);
+    return `photos/${name}`;
+  });
+
+  /** حفظ ورقة المراجعة المؤقتة للطباعة بمصادقة البوّابة. */
+  ipcMain.handle('photos:storeReview', async (_e, dataUrl: string): Promise<string> => {
+    const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || !matches[2]) throw new Error('صيغة الصورة غير صالحة');
+    const buffer = Buffer.from(matches[2], 'base64');
+    const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
+    const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
+    const name = `${hash}${ext}`;
+    await writeFile(join(storeDir('photos'), name), buffer);
+    return `photos/${name}`;
+  });
+
+  /** حفظ الصورة الشخصية الناتجة في ملف خارجي. */
+  ipcMain.handle(
+    'photos:saveImage',
+    async (
+      e,
+      payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }
+    ): Promise<string | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender);
+      if (!win) return null;
+      const path = await pickSavePath(win, {
+        title: 'حفظ الصورة الشخصية',
+        defaultName: payload.suggestedName,
+        filterName: payload.filterName,
+        ext: payload.ext
+      });
+      if (!path) return null;
+      await writeFile(path, Buffer.from(payload.data));
+      return path;
+    }
+  );
+
+  /** حفظ الصورة الشخصية الناتجة للرفع. */
+  ipcMain.handle(
+    'photos:saveUpload',
+    async (
+      e,
+      payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }
+    ): Promise<string | null> => {
+      const win = BrowserWindow.fromWebContents(e.sender);
+      if (!win) return null;
+      const path = await pickSavePath(win, {
+        title: 'حفظ الصورة للرفع',
+        defaultName: payload.suggestedName,
+        filterName: payload.filterName,
+        ext: payload.ext
+      });
+      if (!path) return null;
+      await writeFile(path, Buffer.from(payload.data));
+      return path;
+    }
+  );
+
+  /** حفظ الصورة الشخصية مباشرة في ملف المواطن وسجل مستمسكاته. */
+  ipcMain.handle(
+    'photos:saveToCitizen',
+    async (
+      _e,
+      payload: { citizenId: number; dataUrl: string; label: string }
+    ): Promise<{ photoPath: string; attachmentId: number; fullName: string }> => {
+      const matches = payload.dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || !matches[2]) throw new Error('صيغة الصورة غير صالحة');
+      const buffer = Buffer.from(matches[2], 'base64');
+      const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
+      const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
+      const name = `${hash}${ext}`;
+      await writeFile(join(storeDir('photos'), name), buffer);
+      const relative = `photos/${name}`;
+
+      const db = getDb();
+      const citizen = getCitizen(db, payload.citizenId);
+      if (!citizen) throw new Error('المواطن غير موجود في السجل');
+
+      const { attachments: _attachments, documents: _documents, ...input } = citizen;
+      saveCitizen(db, { ...input, photoPath: relative });
+      const att = addAttachment(db, {
+        citizenId: payload.citizenId,
+        docType: payload.label,
+        filePath: relative,
+        fileFormat: ext.slice(1).toUpperCase(),
+        dpi: null,
+        sha256: createHash('sha256').update(buffer).digest('hex')
+      });
+      return { photoPath: relative, attachmentId: att.id, fullName: citizen.fullName };
+    }
+  );
 }

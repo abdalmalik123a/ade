@@ -116,7 +116,10 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     toastTimer.current = window.setTimeout(() => setToast(null), 3600);
   };
 
+  const [expired, setExpired] = useState(false);
+
   useEffect(() => {
+    void window.diwan.license.status().then((s) => setExpired(s.status === 'expired'));
     void window.diwan.photos.modelReady().then(setModelReady);
     void window.diwan.photos.presets().then(setCustomPresets);
     void window.diwan.photos.suits().then(setCustomSuits);
@@ -216,11 +219,24 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
         <section className="w-[400px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md flex flex-col">
           <ToolHeader hint="تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز" icon="portrait" title="الصور الشخصية" />
 
+          {expired && (
+            <div className="rounded-lg bg-rose-50 border border-rose-300 p-space-sm text-rose-900 font-label-md text-label-md space-y-1" data-license-expired-banner="">
+              <div className="font-semibold flex items-center gap-1">
+                <span className="material-symbols-outlined text-[18px]">lock</span>
+                انتهت المدّة التجريبية
+              </div>
+              <p className="text-label-sm leading-relaxed">
+                ميزة الصور الشخصية محجوبة بالكامل بعد انتهاء التجربة. فعّل البرنامج من «الإعدادات ← التفعيل».
+              </p>
+            </div>
+          )}
+
           {step(1, 'الصورة')}
           <div className="flex gap-space-xs">
             <button
-              className="flex-1 h-11 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
+              className="flex-1 h-11 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
               data-act="open-photo"
+              disabled={expired}
               type="button"
               onClick={() => void open()}
             >
@@ -228,8 +244,9 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               {src ? 'صورةٌ أخرى' : 'افتح الصورة'}
             </button>
             <button
-              className="h-11 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-high"
+              className="h-11 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-high disabled:opacity-40"
               data-act="paste-photo"
+              disabled={expired}
               title="أو Ctrl+V في الشاشة"
               type="button"
               onClick={() => void pasteButton()}
@@ -330,40 +347,17 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
         </section>
 
         <PhotoFrame
-          onUp={onUp}
-          setCursor={setCursor}
-          onMove={onMove}
-          src={src}
-          box={box}
-          tools={tools}
-          chip={chip}
-          tool={tool}
-          setTool={setTool}
-          brush={brush}
-          setBrush={setBrush}
-          frameEl={frameEl}
-          cutState={cutState}
-          frame={frame}
-          onDown={onDown}
-          onWheel={onWheel}
-          view={view}
-          preset={preset}
-          cursor={cursor}
-          erase={erase}
-          repair={repair}
+          onUp={onUp} setCursor={setCursor} onMove={onMove} src={src} box={box} tools={tools}
+          chip={chip} tool={tool} setTool={setTool} brush={brush} setBrush={setBrush} frameEl={frameEl}
+          cutState={cutState} frame={frame} onDown={onDown} onWheel={onWheel} view={view}
+          preset={preset} cursor={cursor} erase={erase} repair={repair}
         />
       </div>
 
       {review && (
         <SheetsPreview
-          busy={printing}
-          cards={copies}
-          pages={pages}
-          unit="صورة"
-          sheet={paper}
-          onClose={() => setReview(null)}
-          onPdf={() => void pdf()}
-          onPrint={() => void print()}
+          busy={printing} cards={copies} pages={pages} unit="صورة" sheet={paper}
+          onClose={() => setReview(null)} onPdf={() => void pdf()} onPrint={() => void print()}
         />
       )}
 
@@ -371,19 +365,9 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
       {presetsOpen && (
         <PresetsDialog
-          presets={customPresets}
-          onClose={() => setPresetsOpen(false)}
-          onDelete={async (id) => {
-            setCustomPresets(await window.diwan.photos.deletePreset(id));
-            if (presetId === id) choosePreset('35x45');
-          }}
-          onSave={async (p) => {
-            setCustomPresets(await window.diwan.photos.savePreset(p));
-            setPresetsOpen(false);
-            setPresetId(p.id);
-            setCount(null);
-            setBg((b) => (b.kind === 'original' ? b : p.background));
-          }}
+          presets={customPresets} onClose={() => setPresetsOpen(false)}
+          onDelete={async (id) => { setCustomPresets(await window.diwan.photos.deletePreset(id)); if (presetId === id) choosePreset('35x45'); }}
+          onSave={async (p) => { setCustomPresets(await window.diwan.photos.savePreset(p)); setPresetsOpen(false); setPresetId(p.id); setCount(null); setBg((b) => (b.kind === 'original' ? b : p.background)); }}
         />
       )}
 

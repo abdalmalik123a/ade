@@ -74,6 +74,18 @@ export default async function scenario(page) {
   ok('فلا يصدر كتاب — ويُقال لماذا وكيف يُفعَّل', refused.includes('انتهت المدّة التجريبية') && refused.includes('التفعيل'));
   const pdf = await page.eval(`try { await window.diwan.output.savePdf({ sheetHtml: '<p>x</p>', suggestedName: 'x' }); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
   ok('ولا PDF', pdf.includes('انتهت المدّة التجريبية'));
+  const cutoutRefused = await page.eval(`try { await window.diwan.photos.cutout({ pixels: new Uint8Array(16), width: 2, height: 2 }); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('ولا إزالة خلفية للصور الشخصية بعد انتهاء التجربة', cutoutRefused.includes('انتهت المدّة التجريبية'));
+  const clipRefused = await page.eval(`try { await window.diwan.photos.clipboardImage(); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('ولا لصق صورة شخصية من الحافظة', clipRefused.includes('انتهت المدّة التجريبية'));
+  const saveImgRefused = await page.eval(`try { await window.diwan.photos.saveImage({ data: new Uint8Array(4), suggestedName: 'x.jpg', filterName: 'x', ext: 'jpg' }); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('ولا حفظ صورة شخصية', saveImgRefused.includes('انتهت المدّة التجريبية'));
+  const citizenImgRefused = await page.eval(`try { await window.diwan.photos.saveToCitizen({ citizenId: 1, label: 'x', dataUrl: 'data:image/jpeg;base64,' }); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('ولا حفظ الصورة في ملف الزبون بعد انتهاء التجربة', citizenImgRefused.includes('انتهت المدّة التجريبية'));
+  const tplExportRefused = await page.eval(`try { await window.diwan.templates.export(1); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('ولا تصدير نموذج Word بعد انتهاء التجربة', tplExportRefused.includes('انتهت المدّة التجريبية'));
+  const exportZipWorks = await page.eval(`try { await window.diwan.attachments.exportZip(9999); return 'ok'; } catch (e) { return String(e?.message ?? e); }`);
+  ok('وتصدير مرفقات المواطن لا يُحجب بانتهاء التجربة', !exportZipWorks.includes('انتهت المدّة التجريبية'));
   const listed = await page.eval(`return (await window.diwan.documents.list({ limit: 10 })).length;`);
   const backup = await page.eval(`try { return (await window.diwan.backup.create(null)) ? 'ok' : 'none'; } catch (e) { return String(e?.message ?? e); }`);
   ok('والعرض والنسخ الاحتياطي يعملان — لا تُقفل البيانات', listed === 1 && backup === 'ok' && readdirSync(DIR).some((f) => f.endsWith('.zip')));

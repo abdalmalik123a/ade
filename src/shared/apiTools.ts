@@ -152,6 +152,12 @@ export type ToolApis = {
     /** «استورد قاطًا»: PNG شفّافة — ويُقال سبب الرفض. `null` إن أُلغي الاختيار. */
     importSuit(): Promise<CustomSuit | null>;
     deleteSuit(id: string): Promise<CustomSuit[]>;
+    pickPhoto(): Promise<string | null>;
+    storePasted(dataUrl: string): Promise<string>;
+    storeReview(dataUrl: string): Promise<string>;
+    saveImage(payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }): Promise<string | null>;
+    saveUpload(payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }): Promise<string | null>;
+    saveToCitizen(payload: { citizenId: number; dataUrl: string; label: string }): Promise<{ photoPath: string; attachmentId: number; fullName: string }>;
   };
   /** استوديو التصوير: حفظ اللقطة، ومراقبة مجلّد الكاميرا الاحترافية. */
   camera: {
