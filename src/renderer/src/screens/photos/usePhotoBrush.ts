@@ -3,10 +3,11 @@
  * و«أبقِ» و«امسح» بالفرشاة على القناع، وإعادته — و«امسح لونًا» (البند ٣٨، `lib/useColorErase.ts`): ضغطةٌ على لونٍ تزيله،
  * و«رمّم» (البند ٤٠، `lib/useRepair.ts`): ما يُمسح عليه تحت الذقن يُملأ من جواره — والوجه لا يُمسّ.
  */
-import { useState, type Dispatch, type SetStateAction, type MutableRefObject, type RefObject } from 'react';
+import { useState, useRef, type Dispatch, type SetStateAction, type MutableRefObject, type RefObject } from 'react';
 import { cropBox, type Size, type Crop } from '@shared/photoSheet';
 import { type BrushMode, strokeAlpha, landmarks, type SuitTransform, type Landmarks } from '@shared/portraitMask';
 import type { Work } from '../../lib/portraitCanvas';
+import { getSuitBoxGeometry } from './SuitTransformOverlay';
 import { useColorErase } from '../../lib/useColorErase';
 import { useRepair } from '../../lib/useRepair';
 import { withFace } from '@shared/portraitFace';
@@ -36,12 +37,26 @@ export function usePhotoBrush(
     cutState: 'none' | 'running' | 'done';
     say: (text: string, warn?: boolean) => void;
     lm: Landmarks | null;
+    hardness?: number;
+    onPushHistory?: (desc?: string) => void;
   }
 ) {
   const {
     frameEl, frame, natural, crop, work, cut, brush, rebuildSubject, draw, drag, tool, worn, setCursor, box, setCrop, setWorn, setLm,
-    setBrush, setCutVersion, cutState, say, lm
+    setBrush, setCutVersion, cutState, say, lm, hardness = 0.6, onPushHistory
   } = ctx;
+
+  const handleDrag = useRef<{
+    handle: string;
+    startX: number;
+    startY: number;
+    initAt: SuitTransform;
+    suitW: number;
+    suitH: number;
+    k: number;
+    pivot: { x: number; y: number };
+    startAngle: number;
+  } | null>(null);
 
   // «امسح لونًا»: ما تغيّر يعيد المعالم (جدارٌ بقي حول الكتف يوسّعها)، والحافّة تتغيّر ألوانها فيُعاد التحسين منها.
   const erase = useColorErase({
@@ -79,9 +94,31 @@ export function usePhotoBrush(
     const w = work.current;
     const c = cut.current;
     if (!w || !c) return;
-    const rect = strokeAlpha(c.alpha, w.width, w.height, from, to, brush / k, mode);
+    const rect = strokeAlpha(c.alpha, w.width, w.height, from, to, brush / k, mode, hardness);
     rebuildSubject(rect);
     draw();
+  }
+
+  function onHandleDown(e: React.MouseEvent, handle: string) {
+    if (!worn || !natural || !box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onPushHistory?.('تعديل القاط');
+    const k = box.width / natural.w;
+    const g = getSuitBoxGeometry(worn, natural, box);
+    const r = frameEl.current?.getBoundingClientRect();
+    const pivot = { x: (r?.left ?? 0) + g.cx, y: (r?.top ?? 0) + g.cy };
+    handleDrag.current = {
+      pivot,
+      startAngle: Math.atan2(e.clientY - pivot.y, e.clientX - pivot.x),
+      handle,
+      startX: e.clientX,
+      startY: e.clientY,
+      initAt: { ...worn.at },
+      suitW: worn.suit.img.naturalWidth,
+      suitH: worn.suit.img.naturalHeight,
+      k
+    };
   }
 
   function onDown(e: React.MouseEvent) {
@@ -90,13 +127,22 @@ export function usePhotoBrush(
     const p = at(e);
     const img = toImage(p);
     if (tool === 'color') {
-      if (cut.current && !erase.pick(img.x, img.y)) say('لا لون هنا يُمسح — اضغط على ما بقي من الخلفية في الصورة', true);
+      if (!cut.current) return;
+      onPushHistory?.('مسح لون'); // اللقطة قبل التغيير لا بعده
+      if (!erase.pick(img.x, img.y)) say('لا لون هنا يُمسح — اضغط على ما بقي من الخلفية في الصورة', true);
       return;
     }
     if (tool === 'repair') {
       if (!lm || !cut.current) return;
+      onPushHistory?.('ترميم');
       repair.begin(img, brush / img.k);
       setStroke([p]);
+    }
+    if (tool === 'keep' || tool === 'remove') {
+      onPushHistory?.(tool === 'keep' ? 'إبقاء' : 'مسح');
+    }
+    if (tool === 'suit') {
+      onPushHistory?.('تحريك القاط');
     }
     drag.current = { tool, x: e.clientX, y: e.clientY, crop, at: worn?.at ?? null, last: img };
     if ((tool === 'keep' || tool === 'remove') && cut.current) paint(img, img, img.k, tool);
@@ -104,6 +150,40 @@ export function usePhotoBrush(
 
   function onMove(e: React.MouseEvent) {
     if (tool === 'keep' || tool === 'remove' || tool === 'repair') setCursor(frameEl.current ? at(e) : null);
+    
+    // سحب مقابض القاط
+    const hd = handleDrag.current;
+    if (hd && worn && box && natural) {
+      const dx = (e.clientX - hd.startX) / hd.k;
+      const dy = (e.clientY - hd.startY) / hd.k;
+      const { handle, initAt } = hd;
+
+      if (handle === 'center') {
+        setWorn((s) => s && { ...s, at: { ...s.at, x: initAt.x + dx, y: initAt.y + dy } });
+      } else if (handle === 'rot') {
+        // زاوية المؤشّر حول مركز القاط، مطروحًا منها زاويته عند بدء السحب.
+        const now = Math.atan2(e.clientY - hd.pivot.y, e.clientX - hd.pivot.x);
+        const deg = ((now - hd.startAngle) * 180) / Math.PI;
+        const wrapped = deg > 180 ? deg - 360 : deg < -180 ? deg + 360 : deg;
+        setWorn((s) => s && { ...s, at: { ...s.at, angle: Math.max(-45, Math.min(45, initAt.angle + wrapped)) } });
+      } else if (handle === 'e' || handle === 'w') {
+        const factor = handle === 'e' ? dx : -dx;
+        const currentScaleX = initAt.scaleX ?? 1;
+        const newScaleX = Math.max(0.4, Math.min(2.5, currentScaleX * (1 + factor / (hd.suitW * 0.4))));
+        setWorn((s) => s && { ...s, at: { ...s.at, scaleX: newScaleX } });
+      } else if (handle === 's') {
+        const currentScaleY = initAt.scaleY ?? 1;
+        const newScaleY = Math.max(0.4, Math.min(2.5, currentScaleY * (1 + dy / (hd.suitH * 0.4))));
+        setWorn((s) => s && { ...s, at: { ...s.at, scaleY: newScaleY } });
+      } else {
+        // زوايا ne, nw, se, sw
+        const diag = (handle === 'se' ? dx + dy : handle === 'sw' ? -dx + dy : handle === 'ne' ? dx - dy : -dx - dy) * 0.5;
+        const newScale = Math.max(0.2, initAt.scale * (1 + diag / (hd.suitW * 0.5)));
+        setWorn((s) => s && { ...s, at: { ...s.at, scale: newScale } });
+      }
+      return;
+    }
+
     const d = drag.current;
     if (!d || !box || !natural) return;
     const dx = e.clientX - d.x;
@@ -128,6 +208,7 @@ export function usePhotoBrush(
   }
 
   function onUp() {
+    handleDrag.current = null;
     const d = drag.current;
     drag.current = null;
     if (d?.tool === 'repair' && repair.painting()) {
@@ -161,5 +242,5 @@ export function usePhotoBrush(
   const shown = natural ? cropBox(frame, natural, crop) : null;
   const lineY = lm && natural && shown ? shown.top + lm.chin * (shown.width / natural.w) : null;
 
-  return { resetMask, onUp, onMove, onDown, onWheel, erase, repair: { ...repair, stroke, lineY } };
+  return { resetMask, onUp, onMove, onDown, onWheel, onHandleDown, erase, repair: { ...repair, stroke, lineY } };
 }

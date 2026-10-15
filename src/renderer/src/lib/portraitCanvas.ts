@@ -88,10 +88,11 @@ export function drawScene(ctx: CanvasRenderingContext2D, frame: Size, s: Scene):
   ctx.drawImage(s.subject, box.left, box.top, box.width, box.height);
   if (s.suit) {
     const { suit, at } = s.suit;
-    const sk = at.scale * k;
+    const sx = (at.scaleX ?? 1) * at.scale * k;
+    const sy = (at.scaleY ?? 1) * at.scale * k;
     ctx.translate(box.left + at.x * k, box.top + at.y * k);
     ctx.rotate((at.angle * Math.PI) / 180);
-    ctx.drawImage(suit.img, -suit.anchor.cx * sk, -suit.anchor.cy * sk, suit.img.naturalWidth * sk, suit.img.naturalHeight * sk);
+    ctx.drawImage(suit.img, -suit.anchor.cx * sx, -suit.anchor.cy * sy, suit.img.naturalWidth * sx, suit.img.naturalHeight * sy);
   }
   ctx.restore();
 }

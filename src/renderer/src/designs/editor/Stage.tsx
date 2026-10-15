@@ -3,7 +3,7 @@
  * لا يحملها.
  */
 import { useEffect, useRef } from 'react';
-import { SCREEN_DPI, mmToPx } from '@shared/canvas';
+import { SCREEN_DPI, mmToPx, textElement } from '@shared/canvas';
 import { EDGES } from './kit';
 import { useCanvasPaint } from './useCanvasPaint';
 import TableGrips from './TableGrips';
@@ -57,6 +57,21 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
           onMouseDown={(e) => {
             // الضغط خارج العناصر يبدأ مستطيل التحديد (١٫٦).
             if (!(e.target as HTMLElement).closest('[data-handle]')) ed.startMarquee(e);
+          }}
+          onDoubleClick={(e) => {
+            // نقر مزدوج على منطقة فارغة يضيف نصاً في موضع النقر
+            if ((e.target as HTMLElement).closest('[data-handle]')) return;
+            const rect = ed.sheetRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const x = Math.max(0.05, Math.min(0.8, (rect.right - e.clientX - offset * zoom) / (pxW * zoom)));
+            const y = Math.max(0.05, Math.min(0.85, (e.clientY - rect.top - offset * zoom) / (pxH * zoom)));
+            ed.add(
+              textElement({
+                box: { x, y, w: 0.35, h: 0.08 },
+                inlines: [{ kind: 'run', text: 'نص جديد' }],
+                size: 16
+              })
+            );
           }}
         >
           <div ref={paintRef} dangerouslySetInnerHTML={{ __html: html }} />
@@ -117,8 +132,16 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
                     ...(el.rotate ? { transform: `rotate(${-el.rotate}deg)` } : {})
                   }}
                   onMouseDown={(e) => ed.startMove(e, el)}
-                  // نقرتان على عضوٍ في مجموعة (Photoshop أو Ctrl+G): هو وحده — فيُحرَّر نصّه دون فكّ المجموعة.
-                  onDoubleClick={() => el.group && ed.setSelection([el.id])}
+                  // نقرتان على العنصر: يحدده مباشرة ويركز على تحرير نصه إن كان نصاً
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    ed.setSelection([el.id]);
+                    if (el.kind === 'text') {
+                      const input = document.querySelector<HTMLInputElement>('[data-element-text]');
+                      input?.focus();
+                      input?.select();
+                    }
+                  }}
                 >
                   {on &&
                     !el.locked &&

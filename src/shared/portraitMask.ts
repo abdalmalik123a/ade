@@ -215,13 +215,13 @@ export function paintAlpha(alpha: Uint8Array, width: number, height: number, cx:
   return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
 }
 
-/** خطّ فرشاةٍ بين نقطتين — بصماتٌ متقاربة فلا يتقطّع مع سرعة الفأرة. */
-export function strokeAlpha(alpha: Uint8Array, width: number, height: number, from: { x: number; y: number }, to: { x: number; y: number }, radius: number, mode: BrushMode): { x: number; y: number; w: number; h: number } {
+/** خطّ فرشاةٍ بين نقطتين — بصماتٌ متقاربة فلا يتقطّع مع سرعة الفأرة، مع تحكّمٍ في نعومة الحافة hardness. */
+export function strokeAlpha(alpha: Uint8Array, width: number, height: number, from: { x: number; y: number }, to: { x: number; y: number }, radius: number, mode: BrushMode, hardness = 0.6): { x: number; y: number; w: number; h: number } {
   const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / Math.max(1, radius / 3)));
   let box = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
   for (let s = 0; s <= steps; s++) {
     const t = s / steps;
-    const d = paintAlpha(alpha, width, height, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, radius, mode);
+    const d = paintAlpha(alpha, width, height, from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, radius, mode, hardness);
     box = { x: Math.min(box.x, d.x), y: Math.min(box.y, d.y), x2: Math.max(box.x2, d.x + d.w), y2: Math.max(box.y2, d.y + d.h) };
   }
   return { x: box.x, y: box.y, w: Math.max(0, box.x2 - box.x), h: Math.max(0, box.y2 - box.y) };
@@ -412,8 +412,8 @@ export function collarWidth(tops: Float32Array, anchor: SuitAnchor): number {
   return Math.max(1, r - l + 1);
 }
 
-/** موضع القاط: فتحة عنقه تحت رقبة الشخص، بعرضٍ يلائمها — ومنها يُدار ويُكبَّر. */
-export type SuitTransform = { x: number; y: number; scale: number; angle: number };
+/** موضع القاط: فتحة عنقه تحت رقبة الشخص، بعرضٍ يلائمها — ومنها يُدار ويُكبَّر مع دعم مقياس أفقي وعمودي مستقلّين. */
+export type SuitTransform = { x: number; y: number; scale: number; angle: number; scaleX?: number; scaleY?: number };
 
 export function placeSuit(anchor: SuitAnchor, lm: Landmarks): SuitTransform {
   // الياقة أعرض قليلًا من الرقبة؛ والكتفان نحو ضعفي الرأس ونصفٍ — يُحكم بهما إن شذّ الأوّل.
@@ -467,11 +467,8 @@ export function fitSuit(anchor: SuitAnchor, suitRows: Float32Array, personRows: 
 }
 
 /**
- * حدّ الشخص تحت القاط لكلّ عمودٍ من الصورة: آخر صفٍّ يبقى منه. في فتحة العنق الرقبة (`neck`:
- * موضعها ونصف عرضها) إلى أسفل الفتحة، وفي غيرها إلى أعلى الياقة. **وتحت الذقن (`neck.from`) لا
- * يبقى من الشخص إلا رقبته**: ياقته وكتفاه بلباسهما بين ذقنه وياقة القاط ملابس الزبون لا القاط — وما دون ذلك يغطّيه القاط، أو يصير خلفيةً حول كتفيه.
- * ويُحسب من نقاط أعلى القاط مُدارةً بزاويته، فيتبعه إن مال. و`overlap` يُدخل الحدّ تحت القاط قليلًا
- * فلا يظهر بينهما خيط.
+ * حدّ الشخص تحت القاط لكلّ عمودٍ من الصورة: في فتحة العنق الرقبة (`neck`) لأسفل الفتحة، وخارجها لأعلى الياقة.
+ * وتحت الذقن لا يبقى إلا الرقبة، ويُحسب من نقاط أعلى القاط مُدارةً بزاويته ومقياسه (scale/scaleX/scaleY).
  */
 export function neckLine(
   tops: Float32Array,
@@ -484,14 +481,16 @@ export function neckLine(
   const line = new Float32Array(width).fill(NaN);
   const cos = Math.cos((at.angle * Math.PI) / 180);
   const sin = Math.sin((at.angle * Math.PI) / 180);
-  const half = anchor.neckWidth / 2;
+  const sx = (at.scaleX ?? 1) * at.scale;
+  const sy = (at.scaleY ?? 1) * at.scale;
+  const half = (anchor.neckWidth / 2) * sx;
   for (let c = 0; c < tops.length; c++) {
-    const dx = c - anchor.cx;
+    const rawDx = (c - anchor.cx) * sx;
     // في الفتحة الرقبةُ وحدها (`neck`): ما جاورها فيها ملابس الزبون، تُقصّ عند أعلى الياقة.
-    const inNeck = !neck || Math.abs(at.x + dx * cos * at.scale - neck.x) <= neck.half;
-    const dy = (Math.abs(dx) < half && inNeck ? tops[c]! : anchor.cy) - anchor.cy;
-    const X = at.x + (dx * cos - dy * sin) * at.scale;
-    const Y = at.y + (dx * sin + dy * cos) * at.scale + overlap;
+    const inNeck = !neck || Math.abs(at.x + rawDx * cos - neck.x) <= neck.half;
+    const rawDy = ((Math.abs(rawDx) < half && inNeck ? tops[c]! : anchor.cy) - anchor.cy) * sy;
+    const X = at.x + rawDx * cos - rawDy * sin;
+    const Y = at.y + rawDx * sin + rawDy * cos + overlap;
     const x = Math.round(X);
     if (x >= 0 && x < width && !(line[x]! <= Y)) line[x] = Y;
   }

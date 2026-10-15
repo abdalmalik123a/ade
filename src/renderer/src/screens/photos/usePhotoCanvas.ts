@@ -33,11 +33,12 @@ export function usePhotoCanvas(
     lm: Landmarks | null;
     box: { left: number; top: number; width: number; height: number; x: number; y: number; } | null;
     setCrop: Dispatch<SetStateAction<Crop>>;
+    neckDepth?: number;
   }
 ) {
   const {
     work, toned, subject, maskOn, cut, line, feather, natural, crop, bgColor, worn, frame, view, enhance, cutVersion, useMask, lm, box,
-    setCrop
+    setCrop, neckDepth = 0
   } = ctx;
 
   /** قناع الجلد تحت الذقن (يُضرب في الشفافية والقاط ملبوس) — يُحسب مرّةً لكلّ قناعٍ ومعالم، لا مع كلّ سحبةٍ للقاط. */
@@ -141,11 +142,12 @@ export function usePhotoCanvas(
       }
       line.current = { line: l, lo, hi };
       // الجلد وحده في الفتحة: عيّنته من الوجه، وإلى عمق الفتحة أيًّا كان موضع القاط (ضعفا الرقبة ونصف تحت الذقن).
-      const key = lm && cut.current ? `${cutVersion}|${lm.chin}|${lm.neckCenterX}|${lm.neckWidth}` : '';
+      const key = lm && cut.current ? `${cutVersion}|${lm.chin}|${lm.neckCenterX}|${lm.neckWidth}|${neckDepth}` : '';
       if (skin.current.key !== key) {
         const c = cut.current;
         const model = c && lm ? skinSample(c.pixels, c.alpha, w.width, w.height, lm, c.face) : null;
-        skin.current = { key, mask: model && lm && neck ? neckSkin(c!.pixels, w.width, w.height, lm, model, lm.chin + lm.neckWidth * 2.5, neck.half, c!.face) : null };
+        const neckOffset = lm ? (neckDepth * (lm.neckWidth || 100)) / 100 : 0;
+        skin.current = { key, mask: model && lm && neck ? neckSkin(c!.pixels, w.width, w.height, lm, model, lm.chin + lm.neckWidth * 2.5, neck.half, c!.face, neckOffset) : null };
       }
     } else line.current = null;
     const now = line.current;
@@ -156,7 +158,7 @@ export function usePhotoCanvas(
       rebuildSubject({ x: 0, y: top, w: w.width, h: bottom - top });
     }
     draw();
-  }, [useMask, worn, lm, cutVersion, rebuildSubject, draw]);
+  }, [useMask, worn, lm, cutVersion, neckDepth, rebuildSubject, draw]);
 
   // حصر المركز يثبت في الحالة لا في الرسم وحده — وإلا بقي السحب «يدفع» حافّةً لا تتحرّك.
   useEffect(() => {

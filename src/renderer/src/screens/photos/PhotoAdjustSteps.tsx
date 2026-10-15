@@ -44,9 +44,11 @@ type Props = {
   setWorn: Dispatch<SetStateAction<Worn | null>>;
   erase: ColorErase;
   setTool: Dispatch<SetStateAction<Tool>>;
+  neckDepth?: number;
+  setNeckDepth?: Dispatch<SetStateAction<number>>;
 };
 
-export default function PhotoAdjustSteps({ step, cutState, small, modelReady, removeBackground, customColor, chip, bg, setBg, setCustomColor, resetMask, work, setAutoLight, setEnhance, cut, autoLight, slider, enhance, light, importSuit, suitTab, setSuitTab, customSuits, worn, chooseSuit, thumbs, deleteSuit, setWorn, erase, setTool }: Props) {
+export default function PhotoAdjustSteps({ step, cutState, small, modelReady, removeBackground, customColor, chip, bg, setBg, setCustomColor, resetMask, work, setAutoLight, setEnhance, cut, autoLight, slider, enhance, light, importSuit, suitTab, setSuitTab, customSuits, worn, chooseSuit, thumbs, deleteSuit, setWorn, erase, setTool, neckDepth = 0, setNeckDepth }: Props) {
   return (
     <>
       {step(
@@ -203,8 +205,10 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
         <p className="font-label-sm text-label-sm text-on-surface-variant">لا توجد بدلات مدمجة حاليًا — يرجى استخدام «استيراد بدلة خاصة» لإضافة قاط للمكتب</p>
       )}
       {worn && (
-        <div className="space-y-space-xs">
-          {slider('الحجم', worn.at.scale / worn.base.scale, (v) => setWorn({ ...worn, at: { ...worn.at, scale: worn.base.scale * v } }), 0.5, 2, 0.01, 'suit-scale')}
+        <div className="space-y-space-xs pt-2 border-t border-outline-variant">
+          {setNeckDepth && slider('عمق الرقبة', neckDepth, setNeckDepth, -50, 50, 1, 'neck-depth', `${toIndic(neckDepth)}`)}
+          {slider('عرض الكتف', worn.at.scaleX ?? 1, (v) => setWorn({ ...worn, at: { ...worn.at, scaleX: v } }), 0.6, 1.8, 0.02, 'suit-scalex')}
+          {slider('الحجم العام', worn.at.scale / worn.base.scale, (v) => setWorn({ ...worn, at: { ...worn.at, scale: worn.base.scale * v } }), 0.5, 2, 0.01, 'suit-scale')}
           {slider('الميل', worn.at.angle, (v) => setWorn({ ...worn, at: { ...worn.at, angle: v } }), -20, 20, 0.5, 'suit-angle', `${toIndic(Math.round(worn.at.angle))}°`)}
           <button className={small} data-act="suit-reset" type="button" onClick={() => setWorn({ ...worn, at: worn.base })}>
             أعِد موضعه

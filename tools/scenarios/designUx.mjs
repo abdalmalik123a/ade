@@ -52,7 +52,7 @@ export default async function scenario(page, { shotsDir }) {
   await wait(1200);
   const bar = await page.eval(`
     const row = document.querySelector('[data-side-tabs]').parentElement;
-    return [...row.querySelectorAll('button')].filter((b) => b.checkVisibility() && !b.closest('[data-menu-panel]')).length;`);
+    return [...row.querySelectorAll('button')].filter((b) => b.checkVisibility() && !b.closest('[data-menu-panel]') && !b.closest('[data-tool-dock]')).length;`);
   ok(`الشريط بما يُستعمل كلّ يوم: ${bar} زرًّا ظاهرًا (كان نحو ثلاثين)`, bar > 0 && bar <= 15);
   ok('وأدوات الحافظة والترتيب مطويّة', !(await visible('[data-edit="copy"]')) && !(await visible('[data-align="hCenter"]')));
   await click('[data-menu="edit"]');

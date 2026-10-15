@@ -72,7 +72,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   useDesignKeys({
     canvas, selection: els.selection, setSelection: els.setSelection, apply, undo: sides.undo, redo: sides.redo,
     duplicateSelected: els.duplicateSelected, removeSelected: els.removeSelected, selectAll: els.selectAll, copy: els.copy, cut: els.cut,
-    paste: els.paste, group: els.group, ungroup: els.ungroup
+    paste: els.paste, group: els.group, ungroup: els.ungroup, layer: els.layer
   });
   const [designId, setDesignId] = useState<number | null>(null);
   const draft = useDesignDraft({ doc: docs.doc, title, values, designId, say, onChanged });

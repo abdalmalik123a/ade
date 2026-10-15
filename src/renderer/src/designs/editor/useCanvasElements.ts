@@ -47,8 +47,10 @@ export function useCanvasElements(canvas: Canvas, apply: (next: Canvas, commit?:
 
   const removeSelected = useCallback(() => {
     if (!selection.length) return;
-    apply({ ...canvas, elements: canvas.elements.filter((el) => !selection.includes(el.id)) });
-    setSelection([]);
+    const canDelete = canvas.elements.some((el) => selection.includes(el.id) && !el.locked);
+    if (!canDelete) return;
+    apply({ ...canvas, elements: canvas.elements.filter((el) => !(selection.includes(el.id) && !el.locked)) });
+    setSelection((prev) => prev.filter((id) => canvas.elements.some((el) => el.id === id && el.locked)));
   }, [canvas, selection, apply]);
 
   const duplicateSelected = useCallback(() => {

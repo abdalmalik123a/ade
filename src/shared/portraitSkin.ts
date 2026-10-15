@@ -104,13 +104,13 @@ export type SkinMask = { x0: number; y0: number; w: number; h: number; mask: Uin
  * في أسوئه نحو عُشر المسافة بين العينين والفم، فلا تُقصّ نهاية لحية؛ وعلى جانبيه ياقةٌ لا لحية. والتنعيم بقدر
  * الرقبة: في صورةٍ كبيرة كانت ٥×٥ أصغر من نسيج القميص فيبقى منه نقاط.
  */
-export function neckSkin(pixels: Px, width: number, height: number, lm: Landmarks, m: SkinModel, bottom: number, half: number, face?: Face | null): SkinMask | null {
+export function neckSkin(pixels: Px, width: number, height: number, lm: Landmarks, m: SkinModel, bottom: number, half: number, face?: Face | null, neckOffset = 0): SkinMask | null {
   const g = face ? faceGeometry(face) : null;
   const em = g ? g.em : 0;
   const x0 = Math.max(0, Math.floor(lm.neckCenterX - half - 3));
   const x1 = Math.min(width, Math.ceil(lm.neckCenterX + half + 4));
-  // أوّل صفٍّ يُقصّ في كلّ عمود: أسفل الوجه عنده إن عُرف، وإلا ملتقى الفكّ.
-  const from = Array.from({ length: Math.max(0, x1 - x0) }, (_, x) => Math.max(0, Math.ceil(face ? faceFloor(face, lm.chin, x0 + x) : jawLine(lm))));
+  // أوّل صفٍّ يُقصّ في كلّ عمود: أسفل الوجه عنده إن عُرف، وإلا ملتقى الفكّ — مع تعديل إزاحة الرقبة اليدوية neckOffset.
+  const from = Array.from({ length: Math.max(0, x1 - x0) }, (_, x) => Math.max(0, Math.ceil((face ? faceFloor(face, lm.chin, x0 + x) : jawLine(lm)) + neckOffset)));
   const y0 = Math.min(height, ...from);
   const y1 = Math.min(height, Math.ceil(bottom) + 3);
   const w = x1 - x0;

@@ -8,6 +8,8 @@ import { startCanvasHistory, type AlignMode, type LayerMove } from '@shared/canv
 import { NUM, TOOL } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 import ToolbarMenu from './ToolbarMenu';
+import DesignToolDock from './DesignToolDock';
+import ContextFormatBar from './ContextFormatBar';
 
 const ALIGNS: [AlignMode, string, string][] = [
   ['right', 'align_horizontal_right', 'حاذِ يمينًا'],
@@ -99,6 +101,14 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
           <span className="material-symbols-outlined text-[18px]">redo</span>
         </button>
       </div>
+
+      <div className="w-px h-6 bg-outline-variant shrink-0" />
+
+      {/* شريط الأدوات السريع (Dock) */}
+      <DesignToolDock ed={ed} />
+
+      {/* شريط التنسيق السياقي عند وجود عنصر محدد */}
+      {selection.length > 0 && <ContextFormatBar ed={ed} />}
 
       <div className="w-px h-6 bg-outline-variant shrink-0" />
 

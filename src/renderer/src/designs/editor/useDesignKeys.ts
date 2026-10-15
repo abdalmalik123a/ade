@@ -23,6 +23,7 @@ type Inputs = {
   paste: () => void;
   group: () => void;
   ungroup: () => void;
+  layer?: (move: 'front' | 'forward' | 'backward' | 'back') => void;
 };
 
 export function useDesignKeys(k: Inputs): void {
@@ -73,9 +74,21 @@ export function useDesignKeys(k: Inputs): void {
         setSelection([]);
         return;
       }
+
+      if (e.ctrlKey && (e.code === 'BracketRight' || e.key === ']')) {
+        e.preventDefault();
+        k.layer?.('forward');
+        return;
+      }
+      if (e.ctrlKey && (e.code === 'BracketLeft' || e.key === '[')) {
+        e.preventDefault();
+        k.layer?.('backward');
+        return;
+      }
+
       if (!selection.length) return;
 
-      if (e.code === 'Delete') {
+      if (e.code === 'Delete' || e.code === 'Backspace') {
         e.preventDefault();
         removeSelected();
         return;

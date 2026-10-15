@@ -36,6 +36,7 @@ import { usePhotoCanvas } from './photos/usePhotoCanvas';
 import { usePhotoSteps } from './photos/usePhotoSteps';
 import { usePhotoBrush } from './photos/usePhotoBrush';
 import { usePhotoOutput } from './photos/usePhotoOutput';
+import { usePhotoHistory } from './photos/usePhotoHistory';
 
 /** القاط المدمج صورٌ مضمّنة (data:) تُحمَّل عند فتح الشاشة — فلا تُقفَل اللوحة بأصل ملفٍّ محلّي. */
 const SUIT_FILES = import.meta.glob('../assets/suits/*.webp', { query: '?inline', import: 'default' }) as Record<string, () => Promise<string>>;
@@ -66,6 +67,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   const [suitTab, setSuitTab] = useState<SuitCategory>('suit');
   const [tool, setTool] = useState<Tool>('move');
   const [brush, setBrush] = useState(16);
+  const [hardness, setHardness] = useState(0.6);
+  const [neckDepth, setNeckDepth] = useState(0);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [review, setReview] = useState<{ path: string; px: Size } | null>(null);
   const [limit, setLimit] = useState(() => savedLimit(0));
@@ -133,7 +136,12 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   // ── الرسم: الشخص ولوحة العمل والإطار — `photos/usePhotoCanvas.ts` ──
   const { rebuildSubject, draw } = usePhotoCanvas({
     work, toned, subject, maskOn, cut, line, feather, natural, crop, bgColor, worn, frame, view, enhance, cutVersion, useMask, lm,
-    box, setCrop
+    box, setCrop, neckDepth
+  });
+
+  // ── سجل التاريخ والتراجع / الإعادة الكامل ──
+  const history = usePhotoHistory({
+    cut, worn, setWorn, crop, setCrop, lm, setLm, setCutVersion, rebuildSubject, draw
   });
 
   // ── الخطوات ───────────────────────────────────────────────────────────
@@ -145,10 +153,10 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     lm, natural, tool, cutState, suitCache, bg, setCustomSuits, setSuitTab, worn
   });
 
-  // ── السحب والفرشاة، و«امسح لونًا» — `photos/usePhotoBrush.ts` ──
-  const { resetMask, onUp, onMove, onDown, onWheel, erase, repair } = usePhotoBrush({
+  // ── السحب والفرشاة، و«امسح لونًا»، والتحكم بالقاط — `photos/usePhotoBrush.ts` ──
+  const { resetMask, onUp, onMove, onDown, onWheel, onHandleDown, erase, repair } = usePhotoBrush({
     frameEl, frame, natural, crop, work, cut, brush, rebuildSubject, draw, drag, tool, worn, setCursor, box, setCrop, setWorn,
-    setLm, setBrush, setCutVersion, cutState, say, lm
+    setLm, setBrush, setCutVersion, cutState, say, lm, hardness, onPushHistory: history.push
   });
 
   // ── الإخراج: الطباعة والمراجعة وPDF والصورة وللرفع وفي ملفّ الزبون — `photos/usePhotoOutput.ts` ──
@@ -298,6 +306,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               setWorn={setWorn}
               erase={erase}
               setTool={setTool}
+              neckDepth={neckDepth}
+              setNeckDepth={setNeckDepth}
             />
           )}
 
@@ -348,9 +358,12 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
         <PhotoFrame
           onUp={onUp} setCursor={setCursor} onMove={onMove} src={src} box={box} tools={tools}
-          chip={chip} tool={tool} setTool={setTool} brush={brush} setBrush={setBrush} frameEl={frameEl}
-          cutState={cutState} frame={frame} onDown={onDown} onWheel={onWheel} view={view}
+          chip={chip} tool={tool} setTool={setTool} brush={brush} setBrush={setBrush}
+          hardness={hardness} setHardness={setHardness} frameEl={frameEl}
+          cutState={cutState} frame={frame} natural={natural} worn={worn}
+          onDown={onDown} onWheel={onWheel} onHandleDown={onHandleDown} view={view}
           preset={preset} cursor={cursor} erase={erase} repair={repair}
+          history={history} crop={crop} setCrop={setCrop}
         />
       </div>
 

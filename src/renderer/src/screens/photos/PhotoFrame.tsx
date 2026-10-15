@@ -1,15 +1,14 @@
-/**
- * إطار الصورة في «الصور الشخصية» (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PhotosScreen` كما هو: الصورة بقاطها وقصّها، ودليل الرأس،
- * والسحب والفرشاة — وأدوات «امسح لونًا» تحت الأدوات حين تُختار (البند ٣٨)، و«رمّم» بخطّ الذقن حدًّا وأثر الفرشاة (البند ٤٠).
- */
 import type { Dispatch, SetStateAction, RefObject } from 'react';
-import type { Tool } from './photoShared';
-import type { Size } from '@shared/photoSheet';
+import type { Tool, Worn } from './photoShared';
+import type { Size, Crop } from '@shared/photoSheet';
 import type { PhotoPreset } from '@shared/photoPresets';
 import ColorEraseBar from '../../components/ColorEraseBar';
 import type { ColorErase } from '../../lib/useColorErase';
 import RepairStroke from '../../components/RepairStroke';
 import type { Repair } from '../../lib/useRepair';
+import SuitTransformOverlay, { type HandleType } from './SuitTransformOverlay';
+import BrushToolbar from './BrushToolbar';
+import type { HistoryControls } from './usePhotoHistory';
 
 type Props = {
   onUp: () => void;
@@ -23,40 +22,112 @@ type Props = {
   setTool: Dispatch<SetStateAction<Tool>>;
   brush: number;
   setBrush: Dispatch<SetStateAction<number>>;
+  hardness: number;
+  setHardness: Dispatch<SetStateAction<number>>;
   frameEl: RefObject<HTMLDivElement>;
   cutState: 'none' | 'running' | 'done';
   frame: Size;
+  natural: Size | null;
+  worn: Worn | null;
   onDown: (e: React.MouseEvent) => void;
   onWheel: (e: React.WheelEvent) => void;
+  onHandleDown?: (e: React.MouseEvent, handle: HandleType) => void;
   view: RefObject<HTMLCanvasElement>;
   preset: PhotoPreset;
   cursor: { x: number; y: number; } | null;
   erase: ColorErase;
   repair: Repair & { stroke: { x: number; y: number }[] | null; lineY: number | null };
+  history?: HistoryControls;
+  crop: Crop;
+  setCrop: Dispatch<SetStateAction<Crop>>;
 };
 
-export default function PhotoFrame({ onUp, setCursor, onMove, src, box, tools, chip, tool, setTool, brush, setBrush, frameEl, cutState, frame, onDown, onWheel, view, preset, cursor, erase, repair }: Props) {
+export default function PhotoFrame({
+  onUp, setCursor, onMove, src, box, tools, chip, tool, setTool, brush, setBrush, hardness, setHardness,
+  frameEl, cutState, frame, natural, worn, onDown, onWheel, onHandleDown, view, preset, cursor, erase, repair, history,
+  crop, setCrop
+}: Props) {
+  const isBrushTool = tool === 'keep' || tool === 'remove' || tool === 'repair';
+
   return (
-    <section className="flex-1 min-w-0 flex items-center justify-center" onMouseLeave={() => (onUp(), setCursor(null))} onMouseMove={onMove} onMouseUp={onUp}>
+    <section className="flex-1 min-w-0 flex items-center justify-center p-space-md" onMouseLeave={() => (onUp(), setCursor(null))} onMouseMove={onMove} onMouseUp={onUp}>
       {src && box ? (
-        <div className="flex flex-col items-center gap-space-sm">
-          <div className="flex gap-1" data-tools="">
-            {tools.map((t) => (
-              <button key={t.key} className={`${chip(tool === t.key)} flex items-center gap-1`} data-tool={t.key} disabled={!t.on} type="button" onClick={() => setTool(t.key)}>
-                <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
-            {(tool === 'keep' || tool === 'remove' || tool === 'repair') && (
-              <input className="w-28" data-act="brush-size" max={80} min={3} type="range" value={brush} onChange={(e) => setBrush(Number(e.target.value))} />
-            )}
-            {tool === 'repair' && (
-              <button className={`${chip(false)} flex items-center gap-1 disabled:opacity-40`} data-act="repair-undo" disabled={!repair.canUndo} type="button" onClick={repair.undo}>
+        <div className="flex flex-col items-center gap-space-sm max-w-full">
+          {/* شريط الأدوات العلوي مع أزرار التراجع والإعادة والتكبير */}
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full max-w-[640px] px-2 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant shadow-sm">
+            <div className="flex items-center gap-1" data-tools="">
+              {tools.map((t) => (
+                <button
+                  key={t.key}
+                  className={`${chip(tool === t.key)} flex items-center gap-1 text-[13px]`}
+                  data-tool={t.key}
+                  disabled={!t.on}
+                  type="button"
+                  onClick={() => setTool(t.key)}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 border-r border-outline-variant pe-2">
+              <button
+                className="h-8 px-2 rounded-lg hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
+                data-act="history-undo"
+                disabled={!history?.canUndo}
+                title="تراجع (Ctrl+Z)"
+                type="button"
+                onClick={history?.undo}
+              >
                 <span className="material-symbols-outlined text-[16px]">undo</span>
                 تراجع
               </button>
-            )}
+              <button
+                className="h-8 px-2 rounded-lg hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
+                data-act="history-redo"
+                disabled={!history?.canRedo}
+                title="إعادة (Ctrl+Y أو Ctrl+Shift+Z)"
+                type="button"
+                onClick={history?.redo}
+              >
+                <span className="material-symbols-outlined text-[16px]">redo</span>
+                إعادة
+              </button>
+              <button
+                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px] disabled:opacity-30"
+                data-act="history-reset"
+                title="إعادة ضبط الصورة للأصل"
+                type="button"
+                onClick={history?.resetAll}
+              >
+                أصل
+              </button>
+              <div className="h-4 w-px bg-outline-variant mx-1" />
+              <button
+                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px]"
+                title="التركيز على الوجه والرقبة (Zoom)"
+                type="button"
+                onClick={() => setCrop((c) => ({ ...c, zoom: Math.min(4, c.zoom * 1.3) }))}
+              >
+                <span className="material-symbols-outlined text-[16px]">zoom_in</span>
+              </button>
+              <button
+                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px]"
+                title="إعادة تكبير الصورة 100%"
+                type="button"
+                onClick={() => setCrop((c) => ({ ...c, zoom: 1 }))}
+              >
+                100%
+              </button>
+            </div>
           </div>
+
+          {/* شريط التحكم بالفرشاة عند تفعيل إحدى أدوات الرسم */}
+          {isBrushTool && (
+            <BrushToolbar brush={brush} hardness={hardness} setBrush={setBrush} setHardness={setHardness} tool={tool} />
+          )}
+
           {tool === 'color' && <ColorEraseBar erase={erase} />}
           <div
             ref={frameEl}
@@ -93,6 +164,16 @@ export default function PhotoFrame({ onUp, setCursor, onMove, src, box, tools, c
               <div
                 className={`absolute pointer-events-none rounded-full border-2 ${tool === 'keep' ? 'border-emerald-500' : tool === 'repair' ? 'border-amber-500' : 'border-rose-500'}`}
                 style={{ left: cursor.x - brush, top: cursor.y - brush, width: brush * 2, height: brush * 2 }}
+              />
+            )}
+            {/* إطار التحكم التفاعلي بالبدلة */}
+            {worn && box && natural && (
+              <SuitTransformOverlay
+                active={tool === 'suit' || Boolean(worn)}
+                box={box}
+                natural={natural}
+                worn={worn}
+                onHandleDown={(e, h) => onHandleDown?.(e, h)}
               />
             )}
             {cutState === 'running' && (

@@ -1388,7 +1388,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
     DesignsScreen.tsx     التصاميم: الشهادة والهوية والملصق والدعوة — تركيبٌ فقط (DESIGNS.md ٠٫٣)
     PhotosScreen.tsx      الصور الشخصية وصورة المعاملة: الخلفية، والإضاءة، والقاط، والمقاس، والإخراج (PhotoPresetsDialog.tsx قوالب المكتب)
     photos/               أجزاء الصور (تقسيمها بعد ١٫٧٫٠): PhotoAdjustSteps (الخطوات ٢–٤) وPhotoSizeOutput (٥ و٦) وPhotoFrame،
-                          وusePhotoCanvas الرسم وusePhotoSteps الخطوات وusePhotoBrush السحب والفرشاة وusePhotoOutput الإخراج، وphotoShared
+                          وusePhotoCanvas الرسم وusePhotoSteps الخطوات وusePhotoBrush السحب والفرشاة ومقابض القاط (SuitTransformOverlay) وusePhotoHistory التراجع والإعادة (بسقف ذاكرة) وBrushToolbar وusePhotoOutput الإخراج، وphotoShared
     PdfScreen.tsx         ملفات PDF: التقديم الإلكتروني والاستمارات القابلة للتعبئة — وأجزاؤها في pdf/
     pdf/                  أجزاء محرّر PDF (تقسيمه بعد ١٫٧٫٠): PdfToolbar وPdfEmpty وPagesRail وPageStage وPropsPanel وPdfOutputBar
                           وLogoPicker، وخطّافاته usePdfHistory وusePdfOpen وusePdfThumbs وusePdfPageOps وusePdfAdditions وusePdfDrag
@@ -1467,7 +1467,7 @@ src/renderer/             الواجهة (React + Tailwind): index.html، وsrc/
                           useDesignLibrary (الحفظ والفتح واستئناف المسودّة) · useDesignSources (الخلفية والاستيراد والمعرض)
                           · useDesignDraft (الحفظ التلقائي مسودّةً وعند المغادرة والإغلاق، DESIGNS.md ٠٫٦) · useDesignBatch
                           · useDesignOutput (الورق والفاحص والطباعة وPDF) — ومكوّناته: Stage وEditorToolbar وEditorSidebar
-                          وDesignModals، وkit.ts ما يشتركن فيه؛ وTableGrips (حدود الجدول تُسحب، البند ٢) وToolbarMenu («تحرير ▾» و«رتّب ▾»، البند ١٣)
+                          وDesignModals، وkit.ts ما يشتركن فيه؛ وDesignToolDock (شريط الأدوات السريع بلا اختصاراتٍ بحرفٍ مفرد) وContextFormatBar (تنسيق المحدَّد) وتبويبات EditorSidebar الأربعة (كلّها مركّبة تُخفى بالصنف)، وTableGrips (حدود الجدول تُسحب، البند ٢) وToolbarMenu («تحرير ▾» و«رتّب ▾»، البند ١٣)
     panels/               لوحات المحرّر: FillPanel وPagePanel وAddPanel وElementPanel وTablePanel وLayersPanel
                           وImageShapePanel (شكل الصورة وإطارها، ١٫١) وShapeLibrary وPathPanel (الشكل الحرّ، ١٫٢)
                           وPaintPanel وGradientControl (الملء والتدرّج والحدّ، ١٫٣) وTextEffectsPanel (ظلّ النصّ وحدّه وقوسه، ١٫١٠)

@@ -150,6 +150,9 @@ export default async function scenario(page, { profile, shotsDir }) {
     ...Array.from({ length: 11 }, (_, i) => `طالب ${i + 1}\tالخامس\t2026-${String(i + 1).padStart(4, '0')}\t0770`),
     'عبد الرحمن محمد عبد الكريم حسين الجبوري\tالسادس\t2026-0099\t0780'
   ].join('\n');
+  // اللوحات في تبويباتٍ: الدفعة تحت «إضافة وتعبئة» (وتبقى مركّبة وإن خُفيت).
+  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  await wait(200);
   await page.type('textarea[data-batch-text]', list);
   await wait(600);
   const summary = await page.eval(`return document.querySelector('[data-batch-summary]')?.innerText ?? '';`);

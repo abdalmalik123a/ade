@@ -130,12 +130,14 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     const ids = e.ctrlKey ? [...new Set([...selection, ...own])] : selection.includes(el.id) ? selection : own;
     setSelection(ids);
     if (el.locked) return;
+    const movableIds = ids.filter((id) => !canvas.elements.find((x) => x.id === id)?.locked);
+    if (!movableIds.length) return;
     beforeDrag.current = canvas;
     dragRef.current = {
       kind: 'move',
-      ids,
+      ids: movableIds,
       from: pointAt(e),
-      boxes: new Map(canvas.elements.filter((x) => ids.includes(x.id)).map((x) => [x.id, x.box]))
+      boxes: new Map(canvas.elements.filter((x) => movableIds.includes(x.id)).map((x) => [x.id, x.box]))
     };
   };
 
