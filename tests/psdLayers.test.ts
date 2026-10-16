@@ -223,7 +223,7 @@ describe('ما يصير عنصرًا', () => {
 });
 
 describe('psdDesign: الخطّ من «خطوط ديوان» (DESIGNS.md ١٫٥)', () => {
-  const withFont = (font: string) =>
+  const withFont = (font: string, text = 'شهادة') =>
     layeredPsd({
       w: 60,
       h: 40,
@@ -234,7 +234,7 @@ describe('psdDesign: الخطّ من «خطوط ديوان» (DESIGNS.md ١٫٥)
           name: 'Title',
           rect: { top: 10, left: 10, bottom: 20, right: 50 },
           color: () => [0, 0, 0],
-          text: tysh('شهادة', `/EngineDict << /StyleRun << /RunArray [ << /StyleSheet << /StyleSheetData << /Font 0 /FontSize 5.0 >> >> >> ] >> >> ${fontSet(font)}`)
+          text: tysh(text, `/EngineDict << /StyleRun << /RunArray [ << /StyleSheet << /StyleSheetData << /Font 0 /FontSize 5.0 >> >> >> ] >> >> ${fontSet(font)}`)
         }
       ]
     });
@@ -256,6 +256,19 @@ describe('psdDesign: الخطّ من «خطوط ديوان» (DESIGNS.md ١٫٥)
     const out = psdDesign(withFont('SakkalMajalla-Bold'), 'شهادة.psd', ['Amiri', 'Sakkal Majalla']);
     expect(fontOf(out)).toBe("'Sakkal Majalla', serif");
     expect(out.warnings.join(' ')).not.toContain('ليست في خطوط ديوان');
+  });
+
+  // L26: خطٌّ ليس عندنا لا يُبدَل صامتًا، والعربية لا تنقلب في صندوقها.
+  it('وخطٌّ لاتينيٌّ ليس عندنا ينتهي بخطٍّ محزوم — واسمه في تحذير الخطوط الغائبة (L26)', () => {
+    const out = psdDesign(withFont('Montserrat-Bold', 'Certificate'), 'شهادة.psd');
+    expect(fontOf(out)).toMatch(/^'Montserrat', 'Cairo', 'IBM Plex Sans Arabic', sans-serif$/);
+    expect(out.warnings.join(' ')).toContain('خطوطٌ ليست في خطوط ديوان: Montserrat');
+  });
+
+  it('والاتجاه من النصّ: العربيّ rtl واللاتينيّ ltr (L26)', () => {
+    const dirOf = (text: string) => psdDesign(withFont('Amiri-Bold', text), 'شهادة.psd').elements.find((e) => e.kind === 'text')?.dir;
+    expect(dirOf('شهادة تقدير')).toBe('rtl');
+    expect(dirOf('Certificate')).toBe('ltr');
   });
 });
 

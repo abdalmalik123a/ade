@@ -54,7 +54,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.goto('designed-documents');
   await wait(700);
   await click('button[data-act="import"]');
-  await wait(5000);
+  // L04: الدقّة دون ٢٠٠ تُقال للموظف — والرسالة تختفي بعد ثوانٍ، فتُلتقط حين تظهر (وظهورها يعني أنّ الاستيراد تمّ).
+  let notice = '';
+  for (let i = 0; i < 50 && !notice; i++) {
+    await wait(200);
+    notice = await page.eval(`return document.body.innerText.match(/رُسمت الصفحة بدقّة \\d+/)?.[0] ?? '';`);
+  }
+  await wait(notice ? 500 : 0);
 
   const size = await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`);
   ok('قُرئ مقاس صفحة PDF بالنقاط', size.includes('210.0') && size.includes('297.0'));
@@ -83,6 +89,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   // الخلفية تحمل دقّتها، فلا تُطبع ضبابيةً بلا علم.
   const dpi = doc?.canvas?.background?.dpi ?? 0;
   ok('وبدقّةٍ محفوظةٍ مع الخلفية', dpi > 0);
+  // صفحة A4 لا تسعها شاشةٌ بـ٣٠٠، فتقلّ عن ٢٠٠ على الجهاز المرجعي — وعلى شاشةٍ أكبر لا تحذير.
+  const said = Number(notice.match(/\d+/)?.[0] ?? 0);
+  ok(
+    dpi < 200 ? `وقيل للموظف «رُسمت الصفحة بدقّة ${dpi}» بدقّتها المحفوظة (L04)` : `ودقّتها ${dpi} لا تحتاج تحذيرًا`,
+    dpi < 200 ? said === dpi : !notice
+  );
   const png = doc?.canvas?.background?.src;
   ok('والصورة كاملةُ الصفحة لا مقصوصة', Boolean(png));
   if (png) {
