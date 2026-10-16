@@ -8,8 +8,9 @@
  * ٣. **`new BrowserWindow(`** في ملفّاتٍ معروفة وحدها.
  * ٤. **القنوات**: كلّ `invoke` في `preload` لها `ipcMain.handle` والعكس، وكذلك `send` ↔ `ipcMain.on`، و`on` ↔ `.send`.
  * ٥. **الحجم**: ملفٌّ فوق ٤٠٠ سطر مسجَّلٌ في `structure.allow.json` بحجمه — فلا يظهر ملفٌّ جديدٌ فوقه ولا ينمو مسجَّل.
- *    السقف ينخفض ولا يرتفع: `DIWAN_STRUCTURE_RATCHET=1 npx vitest run tests/structure.test.ts` يكتب الأحجام الأصغر
- *    ويُسقط ما نزل تحت ٤٠٠ — ولا يضيف ملفًّا ولا يرفع رقمًا.
+ *    السقف ينخفض ولا يرتفع: `DIWAN_STRUCTURE_RATCHET=<مسار>[,<مسار>…] npx vitest run tests/structure.test.ts` يكتب
+ *    الأحجام الأصغر لهذه الملفّات وحدها ويُسقط منها ما نزل تحت ٤٠٠ — ولا يضيف ملفًّا ولا يرفع رقمًا. و`=1` كان يخفض
+ *    السقوف كلّها لا سقف ملفّك (L60)، فيسقط اليوم برسالةٍ ولا يكتب شيئًا.
  * ٦. **المخطط**: `CREATE TABLE` و`ALTER TABLE` في `schema.sql` و`search.sql` وملفّات `prepare*`/`ensure*` المعروفة.
  * ٧. **المساعدات المشتركة** (ز٢): لا تعريف لـ`toIndic` ولا `escapeHtml` خارج `shared/arabic.ts` و`shared/html.ts` —
  *    إلا نسخ مجلّد التصاميم الخمس (تُنقل في خطّة التصاميم، DESIGNS.md؛ والقائمة تتناقص).
@@ -156,14 +157,22 @@ describe('اختبار الهيكل (ز١)', () => {
   it('٥ — الحجم: لا ملفٌّ جديدٌ فوق ٤٠٠ سطر، ولا ينمو ملفٌّ مسجَّل', () => {
     const sizes = new Map(SOURCES.map((s) => [s.path, lineCount(s.text)]));
     const allow: Record<string, number> = existsSync(ALLOW_FILE) ? (JSON.parse(readFileSync(ALLOW_FILE, 'utf8')) as Record<string, number>) : {};
-    if (process.env['DIWAN_STRUCTURE_RATCHET'] === '1') {
-      // ينخفض ولا يرتفع: الأصغر يُكتب، وما نزل تحت الحدّ أو حُذف يسقط، ولا يُضاف جديد (إلا إنشاء القائمة أوّل مرّة).
-      const first = !existsSync(ALLOW_FILE);
-      const next: Record<string, number> = {};
-      for (const [path, n] of [...sizes].sort(([a], [b]) => (a < b ? -1 : 1))) {
-        if (n <= SIZE_CAP) continue;
-        if (first) next[path] = n;
-        else if (allow[path] !== undefined) next[path] = Math.min(allow[path]!, n);
+    const ratchet = process.env['DIWAN_STRUCTURE_RATCHET'];
+    if (ratchet === '1') {
+      throw new Error(
+        'DIWAN_STRUCTURE_RATCHET=1 كان يخفض السقوف كلّها لا سقف ملفّك (L60) — سمِّ ملفّك: DIWAN_STRUCTURE_RATCHET=src/main/x.ts[,src/…]. ولم يُكتب شيء.'
+      );
+    }
+    if (ratchet) {
+      // ينخفض ولا يرتفع، للملفّات المسمّاة وحدها: الأصغر يُكتب، وما نزل تحت الحدّ أو حُذف يسقط، ولا يُضاف جديد.
+      const named = ratchet.split(',').map((p) => p.trim().replace(/\\/g, '/')).filter(Boolean);
+      const unknown = named.filter((p) => allow[p] === undefined).map((p) => `${p}: ليس في structure.allow.json — الخفض لا يضيف ملفًّا (والمسار من جذر المستودع)`);
+      expect(unknown).toEqual([]);
+      const next = { ...allow };
+      for (const path of named) {
+        const n = sizes.get(path);
+        if (n === undefined || n <= SIZE_CAP) delete next[path];
+        else next[path] = Math.min(allow[path]!, n);
       }
       writeFileSync(ALLOW_FILE, `${JSON.stringify(next, null, 2)}\n`);
       return;
