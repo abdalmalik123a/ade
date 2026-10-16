@@ -26,7 +26,7 @@
 | [D11](orders/done/D11.md) | الجودة والاختبار `docs/QUALITY.md` | ✅ ١٦ ت١ — ١٨٩ سطرًا، ١٠٦ سيناريوهات و١٧٥ اختبارًا بأقسامها، وG30 | ⚙️ | D10 |
 | [D12](orders/done/D12.md) | `docs/sections/counter.md` — الشبّاك | ✅ ١٦ ت١ — ١٢٤ سطرًا، ٩ متطلبات (٨ نعم وSV-5 جزئيًّا ← S36) | ⚙️ | D11 |
 | [D13](orders/done/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ✅ ١٦ ت١ — ١٣٢ سطرًا، DC-1…DC-11 (DC-1 وDC-2 جزئيًّا ← S37 S38) | ⚙️ | D12 |
-| [D14](orders/D14.md) | `docs/sections/designs.md` — التصاميم | ⬜ | ⚙️ | D13 |
+| [D14](orders/D14.md) | `docs/sections/designs.md` — التصاميم | 🔒 ١٦ ت١ ١٥:١٥ | ⚙️ | D13 |
 | [D15](orders/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ⬜ | ⚙️ | D14 |
 | D16 | فصّل الأوامر D17–D21 | ⬜ | 🧭 | D15 |
 | D17 | `docs/sections/pdf.md` — أدوات PDF | ⬜ | ⚙️ | D16 |
