@@ -24,7 +24,7 @@
 | [D09](orders/done/D09.md) | دروس الميدان `docs/FIELD-LESSONS.md` | ✅ ١٦ ت١ — ٦١ درسًا بحرّاسها، وG29 لما بلا حارس | ⚙️ | D08 |
 | [D10](orders/done/D10.md) | فصّل الأوامر D11–D15 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D09 |
 | [D11](orders/done/D11.md) | الجودة والاختبار `docs/QUALITY.md` | ✅ ١٦ ت١ — ١٨٩ سطرًا، ١٠٦ سيناريوهات و١٧٥ اختبارًا بأقسامها، وG30 | ⚙️ | D10 |
-| [D12](orders/D12.md) | `docs/sections/counter.md` — الشبّاك | ⬜ | ⚙️ | D11 |
+| [D12](orders/D12.md) | `docs/sections/counter.md` — الشبّاك | 🔒 ١٦ ت١ ١١:٣٧ | ⚙️ | D11 |
 | [D13](orders/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ⬜ | ⚙️ | D12 |
 | [D14](orders/D14.md) | `docs/sections/designs.md` — التصاميم | ⬜ | ⚙️ | D13 |
 | [D15](orders/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ⬜ | ⚙️ | D14 |
