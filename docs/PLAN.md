@@ -25,7 +25,7 @@
 | [D10](orders/done/D10.md) | فصّل الأوامر D11–D15 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D09 |
 | [D11](orders/done/D11.md) | الجودة والاختبار `docs/QUALITY.md` | ✅ ١٦ ت١ — ١٨٩ سطرًا، ١٠٦ سيناريوهات و١٧٥ اختبارًا بأقسامها، وG30 | ⚙️ | D10 |
 | [D12](orders/done/D12.md) | `docs/sections/counter.md` — الشبّاك | ✅ ١٦ ت١ — ١٢٤ سطرًا، ٩ متطلبات (٨ نعم وSV-5 جزئيًّا ← S36) | ⚙️ | D11 |
-| [D13](orders/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ⬜ | ⚙️ | D12 |
+| [D13](orders/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | 🔒 ١٦ ت١ ١٥:٠٥ | ⚙️ | D12 |
 | [D14](orders/D14.md) | `docs/sections/designs.md` — التصاميم | ⬜ | ⚙️ | D13 |
 | [D15](orders/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ⬜ | ⚙️ | D14 |
 | D16 | فصّل الأوامر D17–D21 | ⬜ | 🧭 | D15 |
