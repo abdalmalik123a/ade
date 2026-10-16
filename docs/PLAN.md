@@ -30,7 +30,7 @@
 | [D15](orders/done/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ✅ ١٦ ت١ — ١٠٢ سطرًا، PH-1…PH-8 (PH-4 جزئيًّا ← S39) | ⚙️ | D14 |
 | [D16](orders/done/D16.md) | فصّل الأوامر D17–D21 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D15 |
 | [D17](orders/done/D17.md) | `docs/sections/pdf.md` — أدوات PDF | ✅ ١٦ ت١ — ١٠٥ أسطر، PD-1 وPD-2 «نعم» وPD-3 جزئيًّا ← S40 | ⚙️ | D16 |
-| [D18](orders/D18.md) | `docs/sections/scan.md` — المسح والتعرّف | ⬜ | ⚙️ | D17 |
+| [D18](orders/D18.md) | `docs/sections/scan.md` — المسح والتعرّف | 🔒 ١٦ ت١ ١٥:٤٨ | ⚙️ | D17 |
 | [D19](orders/D19.md) | `docs/sections/records.md` — الزبائن والقيد والأرشيف | ⬜ | ⚙️ | D18 |
 | [D20](orders/D20.md) | `docs/sections/print.md` — الطباعة والإخراج | ⬜ | ⚙️ | D19 |
 | [D21](orders/D21.md) | `docs/sections/system.md` — الإعدادات والترخيص والتحديث والنسخ | ⬜ | ⚙️ | D20 |
