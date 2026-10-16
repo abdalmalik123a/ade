@@ -22,12 +22,12 @@
 | [D07](orders/done/D07.md) | وثيقة المنتج `docs/PRODUCT.md` | ✅ ١٦ ت١ — ١٦١ سطرًا، ٣١ من ٣٣ صفًّا منقولة والاثنان بسببهما | ⚙️ | D06 |
 | [D08](orders/done/D08.md) | وثيقة البنية `docs/ARCHITECTURE.md` | ✅ ١٦ ت١ — ١٨٤ سطرًا، أرقامها ومساراتها مفحوصة بأمر | ⚙️ | D07 |
 | [D09](orders/done/D09.md) | دروس الميدان `docs/FIELD-LESSONS.md` | ✅ ١٦ ت١ — ٦١ درسًا بحرّاسها، وG29 لما بلا حارس | ⚙️ | D08 |
-| [D10](orders/D10.md) | فصّل الأوامر D11–D15 | 🔒 ١٦ ت١ ١١:٠٩ | 🧭 | D09 |
-| D11 | الجودة والاختبار `docs/QUALITY.md` | ⬜ | ⚙️ | D10 |
-| D12 | `docs/sections/counter.md` — الشبّاك | ⬜ | ⚙️ | D11 |
-| D13 | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ⬜ | ⚙️ | D12 |
-| D14 | `docs/sections/designs.md` — التصاميم | ⬜ | ⚙️ | D13 |
-| D15 | `docs/sections/photos.md` — الصور الشخصية | ⬜ | ⚙️ | D14 |
+| [D10](orders/done/D10.md) | فصّل الأوامر D11–D15 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D09 |
+| [D11](orders/D11.md) | الجودة والاختبار `docs/QUALITY.md` | ⬜ | ⚙️ | D10 |
+| [D12](orders/D12.md) | `docs/sections/counter.md` — الشبّاك | ⬜ | ⚙️ | D11 |
+| [D13](orders/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ⬜ | ⚙️ | D12 |
+| [D14](orders/D14.md) | `docs/sections/designs.md` — التصاميم | ⬜ | ⚙️ | D13 |
+| [D15](orders/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ⬜ | ⚙️ | D14 |
 | D16 | فصّل الأوامر D17–D21 | ⬜ | 🧭 | D15 |
 | D17 | `docs/sections/pdf.md` — أدوات PDF | ⬜ | ⚙️ | D16 |
 | D18 | `docs/sections/scan.md` — المسح والتعرّف | ⬜ | ⚙️ | D17 |
