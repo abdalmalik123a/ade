@@ -20,7 +20,7 @@
 |---|---|---|---|
 | الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
 | الوحدة | `tests/*.test.ts` — ١٧٧ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
-| السيناريو | `tools/scenarios/*.mjs` — ١٠٦ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
+| السيناريو | `tools/scenarios/*.mjs` — ١٠٧ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
 | الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
@@ -71,13 +71,13 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٧ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٧ سيناريوهات و١٧٧ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
 |---|---|---|
 | الشبّاك (13 · 9) | `service` `dailyWork` `firstDay` `parkedGone` `imageForm` `inbox` `packs` `language` `orders` `receipt` `schoolFile` `work` `workSettings` | `seasons` `imageForm` `packs` `orders` `receipt` `schoolFile` `transaction` `fillCard` `whatsappParser` |
-| المحرّر (16 · 43) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` |
+| المحرّر (17 · 43) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `pagedLetter` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` |
 | التصاميم (30 · 45) | `designs` `designBatchCheck` `designBrandKit` `designCutout` `designDock` `designDraft` `designFonts` `designIcons` `designImage` `designImport` `designImsakiya` `designKitStyles` `designLayers` `designMouse` `designOrderFill` `designPacks` `designPaint` `designPaths` `designPdf` `designPhotoEdit` `designPsd` `designPsdStyles` `designResize` `designShapes` `designTable` `designTextEffects` `designUx` `elements` `fonts` `batches` | `canvas` `canvasEdit` `designKit` `designImport` `psdLayers` `realPsd` `psdStyles` `imageSize` `preflight` `kitPreflight` `securitySeal` `layerFields` `batchMap` `citizenFields` `brand` `bundledElements` `designDraft` `designFixtures` `designPack` `designStructure` `elementsService` `fillFrom` `fonts` `fontsService` `imageExport` `imageShapes` `imsakiya` `objectCutout` `paint` `pathShapes` `photoEdit` `relayout` `rendererSnapshots` `selectGeometry` `svgClean` `tableSizes` `tableStyles` `textEffects` `clipart` `barcode` `qr` `sheetRead` `cellText` `makeDesignFixtures` `makePsdFixture` |
 | الصور الشخصية (8 · 8) | `photos` `studio` `portrait` `photoSteps` `colorErase` `autoCollar` `faceChin` `repair` | `portrait` `portraitFace` `portraitLoad` `portraitSkin` `portraitTools` `colorErase` `inpaint` `photoSheet` |
 | PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
@@ -156,7 +156,7 @@
 
 | الثغرة | البند |
 |---|---|
-| ترقيم الصفحات وتكرار الترويسة ورأس الجدول في سيناريو | G01 |
+| ترقيم الصفحات وتكرار الترويسة ورأس الجدول في سيناريو | G01 — أُغلق: `pagedLetter` (D31) |
 | الطلب يصير «جاهزًا» بعد طباعة دفعته (حوار الطابعة لا يُضغط) | G02 |
 | مكوّنات الواجهة وحدها بلا سيناريو (قُسمت الشاشات ولم تُختبر مكوّناتها وحدها) | G03 |
 | دفعة ٥٠٠ بطاقة بصورها وPDF لها (قيست ٤٠٠ هوية، §٨) | G06 |
