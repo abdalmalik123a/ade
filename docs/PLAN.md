@@ -33,7 +33,7 @@
 | [D18](orders/done/D18.md) | `docs/sections/scan.md` — المسح والتعرّف | ✅ ١٦ ت١ — ١١٢ سطرًا، SC-2 SC-3 SC-5 «نعم» وSC-1 وSC-4 جزئيًّا ← E07 وS41 | ⚙️ | D17 |
 | [D19](orders/done/D19.md) | `docs/sections/records.md` — الزبائن والقيد والأرشيف | ✅ ١٦ ت١ — ١٠٧ أسطر، CU-1 CU-2 CU-4 CU-5 «نعم»، ولا بند جديد | ⚙️ | D18 |
 | [D20](orders/done/D20.md) | `docs/sections/print.md` — الطباعة والإخراج | ✅ ١٦ ت١ — ١٠٠ سطر، PR-1…PR-3 «نعم» وPR-4 جزئيًّا ← S42 | ⚙️ | D19 |
-| [D21](orders/D21.md) | `docs/sections/system.md` — الإعدادات والترخيص والتحديث والنسخ | ⬜ | ⚙️ | D20 |
+| [D21](orders/D21.md) | `docs/sections/system.md` — الإعدادات والترخيص والتحديث والنسخ | 🔒 ١٦ ت١ ١٦:٠١ | ⚙️ | D20 |
 | D22 | فصّل الأوامر D23–D26 | ⬜ | 🧭 | D21 |
 | D23 | دليل الواجهة `docs/UI.md` | ⬜ | ⚙️ | D22 |
 | D24 | دليل المالك `docs/OWNER-GUIDE.md` | ⬜ | ⚙️ | D23 |
