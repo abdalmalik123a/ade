@@ -85,7 +85,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 ### النماذج المحلية والتعلّم
 - **ONNX Runtime** في العملية الرئيسة، والنماذج في `resources/models/` بمصدرها ورخصتها في `NOTICE.md`: MODNet ٦٫٦ م.ب (فصل الشخص) ·
   BiRefNet-lite ٥٥٫٨ م.ب (الأشياء) · YuNet ٠٫٢٣ م.ب (الوجه). وملفّات VC++ تُحمَّل عند الحاجة (ر108).
-- **التعرّف:** tesseract.js (WASM) ببيانات `resources/tessdata` في عاملين (`services/ocr.ts`)، وMRZ في `shared/mrz*.ts` و`services/mrzRead.ts`.
+- **التعرّف:** tesseract.js (WASM) ببيانات `resources/tessdata` في ثلاثة عمّال: المستمسكات، والورقة، وMRZ ظهر البطاقة (`services/ocr.ts`)، وMRZ في `shared/mrz*.ts` و`services/mrzRead.ts`.
 - **التعلّم المحلي** (`services/learning.ts`): اقتراحٌ لا قرار، والحتميّة أوّلًا، ويعمل بلا نموذج، ولا شيء يغادر الجهاز (يُراجَع عند البوّابة، F01).
   تصحيحات الموظف هي بيانات التدريب (جدول `corrections`)؛ يُقيَّد ما غُيّر لا ما قُبل؛ والثقة سقفها ٠٫٩٥ وعتبة التطبيق `APPLY_THRESHOLD` = ٠٫٨
   (`shared/doc.ts`)؛ ولا تطبيقٌ صامت.
