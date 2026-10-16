@@ -21,7 +21,7 @@
 | [D06](orders/done/D06.md) | البنود المفتوحة في PLAN بأرقامٍ ثابتة (G/A/E/S/R/F) | ✅ ١٦ ت١ — ٩٦ بندًا مرقّمًا وواحدٌ مغلق، والخريطة في reports | ⚙️ | D05 |
 | [D07](orders/done/D07.md) | وثيقة المنتج `docs/PRODUCT.md` | ✅ ١٦ ت١ — ١٦١ سطرًا، ٣١ من ٣٣ صفًّا منقولة والاثنان بسببهما | ⚙️ | D06 |
 | [D08](orders/done/D08.md) | وثيقة البنية `docs/ARCHITECTURE.md` | ✅ ١٦ ت١ — ١٨٤ سطرًا، أرقامها ومساراتها مفحوصة بأمر | ⚙️ | D07 |
-| [D09](orders/D09.md) | دروس الميدان `docs/FIELD-LESSONS.md` | ⬜ | ⚙️ | D08 |
+| [D09](orders/D09.md) | دروس الميدان `docs/FIELD-LESSONS.md` | 🔒 ١٦ ت١ ١٠:٥٦ | ⚙️ | D08 |
 | [D10](orders/D10.md) | فصّل الأوامر D11–D15 | ⬜ | 🧭 | D09 |
 | D11 | الجودة والاختبار `docs/QUALITY.md` | ⬜ | ⚙️ | D10 |
 | D12 | `docs/sections/counter.md` — الشبّاك | ⬜ | ⚙️ | D11 |
