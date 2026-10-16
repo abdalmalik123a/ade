@@ -29,7 +29,7 @@
 | [D14](orders/done/D14.md) | `docs/sections/designs.md` — التصاميم | ✅ ١٦ ت١ — ١٣٢ سطرًا، DS-1…DS-10 «نعم» وDS-11 لا يُبنى، والأعداد من الكود | ⚙️ | D13 |
 | [D15](orders/done/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ✅ ١٦ ت١ — ١٠٢ سطرًا، PH-1…PH-8 (PH-4 جزئيًّا ← S39) | ⚙️ | D14 |
 | [D16](orders/done/D16.md) | فصّل الأوامر D17–D21 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D15 |
-| [D17](orders/D17.md) | `docs/sections/pdf.md` — أدوات PDF | ⬜ | ⚙️ | D16 |
+| [D17](orders/D17.md) | `docs/sections/pdf.md` — أدوات PDF | 🔒 ١٦ ت١ ١٥:٤٣ | ⚙️ | D16 |
 | [D18](orders/D18.md) | `docs/sections/scan.md` — المسح والتعرّف | ⬜ | ⚙️ | D17 |
 | [D19](orders/D19.md) | `docs/sections/records.md` — الزبائن والقيد والأرشيف | ⬜ | ⚙️ | D18 |
 | [D20](orders/D20.md) | `docs/sections/print.md` — الطباعة والإخراج | ⬜ | ⚙️ | D19 |
