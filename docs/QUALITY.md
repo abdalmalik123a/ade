@@ -1,0 +1,189 @@
+# الجودة والاختبار
+
+> **كيف يُحرس ديوان:** طبقات الاختبار وأوامرها، والسيناريوهات بأقسامها، وميزانية الاختبار، والفحص الشامل، وحرّاس عدم الكسر، وقائمة فحص الأجهزة.
+> كُتبت بالأمر D11 (١٦ ت١ ٢٠٢٦) وتحلّ محلّ `TESTING.md` (يُنقل إلى `docs/legacy/` في D26). وما يغطّيه كلّ اختبارٍ بالتفصيل في وثيقة قسمه (عنوانها السابع)،
+> والمزلق برقم درسه في [`FIELD-LESSONS.md`](FIELD-LESSONS.md)، والبند المفتوح برقمه في [`PLAN.md`](PLAN.md). والأعداد هنا مستخرجةٌ بأمرٍ يوم كُتبت.
+
+## ١. القاعدة
+
+- **ما يُختبر يُكتب** (ر018): الطريقة هنا، وما يغطّيه كلّ اختبارٍ وسيناريو وما لم يُغطَّ في وثيقة قسمه.
+- **«عدم الكسر» أن يبقى ما يعمل اليوم عاملًا بعد كلّ خطوة** (ر144): البرنامج لم يُنشر، فلا شيء يُحرس لأجل زبائن؛ وقواعد الإصدارات في
+  `tests/fixtures/` تبقى اختبارًا لترقيات القاعدة.
+- **ثلاث طبقات** (المبدأ ٥ في [`ARCHITECTURE.md`](ARCHITECTURE.md) §٢): المنطق، والمحرّكات، والسيناريوهات التي تقود البرنامج. والمحرّكات اليوم
+  (PDF والصور والمسح) في Node تُختبر بالوحدة مع المنطق؛ وطبقتها المستقلّة تأتي مع محرّكات Rust.
+- **ما عليه ✅ لا يُعاد فحصه إلا إن سقط اختبار**؛ وقول المالك «تمّت» لاختبار الميدان نهائي (ر071).
+- **لا يُدّعى نجاح اختبارٍ لم يُشغَّل**، ويُذكر الفاشل والمتعذّر بوضوح (`CLAUDE.md` §«الفحص»).
+
+## ٢. طبقات الاختبار وأوامرها
+
+| الطبقة | أين | الأمر | ما يُعرف عنها |
+|---|---|---|---|
+| الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
+| الوحدة | `tests/*.test.ts` — ١٧٥ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
+| السيناريو | `tools/scenarios/*.mjs` — ١٠٦ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
+| لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
+| الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
+| الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
+
+**الملفّات المرجعية (`tests/fixtures/`):** قواعد الإصدارات الإحدى عشرة `release-1.0.0.db`…`release-1.7.2.db` كتبها كلّ إصدارٍ بشيفرته ويفتحها
+`releaseDb` · القاعدة المُسنّة `aged-60ad42f.db` يبنيها الإصدار القديم نفسه لا محاكاته (`tools/aged-db/`) ويفتحها `agedDb` · تصاميم كلّ إصدار نموذج
+في `designs/v1/` يفتحها `designFixtures` · ملفّات Word من مكاتب بأسماء مختلَقة (`fixtures`) · PDF مشفّرة (`pdfLock`) · قراءة ورقةٍ مسجّلة
+`paper-letter.json` (`paperDoc`) · `psd-styles.psd` (`designPsdStyles`).
+**ومولّداتها:** `makeReleaseDb` و`makeDesignFixtures` و`makePsdFixture` في `tests/`، و`tools/mrz-fixture.mjs` و`tools/psd-layers.mjs` و`tools/aged-db/`،
+وتحويل النماذج في `tools/models/`؛ أمّا `tools/prepare-suits.py` فبلا غايةٍ منذ فُرّغ القاط المدمج ([`SUITS-NOTICE.md`](SUITS-NOTICE.md)).
+**والترحيل يُختبر بقاعدةٍ مُسنّة:** `migrations` يحذف الأعمدة الجديدة ويسأل أتقوم الشاشات. **ويُتخطّى `realPsd`** إن غاب ملفّ PSD الحقيقيّ عن الجهاز
+(مجلّده `DIWAN_REAL_PSD` وإلا «التنزيلات») — ملفّات المالك لا تدخل المستودع.
+
+## ٣. أبواب الاختبار `DIWAN_TEST_*`
+
+حوارات النظام (الفتح والحفظ، والطابعة، والماسح، والكاميرا، وسؤال الإغلاق) لا تُضغط آليًّا، فلها أبوابٌ يقرؤها البرنامج في موضعها خلف `__DIWAN_TEST_DOORS__`:
+
+| الباب | يُقرأ في `src/main/` | ما يفعل |
+|---|---|---|
+| `SAVE_DIR` `OPEN_FILE` `OPEN_FILES` `OPEN_DIR` | `ipc/files.ts` | مجلّد الحفظ وما يُفتح، بدل حوار ويندوز |
+| `SCAN_FILE` | `services/scanner.ts` | صورةٌ بدل الماسح؛ والمِقْود يجعله `none` لكلّ سيناريو (L57) |
+| `INBOX` | `services/inbox.ts` | مجلّدات «الملفّات» (التنزيلات وواتساب والفلاشة)، فلا تُقرأ ملفّات صاحب الجهاز |
+| `FAKE_CAMERA` | `index.ts` | كاميرا مصنوعةٌ يرسمها Chromium |
+| `PRINT_LOG` | `services/render.ts` | سجلٌّ بدل الورق؛ طابعةٌ يبدأ اسمها «معطّلة» تُرفض، و«تتوقّف» تقف عند الثالثة (L58) |
+| `WINDOWS_FONTS` | `services/fonts.ts` | مجلّد خطوطٍ يعدّه السيناريو بدل خطوط الجهاز |
+| `SLOW_ISSUE` | `ipc/documents.ts` | يُبطئ قيد الدفعة ليُقتل البرنامج في منتصفه (L57) |
+| `CLOSE_ANSWER` | `index.ts` | أجوبة «اترك بلا حفظ؟» عند الإغلاق (`stay,leave`، وآخرها يتكرّر) |
+| `ROLLBACK_ACTION` | `ipc/update.ts` | يختار التراجع في حوار التحديث |
+| `NOW_FILE` · `MACHINE_ID` · `LICENSE_PUBKEY` · `UPDATE_NO_LAUNCH` | `clock.ts` · `ipc/license.ts` · `ipc/update.ts` | الساعة من ملفّ، ورمز جهازٍ ومفتاحٌ عامٌّ للاختبار، والتحديث يُفكّ ولا يُشغَّل — **في التطوير وحده** (`!app.isPackaged`) |
+
+- **أين تعمل:** في التطوير، وفي «بناء الاختبار» (`npm run pack` ← `release/test/win-unpacked/`) عدا الأربعة الأخيرة؛ ولذلك تسقط `license` و`update`
+  و`weekly` على المحزوم عمدًا، وتُشغَّل على التطوير.
+- **وتُحذف من بناء الإصدار** (`npm run dist` بـ`--mode release`، والتعريف في `electron.vite.config.ts`)، وبوّابة `npm run release` (`tools/release.mjs`)
+  تقرأ `app.asar` وتفشل إن بقي باب (L53). فلا يجري على بناء الإصدار إلا دخان `screens` و`harden` و`singleInstance`.
+- **أسئلة الواجهة** (`kit/ask.ts` و`kit/ConfirmHost.tsx`) تُجاب بـ`[data-confirm]` و`[data-choice="…"]`، وEsc أو النقر خارجها هو الجواب الاحتياطي.
+
+## ٤. المِقْود وكتابة السيناريو
+
+- **`tools/drive.mjs`** يقلع البرنامج على المنفذ ٩٢٢٣ (نسخةٌ واحدة في المرّة، L58) بملفّ تعريفٍ نظيف يُمحى في آخره ولو سقط (`KEEP_RUN=1` يُبقيه)،
+  والماسح `none`، وبلا إبطاءٍ للنافذة المغطّاة؛ واستثناءٌ غير ممسوك في الواجهة يُفشل السيناريو. وفيه `kill` (من خارج البروتوكول) و`afterRestart`
+  و`betweenRestarts({ profile })`، و`DIWAN_EXE` يشغّل البرنامج المحزوم.
+- **قواعد الكتابة** (L59، وما لم يذكره درس): `page.eval(...)` يلفّ الكود في دالّة async (استعمل `return`) · `page.goto` ينقر السكّة فيمرّ بحارس المغادرة ·
+  `page.key('Escape')` ضغطةٌ حقيقية · `clickExact` أو `data-act` لا `clickText` · `page.typeKeys` لما يكتبه المستخدم، و`Input.insertText` في المحرّر ·
+  حقل React يُملأ بالمُعيِّن الأصليّ ثم حدث `input` (والقائمة `change`) · الشبّاك مركّبٌ دائمًا وإن خفي: حدِّد بسمة `data-…` أو بنصٍّ خاصّ بالشاشة ·
+  سحب الفأرة بمهلة ٥٠ م.ث بين الحركات · السيناريو يعيد فحوصه نصًّا أو قائمة (`drive.mjs` يجمعها نصًّا) · PDF يُفحص بمحتواه لا بترويسته (L02) ·
+  وكلّ سؤالٍ جديد في الواجهة يُسقط السيناريوهات التي لم تُجبه — فيُجاب فيها.
+
+## ٥. السيناريوهات والاختبارات بأقسامها
+
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٥ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
+
+| القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
+|---|---|---|
+| الشبّاك (13 · 9) | `service` `dailyWork` `firstDay` `parkedGone` `imageForm` `inbox` `packs` `language` `orders` `receipt` `schoolFile` `work` `workSettings` | `seasons` `imageForm` `packs` `orders` `receipt` `schoolFile` `transaction` `fillCard` `whatsappParser` |
+| المحرّر (16 · 44) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` `qr` |
+| التصاميم (30 · 44) | `designs` `designBatchCheck` `designBrandKit` `designCutout` `designDock` `designDraft` `designFonts` `designIcons` `designImage` `designImport` `designImsakiya` `designKitStyles` `designLayers` `designMouse` `designOrderFill` `designPacks` `designPaint` `designPaths` `designPdf` `designPhotoEdit` `designPsd` `designPsdStyles` `designResize` `designShapes` `designTable` `designTextEffects` `designUx` `elements` `fonts` `batches` | `canvas` `canvasEdit` `designKit` `designImport` `psdLayers` `realPsd` `psdStyles` `imageSize` `preflight` `kitPreflight` `securitySeal` `layerFields` `batchMap` `citizenFields` `brand` `bundledElements` `designDraft` `designFixtures` `designPack` `designStructure` `elementsService` `fillFrom` `fonts` `fontsService` `imageExport` `imageShapes` `imsakiya` `objectCutout` `paint` `pathShapes` `photoEdit` `relayout` `rendererSnapshots` `selectGeometry` `svgClean` `tableSizes` `tableStyles` `textEffects` `clipart` `barcode` `sheetRead` `cellText` `makeDesignFixtures` `makePsdFixture` |
+| الصور الشخصية (8 · 8) | `photos` `studio` `portrait` `photoSteps` `colorErase` `autoCollar` `faceChin` `repair` | `portrait` `portraitFace` `portraitLoad` `portraitSkin` `portraitTools` `colorErase` `inpaint` `photoSheet` |
+| PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
+| المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
+| الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
+| الطباعة والإخراج (6 · 6) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` |
+| النظام (21 · 38) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` |
+
+## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
+
+1. `npm run typecheck` بعد كلّ تغيير، وبعد كتابة الاختبارات، وبين خطوات `tools/split/`.
+2. `npx vitest run`، أو ملفّات الاختبار المعنيّة بأسمائها (`npx vitest run tests/<الاسم>.test.ts`).
+3. السيناريوهات المتأثّرة بأسمائها، بعد `npx electron-vite build`: سيناريوهات قسمه في §٥ التي تمرّ بما تغيّر (وثيقة القسم تقول ما يغطّيه كلٌّ).
+4. **بندٌ في الواجهة:** سيناريو جديدٌ يثبته، والتحقّق بتشغيل البرنامج عبر `tools/drive.mjs` — النصّ قبل اللقطات، واللقطات قليلةٌ مصغّرة.
+5. **تغييرٌ كبير** (نقلٌ أو تقسيمٌ أو سؤالٌ جديد في الواجهة): كلّ سيناريو يمرّ بما تغيّر يُشغَّل بعده — فقد حملت ستّةٌ مرّةً توقّعاتٍ قديمة.
+6. `localPaths` و`packs` يفشلان على Linux كما هما: يُشغَّلان على ويندوز («من طريقة العمل» في FIELD-LESSONS).
+7. **لا فحص شامل** إلا قبل إصدارٍ بأمر المالك (§٧).
+
+## ٧. الفحص الشامل والإصدار
+
+- **متى:** قبل إصدارٍ وحده، بأمر المالك (ر037 ر085)، على «بناء الاختبار» (ر116): `npm run pack` ثم
+  `DIWAN_EXE=release/test/win-unpacked/Diwan.exe node tools/sweep.mjs` في الخلفية. وعلى التطوير: `node tools/sweep.mjs`.
+- **كيف:** `tools/sweep.mjs` يشغّل السيناريوهات كلّها بالتتابع بمهلة عشر دقائق لكلٍّ (و`resilience` عشرين بـ`SOAK_ROUNDS=15`)، و`imageForm` ثلاث مرّاتٍ
+  بثلاث استمارات، ويعيد ما يفشل مرّةً ليميّز المتقلّب من الثابت؛ وتقريره في `reports/sweep-<التاريخ>/` (خارج git).
+- **سجلّ جهاز المالك:** على المحزوم يحفظ `tools/registryGuard.mjs` مرساة المدّة (`HKCU\Software\Diwan`) ويعيدها (`tests/registryGuard.test.ts`)، ولا يُلمس بغير قوله (ر116).
+- **تسقط عمدًا على المحزوم:** `license` و`update` و`weekly` (أبوابها للتطوير وحده، §٣) — تُشغَّل على التطوير.
+- **معايير النجاح:** الاستمرار بلا سقوط (`resilience`، وساعاتٌ بـ`SOAK_ROUNDS` G23) · لا خطأ يُبلع (ErrorBoundary لكلّ شاشة، وشريط الأخطاء وسجلّها، والمِقْود
+  يُفشل كلّ استثناء) · الحوافّ (رأس السنة، ومنتصف الليل `midnight`، واللوحة العربية، والأسماء الطويلة، والحقول الفارغة، والملفّات الفاسدة `corruptFiles`) ·
+  الحِمل (`load` و`batches` و`printResume` و`resilience`) · البيانات (`backup` و`agedDb` والإغلاق المفاجئ).
+- **آخر جولة** (١٢ ت١، على «بناء الاختبار»): ١٠٣ تشغيلًا، ٩٩ نجحت، ✓١٨٤٠ و✗٥ في ٣٦٠٨ ث؛ سقط الثلاثة عمدًا و`pdfTools` (صار ينتظر الملفّين حتى ٣٠ ث)،
+  وتقلّب `bookEditor` و`designImage` ونجحا بالإعادة (G04). ولم يكن فيها خمسةٌ أُضيفت بعدها: `autoCollar` `colorErase` `designDock` `faceChin` `repair`.
+- **بوّابة الإصدار** `npm run release`: شجرةٌ نظيفة، وقاعدة `tests/fixtures/release-<الإصدار>.db`، والوحدة ✓، والمثبّت، ولا باب في `app.asar`، وقسم الإصدار
+  في `CHANGELOG.md` — وإلا فشلت. والإصدار والوسم بأمر المالك وحده (G28).
+- **خطّ أساس التدقيق** (١٣ ت١): الوحدة ١٧٩٤ ✓ · ٢١ سيناريو بـ٥٧٧ ✓ · الحِمل خمسون ألف كتاب · `npm audit` ثلاث ثغرات (A12).
+
+## ٨. حرّاس عدم الكسر — الموجة ٢
+
+**القائم اليوم:** الطبقات في §٢، ولقطات الرسّام، والسقوف، وقواعد الإصدارات. **وما يُبنى:** مقارنة صور PDF آليًّا مع الإصدار السابق (المبدأ ٤ في ARCHITECTURE؛
+ولا حارس اليوم — G30)، والقياس على الجهاز المرجعي: **Core i5 بذاكرة ٨ غيغا**، مقياس كلّ هدف أداء. وأهداف وثيقة المتطلبات §٦ مقابل ما قيس:
+
+| الهدف | المقيس اليوم | البند |
+|---|---|---|
+| إقلاعٌ بارد حتى الشبّاك في ٥ ث أو أقلّ | لم يُقَس | G07 |
+| فتح تصميمٍ أو وثيقةٍ من ١٣٤ صفحة بلا تجمّد | لم يُقَس، ولا التحريك بمئتي عنصر | G06 · G07 |
+| ما يزيد على ثانيتين يُظهر تقدّمًا ولا يجمّد الواجهة | لا حارس آليّ | G06 · G07 |
+| الذاكرة في الاستعمال العادي دون ١٫٥ غيغا | لم يُقَس؛ وذروة PDF دفعة ٤٠٠ هوية ١٫٧٥ غيغا | G07 |
+| المثبّت ٢٠٠ م.ب أو أقلّ | ١٧١٬٩٣٣٬٠٤١ بايت (`release/diwan-1.7.2-setup.exe`) | — |
+| دفعةٌ بصورها حتى PDF | ٤٠٠ هوية: ١١٫٨ ث و٦٩٫٦ م.ب على i5-1035G1 (`tools/experiments/designs-0.10.mjs`)؛ و٥٠٠ لم تُقَس | G06 |
+
+- **الموثوقية** (§٦): كتابةٌ ذرّية لملفّات الحالة (`stateFile`) · حفظٌ تلقائي وحمايةٌ عند المغادرة (`editorDraft` `designDraft` `leaveGuards` `leaveGuard`؛
+  وورقة الأسئلة ومعاملة الشبّاك S02) · لا فقد عند التحديث أو التراجع (`preUpdateBackup` `dataVersion` `releaseDb` `restoreSwap` `restoreStuck`).
+- **ما يجب أن يبقى** (مراجعة ٧ ت١): WAL مع `synchronous = FULL` (`durability`، L39) · نسخةٌ قبل الترقية (`preUpdateBackup`) · sandbox وFuses (`harden`) ·
+  توقيع Ed25519 للتحديث والترخيص (`update` `license`) · لا كود شبكة، وحزمةٌ بلا مفاتيح خاصّة (لا حارس آليّ لهما — PRODUCT §٣).
+- **بنود الموجة ٢ بأرقامها:** سيناريوهاتٌ ناقصة G01 G02 G03 G04 · أداةٌ G05 · قياسٌ G06 G07 · بيد المالك G08–G24 وG27 G28 · وثائق G25 G26 ·
+  دروسٌ بلا حارس G29 · مقارنة صور PDF G30.
+
+## ٩. قائمة فحص الأجهزة — مهامّ المالك
+
+- [`HARDWARE-CHECKLIST.md`](HARDWARE-CHECKLIST.md): ٣٧ بندًا تُجرى على المثبّت نفسه قبل أن يُباع الإصدار — التثبيت ٧ · الطابعات ٨ · الماسح ٣ ·
+  الجهاز والقرص والكهرباء ٩ · الواجهة ٣ · التفعيل والتحديث ٧. كلّها بيد المالك في الموجة ٢ (G09، ر154)؛ ومتى قال إنّه أجرى بندًا عُلِّم ✅،
+  وقوله «تمّت» نهائي (ر071) فلا يُطلب ثانيةً.
+- **وقبل كلّ إصدارٍ باليد** (G10): الماسح (WIA)، والكاميرا الحقيقية، والطابعة والوجهان والمعايرة بالمسطرة، والباركود وQR بالهاتف من ورقةٍ مطبوعة.
+- **والميدان:** اختبار الموظف الجديد بثماني مهامّ في خمسة مكاتب (G19) · أمثلة التصاميم التسعة والحكم للمالك (S26) · تجربة طباعة المؤثّرات (G15) ·
+  التجربة الميدانية أسبوعين (R01).
+
+## ١٠. السقوف
+
+- `tests/structure.allow.json`: ١٧ ملفًّا فوق ٤٠٠ سطر بسقوفها، تنخفض ولا ترتفع (قاعدة `structure` الخامسة)؛ وأغلبها في main وshared (A11).
+- `tests/designStructure.allow.json` فارغ (`{}`): لا ملفّ في التصاميم فوق ٤٠٠ سطر، ولا مكوّن فوق ٣٠٠.
+- **لا يُرفع سقف:** الملفّ يُقسَّم بأدوات `tools/split/` نقلًا حرفيًّا (`outline` ثم `render` و`hook` و`move` و`prune`)، و`npm run typecheck` بين الخطوات.
+  و`DIWAN_STRUCTURE_RATCHET=1` يخفض السقوف كلّها لا سقف ملفّك وحده (L60).
+
+## ١١. ما لا يغطّيه الفحص
+
+ثغرات `TESTING.md` المرقّمة وأين صارت:
+
+| الثغرة | البند |
+|---|---|
+| ترقيم الصفحات وتكرار الترويسة ورأس الجدول في سيناريو | G01 |
+| الطلب يصير «جاهزًا» بعد طباعة دفعته (حوار الطابعة لا يُضغط) | G02 |
+| مكوّنات الواجهة وحدها بلا سيناريو (قُسمت الشاشات ولم تُختبر مكوّناتها وحدها) | G03 |
+| دفعة ٥٠٠ بطاقة بصورها وPDF لها (قيست ٤٠٠ هوية، §٨) | G06 |
+| MRZ ببطاقةٍ ملوّنة بمقاسها | G11 |
+| الماسح متعدّد البطاقات بمسحٍ حقيقي | G12 |
+| صورة ورقةٍ حقيقية بالهاتف وبالماسح | G13 |
+| ملفّات PDF حكومية حقيقية في المحرّر | G14 |
+| نافذة «الفقرة المكرّرة» بزرّ «لا تقترحها» | G17 |
+| «راجع مفتاحه» في ورقة الدوائر بعشر أوراقٍ فأكثر | G18 |
+| رأس السنة على البرنامج المفتوح ليلتها | G21 |
+| نسخةٌ احتياطية صنعها إصدارٌ قديم (الترقية والتراجع يغطّيهما `preUpdateBackup`) | G22 |
+| ما لا يُختبر إلا باليد: الماسح والكاميرا والطابعة والرموز من الورق | G10 |
+
+**ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08) · ESLint و`rules-of-hooks` (G05) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
+مقارنة صور PDF (G30).
+
+## ١٢. المراجعات والتدقيق
+
+- **المراجعة الكبيرة:** قراءةٌ فقط · فرقٌ ثم ترجيحٌ ثم حكمٌ عامّ · أخطر ٥–٧ يُتحقَّق منها بنفسك · الشدّة حرجٌ/عالٍ/متوسّط/منخفض والكلفة صغيرة/متوسّطة/كبيرة ·
+  أسئلةٌ بلغةٍ بسيطة مع توصية · بيانُ ما قُرئ من جهاز المالك وما لم يُفتح · وكيلان أو ثلاثة معًا · وعند «هل بقي الكثير؟» خياران.
+- **التدقيق:** لا تعديل ولا إيداع ولا دفع أثناءه (أمر المالك يغلب `CLAUDE.md`) · يعمل على نسخة `git archive` في scratchpad · والوصلة تُزال
+  بـ`cmd /c rmdir` قبل `git worktree remove` (L61).
+- **تدقيق الاستعمال:** البرنامج يُشغَّل عبر CDP، والنصّ يُقرأ قبل اللقطات، ولا تغيير ولا طباعة حقيقية.
+- **التقرير الخارجيّ:** يُعاد إنتاج كلّ بندٍ فيه قبل إصلاحه («من طريقة العمل» في FIELD-LESSONS).
+- **صور المالك** في `reports/صور-الاختبار/` لا تُودَع أبدًا، والتشخيص عليها في `reports/diag/` بإعداد vitest خاصّ لا يُودَع.
+
+## ١٣. الإعداد على جهازٍ جديد
+
+ويندوز، وNode 24 وnpm 11: `git clone -b packs <رابط المستودع>` (المستودع خاصّ، ورابطه من `git remote -v`) ثم `npm install` (يركّب better-sqlite3
+لـElectron عبر `postinstall`) ثم `npm run build`. وأدوات المالك ومفتاحه الخاصّ ليست في المستودع. والبناء من الصفر بأمرٍ واحد (وثيقة المتطلبات §٦)
+لم يتحقّق بعد: ثلاثة أوامر، ولا CI (A13).
