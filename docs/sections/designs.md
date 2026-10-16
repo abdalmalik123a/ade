@@ -103,7 +103,7 @@
 - `designMouse` — مستطيل التحديد وCtrl+A والتجميع والتدوير. · `designDraft` — لا يضيع تصميم. · `designResize` — «غيّر المقاس». · `designImage` — الحفظ صورةً.
 - `designShapes` — قصّ الصورة بشكلٍ وإطاره. · `designPaths` — الشكل الحرّ ومكتبته. · `designPaint` — التدرّج والشفافية والمنقّط. · `designTextEffects` — الظلّ والحدّ والقوس.
 - `designTable` — الجدول بأسطره وألوانه. · `designPhotoEdit` — «حسّن الصورة». · `designCutout` — «أزل الخلفية» لشيء.
-- `designImport` — من Word بمقاسه ومواضعه. · `designPdf` — ملصقٌ من PDF. · `designPsd` — من Photoshop بطبقاته. · `designPsdStyles` — مؤثّرات PSD ومجموعاته.
+- `designImport` — من Word بمقاسه ومواضعه. · `designPdf` — ملصقٌ من PDF، و«رُسمت الصفحة بدقّة ن» تُقال بالدقّة المحفوظة (L04). · `designPsd` — من Photoshop بطبقاته. · `designPsdStyles` — مؤثّرات PSD ومجموعاته.
   · `designLayers` — أسماء الطبقات تُقترح حقولًا.
 - `designKitStyles` — المعرض بأنماطه وأنواعه. · `designBrandKit` — طقم الجهة. · `designImsakiya` — الإمساكية من جدولٍ رسمي. · `designOrderFill` — الطلب وملفّ المدرسة يملآن.
 - `designBatchCheck` — فحص الدفعة قبل الطباعة. · `batches` — الدفعات (ودفعة ٥٠٠ بطاقة). · `designPacks` — حزم التصاميم.
@@ -117,7 +117,7 @@
   · `qr` · `securitySeal`.
 - **المعرض والجهة:** `designKit` · `kitPreflight` (المعرض كلّه بفحص ما قبل الطباعة) · `brand` · `imsakiya` · `fillFrom` · `designPack` · `clipart` (لا شعار دولة).
 - **الدفعات:** `preflight` · `batchMap` · `citizenFields` · `sheetRead` (قائمةٌ من Excel أو CSV) · `cellText`.
-- **الاستيراد:** `designImport` · `psdLayers` · `psdStyles` و`makePsdFixture` · `realPsd` (يُتخطّى إن غاب القالب الحقيقيّ) · `layerFields`.
+- **الاستيراد:** `designImport` · `psdLayers` (ومعه الخطّ الغائب والاتجاه، L26) · `psdStyles` و`makePsdFixture` · `realPsd` (يُتخطّى إن غاب القالب الحقيقيّ) · `layerFields`.
 - **المكتبتان:** `fonts` · `fontsService` · `bundledElements` · `elementsService` · `svgClean`.
 
 **ويشترك في حراسته:** `print` (`production` و`imposition` و`calibration`) · `photos` (`colorErase` و`inpaint`) · `counter` (`imageForm`) · `system` (`contentPack`).

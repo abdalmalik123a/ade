@@ -19,7 +19,7 @@
 | الطبقة | أين | الأمر | ما يُعرف عنها |
 |---|---|---|---|
 | الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
-| الوحدة | `tests/*.test.ts` — ١٧٦ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
+| الوحدة | `tests/*.test.ts` — ١٧٧ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
 | السيناريو | `tools/scenarios/*.mjs` — ١٠٦ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
@@ -71,7 +71,7 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٦ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٧ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
@@ -84,7 +84,7 @@
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
 | الطباعة والإخراج (6 · 6) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` |
-| النظام (21 · 39) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` |
+| النظام (21 · 40) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
 
@@ -132,7 +132,7 @@
 - **ما يجب أن يبقى** (مراجعة ٧ ت١): WAL مع `synchronous = FULL` (`durability`، L39) · نسخةٌ قبل الترقية (`preUpdateBackup`) · sandbox وFuses (`harden`) ·
   توقيع Ed25519 للتحديث والترخيص (`update` `license`) · لا كود شبكة، وحزمةٌ بلا مفاتيح خاصّة (لا حارس آليّ لهما — PRODUCT §٣).
 - **بنود الموجة ٢ بأرقامها:** سيناريوهاتٌ ناقصة G01 G02 G03 G04 · أداةٌ G05 · قياسٌ G06 G07 · بيد المالك G08–G24 وG27 G28 · وثائق G25 G26 ·
-  دروسٌ بلا حارس G29 · مقارنة صور PDF G30.
+  دروسٌ بلا حارس G29 (أُغلق — D29 D30: `repoHygiene` و`sourceRules` و`distGuard`، وفحوص `drive.mjs` و`designPdf` و`psdLayers`) · مقارنة صور PDF G30.
 
 ## ٩. قائمة فحص الأجهزة — مهامّ المالك
 
@@ -171,7 +171,7 @@
 | ما لا يُختبر إلا باليد: الماسح والكاميرا والطابعة والرموز من الورق | G10 |
 
 **ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08) · ESLint و`rules-of-hooks` (G05) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
-مقارنة صور PDF (G30).
+مقارنة صور PDF (G30). **ودروس الميدان بلا حارس** (G29) أُغلقت: لكلٍّ حارسه أو سببٌ مكتوب في `docs/FIELD-LESSONS.md` (D29 D30).
 
 ## ١٢. المراجعات والتدقيق
 

@@ -91,6 +91,7 @@
 **ملفّات الاختبار** (`tests/`):
 - `portrait` — فصل الشخص بالنموذج الحقيقي (MODNet، IoU > ٠٫٩٥). · `portraitFace` — نموذج YuNet: مدخله وذقنه. · `portraitSkin` — الياقة تحت الذقن.
 - `portraitTools` — الحساب الخالص: القوالب والدقّة والقاط (ومنه أنّ المدمج فارغ) والتحسين. · `portraitLoad` — مكتبة ONNX لا تُسقط البرنامج حين تغيب.
+- `sourceRules` (في النظام) — كلّ جلسة ONNX بخيوطٍ صريحة `intraOpNumThreads` (L21).
 - `colorErase` — «امسح لونًا» على صورٍ يرسمها الاختبار. · `inpaint` — محرّك «رمّم». · `photoSheet` — ستٌّ على ١٠×١٥ وثلاثون على A4 بالملّيمتر.
 
 **ويشترك في حراسته:** `designs` (`objectCutout` و`designCutout` لـBiRefNet) · `records` (`attachmentExport`) · `system` (`gate` لحجبه بعد التجربة).
