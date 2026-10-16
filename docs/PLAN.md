@@ -28,12 +28,12 @@
 | [D13](orders/done/D13.md) | `docs/sections/editor.md` — المحرّر والكتاب الرسمي والأسئلة | ✅ ١٦ ت١ — ١٣٢ سطرًا، DC-1…DC-11 (DC-1 وDC-2 جزئيًّا ← S37 S38) | ⚙️ | D12 |
 | [D14](orders/done/D14.md) | `docs/sections/designs.md` — التصاميم | ✅ ١٦ ت١ — ١٣٢ سطرًا، DS-1…DS-10 «نعم» وDS-11 لا يُبنى، والأعداد من الكود | ⚙️ | D13 |
 | [D15](orders/done/D15.md) | `docs/sections/photos.md` — الصور الشخصية | ✅ ١٦ ت١ — ١٠٢ سطرًا، PH-1…PH-8 (PH-4 جزئيًّا ← S39) | ⚙️ | D14 |
-| D16 | فصّل الأوامر D17–D21 | ⬜ | 🧭 | D15 |
-| D17 | `docs/sections/pdf.md` — أدوات PDF | ⬜ | ⚙️ | D16 |
-| D18 | `docs/sections/scan.md` — المسح والتعرّف | ⬜ | ⚙️ | D17 |
-| D19 | `docs/sections/records.md` — الزبائن والقيد والأرشيف | ⬜ | ⚙️ | D18 |
-| D20 | `docs/sections/print.md` — الطباعة والإخراج | ⬜ | ⚙️ | D19 |
-| D21 | `docs/sections/system.md` — الإعدادات والترخيص والتحديث والنسخ | ⬜ | ⚙️ | D20 |
+| [D16](orders/done/D16.md) | فصّل الأوامر D17–D21 | ✅ ١٦ ت١ — خمسة أوامر مفصّلة، تراجعها الجلسة التالية | 🧭 | D15 |
+| [D17](orders/D17.md) | `docs/sections/pdf.md` — أدوات PDF | ⬜ | ⚙️ | D16 |
+| [D18](orders/D18.md) | `docs/sections/scan.md` — المسح والتعرّف | ⬜ | ⚙️ | D17 |
+| [D19](orders/D19.md) | `docs/sections/records.md` — الزبائن والقيد والأرشيف | ⬜ | ⚙️ | D18 |
+| [D20](orders/D20.md) | `docs/sections/print.md` — الطباعة والإخراج | ⬜ | ⚙️ | D19 |
+| [D21](orders/D21.md) | `docs/sections/system.md` — الإعدادات والترخيص والتحديث والنسخ | ⬜ | ⚙️ | D20 |
 | D22 | فصّل الأوامر D23–D26 | ⬜ | 🧭 | D21 |
 | D23 | دليل الواجهة `docs/UI.md` | ⬜ | ⚙️ | D22 |
 | D24 | دليل المالك `docs/OWNER-GUIDE.md` | ⬜ | ⚙️ | D23 |
