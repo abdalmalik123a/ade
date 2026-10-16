@@ -116,7 +116,8 @@
 - الترخيص والتحديث والبوّابة: `license` `keytool` `update` `gate` `version` `registryGuard`.
 - القاعدة والمتانة: `dataVersion` `migrations` `agedDb` `releaseDb` `makeReleaseDb` `durability` `stateFile` `corruptFiles` `dbErrors` `midnight` `load`.
 - الإعدادات والواجهة: `settingsKeys` `sections` `shortcuts` `theme` `overview` `listLimits` `contextMenu` `leaveGuard` `sharedHelpers` · وحزمة المحتوى `contentPack` · وتقرير المشكلة
-  `problemReport` · والبنية `structure` `devUrl` `localPaths`.
+  `problemReport` · والبنية `structure` `devUrl` `localPaths` · ونظافة المستودع `repoHygiene` (بايت التحكّم، والنهايات كالفهرس، و`package.json` الأصل — L56 L60).
+- **وأداة الإصدار** `tools/distGuard.mjs` أوّل `npm run dist`: الإصدار الموسوم لا يُبنى ثانيةً فوق مثبّته وبصمته (L61).
 - **وتسقط عمدًا على «بناء الاختبار» المحزوم** (QUALITY §٧): `license` و`update` و`weekly` — أبوابها للتطوير وحده، فتُشغَّل على التطوير.
 
 ## ٨. دروسه الميدانية

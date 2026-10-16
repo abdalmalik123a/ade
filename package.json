@@ -12,7 +12,7 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
     "pack": "npm run build && electron-builder --win --dir -c.directories.output=release/test",
-    "dist": "npm run typecheck && npm run notices && electron-vite build --mode release && electron-builder --win",
+    "dist": "node tools/distGuard.mjs && npm run typecheck && npm run notices && electron-vite build --mode release && electron-builder --win",
     "release": "npm run dist && node tools/release.mjs",
     "postinstall": "electron-builder install-app-deps",
     "test": "vitest run",

@@ -19,7 +19,7 @@
 | الطبقة | أين | الأمر | ما يُعرف عنها |
 |---|---|---|---|
 | الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
-| الوحدة | `tests/*.test.ts` — ١٧٥ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
+| الوحدة | `tests/*.test.ts` — ١٧٦ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
 | السيناريو | `tools/scenarios/*.mjs` — ١٠٦ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
@@ -60,7 +60,8 @@
 ## ٤. المِقْود وكتابة السيناريو
 
 - **`tools/drive.mjs`** يقلع البرنامج على المنفذ ٩٢٢٣ (نسخةٌ واحدة في المرّة، L58) بملفّ تعريفٍ نظيف يُمحى في آخره ولو سقط (`KEEP_RUN=1` يُبقيه)،
-  والماسح `none`، وبلا إبطاءٍ للنافذة المغطّاة؛ واستثناءٌ غير ممسوك في الواجهة يُفشل السيناريو. وفيه `kill` (من خارج البروتوكول) و`afterRestart`
+  والماسح `none`، وبلا إبطاءٍ للنافذة المغطّاة؛ واستثناءٌ غير ممسوك في الواجهة يُفشل السيناريو. **ويخرج بـ١ قبل الإقلاع** إن أجاب المنفذ ٩٢٢٣ (جلسةٌ أخرى)
+  أو جاء `DIWAN_TEST_PRINT_LOG` من الطرفية — الباب العامّ يُبطل `printResume`، فيُضبط في `prepare` السيناريو (L58). وفيه `kill` (من خارج البروتوكول) و`afterRestart`
   و`betweenRestarts({ profile })`، و`DIWAN_EXE` يشغّل البرنامج المحزوم.
 - **قواعد الكتابة** (L59، وما لم يذكره درس): `page.eval(...)` يلفّ الكود في دالّة async (استعمل `return`) · `page.goto` ينقر السكّة فيمرّ بحارس المغادرة ·
   `page.key('Escape')` ضغطةٌ حقيقية · `clickExact` أو `data-act` لا `clickText` · `page.typeKeys` لما يكتبه المستخدم، و`Input.insertText` في المحرّر ·
@@ -70,7 +71,7 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٥ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٦ سيناريوهات و١٧٦ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
@@ -83,7 +84,7 @@
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
 | الطباعة والإخراج (6 · 6) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` |
-| النظام (21 · 38) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` |
+| النظام (21 · 39) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
 
@@ -147,7 +148,7 @@
 - `tests/structure.allow.json`: ١٧ ملفًّا فوق ٤٠٠ سطر بسقوفها، تنخفض ولا ترتفع (قاعدة `structure` الخامسة)؛ وأغلبها في main وshared (A11).
 - `tests/designStructure.allow.json` فارغ (`{}`): لا ملفّ في التصاميم فوق ٤٠٠ سطر، ولا مكوّن فوق ٣٠٠.
 - **لا يُرفع سقف:** الملفّ يُقسَّم بأدوات `tools/split/` نقلًا حرفيًّا (`outline` ثم `render` و`hook` و`move` و`prune`)، و`npm run typecheck` بين الخطوات.
-  و`DIWAN_STRUCTURE_RATCHET=1` يخفض السقوف كلّها لا سقف ملفّك وحده (L60).
+  وخفض السقف بعد التقسيم لملفّك وحده: `DIWAN_STRUCTURE_RATCHET=<مسار>[,<مسار>…] npx vitest run tests/structure.test.ts`؛ و`=1` (كان يخفض السقوف كلّها) يسقط برسالةٍ ولا يكتب (L60).
 
 ## ١١. ما لا يغطّيه الفحص
 

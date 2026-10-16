@@ -290,6 +290,17 @@ if (process.argv[2]) {
   // في مجلّدٍ واحد يُمحى في آخره ولو سقط السيناريو: كانت تبقى في TEMP حتى بلغت أربعة آلاف مجلّد.
   // و`KEEP_RUN=1` يُبقيه للتحقيق. وبلا `DIWAN_TEST_SAVE_DIR` يُعطى مجلّدًا فيه: فحوص الحفظ لا
   // تُتخطّى صامتةً.
+  // ما يُفسد التشغيل من خارجه (L58) يوقفه قبل الإقلاع: جلسةٌ أخرى على المنفذ فيتّصل السيناريو ببرنامجها، و`DIWAN_TEST_PRINT_LOG`
+  // من الطرفية يقبل أيّ طابعة فيُبطل `printResume`. وما يضبطه السيناريو في `prepare` يبقى (يمرّ إلى البرنامج لا إلى الطرفية).
+  const busy = await fetch(`http://127.0.0.1:${PORT}/json/version`, { signal: AbortSignal.timeout(1500) }).then(() => true, () => false);
+  if (busy) {
+    console.log('✗ المنفذ ٩٢٢٣ محجوز — جلسةٌ أخرى تعمل');
+    process.exit(1);
+  }
+  if (process.env.DIWAN_TEST_PRINT_LOG) {
+    console.log('✗ DIWAN_TEST_PRINT_LOG مضبوطٌ في الطرفية — يقبل أيّ طابعة فيُبطل سيناريو printResume؛ يُضبط في env السيناريو (prepare) لا في الطرفية');
+    process.exit(1);
+  }
   const root = mkdtempSync(join(process.env.TEMP ?? tmpdir(), 'diwan-run-'));
   process.env.TEMP = process.env.TMP = root;
   process.env.DIWAN_TEST_SAVE_DIR ??= join(root, 'save');
