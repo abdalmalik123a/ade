@@ -3,7 +3,8 @@
  *
  * ١. **الطبقات**: `shared` لا يستورد Electron ولا وحدات Node ولا الواجهة ولا العملية الرئيسة؛ والواجهة لا تستورد العملية
  *    الرئيسة ولا Electron ولا Node؛ وخدمات العملية الرئيسة لا تستورد قنواتها؛ و`child_process` في ملفّاتٍ معروفة؛
- *    و`shell.openExternal` في `harden.ts` وحده.
+ *    و`shell.openExternal` في `harden.ts` وحده؛ و`utilityProcess.fork` في `workerHost.ts` وحده، والعامل (`src/main/worker/`)
+ *    لا يستورد Electron ولا `db/` ولا `ipc/`.
  * ٢. **متغيّرات البيئة** في `src/main`: كلّ مفتاحٍ في قائمةٍ صريحة — ومفتاحٌ جديد يستلزم تعديلها عمدًا.
  * ٣. **`new BrowserWindow(`** في ملفّاتٍ معروفة وحدها.
  * ٤. **القنوات**: كلّ `invoke` في `preload` لها `ipcMain.handle` والعكس، وكذلك `send` ↔ `ipcMain.on`، و`on` ↔ `.send`.
@@ -83,6 +84,14 @@ describe('اختبار الهيكل (ز١)', () => {
         bad.push(`${s.path}: يشغّل برامج (child_process) خارج الملفّات المعروفة — أضفه إلى القائمة عمدًا إن لزم`);
       }
       if (/shell\.openExternal\s*\(/.test(s.text) && s.path !== 'src/main/harden.ts') bad.push(`${s.path}: shell.openExternal خارج harden.ts — الروابط الخارجية تمرّ بـopenExternalSafe`);
+      if (/utilityProcess\.fork\s*\(/.test(s.text) && s.path !== 'src/main/services/workerHost.ts') bad.push(`${s.path}: utilityProcess.fork خارج workerHost.ts — العامل المستقلّ يُقلعه مضيفه وحده (A03)`);
+    }
+    // والعامل المستقلّ (A03، D53): لا Electron ولا القاعدة ولا القنوات — القاعدة والمخزن في الرئيسة وحدها.
+    for (const s of under('src/main/worker/')) {
+      for (const spec of importsOf(s.text)) {
+        const to = resolved(s, spec) ?? '';
+        if (spec === 'electron' || to.startsWith('src/main/db') || to.startsWith('src/main/ipc')) bad.push(`${s.path}: العامل يستورد «${spec}» — لا Electron ولا db/ ولا ipc/ فيه`);
+      }
     }
     expect(bad).toEqual([]);
   });
