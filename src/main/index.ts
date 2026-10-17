@@ -11,7 +11,7 @@ import { handleNewerDataRejection, rememberStartup } from './ipc/update';
 import { createPreUpdateBackup } from './services/preUpdateBackup';
 import { registerIpc } from './ipc';
 import { autoBackupConfigured, runConfiguredAutoBackup } from './ipc/backup';
-import { prepareDocuments } from './services/documents';
+import { runMigrations } from './db/migrations';
 import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
@@ -293,9 +293,8 @@ app.whenReady().then(async () => {
       currentVersion: app.getVersion(),
       snapshotDir: join(dataDir(), 'before-update'),
       openDb: () => getDb(),
-      migrations: [
-        (db) => prepareDocuments(db)
-      ]
+      // الترقيات المرقّمة كلّها (db/migrations.ts): ما فوق مستوى القاعدة يجري هنا مرّةً بترتيبه.
+      migrations: [(db) => runMigrations(db)]
     });
     if (boot.kind === 'newer') {
       await handleNewerDataRejection({

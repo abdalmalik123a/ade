@@ -190,6 +190,8 @@ describe('اختبار الهيكل (ز١)', () => {
     const SCHEMA = new Set([
       'src/main/db/schema.sql',
       'src/main/db/search.sql',
+      // الترقيات المرقّمة (D49): مكان كلّ ترقيةٍ جديدة، سطرًا برقمه التالي.
+      'src/main/db/migrations.ts',
       // `prepare*`/`ensure*`: أعمدةٌ تُضاف بعد الإصدار الأوّل بحارس PRAGMA table_info
       'src/main/services/citizens.ts',
       'src/main/services/clients.ts',

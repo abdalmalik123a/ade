@@ -20,10 +20,8 @@ import { closeDb, dataDir, dbLocked, getDb, lockDb } from '../db';
 import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBackup, writeBackup, type OpenedBackup } from '../services/backup';
 import { ForeignMirrorError, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { stampDataVersion } from '../services/dataVersion';
-import { logAudit, prepareDocuments } from '../services/documents';
-import { ensureSearchColumn } from '../services/citizens';
-import { prepareLetterheads } from '../services/letterheads';
-import { prepareTemplates } from '../services/templates';
+import { logAudit } from '../services/documents';
+import { runMigrations } from '../db/migrations';
 import { prepareSearch } from '../services/searchIndex';
 import { swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
 import { atomicWriteJson, readWithBackup } from '../services/stateFile';
@@ -69,13 +67,10 @@ function setting(key: string, value: string): void {
     .run(key, value);
 }
 
-/** القاعدة بعد فتحها من جديد: تُرحَّل أعمدتها وتُطابَق فهارسها — كما عند الإقلاع. */
+/** القاعدة بعد فتحها من جديد: تُرحَّل بالترقيات المرقّمة في معاملةٍ وتُطابَق فهارسها — كما عند الإقلاع. */
 function reopen(): void {
   const db = getDb();
-  ensureSearchColumn(db);
-  prepareDocuments(db);
-  prepareLetterheads(db);
-  prepareTemplates(db);
+  db.transaction(() => runMigrations(db))();
   prepareSearch(db);
   // رُحّلت بإصدار هذا البرنامج — فلا يحسبها الإقلاع التالي «أقدم» فيعيد نسخها ويعرض «ما الجديد».
   stampDataVersion(db, app.getVersion());
