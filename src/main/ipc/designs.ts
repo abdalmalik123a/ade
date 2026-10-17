@@ -15,9 +15,8 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { PRINT_DPI, type Canvas, type CanvasSize } from '@shared/canvas';
 import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } from '../services/designImport';
 import type { FieldSuggestion } from '@shared/api';
-import { readPsd } from '../services/psd';
 import { assertPixels, assertSize, designKind } from '../services/importGuard';
-import { writePng } from '../services/png';
+import { flattenPsd } from '../services/design/flatten';
 import { getDb, storeDir } from '../db';
 import { libraryFonts } from '@shared/fonts';
 import { listFaces } from '../services/fonts';
@@ -35,22 +34,6 @@ async function store(bytes: Uint8Array, name: string): Promise<string> {
   const file = `${hash}${extname(name).toLowerCase() || '.png'}`;
   await writeFile(join(storeDir('designs'), file), bytes);
   return `designs/${file}`;
-}
-
-/**
- * يأخذ صورة Photoshop المسطَّحة كما هي في الملف.
- *
- * ولا تُعاد الطبقات تركيبًا: PSD يحمل الصورة المسطَّحة في آخره، وهي بالضبط ما
- * نريد. وجُرِّبت `@webtoon/psd` فأعادت رماديًّا من ملفٍ بلا طبقات — كرّرت القناة
- * الأولى في الثلاث — فأُسقطت وقُرئ الملف عندنا (§`services/psd.ts`).
- */
-function flattenPsd(bytes: Uint8Array): { png: Uint8Array | null; warnings: string[] } {
-  const read = readPsd(bytes);
-  if (!read?.rgba) return { png: null, warnings: read?.warnings ?? ['تعذّرت قراءة الملف'] };
-  return {
-    png: writePng(read.rgba, read.width, read.height, read.dpi ?? PRINT_DPI),
-    warnings: read.warnings
-  };
 }
 
 /**
