@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- صفحة الرسم لـ`tools/pdfImage/main.mjs` (G30): لا تُرى، ولا تفتح ملفًّا — بايتاتها تأتي من العملية الرئيسية. -->
+<html lang="ar">
+  <head>
+    <meta charset="utf-8" />
+    <title>pdfImage</title>
+    <script>
+      // العملية الرئيسية تنتظر هذا الوعد ثم تنادي `run` — فلا تسبق تحميل pdf.js.
+      window.pdfImageReady = new Promise((resolve) => (window.pdfImageResolve = resolve));
+    </script>
+    <script type="module" src="./page.mjs"></script>
+  </head>
+  <body></body>
+</html>
