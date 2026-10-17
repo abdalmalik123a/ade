@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { ensureSearchColumn, getCitizen, listCitizens, saveCitizen } from '../src/main/services/citizens';
 import { importCitizens, planCitizenImport, readImportMap, saveImportMap } from '../src/main/services/citizenImport';
-import { autoTarget, cleanMap, cleanRows, importRows, mapOf, readTable, withTarget } from '../src/shared/citizenImport';
+import { IMPORT_MAX_ROWS, autoTarget, cleanMap, cleanRows, importRows, mapOf, readTable, withTarget } from '../src/shared/citizenImport';
 import { auditLabel } from '../src/shared/auditLabels';
 import type { CitizenInput } from '../src/shared/api';
 
@@ -201,6 +201,23 @@ describe('الاستيراد على السجلّ', () => {
     const big = Array.from({ length: 10001 }, (_, i) => ({ fullName: `زبون ${i}` }));
     expect(() => importCitizens(d, big)).toThrow(/قسّمه/);
     expect(listCitizens(d)).toHaveLength(0);
+  });
+
+  it('والحدّ نفسه يُقبل', () => {
+    const d = db();
+    const rows = Array.from({ length: IMPORT_MAX_ROWS }, (_, i) => ({ fullName: `زبون ${i}` }));
+    expect(planCitizenImport(d, rows).report.added).toBe(IMPORT_MAX_ROWS);
+  });
+
+  it('والجسر لا يقطع الزائد صامتًا — يُبقي صفًّا فوق الحدّ فيُرفض الملف برسالته كاملةً', () => {
+    const d = db();
+    const sent = cleanRows(Array.from({ length: IMPORT_MAX_ROWS * 2 }, (_, i) => ({ fullName: `زبون ${i}` })));
+    expect(sent).toHaveLength(IMPORT_MAX_ROWS + 1);
+    const message = `في الملف أكثر من ${IMPORT_MAX_ROWS.toLocaleString('ar-IQ')} صفّ — قسّمه ملفّين`;
+    expect(() => planCitizenImport(d, sent)).toThrow(new Error(message));
+    // أرقام الرسالة هندية كما يراها المكتب — لا رقمَ لاتينيًّا فيها.
+    expect(message).toMatch(/[٠-٩]/);
+    expect(message).not.toMatch(/[0-9]/);
   });
 
   it('والربط يُحفظ ويُضاف إليه، وما فسد منه يُترك', () => {
