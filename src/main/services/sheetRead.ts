@@ -1,5 +1,5 @@
-import ExcelJS from 'exceljs';
 import { cellText as cellValueText } from './cellText';
+import { readWorkbook } from './importGuard';
 
 /**
  * قراءة قائمةٍ من ملف Excel أو CSV — كما تُرسل المدرسة قائمة صفّها.
@@ -11,13 +11,8 @@ import { cellText as cellValueText } from './cellText';
 export async function sheetToText(file: string): Promise<{ text: string; rows: number }> {
   // `.xls` القديم يُرى في الحوار ليُقال له ما يُفعل (هـ١) — لا يُحاوَل فيُقال «تالف».
   if (/\.xls$/i.test(file)) throw new Error('هذا ملف Excel بصيغةٍ قديمة (.xls) — افتحه في Excel واحفظه .xlsx («حفظ باسم») ثم افتحه هنا');
-  const book = new ExcelJS.Workbook();
-  try {
-    if (/\.csv$/i.test(file)) await book.csv.readFile(file);
-    else await book.xlsx.readFile(file);
-  } catch {
-    throw new Error('تعذّر قراءة ملف Excel — قد يكون تالفًا، أو بصيغة .xls القديمة (احفظه .xlsx أو CSV)');
-  }
+  // أكبر من حدّه يُرفض قبل أن تقرأه exceljs (D51).
+  const book = await readWorkbook(file, 'تعذّر قراءة ملف Excel — قد يكون تالفًا، أو بصيغة .xls القديمة (احفظه .xlsx أو CSV)');
   const sheet = book.worksheets[0];
   if (!sheet) return { text: '', rows: 0 };
 

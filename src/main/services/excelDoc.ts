@@ -43,6 +43,7 @@ import {
 import type { ImageSaver } from './import';
 import { APPLY_THRESHOLD, fixZeroPeriods } from './blanks';
 import { cellText as cellValueText } from './cellText';
+import { readWorkbook } from './importGuard';
 
 /** خلايا مدموجة أو خليّةٌ واحدة: أرقام الصفوف والأعمدة من ١، والحدّان داخلان. */
 type Range = { top: number; left: number; bottom: number; right: number };
@@ -680,11 +681,7 @@ export function bookToDocs(book: ExcelJS.Workbook, saveImage?: ImageSaver): Exce
 /** ملفّ Excel كتبًا — و`.xls` القديم يُقال له ما يُفعل. */
 export async function excelToDocs(path: string, saveImage?: ImageSaver): Promise<ExcelBook> {
   if (extname(path).toLowerCase() !== '.xlsx') throw new Error(`«${basename(path)}» ليس ملف Excel بصيغة .xlsx — احفظه بها من Excel`);
-  const book = new ExcelJS.Workbook();
-  try {
-    await book.xlsx.readFile(path);
-  } catch {
-    throw new Error('تعذّرت قراءة ملف Excel — قد يكون تالفًا، أو بصيغة .xls القديمة (احفظه .xlsx)');
-  }
+  // أكبر من حدّه يُرفض قبل أن تقرأه exceljs (D51).
+  const book = await readWorkbook(path, 'تعذّرت قراءة ملف Excel — قد يكون تالفًا، أو بصيغة .xls القديمة (احفظه .xlsx)');
   return bookToDocs(book, saveImage);
 }

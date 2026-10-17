@@ -16,6 +16,7 @@ import { removeStoreFile, scanPage } from '../services/scanner';
 import { imagePage, type PdfPlan } from '@shared/pdfEdit';
 import { importFile, pickOpenPath, pickOpenPaths, pickSavePath, pickSaveFolder } from './files';
 import type { PdfOpened } from '@shared/api';
+import { assertPixels, assertSize } from '../services/importGuard';
 
 /** دقّة المسح للتقديم: تُقرأ وتُطبع، وملفّها معقول قبل التصغير. */
 const SCAN_DPI = 200;
@@ -44,7 +45,11 @@ const safeName = (name: string) => name.replace(/[\\/:*?"<>|]+/g, '-').trim() ||
 const renderLayer = (html: string, mm: { w: number; h: number }) => renderLayerPdf(html, mm);
 
 async function openOne(path: string): Promise<PdfOpened> {
+  // أكبر من حدّه يُرفض قبل أن يُقرأ، والصورة الأكثر من حدّها نقاطًا قبل أن تُفكّ (D51).
+  const kind = extname(path).toLowerCase() === '.pdf' ? 'pdf' : 'image';
+  await assertSize(path, kind);
   const bytes = new Uint8Array(await readFile(path));
+  assertPixels(bytes, kind);
   const name = basename(path);
   const id = `s${++seq}`;
   if (extname(path).toLowerCase() === '.pdf') {

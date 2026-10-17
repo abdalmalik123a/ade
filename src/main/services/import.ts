@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { extname, basename } from 'node:path';
-import { unzipSync, strFromU8 } from 'fflate';
+import { strFromU8 } from 'fflate';
 import { reconcileVariables, type TemplateVariable } from '@shared/template';
 import { stripTatweel, cleanLine } from './blanks';
 import { docxToDoc } from './docxDoc';
+import { assertSize, unzipWord } from './importGuard';
 import { scanWord } from './wordScan';
 import type { ImportedTemplate } from '@shared/api';
 import {
@@ -398,6 +399,8 @@ export async function importTemplateFile(
 ): Promise<ImportedTemplate> {
   const ext = extname(path).toLowerCase();
   const name = basename(path, ext);
+  // أكبر من حدّه يُرفض قبل أن يُقرأ، والأرشيف يُفكّ بميزانيته (D51).
+  if (ext === '.xml' || ext === '.docx') await assertSize(path, 'word');
 
   if (ext === '.xml') {
     return xmlToTemplate(await readFile(path, 'utf8'), name);
@@ -405,12 +408,7 @@ export async function importTemplateFile(
 
   if (ext === '.docx') {
     const bytes = new Uint8Array(await readFile(path));
-    let files: Record<string, Uint8Array>;
-    try {
-      files = unzipSync(bytes);
-    } catch {
-      throw new Error('تعذّر فتح ملف Word — قد يكون تالفًا أو بصيغة .doc القديمة');
-    }
+    const files = unzipWord(bytes, 'تعذّر فتح ملف Word — قد يكون تالفًا أو بصيغة .doc القديمة');
     const doc = files['word/document.xml'];
     if (!doc) throw new Error('الملف ليس مستند Word صالحًا (لا يحتوي word/document.xml)');
 

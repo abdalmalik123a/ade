@@ -16,6 +16,7 @@ import { PRINT_DPI, type Canvas, type CanvasSize } from '@shared/canvas';
 import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } from '../services/designImport';
 import type { FieldSuggestion } from '@shared/api';
 import { readPsd } from '../services/psd';
+import { assertPixels, assertSize, designKind } from '../services/importGuard';
 import { writePng } from '../services/png';
 import { getDb, storeDir } from '../db';
 import { libraryFonts } from '@shared/fonts';
@@ -140,7 +141,11 @@ export function registerDesignIpc(): void {
       });
       if (!path) return null;
 
+      // أكبر من حدّه يُرفض قبل أن يُقرأ، وأكثر من حدّه نقاطًا قبل أن يُفكّ (D51).
+      const kind = designKind(path);
+      await assertSize(path, kind);
       const bytes = await readFile(path);
+      assertPixels(bytes, kind);
       // «خطوط ديوان» كلّها — فخطٌّ أضافه المكتب يُطابَق في Photoshop (DESIGNS.md ١٫٥).
       const imported = readDesign(bytes, basename(path), libraryFonts(listFaces(getDb())).map((f) => f.family));
       const warnings = [...imported.warnings];

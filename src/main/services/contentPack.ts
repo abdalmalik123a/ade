@@ -18,6 +18,7 @@ import type { Database } from 'better-sqlite3';
 import type { ContentCounts, ContentImportResult } from '@shared/api';
 import { DOC_SCHEMA, type Doc } from '@shared/doc';
 import { isNewerDoc } from '@shared/docVersion';
+import { zipBudget, ZIP_LIMITS } from '@shared/importLimits';
 import { designPackLevel } from '@shared/canvas';
 import type { LetterheadLayout } from '@shared/letterhead';
 import type { TemplateVariable } from '@shared/template';
@@ -170,6 +171,9 @@ export async function importContent(
   } catch {
     throw new Error('الملف ليس حزمة محتوى من ديوان');
   }
+  // عدد المداخل ومجموع ما يُفكّ قبل أن يُفكّ شيء (D51).
+  const over = zipBudget(entries, ZIP_LIMITS.pack);
+  if (over) throw new Error(over);
   const head = entries.find((e) => e.name === NAME);
   if (!head) throw new Error('الملف ليس حزمة محتوى من ديوان');
   mkdirSync(workDir, { recursive: true });

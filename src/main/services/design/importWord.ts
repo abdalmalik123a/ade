@@ -2,10 +2,11 @@
  * استيراد التصاميم — Word: المقاس من `w:pgSz` بالـtwip، ومربّعات النصّ والصور بمواضعها بالـEMU (DESIGNS.md ٠٫٩).
  */
 import { basename } from 'node:path';
-import { unzipSync, strFromU8 } from 'fflate';
+import { strFromU8 } from 'fflate';
 import { clampBox, type CanvasSize } from '@shared/canvas';
 import { tokenInlines } from '@shared/doc';
 import { EMU_MM, TWIP_MM, type DesignImport } from './importTypes';
+import { unzipWord } from '../importGuard';
 
 // ── Word ─────────────────────────────────────────────────────────────
 
@@ -46,12 +47,8 @@ function paragraphText(xml: string): string {
  * الشهادة كومةَ أسطرٍ في أعلى الورقة.
  */
 export function wordDesign(bytes: Uint8Array, name: string): DesignImport {
-  let zip: Record<string, Uint8Array>;
-  try {
-    zip = unzipSync(bytes);
-  } catch {
-    throw new Error('تعذّر فتح ملف Word — قد يكون تالفًا أو مقطوعًا، أو بصيغة .doc القديمة (احفظه .docx)');
-  }
+  // يُفكّ بميزانيته (D51).
+  const zip = unzipWord(bytes, 'تعذّر فتح ملف Word — قد يكون تالفًا أو مقطوعًا، أو بصيغة .doc القديمة (احفظه .docx)');
   const doc = zip['word/document.xml'];
   const warnings: string[] = [];
   if (!doc) throw new Error('الملف ليس مستند Word — لا مستند فيه');
