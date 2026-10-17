@@ -74,6 +74,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.type('input[data-title]', 'هوية موظفي الدائرة');
   await click('button[data-act="save"]');
   await wait(1500);
+  // الدفعة تحت تبويب «إضافة وتعبئة» (8606e9e): التبويبات كلّها مركّبة والمخفيّ منها لا يُقرأ نصّه — فيُفتح كما يفتحه الموظف (D43).
+  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  await wait(300);
   const list = ['المنتسب\tالرقم', 'زينب علي حسن\t501', 'أحمد كريم جاسم\t502', 'سالم محمود جاسم\t503'].join('\n');
   await page.type('textarea[data-batch-text]', list);
   await wait(600);
@@ -272,6 +275,12 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ولا تُقترح ثانيةً بعد حفظها', !(await page.eval(`return Boolean(document.querySelector('[data-repeated-clip]'));`)));
   await page.clickExact('تم');
   await wait(500);
+  // أوّل كتابٍ رسميّ يسأل عن النسخ الاحتياطي (b125ea1)، ونافذته تسبق «اترك بلا حفظ» فلا تُفتح ورقة الدور الثاني (D43، L62). يُجاب «لاحقًا» حين يظهر.
+  const later = '[data-confirm] [data-choice="later"]';
+  if (await until(() => page.eval(`return Boolean(document.querySelector('${later}'));`), 10)) {
+    await click(later);
+    await until(() => page.eval(`return !document.querySelector('[data-confirm]');`));
+  }
 
   // ── د٩: ورقة الدور الثاني من البنك ─────────────────────────────────
   await page.goto('exam-papers');

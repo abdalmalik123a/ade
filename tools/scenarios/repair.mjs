@@ -212,7 +212,8 @@ export default async function scenario(page, { shotsDir }) {
   const fixed = await settled(192, 205);
   ok(`وتحت الذقن تملأ البقعة الأرجوانية بلون الجلد (${spot} ← ${fixed})`, magenta(spot) && !magenta(fixed) && fixed[0] > fixed[1] && fixed[1] > fixed[2]);
   if (shotsDir) await page.shot(join(shotsDir, 'repair-photo.png'));
-  await click('[data-act="repair-undo"]');
+  // «تراجع» في الصور الشخصية صار سجلًّا واحدًا لكلّ الأدوات فوق الإطار (`history-undo`، 8606e9e) بدل زرّ «رمّم» وحده.
+  await click('[data-act="history-undo"]');
   ok(`و«تراجع» يعيدها (${await settled(192, 205)})`, magenta(await settled(192, 205)));
   return steps.join('\n');
 }
