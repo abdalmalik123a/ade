@@ -3,6 +3,13 @@
 > قيدٌ لكلّ جلسة، **الأحدث في الأعلى**، عشرة أسطر على الأكثر: التاريخ والساعة · الأمر · ما تغيّر (الإيداعات) · الفحص ونتيجته ·
 > المراجعة (أيّ أمرٍ رُوجع وبأيّ نتيجة) · أين توقّف بالضبط · الخطوة التالية.
 
+## ٢٠٢٦-١٠-١٧ ٠٣:٥٢ — مراجعة D33 ✓ · وحجز D34
+- **أمر المالك:** `/next`. **D33 ✓:** قُرئت D34–D39: كلٌّ يُنفَّذ بلا سؤال، ومواضعها موجودة بأمر بحث — `rasterPdf` في `ipc/designs.ts` · `pdfjs-dist` ٦٫٣٫٢٨٩ في
+  `devDependencies` وفيه `legacy/build/pdf.mjs` وعامله · `electron.exe` (٤٤٫٣) · لا `tools/pdfImage*` ولا `tests/fixtures/pdf-ref/` · المحدِّدات الخمسة لـD35 ·
+  `readdirSync(OUT)[0]` و`readUInt32BE` في `designImage` و`setDeviceMetricsOverride` في `bookEditor` · `const N = 400` و`MONTH_COUNT` ولا فهرس على `template_id` ·
+  `eslint-disable` ٤٣ في ٢٧ ملفًّا كلّها `exhaustive-deps` · `environment: 'node'` و`tsconfig.test.json` من `tsconfig.node.json` · React ١٨٫٣. والترتيب يتبع PLAN.
+- **التالي:** D34 🔒 في هذه الجلسة.
+
 ## ٢٠٢٦-١٠-١٦ ٢٢:١٤ — D33 ✅ 🧭 — والتوقّف هنا
 - **كُتب نصّ D33 ونُفّذ في الجلسة نفسها** (كـD28) من سطره في PLAN. **فُصّلت ستّة:** D34 (G30 أ: `tools/pdfImage.mjs` — pdfjs في نافذةٍ خفيّة، رماديّ بدقّة ٥٠، والمقارنة
   في النافذة: فرقٌ > ٣٢ ونسبةٌ ≤ ٠٫٥٪) · D35 (G30 ب: `pdfCompare` بخمسة أنواع، والمراجع في `tests/fixtures/pdf-ref/` بسقف ٥ م.ب) · D36 (G04: السبب ثم انتظار الشرط) ·
