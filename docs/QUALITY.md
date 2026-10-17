@@ -18,7 +18,8 @@
 
 | الطبقة | أين | الأمر | ما يُعرف عنها |
 |---|---|---|---|
-| الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
+| الأنواع | المشاريع الأربعة (`tsconfig.node` و`web` و`test` و`ui-test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
+| المكوّنات | `tests/ui/*.test.tsx` — ٣ ملفّات (G03، D39) | مع الوحدة · و`npx vitest run tests/ui` وحده | ببيئة jsdom يعلنها رأس كلّ ملفّ (`// @vitest-environment jsdom`) والعامّة `node` كما هي؛ تُركَّب بـ`createRoot` و`act` من React ١٨، ويُفكّ بعد كلّ اختبار، و`window.diwan` مزيَّفٌ بما يحتاجه المكوّن (`tests/ui/mount.tsx`) — بلا مكتبةٍ غير jsdom |
 | الوحدة | `tests/*.test.ts` — ١٧٩ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
 | السيناريو | `tools/scenarios/*.mjs` — ١٠٩ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
@@ -79,20 +80,20 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٧٩ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٨٢ ملفّ اختبار، منها ثلاثةٌ للمكوّنات في `tests/ui/` (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
 |---|---|---|
 | الشبّاك (14 · 9) | `service` `dailyWork` `firstDay` `parkedGone` `imageForm` `inbox` `packs` `language` `orders` `orderPrinted` `receipt` `schoolFile` `work` `workSettings` | `seasons` `imageForm` `packs` `orders` `receipt` `schoolFile` `transaction` `fillCard` `whatsappParser` |
-| المحرّر (17 · 43) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `pagedLetter` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` |
+| المحرّر (17 · 44) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `pagedLetter` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` `ui/letterSheet` |
 | التصاميم (30 · 45) | `designs` `designBatchCheck` `designBrandKit` `designCutout` `designDock` `designDraft` `designFonts` `designIcons` `designImage` `designImport` `designImsakiya` `designKitStyles` `designLayers` `designMouse` `designOrderFill` `designPacks` `designPaint` `designPaths` `designPdf` `designPhotoEdit` `designPsd` `designPsdStyles` `designResize` `designShapes` `designTable` `designTextEffects` `designUx` `elements` `fonts` `batches` | `canvas` `canvasEdit` `designKit` `designImport` `psdLayers` `realPsd` `psdStyles` `imageSize` `preflight` `kitPreflight` `securitySeal` `layerFields` `batchMap` `citizenFields` `brand` `bundledElements` `designDraft` `designFixtures` `designPack` `designStructure` `elementsService` `fillFrom` `fonts` `fontsService` `imageExport` `imageShapes` `imsakiya` `objectCutout` `paint` `pathShapes` `photoEdit` `relayout` `rendererSnapshots` `selectGeometry` `svgClean` `tableSizes` `tableStyles` `textEffects` `clipart` `barcode` `qr` `sheetRead` `cellText` `makeDesignFixtures` `makePsdFixture` |
 | الصور الشخصية (8 · 8) | `photos` `studio` `portrait` `photoSteps` `colorErase` `autoCollar` `faceChin` `repair` | `portrait` `portraitFace` `portraitLoad` `portraitSkin` `portraitTools` `colorErase` `inpaint` `photoSheet` |
 | PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
-| الطباعة والإخراج (7 · 7) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` |
-| النظام (21 · 41) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` `lint` |
+| الطباعة والإخراج (7 · 8) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` `ui/printChooser` |
+| النظام (21 · 42) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` `lint` `ui/useToast` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
 
@@ -180,7 +181,7 @@
 |---|---|
 | ترقيم الصفحات وتكرار الترويسة ورأس الجدول في سيناريو | G01 — أُغلق: `pagedLetter` (D31) |
 | الطلب يصير «جاهزًا» بعد طباعة دفعته (حوار الطابعة لا يُضغط) | G02 — أُغلق: `orderPrinted` (D32) |
-| مكوّنات الواجهة وحدها بلا سيناريو (قُسمت الشاشات ولم تُختبر مكوّناتها وحدها) | G03 |
+| مكوّنات الواجهة وحدها بلا سيناريو (قُسمت الشاشات ولم تُختبر مكوّناتها وحدها) | G03 — أُغلق: `tests/ui/` ببيئة jsdom (D39) |
 | دفعة ٥٠٠ بطاقة بصورها وPDF لها (قيست ٤٠٠ هوية، §٨) | G06 |
 | MRZ ببطاقةٍ ملوّنة بمقاسها | G11 |
 | الماسح متعدّد البطاقات بمسحٍ حقيقي | G12 |

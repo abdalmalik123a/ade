@@ -89,8 +89,8 @@
 
 ## ٦. الناقص
 
-بنود system في PLAN كلّها (٣٠ مفتوحة؛ وأُغلق G04 تقلّب `bookEditor` و`designImage` — D36، وG05 ESLint — D38)، و👤 لما بيد المالك:
-- **حرّاس (الموجة ٢):** G03 اختبار مكوّنات الواجهة وحدها · G07 قيس (D37: الإقلاع ١٫٢٥ ث، والذاكرة ٨٠٨ م.ب، و`listTemplates` ١٩٢ م.ث فلا فهرس؛ والحرف في الوثيقة الطويلة سؤالٌ للمالك) · G09 👤 بنود
+بنود system في PLAN كلّها (٢٩ مفتوحة؛ وأُغلق G04 تقلّب `bookEditor` و`designImage` — D36، وG05 ESLint — D38، وG03 اختبار المكوّنات — D39)، و👤 لما بيد المالك:
+- **حرّاس (الموجة ٢):** G07 قيس (D37: الإقلاع ١٫٢٥ ث، والذاكرة ٨٠٨ م.ب، و`listTemplates` ١٩٢ م.ث فلا فهرس؛ والحرف في الوثيقة الطويلة سؤالٌ للمالك) · G09 👤 بنود
   [`HARDWARE-CHECKLIST.md`](../HARDWARE-CHECKLIST.md) الـ٣٧ · G21 👤 رأس السنة على البرنامج المفتوح · G22 👤 استرجاع نسخةٍ من إصدارٍ قديم · G23 👤 تشغيلٌ متّصلٌ ساعاتٍ · G24 👤 أيقونة المثبّت
   وشريط المهامّ · G26 قسم CHANGELOG للإصدار القادم · G27 👤 ملفّ التحديث ونسخ مجلّد الإصدار إلى مجلّد المالك.
 - **بنية (الموجة ٣):** A02 الترقيات المرقّمة · A03 العامل المستقلّ · A04 عقد الجسر وباب الشبكة وطبقة الترخيص · A07 سقف الاستيراد — عالٍ · A08 النسخة التلقائية بـstreams وfsync ·
@@ -117,7 +117,8 @@
 - القاعدة والمتانة: `dataVersion` `migrations` `agedDb` `releaseDb` `makeReleaseDb` `durability` `stateFile` `corruptFiles` `dbErrors` `midnight` `load`.
 - الإعدادات والواجهة: `settingsKeys` `sections` `shortcuts` `theme` `overview` `listLimits` `contextMenu` `leaveGuard` `sharedHelpers` · وحزمة المحتوى `contentPack` · وتقرير المشكلة
   `problemReport` · والبنية `structure` `devUrl` `localPaths` · ونظافة المستودع `repoHygiene` (بايت التحكّم، والنهايات كالفهرس، و`package.json` الأصل — L56 L60) ·
-  وESLint `lint` (`npm run lint`: قاعدتا الخطّافات، وسقفا التحذيرات والإسكات — G05).
+  وESLint `lint` (`npm run lint`: قاعدتا الخطّافات، وسقفا التحذيرات والإسكات — G05) · ومكوّنات الواجهة وحدها ببيئة jsdom (`tests/ui/`، G03):
+  `useToast` (L28: مؤقّت الرسالة السابقة لا يمحو الجديدة) و`letterSheet` (تكرار الترويسة والترقيم) و`printChooser` («على أيّ طابعة؟»).
 - **وأداة الإصدار** `tools/distGuard.mjs` أوّل `npm run dist`: الإصدار الموسوم لا يُبنى ثانيةً فوق مثبّته وبصمته (L61).
 - **وتسقط عمدًا على «بناء الاختبار» المحزوم** (QUALITY §٧): `license` و`update` و`weekly` — أبوابها للتطوير وحده، فتُشغَّل على التطوير.
 

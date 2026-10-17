@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.web.json",
+  "compilerOptions": {
+    "composite": false
+  },
+  "include": ["tests/ui/**/*", "src/renderer/src/**/*", "src/preload/*.d.ts", "src/shared/**/*"]
+}
