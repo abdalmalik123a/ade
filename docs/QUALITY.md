@@ -19,8 +19,8 @@
 | الطبقة | أين | الأمر | ما يُعرف عنها |
 |---|---|---|---|
 | الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
-| الوحدة | `tests/*.test.ts` — ١٧٧ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
-| السيناريو | `tools/scenarios/*.mjs` — ١٠٨ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
+| الوحدة | `tests/*.test.ts` — ١٧٨ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
+| السيناريو | `tools/scenarios/*.mjs` — ١٠٩ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
 | الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
@@ -64,10 +64,11 @@
   أو جاء `DIWAN_TEST_PRINT_LOG` من الطرفية — الباب العامّ يُبطل `printResume`، فيُضبط في `prepare` السيناريو (L58). وفيه `kill` (من خارج البروتوكول) و`afterRestart`
   و`betweenRestarts({ profile })`، و`DIWAN_EXE` يشغّل البرنامج المحزوم.
 - **`tools/pdfImage.mjs`** (G30، D34): صفحات PDF صورًا رماديةً بدقّة ٥٠ بـ`pdfjs-dist` في نافذة Electron خفيّة (`tools/pdfImage/`؛ فلا canvas ولا مكتبة)،
-  ومقارنتها بصور المرجع `<البادئة>-<الصفحة>.png`: العدد والمقاس أوّلًا، ثم «المختلف» ما زاد فرقه على **٣٢ من ٢٥٥**، والصفحة تسقط إن زاد المختلف على **٠٫٥٪** —
-  وصورة الفرق في `reports/pdf-diff/`. و`DIWAN_PDF_REF=update` يكتب المرجع بقصدٍ يُذكر في الإيداع. وفحصها `node tools/pdfImage.mjs --self-test`.
-  **وحدّها بالقياس:** الرسم بالمعالج، فالملف مع مرجعه فرقه صفر، ومستطيلٌ أُزيح ١٠ ملم ٢٫٩٢٪؛ لكنّ كلمةً تغيّرت بخطّ ١٤ نحو ٠٫٠٢٪ وسطرًا كاملًا نحو ٠٫٤٨٪ —
-  فهي تلتقط ما تحرّك من التخطيط لا كلّ حرف، والنصّ يُفحص بمحتواه (L02).
+  ومقارنتها بصور المرجع `<البادئة>-<الصفحة>.png`: العدد والمقاس أوّلًا، ثم «المختلف» ما زاد فرقه على **٣٢ من ٢٥٥**، والصفحة تسقط إن زاد المختلف على **٠٫٠٥٪**
+  (نحو ١٢٠ بكسلًا في A4؛ كانت ٠٫٥٪ فلم ترَ سطرًا تغيّر نصّه، وخفضها المالك ١٧ ت١) — وصورة الفرق في `reports/pdf-diff/`. و`DIWAN_PDF_REF=update` يكتب المرجع بقصدٍ
+  يُذكر في الإيداع. وفحصها `node tools/pdfImage.mjs --self-test`. **والرسم ثابت:** بالمعالج لا بكرت الشاشة، والحروف أشكالٌ من خطّ الملف لا خطوطٌ تُحمَّل
+  (`disableFontFace` — كان تحميلها يسبق الرسم أحيانًا فيتقلّب الفرق)؛ فالملف مع مرجعه صفر. **وحدّها بالقياس:** سطر الموضوع تغيّر ١٤٠ بكسلًا (٠٫٠٥٨٪) وسطرٌ كامل
+  ١١٧١ فيسقطان، وكلمةٌ وحدها نحو ٦٠ فتمرّ — والنصّ يُفحص بمحتواه (L02).
 - **قواعد الكتابة** (L59، وما لم يذكره درس): `page.eval(...)` يلفّ الكود في دالّة async (استعمل `return`) · `page.goto` ينقر السكّة فيمرّ بحارس المغادرة ·
   `page.key('Escape')` ضغطةٌ حقيقية · `clickExact` أو `data-act` لا `clickText` · `page.typeKeys` لما يكتبه المستخدم، و`Input.insertText` في المحرّر ·
   حقل React يُملأ بالمُعيِّن الأصليّ ثم حدث `input` (والقائمة `change`) · الشبّاك مركّبٌ دائمًا وإن خفي: حدِّد بسمة `data-…` أو بنصٍّ خاصّ بالشاشة ·
@@ -76,7 +77,7 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٨ سيناريوهات و١٧٧ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٧٨ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
@@ -88,7 +89,7 @@
 | PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
-| الطباعة والإخراج (6 · 6) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` |
+| الطباعة والإخراج (7 · 7) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` |
 | النظام (21 · 40) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
@@ -120,8 +121,10 @@
 
 ## ٨. حرّاس عدم الكسر — الموجة ٢
 
-**القائم اليوم:** الطبقات في §٢، ولقطات الرسّام، والسقوف، وقواعد الإصدارات. **وما يُبنى:** مقارنة صور PDF آليًّا مع الإصدار السابق (المبدأ ٤ في ARCHITECTURE؛
-G30 — الأداة `tools/pdfImage.mjs` قائمة (D34، §٤)، ومجموعة المقارنة بصور المرجع في D35)، والقياس على الجهاز المرجعي: **Core i5 بذاكرة ٨ غيغا**، مقياس كلّ هدف أداء. وأهداف وثيقة المتطلبات §٦ مقابل ما قيس:
+**القائم اليوم:** الطبقات في §٢، ولقطات الرسّام، والسقوف، وقواعد الإصدارات، **ومقارنة صور PDF** (المبدأ ٤ في ARCHITECTURE؛ G30 أُغلق — D34 D35): سيناريو
+`pdfCompare` يُخرج كتابًا وتصميمًا ونسخ هويةٍ وورقة أسئلةٍ وصورًا شخصية بمحتوى ثابت، ويقارن صفحاتها بصور المرجع في `tests/fixtures/pdf-ref/` (الأداة في §٤).
+**والمرجع يُحدَّث بقصدٍ وحده:** تغييرٌ مقصود في الرسم يُسقطها، فتُرى صورة الفرق، ثم `DIWAN_PDF_REF=update node tools/drive.mjs tools/scenarios/pdfCompare.mjs`،
+وتُرى الصور الجديدة، ويُذكر التحديث وسببه في الإيداع (كلقطات الرسّام). **وما يُبنى:** القياس على الجهاز المرجعي: **Core i5 بذاكرة ٨ غيغا**، مقياس كلّ هدف أداء. وأهداف وثيقة المتطلبات §٦ مقابل ما قيس:
 
 | الهدف | المقيس اليوم | البند |
 |---|---|---|
@@ -137,7 +140,7 @@ G30 — الأداة `tools/pdfImage.mjs` قائمة (D34، §٤)، ومجموع
 - **ما يجب أن يبقى** (مراجعة ٧ ت١): WAL مع `synchronous = FULL` (`durability`، L39) · نسخةٌ قبل الترقية (`preUpdateBackup`) · sandbox وFuses (`harden`) ·
   توقيع Ed25519 للتحديث والترخيص (`update` `license`) · لا كود شبكة، وحزمةٌ بلا مفاتيح خاصّة (لا حارس آليّ لهما — PRODUCT §٣).
 - **بنود الموجة ٢ بأرقامها:** سيناريوهاتٌ ناقصة G01 G02 G03 G04 · أداةٌ G05 · قياسٌ G06 G07 · بيد المالك G08–G24 وG27 G28 · وثائق G25 G26 ·
-  دروسٌ بلا حارس G29 (أُغلق — D29 D30: `repoHygiene` و`sourceRules` و`distGuard`، وفحوص `drive.mjs` و`designPdf` و`psdLayers`) · مقارنة صور PDF G30 (الأداة D34، والمجموعة D35).
+  دروسٌ بلا حارس G29 (أُغلق — D29 D30: `repoHygiene` و`sourceRules` و`distGuard`، وفحوص `drive.mjs` و`designPdf` و`psdLayers`) · مقارنة صور PDF G30 (أُغلق — D34 D35: `tools/pdfImage.mjs` و`pdfCompare` و`pdfRefs`).
 
 ## ٩. قائمة فحص الأجهزة — مهامّ المالك
 
@@ -152,6 +155,8 @@ G30 — الأداة `tools/pdfImage.mjs` قائمة (D34، §٤)، ومجموع
 
 - `tests/structure.allow.json`: ١٧ ملفًّا فوق ٤٠٠ سطر بسقوفها، تنخفض ولا ترتفع (قاعدة `structure` الخامسة)؛ وأغلبها في main وshared (A11).
 - `tests/designStructure.allow.json` فارغ (`{}`): لا ملفّ في التصاميم فوق ٤٠٠ سطر، ولا مكوّن فوق ٣٠٠.
+- `tests/fixtures/pdf-ref/`: صور مرجع مقارنة PDF مجموعها **٥ م.ب على الأكثر** (قرار المالك: في المستودع)، وكلٌّ PNG بمقاس نوعه بدقّة ٥٠ — يحرسها `pdfRefs`
+  (اليوم ستّ صورٍ ٢٣٣٬٣٢٥ بايت).
 - **لا يُرفع سقف:** الملفّ يُقسَّم بأدوات `tools/split/` نقلًا حرفيًّا (`outline` ثم `render` و`hook` و`move` و`prune`)، و`npm run typecheck` بين الخطوات.
   وخفض السقف بعد التقسيم لملفّك وحده: `DIWAN_STRUCTURE_RATCHET=<مسار>[,<مسار>…] npx vitest run tests/structure.test.ts`؛ و`=1` (كان يخفض السقوف كلّها) يسقط برسالةٍ ولا يكتب (L60).
 
@@ -176,7 +181,7 @@ G30 — الأداة `tools/pdfImage.mjs` قائمة (D34، §٤)، ومجموع
 | ما لا يُختبر إلا باليد: الماسح والكاميرا والطابعة والرموز من الورق | G10 |
 
 **ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08) · ESLint و`rules-of-hooks` (G05) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
-مقارنة صور PDF (G30). **ودروس الميدان بلا حارس** (G29) أُغلقت: لكلٍّ حارسه أو سببٌ مكتوب في `docs/FIELD-LESSONS.md` (D29 D30).
+مقارنة صور PDF (G30 — أُغلق: `pdfCompare`، D34 D35). **ودروس الميدان بلا حارس** (G29) أُغلقت: لكلٍّ حارسه أو سببٌ مكتوب في `docs/FIELD-LESSONS.md` (D29 D30).
 
 ## ١٢. المراجعات والتدقيق
 

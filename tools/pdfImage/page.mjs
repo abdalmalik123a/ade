@@ -70,7 +70,9 @@ function compare(gray, ref, w, h, threshold) {
 }
 
 async function run({ pdf, refs, dpi, threshold, probe }) {
-  const task = pdfjs.getDocument({ data: bytesOf(pdf), verbosity: 0 });
+  // الحروف تُرسم أشكالًا من خطّ الملف نفسه لا خطوطًا تُحمَّل في الصفحة: تحميل الخطّ يجري في الخلفية فيسبقه الرسم أحيانًا،
+  // فكان الملف نفسه يُرسم بفرقٍ ٨١ أو ١٤٦ بكسلًا مرّةً من خمس (D35).
+  const task = pdfjs.getDocument({ data: bytesOf(pdf), verbosity: 0, disableFontFace: true, useSystemFonts: false });
   const doc = await task.promise;
   const pages = [];
   for (let n = 1; n <= doc.numPages; n++) {
