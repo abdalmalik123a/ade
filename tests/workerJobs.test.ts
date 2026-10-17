@@ -2,13 +2,20 @@
  * أعمال العامل المستقلّ بلا Electron (A03، D54): جدوله يُنادى مباشرةً بالنموذجين الحقيقيّين، والنتيجة **مطابقةٌ بايتًا ببايت** لنداء
  * الخدمة نفسها في العملية الرئيسة (`objectCutout`، و`cutout` مع `detectFace`) — فنقل «أزل الخلفية» إلى العامل لا يغيّر ما يعود.
  * و`answer` يردّ بالمعرّف، وما رماه العمل إخفاقٌ برسالته كما هي. ويُتخطّى ما غاب نموذجه.
+ * و(D56) «استورد تصميمًا»: Photoshop (مسطّحًا وبطبقة نصّ) وWord صغير — الوصف والصور مطابقةٌ لـ`readDesign`/`flattenPsd` مباشرةً،
+ * ورأسٌ ٣٠٠٠٠×٣٠٠٠٠ يُرفض برسالة D51 بنصّها.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { strToU8, zipSync } from 'fflate';
 import { afterAll, describe, expect, it } from 'vitest';
 import { answer, JOBS } from '../src/main/worker/index';
 import { objectCutout } from '../src/main/services/objectCutout';
 import { closePortrait, cutout, detectFace } from '../src/main/services/portrait';
+import { readDesign } from '../src/main/services/designImport';
+import { flattenPsd } from '../src/main/services/design/flatten';
+import { layeredPsd, tysh } from './psdBuilder';
 import { readPngRgba } from './helpers';
 
 const MODELS = join(__dirname, '..', 'resources', 'models');
@@ -73,4 +80,63 @@ describe('أعمال العامل المستقلّ', () => {
     expect(viaJob.face).toBeNull();
     expect(viaJob.alpha.length).toBe(128 * 128);
   }, 60_000);
+
+  describe('«استورد تصميمًا» (D56)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-workerjobs-'));
+    const file = (name: string, bytes: Uint8Array) => {
+      const path = join(dir, name);
+      writeFileSync(path, bytes);
+      return path;
+    };
+    /** الوصف نصًّا والبايتات base64 — فيُقارن كلّ شيء. */
+    const plain = (v: unknown) => JSON.stringify(v, (_k, x: unknown) => (x instanceof Uint8Array ? `b64:${Buffer.from(x).toString('base64')}` : x));
+    const FONTS = ['Amiri', 'Cairo'];
+    const bg = [240, 230, 200];
+
+    it.each([
+      ['بلا طبقات', layeredPsd({ w: 40, h: 30, dpi: 300, composite: (x) => (x < 20 ? [200, 30, 30] : bg), layers: [] })],
+      [
+        'بطبقة نصّ',
+        layeredPsd({
+          w: 40,
+          h: 30,
+          dpi: 300,
+          composite: () => bg,
+          layers: [
+            { name: 'BG', rect: { top: 0, left: 0, bottom: 30, right: 40 }, color: () => bg },
+            { name: 'الاسم', rect: { top: 10, left: 5, bottom: 20, right: 35 }, color: () => [0, 0, 0], text: tysh('زينب علي حسن', '/EngineDict << /FontSize 8.0 >>') }
+          ]
+        })
+      ]
+    ])('Photoshop %s: مطابقٌ للنداء المباشر (والتسطيح حيث يلزم)', async (_label, bytes) => {
+      const path = file('بطاقة.psd', bytes);
+      const viaJob = await JOBS.readDesign({ path, name: 'بطاقة.psd', fonts: FONTS });
+      const imported = readDesign(bytes, 'بطاقة.psd', FONTS);
+      const flat = imported.source === 'psd' && !imported.images.length ? flattenPsd(bytes) : null;
+      expect(plain(viaJob)).toBe(plain({ imported, flat }));
+      expect((viaJob.imported as { source: string }).source).toBe('psd');
+    });
+
+    it('Word صغير: مطابقٌ للنداء المباشر، ولا تسطيح', async () => {
+      const document = `<?xml version="1.0"?><w:document xmlns:w="w"><w:body><w:p><w:r><w:t>شهادة شكر</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/></w:sectPr></w:body></w:document>`;
+      const bytes = zipSync({ 'word/document.xml': strToU8(document) });
+      const path = file('شهادة.docx', bytes);
+      const viaJob = await JOBS.readDesign({ path, name: 'شهادة.docx', fonts: FONTS });
+      expect(plain(viaJob)).toBe(plain({ imported: readDesign(bytes, 'شهادة.docx', FONTS), flat: null }));
+    });
+
+    it('رأسٌ ٣٠٠٠٠×٣٠٠٠٠ ← رسالة D51 بنصّها إخفاقًا', async () => {
+      const head = Buffer.alloc(26);
+      head.write('8BPS', 0, 'ascii');
+      head.writeUInt16BE(1, 4);
+      head.writeUInt16BE(3, 12);
+      head.writeUInt32BE(30_000, 14);
+      head.writeUInt32BE(30_000, 18);
+      head.writeUInt16BE(8, 22);
+      head.writeUInt16BE(3, 24);
+      const path = file('ضخم.psd', Buffer.concat([head, Buffer.alloc(22)]));
+      const reply = await answer({ id: 3, job: 'readDesign', input: { path, name: 'ضخم.psd', fonts: [] } });
+      expect(reply).toEqual({ type: 'failure', id: 3, message: 'ملفّ Photoshop أكبر من ٢٥ مليون نقطة (٣٠٠٠٠×٣٠٠٠٠) — صغّره ثم استورده' });
+    });
+  });
 });
