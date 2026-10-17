@@ -65,6 +65,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
     else if (selected === 'new') setDraft(EMPTY);
     if (typeof selected === 'number') void window.diwan.orders.list({ clientId: selected }).then(setOrders);
     else setOrders([]);
+    // المسودّة تُملأ حين تتغيّر الجهة المختارة وحدها — لا مع كلّ تعديلٍ فيُطمس ما يُكتب
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, current?.id]);
 

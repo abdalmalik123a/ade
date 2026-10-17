@@ -69,6 +69,7 @@ export function OrderDialog({
     // طلبٌ جديد لزبون الشبّاك: يُملأ منه؛ وطلبٌ قائمٌ مربوط: يُقال اسم ملفّه وحده.
     if (!order && initialCitizenId) void linkCitizen(initialCitizenId, true);
     else if (order?.citizenId) void linkCitizen(order.citizenId, false);
+    // مرّةً عند فتح الحوار
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

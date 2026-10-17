@@ -41,6 +41,7 @@ export function useGalleryBrand(presetClient: { id: number; key: number } | null
 
   useEffect(() => {
     if (presetClient) setWho({ client: presetClient.id });
+  // مرّةً لكلّ جهةٍ بمفتاحها — لا مع كلّ رسمٍ للكائن نفسه
   }, [presetClient?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const client = who?.client ? (clients.find((c) => c.id === who.client) ?? null) : null;
@@ -71,6 +72,7 @@ export function useGalleryBrand(presetClient: { id: number; key: number } | null
     return () => {
       alive = false;
     };
+    // اللون من الشعار أو الجهة حين يتغيّران — ولا يُعاد حين يختار الموظف لوحةً أخرى فيُطمس اختياره
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logo?.imagePath, client?.id, client?.color]);
 

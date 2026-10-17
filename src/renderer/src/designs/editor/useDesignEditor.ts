@@ -121,6 +121,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
       setView('gallery');
       if (request.action === 'import') void sources.importDesign(true);
     }
+    // مرّةً لكلّ طلبٍ بمفتاحه: `library` و`order` و`sources` كائناتٌ تتجدّد كلّ رسم
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.key]);
 

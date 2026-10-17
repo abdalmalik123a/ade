@@ -177,6 +177,7 @@ export function useDesignOutput(i: Inputs) {
         setBusy(false);
       }
     },
+    // `i` كلّه لأنّ `i.onChanged` تُنادى منه، وما يُقرأ منه في المصفوفة؛ و`setBusy` ضابطُ حالٍ ثابت
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pages, imp, effectiveBackDoc, title, say, i.linkedOrder, i.designId, i.onChanged]
   );
@@ -199,6 +200,7 @@ export function useDesignOutput(i: Inputs) {
     } finally {
       setBusy(false);
     }
+    // `setBusy` ضابطُ حالٍ ثابت
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages, title, imp, say, previewMark]);
 

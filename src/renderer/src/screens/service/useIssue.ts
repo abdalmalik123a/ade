@@ -91,6 +91,7 @@ export function useIssue(
         fee: 0
       };
     });
+    // `sheets` مرجع، و`byRole` تقرأ الحقول والقيم وهما في المصفوفة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, values, fields, asPrinted, copies]);
 

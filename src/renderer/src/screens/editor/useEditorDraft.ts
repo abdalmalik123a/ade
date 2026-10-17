@@ -67,6 +67,7 @@ export function useEditorDraft(
         setSaving(false);
       }
     },
+    // الناقص ضوابطُ حالٍ ومرجع (`dirty`)، و`savedLetter` يتجدّد مع `draftName` والوثيقة والقيم
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [hasContent, draft, activeTemplate, linkedCitizen, draftName, doc, values, registry, layout, owner]
   );

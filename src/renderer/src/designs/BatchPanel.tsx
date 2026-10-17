@@ -53,6 +53,7 @@ export default function BatchPanel({
   const [sheetError, setSheetError] = useState<string | null>(null);
 
   const textKeys = fields.map((f) => f.key).filter((k) => !imageKeys.includes(k));
+  // المفاتيح بمحتواها (`join`) لا بمصفوفةٍ تُبنى كلّ رسم — وإلا أُعيدت القراءة كلّ رسم
   const parsed = useMemo(() => parseRows(text, textKeys, mapping), [text, textKeys.join('|'), mapping]); // eslint-disable-line react-hooks/exhaustive-deps
   const [mapOpen, setMapOpen] = useState(false);
   const photoKey = imageKeys[0];
@@ -60,6 +61,7 @@ export default function BatchPanel({
   const studioKey = nameKeyOf(parsed.mapped) ?? parsed.mapped[0] ?? '';
   const matched = useMemo(
     () => (photoKey && photos.length ? matchPhotos(parsed.rows, photos, photoKey, textKeys) : null),
+    // المفاتيح بمحتواها كما في `parsed`
     [parsed, photos, photoKey, textKeys.join('|')] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const rows = matched?.rows ?? parsed.rows;

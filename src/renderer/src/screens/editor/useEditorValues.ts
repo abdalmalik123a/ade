@@ -71,6 +71,7 @@ export function useEditorValues(
   useEffect(() => {
     if (citizenId === null) return;
     void window.diwan.citizens.get(citizenId).then((c) => c && fillFromCitizen(c));
+    // يُملأ حين يتغيّر المواطن أو حقول الوثيقة وحدهما — لا مع كلّ تعديلٍ فيُطمس ما كُتب
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [citizenId, doc.fields.length]);
 
@@ -94,6 +95,7 @@ export function useEditorValues(
     if (!needsGender || genderByHand || !ownerName) return;
     const g = guessGender(ownerName, learned);
     if (g && values[GENDER_KEY] !== g.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: g.gender }));
+    // الجنس يُقترح حين يتغيّر الاسم أو اختيار الموظف، والقيم تُقرأ حين يجري — لا يُعاد مع كلّ قيمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsGender, genderByHand, ownerName, learned]);
 

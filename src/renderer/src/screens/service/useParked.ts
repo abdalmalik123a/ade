@@ -165,6 +165,7 @@ export function useParked(
       setParkedState(fresh);
       void resume(resumeRequest.parkedKey, fresh);
     });
+    // مرّةً لكلّ «استأنف» بمفتاحه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeRequest?.key]);
 

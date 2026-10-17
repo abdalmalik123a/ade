@@ -149,6 +149,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
         setDetail(null);
       }
     })();
+    // القائمة تُعاد مع البحث والتصفية وحدهما، والمختار يُقرأ حين تجري
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, active]);
 

@@ -104,6 +104,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // Enter لا تعمل إلا بعد اختيار بطاقة، والاختيار يغيّر `picked` فيُعاد التسجيل بـ`goFill` جديدة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, step, picked, query]);
 
@@ -182,6 +183,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       setRepeatOf({ id: repeat.id, serial: repeat.serial, voidIt: false, reason: 'خطأ في الكتابة' });
       say(`نسخة عن ${repeat.serial} — بدّل ما يلزم ثم اطبع، والأصل يبقى في السجلّ كما خرج`);
     });
+    // مرّةً لكلّ «نسخة عن» بمفتاحها
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repeat?.key]);
 

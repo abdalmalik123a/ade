@@ -61,6 +61,7 @@ export function usePdfOpen(
       if (incoming.failed.length) say(incoming.failed.map((f) => `«${f.name}»: ${f.error}`).join(' · '), 'warn');
       else if (added.length) say(`فُتح «${incoming.opened[0]?.name ?? ''}» — ${pagesWord(added.length)}`);
     });
+    // مرّةً لكلّ ملفٍّ واردٍ بمفتاحه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming?.key]);
 

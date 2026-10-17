@@ -28,6 +28,7 @@ export function useCustomerReturn(
       fillFrom.current = null;
       void applyCitizen(customerRequest.citizenId);
     } else say('الزبون نفسه — اختر ما يريده بعدُ، وحقوله تُملأ من ملفّه');
+    // مرّةً لكلّ زبونٍ عائدٍ بمفتاحه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerRequest?.key]);
   useEffect(() => {
@@ -35,6 +36,7 @@ export function useCustomerReturn(
     const id = fillFrom.current;
     fillFrom.current = null;
     void applyCitizen(id);
+    // يُملأ حين تصل الحقول — و`applyCitizen` من الرسم نفسه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, fields]);
 }

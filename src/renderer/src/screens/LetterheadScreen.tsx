@@ -107,6 +107,7 @@ export default function LetterheadScreen() {
       const first = items.find((x) => x.isDefault) ?? items[0];
       if (first) load(first);
     })();
+    // مرّةً عند فتح الشاشة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

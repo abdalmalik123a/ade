@@ -71,6 +71,7 @@ export function useEditorDocument(
         if (initial) applyLetterhead(initial, true);
       }
     })();
+    // مرّةً عند فتح المحرّر: القوائم والترويسة الافتراضية
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -131,6 +132,7 @@ export function useEditorDocument(
 
   useEffect(() => {
     if (templateId !== null && letterheads !== undefined) void loadTemplate(templateId);
+    // مع النموذج المختار وحده — والترويسات تُقرأ حين يجري
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
@@ -161,6 +163,7 @@ export function useEditorDocument(
       restore(row.valuesJson, true);
       dirty.current = false;
     });
+    // مرّةً لكلّ مسودّةٍ تُفتح
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftId]);
 
@@ -175,6 +178,7 @@ export function useEditorDocument(
       setToast(`نسخة عن ${d.serial} — تصدر برقم قيدٍ جديد، والأصل كما صدر`);
       dirty.current = true;
     });
+    // مرّةً لكلّ كتابٍ يُنسخ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 

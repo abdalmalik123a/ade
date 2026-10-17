@@ -59,6 +59,7 @@ export function useOrderFill(i: Inputs) {
     const text = [fromFile, pending.note].filter(Boolean).join('، ');
     if (text) i.say(text);
     setPending(null);
+    // مرّةً لكلّ ملفٍّ معلّق: القيم تُقرأ حين يجري (`fillNow` و`i` من الرسم نفسه)، ولا يُعاد مع الكتابة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending]);
 

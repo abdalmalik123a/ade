@@ -55,6 +55,7 @@ export default function Overview({
     if (find()) return;
     const timer = window.setInterval(() => find() && window.clearInterval(timer), 100);
     return () => window.clearInterval(timer);
+    // يُعاد مع الخطوة وحدها: `step` منها، و`onNavigate` تتجدّد كلّ رسم فإعادته تنقل الشاشة ثانيةً
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 

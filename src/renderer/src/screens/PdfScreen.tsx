@@ -158,6 +158,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // `undo` و`redo` تقرآن من مراجع (`past` و`future`) — فالقديمة منهما صحيحة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 

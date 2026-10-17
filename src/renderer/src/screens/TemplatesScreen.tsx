@@ -173,6 +173,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     if (!incoming || incoming.key === wordIncomingSeen) return;
     wordIncomingSeen = incoming.key;
     receive(incoming.imported);
+    // مرّةً لكلّ ملفٍّ واردٍ بمفتاحه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming?.key]);
 
@@ -182,6 +183,7 @@ export default function TemplatesScreen({ incoming = null, request = null, onOpe
     libraryRequestSeen = request.key;
     if (request.action === 'folder') void importFolder();
     else void openPacksModal();
+    // مرّةً لكلّ طلبٍ بمفتاحه
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.key]);
 

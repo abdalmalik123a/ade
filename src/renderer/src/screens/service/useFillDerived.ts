@@ -59,6 +59,7 @@ export function useFillDerived(
     if (!needsGender || genderByHand || !citizenName) return;
     const guess = guessGender(citizenName, learned);
     if (guess && values[GENDER_KEY] !== guess.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
+    // الجنس يُقترح حين يتغيّر الاسم أو اختيار الموظف، والقيم تُقرأ حين يجري — لا يُعاد مع كلّ قيمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsGender, genderByHand, citizenName, learned]);
 

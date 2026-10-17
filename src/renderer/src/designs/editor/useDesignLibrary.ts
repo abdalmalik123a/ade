@@ -111,6 +111,7 @@ export function useDesignLibrary(i: Inputs) {
         say(errorText(e, 'تعذّر حذف التصميم'), 'warn');
       }
     },
+    // الناقص ضوابطُ حالٍ ثابتة (`setDesignId` و`setTitle` و`i.setBatchMap`) — لا قيمةٌ تُقرأ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [designId, loadDesigns, onChanged, say]
   );
@@ -145,6 +146,7 @@ export function useDesignLibrary(i: Inputs) {
         say(errorText(e, 'تعذّر فتح المسودّة'), 'warn');
       }
     },
+    // `show` ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [say]
   );
@@ -176,6 +178,7 @@ export function useDesignLibrary(i: Inputs) {
         say(errorText(e, 'تعذّر فتح التصميم'), 'warn');
       }
     },
+    // `show` ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [say, resumeDraft]
   );

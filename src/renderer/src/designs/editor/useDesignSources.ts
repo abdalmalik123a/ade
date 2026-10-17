@@ -87,6 +87,7 @@ export function useDesignSources(i: Inputs) {
     } catch (e) {
       say(errorText(e, 'تعذّر فتح الخلفية'), 'warn');
     }
+    // `fresh` و`i`: ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas, apply, say]);
 
@@ -125,6 +126,7 @@ export function useDesignSources(i: Inputs) {
     } catch (e) {
       say(errorText(e, 'تعذّر استيراد التصميم'), 'warn');
     }
+    // `fresh` و`i`: ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas.size, askSize, title, apply, say]);
 
@@ -141,6 +143,7 @@ export function useDesignSources(i: Inputs) {
       setAskSize(false);
       say(`${kind.title} — املأه، أو الصق قائمةً كاملة في «دفعة»`);
     },
+    // `fresh` ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [say]
   );
@@ -150,6 +153,7 @@ export function useDesignSources(i: Inputs) {
       fresh(emptyCanvas(size, bleed), customTitle);
       say(customTitle ? `بدء تصميم فارغ: ${customTitle}` : 'بدء تصميم فارغ جديد');
     },
+    // `fresh` ضوابطُ حالٍ وجلسةٌ تقرأ من مرجع (`latest`) — فلا تُقرأ قيمةٌ قديمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [say]
   );

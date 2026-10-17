@@ -19,10 +19,10 @@
 | الطبقة | أين | الأمر | ما يُعرف عنها |
 |---|---|---|---|
 | الأنواع | المشاريع الثلاثة (`tsconfig.node` و`web` و`test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
-| الوحدة | `tests/*.test.ts` — ١٧٨ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
+| الوحدة | `tests/*.test.ts` — ١٧٩ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
 | السيناريو | `tools/scenarios/*.mjs` — ١٠٩ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
-| الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) | مع الوحدة | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة — والسقوف في §١٠ |
+| الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) و`lint` (ESLint، G05) | مع الوحدة · و`npm run lint` وحده | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة · وقاعدتا الخطّافات وحدهما (`eslint.config.mjs`): `rules-of-hooks` خطأٌ يُسقط و`exhaustive-deps` تحذيرٌ يُعدّ — والسقوف في §١٠ |
 | الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
 
 **الملفّات المرجعية (`tests/fixtures/`):** قواعد الإصدارات الإحدى عشرة `release-1.0.0.db`…`release-1.7.2.db` كتبها كلّ إصدارٍ بشيفرته ويفتحها
@@ -79,7 +79,7 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٧٨ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٧٩ ملفّ اختبار (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
@@ -92,7 +92,7 @@
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
 | الطباعة والإخراج (7 · 7) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` |
-| النظام (21 · 40) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` |
+| النظام (21 · 41) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` `lint` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
 
@@ -165,6 +165,8 @@
 
 - `tests/structure.allow.json`: ١٧ ملفًّا فوق ٤٠٠ سطر بسقوفها، تنخفض ولا ترتفع (قاعدة `structure` الخامسة)؛ وأغلبها في main وshared (A11).
 - `tests/designStructure.allow.json` فارغ (`{}`): لا ملفّ في التصاميم فوق ٤٠٠ سطر، ولا مكوّن فوق ٣٠٠.
+- `tests/lint.test.ts` (D38): تحذيرات `exhaustive-deps` **٤٤** ومواضع `eslint-disable` في `src/` **٤٣** على الأكثر — ينقصان ولا يزيدان، ومن أصلح موضعًا خفض سقفه
+  في إيداعه. وكلّ إسكاتٍ فوقه سببه من سطر (راجعتُها الثلاثة والأربعين في D38: ٤٢ مقصودة، وواحدٌ لا يُسكت شيئًا في `usePdfHistory.ts`، ولا خطأ حقيقيّ).
 - `tests/fixtures/pdf-ref/`: صور مرجع مقارنة PDF مجموعها **٥ م.ب على الأكثر** (قرار المالك: في المستودع)، وكلٌّ PNG بمقاس نوعه بدقّة ٥٠ — يحرسها `pdfRefs`
   (اليوم ستّ صورٍ ٢٣٣٬٣٢٥ بايت).
 - **لا يُرفع سقف:** الملفّ يُقسَّم بأدوات `tools/split/` نقلًا حرفيًّا (`outline` ثم `render` و`hook` و`move` و`prune`)، و`npm run typecheck` بين الخطوات.
@@ -190,7 +192,7 @@
 | نسخةٌ احتياطية صنعها إصدارٌ قديم (الترقية والتراجع يغطّيهما `preUpdateBackup`) | G22 |
 | ما لا يُختبر إلا باليد: الماسح والكاميرا والطابعة والرموز من الورق | G10 |
 
-**ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08) · ESLint و`rules-of-hooks` (G05) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
+**ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08) · ESLint و`rules-of-hooks` (G05 — أُغلق: `lint`، D38) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
 مقارنة صور PDF (G30 — أُغلق: `pdfCompare`، D34 D35). **ودروس الميدان بلا حارس** (G29) أُغلقت: لكلٍّ حارسه أو سببٌ مكتوب في `docs/FIELD-LESSONS.md` (D29 D30).
 
 ## ١٢. المراجعات والتدقيق

@@ -124,6 +124,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
   // وعدّاد السكّة يتبع ما قُرئ هنا: معاملةٌ عُلّقت لحظة مغادرة الشبّاك تُعدّ.
   useEffect(() => {
     void reload().then(() => onChanged?.());
+    // `onChanged` تتجدّد كلّ رسم — فإعادته معها تقرأ القاعدة بلا سبب
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reload]);
 

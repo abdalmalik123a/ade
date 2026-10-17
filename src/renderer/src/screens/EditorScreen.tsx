@@ -189,6 +189,7 @@ function EditorScreen(
   useImperativeHandle(
     ref,
     () => ({ saveDraft: () => void saveDraft(false), exportPdf: () => void exportPdf(), print: () => requestIssue() }),
+    // الورقة من `printRef`، والمقبض يتجدّد مع `checks` (تتبع الوثيقة والقيم وصاحب العلاقة)
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [saveDraft, checks, settings]
   );

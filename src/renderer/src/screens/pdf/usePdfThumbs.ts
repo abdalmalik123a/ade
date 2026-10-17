@@ -37,6 +37,7 @@ export function usePdfThumbs(
     return () => {
       cancelled = true;
     };
+    // المصغّرات تُعاد مع الصفحات والمصادر وحدهما، وما رُسم منها يُقرأ حين تجري
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages, sources]);
 
@@ -65,6 +66,7 @@ export function usePdfThumbs(
     return () => {
       cancelled = true;
     };
+    // المعاينة تُعاد مع ما يغيّر صورتها وحده (القصّ بمحتواه)، لا مع كلّ رسم
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, currentRef?.rotate, JSON.stringify(currentRef?.crop ?? null), sources, crop === null]);
 
