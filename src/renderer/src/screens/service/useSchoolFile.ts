@@ -1,6 +1,6 @@
 /**
  * «ملفّ المدارس» في الشبّاك (الموجة ٢؛ تقسيمه بعد ١٫٧٫٠): «هات المدرسة» يملأ خاناتها من «الجهات»، والعام الدراسي يُكتب وحده
- * في خانته الفارغة — منقولٌ من `ServiceScreen` كما هو. و`useSchool` دالّةٌ تملأ الخانات لا خطّاف.
+ * في خانته الفارغة — منقولٌ من `ServiceScreen` كما هو. و`fillFromSchool` دالّةٌ تملأ الخانات لا خطّاف.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -47,7 +47,7 @@ export function useSchoolFile(
   }, [fields, settings?.schoolFiles, step]);
 
   /** ملفّ المدرسة يملأ خاناتها — وما كتبه الموظف بيده لا يُطمس، وما ملأته مدرسةٌ سابقة يُستبدل. */
-  function useSchool(school: Client, base: Record<string, string> = values, filled: Record<string, string> = schoolFilled.current) {
+  function fillFromSchool(school: Client, base: Record<string, string> = values, filled: Record<string, string> = schoolFilled.current) {
     const out = applySchool(base, schoolValues(fields, school, new Date()), filled);
     schoolFilled.current = out.filled;
     setValues(out.values);
@@ -55,5 +55,5 @@ export function useSchoolFile(
     say(`مُلئت بيانات ${school.name}`);
   }
 
-  return { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, useSchool };
+  return { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, fillFromSchool };
 }

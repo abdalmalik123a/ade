@@ -19,11 +19,11 @@ import type { DocField } from '@shared/doc';
 type Props = {
   picker: boolean;
   setPicker: Dispatch<SetStateAction<boolean>>;
-  useCitizen: (id: number) => Promise<void>;
+  applyCitizen: (id: number) => Promise<void>;
   schoolPicker: boolean;
   schools: Client[];
   setSchoolPicker: Dispatch<SetStateAction<boolean>>;
-  useSchool: (school: Client, base?: Record<string, string>, filled?: Record<string, string>) => void;
+  fillFromSchool: (school: Client, base?: Record<string, string>, filled?: Record<string, string>) => void;
   schoolOn: boolean;
   mergePicker: boolean;
   setMergePicker: Dispatch<SetStateAction<boolean>>;
@@ -44,11 +44,11 @@ type Props = {
   setIdSheet: Dispatch<SetStateAction<{ name: string; attachments: Attachment[]; } | null>>;
 };
 
-export default function CounterDialogs({ picker, setPicker, useCitizen, schoolPicker, schools, setSchoolPicker, useSchool, schoolOn, mergePicker, setMergePicker, rows, setNames, say, genderReview, learned, setGenderReview, remember, issueMerged, pasteOpen, setPasteOpen, fields, values, setValues, idSheet, setIdSheet }: Props) {
+export default function CounterDialogs({ picker, setPicker, applyCitizen, schoolPicker, schools, setSchoolPicker, fillFromSchool, schoolOn, mergePicker, setMergePicker, rows, setNames, say, genderReview, learned, setGenderReview, remember, issueMerged, pasteOpen, setPasteOpen, fields, values, setValues, idSheet, setIdSheet }: Props) {
   return (
     <>
-      {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void useCitizen(id)} />}
-      {schoolPicker && <SchoolPicker schools={schools} onClose={() => setSchoolPicker(false)} onPick={(s) => useSchool(s)} />}
+      {picker && <CitizenPicker onClose={() => setPicker(false)} onPick={(id) => void applyCitizen(id)} />}
+      {schoolPicker && <SchoolPicker schools={schools} onClose={() => setSchoolPicker(false)} onPick={(s) => fillFromSchool(s)} />}
       {schoolOn && (
         <datalist id="diwan-schools">
           {schools.map((s) => (

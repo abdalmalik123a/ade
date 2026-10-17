@@ -3,7 +3,7 @@
  */
 import { ARABIC_ORDINAL, FONT, box, medalBase, medalNumber, photoFrame, ruleLine, type Style } from './helpers';
 import { mix } from '../color';
-import { guillocheFrame, guillochePattern, n, rosetteSymbol, useAt } from '../ornaments';
+import { guillocheFrame, guillochePattern, n, rosetteSymbol, placeUse } from '../ornaments';
 
 // ── رسمي ─────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ export const official: Style = {
     const f = guillocheFrame(c, c.M * 0.045, c.M * 0.028, c.p.primary, c.p.primary, c.p.accent);
     return {
       defs: f.defs + rosetteSymbol('wm', c.M * 0.5, c.p.primary, c.M * 0.0018, 24, 3),
-      body: useAt('wm', c.W / 2, c.H * 0.52, c.M * 0.36, 'opacity="0.06"') + f.body
+      body: placeUse('wm', c.W / 2, c.H * 0.52, c.M * 0.36, 'opacity="0.06"') + f.body
     };
   },
   decor: (d, c) => {
@@ -74,7 +74,7 @@ export const official: Style = {
           body:
             `<line x1="${n(cx - half)}" y1="${n(y)}" x2="${n(cx - r * 1.6)}" y2="${n(y)}" stroke="${p.accent}" stroke-width="${n(c.M * 0.0028)}"/>` +
             `<line x1="${n(cx + r * 1.6)}" y1="${n(y)}" x2="${n(cx + half)}" y2="${n(y)}" stroke="${p.accent}" stroke-width="${n(c.M * 0.0028)}"/>` +
-            useAt('dv', cx, y, r)
+            placeUse('dv', cx, y, r)
         };
       }
       case 'photo':
@@ -87,10 +87,10 @@ export const official: Style = {
       }
       case 'seal': {
         const R = d.r * c.M;
-        if (d.faint) return { body: useAt('wm', d.cx * c.W, d.cy * c.H, R, 'opacity="0.08"') };
+        if (d.faint) return { body: placeUse('wm', d.cx * c.W, d.cy * c.H, R, 'opacity="0.08"') };
         return {
           defs: rosetteSymbol('sl', R, p.accent, c.M * 0.0022, 22, 3),
-          body: `<circle cx="${n(d.cx * c.W)}" cy="${n(d.cy * c.H)}" r="${n(R * 0.72)}" fill="${p.paper}"/>` + useAt('sl', d.cx * c.W, d.cy * c.H, R)
+          body: `<circle cx="${n(d.cx * c.W)}" cy="${n(d.cy * c.H)}" r="${n(R * 0.72)}" fill="${p.paper}"/>` + placeUse('sl', d.cx * c.W, d.cy * c.H, R)
         };
       }
       case 'medal': {
@@ -99,7 +99,7 @@ export const official: Style = {
           defs: rosetteSymbol('md', m.r, p.accent, c.M * 0.002, 16, 2),
           body:
             `<circle cx="${n(m.cx)}" cy="${n(m.cy)}" r="${n(m.r * 0.66)}" fill="${p.primary}"/>` +
-            useAt('md', m.cx, m.cy, m.r) +
+            placeUse('md', m.cx, m.cy, m.r) +
             medalNumber(m.cx, m.cy, m.r * 0.66, '#ffffff', FONT.kufi) + `${ARABIC_ORDINAL[d.rank - 1]}</text>`
         };
       }

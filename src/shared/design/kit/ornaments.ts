@@ -85,7 +85,7 @@ export function rosetteSymbol(id: string, R: number, color: string, sw: number, 
   return `<symbol id="${id}" viewBox="${n(-R)} ${n(-R)} ${n(2 * R)} ${n(2 * R)}" overflow="visible">${rings.join('')}</symbol>`;
 }
 
-export const useAt = (id: string, cx: number, cy: number, R: number, extra = ''): string =>
+export const placeUse = (id: string, cx: number, cy: number, R: number, extra = ''): string =>
   `<use href="#${id}" x="${n(cx - R)}" y="${n(cy - R)}" width="${n(2 * R)}" height="${n(2 * R)}" ${extra}/>`;
 
 /**
@@ -123,7 +123,7 @@ export function guillocheFrame(
       [x0 + band / 2, y1 - band / 2],
       [x1 - band / 2, y1 - band / 2]
     ].map(([cx, cy]) =>
-      `<circle cx="${n(cx!)}" cy="${n(cy!)}" r="${n(band * 1.25)}" fill="#fff" opacity="0.9"/>` + useAt('gr', cx!, cy!, band * 1.25)
+      `<circle cx="${n(cx!)}" cy="${n(cy!)}" r="${n(band * 1.25)}" fill="#fff" opacity="0.9"/>` + placeUse('gr', cx!, cy!, band * 1.25)
     )
   ].join('');
   return { defs, body };

@@ -17,7 +17,7 @@ export function useCitizenFill(
   const { setCitizenId, setValues, fields, setPicker, say } = ctx;
 
   /** F2: ما يعرفه البرنامج عن المواطن يملأ ما يطابقه من الحقول. */
-  async function useCitizen(id: number) {
+  async function applyCitizen(id: number) {
     const citizen = (await window.diwan.citizens.get(id)) as Record<string, unknown> | null;
     if (!citizen) return;
     setCitizenId(id);
@@ -38,5 +38,5 @@ export function useCitizenFill(
     say('استُوردت بيانات المواطن');
   }
 
-  return { useCitizen };
+  return { applyCitizen };
 }

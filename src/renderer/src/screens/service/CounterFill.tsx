@@ -1,7 +1,7 @@
 /**
  * الشبّاك — ٢ «املأ» (تقسيم الشبّاك بعد ١٫٧٫٠): منقولةٌ من `ServiceScreen` كما هي — «هات الزبون» و«هات المدرسة» و«لصق من
  * واتساب» و«ورقة مستمسكاته»، وقائمة الأسماء، والعدد على الكتاب، والجنس، والحقول بتنبيهها الخفيف، والمعاينة الحيّة.
- * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`useSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف).
+ * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`fillFromSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف).
  */
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { count } from '@shared/arabic';
@@ -40,7 +40,7 @@ type Props = {
   setSchoolPicker: Dispatch<SetStateAction<boolean>>;
   schoolNameKey: string | null;
   schools: Client[];
-  useSchool: (school: Client, base?: Record<string, string>, filled?: Record<string, string>) => void;
+  fillFromSchool: (school: Client, base?: Record<string, string>, filled?: Record<string, string>) => void;
   schoolFilled: MutableRefObject<Record<string, string>>;
   registry: { number: string; date: string };
   resolveHead: (text: string) => string;
@@ -73,7 +73,7 @@ export default function CounterFill({
   setSchoolPicker,
   schoolNameKey,
   schools,
-  useSchool,
+  fillFromSchool,
   schoolFilled,
   registry,
   resolveHead
@@ -246,7 +246,7 @@ export default function CounterFill({
                   onChange={(e) => {
                     const typed = e.target.value;
                     const school = schoolOn && f.key === schoolNameKey ? schools.find((s) => s.name === typed.trim()) : undefined;
-                    if (school) useSchool(school, { ...values, [f.key]: typed }, { ...schoolFilled.current, [f.key]: typed });
+                    if (school) fillFromSchool(school, { ...values, [f.key]: typed }, { ...schoolFilled.current, [f.key]: typed });
                     else setValues((prev) => ({ ...prev, [f.key]: typed }));
                   }}
                 />

@@ -119,11 +119,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const { goFill } = useFillLoader({ picked, setBusy, items, letterheads, setLoaded, setStep, say });
 
   // ── «ملفّ المدارس»: «هات المدرسة» والعام الدراسي — `service/useSchoolFile.ts` ──
-  const { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, useSchool } =
+  const { schoolPicker, setSchoolPicker, schools, schoolFilled, schoolOn, schoolNameKey, fillFromSchool } =
     useSchoolFile({ settings, fields, step, values, setValues, say });
 
   // ── F2: المواطن من السجلّ يملأ حقوله — `service/useCitizenFill.ts` ──
-  const { useCitizen } = useCitizenFill({ setCitizenId, setValues, fields, setPicker, say });
+  const { applyCitizen } = useCitizenFill({ setCitizenId, setValues, fields, setPicker, say });
 
   // ── صاحب العلاقة والناقص ورأس الورقة وأسماء الدمج — `service/useFillDerived.ts` ──
   const { byRole, citizenName, nameField, rows, missing, printsRegistry, registry, resolveHead } = useFillDerived({
@@ -192,7 +192,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   });
 
   // ── الزبون عائدًا من أداة — `service/useCustomerReturn.ts` ──
-  useCustomerReturn({ customerRequest, setCitizenId, step, fields, useCitizen, say });
+  useCustomerReturn({ customerRequest, setCitizenId, step, fields, applyCitizen, say });
 
   // ── الإصدار: المعاملة والدمج ثم الطباعة — `service/useIssue.ts` ──
   const { issue, issueMerged } = useIssue({
@@ -285,7 +285,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
               setSchoolPicker={setSchoolPicker}
               schoolNameKey={schoolNameKey}
               schools={schools}
-              useSchool={useSchool}
+              fillFromSchool={fillFromSchool}
               schoolFilled={schoolFilled}
               registry={registry}
               resolveHead={resolveHead}
@@ -346,11 +346,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
       <CounterDialogs
         picker={picker}
         setPicker={setPicker}
-        useCitizen={useCitizen}
+        applyCitizen={applyCitizen}
         schoolPicker={schoolPicker}
         schools={schools}
         setSchoolPicker={setSchoolPicker}
-        useSchool={useSchool}
+        fillFromSchool={fillFromSchool}
         schoolOn={schoolOn}
         mergePicker={mergePicker}
         setMergePicker={setMergePicker}
