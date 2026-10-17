@@ -3,6 +3,21 @@
 > قيدٌ لكلّ جلسة، **الأحدث في الأعلى**، عشرة أسطر على الأكثر: التاريخ والساعة · الأمر · ما تغيّر (الإيداعات) · الفحص ونتيجته ·
 > المراجعة (أيّ أمرٍ رُوجع وبأيّ نتيجة) · أين توقّف بالضبط · الخطوة التالية.
 
+## ٢٠٢٦-١٠-١٨ ٠١:٠٧ — D50 ✅ — ممشّيات الوثيقة، وأُغلق A05 · ثم D51 ⚙️ (حُجز ٠١:٠٧)
+- **تحقّق قبل البدء** (esbuild إلى مجلّد الجلسة): المجموعة بلا `blocks` ترمي «blocks is not iterable»، والفقرة بلا `inlines` ترمي، و`schemaVersion: 7` ← ١،
+  و`unfield` يُبقي الحقل في العمود وفرع القائمة وإجابته ويزيله من المجموعة · `doc` و`contentPack` ٤٢ ✓. وبعد التنفيذ: صفر، صفر، ٧، ولا حقل.
+- **ما تغيّر (`e31a92f`):** `shared/docTree.ts` جديد (`validBlock` `normalizeTree` `mapInlines`؛ والسليم يعود الكائن نفسه، والمصفوفة العليا جديدةٌ كما كانت) ·
+  `shared/docVersion.ts` جديد (`docSchemaOf` `migrateDoc` `isNewerDoc`) — **والصيغة الحاضرة وسيطٌ** (`migrateDoc(raw, DOC_SCHEMA)`) لا استيرادٌ من `doc.ts`، فلا حلقة ولا مساس
+  بسطر `DOC_SCHEMA` (خارج المسموح) · `doc.ts`: `normalizeDoc` و`unfield` بالجديد، وأُزيلت `isBlock` و`normalizeBlock` (ومعهما `BLOCK_KINDS` إلى `docTree`) ← ٨٥٢، والسقف خُفض بـRATCHET ·
+  `contentPack.ts`: نموذجٌ بوثيقةٍ أحدث يرفض الحزمة بالرسالة نفسها **قبل الصور** فلا يُكتب شيء.
+- **الحالات:** ستٌّ في `doc.test.ts` وواحدة في `contentPack.test.ts`؛ وعلى الكود القديم (`git checkout HEAD~1` للملفّين ثم أُعيدا) **سقطت خمس** ونجحت «السليمة» كما يجب.
+- **وقائع:** (١) `normalizePage` يضيف `watermark: null` في القراءة الثانية لوثيقةٍ بلا `pageSetup` — قائمٌ قبل D50 وخارج المسموح، فحالة «السليمة» بإعدادٍ محفوظ.
+  (٢) `designFonts` و`fonts` و`workSettings` و`contentPack.test` تكتب `schemaVersion: 2` مختلَقًا (لم يكتبه البرنامج قطّ: `DOC_SCHEMA` ١ منذ أوّله، ولا قارئ له في `src/`)؛
+  فيبقى ٢ بعد القراءة ولا أثر له إلا رفض حزمةٍ تحمله — والسيناريوهات الثلاثة شُغّلت ✓.
+- **الفحص:** `typecheck` ✓ · `vitest` كلّه ١٨٨٥ ✓ و٤ متخطّاة، ولقطات الرسّام بلا تغيير · `structure` `repoHygiene` `lint` ✓ · السيناريوهات `editor` ✓٣٩ `pageEditor` ✓٦٣
+  `templates` ✓٤٠ `import` ✓٣٣ `contentPack` ✓٧ و`fonts` ✓٢٣ `workSettings` ✓١١ `designFonts` ✓٦ · لا بايت تحكّم.
+- **الوثائق:** ARCHITECTURE §١ «نموذج الوثيقة وإصداره» · `editor.md` §٤ §٦ · PLAN «أُغلق: A05». **ولم يُمسّ (خارج المسموح):** «(ناقص: A02 وA05)» في ARCHITECTURE §٢ المبدأ ٣.
+
 ## ٢٠٢٦-١٠-١٨ ٠٠:٥٣ — D49 ✅ — مشغّل الترقيات المرقّمة، وأُغلق A02 · ثم D50 ⚙️
 - **الجرد (الخطوة ١):** في الإقلاع `prepareDocuments` وحده · وعند الطلب: `ensureSearchColumn` (`ipc/citizens.ts`، ومعه `ensureCitizenColumns`) و`prepareClients` و`prepareOrders`
   و`prepareTemplates` و`prepareLetterheads` و`prepareClips` و`prepareLearning` و`prepareGenderMemory` في خدماتها، و`prepareIdentity` من داخل النماذج والترويسات والكليشات ·

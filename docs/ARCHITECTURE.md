@@ -40,7 +40,9 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 - **الصفحة:** `PageSize` سبع قيم (A4 A5 FS A3 A6 LT LG) والاتجاه والهوامش. والورقة عنصرٌ واحد في التخزين، والمحرّر يعرض صفحاتها كما تُطبع
   (`src/renderer/src/components/pageFlow.ts`). و`dir` لكلّ كتلة، والأرقام هندية أو عربية خيارٌ في الوثيقة.
 - **`issuing`:** `registered` يُقيَّد برقم صادر، و`print-only` لا يُقيَّد (ورقة الأسئلة).
-- **`schemaVersion`** يُكتب مع كلّ وثيقة، ولا يُقرأ بعد للترحيل (A05).
+- **`schemaVersion`** يُكتب مع كلّ وثيقة **ويُقرأ بخطوات** (`shared/docVersion.ts`، D50): `migrateDoc` على مثال اللوحة، والأحدث يُقرأ بما يُعرف منه
+  ويبقى رقمه، والحزمة بنموذجٍ أحدث تُرفض «حدّث البرنامج». **والشجرة تُقوَّم في كلّ عمق** (`shared/docTree.ts`): التالف يسقط وحده (مجموعةٌ بلا كتل،
+  فقرةٌ بلا مقاطع) وما حوله باقٍ، والسليم يعود هو نفسه؛ و`mapInlines` يبلغ كلّ مقطعٍ (العمودان، وفروع القائمة وإجاباتها) فـ`unfield` منه.
 - **المحرّر ProseMirror** (ط03): `src/shared/docPm.ts` و`docPmTable.ts` و`docPmList.ts` و`docPmMarks.ts` تنقل بين `Doc` وProseMirror.
 - **اللوحة** (`src/shared/design/`): `model/` (`Canvas` و`CANVAS_VERSION` = ١ و`migrateCanvas` خطواتٌ عند القراءة، ويُحفظ الجديد عند الحفظ التالي) ·
   `kinds/` (نوعٌ في ملفّ: text وimage وbarcode وshape وtable وpath، ومعها svg القديم) · `render/` · `geometry/` · `kit/`.
