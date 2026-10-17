@@ -1,10 +1,11 @@
 /**
  * مضيف العامل المستقلّ (A03، D53) بعمليةٍ مزيّفة: الجواب يصل طلبه بمعرّفه ولو تبدّل الترتيب · السقوط والطلبات معلّقة ← كلٌّ يُرفض
  * بـ«توقّف المعالج — جرّب ثانيةً» ويُقيَّد · الطلب التالي يُقلع عمليةً جديدة · `close()` يقتل ولا يُقلع شيئًا · ولا طلب يبقى معلّقًا.
+ * و(D54) `runOr` والخمول · و(D55) المهلة والإلغاء بساعةٍ مزيّفة.
  */
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
-import { WORKER_STOPPED, type WorkerReply, type WorkerRequest } from '../src/shared/worker';
+import { WORKER_CANCELLED, WORKER_STOPPED, WORKER_TIMED_OUT, type WorkerReply, type WorkerRequest } from '../src/shared/worker';
 
 const logError = vi.fn();
 vi.mock('electron', () => ({ utilityProcess: { fork: () => null } }));
@@ -185,7 +186,8 @@ describe('مضيف العامل المستقلّ', () => {
           spawned.push(p);
           return p;
         },
-        { idleMs: 1000 }
+        // والمهلة أطول من خطوات الساعة هنا — فلا تُخلط بالخمول.
+        { idleMs: 1000, timeoutMs: () => 60_000 }
       );
       const run = host.run('ping', null);
       spawned[0]!.reply({ type: 'result', id: spawned[0]!.sent[0]!.id, output: { pid: 1, at: 1 } });
@@ -207,6 +209,96 @@ describe('مضيف العامل المستقلّ', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe('المهلة والإلغاء (D55)', () => {
+    /** مضيفٌ بمهلة ثانيةٍ لكلّ عمل، على ساعةٍ مزيّفة. */
+    function timed() {
+      const spawned: FakeProcess[] = [];
+      const host = new WorkerHost(
+        () => {
+          const p = new FakeProcess();
+          spawned.push(p);
+          return p;
+        },
+        { timeoutMs: () => 1000 }
+      );
+      return { host, spawned };
+    }
+
+    it('المهلة ← قتلٌ ورسالة «أُوقف» لطلبها، والمعلّق غيره برسالته، وجوابٌ متأخّر من المقتولة لا يحلّ شيئًا', async () => {
+      vi.useFakeTimers();
+      try {
+        logError.mockClear();
+        const { host, spawned } = timed();
+        const slow = host.run('cutoutObject', { modelPath: 'm', pixels: new Uint8Array(4), width: 1, height: 1 });
+        vi.advanceTimersByTime(500);
+        const other = host.run('ping', null);
+        vi.advanceTimersByTime(500);
+        await expect(slow).rejects.toThrow(WORKER_TIMED_OUT);
+        await expect(other).rejects.toThrow(WORKER_STOPPED);
+        expect(spawned[0]!.killed).toBe(true);
+        expect(logError.mock.calls.map((c) => c[0])).toEqual(['worker-timeout']);
+        spawned[0]!.reply({ type: 'result', id: spawned[0]!.sent[0]!.id, output: null });
+        // والطلب التالي يُقلع عمليةً جديدة.
+        const next = host.run('ping', null);
+        expect(spawned).toHaveLength(2);
+        spawned[1]!.reply({ type: 'result', id: spawned[1]!.sent[0]!.id, output: { pid: 2, at: 2 } });
+        await expect(next).resolves.toEqual({ pid: 2, at: 2 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('ما ينتهي في وقته لا يتغيّر: جوابٌ قبل المهلة يُلغي مؤقّتها', async () => {
+      vi.useFakeTimers();
+      try {
+        const { host, spawned } = timed();
+        const run = host.run('ping', null);
+        vi.advanceTimersByTime(900);
+        spawned[0]!.reply({ type: 'result', id: spawned[0]!.sent[0]!.id, output: { pid: 1, at: 1 } });
+        await expect(run).resolves.toEqual({ pid: 1, at: 1 });
+        vi.advanceTimersByTime(5000);
+        expect(spawned[0]!.killed).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cancel ← «أُلغي» لطلب العمل وقتلٌ، والمعلّق غيره برسالته؛ وبلا طلبٍ معلّق لا يقتل', async () => {
+      const { host, spawned } = timed();
+      expect(host.cancel('cutoutObject')).toBe(false);
+      expect(spawned).toHaveLength(0);
+      const ping = host.run('ping', null);
+      expect(host.cancel('cutoutObject')).toBe(false);
+      expect(spawned[0]!.killed).toBe(false);
+      const cut = host.run('cutoutObject', { modelPath: 'm', pixels: new Uint8Array(4), width: 1, height: 1 });
+      expect(host.cancel('cutoutObject')).toBe(true);
+      await expect(cut).rejects.toThrow(WORKER_CANCELLED);
+      await expect(ping).rejects.toThrow(WORKER_STOPPED);
+      expect(spawned[0]!.killed).toBe(true);
+      host.close();
+    });
+
+    it('والمهلة لا تُحسب سقوطًا لـrunOr: مهلتان ولا رجوع إلى القديم', async () => {
+      vi.useFakeTimers();
+      try {
+        const { host } = timed();
+        let oldCalls = 0;
+        const old = async () => {
+          oldCalls++;
+          return { pid: 0, at: 0 };
+        };
+        for (let i = 0; i < 2; i++) {
+          const run = host.runOr('ping', null, old);
+          vi.advanceTimersByTime(1000);
+          await expect(run).rejects.toThrow(WORKER_TIMED_OUT);
+        }
+        expect(oldCalls).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it('إقلاعٌ تعذّر يرفض الطلب ولا يرمي', async () => {
