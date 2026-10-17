@@ -20,7 +20,8 @@ const ROOT = join(process.env.TEMP ?? '.', `diwan-exp010-${STAMP}`);
 const PHOTOS = join(ROOT, 'photos');
 const OUT = join(ROOT, 'out');
 const REPORT = join(process.cwd(), 'reports', 'تجارب-٠٫١٠');
-const N = 400;
+/** حجم الدفعة: ٤٠٠ كما قيست أوّل مرّة، و`EXP_N` يغيّره (٥٠٠ في D37). */
+const N = Number(process.env.EXP_N) || 400;
 
 // ── صورٌ مولّدة ───────────────────────────────────────────────────────
 const CRC = (() => {
@@ -143,7 +144,7 @@ export default async function experiment(page) {
 
   const paste = await measured(async () => {
     await page.type('textarea[data-batch-text]', tsv);
-    return until(() => page.eval(`return (document.querySelector('[data-batch-summary]')?.innerText ?? '').includes('٤٠٠');`));
+    return until(() => page.eval(`return (document.querySelector('[data-batch-summary]')?.innerText ?? '').includes('${String(N).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d])}');`));
   });
   log(`\n١. دفعة ${N} هوية (${keys.length} حقلًا: ${keys.join('، ')})`);
   log(`   لصق القائمة وقراءتها: ${sec(paste.ms)}`);

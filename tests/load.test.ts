@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { archiveStats, issueDocument, listDocuments, periodStats, prepareDocuments, verifyArchive } from '../src/main/services/documents';
 import { prepareSearch } from '../src/main/services/searchIndex';
+import { listTemplates, saveTemplate } from '../src/main/services/templates';
 import type { IssueInput } from '../src/shared/api';
 
 const N = 50_000;
@@ -74,7 +75,16 @@ describe.runIf(process.env.DIWAN_LOAD === '1')('أرشيفٌ بخمسين ألف
     const [, tStats] = time(() => archiveStats(db));
     const [check, tCheck] = time(() => verifyArchive(db));
 
-    console.log(JSON.stringify({ build, tName, tSerial, tWord, tPage, tYear, tStats, tCheck }));
+    // مكتبة النماذج بعشرين قالبًا تتوزّع عليها الكتب (G07): كلّ قالبٍ يعدّ كتبه «هذا الشهر» (`MONTH_COUNT` في `listTemplates`).
+    const ids = Array.from({ length: 20 }, (_, k) =>
+      saveTemplate(db, { id: null, code: null, title: `قالب ${k + 1}`, subtitle: null, category: 'قياس', subjectLine: null, bodyHtml: '<p>نصّ</p>', letterheadId: null, variables: [] }).id
+    );
+    const assign = db.prepare('UPDATE documents SET template_id = ? WHERE id % 20 = ?');
+    db.transaction(() => ids.forEach((id, k) => assign.run(id, k)))();
+    const [templates, tTemplates] = time(() => listTemplates(db));
+
+    console.log(JSON.stringify({ build, tName, tSerial, tWord, tPage, tYear, tStats, tCheck, tTemplates }));
+    expect(templates).toHaveLength(20);
     expect(byName.some((d) => d.citizenName.endsWith(' 49321'))).toBe(true);
     expect(bySerial.length).toBeGreaterThan(0);
     expect(byWord.length).toBe(500);
@@ -89,6 +99,7 @@ describe.runIf(process.env.DIWAN_LOAD === '1')('أرشيفٌ بخمسين ألف
     expect(tPage).toBeLessThan(500);
     expect(tYear).toBeLessThan(1000);
     expect(tStats).toBeLessThan(1000);
+    expect(tTemplates).toBeLessThan(1000);
     // السلامة تمرّ على السلسلة كلّها بطبعها — ثوانٍ لا دقائق.
     expect(tCheck).toBeLessThan(15_000);
   }, 600_000);
