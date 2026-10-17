@@ -5,15 +5,19 @@
  * ولا يستورد `electron` ولا `db/` ولا `ipc/` (`tests/structure.test.ts`): القاعدة والمخزن في الرئيسة وحدها.
  * والجدول يُصدَّر فيُنادى في الاختبار بلا Electron — و`parentPort` لا يوجد هناك فلا يُستمع لشيء.
  */
+import { readFile } from 'node:fs/promises';
 import type { WorkerInput, WorkerJob, WorkerOutput, WorkerReply, WorkerRequest } from '@shared/worker';
 import { cutout, detectFace } from '../services/portrait';
 import { objectCutout } from '../services/objectCutout';
+import { assertPixels, designKind } from '../services/importGuard';
+import { readDesign } from '../services/designImport';
+import { flattenPsd } from '../services/design/flatten';
 
 type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Promise<WorkerOutput<J>>;
 
 /**
- * جدول الأعمال: «أنا هنا» (D53)، و«أزل الخلفية» بنموذجيها (D54) — تُنادى خدماتها كما هي، ومسار النموذج وفحصه وطول البكسلات
- * في الرئيسة قبل الإرسال (`ipc/photos.ts`).
+ * جدول الأعمال: «أنا هنا» (D53)، و«أزل الخلفية» بنموذجيها (D54)، و«استورد تصميمًا» (D56) — تُنادى خدماتها كما هي؛ ومسار النموذج
+ * وفحصه وطول البكسلات في الرئيسة قبل الإرسال (`ipc/photos.ts`)، وكذلك حوار الملف وسقف حجمه وخطوط المكتب (`ipc/designs.ts`).
  */
 export const JOBS: { [J in WorkerJob]: Job<J> } = {
   ping: () => ({ pid: process.pid, at: Date.now() }),
@@ -34,7 +38,15 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
     ]);
     return { ...cut, face };
   },
-  cutoutObject: ({ modelPath, pixels, width, height }) => objectCutout(modelPath, pixels, width, height)
+  cutoutObject: ({ modelPath, pixels, width, height }) => objectCutout(modelPath, pixels, width, height),
+  readDesign: async ({ path, name, fonts }) => {
+    // سقف النقاط قبل الفكّ (D51) — ورسالته تعبر إخفاقًا كما هي.
+    const bytes = await readFile(path);
+    assertPixels(bytes, designKind(name));
+    const imported = readDesign(bytes, name, fonts);
+    // Photoshop يأتي بخلفيته ممحوّةً منها العناصر؛ وإن تعذّرت سُطّح هنا كما هو.
+    return { imported, flat: imported.source === 'psd' && !imported.images.length ? flattenPsd(bytes) : null };
+  }
 };
 
 /** باب اختبار (D55): م.ث يتأخّرها العامل قبل كلّ عملٍ غير «أنا هنا» — فتُرى المهلة والإلغاء بلا صورةٍ ضخمة. */

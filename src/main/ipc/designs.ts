@@ -17,6 +17,7 @@ import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } fro
 import type { FieldSuggestion } from '@shared/api';
 import { assertPixels, assertSize, designKind } from '../services/importGuard';
 import { flattenPsd } from '../services/design/flatten';
+import { workerHost } from '../services/workerHost';
 import { getDb, storeDir } from '../db';
 import { libraryFonts } from '@shared/fonts';
 import { listFaces } from '../services/fonts';
@@ -127,16 +128,23 @@ export function registerDesignIpc(): void {
       // أكبر من حدّه يُرفض قبل أن يُقرأ، وأكثر من حدّه نقاطًا قبل أن يُفكّ (D51).
       const kind = designKind(path);
       await assertSize(path, kind);
-      const bytes = await readFile(path);
-      assertPixels(bytes, kind);
       // «خطوط ديوان» كلّها — فخطٌّ أضافه المكتب يُطابَق في Photoshop (DESIGNS.md ١٫٥).
-      const imported = readDesign(bytes, basename(path), libraryFonts(listFaces(getDb())).map((f) => f.family));
+      const fonts = libraryFonts(listFaces(getDb())).map((f) => f.family);
+      // القراءة والتسطيح في العامل المستقلّ (A03، D56) فلا تتجمّد الرئيسة — والطريق القديم هنا بديلٌ بعد سقوطين (ر141).
+      const read = await workerHost().runOr('readDesign', { path, name: basename(path), fonts }, async () => {
+        const bytes = await readFile(path);
+        assertPixels(bytes, kind);
+        const imported = readDesign(bytes, basename(path), fonts);
+        return { imported, flat: imported.source === 'psd' && !imported.images.length ? flattenPsd(bytes) : null };
+      });
+      // ونوع ما قرأه العامل هو `DesignImport` (العقد في المشترك لا يرى الرئيسة — `@shared/worker`).
+      const imported = read.imported as DesignImport;
       const warnings = [...imported.warnings];
 
       // Photoshop يأتي بخلفيته ممحوّةً منها العناصر؛ وإن تعذّرت سُطّح هنا كما هو.
       // وPDF لا صورة فيه، فتُرسم صفحته.
-      if (imported.source === 'psd' && !imported.images.length) {
-        const flat = flattenPsd(bytes);
+      if (imported.source === 'psd' && !imported.images.length && read.flat) {
+        const flat = read.flat;
         warnings.push(...flat.warnings);
         if (flat.png) imported.images.unshift({ name: `${basename(path, '.psd')}.png`, bytes: flat.png });
         else warnings.push('تعذّر تسطيح الملف — أُخذ مقاسه بلا خلفية');

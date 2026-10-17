@@ -22,6 +22,11 @@ export type WorkerJobs = {
   cutout: { input: Pixels & { modelPath: string; facePath: string | null }; output: CutoutOutput & { face: Face | null } };
   /** «أزل الخلفية» للأشياء في التصاميم (D54): BiRefNet. */
   cutoutObject: { input: Pixels & { modelPath: string }; output: CutoutOutput };
+  /**
+   * «استورد تصميمًا» (D56): يقرأ الملف بمساره بعد سقف حجمه في الرئيسة، ثم سقف نقاطه و`readDesign`، ولـPhotoshop بلا صور تسطيحه.
+   * و`imported` نوعه `DesignImport` في `main/services/design/importTypes.ts` — والمشترك لا يرى الرئيسة، فتنصّه القناة (`ipc/designs.ts`).
+   */
+  readDesign: { input: { path: string; name: string; fonts: string[] }; output: { imported: unknown; flat: { png: Uint8Array | null; warnings: string[] } | null } };
 };
 
 export type WorkerJob = keyof WorkerJobs;
@@ -45,11 +50,13 @@ export const WORKER_CANCELLED = 'أُلغي';
 
 /**
  * مهلة كلّ عمل (`timeoutMs`، D55): «أنا هنا» ٥ ث، و«أزل الخلفية» ٦٠ ث — عشرة أضعاف أبطأ ما قيس (٥٫٧ ث بتحميل النموذج، D52)
- * لجهازٍ أبطأ. وما ينتهي في وقته لا يتغيّر.
+ * لجهازٍ أبطأ — و«استورد تصميمًا» ٦٠ ث (D56). وما ينتهي في وقته لا يتغيّر.
  */
 export const WORKER_TIMEOUT_MS: { [J in WorkerJob]: number } = {
   ping: 5_000,
   crash: 5_000,
   cutout: 60_000,
-  cutoutObject: 60_000
+  cutoutObject: 60_000,
+  // أبطأ ما قيس ٤٫١ ث (Photoshop عند حدّه، D52).
+  readDesign: 60_000
 };
