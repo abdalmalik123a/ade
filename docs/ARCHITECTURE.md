@@ -19,7 +19,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 ### العمليات والمجلّدات العليا
 | المجلّد | ما فيه | أهمّ ملفّاته |
 |---|---|---|
-| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٢ ملفًّا: بابٌ لكلّ مجال و`gate.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` |
+| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات — ومعها مدخل العامل المستقلّ (D53) | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٢ ملفًّا: بابٌ لكلّ مجال و`gate.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` · `worker/index.ts` (عمليةٌ ثالثة بـ`utilityProcess` يُقلعها `services/workerHost.ts`، فتُبنى `out/main/worker.js`) |
 | `src/preload` | الجسر الوحيد للواجهة، أبوابًا؛ يعمل في الصندوق فلا يستورد إلا `electron` | `index.ts` · `invoke.ts` · `office.ts` · `archive.ts` · `citizens.ts` · `templates.ts` · `tools.ts` · `library.ts` |
 | `src/renderer` | الواجهة (React وTailwind)، في صندوقٍ بلا Node (`sandbox` و`contextIsolation`) | `src/App.tsx` · `shell/` (السكّة والرأس و`routeScreens.tsx`) · `screens/` · `components/` · `designs/` · `kit/` · `lib/` |
 | `src/shared` | دوالّ خالصة تعمل في العمليّتين وتُختبر بلا متصفّح ولا Electron | `doc.ts` و`docPm*.ts` · `design/` · `arabic.ts` · `license.ts` · `printRoles.ts` · `routes.ts` · `counterCards.ts` · `api*.ts` |
@@ -119,6 +119,8 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
 7. **كلّ قسمٍ وحدة:** نوع وثيقته ومحرّره، ويشترك في الحفظ والطباعة وPDF والخطوط والأرشيف والترخيص — فالكتب قسمٌ يُضاف لا أساسٌ يُعاد.
 
 ### العامل المستقلّ (A03) — تصميمٌ قبل الكود (D52، ١٨ ت١ ٢٠٢٦)
+- **قائمٌ فارغًا (D53):** `shared/worker.ts` (العقد) و`main/worker/index.ts` (المدخل) و`main/services/workerHost.ts` (المضيف) — «أنا هنا» وحده و«أسقِطه» لأبواب الاختبار،
+  ويسقط بأمان ويُعاد، في التطوير وبناء الاختبار (سيناريو `workerPath`). وما بعده من الأعمال بأوامرها في آخر الفقرة.
 - **القياس** (بناء التطوير على الجهاز المرجعي، وسيط ثلاثة): أطول توقّفٍ للعملية الرئيسة (ردّ نداءٍ صغير يُرسل كلّ ١٠٠ م.ث) وذروة ذاكرة البرنامج:
   «أزل الخلفية» ١٠٢٤×١٠٢٤ **٢٧٧٩ م.ث** و١٦٣٨ م.ب · Word بعشرين ألف فقرة **٢٠٦٩** و٩٧١ · Photoshop عند حدّه (١١٩ م.ب، ٢٥ مليون نقطة) **٢٠٠١** و١١٢٧ ·
   PDF بـ٣٠٠ صفحة فتحًا وبناءً ٣١٠ و١٣٤٦ · دفعة ٥٠٠ بطاقة إلى PDF ٢١٤ و**١٧٩٠**. فالتجميد في ثلاثة (النموذج وقراءة Word وPhotoshop)؛ وPDF يُرسم في

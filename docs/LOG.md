@@ -3,6 +3,18 @@
 > قيدٌ لكلّ جلسة، **الأحدث في الأعلى**، عشرة أسطر على الأكثر: التاريخ والساعة · الأمر · ما تغيّر (الإيداعات) · الفحص ونتيجته ·
 > المراجعة (أيّ أمرٍ رُوجع وبأيّ نتيجة) · أين توقّف بالضبط · الخطوة التالية.
 
+## ٢٠٢٦-١٠-١٨ ٠٢:٠١ — D53 ✅ — العامل المستقلّ فارغًا في الطريق كلّه · ثم D54 ⚙️ (حُجز ٠٢:٠١)
+- **ما تغيّر (`423a3e3` و`ba7a54a` وإيداع الختام):** `shared/worker.ts` (العقد: `WorkerJobs` بـ`ping` و`crash`، والطلب، والجواب `result`/`failure` بوسم `type`، و`WORKER_STOPPED`) ·
+  `main/worker/index.ts` (`JOBS` و`answer` مصدَّران، و`parentPort` إن وُجد؛ و`crash` خلف `__DIWAN_TEST_DOORS__`) · `services/workerHost.ts` (`WorkerHost` بدالّة إقلاع، و`workerHost()`
+  بـ`utilityProcess.fork(join(__dirname,'worker.js'))`، و`closeWorker()` في `before-quit`) · `electron.vite.config.ts` مدخلٌ ثانٍ · `app:workerPing` و`app:workerCrash` (في الأبواب) وبابهما `app` في الجسر.
+  **وزيادةٌ لزمت الفحص:** `app:workerPing` يعيد مع `{pid, at}` رقم الرئيسة `main` — فالسيناريو لا يعرف رقمها من غيره.
+- **الفحص:** `typecheck` ✓ · `workerHost` ٨ ✓ و`structure` و`repoHygiene` و`lint` (٢٠ ✓) · وكسرٌ مؤقّت (`../db` و`electron` في العامل) أسقط القاعدة الجديدة ثم أُعيد ·
+  `electron-vite build` ثم `workerPath` ✓٩ مرّتين (العامل ٩٠٤٠ والرئيسة ١٩٨٠٠ ← بعد السقوط ٨١٩٦) و`firstDay` ✓٢٣ و`settings` ✓٢٩ · `npm run pack` و`out/main/worker.js` في `app.asar`،
+  و`workerPath` على بناء الاختبار ✓٩ (العامل ١٥٥٢ والرئيسة ٦٦٦٠ ← ١٤٢٥٦).
+- **المراجعة («كيف يُراجَع»):** `git diff --stat` في المسموح وحده · لا عمل حقيقيّ في `worker/index.ts` (`ping` و`crash` وحدهما). ✓
+- **الوثائق:** ARCHITECTURE §١ (`worker/index.ts`) و§٢ («قائمٌ فارغًا») · `system.md` §٢ §٧ · QUALITY §٢ (١٨٢ و١١٢) · PLAN.
+- **التالي:** D54 ⚙️ — حُجز ١٨ ت١ ٠٢:٠١.
+
 ## ٢٠٢٦-١٠-١٨ ٠١:٤٩ — مراجعة D52 ✓ (D53–D56) · وحجز D53 🔒
 - **رسالة المالك:** «ابدأ».
 - **مراجعة D52 بـ«كيف يُراجَع»:** الترتيب يبرّره القياس — «أزل الخلفية» الأشدّ (٢٧٧٩) أوّلًا، ثم المهلة والإلغاء كما طلب D52، ثم Photoshop (٢٠٠١)؛ وWord (٢٠٦٩)
