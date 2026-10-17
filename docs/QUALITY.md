@@ -21,7 +21,7 @@
 | الأنواع | المشاريع الأربعة (`tsconfig.node` و`web` و`test` و`ui-test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
 | المكوّنات | `tests/ui/*.test.tsx` — ٣ ملفّات (G03، D39) | مع الوحدة · و`npx vitest run tests/ui` وحده | ببيئة jsdom يعلنها رأس كلّ ملفّ (`// @vitest-environment jsdom`) والعامّة `node` كما هي؛ تُركَّب بـ`createRoot` و`act` من React ١٨، ويُفكّ بعد كلّ اختبار، و`window.diwan` مزيَّفٌ بما يحتاجه المكوّن (`tests/ui/mount.tsx`) — بلا مكتبةٍ غير jsdom |
 | الوحدة | `tests/*.test.ts` — ١٨٣ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
-| السيناريو | `tools/scenarios/*.mjs` — ١١٢ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
+| السيناريو | `tools/scenarios/*.mjs` — ١١٣ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) و`lint` (ESLint، G05) | مع الوحدة · و`npm run lint` وحده | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة · وقاعدتا الخطّافات وحدهما (`eslint.config.mjs`): `rules-of-hooks` خطأٌ يُسقط و`exhaustive-deps` تحذيرٌ يُعدّ — والسقوف في §١٠ |
 | الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
@@ -48,6 +48,7 @@
 | `PRINT_LOG` | `services/render.ts` | سجلٌّ بدل الورق؛ طابعةٌ يبدأ اسمها «معطّلة» تُرفض، و«تتوقّف» تقف عند الثالثة (L58) |
 | `WINDOWS_FONTS` | `services/fonts.ts` | مجلّد خطوطٍ يعدّه السيناريو بدل خطوط الجهاز |
 | `SLOW_ISSUE` | `ipc/documents.ts` | يُبطئ قيد الدفعة ليُقتل البرنامج في منتصفه (L57) |
+| `SLOW_WORKER` · `WORKER_TIMEOUT` | `worker/index.ts` · `services/workerHost.ts` | العامل يتأخّر م.ث قبل كلّ عملٍ غير «أنا هنا» (يرثه من بيئة الرئيسة)، ومهلةٌ واحدة تغلب كلّ مهلة — لـ`workerTimeout` (D55) |
 | `CLOSE_ANSWER` | `index.ts` | أجوبة «اترك بلا حفظ؟» عند الإغلاق (`stay,leave`، وآخرها يتكرّر) |
 | `ROLLBACK_ACTION` | `ipc/update.ts` | يختار التراجع في حوار التحديث |
 | `NOW_FILE` · `MACHINE_ID` · `LICENSE_PUBKEY` · `UPDATE_NO_LAUNCH` | `clock.ts` · `ipc/license.ts` · `ipc/update.ts` | الساعة من ملفّ، ورمز جهازٍ ومفتاحٌ عامٌّ للاختبار، والتحديث يُفكّ ولا يُشغَّل — **في التطوير وحده** (`!app.isPackaged`) |
