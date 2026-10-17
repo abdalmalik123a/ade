@@ -16,6 +16,7 @@ import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
 import { closePortrait } from './services/portrait';
+import { closeWorker } from './services/workerHost';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
 import { resolveStorePath } from './services/localPaths';
@@ -345,4 +346,5 @@ app.on('before-quit', () => {
   // عمّال القارئ الضوئي ونموذج الصور يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية.
   void shutdownOcr();
   void closePortrait();
+  closeWorker();
 });

@@ -1,0 +1,29 @@
+/**
+ * عقد العامل المستقلّ (A03، D53؛ ARCHITECTURE §٢ «العامل المستقلّ») — ما يمرّ بين العملية الرئيسة وعملية العامل.
+ *
+ * الرئيسة ترسل طلبًا `{id, job, input}`، والعامل يردّ بنتيجةٍ أو إخفاقٍ بالمعرّف نفسه. ولكلّ عملٍ مدخله ومخرجه مكتوبان هنا،
+ * فلا تعرف الواجهة ولا القنوات ما وراء العقد (ولا لغة المحرّك إن صار Rust لاحقًا). والعامل لا يفتح القاعدة ولا المخزن.
+ */
+
+/** الأعمال بمدخلها ومخرجها — وكلّ عملٍ ينتقل إلى العامل سطرٌ هنا (D54 فما بعده). */
+export type WorkerJobs = {
+  /** «أنا هنا»: رقم عملية العامل ووقت الجواب. */
+  ping: { input: null; output: { pid: number; at: number } };
+  /** للاختبار وحده (أبواب الاختبار): يخرج العامل بـ`process.exit(1)` — فيُرى السقوط وما بعده. */
+  crash: { input: null; output: never };
+};
+
+export type WorkerJob = keyof WorkerJobs;
+export type WorkerInput<J extends WorkerJob> = WorkerJobs[J]['input'];
+export type WorkerOutput<J extends WorkerJob> = WorkerJobs[J]['output'];
+
+/** طلبٌ من الرئيسة إلى العامل. */
+export type WorkerRequest<J extends WorkerJob = WorkerJob> = { id: number; job: J; input: WorkerInput<J> };
+/** نتيجة الطلب بمعرّفه. */
+export type WorkerResult = { type: 'result'; id: number; output: unknown };
+/** إخفاق الطلب بمعرّفه — ورسالة الخطأ كما رماها العمل. */
+export type WorkerFailure = { type: 'failure'; id: number; message: string };
+export type WorkerReply = WorkerResult | WorkerFailure;
+
+/** ما يُقال للمكتب حين يخرج العامل والطلبات معلّقة — والطلب التالي يُقلعه من جديد. */
+export const WORKER_STOPPED = 'توقّف المعالج — جرّب ثانيةً';

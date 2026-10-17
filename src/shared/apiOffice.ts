@@ -7,6 +7,7 @@ import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus }
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
 import type { CitizenSummary } from './apiCitizens';
+import type { WorkerOutput } from './worker';
 
 export type OfficeSettings = {
   officeName: string;
@@ -308,5 +309,11 @@ export type OfficeApis = {
     import(): Promise<ContentImportResult | null>;
     bundled(): Promise<BundledPackInfo[]>;
     importBundled(id: string): Promise<ContentImportResult | null>;
+  };
+  /** العامل المستقلّ (A03، D53؛ `@shared/worker`): «أنا هنا» برقم عمليته ورقم الرئيسة — و«أسقِطه» لأبواب الاختبار وحدها. */
+  app: {
+    workerPing(): Promise<WorkerOutput<'ping'> & { main: number }>;
+    /** يُرفض دائمًا: العامل يخرج فيُرفض الطلب بـ«توقّف المعالج — جرّب ثانيةً». */
+    workerCrash(): Promise<void>;
   };
 };

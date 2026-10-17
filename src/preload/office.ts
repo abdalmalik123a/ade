@@ -99,5 +99,9 @@ export const officeApi: OfficeApis = {
     import: () => invoke('content:import'),
     bundled: () => invoke('content:bundled'),
     importBundled: (id: string) => invoke('content:importBundled', id)
+  },
+  app: {
+    workerPing: () => invoke('app:workerPing'),
+    workerCrash: () => invoke('app:workerCrash')
   }
 };

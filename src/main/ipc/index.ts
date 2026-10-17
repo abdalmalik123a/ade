@@ -26,6 +26,7 @@ import { parkedCount } from '../services/today';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
+import { workerHost } from '../services/workerHost';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
 import { normalizeCounterCards } from '@shared/counterCards';
@@ -188,6 +189,10 @@ export function registerIpc(): void {
   // («Document is not focused») — فبطاقة التعبئة فوق المتصفّح، والنسخ بعد حوار، يفشلان.
   ipcMain.handle('app:copyText', (_e, text: unknown) => clipboard.writeText(String(text ?? '')));
   ipcMain.handle('app:pasteText', () => clipboard.readText());
+
+  // العامل المستقلّ (A03، D53): «أنا هنا» برقم عمليته ورقم الرئيسة — و«أسقِطه» لأبواب الاختبار وحدها.
+  ipcMain.handle('app:workerPing', async () => ({ ...(await workerHost().run('ping', null)), main: process.pid }));
+  if (__DIWAN_TEST_DOORS__) ipcMain.handle('app:workerCrash', () => workerHost().run('crash', null));
 
   // المعاملات المعلّقة في الشبّاك (تعميق الموجود ٥): في القاعدة، فتبقى بعد الإغلاق.
   ipcMain.handle('service:parked', (): unknown[] => {

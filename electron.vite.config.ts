@@ -6,7 +6,11 @@ export default defineConfig(({ mode }) => ({
   // الحزم تبقى خارج حزمة العملية الرئيسية وتُحمَّل من node_modules (`externalizeDeps` —
   // وكان إضافةً مهجورةً في electron-vite 5).
   main: {
-    build: { externalizeDeps: true },
+    // والعامل المستقلّ (A03، D53) مدخلٌ ثانٍ: `out/main/worker.js` بجانب `index.js`، يُقلعه `services/workerHost.ts`.
+    build: {
+      externalizeDeps: true,
+      rollupOptions: { input: { index: resolve('src/main/index.ts'), worker: resolve('src/main/worker/index.ts') } }
+    },
     resolve: { alias: { '@shared': resolve('src/shared') } },
     // أبواب الاختبار (البند ٢٥، `src/main/buildFlags.d.ts`): مغلقةٌ محذوفةٌ في بناء الإصدار وحده (`--mode release`).
     define: { __DIWAN_TEST_DOORS__: JSON.stringify(mode !== 'release') }
