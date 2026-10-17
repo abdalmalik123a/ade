@@ -31,6 +31,13 @@ function png(buf) {
   return { w, h, type, first: [...raw.subarray(1, type === 6 ? 5 : 4)] };
 }
 
+/**
+ * الملفّ مكتمل: ينتهي بخاتمة صيغته (PNG بمقطع `IEND`، وJPG بـ`FFD9`). يظهر في المجلّد قبل أن تكتمل كتابته، فقراءته حين يظهر
+ * تقطع رأسه ومقاطعه (`ERR_BUFFER_OUT_OF_BOUNDS` في الفحص الشامل ١٢ ت١ — G04).
+ */
+const complete = (buf) =>
+  buf.length > 12 && (buf.toString('latin1', buf.length - 8, buf.length - 4) === 'IEND' || (buf[buf.length - 2] === 0xff && buf[buf.length - 1] === 0xd9));
+
 /** أبعاد JPG من مقطع SOF. */
 function jpg(buf) {
   for (let at = 2; at < buf.length; ) {
@@ -52,16 +59,20 @@ export default async function scenario(page) {
       Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ${JSON.stringify(value)});
       s.dispatchEvent(new Event('change', { bubbles: true }));
       return true;`);
-  /** يحفظ بالصيغة ويعيد الملفّ الجديد. */
+  /** يحفظ بالصيغة ويعيد الملفّ الجديد — حين يكتمل وثبت حجمه قراءتين. */
   const save = async (format) => {
     for (const f of readdirSync(OUT)) rmSync(join(OUT, f));
     await click('[data-act="save-image"]');
     await wait(200);
     await click(`[data-image-format="${format}"]`);
+    let size = -1;
     for (let i = 0; i < 40; i++) {
       await wait(500);
       const f = readdirSync(OUT)[0];
-      if (f) return readFileSync(join(OUT, f));
+      if (!f) continue;
+      const buf = readFileSync(join(OUT, f));
+      if (complete(buf) && buf.length === size) return buf;
+      size = complete(buf) ? buf.length : -1;
     }
     return null;
   };

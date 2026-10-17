@@ -29,8 +29,27 @@ export default async function scenario(page, { profile, shotsDir }) {
       d.close();
     }
   };
+  /** ينتظر الشرط بمهلةٍ قصوى — لا مهلةٌ ثابتة يسبقها البرنامج تحت الحمل (G04). */
+  const until = async (check, tries = 20, ms = 150) => {
+    for (let i = 0; i < tries; i++) {
+      if (await check()) return true;
+      await wait(ms);
+    }
+    return false;
+  };
+  /** القراءة حين تثبت: قراءتان متتاليتان متطابقتان — التخطيط بعد تغيير المقاس أو الإدراج يستقرّ على دفعات. */
+  const settled = async (read, tries = 20) => {
+    let prev = await read();
+    for (let i = 0; i < tries; i++) {
+      await wait(150);
+      const now = await read();
+      if (JSON.stringify(now) === JSON.stringify(prev)) return now;
+      prev = now;
+    }
+    return prev;
+  };
   /** «اطبع» و«التجريبية»: أظاهران كاملين في النافذة بلا تمرير، وغير مغطّيين؟ */
-  const printBar = () =>
+  const readBar = () =>
     page.eval(`
       const box = (el) => {
         if (!el) return null;
@@ -42,6 +61,7 @@ export default async function scenario(page, { profile, shotsDir }) {
       };
       return { issue: box(document.querySelector('${ed} [data-act="issue"]')), trial: box(document.querySelector('${ed} [data-act="print-trial"]')) };
     `);
+  const printBar = () => settled(readBar);
   /** يظلّل كلمةً على الورقة كما تظلّلها الفأرة. */
   const selectWord = (word) =>
     page.eval(`
@@ -148,6 +168,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وقُيّد باسم صاحب العلاقة الذي اقتُرح من المتن', db((d) => d.prepare('SELECT citizen_name AS n FROM documents ORDER BY id DESC LIMIT 1').get()?.n) === NAME);
   await page.clickExact('تم');
   await wait(500);
+  // أوّل كتابٍ رسميّ يسأل عن النسخ الاحتياطي (المرحلة A، ١٣ ت١)، ونافذته تبقى فوق الورقة فتأخذ الفأرة عن حدّ العمود —
+  // فسقط السحب في كلّ تشغيلٍ بعدها (D36). يُجاب «لاحقًا» حين يظهر.
+  const later = '[data-confirm] [data-choice="later"]';
+  if (await until(() => page.eval(`return Boolean(document.querySelector('${later}'));`), 10, 300)) {
+    await click(later);
+    await until(() => page.eval(`return !document.querySelector('[data-confirm]');`));
+  }
 
   // ── ٣: الشطب وأعلى السطر واللون ──────────────────────────────────────────
   await selectWord('موظفة');
@@ -228,12 +255,14 @@ export default async function scenario(page, { profile, shotsDir }) {
   const depth = () => page.eval(`return Number(document.querySelector('${ed} [data-doc-editor]').dataset.undoDepth);`);
   ok(`أُدرج جدولٌ ٣×٣ بأعمدةٍ متساوية (${(await widths()).join('، ')})`, (await widths()).join() === '33,33,33');
   // الحدّ بين العمود الأوّل (يمينًا) والثاني: الحافّة اليسرى للخليّة الأولى.
-  const edge = await page.eval(`const r = ${T}.rows[1].cells[0].getBoundingClientRect(); return { x: r.left + 2, y: r.top + r.height / 2, w: ${T}.getBoundingClientRect().width };`);
+  const edge = await settled(() =>
+    page.eval(`const r = ${T}.rows[1].cells[0].getBoundingClientRect(); return { x: r.left + 2, y: r.top + r.height / 2, w: ${T}.getBoundingClientRect().width };`)
+  );
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: edge.x + 40, y: edge.y });
   await wait(100);
   ok('الفأرة داخل الخليّة: مؤشّرٌ عاديّ', !(await page.eval(`return document.querySelector('${PM}').classList.contains('pm-col-resize');`)));
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: edge.x, y: edge.y });
-  await wait(100);
+  await until(() => page.eval(`return document.querySelector('${PM}').classList.contains('pm-col-resize');`), 15, 100);
   ok('وعلى الحدّ بين عمودين: سهما سحب', await page.eval(`return document.querySelector('${PM}').classList.contains('pm-col-resize') && getComputedStyle(${T}.rows[1].cells[0]).cursor === 'col-resize';`));
   const before = await depth();
   await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: edge.x, y: edge.y, button: 'left', clickCount: 1 });
@@ -242,10 +271,13 @@ export default async function scenario(page, { profile, shotsDir }) {
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: edge.x - dx, y: edge.y, button: 'left' });
     await wait(60);
   }
-  const live = await widths();
+  // حيًّا: حتى يتغيّر العرض ثم يثبت — الحركات تُعالَج بعد إرسالها، وتحت الحمل أبطأ.
+  await until(async () => (await widths()).join() !== '33,33,33', 20, 100);
+  const live = await settled(widths);
   await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: edge.x - edge.w * 0.15, y: edge.y, button: 'left', clickCount: 1 });
-  await wait(500);
-  const after = await widths();
+  // وفي آخره: حتى تُكتب خطوة التراجع، ثم الأعمدة حين تثبت.
+  await until(async () => (await depth()) !== before, 20, 100);
+  const after = await settled(widths);
   ok(`السحب يُرى حيًّا وهو يُسحب (${live.join('، ')})`, live[0] > 45 && live[1] < 22 && live[2] === 33);
   ok(`وفي آخره يثبت: الأوّل أعرض بقدر ما ضاق جاره، والثالث كما هو (${after.join('، ')})`, after[0] === 48 && after[1] === 18 && after[2] === 33);
   ok('خطوةً واحدة في التراجع', (await depth()) === before + 1);
