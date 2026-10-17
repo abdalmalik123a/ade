@@ -3,6 +3,19 @@
 > قيدٌ لكلّ جلسة، **الأحدث في الأعلى**، عشرة أسطر على الأكثر: التاريخ والساعة · الأمر · ما تغيّر (الإيداعات) · الفحص ونتيجته ·
 > المراجعة (أيّ أمرٍ رُوجع وبأيّ نتيجة) · أين توقّف بالضبط · الخطوة التالية.
 
+## ٢٠٢٦-١٠-١٨ ٠٠:٥٣ — D49 ✅ — مشغّل الترقيات المرقّمة، وأُغلق A02 · ثم D50 ⚙️
+- **الجرد (الخطوة ١):** في الإقلاع `prepareDocuments` وحده · وعند الطلب: `ensureSearchColumn` (`ipc/citizens.ts`، ومعه `ensureCitizenColumns`) و`prepareClients` و`prepareOrders`
+  و`prepareTemplates` و`prepareLetterheads` و`prepareClips` و`prepareLearning` و`prepareGenderMemory` في خدماتها، و`prepareIdentity` من داخل النماذج والترويسات والكليشات ·
+  وفي `reopen`: `ensureSearchColumn` `prepareDocuments` `prepareLetterheads` `prepareTemplates` `prepareSearch`. وكلّها تفحص قبل أن تضيف.
+- **ما تغيّر (`c359411`):** `src/main/db/migrations.ts` جديد (تسع خطواتٍ بالترتيب المكتوب، و`runMigrations` بلا معاملة، والقاعدة في رأسه) · `index.ts` `[(db) => runMigrations(db)]` ·
+  `reopen` `db.transaction(() => runMigrations(db))()` ثم `prepareSearch` و`stampDataVersion` · `structure.test.ts` القاعدة ٦ سطر `migrations.ts` · `migrationRunner` جديد.
+- **الاختبار وُقائعه:** أعمدة القواعد الثلاث عشرة (`release-1.0.0`…`1.8.0` و`aged-60ad42f`) بعد الترقية كأعمدة الجديدة — **لا عيب قائم**. والفرقان اللذان ظهرا ليسا من المشغّل:
+  `citizens_fts` في المعمَّرة يملؤه `prepareSearch` (فالعدّ قبله)، وصفّ `appVersion` يكتبه الإقلاع (فاستُثني). و`user_version` يُردّ مع `ROLLBACK` (الحالة تثبته).
+- **الفحص:** `typecheck` ✓ · الاختبارات العشرة ١٤٦ ✓ (`migrationRunner` ١٧) · `electron-vite build` ثم `firstDay` ✓٢٣ `backup` ✓٢٠ `restoreStuck` ✓١١ · لا بايت تحكّم.
+- **الوثائق:** ARCHITECTURE §١ «القاعدة وترقياتها» · system.md §٢ §٣ (ST-5) §٦ · QUALITY §٢ (١٨٠) · PLAN «أُغلق: A02» وA17 جديد.
+  **ولم يُمسّ (خارج المسموح):** «الترقيات بلا ترقيم (A02)» في ARCHITECTURE §١ «نقاط الضعف»، و«(ناقص: A02 وA05)» في §٢ المبدأ ٣، وعدد QUALITY §٥ (١٨٢) وقائمة system.md §٧.
+- **التالي:** D50 ⚙️ — حُجز ١٨ ت١ ٠٠:٥٣.
+
 ## ٢٠٢٦-١٠-١٨ ٠٠:٤٤ — مراجعة D48 ✓ (D49–D52) · وحجز D49 🔒
 - **رسالة المالك:** «ابدأ».
 - **مراجعة D48 بـ«كيف يُراجَع»:** المواضع كما وُصفت ببحث — `runBootSequence` بترقيةٍ واحدة (`index.ts:297`)، والعشر عند الطلب، و`reopen` بخمسٍ ثم
