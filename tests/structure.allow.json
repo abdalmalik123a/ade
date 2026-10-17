@@ -9,7 +9,7 @@
   "src/renderer/src/components/ImportPlanDialog.tsx": 444,
   "src/shared/blanks.ts": 658,
   "src/shared/deskew.ts": 467,
-  "src/shared/doc.ts": 892,
+  "src/shared/doc.ts": 852,
   "src/shared/docPm.ts": 499,
   "src/shared/fieldHints.ts": 519,
   "src/shared/imageForm.ts": 447,

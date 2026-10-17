@@ -15,7 +15,10 @@ import {
   renameField,
   unfield,
   usedKeys,
+  type ColumnsBlock,
   type Doc,
+  type GroupBlock,
+  type ListBlock,
   type TableBlock
 } from '../src/shared/doc';
 import { missingRequired, renderDocHtml } from '../src/shared/docHtml';
@@ -385,5 +388,100 @@ describe('تحرير الحقول في المراجعة', () => {
     const doc = unfield(docFromLegacy('{أ} و{ب}'), 'أ');
     expect(doc.fields.map((f) => f.key)).toEqual(['ب']);
     expect(usedKeys(doc)).toEqual(['ب']);
+  });
+});
+
+describe('الشجرة في كلّ عمق (A05، D50)', () => {
+  const para = (id: string, inlines: unknown[] = [run('نصّ')]) => ({ id, kind: 'paragraph', align: 'right', inlines });
+
+  it('مجموعةٌ بلا كتل وفقرةٌ بلا مقاطع لا تُسقطان الفتح — تسقطان وحدهما وما حولهما باقٍ', () => {
+    const doc = normalizeDoc({
+      blocks: [
+        para('قبل'),
+        { id: 'g', kind: 'group', mode: 'conditional', on: '' },
+        { id: 'p', kind: 'paragraph', align: 'right' },
+        { id: 'g2', kind: 'group', mode: 'repeat', on: '', blocks: [para('داخل'), { id: 'x', kind: 'paragraph' }] },
+        { id: 'c', kind: 'columns', columns: [[para('يمين'), { id: 'g3', kind: 'group' }], [para('يسار')]] },
+        para('بعد')
+      ]
+    });
+    expect(doc.blocks.map((b) => b.id)).toEqual(['قبل', 'g2', 'c', 'بعد']);
+    const g2 = doc.blocks[1] as GroupBlock;
+    expect(g2.blocks.map((b) => b.id)).toEqual(['داخل']);
+    const c = doc.blocks[2] as ColumnsBlock;
+    expect(c.columns.map((col) => col.map((b) => b.id))).toEqual([['يمين'], ['يسار']]);
+  });
+
+  it('والقائمة القديمة بنمطٍ واحد تُرحَّل داخل المجموعة والعمود كما في المستوى الأوّل', () => {
+    const legacy = { id: 'l', kind: 'list', style: 'number', items: [{ id: 'i', inlines: [run('س')] }] };
+    const doc = normalizeDoc({
+      blocks: [
+        { id: 'g', kind: 'group', mode: 'conditional', on: '', blocks: [legacy] },
+        { id: 'c', kind: 'columns', columns: [[{ ...legacy, id: 'l2' }]] }
+      ]
+    });
+    const inGroup = (doc.blocks[0] as GroupBlock).blocks[0] as ListBlock;
+    const inColumn = (doc.blocks[1] as ColumnsBlock).columns[0]![0] as ListBlock;
+    expect(inGroup.styles).toEqual(['number']);
+    expect(inColumn.styles).toEqual(['number']);
+  });
+
+  it('وردّ الحقل نصًّا يبلغ العمود وفرع القائمة وإجابته', () => {
+    const doc = normalizeDoc({
+      blocks: [
+        { id: 'c', kind: 'columns', columns: [[paragraph([fieldRef('س')])]] },
+        {
+          id: 'l',
+          kind: 'list',
+          styles: ['question'],
+          items: [{ id: 'i', inlines: [run('السؤال')], answer: [fieldRef('س')], items: [{ id: 'j', inlines: [fieldRef('س')] }] }]
+        }
+      ],
+      fields: [makeField({ key: 'س', width: 8 })]
+    });
+    expect(usedKeys(doc)).toEqual(['س']);
+    const after = unfield(doc, 'س');
+    expect(JSON.stringify(after.blocks)).not.toContain('"field"');
+    expect(usedKeys(after)).toEqual([]);
+    expect(after.fields).toEqual([]);
+    expect(JSON.stringify(after.blocks).match(/\.{8}/g)).toHaveLength(3);
+  });
+
+  it('وصيغةٌ أحدث تبقى برقمها ويُقرأ ما يُعرف منها', () => {
+    const doc = normalizeDoc({ schemaVersion: 7, blocks: [para('معروف'), { id: 'n', kind: 'كتلة_من_المستقبل' }] });
+    expect(doc.schemaVersion).toBe(7);
+    expect(doc.blocks.map((b) => b.id)).toEqual(['معروف']);
+    expect(normalizeDoc({ schemaVersion: 'x', blocks: [] }).schemaVersion).toBe(DOC_SCHEMA);
+    expect(normalizeDoc({ blocks: [] }).schemaVersion).toBe(DOC_SCHEMA);
+  });
+
+  it('والوثيقة السليمة بأنواع الكتل التسعة متداخلةً تُقرأ كما هي بنصّها', () => {
+    const raw = {
+      id: 'سليمة',
+      schemaVersion: DOC_SCHEMA,
+      kind: 'flow',
+      issuing: 'registered',
+      // الإعداد كما يحفظه البرنامج بعد أوّل قراءة (فيه `watermark: null`).
+      pageSetup: normalizeDoc({ pageSetup: {} }).pageSetup,
+      blocks: [
+        { id: 'p', kind: 'paragraph', align: 'justify', indent: 2, inlines: [run('نؤيد أن ', { bold: true }), fieldRef('الاسم'), { kind: 'break' }] },
+        { id: 'l', kind: 'list', styles: ['question', 'arabicLetter'], pick: 1, items: [{ id: 'i', inlines: [run('س١')], score: 5, answer: [run('ج')], items: [{ id: 'j', inlines: [fieldRef('الصف')] }] }] },
+        { id: 't', kind: 'table', columns: [1, 2], header: true, rows: [{ id: 'r', cells: [{ id: 'k', blocks: [paragraph([fieldRef('الاسم')], { id: 'kp' })] }, { id: 'k2', colSpan: 1, blocks: [] }] }] },
+        { id: 'im', kind: 'image', src: 'designs/x.png', width: 120, align: 'center' },
+        { id: 'sp', kind: 'spacer', height: 20, lines: true },
+        { id: 'pb', kind: 'pageBreak' },
+        { id: 'ru', kind: 'rule' },
+        { id: 'co', kind: 'columns', gap: 8, widths: [2, 1], columns: [[paragraph([run('يمين')], { id: 'cp' })], [{ id: 'cr', kind: 'rule' }]] },
+        { id: 'g', kind: 'group', mode: 'repeat', on: 'الجهات', blocks: [paragraph([fieldRef('الجهات')], { id: 'gp' })] }
+      ],
+      fields: [makeField({ key: 'الاسم' }), makeField({ key: 'الصف' }), makeField({ key: 'الجهات' })],
+      meta: { title: 'سليمة' }
+    };
+    const once = normalizeDoc(raw);
+    expect(JSON.stringify(once.blocks)).toBe(JSON.stringify(raw.blocks));
+    expect(JSON.stringify(normalizeDoc(once))).toBe(JSON.stringify(once));
+    expect(once.blocks).toHaveLength(9);
+    expect(once.fields.map((f) => f.key)).toEqual(['الاسم', 'الصف', 'الجهات']);
+    expect(once.schemaVersion).toBe(DOC_SCHEMA);
   });
 });

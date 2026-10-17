@@ -16,7 +16,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs
 import { dirname, join } from 'node:path';
 import type { Database } from 'better-sqlite3';
 import type { ContentCounts, ContentImportResult } from '@shared/api';
-import type { Doc } from '@shared/doc';
+import { DOC_SCHEMA, type Doc } from '@shared/doc';
+import { isNewerDoc } from '@shared/docVersion';
 import { designPackLevel } from '@shared/canvas';
 import type { LetterheadLayout } from '@shared/letterhead';
 import type { TemplateVariable } from '@shared/template';
@@ -184,7 +185,9 @@ export async function importContent(
   }
   if (pkg?.app !== 'diwan' || pkg.kind !== 'content') throw new Error('الملف ليس حزمة محتوى من ديوان');
   // صيغةٌ أحدث مما يعرفه هذا الإصدار لا تُقرأ نصف قراءة.
-  if (typeof pkg.format !== 'number' || pkg.format > FORMAT) {
+  // ونموذجٌ وثيقته بصيغةٍ أحدث كذلك: تُرفض الحزمة كلّها قبل أن يُكتب منها شيء، صورةً أو نموذجًا (D50).
+  const newerDoc = (Array.isArray(pkg.templates) ? pkg.templates : []).some((t) => isNewerDoc(t?.doc, DOC_SCHEMA));
+  if (typeof pkg.format !== 'number' || pkg.format > FORMAT || newerDoc) {
     throw new Error(`الحزمة من إصدارٍ أحدث (${String(pkg.appVersion)}) — حدّث البرنامج ثم استوردها`);
   }
 

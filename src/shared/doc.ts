@@ -13,6 +13,8 @@
 import { normalizeCanvas, type Canvas } from './canvas';
 import type { Calendar } from './dates';
 import type { Addressing } from './api';
+import { mapInlines, normalizeTree } from './docTree';
+import { migrateDoc } from './docVersion';
 
 /** رقم صيغة الوثيقة: تُقرأ بصيغتها ثم تُرحَّل عند القراءة. */
 export const DOC_SCHEMA = 1;
@@ -559,28 +561,10 @@ export function unfield(doc: Doc, key: string): Doc {
   const fix = (list: Inline[]): Inline[] =>
     list.map((i) => (i.kind === 'field' && i.ref === key ? run(dots) : i));
 
-  const walk = (blocks: Block[]): Block[] =>
-    blocks.map((b) => {
-      if (b.kind === 'paragraph') return { ...b, inlines: fix(b.inlines) };
-      if (b.kind === 'list') return { ...b, items: b.items.map((i) => ({ ...i, inlines: fix(i.inlines) })) };
-      if (b.kind === 'table')
-        return {
-          ...b,
-          rows: b.rows.map((r) => ({
-            ...r,
-            cells: r.cells.map((c) => ({
-              ...c,
-              blocks: c.blocks.map((p) => ({ ...p, inlines: fix(p.inlines) }))
-            }))
-          }))
-        };
-      if (b.kind === 'group') return { ...b, blocks: walk(b.blocks) };
-      return b;
-    });
-
+  // في كلّ عمق: العمودان وفروع القائمة وإجاباتها كالفقرة (`docTree.ts`، D50).
   return {
     ...doc,
-    blocks: walk(doc.blocks),
+    blocks: mapInlines(doc.blocks, fix),
     fields: doc.fields.filter((f) => f.key !== key)
   };
 }
@@ -738,15 +722,18 @@ function normalizeWatermark(raw: unknown): Watermark | null {
  */
 export function normalizeDoc(raw: unknown): Doc {
   if (!isObj(raw)) return emptyDoc();
-  const v = raw as Partial<Doc>;
+  // الصيغة تُرحَّل خطوةً خطوة، والأحدث يُقرأ بما يُعرف منه ويبقى رقمه (`docVersion.ts`، D50).
+  const migrated = migrateDoc(raw, DOC_SCHEMA);
+  const v = migrated.raw as Partial<Doc>;
 
   const doc: Doc = {
     id: typeof v.id === 'string' && v.id ? v.id : newUuid(),
-    schemaVersion: DOC_SCHEMA,
+    schemaVersion: migrated.version,
     kind: v.kind === 'canvas' ? 'canvas' : 'flow',
     issuing: v.issuing === 'print-only' ? 'print-only' : 'registered',
     pageSetup: normalizePage(v.pageSetup),
-    blocks: Array.isArray(v.blocks) ? v.blocks.filter(isBlock).map(normalizeBlock) : [],
+    // التالف يسقط وحده في أيّ عمق، وما حوله باقٍ (`docTree.ts`، D50).
+    blocks: Array.isArray(v.blocks) ? normalizeTree(v.blocks) : [],
     fields: Array.isArray(v.fields) ? v.fields.filter(isObj).map(normalizeField) : [],
     meta: isObj(v.meta) ? (v.meta as Doc['meta']) : {}
   };
@@ -760,33 +747,6 @@ export function normalizeDoc(raw: unknown): Doc {
   // الحقول تتبع المتن دائمًا: ما اختفى من النصّ لا يبقى في شاشة الإدخال.
   doc.fields = reconcileFields(doc);
   return doc;
-}
-
-const BLOCK_KINDS = new Set([
-  'paragraph',
-  'list',
-  'table',
-  'image',
-  'spacer',
-  'pageBreak',
-  'rule',
-  'columns',
-  'group'
-]);
-
-/** القائمة التي حُفظت بنمطٍ واحد تُقرأ بمستوًى واحد — فلا يفقد المكتب ترقيمه. */
-function normalizeBlock(block: Block): Block {
-  if (block.kind === 'list') {
-    const legacy = block as ListBlock & { style?: ListStyle };
-    if (!Array.isArray(legacy.styles)) {
-      return { ...legacy, styles: [legacy.style ?? 'bullet'] } as ListBlock;
-    }
-  }
-  return block;
-}
-
-function isBlock(v: unknown): v is Block {
-  return isObj(v) && typeof v.kind === 'string' && BLOCK_KINDS.has(v.kind) && typeof v.id === 'string';
 }
 
 /**

@@ -14,7 +14,7 @@ import { prepareLetterheads, saveLetterhead } from '../src/main/services/letterh
 import { getTemplate, prepareTemplates, saveTemplate } from '../src/main/services/templates';
 import { readZipIndex } from '../src/main/services/zip';
 import { normalizeLayout } from '../src/shared/letterhead';
-import type { Doc } from '../src/shared/doc';
+import { DOC_SCHEMA, type Doc } from '../src/shared/doc';
 import { designPackLevel } from '../src/shared/canvas';
 
 const LOGO = 'letterheads/0123456789abcdef0123456789abcdef.png';
@@ -166,5 +166,39 @@ describe('حزمة المحتوى', () => {
     const pkg = { app: 'diwan', kind: 'content', format: 5, appVersion: '9.0.0', createdAt: '2027-01-01T00:00:00Z', letterheads: [], templates: [], clips: [] };
     writeFileSync(pack, zipSync({ 'diwan-content.json': new TextEncoder().encode(JSON.stringify(pkg)) }));
     await expect(importContent(pack, b.db, b.store, join(b.dir, 'work'))).rejects.toThrow(/حدّث البرنامج/);
+  });
+});
+
+describe('وثيقة النموذج بصيغةٍ أحدث (A05، D50)', () => {
+  it('حزمةٌ صيغتها مقبولة ونموذجها بوثيقةٍ أحدث تُرفض كلّها — ولا نموذج ولا ترويسة ولا كليشة ولا صورة', async () => {
+    const b = office();
+    const pack = join(b.dir, 'newer-doc.diwanpack');
+    const pkg = {
+      app: 'diwan',
+      kind: 'content',
+      format: 1,
+      appVersion: '9.0.0',
+      createdAt: '2027-01-01T00:00:00Z',
+      letterheads: [{ uuid: '11111111-2222-3333-4444-555555555555', name: 'ترويسة', category: null, layout: { sections: [] } }],
+      templates: [
+        {
+          uuid: '66666666-7777-8888-9999-000000000000',
+          title: 'نموذج من الغد',
+          bodyHtml: '',
+          variables: [],
+          doc: { id: 'd', schemaVersion: DOC_SCHEMA + 1, kind: 'flow', issuing: 'registered', blocks: [], fields: [], meta: {} }
+        }
+      ],
+      clips: [{ uuid: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', title: 'ختام', body: 'مع التقدير', category: null }]
+    };
+    writeFileSync(
+      pack,
+      zipSync({ 'diwan-content.json': new TextEncoder().encode(JSON.stringify(pkg)), [`store/${LOGO}`]: new TextEncoder().encode('شعار') })
+    );
+    await expect(importContent(pack, b.db, b.store, join(b.dir, 'work'))).rejects.toThrow(/الحزمة من إصدارٍ أحدث \(9\.0\.0\) — حدّث البرنامج/);
+    for (const table of ['templates', 'letterheads', 'clips']) {
+      expect((b.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n).toBe(0);
+    }
+    expect(existsSync(join(b.store, LOGO))).toBe(false);
   });
 });
