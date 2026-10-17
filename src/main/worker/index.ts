@@ -6,17 +6,35 @@
  * والجدول يُصدَّر فيُنادى في الاختبار بلا Electron — و`parentPort` لا يوجد هناك فلا يُستمع لشيء.
  */
 import type { WorkerInput, WorkerJob, WorkerOutput, WorkerReply, WorkerRequest } from '@shared/worker';
+import { cutout, detectFace } from '../services/portrait';
+import { objectCutout } from '../services/objectCutout';
 
 type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Promise<WorkerOutput<J>>;
 
-/** جدول الأعمال — اليوم فارغٌ إلا «أنا هنا» (D53)؛ وأوّل عملٍ حقيقيّ في D54. */
+/**
+ * جدول الأعمال: «أنا هنا» (D53)، و«أزل الخلفية» بنموذجيها (D54) — تُنادى خدماتها كما هي، ومسار النموذج وفحصه وطول البكسلات
+ * في الرئيسة قبل الإرسال (`ipc/photos.ts`).
+ */
 export const JOBS: { [J in WorkerJob]: Job<J> } = {
   ping: () => ({ pid: process.pid, at: Date.now() }),
   crash: () => {
     // بابٌ للاختبار وحده: محذوفٌ من بناء الإصدار.
     if (__DIWAN_TEST_DOORS__) process.exit(1);
     throw new Error('عملٌ غير متاح');
-  }
+  },
+  cutout: async ({ modelPath, facePath, pixels, width, height }) => {
+    const [cut, face] = await Promise.all([
+      cutout(modelPath, pixels, width, height),
+      facePath
+        ? detectFace(facePath, pixels, width, height).catch((e: unknown) => {
+            console.error('[photos] تعذّر كشف الوجه', e);
+            return null;
+          })
+        : null
+    ]);
+    return { ...cut, face };
+  },
+  cutoutObject: ({ modelPath, pixels, width, height }) => objectCutout(modelPath, pixels, width, height)
 };
 
 /** يجري الطلب ويعيد جوابه — وما رماه العمل إخفاقٌ برسالته. */

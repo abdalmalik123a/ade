@@ -5,12 +5,23 @@
  * فلا تعرف الواجهة ولا القنوات ما وراء العقد (ولا لغة المحرّك إن صار Rust لاحقًا). والعامل لا يفتح القاعدة ولا المخزن.
  */
 
-/** الأعمال بمدخلها ومخرجها — وكلّ عملٍ ينتقل إلى العامل سطرٌ هنا (D54 فما بعده). */
+import type { Face } from './portraitFace';
+
+/** صورةٌ بكسلاتها RGBA ومقاسها — كما تصل من الواجهة. */
+type Pixels = { pixels: Uint8Array; width: number; height: number };
+/** الصورة مفصولةً: القناع، وألوان الحافّة بلا هالة، وزمن النموذج — كما يعيدها `main/services/portrait.ts`. */
+export type CutoutOutput = { alpha: Uint8Array; pixels: Uint8ClampedArray; ms: number };
+
+/** الأعمال بمدخلها ومخرجها — وكلّ عملٍ ينتقل إلى العامل سطرٌ هنا. */
 export type WorkerJobs = {
   /** «أنا هنا»: رقم عملية العامل ووقت الجواب. */
   ping: { input: null; output: { pid: number; at: number } };
   /** للاختبار وحده (أبواب الاختبار): يخرج العامل بـ`process.exit(1)` — فيُرى السقوط وما بعده. */
   crash: { input: null; output: never };
+  /** «أزل الخلفية» للأشخاص (D54): MODNet، ووجهه بـYuNet إن وُجد نموذجه (`facePath`) — وتعذّر الوجه لا يُفشل الفصل. */
+  cutout: { input: Pixels & { modelPath: string; facePath: string | null }; output: CutoutOutput & { face: Face | null } };
+  /** «أزل الخلفية» للأشياء في التصاميم (D54): BiRefNet. */
+  cutoutObject: { input: Pixels & { modelPath: string }; output: CutoutOutput };
 };
 
 export type WorkerJob = keyof WorkerJobs;

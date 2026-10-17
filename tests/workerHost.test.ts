@@ -131,6 +131,84 @@ describe('مضيف العامل المستقلّ', () => {
     expect(logError).not.toHaveBeenCalled();
   });
 
+  it('runOr: سقوطان متتاليان ← القديم مرّةً وقيدٌ؛ والأوّل يُرفض برسالته', async () => {
+    logError.mockClear();
+    const { host, spawned } = harness();
+    let oldCalls = 0;
+    const old = async () => {
+      oldCalls++;
+      return { pid: 0, at: 0 };
+    };
+    const first = host.runOr('ping', null, old);
+    spawned[0]!.crash();
+    await expect(first).rejects.toThrow(WORKER_STOPPED);
+    const second = host.runOr('ping', null, old);
+    spawned[1]!.crash();
+    await expect(second).resolves.toEqual({ pid: 0, at: 0 });
+    expect(oldCalls).toBe(1);
+    expect(logError.mock.calls.map((c) => c[0])).toEqual(['worker', 'worker', 'worker-fallback']);
+  });
+
+  it('runOr: نجاحٌ في العامل يصفّر العدّ، وإخفاق العمل نفسه لا يُعدّ سقوطًا', async () => {
+    const { host, spawned } = harness();
+    let oldCalls = 0;
+    const old = async () => {
+      oldCalls++;
+      return { pid: 0, at: 0 };
+    };
+    const reply = (n: number, r: (id: number) => WorkerReply) => spawned[n]!.reply(r(spawned[n]!.sent.at(-1)!.id));
+    // سقوطٌ ثم نجاحٌ ثم سقوط: العدّ صُفّر بينهما فلا رجوع.
+    const a = host.runOr('ping', null, old);
+    spawned[0]!.crash();
+    await expect(a).rejects.toThrow(WORKER_STOPPED);
+    const b = host.runOr('ping', null, old);
+    reply(1, (id) => ({ type: 'result', id, output: { pid: 5, at: 5 } }));
+    await expect(b).resolves.toEqual({ pid: 5, at: 5 });
+    const c = host.runOr('ping', null, old);
+    spawned[1]!.crash();
+    await expect(c).rejects.toThrow(WORKER_STOPPED);
+    // وإخفاق العمل يُرفض برسالته ولا يُرجِع إلى القديم.
+    const d = host.runOr('ping', null, old);
+    reply(2, (id) => ({ type: 'failure', id, message: 'نموذج إزالة الخلفية تالف' }));
+    await expect(d).rejects.toThrow('نموذج إزالة الخلفية تالف');
+    expect(oldCalls).toBe(0);
+  });
+
+  it('بعد الخمول يُغلق العامل بلا قيد، والطلب التالي يُقلع عمليةً جديدة', async () => {
+    vi.useFakeTimers();
+    try {
+      logError.mockClear();
+      const spawned: FakeProcess[] = [];
+      const host = new WorkerHost(
+        () => {
+          const p = new FakeProcess();
+          spawned.push(p);
+          return p;
+        },
+        { idleMs: 1000 }
+      );
+      const run = host.run('ping', null);
+      spawned[0]!.reply({ type: 'result', id: spawned[0]!.sent[0]!.id, output: { pid: 1, at: 1 } });
+      await run;
+      vi.advanceTimersByTime(999);
+      expect(spawned[0]!.killed).toBe(false);
+      // طلبٌ قبل انقضاء المدّة يُبقيه ويعيد العدّ.
+      const again = host.run('ping', null);
+      vi.advanceTimersByTime(5000);
+      expect(spawned[0]!.killed).toBe(false);
+      spawned[0]!.reply({ type: 'result', id: spawned[0]!.sent[1]!.id, output: { pid: 1, at: 2 } });
+      await again;
+      vi.advanceTimersByTime(1000);
+      expect(spawned[0]!.killed).toBe(true);
+      await Promise.resolve();
+      expect(logError).not.toHaveBeenCalled();
+      void host.run('ping', null);
+      expect(spawned).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('إقلاعٌ تعذّر يرفض الطلب ولا يرمي', async () => {
     const host = new WorkerHost(() => {
       throw new Error('تعذّر الإقلاع');
