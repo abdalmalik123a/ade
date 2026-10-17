@@ -21,7 +21,7 @@
 | الأنواع | المشاريع الأربعة (`tsconfig.node` و`web` و`test` و`ui-test`) | `npm run typecheck` | vitest لا يفحص الأنواع: يُشغَّل بعد كتابة الاختبارات أيضًا |
 | المكوّنات | `tests/ui/*.test.tsx` — ٣ ملفّات (G03، D39) | مع الوحدة · و`npx vitest run tests/ui` وحده | ببيئة jsdom يعلنها رأس كلّ ملفّ (`// @vitest-environment jsdom`) والعامّة `node` كما هي؛ تُركَّب بـ`createRoot` و`act` من React ١٨، ويُفكّ بعد كلّ اختبار، و`window.diwan` مزيَّفٌ بما يحتاجه المكوّن (`tests/ui/mount.tsx`) — بلا مكتبةٍ غير jsdom |
 | الوحدة | `tests/*.test.ts` — ١٧٩ ملفًّا | `npx vitest run` (= `npm test`)، أو ملفّاته بأسمائها | بلا Electron، والقاعدة في مجلّدٍ مؤقّت يُمحى (`tests/tempRoot.ts`، L57)؛ و«Errors 1 error» (وعدٌ مرفوض) فشلٌ وإن خضرت الفحوص |
-| السيناريو | `tools/scenarios/*.mjs` — ١٠٩ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
+| السيناريو | `tools/scenarios/*.mjs` — ١١٠ | `npx electron-vite build` ثم `node tools/drive.mjs tools/scenarios/<الاسم>.mjs` | يقود البرنامج المبنيّ عبر CDP من ملفّ تعريفٍ نظيف، ويفتّش القاعدة والقرص؛ ✓ و✗ لكلّ فحص، ويخرج بـ١ إن سقط فحص |
 | لقطات الرسّام | `tests/snapshots/` — ١٧٤ ملفًّا (١٧٠ في `renderer/` و٤ في `fixtures/`) | مع الوحدة (`rendererSnapshots`) | تغيير حرفٍ في الرسّام يُفشلها؛ والفرق المقصود يُقبل بـ`npx vitest run -u` بعد مراجعته، ويُذكر في الإيداع |
 | الهيكل | `structure` (سبع قواعد) و`designStructure` (ثلاث) و`lint` (ESLint، G05) | مع الوحدة · و`npm run lint` وحده | الطبقات، ومتغيّرات البيئة، والنوافذ، وتطابق القنوات، والحجم، والمخطّط، والمساعدات المشتركة · وقاعدتا الخطّافات وحدهما (`eslint.config.mjs`): `rules-of-hooks` خطأٌ يُسقط و`exhaustive-deps` تحذيرٌ يُعدّ — والسقوف في §١٠ |
 | الحِمل والصمود | `tests/load.test.ts` وسيناريو `resilience` | `DIWAN_LOAD=1 npx vitest run tests/load.test.ts` · `SOAK_ROUNDS=200 node tools/drive.mjs tools/scenarios/resilience.mjs` | يدويّان: خمسون ألف كتاب، وتنقّلٌ ساعاتٍ (G23) |
@@ -80,7 +80,7 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١٠٩ سيناريوهات و١٨٢ ملفّ اختبار، منها ثلاثةٌ للمكوّنات في `tests/ui/` (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١١٠ سيناريوهات و١٨٢ ملفّ اختبار، منها ثلاثةٌ للمكوّنات في `tests/ui/` (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
@@ -91,7 +91,7 @@
 | الصور الشخصية (8 · 8) | `photos` `studio` `portrait` `photoSteps` `colorErase` `autoCollar` `faceChin` `repair` | `portrait` `portraitFace` `portraitLoad` `portraitSkin` `portraitTools` `colorErase` `inpaint` `photoSheet` |
 | PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
-| الزبائن والسجلّ (5 · 12) | `citizens` `citizenImport` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
+| الزبائن والسجلّ (6 · 12) | `citizens` `citizenImport` `citizenImportCap` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
 | الطباعة والإخراج (7 · 8) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` `ui/printChooser` |
 | النظام (21 · 42) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` `lint` `ui/useToast` |
 
@@ -164,7 +164,7 @@
   الجهاز والقرص والكهرباء ٩ · الواجهة ٣ · التفعيل والتحديث ٧. كلّها بيد المالك في الموجة ٢ (G09، ر154)؛ ومتى قال إنّه أجرى بندًا عُلِّم ✅،
   وقوله «تمّت» نهائي (ر071) فلا يُطلب ثانيةً.
 - **وقسم «النقاط العمياء — G08»** في آخرها (D40): ما فحصه التطوير بجوابه ٥ (الخطوط OFL كلّها، و«٦٩ كتابًا» صحيح، و٣٢ بت وويندوز ٧/٨ حدّان، والأدوات لها
-  حرّاسها إلا سقف استيراد الزبائن G31) · وما بيد المالك **١٤**: مسح أجهزة المكاتب بأرقامٍ لا بأسماء، وSmart App Control، والمقياس والخطّ الكبير، ولوحة المفاتيح، وOneDrive،
+  حرّاسها، وسقف استيراد الزبائن آخرها — G31 أُغلق: `citizenImportCap` وحالتا `citizenImport`، D45) · وما بيد المالك **١٤**: مسح أجهزة المكاتب بأرقامٍ لا بأسماء، وSmart App Control، والمقياس والخطّ الكبير، ولوحة المفاتيح، وOneDrive،
   والطابعة الشبكية والمطفأة، وغير A4، ودفعة ٥٠٠ على ٤ غيغا، وFAT32، وصورة ويندوز واحدة، ومضادّ فيروساتٍ غير Defender، وتواتر EMF والفولسكاب، والمراجعات المتخصّصة.
 - **الحصيلة (D41، ١٧ ت١ ٢٠٢٦):** لم يُجرِ المالك شيئًا بعد من G08–G24 وG27 — لا ✅ في القائمة، والبنود كلّها مفتوحة؛ ويجريها على مثبّت D42 قبل أن يُباع (قوله).
 - **وقبل كلّ إصدارٍ باليد** (G10): الماسح (WIA)، والكاميرا الحقيقية، والطابعة والوجهان والمعايرة بالمسطرة، والباركود وQR بالهاتف من ورقةٍ مطبوعة.
@@ -203,7 +203,7 @@
 | ما لا يُختبر إلا باليد: الماسح والكاميرا والطابعة والرموز من الورق | G10 |
 
 **ومن المراجعات:** بيئاتٌ وأدواتٌ لم يفحصها أحد — النقاط العمياء (G08 — القائمة مكتوبة في `HARDWARE-CHECKLIST.md` §«النقاط العمياء» (D40)، والإجراء بيد المالك؛
-وسقف استيراد الزبائن بلا حارس G31) · ESLint و`rules-of-hooks` (G05 — أُغلق: `lint`، D38) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
+وسقف استيراد الزبائن G31 — أُغلق: `citizenImportCap` وحالتا `citizenImport`، D45) · ESLint و`rules-of-hooks` (G05 — أُغلق: `lint`، D38) · لوحة المفاتيح وقارئ الشاشة وCI و`engines` (A13) ·
 مقارنة صور PDF (G30 — أُغلق: `pdfCompare`، D34 D35). **ودروس الميدان بلا حارس** (G29) أُغلقت: لكلٍّ حارسه أو سببٌ مكتوب في `docs/FIELD-LESSONS.md` (D29 D30).
 
 ## ١٢. المراجعات والتدقيق
