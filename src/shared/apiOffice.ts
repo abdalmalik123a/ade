@@ -7,7 +7,7 @@ import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus }
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
 import type { CitizenSummary } from './apiCitizens';
-import type { WorkerOutput } from './worker';
+import type { WorkerJob, WorkerOutput } from './worker';
 
 export type OfficeSettings = {
   officeName: string;
@@ -315,5 +315,7 @@ export type OfficeApis = {
     workerPing(): Promise<WorkerOutput<'ping'> & { main: number }>;
     /** يُرفض دائمًا: العامل يخرج فيُرفض الطلب بـ«توقّف المعالج — جرّب ثانيةً». */
     workerCrash(): Promise<void>;
+    /** «ألغِ» (D55): يوقف عملًا معلّقًا في العامل فيُرفض بـ«أُلغي» — و`false` إن لم يكن له طلبٌ معلّق. */
+    workerCancel(job: WorkerJob): Promise<boolean>;
   };
 };

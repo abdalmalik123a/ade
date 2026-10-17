@@ -113,8 +113,10 @@ describe('اختبار الهيكل (ز١)', () => {
       'DIWAN_TEST_SAVE_DIR',
       'DIWAN_TEST_SCAN_FILE',
       'DIWAN_TEST_SLOW_ISSUE',
+      'DIWAN_TEST_SLOW_WORKER',
       'DIWAN_TEST_UPDATE_NO_LAUNCH',
       'DIWAN_TEST_WINDOWS_FONTS',
+      'DIWAN_TEST_WORKER_TIMEOUT',
       // متغيّرات النظام وأداة البناء (WINDIR: مجلّد خطوط Windows — «خطوط ديوان»)
       'ELECTRON_RENDERER_URL',
       'LOCALAPPDATA',

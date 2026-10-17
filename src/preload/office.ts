@@ -102,6 +102,7 @@ export const officeApi: OfficeApis = {
   },
   app: {
     workerPing: () => invoke('app:workerPing'),
-    workerCrash: () => invoke('app:workerCrash')
+    workerCrash: () => invoke('app:workerCrash'),
+    workerCancel: (job) => invoke('app:workerCancel', job)
   }
 };

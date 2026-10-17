@@ -1,6 +1,6 @@
 /**
  * إزالة خلفية الشيء في التصاميم (DESIGNS.md ٢٫٣): الصورة بكسلاتٍ بحدّ العمل (`workPixels` كالصور الشخصية) ← نموذج
- * الأشياء في العملية الرئيسة (`photos:cutoutObject`) ← قناعٌ تصحّحه فرشاتا «أبقِ» و«امسح» (`strokeAlpha` نفسها) ←
+ * الأشياء في العامل المستقلّ (`photos:cutoutObject`، D54) ← قناعٌ تصحّحه فرشاتا «أبقِ» و«امسح» (`strokeAlpha` نفسها) ←
  * PNG شفّافة في المخزن (`files:storeImage`) تحلّ محلّ صورة العنصر، والتراجع يعيدها.
  *
  * وما كان شفّافًا في الأصل (شعارٌ PNG) يبقى شفّافًا: القناع يُضرب بشفافيّة الأصل. والألوان خارج الحافّة كما هي —
@@ -48,12 +48,17 @@ export function useCutout(src: string, colorActive = false) {
 
   useEffect(() => {
     let alive = true;
+    // النموذج يعمل في العامل: «ألغِ» أو الخروج وهو يعمل يوقفه (D55)، وجوابه المتأخّر يُهمل.
+    let running = false;
     (async () => {
       const w = workPixels(await loadImage(src.startsWith('data:') ? src : `diwan://store/${src}`));
       if (!alive) return;
       work.current = w;
       setPhase('running');
-      const res = await window.diwan.photos.cutoutObject({ pixels: new Uint8Array(w.pixels.buffer, w.pixels.byteOffset, w.pixels.byteLength), width: w.width, height: w.height });
+      running = true;
+      const res = await window.diwan.photos
+        .cutoutObject({ pixels: new Uint8Array(w.pixels.buffer, w.pixels.byteOffset, w.pixels.byteLength), width: w.width, height: w.height })
+        .finally(() => (running = false));
       if (!alive) return;
       cut.current = { alpha: Uint8Array.from(res.alpha), model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength) };
       setMs(res.ms);
@@ -65,6 +70,7 @@ export function useCutout(src: string, colorActive = false) {
     });
     return () => {
       alive = false;
+      if (running) void window.diwan.app.workerCancel('cutoutObject');
     };
   }, [src]);
 

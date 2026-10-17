@@ -27,6 +27,7 @@ import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documents';
 import { workerHost } from '../services/workerHost';
+import type { WorkerJob } from '@shared/worker';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
 import { normalizeCounterCards } from '@shared/counterCards';
@@ -193,6 +194,8 @@ export function registerIpc(): void {
   // العامل المستقلّ (A03، D53): «أنا هنا» برقم عمليته ورقم الرئيسة — و«أسقِطه» لأبواب الاختبار وحدها.
   ipcMain.handle('app:workerPing', async () => ({ ...(await workerHost().run('ping', null)), main: process.pid }));
   if (__DIWAN_TEST_DOORS__) ipcMain.handle('app:workerCrash', () => workerHost().run('crash', null));
+  // «ألغِ» (D55): يوقف عملًا معلّقًا في العامل — وما ليس معلّقًا لا شيء.
+  ipcMain.handle('app:workerCancel', (_e, job: unknown) => workerHost().cancel(String(job) as WorkerJob));
 
   // المعاملات المعلّقة في الشبّاك (تعميق الموجود ٥): في القاعدة، فتبقى بعد الإغلاق.
   ipcMain.handle('service:parked', (): unknown[] => {

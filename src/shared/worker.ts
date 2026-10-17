@@ -38,3 +38,18 @@ export type WorkerReply = WorkerResult | WorkerFailure;
 
 /** ما يُقال للمكتب حين يخرج العامل والطلبات معلّقة — والطلب التالي يُقلعه من جديد. */
 export const WORKER_STOPPED = 'توقّف المعالج — جرّب ثانيةً';
+/** عملٌ تجاوز مهلته: يُقتل العامل ويُقال هذا (D55). */
+export const WORKER_TIMED_OUT = 'استغرق أكثر ممّا يُحتمل — أُوقف';
+/** عملٌ أوقفه المكتب بـ«ألغِ» (D55). */
+export const WORKER_CANCELLED = 'أُلغي';
+
+/**
+ * مهلة كلّ عمل (`timeoutMs`، D55): «أنا هنا» ٥ ث، و«أزل الخلفية» ٦٠ ث — عشرة أضعاف أبطأ ما قيس (٥٫٧ ث بتحميل النموذج، D52)
+ * لجهازٍ أبطأ. وما ينتهي في وقته لا يتغيّر.
+ */
+export const WORKER_TIMEOUT_MS: { [J in WorkerJob]: number } = {
+  ping: 5_000,
+  crash: 5_000,
+  cutout: 60_000,
+  cutoutObject: 60_000
+};

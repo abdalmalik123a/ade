@@ -37,9 +37,13 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
   cutoutObject: ({ modelPath, pixels, width, height }) => objectCutout(modelPath, pixels, width, height)
 };
 
+/** باب اختبار (D55): م.ث يتأخّرها العامل قبل كلّ عملٍ غير «أنا هنا» — فتُرى المهلة والإلغاء بلا صورةٍ ضخمة. */
+const SLOW_MS = __DIWAN_TEST_DOORS__ ? Number(process.env['DIWAN_TEST_SLOW_WORKER'] ?? 0) || 0 : 0;
+
 /** يجري الطلب ويعيد جوابه — وما رماه العمل إخفاقٌ برسالته. */
 export async function answer(request: WorkerRequest): Promise<WorkerReply> {
   try {
+    if (SLOW_MS > 0 && request.job !== 'ping') await new Promise((r) => setTimeout(r, SLOW_MS));
     const job = JOBS[request.job] as Job<WorkerJob> | undefined;
     if (!job) throw new Error(`عملٌ غير معروف: ${String(request.job)}`);
     return { type: 'result', id: request.id, output: await job(request.input as never) };
