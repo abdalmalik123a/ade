@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
   FOLDER_LIMIT,
-  applyImportPlan,
   formsOf,
   letterheadKey,
   planFolderImport,
   walkFolder,
   type ImportPlan
 } from '../src/main/services/importFolder';
+import { applyImportPlan } from '../src/main/services/importApply';
 import { importTemplateFile } from '../src/main/services/import';
 import { sheetToText } from '../src/main/services/sheetRead';
 import { FOLDER_DEPTH, skippedLines } from '../src/shared/importSkipped';

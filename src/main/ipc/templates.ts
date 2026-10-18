@@ -24,13 +24,13 @@ import { imageMeta } from '../services/imageSize';
 import { recognizeLayout } from '../services/ocr';
 import {
   applyHabits,
-  applyImportPlan,
   planExcelImport,
   planFolderImport,
   type ImportChoices,
   type ImportOutcome,
   type ImportPlan
 } from '../services/importFolder';
+import { applyImportPlan } from '../services/importApply';
 import type { TemplateInput } from '@shared/template';
 import type { Doc, Issuing } from '@shared/doc';
 import { learned, learningStats, recordCorrection, suggestCategory, type Correction, type CorrectionKind } from '../services/learning';
