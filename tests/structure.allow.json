@@ -1,7 +1,6 @@
 {
   "src/main/services/importFolder.ts": 418,
   "src/shared/deskew.ts": 467,
-  "src/shared/fieldHints.ts": 519,
   "src/shared/imageForm.ts": 447,
   "src/shared/paperDoc.ts": 447,
   "src/shared/qr.ts": 463
