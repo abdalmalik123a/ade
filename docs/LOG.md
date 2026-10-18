@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٠:٤٠ — D65 ✅ 🧭 — عقد الجسر: الجرد والتصميم في ARCHITECTURE §٢، وأوامر D67–D70 · والتوقّف لتراجعها الجلسة التالية
+- **أمر الجرد** (Bash من جذر المشروع؛ شجرة TypeScript، وأخطر مدخلٍ لكلّ قناة) ← `205 | … 62 34 23 68 2 16 | بالبوّابة 26`: `node -e "const ts=require('typescript'),fs=require('fs'),G=fs.readFileSync('src/main/ipc/gate.ts','utf8'),c=[0,0,0,0,0,0];let n=0,g=0;for(const f of [...fs.readdirSync('src/main/ipc').map(x=>'src/main/ipc/'+x),'src/main/index.ts']){const s=ts.createSourceFile(f,fs.readFileSync(f,'utf8'),99,true);const w=e=>{if(ts.isCallExpression(e)&&/^ipcMain\.(handle|on)$/.test(e.expression.getText(s))&&ts.isStringLiteral(e.arguments[0])){const h=e.arguments[1],b=h.body?h.body.getText(s):'';n++;if(G.includes(\"'\"+e.arguments[0].text+\"'\"))g++;c[(h.parameters||[]).slice(1).map(p=>{const v=p.name.getText(s),t=p.type?p.type.getText(s):'';return /^(path|paths|dir|url|bucket)$|Path$/.test(v)||/\b(path|dir|imagePath)\??:/.test(t)||b.includes('join(')&&b.includes('$'+'{'+v+'}')||/\bDoc\b/.test(t)&&b.includes('storeDir(')?5:v=='kind'&&/[Rr]evision/.test(b)?4:/^(number|number\[\]|boolean)( \| (null|undefined))*$/.test(t)?1:/^(string|string\[\]|'[^']*'( \| '[^']*')*)( \| (null|undefined))*$/.test(t)?2:3}).reduce((a,k)=>Math.max(a,k),0)]++}ts.forEachChild(e,w)};w(s)}console.log(n,'| بلا مدخل · أرقام · نصوص · كائنات · اسم SQL · مسار:',c.join(' '),'| بالبوّابة',g)"`
+- **وما قرأتُه بيدي:** الأبواب `grep -cE "\binvoke(<[^>]*>)?\(\s*'|ipcRenderer\.(send|sendSync)\(\s*'" src/preload/*.ts` ← المكتب ٥٥ الأدوات ٥٤ النماذج ٤٦ المواطنون ٢٦ الأرشيف ١٦ المكتبة ٨ ·
+  المسارات الستّ عشرة: ستٌّ يفحصها معالجها وعشرٌ لا (أسماؤها في «عقد الجسر») · اسم SQL: `` grep -rnE '(prepare|exec)\(\s*`[^`]*\$\{' src/main `` ← ٤٩ في ١٥ ملفًّا، والآتي من الواجهة `TABLE[kind]` وحده (بـ`isKind`) ·
+  الشبكة سطران (`net.fetch` و`diwan://`) · والترخيص من `licenseStatus` وحدها، و`services/license` لا يستورده غير `ipc/license.ts`.
+- **A19 قبلها (D65 §٣):** D62 سمّى `groupDuplicates` لا القراءة، فقستُ في Node (`esbuild` لـ`blanks.ts`، خمسمئة نصٍّ مختلَق بـ١٧٤ كلمة): القائم ١٥٣٩٢ ١٤٩٧٨ ١٥٢٢٣ ← **١٥٢٢٣ م.ث** والقطع مرّةً
+  ١٥٢ ١٤٣ ١٥٢ ← **١٥٢**، والمخرجان متساويان — فـD67 علاجٌ بلا نقل، لا «نقلٌ بفصل `planFolderImport` عن القاعدة» كما توقّع نصّ D65.
+- **الأوامر:** D67 (A19) · D68 حارسا الشبكة والترخيص (أرخصها وأقواها حراسةً، بلا `src/`) · D69 المسارات عند الباب (`handedPaths` و`storeFile`) · D70 `handleChecked` و`channels.allow.json` —
+  كلّها ⚙️ بلا مكتبة ولا سؤال · وD71 🧭 لما بقي من الموجة ٣، وD66 صار بعده. **الوثائق:** ARCHITECTURE §٢ «عقد الجسر» و§١ و«ما يتغيّر» (`d7bc480`) · BACKLOG A04 · PLAN · ونُقل الأمر.
+- **الفحص:** الأوامر ٥١ ٥١ ٥٥ ٥٢ سطرًا · ما فيها من مسارٍ ودالّةٍ وقناةٍ وسيناريو موجودٌ ببرنامج إلا «جديد» (وأسماء وحدات الشبكة الممنوعة غائبةٌ قصدًا) · `docsBudget` `repoHygiene` ✓ · لا بايت تحكّم · `git diff --stat` وثائقُ وحدها.
+- **كيف يُراجَع:** أعِد أمر الجرد فتجد الأعداد نفسها، واقرأ الأوامر الأربعة. **التالي:** `/next` يراجع D65 ثم D67 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ١٠:٢١ — مراجعة D64 ✓ · وحجز D65 🔒
 - **رسالة المالك:** `/next`.
 - **D64 بـ«كيف يُراجَع»:** `grep -n "REVISIONS_KEEP\|DELETE" src/main/services/revisions.ts` ← الحذف في `recordRevision` (٨٦–٨٨) بشرط `kind` و`item_uuid` وأحدث `REVISIONS_KEEP` بـ`revision`،
