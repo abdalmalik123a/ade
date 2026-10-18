@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { getDb, closeDb, dataDir, storeDir } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
+import { clearWorkDir } from './services/backup';
 import { existsSync } from 'node:fs';
 import { runBootSequence, readDataVersion } from './services/dataVersion';
 import { compareVersions } from '@shared/version';
@@ -272,6 +273,10 @@ app.whenReady().then(async () => {
         });
       }
     }
+    // بقايا فكٍّ انقطع في الجلسة السابقة تُمحى (A09) — والنسخة الثانية خرجت أوّل هذه الدالّة (`primary`)
+    // فلا تمحو فكًّا جاريًا في الأولى؛ وما جانبًا (`before-restore-…`) خارج المجلّد لا يُمسّ.
+    const workLeft = clearWorkDir(join(dataDir(), 'restore-work'));
+    if (workLeft > 0) logError('restoreWork', new Error(`بقي في restore-work ${workLeft} لم يُمحَ (ممسوك)`));
     // أخذ نسخة كاملة قبل التحديث قبل أي ترقية أو مساس بالقاعدة (المرحلة A، ٤٫٣).
     const dbFile = join(dataDir(), 'diwan.db');
     if (existsSync(dbFile)) {

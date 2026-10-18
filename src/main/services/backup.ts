@@ -219,6 +219,29 @@ export async function openBackup(path: string, password: string | null, workDir:
   }
 }
 
+/**
+ * يمحو ما في مجلّد العمل ويُبقيه: بقايا فكٍّ انقطع (نسخةٌ أو تحديثٌ أو حزمة محتوى) — كلّها مؤقّتة (A09).
+ * ولا ترمي أبدًا: ما يمسكه برنامجٌ آخر يُترك للإقلاع التالي ويُعاد عدده، والمجلّد الغائب لا شيء فيه.
+ * تُنادى عند الإقلاع وحده — فلا تمحو فكًّا جاريًا.
+ */
+export function clearWorkDir(dir: string): number {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  let left = 0;
+  for (const name of names) {
+    try {
+      rmSync(join(dir, name), { recursive: true, force: true });
+    } catch {
+      left++;
+    }
+  }
+  return left;
+}
+
 /** الأعلى من إصدارين، وما ليس رقم إصدارٍ يُتجاهل. */
 function higherVersion(a: string | null, b: string | null): string | null {
   const valid = (v: string | null): v is string => typeof v === 'string' && /^\d+(\.\d+)*(-[\w.]+)?$/.test(v.trim());

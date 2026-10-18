@@ -3,13 +3,13 @@
  * تُسترجع — وما أُخذ بالصيغة القديمة (كلّها في الذاكرة) يُفتح كما هو.
  */
 import { createCipheriv, randomBytes, scryptSync } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
 import { freshDb } from './helpers';
-import { assertRestorable, inspectDbFile, isEncrypted, openBackup, writeBackup } from '../src/main/services/backup';
+import { assertRestorable, clearWorkDir, inspectDbFile, isEncrypted, openBackup, writeBackup } from '../src/main/services/backup';
 import { issueDocument, prepareDocuments } from '../src/main/services/documents';
 import type { IssueInput } from '../src/shared/api';
 
@@ -235,5 +235,28 @@ describe('الفحص قبل الاسترجاع', () => {
     const broken = join(dir, 'broken.db');
     writeFileSync(broken, readFileSync(officeDb(dir)).subarray(0, 3000));
     expect(() => inspectDbFile(broken, 0, null, '1.0.0')).toThrow(/معطوبة|ليست قاعدة/);
+  });
+});
+
+describe('بقايا الفكّ المنقطع (A09)', () => {
+  it('تُمحى من مجلّد العمل ويبقى المجلّد، وما جانبًا لا يُمسّ، والمجلّد الغائب لا يرمي', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
+    const work = join(dir, 'restore-work');
+    mkdirSync(join(work, 'content-1'), { recursive: true });
+    writeFileSync(join(work, 'inspect-1-1.db'), text('قاعدةٌ مفكوكة'));
+    writeFileSync(join(work, 'restore-1-1.zip'), text('حزمةٌ مفكوكة'));
+    writeFileSync(join(work, 'content-1', 'a.png'), text('PNG'));
+    // الأصل بعد استرجاعٍ بجانبه — حذفه يدويٌّ بتأكيد.
+    const aside = join(dir, 'before-restore-2026-10-18-09-00-00');
+    mkdirSync(aside);
+    writeFileSync(join(aside, 'diwan.db'), text('الأصل'));
+
+    expect(clearWorkDir(work)).toBe(0);
+    expect(readdirSync(work)).toEqual([]);
+    expect(readdirSync(aside)).toEqual(['diwan.db']);
+    expect(readFileSync(join(aside, 'diwan.db'), 'utf8')).toBe('الأصل');
+
+    expect(clearWorkDir(join(dir, 'absent'))).toBe(0);
+    expect(existsSync(join(dir, 'absent'))).toBe(false);
   });
 });
