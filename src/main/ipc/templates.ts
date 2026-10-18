@@ -1,11 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
 import { importTemplateFile } from '../services/import';
+import { letterheadImagePath } from '../services/letterheadImage';
 import { templateToDocx } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
@@ -40,13 +40,12 @@ const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 
 let lastCensus: WordCensus | null = null;
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
-/** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه. */
+/** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه (`letterheadImagePath`). */
 export function storeLetterheadImage(bytes: Uint8Array, extension: string): string | null {
   try {
-    const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
-    const name = `${hash}${extension.toLowerCase()}`;
-    writeFileSync(join(storeDir('letterheads'), name), bytes);
-    return `letterheads/${name}`;
+    const path = letterheadImagePath(bytes, extension);
+    writeFileSync(join(storeDir('letterheads'), path.slice('letterheads/'.length)), bytes);
+    return path;
   } catch {
     return null; // شعار لا يُحفظ لا يمنع استيراد النموذج
   }
