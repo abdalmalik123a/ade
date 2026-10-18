@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٢:٤٢ — مراجعة D66 ✓ · وحجز D72 🔒
+- **رسالة المالك:** `/next`.
+- **D66 بـ«كيف يُراجَع»:** `grep -rnw fee src/` ← ثلاثة: `schema.sql:178` `:258` و`documents.ts:150` · `git diff 260ec58..2facfd9 --stat` خمسةٌ وعشرون ملفًّا كلّها في «المسموح» ولا `tools/` ·
+  القاعدة ١٠ وسطرها في رأس `structure.test.ts` (السطر ٢٣)، و`structure` ١٠ ✓ · والكسر أعدتُه بنفسي (`fee: number;` في `DocumentRow`، لم يُودَع) ← ١٠ ✗
+  «apiArchive.ts:9: المال صامت (ر161): العمود باقٍ في القاعدة ولا يعود إلى الكود»، وبعد `git checkout` ١٠ ✓. ✓
+- **شروط D72:** D66 ✅ ومُراجَع · `mkdirSync(workDir` في `services/backup.ts:162` و`:191` · `restore-work` أربعة (`ipc/backup.ts:36` `update.ts:26` `content.ts:68` `:102`) ولا ماحي ·
+  و«الصيغة القديمة» تفكّ إلى `join(dir, 'old.db')`. **التالي:** D72 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٢:٣٢ — D66 ✅ — `fee` يُزال من الكود ويبقى في القاعدة بصفره (ر161)، والقاعدة ١٠ «المال صامت» · والتوقّف هنا (ر160)
 - **ما تغيّر:** `fee` حُذف من `DocumentRow` `DocumentDetail` `IssueInput` `TransactionSheet` `TransactionResult` و`CitizenDocumentRow`، ومن `ROW_COLUMNS` و`getDocument` و`listCitizenDocuments`،
   ومن `INSERT INTO documents` (العمود وعلامته) و`INSERT INTO transactions` (وجمعه)، و`issueTransaction` لا يعيده، والكاتبان في الواجهة لا يرسلانه (وتعليق «المال صامت» باقٍ في `useIssue.ts`) — `b6d41fb`.
