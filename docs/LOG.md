@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:٠٢ — D78 ✅ — A11 (٢): `docPm.ts` ٤٩٩ ← ٢٥٦ نقلًا حرفيًّا · والتوقّف هنا (ر160)
+- **النقل** (`6516205`، الملفّان وحدهما) بـ`move.cjs` والمواصفة في مجلّد الجلسة (`names` العشرة، و`doc` رأسٌ بسطرٍ واحد): `docPmSchema.ts` ٢٥٣ يستورد من `./doc` (`import type`) و`./docPmMarks` وprosemirror-model، لا من `docPm.ts` ·
+  والأداة أضافت `import { docSchema }` في الأصل (لـ`const S`)، ثم سطر الباب `export { docSchema, cssIndentToMm, cssLineHeight } from './docPmSchema';` بعد سطر `docPmMarks` · `prune.cjs` حذف أربعة (`Schema` `NodeSpec` `cssSizeToPx` `marks`) ·
+  وعنوان القسم «قراءة الأنماط من HTML ملصوق» بقي في `docPm.ts` فوق سطري الباب (تعليقٌ يسبق تصريحًا لم يُنقل؛ والأداة تنقل تعليق المنقول وحده) · **السقف** (`623fa5e`): سقط `docPm.ts` وحده · **الوثائق** (`3960ebd`): ARCHITECTURE §٢ وBACKLOG A11.
+- **الفحص:** `typecheck` ✓ (خروج 0) · `verbatim.cjs 49c069d src/shared/docPm.ts src/shared/docPmSchema.ts` ← «ضاع 0 · جديد 0» · الأسماء المصدَّرة من `docPm.ts` بمدقّق TypeScript ٩ قبل وبعد (لا غائب ولا زائد) ·
+  `npx vitest run` ١٩٧٢ ✓ و٤ متخطّاة (ومنه `docPm` `docPmTable` `docPmList` `localPaths`)، ولقطات الرسّام كما هي · `inventory.cjs` ← «دورات القيم: 1» (`docPm.ts` خرج من السقوف فلا يعدّه؛ و`wc -l` ٢٥٦) ·
+  `electron-vite build` ✓ ثم `pageEditor` ٦٣ ✓ `editor` ٣٩ `editorDraft` ٣ `bookEditor` ٣٤ `pagedLetter` ١٤ — بلا ✗ · لا بايت تحكّم · `docsBudget` ٣ ✓.
+- **ملاحظة:** ARCHITECTURE §١ يقول «بقي خمسة عشر» (D77) وصارت أربعة عشر — لم يُمسّ لأنّ المسموح §٢ وحده؛ يصحّحه أمرٌ يسمح بـ§١.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره بـ`49c069d` مرجعًا للحرفيّة، و`git show 6516205 --stat`، و`structure.allow.json`. **التالي:** `/next` يراجع D78 ثم D79 ⚙️ (`docxDoc.ts`، و`tsconfig` في `move.cjs`).
+
 ## ٢٠٢٦-١٠-١٨ ٢٠:٥٢ — مراجعة D77 ✓ · وحجز D78 🔒
 - **رسالة المالك:** `/next`.
 - **D77 بـ«كيف يُراجَع»:** `verbatim.cjs 4129df6` على `doc.ts` والثلاثة الجديدة ← «ضاع 0 · جديد 0» · `inventory.cjs` (٨ ث) ← «دورات القيم: 1» (`documents`↔`searchIndex` وحدها) ·
