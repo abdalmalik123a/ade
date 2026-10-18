@@ -129,6 +129,64 @@ describe('الترويسة: نسخها وهويّتها', () => {
   });
 });
 
+describe('سقف النسخ: آخر عشرين لكلّ قطعة (A10)', () => {
+  const count = (db: Database.Database, kind: string, uuid: string) =>
+    (db.prepare('SELECT COUNT(*) AS n FROM revisions WHERE kind = ? AND item_uuid = ?').get(kind, uuid) as { n: number }).n;
+
+  it('نموذجٌ عُدّل خمسًا وعشرين مرّة: تبقى عشرون، أحدثها ٢٥ وأقدمها ٦ كما حُفظت', () => {
+    const db = freshDb();
+    const t = saveTemplate(db, tpl({ title: 'نسخة 1' }));
+    for (let i = 2; i <= 26; i++) saveTemplate(db, tpl({ id: t.id, title: `نسخة ${i}` }));
+
+    const revs = listRevisions(db, 'template', t.id).map((r) => r.revision);
+    expect(revs).toHaveLength(20);
+    expect(revs[0]).toBe(25);
+    expect(revs.at(-1)).toBe(6);
+    expect(getTemplate(db, t.id)?.revision).toBe(26);
+    expect(revisionPayload<{ title: string }>(db, 'template', t.id, 6)?.title).toBe('نسخة 6');
+    expect(revisionPayload(db, 'template', t.id, 5)).toBeNull();
+  });
+
+  it('ونموذجٌ آخر وترويسةٌ بالنسخ نفسها لا يُمسّان', () => {
+    const db = freshDb();
+    prepareLetterheads(db);
+    const other = saveTemplate(db, tpl({ title: 'آخر 1' }));
+    const layout = emptyLayout();
+    const h = saveLetterhead(db, { id: null, name: 'ترويسة 1', authorityId: null, layout, category: null });
+    for (let i = 2; i <= 6; i++) {
+      saveTemplate(db, tpl({ id: other.id, title: `آخر ${i}` }));
+      saveLetterhead(db, { id: h.id, name: `ترويسة ${i}`, authorityId: null, layout, category: null });
+    }
+    const t = saveTemplate(db, tpl({ title: 'نسخة 1' }));
+    for (let i = 2; i <= 26; i++) saveTemplate(db, tpl({ id: t.id, title: `نسخة ${i}` }));
+
+    expect(listRevisions(db, 'template', t.id)).toHaveLength(20);
+    expect(listRevisions(db, 'template', other.id).map((r) => r.revision)).toEqual([5, 4, 3, 2, 1]);
+    expect(listRevisions(db, 'letterhead', h.id).map((r) => r.revision)).toEqual([5, 4, 3, 2, 1]);
+    expect(revisionPayload<{ title: string }>(db, 'template', other.id, 1)?.title).toBe('آخر 1');
+  });
+
+  it('وقاعدةٌ فيها ثلاثون نسخةً قبل السقف: تبقى حتى حفظٍ غيّر شيئًا — وحفظٌ لم يغيّر لا يحذف — ثم عشرون', () => {
+    const db = freshDb();
+    const t = saveTemplate(db, tpl());
+    const uuid = uuidOf(db, 'templates', t.id)!;
+    const add = db.prepare("INSERT INTO revisions (kind, item_uuid, revision, payload) VALUES ('template', ?, ?, ?)");
+    for (let r = 1; r <= 30; r++) add.run(uuid, r, JSON.stringify({ title: `قديمة ${r}` }));
+    db.prepare('UPDATE templates SET revision = 31 WHERE id = ?').run(t.id);
+
+    expect(listRevisions(db, 'template', t.id)).toHaveLength(30);
+    saveTemplate(db, tpl({ id: t.id }));
+    expect(count(db, 'template', uuid)).toBe(30);
+    expect(getTemplate(db, t.id)?.revision).toBe(31);
+
+    saveTemplate(db, tpl({ id: t.id, title: 'بعد السقف' }));
+    const revs = listRevisions(db, 'template', t.id).map((r) => r.revision);
+    expect(revs).toHaveLength(20);
+    expect([revs[0], revs.at(-1)]).toEqual([31, 12]);
+    expect(revisionPayload<{ title: string }>(db, 'template', t.id, 12)?.title).toBe('قديمة 12');
+  });
+});
+
 describe('قاعدة مكتبٍ سبقت الهويّة', () => {
   /** الجداول كما كانت: بلا uuid ولا revision ولا direction ولا revisions. */
   function aged(): Database.Database {
