@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٨:٥٨ — مراجعة D73 ✓ · وحجز D74 🔒
+- **رسالة المالك:** `/next`.
+- **D73 بـ«كيف يُراجَع»:** القاعدة ٩ تطابق `s.text` كلّه (`structure.test.ts:345`) لا الأسطر · `SQL_TEMPLATES` ستّة عشر وتعليق `questionBank.ts` فوقه (`:325`) ·
+  والكسر (أ) أعدتُه بنفسي (`${'elements'}` في قالب `elements.ts:65` و`db.prepare(` في `:64`، لم يُودَع) ← ٩ ✗ «src/main/services/elements.ts: يبني SQL بقالب ${}…»، وبعد `git checkout` `structure` ١٠ ✓. ✓
+- **شروط D74:** D73 ✅ ومُراجَع · `npm audit --omit=dev` ← «3 vulnerabilities (2 moderate, 1 high)» (brace-expansion عالية بـ«npm audit fix»، وuuid <11.1.1 و`--force` يُنزل exceljs إلى 3.4.0) ·
+  `npm ls brace-expansion uuid --omit=dev` ← `1.1.18` تحت `minimatch@3.1.5` و`2.1.4` تحت `minimatch@5.1.9` و`uuid@8.3.2` تحت `exceljs@4.4.0` كما في الهدف · `package-lock.json` `i/crlf` · لا `overrides`. **التالي:** D74 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٣:٣٠ — D73 ✅ — القاعدة ٩ ترى قالب SQL ولو بدأ في السطر التالي لـ`prepare(`، و`SQL_TEMPLATES` ستّة عشر · والتوقّف هنا (ر160)
 - **الفحص** (`b4b326e`): النمط يُطابَق على `s.text` كلّه بدل `split('\n')`، و`'src/main/services/questionBank.ts'` في `SQL_TEMPLATES` بتعليقه («فاتت جرد D65… أُضيف في D73 مرّةً…»)، وسطر الرأس ٩ «بسطرٍ أو أكثر (D73)» · `structure` ١٠ ✓.
 - **الكسر المؤقّت** (لم يُودَع): (أ) `${'x'}` في قالب `elements.ts:65` (و`db.prepare(` في `:64`) ← ٩ ✗ «src/main/services/elements.ts: يبني SQL بقالب ${}…» · وعليه مع الفحص القديم (سطرًا سطرًا، أُعيد مؤقّتًا)
