@@ -15,6 +15,9 @@
  * ٦. **المخطط**: `CREATE TABLE` و`ALTER TABLE` في `schema.sql` و`search.sql` وملفّات `prepare*`/`ensure*` المعروفة.
  * ٧. **المساعدات المشتركة** (ز٢): لا تعريف لـ`toIndic` ولا `escapeHtml` خارج `shared/arabic.ts` و`shared/html.ts` —
  *    إلا نسخ مجلّد التصاميم الخمس (تُنقل في خطّة التصاميم، DESIGNS.md؛ والقائمة تتناقص).
+ * ٨. **الأبواب الواحدة** (A04، D68): لا شبكة — لا وحدات الشبكة ولا `fetch(` ولا `XMLHttpRequest`/`WebSocket` في Node، و`net.fetch`
+ *    في `main/index.ts` وحده، و`fetch(` الواجهة لـ`diwan://` وحده، و`connect-src` ثابت —؛ و`dependencies` قائمةٌ صريحة؛ وحال الترخيص
+ *    من `licenseStatus()` في `ipc/license.ts` وحدها. وباب البوّابة (F01) يُضاف إلى قوائمها عمدًا حين يُبنى.
  *
  * وهو الأصل العامّ: قواعد التصاميم (`designStructure`، DESIGNS.md ٣٫٤) تُبنى عليه لاحقًا.
  */
@@ -241,6 +244,59 @@ describe('اختبار الهيكل (ز١)', () => {
         if (name === 'toIndic' && DESIGN_COPIES.has(s.path)) continue;
         bad.push(`${s.path}: يعرّف ${name} من جديد — استورده من ${home}`);
       }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('٨ — الأبواب الواحدة: الشبكة والاعتماديات وحال الترخيص (A04)', () => {
+    // اليوم بلا شبكة إلا ملفٌّ محلّيٌّ في بروتوكول diwan://store — وباب البوّابة (F01) يُضاف إلى هذه القوائم عمدًا حين يُبنى.
+    const NET_MODULES = new Set(['http', 'https', 'http2', 'net', 'tls', 'dgram', 'dns']);
+    const NET_APIS = /\b(XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/g;
+    const NET_FETCH = ['src/main/index.ts']; // net.fetch لملفّ المخزن في protocol.handle('diwan')
+    const CONNECT_SRC = "'self' diwan:";
+    const DEPENDENCIES = ['better-sqlite3', 'docx', 'exceljs', 'fflate', 'onnxruntime-node', 'pdf-lib', 'tesseract.js'];
+    const LICENSE_SERVICE = ['src/main/ipc/license.ts']; // التوقيع وevaluate
+    const LICENSE_STATUS = ['src/main/ipc/license.ts', 'src/main/ipc/support.ts'];
+    const PRODUCTIVE = ['src/main/ipc/license.ts', 'src/main/ipc/gate.ts'];
+    const bad: string[] = [];
+
+    // (١) الشبكة في Node: لا وحدة شبكة ولا fetch ولا ما يشبهها، وnet.fetch/net.request في ملفّه وحده.
+    for (const s of SOURCES.filter((x) => /^src\/(main|preload|shared)\//.test(x.path))) {
+      for (const spec of importsOf(s.text)) {
+        if (NET_MODULES.has(spec.replace(/^node:/, '').split('/')[0]!)) bad.push(`${s.path}: يستورد وحدة الشبكة «${spec}» — ديوان بلا إنترنت، وباب البوّابة ملفٌّ واحدٌ يُبنى مع F01`);
+      }
+      if (/(?<!\bnet\.)\bfetch\s*\(/.test(s.text)) bad.push(`${s.path}: ينادي fetch( — ديوان بلا إنترنت، والملفّ المحلّي يُقرأ من القرص`);
+      if (/\bnet\.(?:fetch|request)\s*\(/.test(s.text) && !NET_FETCH.includes(s.path)) bad.push(`${s.path}: ينادي net.fetch/net.request خارج src/main/index.ts — هو لملفّ المخزن في بروتوكول diwan:// وحده`);
+      for (const m of s.text.matchAll(NET_APIS)) bad.push(`${s.path}: يستعمل ${m[1]} — ديوان بلا إنترنت`);
+    }
+
+    // (٢) الشبكة في الواجهة: fetch لملفّات المخزن (diwan://) وحدها، وconnect-src كما هو.
+    for (const s of under('src/renderer/')) {
+      for (const m of s.text.matchAll(/\bfetch\s*\(\s*(['"`]diwan:\/\/)?/g)) {
+        if (!m[1]) bad.push(`${s.path}: fetch( لغير «diwan://» — الواجهة تقرأ ملفّات المخزن وحدها، وما سواها يمرّ بالجسر`);
+      }
+      for (const m of s.text.matchAll(NET_APIS)) bad.push(`${s.path}: يستعمل ${m[1]} — الواجهة بلا شبكة`);
+    }
+    const html = readFileSync(join(ROOT, 'src/renderer/index.html'), 'utf8');
+    const connects = [...html.matchAll(/connect-src\s+([^;"]*)/g)].map((m) => m[1]!.trim().replace(/\s+/g, ' '));
+    if (connects.length !== 1 || connects[0] !== CONNECT_SRC) {
+      bad.push(`src/renderer/index.html: connect-src «${connects.join(' | ') || 'غائب'}» — يبقى «${CONNECT_SRC}» بالضبط؛ والبوّابة تكلّمها الرئيسة لا الواجهة`);
+    }
+
+    // (٣) الاعتماديات: السبع نفسها — والجديدة تُضاف هنا عمدًا بموافقة المالك.
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { dependencies?: Record<string, string> };
+    const deps = Object.keys(pkg.dependencies ?? {});
+    for (const d of deps) if (!DEPENDENCIES.includes(d)) bad.push(`package.json: اعتماديةٌ جديدة «${d}» — تُضاف إلى قائمة هذا الاختبار عمدًا بموافقة المالك، بعد التأكّد أنّها لا تكلّم الشبكة`);
+    for (const d of DEPENDENCIES) if (!deps.includes(d)) bad.push(`package.json: «${d}» غابت من dependencies — أزِلها من قائمة هذا الاختبار عمدًا`);
+
+    // (٤) حال الترخيص من licenseStatus() وحدها، والتوقيع لا يُقرأ خارج قناته.
+    for (const s of SOURCES) {
+      const service = importsOf(s.text).some((spec) => /^src\/main\/services\/license(?:\.[jt]s)?$/.test(resolved(s, spec) ?? ''));
+      if (service && !LICENSE_SERVICE.includes(s.path)) bad.push(`${s.path}: يستورد services/license (التوقيع وevaluate) — حال الترخيص من licenseStatus() في ipc/license.ts وحدها`);
+      if (/\blicenseStatus\s*\(/.test(s.text) && !LICENSE_STATUS.includes(s.path)) {
+        bad.push(`${s.path}: ينادي licenseStatus( خارج ipc/license.ts وipc/support.ts — القناة المنتِجة تُضاف إلى بوّابة ipc/gate.ts، والواجهة تسأل window.diwan.license.status()`);
+      }
+      if (/\brequireProductive\s*\(/.test(s.text) && !PRODUCTIVE.includes(s.path)) bad.push(`${s.path}: ينادي requireProductive( خارج ipc/gate.ts — القناة المنتِجة تُضاف إلى قائمة البوّابة هناك`);
     }
     expect(bad).toEqual([]);
   });
