@@ -4,11 +4,11 @@ import {
   defaultQuadForSize,
   mapUnitToQuad,
   DESKEW_ASPECTS,
-  detectQuad,
   flattenLight,
   type PixelData,
   type Quad
 } from '../src/shared/deskew';
+import { detectQuad } from '../src/shared/quadDetect';
 
 describe('إزالة ميلان المستمسكات (Perspective De-skew)', () => {
   it('نسب الأبعاد للمستمسكات العراقية مطابقة للواقع', () => {

@@ -1,5 +1,6 @@
 /** خطوات التسوية في نافذة الميلان: قراءة البكسلات، وكشف الأركان، و«المسح النظيف» — نُقلت من `DeskewModal.tsx` (سقف حجمه). */
-import { detectQuad, flattenLight, type PixelData, type Quad } from '@shared/deskew';
+import { flattenLight, type PixelData, type Quad } from '@shared/deskew';
+import { detectQuad } from '@shared/quadDetect';
 import { cleanScan, despeckle, inkCoverage, straighten } from '@shared/scanClean';
 
 /** بكسلات الصورة كما حُمّلت — ليقرأها الكاشف. */

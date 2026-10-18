@@ -11,7 +11,8 @@
  *   يُوقَّع ويُختم من جديد)، والعنوان الملوّن في الترويسة سطرٌ عريض فيبقى. والحبر
  *   الأسود تحت الختم يبقى: يُمحى الملوّن وحده.
  */
-import { detectQuad, flattenLight, warpPerspective, type PixelData } from './deskew';
+import { flattenLight, warpPerspective, type PixelData } from './deskew';
+import { detectQuad } from './quadDetect';
 import { isColoredInk, straighten } from './scanClean';
 
 export type Box = { x0: number; y0: number; x1: number; y1: number };
