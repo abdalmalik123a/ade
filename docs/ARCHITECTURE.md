@@ -23,7 +23,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 | `src/preload` | الجسر الوحيد للواجهة، أبوابًا؛ يعمل في الصندوق فلا يستورد إلا `electron` | `index.ts` · `invoke.ts` · `office.ts` · `archive.ts` · `citizens.ts` · `templates.ts` · `tools.ts` · `library.ts` |
 | `src/renderer` | الواجهة (React وTailwind)، في صندوقٍ بلا Node (`sandbox` و`contextIsolation`) | `src/App.tsx` · `shell/` (السكّة والرأس و`routeScreens.tsx`) · `screens/` · `components/` · `designs/` · `kit/` · `lib/` |
 | `src/shared` | دوالّ خالصة تعمل في العمليّتين وتُختبر بلا متصفّح ولا Electron | `doc.ts` و`docPm*.ts` · `design/` · `arabic.ts` · `license.ts` · `printRoles.ts` · `routes.ts` · `counterCards.ts` · `api*.ts` |
-| `tools` | قيادة البرنامج للفحص، وأدوات البناء والإصدار والمالك | `drive.mjs` · `scenarios/` · `split/` · `keytool/` · `packs/` · `release.mjs` · `aged-db/` |
+| `tools` | قيادة البرنامج للفحص، وأدوات البناء والإصدار والمالك | `drive.mjs` · `scenarios/` · `split/` · `keytool/` · `packs/` · `release.mjs` · `aged-db/` · `hooks/` (حرّاس الجلسات) |
 | `tests` | اختبارات الوحدة (vitest) وملفّاتها المرجعية | `fixtures/` (ملفّات Word حقيقية، و١١ قاعدة `release-X.Y.Z.db` من 1.0.0 إلى 1.7.2) · `snapshots/` |
 | `resources` | ما يُحزم مع المثبّت | `icon.ico` · `tessdata/` (ara وeng) · `models/` (ثلاثة نماذج و`NOTICE.md`) · `packs/` (`.diwanpack` و`index.json`) · `brand/` |
 | `content` | مصادر حزم الجهات المقروءة بشريًّا | `packs/CATALOG.md` · `packs/education/` · `packs/school-letters/` |
