@@ -26,7 +26,7 @@
 | D47–D74 | A01–A08 وA09 (أ) وA10 A12 A16 A19 وG34 وترشيق الوثائق: الأساس «أ» والترقيات والممشّيات والعامل والجسر والنسخ وثغرات exceljs | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
 | D75 D77–D81 | A11: الجرد والتصميم، ثم `doc.ts` و`docPm.ts` و`docxDoc.ts` وطريق الطباعة و`services/documents.ts` | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
 | [D76](orders/done/D76.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: عشرة ملفّات بترتيب ARCHITECTURE §٢ · A09 ب · A13 · A14 · A15؛ وA17 A18 بعد إصدار) — بعد أوامر A11 | ✅ ١٨ ت١ — خمسة أوامر D82–D86 (A11 #٧–#١١، كلٌّ م) بمحاكاةٍ للنقل، وسطر D87 🧭 — مراجَع | 🧭 | D81 |
-| [D82](orders/D82.md) | A11 (٦): `shared/portraitMask.ts` — القاط في `suitFit.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `Landmarks` | 🔒 ١٨ ت١ ٢٢:٤٧ | ⚙️ م | D76 |
+| [D82](orders/done/D82.md) | A11 (٦): `shared/portraitMask.ts` — القاط في `suitFit.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `Landmarks` | ✅ ١٨ ت١ (05a0135) — ٥٤٠ ← ٣٣٥ و`suitFit.ts` ٢١٠، والحرفيّة 0 و0 | ⚙️ م | D76 |
 | [D83](orders/D83.md) | A11 (٧): `services/excelDoc.ts` — الخلايا والحقول في `excelCells.ts` ببابٍ يعيد التصدير | ⬜ | ⚙️ م | D82 |
 | [D84](orders/D84.md) | A11 (٨): `shared/blanks.ts` — تنظيف السطر وتسمية الخانة في `blankText.ts` ببابٍ يعيد التصدير | ⬜ | ⚙️ م | D83 |
 | [D85](orders/D85.md) | A11 (٩): `services/import.ts` — الفقرات والترويسة وتخطيطها في `importLayout.ts` ببابٍ لـ`ImageSaver`، ورأس الملفّ في مكانه | ⬜ | ⚙️ م | D84 |
