@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠١:٣٥ — D88 ✅ — A11 (١١): `shared/deskew.ts` ٤٦٧ ← ٣٢٦ نقلًا حرفيًّا، وكشف الأركان في `quadDetect.ts` · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`8d6adec`): `move.cjs` (`tsconfig.web.json`، و`fromSrc` لنوعَي `Quad` `PixelData`) ← `detectQuad` بتعليقه وسطر قسمه إلى `quadDetect.ts` ١٤٥ بلا باب · وتحديث مستورديه الثلاثة (`deskewSteps.ts` و`paperRules.ts` و`tests/deskew.test.ts`) · `prune.cjs` · `typecheck` نظيف · والسقف (`f75517b`): `RATCHET` فسقط `deskew.ts` من `structure.allow.json`.
+- **الوثائق** (`d0850da`): ARCHITECTURE §١ (بقي أربعة) و§٢ (الجدول #١٢ ← D88 بأرقامه، وسطر الأوامر D88 ✅، والأربعة الباقية لـD89–D92) · BACKLOG A11 (الأحد عشر ✅، والأربعة لـD89–D92).
+- **الفحص:** الحرفيّة `verbatim.cjs 4b45e4c` ← «ضاع 0 · جديد 0» · `git show --stat 8d6adec` الملفّات الخمسة وحدها · المصدَّر من `quadDetect` ١ · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← أربعة ملفّات بلا `deskew.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `idTools` ٢٠ ✓ و`paperPhoto` ١٨ ✓ بلا ✗.
+- **التالي:** مراجعة D88 بـ«كيف يُراجَع» ثم D89 (م، وبه تتمّ النقاط الأربع).
+
 ## ٢٠٢٦-١٠-١٩ ٠١:٢٤ — مراجعة D87 ✓ · وحجز D88 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **رسالة المالك:** `/next`.
 - **D87 بـ«كيف يُراجَع»:** قُرئت D88–D92: الأسماء الثلاثة والثلاثون كلّها تصريحاتٌ عليا في ملفّاتها (`missing: 0`) · كلّ أمرٍ ⚙️ م يُنفَّذ بـ`move.cjs` و`prune.cjs` وEdit بلا سؤالٍ ولا أداةٍ جديدة · وفرز A13 (الستّة الباقية) وA14 (الأربعة الباقية) في `BACKLOG.md` مطابقٌ لمواضعه في الكود (`render.ts:87` `psd.ts:72` `docHtml.ts:246` `designs.ts:107` `issue.ts:37` `errorLog.ts:29`). ✓
