@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٢:٣٢ — D66 ✅ — `fee` يُزال من الكود ويبقى في القاعدة بصفره (ر161)، والقاعدة ١٠ «المال صامت» · والتوقّف هنا (ر160)
+- **ما تغيّر:** `fee` حُذف من `DocumentRow` `DocumentDetail` `IssueInput` `TransactionSheet` `TransactionResult` و`CitizenDocumentRow`، ومن `ROW_COLUMNS` و`getDocument` و`listCitizenDocuments`،
+  ومن `INSERT INTO documents` (العمود وعلامته) و`INSERT INTO transactions` (وجمعه)، و`issueTransaction` لا يعيده، والكاتبان في الواجهة لا يرسلانه (وتعليق «المال صامت» باقٍ في `useIssue.ts`) — `b6d41fb`.
+- **الاختبار:** الأربعة عشر بلا `fee` (`documents` بحالاته، و`sheetStyle` بتفكيكه) · «وأجرتها مجموع أوراقها» ← «والأجرة صامتة (ر161)»: ثلاث أوراق، والجواب بلا `fee`، و`transactions` `{sheets:3, fee:0}`،
+  و`documents` الثلاثة `fee` ٠، و`getDocument` وصفوف `listDocuments` بلا `fee` · و«وكتبه في ملفّه بلا أجرة» (`listCitizenDocuments`) · `auditFixes` كما هو — `b6d41fb`.
+- **القاعدة ١٠** (`5a90ebb`): كلّ سطرٍ في `src/` فيه `\bfee\b` تعريفُ العمود في `schema.sql` أو `documents.ts` وحده، وعددها ٣ · **الكسر** (`fee: number` في `DocumentRow`، لم يُودَع) ← ١٠ ✗ «apiArchive.ts:18: المال صامت (ر161)…»، وبعد `git checkout` ١٠ ✓.
+- **الفحص:** `typecheck` ✓ · الأربعة عشر و`structure` و`auditFixes` و`migrationRunner` ٢١٨ ✓ (و`load` بـ`DIWAN_LOAD=1` ✓، و`makeReleaseDb` يحتاج `RELEASE_OUT` فتُرك) · `lint` ✓ · `docsBudget` `repoHygiene` ٧ ✓ ·
+  `electron-vite build` ✓ · `issue` ١١٣ ✓ («والرسوم صفرٌ صامت») و`service` ٦٣ ✓ («والأجرة صفرٌ صامت» «ولا أجرة على ورقة») بلا ✗ · لقطات الرسّام لم تُمسّ · لا بايت تحكّم · `tools/` لم يُمسّ.
+- **الوثائق** (`2facfd9`): `records.md` سطرا A06 · BACKLOG «أُغلق: A06» · OWNER-GUIDE §٧ · حال ر161. **كيف يُراجَع:** `grep -rnw fee src/` ← `schema.sql:178` `:258` و`documents.ts:150` ·
+  `git diff 260ec58..2facfd9 --stat` بلا `tools/` · القاعدة ١٠ وسطرها في الرأس · والكسر أعلاه. **التالي:** `/next` يراجع D66 ثم D72 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ١٢:١٩ — مراجعة D71 ✓ · وحجز D66 🔒
 - **رسالة المالك:** `/next`.
 - **D71 بـ«كيف يُراجَع»:** الخمسة ٥٧ ٥٣ ٤٥ ٥٤ ٤٨ سطرًا · `grep -rnw fee src/` ← عشرون (الثلاثة الباقية `schema.sql:178` `:258` و`documents.ts:150`)، والواجهة كاتبان وحدهما،
