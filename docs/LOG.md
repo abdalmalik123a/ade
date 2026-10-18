@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:١٧ — مراجعة D79 ✓ · وحجز D80 🔒
+- **رسالة المالك:** `/next`.
+- **D79 بـ«كيف يُراجَع»:** `git show 64ec44e` ← `move.cjs` وحده و`spec.tsconfig` وحده (`TSCONFIG` في الإعداد والرسالة وسطر `spec:`) · `verbatim.cjs 64ec44e` على الثلاثة ← «ضاع 6 · جديد 0» والستّة هي التي سمّاها قيد D79
+  (`PAGE_MM` `tokenInlines` `ImageBlock` `Marks` `PageSetup` `PageSize`)، وكلّها في سطر استيراد `@shared/doc` في `docxStyles.ts:7` أو `docxRuns.ts:4` · `grep` الجديدين في `import.ts` و`design/importWord.ts` ← لا شيء · `structure.allow.json` بلا `docxDoc.ts`. ✓
+- **شروط D80:** `render.ts` ٤٧١ و`ipc/documents.ts` ٤٧٠ وسقفاهما ٤٧١ و٤٧٣ · `PER_SHEET_PAGE` `forPrint` `PrintMode` في `documents.ts` تعريفاتها (٢٣ ٢٦ ٢٩) ومعالج `printIssued` وحده (٢٧٢ ٢٨٧ ٢٨٩) ·
+  لا `pngDensity.ts` ولا `sheetStyle.ts` ولا `calibration.ts` ولا `ipc/output.ts` · `move.cjs` يقرأ `tsconfig`. **التالي:** D80 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:١٤ — D79 ✅ — A11 (٣): `docxDoc.ts` ٩١٩ ← ٣٢٨ نقلًا حرفيًّا · والتوقّف هنا (ر160)
 - **`move.cjs`** (`64ec44e`): `const TSCONFIG = spec.tsconfig ?? 'tsconfig.web.json'` في قراءة الإعداد ورسالة «لم يُوجد الملفّ في البرنامج (…)» وسطر `spec:` · ومواصفةٌ بلا المفتاح على ملفٍّ في main ← «(tsconfig.web.json)» كما كانت.
 - **النقل** (`59d76ac`، الثلاثة وحدها) بـ`move.cjs` و`"tsconfig": "tsconfig.node.json"`، والمواصفتان في مجلّد الجلسة: العشرون إلى `docxStyles.ts` ٢٩٢، ثم الستّة عشر إلى `docxRuns.ts` ٣١٣ (أخذت `chain` `readR` `Ctx` `RProps` من `./docxStyles`) ·
