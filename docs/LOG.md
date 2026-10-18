@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٠٩:٤٢ — مراجعة D61 ✓ · وحجز D62 🔒
+- **رسالة المالك:** `/next`.
+- **D61 بـ«كيف يُراجَع»:** كلماته في القيد «D61 ب» هي نصّ ر161 («قال المالك: «D61 ب»») · BACKLOG A06 وOWNER-GUIDE §٧ وسطرا `records.md` تقول الحال نفسه
+  (يبقيان في القاعدة بصفرهما ويُزالان من الكود، أمرٌ ⚙️ بعد D65) · `git diff d0f8ce7..3c2605b --stat`: DECISIONS وBACKLOG وOWNER-GUIDE و`records.md` وPLAN والدفتر ونقل الأمر وحدها،
+  وفي DECISIONS صفّ ر161 وحال ر152 ور077 لا غير. ✓
+- **شروط D62:** `FOLDER_LIMIT = 500` و`planFolderImport` ينتظر `importTemplateFile` ملفًّا ملفًّا ثم `findShared` و`applyBlankFields` و`groupDuplicates` · `templates:planFolder`/`planExcel`
+  في الرئيسة بلا عامل · `empty-import-folder` و`new-folder` و`new-excel` تحت `data-import-menu` · `fflate` `exceljs` `esbuild` في package.json. ✓
+- **التالي:** D62 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ٠٩:٤٠ — D61 🛑 ✅ — المالك اختار «ب»: `fee` يبقى في القاعدة ويُزال من الكود (ر161) · والتوقّف هنا (ر160)
 - **كلمات المالك كما هي:** «D61 ب» (في رسالة `/next D61 ب`).
 - **ما تغيّر:** DECISIONS: ر161 في §٧ بعد ر152، وحال ر152 «سارٍ — قُرِّر ر161»، وحال ر077 «و`fee` حدّده ر152 ور161» (ور007 لم يُمسّ) · BACKLOG A06 بنصّه الجديد وبلا 👤 ·
