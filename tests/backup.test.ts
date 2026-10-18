@@ -135,6 +135,23 @@ describe('النسخة ملفًّا ملفًّا', () => {
     }
   });
 
+  it('والقديمة غير المشفّرة تُفحص على جهازٍ لا مجلّد عملٍ فيه — قاعدتها تُفكّ إليه كما يفحصها الاسترجاع (A16)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
+    const dbFile = officeDb(dir);
+    const file = join(dir, 'old-plain.zip');
+    writeFileSync(file, legacyBackup(dbFile, { 'scans/a.png': text('PNG') }, null));
+    // لا تشفير ولا وصف: لا فرع ينشئ المجلّد — وكانت تسقط بـ«ENOENT» بالإنكليزية.
+    const workDir = join(dir, 'restore-work');
+    const opened = await openBackup(file, null, workDir);
+    try {
+      const inspect = join(workDir, 'inspect-1-1.db');
+      await opened.extractDb(inspect);
+      expect(readFileSync(inspect).equals(readFileSync(dbFile))).toBe(true);
+    } finally {
+      opened.dispose();
+    }
+  });
+
   it('المشفّرة بلا كلمة تُسأل كلمتها، وبغير كلمتها لا تُفتح ولا يبقى منها شيء', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'diwan-backup-'));
     const target = join(dir, 'b.diwan');

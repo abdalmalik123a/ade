@@ -147,6 +147,8 @@ export type OpenedBackup = {
  * في `workDir` مارّةً، ويُتحقّق من وسمها في آخرها: كلمةٌ خاطئة أو ملفٌّ معطوب لا يُعطي شيئًا.
  */
 export async function openBackup(path: string, password: string | null, workDir: string): Promise<OpenedBackup> {
+  // قبل أيّ فرع: القديمة غير المشفّرة بلا وصف لا تمرّ بفرعٍ ينشئه، وقاعدتها تُفكّ فيه (A16).
+  mkdirSync(workDir, { recursive: true });
   const head = Buffer.alloc(BODY_AT);
   const h = await open(path, 'r');
   try {
@@ -159,7 +161,6 @@ export async function openBackup(path: string, password: string | null, workDir:
   if (isEncrypted(head)) {
     if (!password) throw new Error('النسخة مشفّرة — اكتب كلمة مرورها');
     if (head[MAGIC.length] !== VERSION) throw new Error('نسخةٌ مشفّرة بصيغةٍ لا يعرفها هذا الإصدار');
-    mkdirSync(workDir, { recursive: true });
     temp = join(workDir, `restore-${process.pid}-${Date.now()}.zip`);
     const decipher = createDecipheriv('aes-256-gcm', keyOf(password, head.subarray(MAGIC.length + 1, MAGIC.length + 17)), head.subarray(MAGIC.length + 17, TAG_AT));
     decipher.setAuthTag(head.subarray(TAG_AT, BODY_AT));
@@ -188,7 +189,6 @@ export async function openBackup(path: string, password: string | null, workDir:
     const metaEntry = entries.find((e) => e.name === META);
     if (metaEntry && metaEntry.size < 64 * 1024) {
       const file = join(workDir, `meta-${process.pid}-${Date.now()}.json`);
-      mkdirSync(workDir, { recursive: true });
       try {
         await extractEntry(zipPath, metaEntry, file);
         const parsed = JSON.parse(readFileSync(file, 'utf8')) as Partial<BackupMeta>;
