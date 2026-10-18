@@ -318,6 +318,8 @@ describe('اختبار الهيكل (ز١)', () => {
       'src/main/services/clips.ts',
       'src/main/services/contentPack.ts',
       'src/main/services/dataVersion.ts',
+      // نُقل من documents.ts في D81 بقوالبه الثمانية، ولا قالب جديد (٩ قبل النقل و١ + ٨ بعده) — أُضيف بكلمة المالك «D81 ١»، والقائمة بعده تتناقص ولا تزيد.
+      'src/main/services/documentList.ts',
       'src/main/services/documents.ts',
       'src/main/services/letterheads.ts',
       'src/main/services/orders.ts',
