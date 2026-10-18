@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٠٣ — مراجعة D90 ✓ · وحجز D91 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **D90 بـ«كيف يُراجَع»:** `verbatim.cjs 359103d` ← «ضاع 0 · جديد 0» · `git show --stat c03c400` الملفّان وحدهما · `export` في `imageFormDoc.ts` ٢ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/imageForm.ts`. ✓
+- **تحقّق D91 قبل البدء:** `paperDoc.ts` ٤٤٧ وسقفه ٤٤٧ · `inventory.cjs` ← «مكوّنات 1 أكبرها 367» و«دورات القيم: 0» · لا `paperLines.ts`. ✓
+
+## ٢٠٢٦-١٠-١٩ ٠٢:٠٢ — D90 ✅ — A11 (١٣): `shared/imageForm.ts` ٤٤٧ ← ٣٦٦ نقلًا حرفيًّا، ووثيقة الاستمارة وقيمها في `imageFormDoc.ts` · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`c03c400`): `move.cjs` (`tsconfig.web.json`، و`fromSrc` لنوع `FormSlot`) ← الثلاثة (`PT_PER_MM` `imageFormDoc` `formValues`) بتعليقاتها إلى `imageFormDoc.ts` ٨٨ · وبـEdit: بابٌ في `imageForm.ts` يعيد تصدير `imageFormDoc` و`formValues`، و`PT_PER_MM` بلا `export` (فالمصدَّر منه ٢) · `prune.cjs` نظّف ٣ استيرادات من `imageForm.ts` · `typecheck` نظيف · والسقف (`600fd14`): `RATCHET` فسقط `imageForm.ts` من `structure.allow.json`.
+- **الوثائق** (`1d64c56`): ARCHITECTURE §١ (بقي اثنان) و§٢ (الجدول #١٤ ← D90 بأرقامه، وسطر الأوامر D90 ✅، والاثنان الباقيان لـD91–D92) · BACKLOG A11 (الثلاثة عشر ✅، والاثنان لـD91–D92).
+- **الفحص:** الحرفيّة `verbatim.cjs 359103d` ← «ضاع 0 · جديد 0» · `git show --stat c03c400` الملفّان وحدهما · المصدَّر من `imageFormDoc` ٢، ومن `imageForm` ٨ قبل وبعد · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← ملفّان بلا `imageForm.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `imageForm` ٩ ✓ بلا ✗.
+- **التالي:** مراجعة D90 بـ«كيف يُراجَع» ثم D91 (م، وبه تتمّ النقاط الأربع).
+
 ## ٢٠٢٦-١٠-١٩ ٠١:٥٥ — مراجعة D89 ✓ · وحجز D90 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **رسالة المالك:** `/next`.
 - **D89 بـ«كيف يُراجَع»:** `verbatim.cjs 9cd7cc0` ← «ضاع 0 · جديد 0» · `git show --stat 38e6fd8` الملفّان وحدهما · `export` في `qrCodewords.ts` ٦ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/qr.ts`. ✓
