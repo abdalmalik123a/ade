@@ -1,5 +1,5 @@
 import { appendFileSync, readFileSync } from 'node:fs';
-import { join, posix } from 'node:path';
+import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
 import { fitCanvasText } from '@shared/design/fit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
@@ -7,6 +7,7 @@ import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 import { rendererDevUrl } from '../devUrl';
 import { importedFontCss } from './fonts';
+import { withDensity } from './pngDensity';
 
 /**
  * محرّك الإخراج: الطباعة وPDF والصورة عالية الدقّة.
@@ -28,42 +29,6 @@ const A4: PageMm = { w: 210, h: 297 };
 
 /** أطول ما تُنتظر الخطوط — من القرص لا من الشبكة، فما جاوزه عطلٌ لا بطء. */
 const FONT_WAIT_MS = 10_000;
-
-let styleCache: SheetStyle | null | undefined;
-
-/**
- * أنماط الورقة كما ترسمها نافذة الإخراج الآن: ملفّات الأنماط التي تربطها `index.html`، وصنف
- * `<body>` الذي يرث منه خطّها — تُحفظ مع كلّ كتابٍ يصدر (خطة Production، ١٫٣).
- *
- * تُقرأ من الملفّ المبنيّ نفسه الذي تحمّله نافذة الإخراج، لا من الواجهة: فهي ما رُسم به فعلًا.
- * و`url(./…)` في الأنماط نسبيٌّ إلى مجلّدها، فيُكتب نسبيًّا إلى `index.html` لتُحقن يومًا في
- * صفحتها. وفي نمط التطوير (خادم Vite) لا ملفّ مبنيًّا يُوثق به، فلا يُلتقط شيء.
- */
-export function sheetStyle(): SheetStyle | null {
-  if (styleCache !== undefined) return styleCache;
-  styleCache = null;
-  if (rendererDevUrl()) return styleCache;
-  try {
-    const dir = join(__dirname, '../renderer');
-    const html = readFileSync(join(dir, 'index.html'), 'utf8');
-    const hrefs = [...html.matchAll(/<link\b[^>]*>/g)]
-      .map((m) => m[0])
-      .filter((tag) => /\brel="stylesheet"/.test(tag))
-      .map((tag) => /\bhref="([^"]+)"/.exec(tag)?.[1])
-      .filter((href): href is string => Boolean(href));
-    const css = hrefs
-      .map((href) => {
-        const base = posix.dirname(href.replace(/^\.\//, ''));
-        return readFileSync(join(dir, href), 'utf8').replace(/url\(\s*(['"]?)\.\//g, `url($1./${base}/`);
-      })
-      .join('\n');
-    const bodyClass = /<body\b[^>]*\bclass="([^"]*)"/.exec(html)?.[1] ?? null;
-    if (css.trim()) styleCache = { css, bodyClass };
-  } catch {
-    // لا ملفّ مبنيّ يُقرأ — يصدر الكتاب بلا أنماطٍ محفوظة، ويُعاد طبعه بأنماط يومه كما كان.
-  }
-  return styleCache;
-}
 
 /**
  * أنماط الورقة وقت الإخراج: مقاسها الفيزيائي بلا تكبير ولا ظلّ ولا حدود.
@@ -278,35 +243,6 @@ export function printerOffset(deviceName: string | undefined): { x: number; y: n
   }
 }
 
-/**
- * ورقة المعايرة: علامتان على ٢٠ ملم من الحافّة اليمنى والعليا، ومسطرتان بالملّم.
- * يُقاس بعد الطباعة بُعدُ العلامة عن حافّتي الورقة، ويُكتب القياس كما هو —
- * والحساب في `offsetFromMeasure` (shared/calibration.ts) لا في رأس الموظف.
- */
-export function calibrationSheet(): string {
-  const tick = (i: number, horizontal: boolean) =>
-    horizontal
-      ? `<div style="position:absolute;right:${i}mm;top:0;width:0.15mm;height:${i % 10 === 0 ? 6 : i % 5 === 0 ? 4 : 2.5}mm;background:#000"></div>`
-      : `<div style="position:absolute;top:${i}mm;right:0;height:0.15mm;width:${i % 10 === 0 ? 6 : i % 5 === 0 ? 4 : 2.5}mm;background:#000"></div>`;
-  const ticks = Array.from({ length: 61 }, (_, i) => tick(i, true) + tick(i, false)).join('');
-  const cross = (right: string, top: string) =>
-    `<div style="position:absolute;right:calc(${right} - 6mm);top:${top};width:12mm;height:0.2mm;background:#000"></div>` +
-    `<div style="position:absolute;right:${right};top:calc(${top} - 6mm);width:0.2mm;height:12mm;background:#000"></div>`;
-  return (
-    `<div dir="rtl" style="position:relative;width:210mm;height:297mm;font-family:'IBM Plex Sans Arabic',sans-serif;color:#000">` +
-    ticks +
-    cross('20mm', '20mm') +
-    cross('105mm', '148.5mm') +
-    `<div style="position:absolute;right:40mm;left:30mm;top:70mm;font-size:15px;line-height:1.9">` +
-    `<div style="font-size:22px;font-weight:700;margin-bottom:6mm">ورقة معايرة الطابعة</div>` +
-    `<div>١. قِس بالمسطرة بُعدَ الخطّ العمودي في العلامة العليا عن <b>حافّة الورقة اليمنى</b>. الصحيح ٢٠ ملم.</div>` +
-    `<div>٢. وقِس بُعدَ الخطّ الأفقي فيها عن <b>حافّة الورقة العليا</b>. الصحيح ٢٠ ملم أيضًا.</div>` +
-    `<div>٣. اكتب القياسين في «معايرة الطابعة» كما هما — والبرنامج يحسب الإزاحة.</div>` +
-    `<div style="margin-top:4mm;color:#555">والعلامة الوسطى في منتصف الورقة تمامًا — للتحقّق بعد الضبط.</div>` +
-    `</div></div>`
-  );
-}
-
 export async function printSheet(req: PrintRequest): Promise<{ ok: boolean; reason?: string }> {
   // مقاس الورقة: ما طُلب، وإلا ما كُتب في الورقة نفسها، وإلا A4 — فكتابٌ على الفولسكاب لا يخرج على A4.
   const page = req.page ?? pageOfSheetHtml(req.sheetHtml) ?? A4;
@@ -391,48 +327,6 @@ export async function renderLayerPdf(html: string, page: PageMm): Promise<Buffer
       }),
     { page, layer: true }
   );
-}
-
-/** جدول CRC لترميز مقاطع PNG. */
-const CRC_TABLE = (() => {
-  const table = new Int32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    table[n] = c;
-  }
-  return table;
-})();
-
-/**
- * يكتب الدقّة داخل الصورة نفسها (مقطع pHYs).
- *
- * صورة بمقاس 2480×3508 بلا هذا المقطع تُفتح في برامج الطباعة على أنها 96
- * نقطة/إنش فتُطبع بحجم أكبر من A4. الدقّة تُقاس بالمتر في المواصفة:
- * 300 نقطة/إنش = 11811 نقطة/متر.
- */
-export function withDensity(png: Buffer, dpi: number): Buffer {
-  const perMetre = Math.round(dpi / 0.0254);
-  const data = Buffer.alloc(9);
-  data.writeUInt32BE(perMetre, 0);
-  data.writeUInt32BE(perMetre, 4);
-  data[8] = 1; // الوحدة: المتر
-
-  const type = Buffer.from('pHYs', 'ascii');
-  let crc = 0xffffffff;
-  for (const byte of Buffer.concat([type, data])) {
-    crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
-  }
-  const chunk = Buffer.alloc(21);
-  chunk.writeUInt32BE(9, 0);
-  type.copy(chunk, 4);
-  data.copy(chunk, 8);
-  chunk.writeUInt32BE((crc ^ 0xffffffff) >>> 0, 17);
-
-  // بعد IHDR مباشرةً: ثمانية بايتات توقيع + 25 بايت مقطع IHDR.
-  const head = 8 + 25;
-  if (png.indexOf('pHYs', head, 'ascii') > 0) return png; // لا يُكرَّر مقطع موجود
-  return Buffer.concat([png.subarray(0, head), chunk, png.subarray(head)]);
 }
 
 /**

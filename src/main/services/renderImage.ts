@@ -5,7 +5,8 @@
  * المطلوبة — فمقاسات الشاشة (المنشور والستوري) تخرج ببكسلاتها تمامًا على ٩٦ نقطة، والمطبوع بـ٣٠٠. والشفّافة طبقةٌ بلا
  * ورقٍ أبيض (`layerCss`) وخلفيةُ النافذة نفسها شفّافة.
  */
-import { withDensity, withRenderWindow, type PageMm } from './render';
+import { withRenderWindow, type PageMm } from './render';
+import { withDensity } from './pngDensity';
 
 export type ImageFormat = 'png' | 'jpg';
 
