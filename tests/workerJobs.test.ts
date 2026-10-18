@@ -4,17 +4,22 @@
  * و`answer` يردّ بالمعرّف، وما رماه العمل إخفاقٌ برسالته كما هي. ويُتخطّى ما غاب نموذجه.
  * و(D56) «استورد تصميمًا»: Photoshop (مسطّحًا وبطبقة نصّ) وWord صغير — الوصف والصور مطابقةٌ لـ`readDesign`/`flattenPsd` مباشرةً،
  * ورأسٌ ٣٠٠٠٠×٣٠٠٠٠ يُرفض برسالة D51 بنصّها.
+ * و(D57) قراءة Word نموذجًا: النموذج مطابقٌ لـ`importTemplateFile` مباشرةً بحافظٍ يعطي `letterheadImagePath` (بلا المعرّفات)، والصور بأسمائها
+ * وبايتاتها من الحزمة، وملفّ `.doc` وحزمةٌ تالفة إخفاقٌ برسالة النداء المباشر.
  */
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 import { afterAll, describe, expect, it } from 'vitest';
 import { answer, JOBS } from '../src/main/worker/index';
 import { objectCutout } from '../src/main/services/objectCutout';
 import { closePortrait, cutout, detectFace } from '../src/main/services/portrait';
 import { readDesign } from '../src/main/services/designImport';
 import { flattenPsd } from '../src/main/services/design/flatten';
+import { importTemplateFile } from '../src/main/services/import';
+import { letterheadImagePath } from '../src/main/services/letterheadImage';
+import { withoutIds } from '../src/main/services/revisions';
 import { layeredPsd, tysh } from './psdBuilder';
 import { readPngRgba } from './helpers';
 
@@ -137,6 +142,49 @@ describe('أعمال العامل المستقلّ', () => {
       const path = file('ضخم.psd', Buffer.concat([head, Buffer.alloc(22)]));
       const reply = await answer({ id: 3, job: 'readDesign', input: { path, name: 'ضخم.psd', fonts: [] } });
       expect(reply).toEqual({ type: 'failure', id: 3, message: 'ملفّ Photoshop أكبر من ٢٥ مليون نقطة (٣٠٠٠٠×٣٠٠٠٠) — صغّره ثم استورده' });
+    });
+  });
+
+  describe('قراءة Word نموذجًا (D57)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-workerjobs-word-'));
+    /** المعرّفات عشوائية في كلّ قراءة — فيُقارن ما يُرى (`withoutIds`). */
+    const seen = (v: unknown) => withoutIds(JSON.stringify(v));
+
+    it.each(['warning-letter.docx', 'school-warning.docx'])('%s: النموذج مطابقٌ للنداء المباشر، والصور بأسمائها وبايتاتها من الحزمة', async (name) => {
+      const path = join(__dirname, 'fixtures', name);
+      const named = new Set<string>();
+      const direct = await importTemplateFile(path, (bytes, ext) => {
+        const at = letterheadImagePath(bytes, ext);
+        named.add(at);
+        return at;
+      });
+      const viaJob = await JOBS.readTemplate({ path });
+      expect(seen(viaJob.template)).toEqual(seen(direct));
+
+      // كلّ صورةٍ مرّةً باسمها، وبايتاتها ملفٌّ من الحزمة يعطي الاسم نفسه.
+      const media = Object.entries(unzipSync(readFileSync(path))).filter(([k]) => k.startsWith('word/media/'));
+      expect(viaJob.images.map((i) => i.path).sort()).toEqual([...named].sort());
+      expect(viaJob.images.length).toBeGreaterThan(0);
+      for (const image of viaJob.images) {
+        const from = media.find(([, b]) => Buffer.from(b).equals(Buffer.from(image.bytes)));
+        expect(from).toBeDefined();
+        expect(letterheadImagePath(from![1], from![0].slice(from![0].lastIndexOf('.')))).toBe(image.path);
+      }
+      // وكلّ شعارٍ في النموذج له صورةٌ تكتبها الرئيسة.
+      const used = new Set(JSON.stringify(viaJob.template).match(/letterheads\/[0-9a-f]{32}\.[a-z0-9]+/g) ?? []);
+      expect(used.size).toBeGreaterThan(0);
+      for (const at of used) expect(viaJob.images.some((i) => i.path === at)).toBe(true);
+    });
+
+    it.each([
+      ['ملف .doc', 'قديم.doc', new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])],
+      ['حزمةٌ تالفة', 'تالف.docx', strToU8('ليس حزمة Word')]
+    ])('%s ← إخفاقٌ برسالة النداء المباشر نفسها', async (_label, name, bytes) => {
+      const path = join(dir, name);
+      writeFileSync(path, bytes);
+      const message = await importTemplateFile(path).then(() => null, (e: unknown) => (e instanceof Error ? e.message : String(e)));
+      expect(message).toBeTruthy();
+      expect(await answer({ id: 4, job: 'readTemplate', input: { path } })).toEqual({ type: 'failure', id: 4, message });
     });
   });
 });
