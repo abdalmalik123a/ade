@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١١:٣٢ — D69 ✅ — المسارات عند الباب: ما أعطته الرئيسة (`handedPaths`) وما في المخزن (`storeFile`) · والتوقّف هنا (ر160)
+- **ما تغيّر:** `ipc/handedPaths.ts` (جديد، لهذا التشغيل وحده): `handOut` في خمس (`backup:pick` `mirrorPick` `autoPickDir` و`createBackup` و`update:pick`) و`wasHandedOut` في ستّ (`inspect` `restore` `mirrorInspect`
+  `mirrorRestore` و`update:install` قبل `createPreUpdateBackup`، و`autoSet` يقبل المحفوظ أيضًا) — `bbff476`، و`backup.ts` ٣٩٨ · و`storeFile` في `localPaths.ts` (ملفٌّ موجودٌ داخل المخزن، والمطلق يُرفض) لـ`clients:setLogo`
+  و`seals:add` («الصورة خارج مخزن ديوان — اخترها ثانيةً») ولصور Word في `output:saveDocx` و`templates:export` (`documents.ts` ٤٧٣ ← ٤٧٠، والسقف لم يُخفض)، و`checkBucket` قبل الحوار في الثلاث — `a513e8f`.
+- **وتغيّرٌ صغير:** صورةٌ في المخزن موجودةٌ وتتعذّر قراءتها (مقفلة) تُسقط تصدير Word برسالتها بدل أن تُترك صامتة — فالكتلة قصرت كما طلب الأمر، والغائب يحسمه `storeFile` قبلها.
+- **الاختبار** (`b76f9f9`): `handedPaths` ٥ ✓ و`localPaths` ١٠ ✓؛ والكسر المؤقّت (`wasHandedOut` يقبل كلّ شيء، لم يُودَع) ← ٢ ✗ ثم ٥ ✓ بعد الإعادة.
+- **السيناريوهات** (`43e56a2`، على `electron-vite build`): `harden` ١٨ ✓ — أربعةٌ جديدة: `win.ini` يُرفض في الفحص والتثبيت ونسخ ما قبل التحديث «0 ← 0»، و`../diwan.db` يُرفض، والشعار بمسار المخزن يمرّ؛ وكسر باب التحديث
+  مؤقّتًا أسقطها «0 ← 1» ثم ١٨ ✓ بعد الإعادة · `backup` ٢٠ `restoreStuck` ١١ `autoBackup` ٢٢ `update` ٦ `designBrandKit` ٧ `deleteGuards` ٣٣ `letterhead` ٤٠ — ١٥٧ ✓ بلا ✗.
+- **الفحص:** `typecheck` ✓ · الستّة في «الفحص» ٤٢ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · لقطات الرسّام لم تُمسّ · لا بايت تحكّم · وبحث «كيف يُراجَع»: خمسٌ تعطي وستٌّ تفحص، و`includes('..')` لا شيء
+  (و`'\0'` في `wasHandedOut` صار `'\u0000'` كي لا يطابقه). **الوثائق** (`89d6e38`): «عقد الجسر» سطر D69 ✅ · §١ `ipc/` ٢٣ · BACKLOG A04 (١). وبقي سطر «نقاط الضعف» في §٢ يقول «عشرٌ بلا فحص» (خارج المسموح). **التالي:** `/next` يراجع D69 ثم D70 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ١١:١٢ — مراجعة D68 ✓ · وحجز D69 🔒
 - **رسالة المالك:** `/next`.
 - **D68 بـ«كيف يُراجَع»:** القاعدة ٨ في `structure.test.ts:251` بأقسامها الأربعة (Node · الواجهة و`connect-src` · السبع · الترخيص) وقوائمها الصريحة، وسطرها ٨ في الرأس ·
