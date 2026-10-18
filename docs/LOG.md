@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٠٩:٣٧ — مراجعة D60 ✓ · وحجز D61 🔒
+- **رسالة المالك:** `/next D61 ب`.
+- **D60 بـ«كيف يُراجَع»** (قرأتُ D61–D65 وأعدتُ وقائعها بأوامر بحث): `fee` `INTEGER NOT NULL DEFAULT 0` في `documents` و`transactions` (`schema.sql` ١٧٨ و٢٥٨) والواجهة تكتب `fee: 0`
+  (`useEditorOutput.ts` و`useIssue.ts`) · `FOLDER_LIMIT = 500` و`planFolderImport` ثم `findShared` و`groupDuplicates`، و`templates:planFolder`/`planExcel` في الرئيسة، والبابان وأزرار
+  `new-folder` `new-excel` `empty-import-folder`، و`fflate` `exceljs` `esbuild` في package.json · `autoBackup.ts`: `tmpdir()` و`readFileSync` و`writeAtomic` بلا `fsync` ·
+  `recordRevision` بـ`INSERT OR IGNORE` بلا `DELETE`، و`apiTemplates.ts` ٣٤٦ سطرًا، و`usePaperOutput.ts` ← `templates.save` · `ipcMain.handle|on` ٢٠٢ في `ipc/` و٣ في `index.ts`،
+  والأبواب الستّة في `preload/`، و`net.fetch` لملفٍّ محلّي · و`requireProductive` معرّفةٌ في `ipc/license.ts` ويناديها `gate.ts` (وD65 يذكرهما معًا). كلّ ⚙️ بلا سؤالٍ ولا أداةٍ جديدة،
+  وD65 بلا كود، والترتيب مقبول. ✓
+- **التالي:** D61 (جارٍ) بجواب المالك «ب».
+
 ## ٢٠٢٦-١٠-١٨ ٠٩:٢٣ — D60 🧭 ✅ — خمسة أوامر مفصّلة D61–D65 · والتوقّف هنا (ر160)
 - **الأوامر:** D61 🛑 A06 (سؤال `fee`: أ/ب/ج، والتوصية ب) · D62 ⚙️ A19 (قياسٌ بلا كود) · D63 ⚙️ A08 · D64 ⚙️ A10 · D65 🧭 A04 — والسبب في `done/D60.md` الخطوة ٢؛ وما سواها في BACKLOG.
 - **وقائع من الكود (بأوامر بحث):** `fee` في `documents` و`transactions` والواجهة تكتب ٠ · `planFolderImport` ينتظر ملفًّا ملفًّا ثم `groupDuplicates` على الكلّ، و`importFolder.ts` يستورد القاعدة ·
