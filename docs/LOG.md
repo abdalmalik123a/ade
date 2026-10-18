@@ -6,6 +6,10 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠١:٣٦ — مراجعة D88 ✓ · وحجز D89 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **D88 بـ«كيف يُراجَع»:** `verbatim.cjs 4b45e4c` ← «ضاع 0 · جديد 0» · `git show --stat 8d6adec` الملفّات الخمسة وحدها · `export` في `quadDetect.ts` ١ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/deskew.ts`. ✓
+- **تحقّق D89 قبل البدء:** `qr.ts` ٤٦٣ وسقفه ٤٦٣ · `inventory.cjs` ← «مكوّنات 1 أكبرها 425» و«دورات القيم: 0» · لا `qrCodewords.ts` · وكتلة التهيئة (١٠ أسطرٍ من `{` إلى `}`) بين `const LOG = new Uint8Array(256);` (٧٣) و`export function gfMul` (٨٥). ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠١:٣٥ — D88 ✅ — A11 (١١): `shared/deskew.ts` ٤٦٧ ← ٣٢٦ نقلًا حرفيًّا، وكشف الأركان في `quadDetect.ts` · النموذج: Gemini 4 Argon (Medium)
 - **النقل** (`8d6adec`): `move.cjs` (`tsconfig.web.json`، و`fromSrc` لنوعَي `Quad` `PixelData`) ← `detectQuad` بتعليقه وسطر قسمه إلى `quadDetect.ts` ١٤٥ بلا باب · وتحديث مستورديه الثلاثة (`deskewSteps.ts` و`paperRules.ts` و`tests/deskew.test.ts`) · `prune.cjs` · `typecheck` نظيف · والسقف (`f75517b`): `RATCHET` فسقط `deskew.ts` من `structure.allow.json`.
 - **الوثائق** (`d0850da`): ARCHITECTURE §١ (بقي أربعة) و§٢ (الجدول #١٢ ← D88 بأرقامه، وسطر الأوامر D88 ✅، والأربعة الباقية لـD89–D92) · BACKLOG A11 (الأحد عشر ✅، والأربعة لـD89–D92).
