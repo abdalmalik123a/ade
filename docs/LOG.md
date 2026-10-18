@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:٤٦ — مراجعة D80 ✓ · وحجز D81 🔒
+- **رسالة المالك:** `/next`.
+- **D80 بـ«كيف يُراجَع»:** `verbatim.cjs da59a53` على `render.ts` والثلاثة ← «ضاع 0 · جديد 0» · `verbatim.cjs 6f15dec` على `ipc/documents.ts` و`ipc/output.ts` ← «ضاع 0 · جديد 2» (`function registerOutputIpc(): void {` و`}`) ·
+  `ipcMain.handle(` في `documents.ts` بـ`6f15dec` ٢٧، واليوم ١٥ + ١٢ · `ipc/index.ts` يستورد `registerOutputIpc` (٢٠) وينادي بها (١٦٨) بعد `registerDocumentIpc()` (١٦٧) وقبل `assertGateComplete()` (٢٦٦) · `structure.allow.json` بلا الملفّين. ✓
+- **شروط D81:** `documents.ts` ٩١٠ وسقفه ٩١٢ · `inventory.cjs` ← «دورات القيم: 1» (`documents.ts` و`searchIndex.ts`) · لا `issue.ts` ولا `documentList.ts` ولا `archiveVerify.ts` ولا `printRecords.ts` · مستوردو المنقول كما في الأمر
+  (والباقي: `gate.ts` و`preload/archive.ts` و`useIssue.ts` و`apiArchive.ts` قنوات أو تعليق، و`search.ts` تعليق، و`channels.allow.json` قنوات). **التالي:** D81 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:٣٠ — D80 ✅ — A11 (٤): طريق الطباعة — `render.ts` ٤٧١ ← ٣٦٥ و`ipc/documents.ts` ٤٧٠ ← ٢٦٣ نقلًا حرفيًّا · والتوقّف هنا (ر160)
 - **`render.ts`** (`6f15dec`) بـ`move.cjs` و`"tsconfig": "tsconfig.node.json"` ثلاث مرّات، والمواصفات في مجلّد الجلسة: `pngDensity.ts` ٤٥ و`sheetStyle.ts` ٤٣ و`calibration.ts` ٣٢، بلا باب — سطرا الاستيراد في `renderImage.ts`
   و`ipc/documents.ts` يأخذان كلّ اسمٍ من ملفّه، و`render.ts` يستورد `withDensity` لـ`renderPng` (أضافته الأداة) · و`CRC_TABLE` `styleCache` أعدتُ سطريهما بلا `export` كما كانا (الأداة تصدّر كلّ منقول، ولا يستعملهما غير ملفّهما — سابقة `BlockBase` D77) ·
