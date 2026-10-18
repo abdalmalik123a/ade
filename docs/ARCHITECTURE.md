@@ -223,7 +223,10 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
 - **الأوامر:** D77 `doc.ts` (ومعه الأداتان و`ImportPlanDialog.tsx` يسقط سقفه) ✅ — ٨٥٢ ← ٣٧٤، و`docTypes.ts` ٣٢٦ و`docPaginate.ts` ٧٩ و`docNormalize.ts` ١٠٦، والحرفيّة 0 و0،
   والأسماء المصدَّرة ٧٢ قبل وبعد، و«دورات القيم: 1»؛ و`move.cjs` يصدّر كلّ ما ينقله، فنوعٌ داخليّ لا يستعمله إلا المنقول (`BlockBase`) يُعاد بلا `export` وإلا أظهره الباب `export type *` ·
   `verbatim.cjs` و`inventory.cjs` في `tools/split/` بنصّيهما (والوسائط `slice(2)` في ملفّ) · D78 `docPm.ts` ✅ — ٤٩٩ ← ٢٥٦، و`docPmSchema.ts` ٢٥٣ قاعٌ ببابٍ لـ`docSchema`
-  `cssIndentToMm` `cssLineHeight` فلا مستورد تغيّر، والحرفيّة 0 و0، والأسماء المصدَّرة منه ٩ قبل وبعد · D79 `docxDoc.ts` (و`tsconfig` في `move.cjs`) · D80 `render.ts` و`ipc/documents.ts` ·
+  `cssIndentToMm` `cssLineHeight` فلا مستورد تغيّر، والحرفيّة 0 و0، والأسماء المصدَّرة منه ٩ قبل وبعد · D79 `docxDoc.ts` ✅ — `move.cjs` يقرأ مفتاح `tsconfig` الاختياريّ (`tsconfig.web.json` إن غاب) ·
+  ٩١٩ ← ٣٢٨، و`docxStyles.ts` ٢٩٢ و`docxRuns.ts` ٣١٣ قاعان (`docxRuns` يأخذ `chain` `readR` `Ctx` `RProps` من `docxStyles`) ببابٍ لـ`sizeOfTwips` و`SaveImage` فلا مستورد تغيّر،
+  والأسماء المصدَّرة منه ستّة قبل وبعد؛ والحرفيّة «ضاع 6 · جديد 0» والستّة أسماءٌ من استيراد `@shared/doc` الممتدّ حذفها `prune` (جهة «ضاع» لا تتجاهل اسم الاستيراد الممتدّ)،
+  وبحذف جمل الاستيراد بالشجرة 0 و0 · D80 `render.ts` و`ipc/documents.ts` ·
   D81 `services/documents.ts` (و`fromSrc` في `move.cjs`) — كلّها ⚙️ بلا سؤالٍ ولا أداةٍ خارجية.
 
 ### اللغات لكلّ قسم
