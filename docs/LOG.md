@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٢٥ — D92 ✅ — A11 (١٥ والأخير): `services/importFolder.ts` ٤١٨ ← ٣٤٥ نقلًا حرفيًّا، و`applyImportPlan` في `importApply.ts`، وإفراغ `structure.allow.json` وإغلاق A11 · والتوقّف هنا (التالي D93 🧭 وحده، ر162) · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`88371ba`): `move.cjs` (`tsconfig.node.json`، بلا `fromSrc`) ← `applyImportPlan` إلى `importApply.ts` ٨١ بلا باب · وبـEdit: تعليقه (الأسطر الستّة التي كانت فوق تعليق `applyHabits`) نُقل إلى أعلاه في `importApply.ts`، وتحديث مستوردَيه الاثنين (`src/main/ipc/templates.ts` و`tests/importFolder.test.ts`) · `prune.cjs` نظّف ٥ استيرادات من `importFolder.ts` · `typecheck` نظيف · والسقف (`d498386`): `RATCHET` فسقط `importFolder.ts` وصارت `tests/structure.allow.json` فارغة `{}`.
+- **الوثائق** (`a8e6e65`): ARCHITECTURE §١ (قُسّمت الستّة عشر كلّها ولا ملفّ فوق ٤٠٠ ولا دورة، و`structure.allow.json` فارغة) و§٢ (الجدول #١٦ ← D92 بأرقامه، وسطر الأوامر D92 ✅ واكتمال الستّة عشر) · BACKLOG (حذف صفّ A11 من جدول الموجة ٣ ونقل ملاحظة `verbatim.cjs` إلى سطر D93، وإضافة «أُغلق: A11 …» في آخر الملفّ).
+- **الفحص:** الحرفيّة `verbatim.cjs 7adb340` ← «ضاع 0 · جديد 0» · `git show --stat 88371ba` الملفّات الأربعة وحدها · المصدَّر من `importApply` ١ · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← صفر ملفّات فوق ٤٠٠ و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `importFolder` ٣٤ ✓ و`excelImport` ٢٠ ✓ بلا ✗.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، ومرجع الحرفيّة `7adb340` ← «ضاع 0 · جديد 0». **التالي:** `/next` يراجع D92 ثم يأخذ D93 🧭 (وحده بحكم ر162).
+
+## ٢٠٢٦-١٠-١٩ ٠٢:١٤ — مراجعة D91 ✓ · وحجز D92 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **رسالة المالك:** `/next بعد الاكمال اخبرني ماذا تبقى حتى النهاية`.
+- **D91 بـ«كيف يُراجَع»:** `verbatim.cjs f902d96` ← «ضاع 0 · جديد 0» · `git show --stat d49e6aa` الملفّان وحدهما · `export` في `paperLines.ts` ١٣ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/paperDoc.ts`. ✓
+- **تحقّق D92 قبل البدء:** `importFolder.ts` ٤١٨ وسقفه ٤١٨ (الوحيد في `structure.allow.json`) · `inventory.cjs` ← `importFolder.ts` وحده («مكوّنات 5 أكبرها 197») و«دورات القيم: 0» · لا `importApply.ts` · ومستوردا `applyImportPlan` هما `src/main/ipc/templates.ts` و`tests/importFolder.test.ts` وحدهما. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٠٩ — D91 ✅ — A11 (١٤): `shared/paperDoc.ts` ٤٤٧ ← ٣٣٤ نقلًا حرفيًّا، وأنواع القراءة وهندسة السطور وقطعها في `paperLines.ts` · والتوقّف هنا (٤ نقاط، ر162) · النموذج: Gemini 4 Argon (Medium)
 - **النقل** (`d49e6aa`): `move.cjs` (`tsconfig.web.json`، بلا `fromSrc`) ← السبعة عشر تصريحًا بتعليقاتها إلى `paperLines.ts` ١٢٧ · وبـEdit: بابٌ في `paperDoc.ts` يعيد تصدير الأنواع الأربعة (`OcrWord` `OcrLine` `PaperRead` `Piece`)، والأربعة غير المصدَّرة (`LETTERS` `BIDI` `joinWords` `suspicious`) بلا `export` (فالمصدَّر منه ١٣) · `prune.cjs` نظّف استيرادًا من `paperDoc.ts` · `typecheck` نظيف · والسقف (`3dc9eaf`): `RATCHET` فسقط `paperDoc.ts` من `structure.allow.json`.
 - **الوثائق** (`93723d4`): ARCHITECTURE §١ (بقي واحد) و§٢ (الجدول #١٥ ← D91 بأرقامه، وسطر الأوامر D91 ✅، والباقي لـD92) · BACKLOG A11 (الأربعة عشر ✅، والباقي لـD92).
