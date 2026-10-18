@@ -20,6 +20,8 @@
  *    من `licenseStatus()` في `ipc/license.ts` وحدها. وباب البوّابة (F01) يُضاف إلى قوائمها عمدًا حين يُبنى.
  * ٩. **القنوات القائمة** (A04، D70): كلّ اسمٍ في `ipcMain.handle('…'`/`ipcMain.on('…'` في `channels.allow.json`، والقناة الجديدة بـ`handleChecked`
  *    وحرّاسها (`@shared/bridgeGuards`)؛ و`${}` في `prepare`/`exec` في ملفّاته المعروفة وحدها — والقائمتان تتناقصان ولا تزيدان: ما انتقل أو زال يُحذف منهما.
+ * ١٠. **المال صامت** (A06، D66، ر161): كلّ سطرٍ في `src/` (ts وtsx وsql) فيه `fee` تعريفُ العمود `fee … INTEGER NOT NULL DEFAULT 0` وحده —
+ *    ثلاثة: `schema.sql` مرّتين و`prepareDocuments` —، فالعمودان باقيان في القاعدة بصفرهما ولا يعودان إلى الأنواع ولا الاستعلامات ولا الشاشة.
  *
  * وهو الأصل العامّ: قواعد التصاميم (`designStructure`، DESIGNS.md ٣٫٤) تُبنى عليه لاحقًا.
  */
@@ -347,5 +349,24 @@ describe('اختبار الهيكل (ز١)', () => {
     expect(bad).toEqual([]);
     // وسقفها يوم كُتبت (D70، بعد انتقال قناتي revisions:*) — ينخفض ولا يرتفع.
     expect(CHANNELS.size).toBeLessThanOrEqual(203);
+  });
+
+  it('١٠ — المال صامت: عمود fee باقٍ في القاعدة ولا يعود إلى الكود (A06، ر161)', () => {
+    // تعريف العمود وحده: `schema.sql` (documents وtransactions)، و`prepareDocuments` لقواعد ما قبل المخطط.
+    const COLUMN = /^\s*fee\s+INTEGER NOT NULL DEFAULT 0,?\s*$/;
+    const HOMES = new Set(['src/main/db/schema.sql', 'src/main/services/documents.ts']);
+    const files = [...SOURCES.map((s) => ({ path: s.path, text: s.text })), ...walk(join(ROOT, 'src'), /\.sql$/).map((abs) => ({ path: rel(abs), text: readFileSync(abs, 'utf8') }))];
+    const bad: string[] = [];
+    let columns = 0;
+    for (const f of files) {
+      f.text.split(/\r?\n/).forEach((line, i) => {
+        if (!/\bfee\b/.test(line)) return;
+        if (COLUMN.test(line) && HOMES.has(f.path)) columns++;
+        else bad.push(`${f.path}:${i + 1}: المال صامت (ر161): العمود باقٍ في القاعدة ولا يعود إلى الكود — «${line.trim()}»`);
+      });
+    }
+    expect(bad).toEqual([]);
+    // ثلاثة تعريفات (schema.sql مرّتين وprepareDocuments) — والرابع عمودُ مالٍ جديد.
+    expect(columns, 'المال صامت (ر161): تعريف العمود ثلاثة — schema.sql مرّتين وprepareDocuments').toBe(3);
   });
 });
