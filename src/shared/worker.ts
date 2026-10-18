@@ -6,6 +6,7 @@
  */
 
 import type { Face } from './portraitFace';
+import type { ImportedTemplate } from './apiTemplates';
 
 /** صورةٌ بكسلاتها RGBA ومقاسها — كما تصل من الواجهة. */
 type Pixels = { pixels: Uint8Array; width: number; height: number };
@@ -27,6 +28,11 @@ export type WorkerJobs = {
    * و`imported` نوعه `DesignImport` في `main/services/design/importTypes.ts` — والمشترك لا يرى الرئيسة، فتنصّه القناة (`ipc/designs.ts`).
    */
   readDesign: { input: { path: string; name: string; fonts: string[] }; output: { imported: unknown; flat: { png: Uint8Array | null; warnings: string[] } | null } };
+  /**
+   * قراءة Word أو XML نموذجًا (D57): `importTemplateFile` كما هو — وصوره لا تُكتب في العامل: تعود بايتاتٍ بأسمائها في المخزن
+   * (`letterheads/…`، مرّةً لكلّ اسم)، والرئيسة تكتبها (`readTemplateFile` في `ipc/templates.ts`).
+   */
+  readTemplate: { input: { path: string }; output: { template: ImportedTemplate; images: { path: string; bytes: Uint8Array }[] } };
 };
 
 export type WorkerJob = keyof WorkerJobs;
@@ -50,7 +56,7 @@ export const WORKER_CANCELLED = 'أُلغي';
 
 /**
  * مهلة كلّ عمل (`timeoutMs`، D55): «أنا هنا» ٥ ث، و«أزل الخلفية» ٦٠ ث — عشرة أضعاف أبطأ ما قيس (٥٫٧ ث بتحميل النموذج، D52)
- * لجهازٍ أبطأ — و«استورد تصميمًا» ٦٠ ث (D56). وما ينتهي في وقته لا يتغيّر.
+ * لجهازٍ أبطأ — و«استورد تصميمًا» ٦٠ ث (D56)، وقراءة Word نموذجًا ٦٠ ث (D57). وما ينتهي في وقته لا يتغيّر.
  */
 export const WORKER_TIMEOUT_MS: { [J in WorkerJob]: number } = {
   ping: 5_000,
@@ -58,5 +64,7 @@ export const WORKER_TIMEOUT_MS: { [J in WorkerJob]: number } = {
   cutout: 60_000,
   cutoutObject: 60_000,
   // أبطأ ما قيس ٤٫١ ث (Photoshop عند حدّه، D52).
-  readDesign: 60_000
+  readDesign: 60_000,
+  // أبطأ ما قيس ٣٫٧ ث (Word بعشرين ألف فقرة، D52).
+  readTemplate: 60_000
 };

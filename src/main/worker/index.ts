@@ -12,11 +12,13 @@ import { objectCutout } from '../services/objectCutout';
 import { assertPixels, designKind } from '../services/importGuard';
 import { readDesign } from '../services/designImport';
 import { flattenPsd } from '../services/design/flatten';
+import { importTemplateFile } from '../services/import';
+import { letterheadImagePath } from '../services/letterheadImage';
 
 type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Promise<WorkerOutput<J>>;
 
 /**
- * جدول الأعمال: «أنا هنا» (D53)، و«أزل الخلفية» بنموذجيها (D54)، و«استورد تصميمًا» (D56) — تُنادى خدماتها كما هي؛ ومسار النموذج
+ * جدول الأعمال: «أنا هنا» (D53)، و«أزل الخلفية» بنموذجيها (D54)، و«استورد تصميمًا» (D56)، وقراءة Word نموذجًا (D57) — تُنادى خدماتها كما هي؛ ومسار النموذج
  * وفحصه وطول البكسلات في الرئيسة قبل الإرسال (`ipc/photos.ts`)، وكذلك حوار الملف وسقف حجمه وخطوط المكتب (`ipc/designs.ts`).
  */
 export const JOBS: { [J in WorkerJob]: Job<J> } = {
@@ -46,6 +48,17 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
     const imported = readDesign(bytes, name, fonts);
     // Photoshop يأتي بخلفيته ممحوّةً منها العناصر؛ وإن تعذّرت سُطّح هنا كما هو.
     return { imported, flat: imported.source === 'psd' && !imported.images.length ? flattenPsd(bytes) : null };
+  },
+  readTemplate: async ({ path }) => {
+    // الصورة لا تُكتب هنا: تُعطى اسمها في المخزن وتُجمع بايتاتها مرّةً لكلّ اسم، والرئيسة تكتبها.
+    const images = new Map<string, Uint8Array>();
+    const template = await importTemplateFile(path, (bytes, extension) => {
+      const name = letterheadImagePath(bytes, extension);
+      // `slice()`: المصفوفة قد تكون نافذةً على مخزنٍ أكبر — وتُنسخ بين العمليّتين بمخزنها كلّه.
+      if (!images.has(name)) images.set(name, bytes.slice());
+      return name;
+    });
+    return { template, images: [...images].map(([name, bytes]) => ({ path: name, bytes })) };
   }
 };
 

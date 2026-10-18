@@ -4,9 +4,8 @@
  */
 import { ipcMain } from 'electron';
 import { adoptDropped, listInbox, pathOf } from '../services/inbox';
-import { importTemplateFile } from '../services/import';
 import { openPdfPaths } from './pdf';
-import { storeLetterheadImage } from './templates';
+import { readTemplateFile } from './templates';
 import { importFile } from './files';
 
 const known = (id: unknown): string => {
@@ -21,6 +20,7 @@ export function registerInboxIpc(): void {
     adoptDropped(Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string' && p.length > 0) : [])
   );
   ipcMain.handle('inbox:openPdf', (_e, ids: unknown) => openPdfPaths((Array.isArray(ids) ? ids : []).map(known)));
-  ipcMain.handle('inbox:importWord', (_e, id: unknown) => importTemplateFile(known(id), storeLetterheadImage));
+  // يُقرأ في العامل المستقلّ كما في مكتبة النماذج (D57).
+  ipcMain.handle('inbox:importWord', (_e, id: unknown) => readTemplateFile(known(id)));
   ipcMain.handle('inbox:toPhotos', (_e, id: unknown) => importFile(known(id), 'photos'));
 }

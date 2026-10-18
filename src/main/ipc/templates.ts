@@ -6,11 +6,12 @@ import { getDb, storeDir } from '../db';
 import * as svc from '../services/templates';
 import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
+import { workerHost } from '../services/workerHost';
 import { templateToDocx } from '../services/export';
 import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
 import { listRevisions, revisionPayload } from '../services/revisions';
-import type { Addressing, RevisionKind } from '@shared/api';
+import type { Addressing, ImportedTemplate, RevisionKind } from '@shared/api';
 
 /** نوع القطعة يصل من الواجهة ويُبنى منه اسم جدول — فلا يُقبل إلا المعروف. */
 const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
@@ -40,15 +41,35 @@ const LEARNABLE: CorrectionKind[] = ['letterheadEdge', 'category', 'duplicate', 
 let lastCensus: WordCensus | null = null;
 
 /** الطبقة رقيقة عمدًا: المنطق في services ليبقى قابلًا للاختبار بلا Electron. */
+/** يكتب الشعار في مكانه من المخزن بمساره النسبي (`letterheads/…`). */
+const writeLetterheadImage = (path: string, bytes: Uint8Array) =>
+  writeFileSync(join(storeDir('letterheads'), path.slice('letterheads/'.length)), bytes);
+
 /** شعار الترويسة يُنقل من حزمة Word إلى مخزن التطبيق باسم مشتقّ من محتواه (`letterheadImagePath`). */
 export function storeLetterheadImage(bytes: Uint8Array, extension: string): string | null {
   try {
     const path = letterheadImagePath(bytes, extension);
-    writeFileSync(join(storeDir('letterheads'), path.slice('letterheads/'.length)), bytes);
+    writeLetterheadImage(path, bytes);
     return path;
   } catch {
     return null; // شعار لا يُحفظ لا يمنع استيراد النموذج
   }
+}
+
+/**
+ * Word أو XML نموذجًا (D57): يُقرأ في العامل المستقلّ فلا تتجمّد الرئيسة، وصوره تعود بايتاتٍ بأسمائها فتُكتب هنا في مكانها —
+ * فالعامل لا يكتب في المخزن. والطريق القديم (`importTemplateFile` بـ`storeLetterheadImage`) بديلٌ بعد سقوطين (ر141)، وكذلك
+ * إن تعذّرت كتابة صورة: فيُسقط `docxToDoc` ما لم يُكتب كما كان.
+ */
+export async function readTemplateFile(path: string): Promise<ImportedTemplate> {
+  const old = () => importTemplateFile(path, storeLetterheadImage);
+  const read = await workerHost().runOr('readTemplate', { path }, async () => ({ template: await old(), images: [] }));
+  try {
+    for (const image of read.images) writeLetterheadImage(image.path, image.bytes);
+  } catch {
+    return old();
+  }
+  return read.template;
 }
 
 export function registerTemplateIpc(): void {
@@ -112,7 +133,7 @@ export function registerTemplateIpc(): void {
     });
     if (!source) return null;
 
-    return importTemplateFile(source, storeLetterheadImage);
+    return readTemplateFile(source);
   });
 
   /**
