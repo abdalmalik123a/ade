@@ -6,9 +6,10 @@
  *    البرنامج يعمل على بياناته الأصلية.
  * ٢) **قاعدةٌ لم تعد**: وإن لم تعد القاعدة إلى مكانها (حالةٌ مصنوعة بين الإقلاعين: `betweenRestarts`) فالإقلاع
  *    التالي يُعيدها من مجلّد الأصل — لا قاعدةً فارغة — ويُعيد المخزن، ويمحو الأثر ولا يمسّ ما جانبًا.
+ *    وبقايا فكٍّ انقطع في `restore-work` تُمحى عند ذلك الإقلاع (A09).
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 
@@ -99,6 +100,10 @@ export async function betweenRestarts({ profile }) {
   }
   await retry('نقل المخزن', () => renameSync(join(data, 'store'), join(aside, 'store')));
   writeFileSync(join(data, 'restore-incomplete.json'), JSON.stringify({ aside, reason: 'EBUSY: simulated', at: new Date().toISOString() }));
+  // وفكٌّ انقطع: قاعدةٌ مفكوكة للفحص وحزمةٌ مفكوكة من التشفير.
+  mkdirSync(join(data, 'restore-work'), { recursive: true });
+  writeFileSync(join(data, 'restore-work', 'inspect-1-1.db'), 'قاعدةٌ مفكوكة');
+  writeFileSync(join(data, 'restore-work', 'restore-1-1.zip'), 'حزمةٌ مفكوكة');
 }
 
 export async function afterRestart(page, { profile }) {
@@ -115,5 +120,11 @@ export async function afterRestart(page, { profile }) {
   ok(`وبيانات المكتب كلّها حاضرة — لا قاعدةً فارغة (${live})`, live.includes('قبل النسخة') && live.includes('بعد النسخة'));
   ok('والمخزن عاد بمستمسكه', existsSync(join(data, 'store', 'attachments', 'مستمسك.txt')) && readFileSync(join(data, 'store', 'attachments', 'مستمسك.txt'), 'utf8') === 'مستمسك المكتب');
   ok('وما جانبًا باقٍ لا يُحذف', existsSync(join(aside, 'current.db')) && existsSync(join(aside, 'diwan.db')));
+  const work = join(data, 'restore-work');
+  const left = existsSync(work) ? readdirSync(work) : null;
+  ok(
+    `وبقايا الفكّ المنقطع تُمحى عند الإقلاع، وما جانبًا باقٍ (${left === null ? 'غائب' : left.join('، ') || 'فارغ'})`,
+    left !== null && left.length === 0 && existsSync(join(aside, 'diwan.db'))
+  );
   return steps.join('\n');
 }
