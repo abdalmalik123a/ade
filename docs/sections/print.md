@@ -59,7 +59,7 @@
 - **قنواته اليوم** (عددها بأمر): `output:` ٩ في `src/preload/tools.ts` (`print` و`printJob` و`resumeJob` و`pendingJobs` و`discardJob` و`printCalibration` و`savePdf` و`saveImage`
   و`saveDocx`) والحدث `print:progress` · `printers:list` في `office.ts` · ومن `documents:` في `archive.ts`: `printIssued` و`reprint` و`exportPdf` (في وثيقة records).
 - **الطريق** كما في ARCHITECTURE §١ «طريق الطباعة وPDF» (يُحال): `withRenderWindow` ← `printSheet` و`renderPdf` و`renderImage`، والسجلّ `printJobs`، والبوّابة.
-- **في الموجة ٣:** عقدٌ مكتوب يتحقّق من مدخلاته (A04)؛ و`printToPDF` من صغائر البنية (A13).
+- **في الموجة ٣:** عقدٌ مكتوب يتحقّق من مدخلاته (A04، D59–D61)؛ و`printToPDF` يمرّر مقاس الورقة بالبوصات (`pdfPageSizeOf`، D94).
 
 ## ٥. المحرّكات واللغات
 

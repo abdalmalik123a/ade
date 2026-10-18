@@ -87,6 +87,15 @@ function pageSizeOf(page: PageMm): { landscape: boolean; pageSize: 'A4' | { widt
   return { landscape, pageSize: { width: Math.round(short * 1000), height: Math.round(long * 1000) } };
 }
 
+/** مقاس `printToPDF`: ما كان A4 باسمه، وغيره بالبوصات (`25.4` ملم/بوصة) كما تطلبه Electron. */
+function pdfPageSizeOf(page: PageMm): { landscape: boolean; pageSize: 'A4' | { width: number; height: number } } {
+  const landscape = page.w > page.h;
+  const long = Math.max(page.w, page.h);
+  const short = Math.min(page.w, page.h);
+  if (Math.abs(long - 297) < 1 && Math.abs(short - 210) < 1) return { landscape, pageSize: 'A4' };
+  return { landscape, pageSize: { width: short / 25.4, height: long / 25.4 } };
+}
+
 export async function withRenderWindow<T>(
   sheetHtml: string,
   work: (win: BrowserWindow) => Promise<T>,
@@ -292,7 +301,7 @@ function printWith(req: PrintRequest, silent: boolean, page: PageMm, landscape: 
 /** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية) — وبأنماط الكتاب يوم صدر إن أُعطيت. */
 export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: SheetStyle | null = null): Promise<Buffer> {
   const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
-  const { landscape, pageSize } = pageSizeOf(page);
+  const { landscape, pageSize } = pdfPageSizeOf(page);
   return withRenderWindow(
     sheetHtml,
     (win) =>
@@ -314,7 +323,7 @@ export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: Sheet
  * ويبقى النصّ نصًّا يُحدَّد ويُبحث فيه — ومكتبات PDF ترسم الحروف منفصلةً معكوسة.
  */
 export async function renderLayerPdf(html: string, page: PageMm): Promise<Buffer> {
-  const { landscape, pageSize } = pageSizeOf(page);
+  const { landscape, pageSize } = pdfPageSizeOf(page);
   return withRenderWindow(
     html,
     (win) =>

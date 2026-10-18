@@ -55,3 +55,18 @@ describe.skipIf(!existsSync(folder))('قوالب GyanTech الحقيقية', () 
     for (const t of texts) expect(t.color).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
+
+describe('رأس PSD ورفض PSB (D94)', () => {
+  it('readPsd يرفض الإصدار ٢ (PSB) لأن أطوال أقسامه وصفوفه ٨/٤ بايتات', async () => {
+    const { readPsd } = await import('../src/main/services/psd');
+    const psb = Buffer.alloc(40);
+    psb.write('8BPS', 0, 'ascii');
+    psb.writeUInt16BE(2, 4); // PSB version = 2
+    psb.writeUInt16BE(3, 12); // channels
+    psb.writeUInt32BE(100, 14); // height
+    psb.writeUInt32BE(100, 18); // width
+    psb.writeUInt16BE(8, 22); // depth
+    psb.writeUInt16BE(3, 24); // RGB
+    expect(readPsd(psb)).toBeNull();
+  });
+});

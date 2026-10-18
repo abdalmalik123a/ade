@@ -21,6 +21,7 @@ import {
   type TableBlock
 } from '../src/shared/doc';
 import { normalizeDoc } from '../src/shared/docNormalize';
+import { fillDoc } from '../src/shared/docFill';
 import { missingRequired, renderDocHtml } from '../src/shared/docHtml';
 import { legacyFieldMeta, renderBody } from '../src/shared/template';
 
@@ -249,6 +250,31 @@ describe('الكتل التي عجز عنها النصّ الواحد', () => {
     const doc = emptyDoc();
     doc.blocks = [paragraph([run('Answer the following')], { dir: 'ltr', align: 'left' })];
     expect(renderDocHtml(doc, {}, { paragraphs: 'blocks' })).toContain('dir="ltr"');
+  });
+
+  it('المجموعة بوضع repeat تكرّر كتلها لكلّ سطرٍ غير فارغٍ في renderDocHtml وfillDoc، وتختفي إن فرغ الحقل', () => {
+    const doc = emptyDoc();
+    doc.blocks = [
+      {
+        id: 'g',
+        kind: 'group',
+        mode: 'repeat',
+        on: 'الجهات',
+        blocks: [paragraph([run('نسخة إلى: '), fieldRef('الجهات')])]
+      }
+    ];
+    expect(renderDocHtml(doc, {}, { paragraphs: 'blocks' })).toBe('');
+    expect(fillDoc(doc, { الجهات: '  \n  ' }).blocks).toEqual([]);
+
+    const html = renderDocHtml(doc, { الجهات: 'الحسابات\n\nالذاتية\r\nالأرشيف' }, { paragraphs: 'blocks' });
+    expect(html).toContain('الحسابات');
+    expect(html).toContain('الذاتية');
+    expect(html).toContain('الأرشيف');
+    expect(html.match(/نسخة إلى:/g)).toHaveLength(3);
+
+    const filled = fillDoc(doc, { الجهات: 'الحسابات\nالذاتية' });
+    expect(filled.blocks).toHaveLength(2);
+    expect(docText(filled)).toBe('نسخة إلى: الحسابات\nنسخة إلى: الذاتية');
   });
 });
 

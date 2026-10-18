@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٥٧ — D94 ✅ — A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات، ورفض PSB في `psd.ts`، وتكرار `repeat` في `GroupBlock`، وتجاهل أسماء الاستيراد في `verbatim.cjs` · النموذج: Gemini 4 Argon (Medium)
+- **الإصلاحات:** `pdfPageSizeOf` بالبوصات (`short / 25.4` و`long / 25.4`) لـ`renderPdf` و`renderLayerPdf` في `src/main/services/render.ts` (٣٧٥ سطرًا) · رفض `version !== 1` في `src/main/services/psd.ts:72` · تكرار كتل `GroupBlock` بوضع `repeat` لكلّ سطرٍ غير فارغٍ من `values[block.on]` في `src/shared/docHtml.ts` (٣٩٦ سطرًا) و`src/shared/docFill.ts` · وتجاهل أسماء الاستيراد الممتدّ في حلقة `O` في `tools/split/verbatim.cjs` و`docs/ARCHITECTURE.md` §٢.
+- **الفحص:** `typecheck` نظيف · `doc` ٤٢ ✓ · `realPsd` ١٧ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓ · `verbatim.cjs e140ab4 src/main/services/import.ts src/main/services/importLayout.ts` ← «ضاع 0 · جديد 0».
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D94.md`. **التالي:** مراجعة D94 وتنفيذ D95 (ص).
+
+## ٢٠٢٦-١٠-١٩ ٠٢:٥٤ — مراجعة D93 ✓ · وحجز D94 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **D93 بـ«كيف يُراجَع»:** أوامر D94–D98 الخمسة مفصّلةٌ على وقائع الكود المفحوصة، وكلّ ملفٍّ دون ٨٠ سطرًا وبأقسام القالب الخمسة، وتبقي أحجام جميع ملفّات `src/` دون ٤٠٠ سطر. ✓
+- **تحقّق D94 قبل البدء:** D93 ✅ ومُراجَع · `render.ts` ٣٦٦ سطرًا و`docHtml.ts` ٣٩١ سطرًا (دون ٤٠٠). ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٥٣ — D93 ✅ — تفصيل باقي الموجة ٣ في خمسة أوامر ⚙️ (D94–D98: ٨ نقاط = ٤ + ٤)، وترحيل D87–D92 إلى `legacy/PLAN-3.md` · النموذج: Gemini 4 Argon (Medium)
 - **التفصيل:** أوامر `docs/orders/D94.md`–`D98.md` كلها دون ٨٠ سطرًا وبأقسام `_TEMPLATE.md` الخمسة: D94 (م: A13 ١–٣ و`verbatim.cjs`) · D95 (ص: A13 ٤–٥ وA15) · D96 (م: A14 ١–٤) · D97 (ص: A13 ٦ وصول لوحة المفاتيح و`role="dialog"`) · D98 (م: A09 (ب) حذف `before-restore-*` يدويًّا وختام أعمال الموجة ٣ قبل الإصدار)؛ ويبقى A17 وA18 لما بعد أوّل إصدارٍ يثبت فيه المرقَّم والعامل في الميدان.
 - **اللوحة:** نقل أسطر D87–D92 المُراجَعة بنصّها حرفيًّا إلى `docs/legacy/PLAN-3.md`، وإضافة D94–D98 إلى `docs/PLAN.md` (`PLAN.md` ٣٧ سطرًا).

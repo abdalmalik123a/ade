@@ -25,8 +25,8 @@
 |---|---|---|---|---|
 | D47–D74 | A01–A08 وA09 (أ) وA10 A12 A16 A19 وG34 وترشيق الوثائق: الأساس «أ» والترقيات والممشّيات والعامل والجسر والنسخ وثغرات exceljs | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
 | D75–D92 | A11 (١–١٥ — اكتمل): الجرد والتصميم، ثم خمسة عشر تقسيمًا لملفّات main وshared الستّة عشر فوق ٤٠٠ سطر، وإفراغ `tests/structure.allow.json` | ✅ ١٩ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| [D93](orders/done/D93.md) | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ✅ ١٩ ت١ | 🧭 | D92 |
-| [D94](orders/D94.md) | A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات في `render.ts`، ورفض `PSB` في `psd.ts:72`، وتكرار `repeat` في `GroupBlock` (`docHtml.ts` و`docFill.ts`)، وتجاهل أسماء الاستيراد في `verbatim.cjs` | ⬜ | ⚙️ م | D93 |
+| [D93](orders/done/D93.md) | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ✅ ١٩ ت١ — مُراجَع | 🧭 | D92 |
+| [D94](orders/done/D94.md) | A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات في `render.ts`، ورفض `PSB` في `psd.ts:72`، وتكرار `repeat` في `GroupBlock` (`docHtml.ts` و`docFill.ts`)، وتجاهل أسماء الاستيراد في `verbatim.cjs` | ✅ ١٩ ت١ | ⚙️ م | D93 |
 | [D95](orders/D95.md) | A13 (٤–٥) وA15: `"engines"` في `package.json` و`.nvmrc`، وفقرة «إن لم يُفتح البرنامج» في `docs/INSTALL.md`، وتعريب `x64WinRequired` في `resources/installer.nsh` | ⬜ | ⚙️ ص | D94 |
 | [D96](orders/D96.md) | A14 (١–٤): حذف `forgetGeminiKey` (`ipc/designs.ts`)، وفحص الحقول الإلزامية (`required`) في `services/issue.ts`، و`quick_check` عند فتح القاعدة (`db/index.ts`)، ورقم الإصدار في `errorLog.ts` | ⬜ | ⚙️ م | D95 |
 | [D97](orders/D97.md) | A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (`:focus-visible` في `styles.css`، وحلقة تركيز المدخلَين، و`role="dialog"` و`aria-modal="true"` للحوارات) | ⬜ | ⚙️ ص | D96 |

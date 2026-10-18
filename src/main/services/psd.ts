@@ -67,9 +67,9 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
   const width = buf.readUInt32BE(18);
   const depth = buf.readUInt16BE(22);
   const colorMode = buf.readUInt16BE(24);
-  // الإصدار ١ (PSD) أو ٢ (PSB)، ومقاسٌ غير صفريّ — وإلا فرأسٌ مصنوعٌ أو ملفٌّ مبتورٌ عند أوّله.
+  // الإصدار ١ (PSD) وحده ومقاسٌ غير صفريّ — أمّا PSB (الإصدار ٢) فأطوال أقسامه وصفوفه ٨/٤ بايتات فيُرفض كما في `psdRecords.ts`.
   const version = buf.readUInt16BE(4);
-  if ((version !== 1 && version !== 2) || !width || !height) return null;
+  if (version !== 1 || !width || !height) return null;
   const warnings: string[] = [];
 
   let at = 26;

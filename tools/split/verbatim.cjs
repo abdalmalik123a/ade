@@ -14,7 +14,7 @@ const L=t=>t.replace(/\r/g,'').split('\n').map(s=>s.trim().replace(/^export (?=(
 const B=a=>a.reduce((m,s)=>m.set(s,(m.get(s)||0)+1),new Map());
 const O=B(L(cp.execSync('git show '+r+':'+o).toString())),N=B(L(fs.readFileSync(o,'utf8'))),A=B(n.flatMap(p=>L(fs.readFileSync(p,'utf8'))));
 const x=[],y=[];
-for(const[s,c]of O)if(c-(N.get(s)||0)>(A.get(s)||0))x.push('- '+s);
+for(const[s,c]of O)if(c-(N.get(s)||0)>(A.get(s)||0)&&!/^(type )?\w+( as \w+)?,?$/.test(s))x.push('- '+s);
 for(const[s,c]of A)if(c>(O.get(s)||0)-(N.get(s)||0)&&!/^(\/\*\*|\*|\/\/)/.test(s)&&!/^(type )?\w+( as \w+)?,?$/.test(s))y.push('+ '+s);
 console.log('ضاع',x.length,'· جديد',y.length);
 x.concat(y).slice(0,15).forEach(s=>console.log(' ',s))

@@ -40,10 +40,15 @@ export function fillDoc(doc: Doc, values: Record<string, string>): Doc {
           return [{ ...b, rows: b.rows.map((r) => ({ ...r, cells: r.cells.map((c) => ({ ...c, blocks: c.blocks.map(paragraph) })) })) }];
         case 'columns':
           return [{ ...b, columns: b.columns.map(blocks) }];
-        case 'group':
-          // كما في الورقة: المشروطة تظهر بحقلها، وغيرها كتلها في مكانها.
+        case 'group': {
+          // كما في الورقة: المشروطة تظهر بحقلها، و`repeat` يكرّر كتله لكلّ سطرٍ غير فارغ.
+          if (b.mode === 'repeat') {
+            const rows = (values[b.on] ?? '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+            return rows.flatMap((v) => fillDoc({ ...doc, blocks: b.blocks }, { ...values, [b.on]: v }).blocks);
+          }
           if (b.mode === 'conditional' && !values[b.on]?.trim()) return [];
           return blocks(b.blocks);
+        }
         default:
           return [b];
       }

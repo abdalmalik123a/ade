@@ -241,10 +241,15 @@ function renderBlock(
       // لا يبدأ صفحةً وحده: يبقى مع الأسطر التي فوقه.
       return `<div data-rule="" style="border-top:1.5px solid currentColor;margin:6px 0;break-before:avoid"></div>`;
 
-    case 'group':
-      // الظهور يقرّره الحقل: «المرفقات» تُلغى إن لم توجد، ولا تُترك سطرًا فارغًا.
+    case 'group': {
+      // الظهور والتكرار يقرّرهما الحقل: «المرفقات» تُلغى إن فرغت، و`repeat` يكرّر كتله لكلّ سطرٍ غير فارغ.
+      if (block.mode === 'repeat') {
+        const rows = (values[block.on] ?? '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+        return rows.map((v) => block.blocks.map((b) => renderBlock(b, { ...values, [block.on]: v }, fields, opts)).join('')).join('');
+      }
       if (block.mode === 'conditional' && !values[block.on]?.trim()) return '';
       return block.blocks.map((b) => renderBlock(b, values, fields, opts)).join('');
+    }
   }
 }
 
