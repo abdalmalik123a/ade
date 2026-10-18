@@ -102,6 +102,7 @@ export default async function scenario(page, { profile }) {
   await page.eval(`document.querySelector('[data-act="revisions"]').click(); return true;`);
   await wait(600);
   ok('وقائمة النسخ السابقة', await page.eval(`return Boolean(document.querySelector('[data-revisions] [data-revision="1"]'));`));
+  ok('وتقول إنها تحفظ آخر ٢٠', await page.eval(`return document.querySelector('[data-revisions] [data-revisions-keep]')?.textContent.trim() === 'تُحفظ آخر ٢٠ نسخة';`));
   await page.eval(`document.querySelector('[data-revisions] [data-revision="1"]').click(); return true;`);
   await wait(700);
   const titleNow = await page.eval(`return document.querySelector('input[placeholder="مثال: تأييد استمرار بالخدمة"]').value;`);
