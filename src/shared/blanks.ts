@@ -568,10 +568,10 @@ function shingles(text: string, n = 3): Set<string> {
   return set;
 }
 
-/** نسبة التشابه (جاكار) بين نصّين — صفر لا يشبه، وواحد متطابق. */
-export function similarity(a: string, b: string): number {
-  const A = shingles(a);
-  const B = shingles(b);
+/** نسبة التشابه (جاكار) بين نصّين أو قطعهما محسوبةً — صفر لا يشبه، وواحد متطابق. */
+export function similarity(a: string | Set<string>, b: string | Set<string>): number {
+  const A = typeof a === 'string' ? shingles(a) : a;
+  const B = typeof b === 'string' ? shingles(b) : b;
   if (A.size === 0 && B.size === 0) return 1;
   if (A.size === 0 || B.size === 0) return 0;
   let shared = 0;
@@ -591,21 +591,21 @@ export function groupDuplicates<T extends { id: string; text: string }>(
   items: T[],
   threshold = DUPLICATE_THRESHOLD
 ): { ids: string[]; confidence: Confidence }[] {
-  const groups: { ids: string[]; texts: string[]; best: number }[] = [];
+  const groups: { ids: string[]; cuts: Set<string>[]; best: number }[] = [];
 
   for (const item of items) {
+    const cut = shingles(item.text); // مرّةً لكلّ نصّ: كانت تُبنى في كلّ مقارنة (D62: ٨٢٥٤ م.ث بخمسمئة ملف)
     let placed = false;
     for (const g of groups) {
-      const score = Math.max(...g.texts.map((t) => similarity(t, item.text)));
-      if (score >= threshold) {
-        g.ids.push(item.id);
-        g.texts.push(item.text);
-        g.best = Math.min(g.best, score);
-        placed = true;
-        break;
-      }
+      const score = Math.max(...g.cuts.map((c) => similarity(c, cut)));
+      if (score < threshold) continue;
+      g.ids.push(item.id);
+      g.cuts.push(cut);
+      g.best = Math.min(g.best, score);
+      placed = true;
+      break;
     }
-    if (!placed) groups.push({ ids: [item.id], texts: [item.text], best: 1 });
+    if (!placed) groups.push({ ids: [item.id], cuts: [cut], best: 1 });
   }
 
   return groups.filter((g) => g.ids.length > 1).map((g) => ({ ids: g.ids, confidence: g.best }));
