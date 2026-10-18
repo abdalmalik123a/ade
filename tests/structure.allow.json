@@ -1,7 +1,6 @@
 {
   "src/main/ipc/documents.ts": 473,
   "src/main/services/documents.ts": 912,
-  "src/main/services/docxDoc.ts": 919,
   "src/main/services/excelDoc.ts": 690,
   "src/main/services/import.ts": 553,
   "src/main/services/importFolder.ts": 418,
