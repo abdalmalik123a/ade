@@ -2,11 +2,12 @@
  * النسخة التلقائية (تعميق الموجود ٢): مرآةٌ في مجلّدٍ يختاره المكتب — القاعدة إن تغيّرت
  * وتُبقى آخرها، والجديد من المخزن وحده، ومشفّرةً لكلّ ملفٍّ إن اختير. ويُسترجع منها.
  */
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ForeignMirrorError, MIRROR, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
+import { CHUNK, ForeignMirrorError, MIRROR, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup } from '../src/main/services/autoBackup';
 
 function office() {
   const base = mkdtempSync(join(tmpdir(), 'diwan-auto-'));
@@ -18,18 +19,24 @@ function office() {
   mkdirSync(data);
   writeFileSync(join(store, 'attachments', 'scan-1.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(store, 'logo.png'), Buffer.from('LOGO'));
-  let db = Buffer.from('قاعدة ١');
+  let db: Buffer = Buffer.from('قاعدة ١');
+  /** المسارات التي أُعطيها `snapshotDb` — أين كُتبت نسخة القاعدة المؤقّتة. */
+  const taken: string[] = [];
   return {
     store,
     usb,
     data,
-    setDb: (text: string) => (db = Buffer.from(text)),
+    taken,
+    setDb: (v: string | Buffer) => (db = typeof v === 'string' ? Buffer.from(v) : v),
     run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z', appVersion?: string, expectId?: string | null) =>
       runAutoBackup({
         target: usb,
         storeRoot: store,
         tempDir: data,
-        snapshotDb: (f) => writeFileSync(f, db),
+        snapshotDb: (f) => {
+          taken.push(f);
+          writeFileSync(f, db);
+        },
         password,
         keep,
         now: new Date(at),
@@ -180,5 +187,75 @@ describe('المرآة لها هويّة — فلاشة غريبة بحرف فل
     delete old.id;
     writeFileSync(file, JSON.stringify(old));
     expect(() => o.run(null, 3, '2026-09-28T12:00:00Z', undefined, adopted.id)).toThrow(ForeignMirrorError);
+  });
+});
+
+describe('لا نسخةٌ مكشوفة في %TEMP%، والكتابة بأجزاء (A08)', () => {
+  const tempDbs = (dir: string) =>
+    readdirSync(dir, { withFileTypes: true })
+      .filter((e) => e.isFile() && /^diwan-auto-.*\.db$/.test(e.name))
+      .map((e) => e.name);
+
+  it('نسخة القاعدة المؤقّتة في `tempDir` لا في `tmpdir()` — وتُحذف بعد النجاح', () => {
+    const o = office();
+    const before = tempDbs(tmpdir());
+    o.run();
+    expect(o.taken).toHaveLength(1);
+    expect(dirname(o.taken[0]!)).toBe(o.data);
+    expect(tempDbs(tmpdir())).toEqual(before);
+    expect(readdirSync(o.data)).toEqual([]);
+  });
+
+  it('وتُحذف إن رمى `snapshotDb` في منتصف الكتابة', () => {
+    const o = office();
+    const broken = () =>
+      runAutoBackup({
+        target: o.usb,
+        storeRoot: o.store,
+        tempDir: o.data,
+        snapshotDb: (f) => {
+          writeFileSync(f, 'نصف قاعدة');
+          throw new Error('انقطع VACUUM');
+        },
+        password: null,
+        keep: 3
+      });
+    expect(broken).toThrow('انقطع VACUUM');
+    expect(readdirSync(o.data)).toEqual([]);
+  });
+
+  it('وما بقي من نسخةٍ انقطعت يُحذف قبل التالية — ولا يُمسّ غيره في المجلّد', () => {
+    const o = office();
+    writeFileSync(join(o.data, 'diwan-auto-4242-1760000000000.db'), 'بقيّة انقطاع');
+    for (const keep of ['diwan.db', 'backup-2026-10-18.db', 'diwan-auto-notes.txt']) writeFileSync(join(o.data, keep), 'x');
+    o.run();
+    expect(readdirSync(o.data).sort()).toEqual(['backup-2026-10-18.db', 'diwan-auto-notes.txt', 'diwan.db']);
+  });
+
+  it.each([
+    ['بلا تشفير', null],
+    ['مشفّرةً', 'كلمة-المكتب']
+  ])('قاعدةٌ ومستمسكٌ أكبر من الجزء (%s) يعودان بايتًا ببايت — والبصمة نفسها، والطول الأصلُ + ٢٨', (_, password) => {
+    const o = office();
+    const big = randomBytes(CHUNK * 3 + CHUNK / 2 + 7);
+    const scan = randomBytes(CHUNK * 2 + 123);
+    o.setDb(big);
+    writeFileSync(join(o.store, 'attachments', 'scan-big.png'), scan);
+    const r = o.run(password);
+    expect(r.dbChanged).toBe(true);
+    const [name] = readdirSync(join(r.root, 'db'));
+    const extra = password ? 28 : 0;
+    expect(readFileSync(join(r.root, 'db', name!)).length).toBe(big.length + extra);
+    expect(readFileSync(join(r.root, 'store', 'attachments', `scan-big.png${password ? '.enc' : ''}`)).length).toBe(scan.length + extra);
+    // البصمة تُحسب بالأجزاء والقيمة كما تُحسب للملفّ كاملًا — فلا نسخةٌ زائدة بعد الترقية.
+    const manifest = JSON.parse(readFileSync(join(r.root, 'manifest.json'), 'utf8')) as { lastDbHash: string };
+    expect(manifest.lastDbHash).toBe(createHash('sha256').update(big).digest('hex'));
+    expect(o.run(password, 3, '2026-09-28T11:00:00Z')).toMatchObject({ dbChanged: false, filesCopied: 0 });
+
+    const back = readMirror(o.usb, password);
+    expect(Buffer.from(back.db).equals(big)).toBe(true);
+    const to = join(o.usb, 'restored');
+    back.writeStore(to);
+    expect(readFileSync(join(to, 'attachments', 'scan-big.png')).equals(scan)).toBe(true);
   });
 });
