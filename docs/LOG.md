@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:٣٠ — D80 ✅ — A11 (٤): طريق الطباعة — `render.ts` ٤٧١ ← ٣٦٥ و`ipc/documents.ts` ٤٧٠ ← ٢٦٣ نقلًا حرفيًّا · والتوقّف هنا (ر160)
+- **`render.ts`** (`6f15dec`) بـ`move.cjs` و`"tsconfig": "tsconfig.node.json"` ثلاث مرّات، والمواصفات في مجلّد الجلسة: `pngDensity.ts` ٤٥ و`sheetStyle.ts` ٤٣ و`calibration.ts` ٣٢، بلا باب — سطرا الاستيراد في `renderImage.ts`
+  و`ipc/documents.ts` يأخذان كلّ اسمٍ من ملفّه، و`render.ts` يستورد `withDensity` لـ`renderPng` (أضافته الأداة) · و`CRC_TABLE` `styleCache` أعدتُ سطريهما بلا `export` كما كانا (الأداة تصدّر كلّ منقول، ولا يستعملهما غير ملفّهما — سابقة `BlockBase` D77) ·
+  `prune.cjs` حذف `posix` من `render.ts` · و`render.ts` بقي CRLF والجديدة LF (كما تكتبها الأداة).
+- **`ipc/output.ts`** (`896a102`) يدويًّا (Write للجديد وEdit للأصل): الرأس، واستيرادات ما تستعمله الجمل من استيرادات `documents.ts` ومعها `win` `safeName` `saveAs` من `./documents`، ثم `PrintMode` `PER_SHEET_PAGE` `forPrint`، ثم `registerOutputIpc`
+  بمعالج `printIssued` بتعليقه ثم ما من «إخراج الورقة الجارية في المحرر» إلى قوس الدالّة · `export` على `win` · `ipc/index.ts` سطر الاستيراد والنداء بعد `registerDocumentIpc()` · `prune.cjs` حذف أربعة عشر من `documents.ts` ولا شيء من `output.ts` · **السقف** (`18364d1`) · **الوثائق** (`a1f5d01`).
+- **الفحص:** `typecheck` ✓ (خروج 0) بعد كلّ خطوة · `verbatim.cjs da59a53` على `render.ts` والثلاثة ← «ضاع 0 · جديد 0» · `verbatim.cjs 6f15dec` على `documents.ts` و`output.ts` ← «ضاع 0 · جديد 2» (`function registerOutputIpc(): void {` و`}`) ·
+  وسكربتٌ في مجلّد الجلسة: الجمل المنقولة ١٨٠ سطرًا غير فارغ مطابقةً للأصل بترتيبها، والتصريحات الثلاثة كما هي · `ipcMain.handle(` ٢٧ قبل، و١٥ + ١٢ بعد · `inventory.cjs` ← الملفّان خرجا من القائمة و«دورات القيم: 1» ·
+  `npx vitest run` ١٩٧٢ ✓ و٤ متخطّاة (ومنه `structure` ١٠ ✓) ولقطات الرسّام كما هي · `electron-vite build` ✓ ثم `printResume` ٤ ✓ `copies` ١٠ `orderPrinted` ١٣ `printRoles` ٢٠ `sheetStyle` ٧ `paperSize` ١٤ `issue` ١١٣ `dailyWork` ٢٠ — بلا ✗ ·
+  لا بايت تحكّم · `docsBudget` ٣ ✓.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره بـ`da59a53` ثم `6f15dec` مرجعين للحرفيّة. **التالي:** `/next` يراجع D80 ثم D81 ⚙️ (`services/documents.ts`، و`fromSrc` في `move.cjs`).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:١٧ — مراجعة D79 ✓ · وحجز D80 🔒
 - **رسالة المالك:** `/next`.
 - **D79 بـ«كيف يُراجَع»:** `git show 64ec44e` ← `move.cjs` وحده و`spec.tsconfig` وحده (`TSCONFIG` في الإعداد والرسالة وسطر `spec:`) · `verbatim.cjs 64ec44e` على الثلاثة ← «ضاع 6 · جديد 0» والستّة هي التي سمّاها قيد D79
