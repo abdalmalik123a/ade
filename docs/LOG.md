@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٠:١١ — مراجعة D63 ✓ · وحجز D64 🔒
+- **رسالة المالك:** `/next`.
+- **D63 بـ«كيف يُراجَع»:** `grep` في `autoBackup.ts`: لا `tmpdir`، و`fsyncSync` (١٠٤) قبل `renameSync` الوحيد (١٠٨)، و`readFileSync` في `readManifest` (١٦١) و`readMirror` (٣٥٨ ٣٦٨) وحدهما ·
+  جسما `unseal` و`readMirror` بالبصمة نفسها في `df3b4df` و`d4a8e3f` · أرقام القياس قبل وبعد في قيده، وكسر «الوسم في موضعه» أسقط حالتي الفكّ المشفّرتين · وسطر `transient.test.ts` خارج المسموح مذكورٌ بسببه. ✓
+- **شروط D64:** `recordRevision` `INSERT OR IGNORE` ثم `revision + 1` بلا `DELETE` ولا حدّ · مناديها الثلاثة (`templates` `letterheads` `clips`) داخل `db.transaction` الحفظ ·
+  `RevisionsMenu` يعرض `[data-revisions] [data-revision]` · `revisions.test.ts` ١٣ ✓ · و`letterTools` على البناء القائم ٢٥ ✓ بلا ✗. ✓ — و`@shared/api` يعيد تصدير الأنواع وحدها (`export type *`)، فالثابت يُستورد من `@shared/apiTemplates` كما `apiCitizens` في `ipc/citizens.ts`.
+- **التالي:** D64 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٠:٠٨ — D63 ✅ — النسخة التلقائية: المؤقّت في مجلّد البيانات، وأجزاءٌ و`fsync`؛ ذروتها بقاعدة ٣٠٠ م.ب ١٢٠١ ← ٧٣ م.ب · والتوقّف هنا (ر160)
 - **ما تغيّر:** `runAutoBackup` يأخذ `tempDir` إلزاميًّا (`ipc/backup.ts` يمرّر `dataDir()`)، و`diwan-auto-*.db` الباقية فيه تُحذف قبل النسخة وحدها · `eachChunk` بجزءٍ ١ م.ب لـ`hashFile`
   و`copyInto` (المتّجه ثم ١٦ صفرًا ثم `cipher.update` لكلّ جزء ثم الوسم في موضعه ١٢)، و`writeAtomic` إلى `.part` ثم `fsyncSync` ثم `renameSync` وmanifest به (`4da8329`) · حالاتٌ خمس (`db28587`) · واسم المعامل `onChunk` (`3c331f5`).
