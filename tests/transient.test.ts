@@ -82,7 +82,8 @@ describe('ولا يدخل نسخةً احتياطية', () => {
   it('والتلقائية: المرآة بلا `tmp/`', () => {
     const root = store();
     const usb = mkdtempSync(join(tmpdir(), 'diwan-usb-'));
-    const r = runAutoBackup({ target: usb, storeRoot: root, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3 });
+    const tempDir = mkdtempSync(join(tmpdir(), 'diwan-data-'));
+    const r = runAutoBackup({ target: usb, storeRoot: root, tempDir, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3 });
     expect(r.filesCopied).toBe(1);
     expect(existsSync(join(r.root, 'store', 'tmp'))).toBe(false);
     expect(existsSync(join(r.root, 'store', 'attachments', 'scan-9.png'))).toBe(true);

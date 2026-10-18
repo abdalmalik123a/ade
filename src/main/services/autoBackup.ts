@@ -5,7 +5,8 @@
  * نحو ١١ ميغا، فمكتبٌ بألف مستمسكٍ غيغاتٌ لا تُحزم كلّ إغلاق. فالتلقائية مرآة:
  * - **القاعدة** نسخةٌ متّسقة (VACUUM INTO) تُكتب إن تغيّرت منذ آخر نسخة — وتُبقى آخرها
  *   (عشرٌ افتراضًا)، فخطأٌ اكتُشف بعد أيّامٍ يُسترجع ما قبله.
- * - **المخزن** يُنسخ منه الجديد وحده (بالاسم والحجم) — ملفّه الواحد في الذاكرة لا كلّه.
+ * - **المخزن** يُنسخ منه الجديد وحده (بالاسم والحجم).
+ * - والقاعدة والمخزن يُقرآن ويُشفَّران ويُكتبان **جزءًا جزءًا**، وكلّ ملفٍّ يبلغ القرص (`fsync`) قبل أن يُعدّ مكتوبًا (A08).
  * - **والتشفير لكلّ ملف** (AES-256-GCM بمفتاحٍ من scrypt وملحٍ في `manifest.json`) إن
  *   اختاره المكتب: فالفلاشة المفقودة لا تكشف مستمسكات الناس.
  *
@@ -13,8 +14,21 @@
  * البيانات (ipc/backup.ts).
  */
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+  writeSync
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { TRANSIENT_DIR } from './transient';
 
@@ -24,6 +38,10 @@ const MANIFEST = 'manifest.json';
 const ENC = '.enc';
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const CHECK = 'diwan-auto-backup';
+/** جزءٌ واحدٌ ثابت للقراءة والتشفير والكتابة — فقاعدةٌ بمئات الميغا لا تُحمل في الذاكرة. */
+export const CHUNK = 1 << 20;
+/** نسخة القاعدة المؤقّتة في `tempDir` — وما بقي منها بعد انقطاعٍ يُحذف قبل النسخة التالية. */
+const TEMP_DB = /^diwan-auto-.*\.db$/;
 
 type Manifest = {
   app: 'diwan';
@@ -66,12 +84,69 @@ function unseal(data: Uint8Array, key: Buffer): Buffer {
   }
 }
 
-/** كتابةٌ لا تترك ملفًّا نصفَ مكتوب إن انقطعت: إلى اسمٍ مؤقّت ثم نقلٌ واحد. */
-function writeAtomic(file: string, bytes: Uint8Array | string): void {
+/** يكتب البايتات كلّها — في موضعها إن أُعطي، وإلا حيث انتهت الكتابة. */
+function writeAll(fd: number, bytes: Uint8Array, at?: number): void {
+  for (let done = 0; done < bytes.length; ) {
+    done += writeSync(fd, bytes, done, bytes.length - done, at === undefined ? null : at + done);
+  }
+}
+
+/**
+ * كتابةٌ لا تترك ملفًّا نصفَ مكتوب إن انقطعت: إلى اسمٍ مؤقّت، ثم `fsync` فيبلغ المكتوبُ الفلاشةَ
+ * قبل أن يُعدّ مكتوبًا، ثم نقلٌ واحد.
+ */
+function writeAtomic(file: string, fill: (fd: number) => void): void {
   mkdirSync(dirname(file), { recursive: true });
   const part = `${file}.part`;
-  writeFileSync(part, bytes);
+  const fd = openSync(part, 'w');
+  try {
+    fill(fd);
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
   renameSync(part, file);
+}
+
+/** يقرأ ملفًّا جزءًا جزءًا في مخزنٍ واحد — فالجزء صالحٌ حتى النداء التالي وحده. */
+function eachChunk(file: string, use: (chunk: Buffer) => void): void {
+  const fd = openSync(file, 'r');
+  const buf = Buffer.allocUnsafe(CHUNK);
+  try {
+    for (let n = readSync(fd, buf, 0, CHUNK, null); n > 0; n = readSync(fd, buf, 0, CHUNK, null)) use(buf.subarray(0, n));
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** بصمة الملفّ sha256 بالأجزاء — القيمة نفسها التي تُحسب له كاملًا. */
+function hashFile(file: string): string {
+  const hash = createHash('sha256');
+  eachChunk(file, (chunk) => hash.update(chunk));
+  return hash.digest('hex');
+}
+
+/**
+ * ينسخ ملفًّا إلى المرآة بالأجزاء — مشفّرًا بالصيغة التي يفكّها `unseal` (متّجه ١٢ ‖ وسم ١٦ ‖ المشفَّر):
+ * يُكتب المتّجه وموضع الوسم أصفارًا، ثم المشفَّر جزءًا جزءًا، ثم الوسم في موضعه. ويعيد ما كُتب.
+ */
+function copyInto(src: string, dest: string, key: Buffer | null): number {
+  let bytes = 0;
+  writeAtomic(dest, (fd) => {
+    const put = (chunk: Uint8Array) => {
+      writeAll(fd, chunk);
+      bytes += chunk.length;
+    };
+    if (!key) return eachChunk(src, put);
+    const iv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', key, iv);
+    put(iv);
+    put(Buffer.alloc(16));
+    eachChunk(src, (chunk) => put(cipher.update(chunk)));
+    put(cipher.final());
+    writeAll(fd, cipher.getAuthTag(), 12);
+  });
+  return bytes;
 }
 
 /** المجلّد المرآة: ما اختاره المكتب، أو هو نفسه إن اختير «Diwan-Backup» مباشرة. */
@@ -147,6 +222,11 @@ export type AutoBackupResult = {
 export function runAutoBackup(opts: {
   target: string;
   storeRoot: string;
+  /**
+   * أين تُكتب نسخة القاعدة قبل نسخها — مجلّد بيانات البرنامج لا `%TEMP%`: فهي غير مشفّرة ولو اختار
+   * المكتب التشفير، وتبقى إن انقطع التيار، فلا تبقى إلا حيث القاعدة نفسها.
+   */
+  tempDir: string;
   snapshotDb: (file: string) => void;
   password: string | null;
   keep: number;
@@ -184,19 +264,20 @@ export function runAutoBackup(opts: {
   const now = opts.now ?? new Date();
 
   // ── القاعدة: تُكتب إن تغيّرت، وتُبقى آخرها ──────────────────────────
-  const temp = join(tmpdir(), `diwan-auto-${process.pid}-${Date.now()}.db`);
+  // ما بقي من نسخةٍ انقطعت (تيارٌ أو إغلاقٌ قسريّ) يُحذف أوّلًا — ولا يُمسّ غيره في المجلّد.
+  for (const e of readdirSync(opts.tempDir, { withFileTypes: true })) {
+    if (e.isFile() && TEMP_DB.test(e.name)) rmSync(join(opts.tempDir, e.name));
+  }
+  const temp = join(opts.tempDir, `diwan-auto-${process.pid}-${Date.now()}.db`);
   let dbChanged = false;
   let bytesCopied = 0;
   try {
     opts.snapshotDb(temp);
-    const db = readFileSync(temp);
-    const hash = createHash('sha256').update(db).digest('hex');
+    const hash = hashFile(temp);
     if (hash !== manifest.lastDbHash) {
-      const out = key ? seal(db, key) : db;
       const name = `diwan-${stamp(now)}.db${key ? ENC : ''}`;
-      writeAtomic(join(root, 'db', name), out);
+      bytesCopied += copyInto(temp, join(root, 'db', name), key);
       if (opts.appVersion) manifest.versions = { ...manifest.versions, [name]: opts.appVersion };
-      bytesCopied += out.length;
       manifest.lastDbHash = hash;
       dbChanged = true;
     }
@@ -218,15 +299,13 @@ export function runAutoBackup(opts: {
     const dest = join(root, 'store', key ? `${rel}${ENC}` : rel);
     const size = statSync(src).size;
     if (existsSync(dest) && statSync(dest).size === size + (key ? 28 : 0)) continue;
-    const bytes = readFileSync(src);
-    const out = key ? seal(bytes, key) : bytes;
-    writeAtomic(dest, out);
+    bytesCopied += copyInto(src, dest, key);
     filesCopied++;
-    bytesCopied += out.length;
   }
 
   manifest.lastAt = now.toISOString();
-  writeAtomic(join(root, MANIFEST), JSON.stringify(manifest, null, 2));
+  const json = Buffer.from(JSON.stringify(manifest, null, 2));
+  writeAtomic(join(root, MANIFEST), (fd) => writeAll(fd, json));
   return { root, id: manifest.id, dbChanged, filesCopied, bytesCopied, snapshots: Math.min(snapshots.length, Math.max(1, opts.keep)) };
 }
 

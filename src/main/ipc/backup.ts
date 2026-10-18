@@ -239,6 +239,8 @@ export function runConfiguredAutoBackup(): AutoBackupResult | null {
     const r = runAutoBackup({
       target: status.dir,
       storeRoot: join(dataDir(), 'store'),
+      // نسخة القاعدة المؤقّتة بجانب القاعدة لا في `%TEMP%` (A08).
+      tempDir: dataDir(),
       snapshotDb,
       password: autoPassword(),
       keep: status.keep,

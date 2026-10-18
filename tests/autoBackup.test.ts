@@ -12,17 +12,30 @@ function office() {
   const base = mkdtempSync(join(tmpdir(), 'diwan-auto-'));
   const store = join(base, 'store');
   const usb = join(base, 'usb');
+  const data = join(base, 'data');
   mkdirSync(join(store, 'attachments'), { recursive: true });
   mkdirSync(usb);
+  mkdirSync(data);
   writeFileSync(join(store, 'attachments', 'scan-1.png'), Buffer.alloc(5000, 7));
   writeFileSync(join(store, 'logo.png'), Buffer.from('LOGO'));
   let db = Buffer.from('قاعدة ١');
   return {
     store,
     usb,
+    data,
     setDb: (text: string) => (db = Buffer.from(text)),
     run: (password: string | null = null, keep = 3, at = '2026-09-28T10:00:00Z', appVersion?: string, expectId?: string | null) =>
-      runAutoBackup({ target: usb, storeRoot: store, snapshotDb: (f) => writeFileSync(f, db), password, keep, now: new Date(at), appVersion, expectId })
+      runAutoBackup({
+        target: usb,
+        storeRoot: store,
+        tempDir: data,
+        snapshotDb: (f) => writeFileSync(f, db),
+        password,
+        keep,
+        now: new Date(at),
+        appVersion,
+        expectId
+      })
   };
 }
 
@@ -86,7 +99,7 @@ describe('النسخة التلقائية مرآةً', () => {
   it('والفلاشة غير الموصولة تُقال — ولا مجلّد يُصنع مكانها', () => {
     const o = office();
     const missing = join(o.usb, 'E-drive-not-here');
-    expect(() => runAutoBackup({ target: missing, storeRoot: o.store, snapshotDb: () => undefined, password: null, keep: 3 })).toThrow('فلاشة');
+    expect(() => runAutoBackup({ target: missing, storeRoot: o.store, tempDir: o.data, snapshotDb: () => undefined, password: null, keep: 3 })).toThrow('فلاشة');
     expect(existsSync(missing)).toBe(false);
     expect(() => mirrorInfo(o.usb)).toThrow('ليس نسخةً');
   });
@@ -139,7 +152,7 @@ describe('المرآة لها هويّة — فلاشة غريبة بحرف فل
     const foreign = mkdtempSync(join(tmpdir(), 'diwan-foreign-'));
     writeFileSync(join(foreign, 'ملف الزبون.docx'), 'x');
     const attempt = () =>
-      runAutoBackup({ target: foreign, storeRoot: o.store, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id });
+      runAutoBackup({ target: foreign, storeRoot: o.store, tempDir: o.data, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id });
     expect(attempt).toThrow(ForeignMirrorError);
     expect(attempt).toThrow(/لم يُكتب عليه شيء/);
     expect(readdirSync(foreign)).toEqual(['ملف الزبون.docx']);
@@ -148,7 +161,7 @@ describe('المرآة لها هويّة — فلاشة غريبة بحرف فل
     other.run();
     const manifestOf = () => readFileSync(join(other.usb, MIRROR, 'manifest.json'), 'utf8');
     const before = manifestOf();
-    expect(() => runAutoBackup({ target: other.usb, storeRoot: o.store, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id })).toThrow(ForeignMirrorError);
+    expect(() => runAutoBackup({ target: other.usb, storeRoot: o.store, tempDir: o.data, snapshotDb: (f) => writeFileSync(f, 'db'), password: null, keep: 3, expectId: id })).toThrow(ForeignMirrorError);
     expect(manifestOf()).toBe(before);
   });
 
