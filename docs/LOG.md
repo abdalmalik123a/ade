@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٢:٠٥ — مراجعة D70 ✓ · وحجز D71 🔒
+- **رسالة المالك:** `/next`.
+- **D70 بـ«كيف يُراجَع»:** `grep -n "handleChecked" src/main/ipc/*.ts` ← تعريفه (`checked.ts:13`) وقناتا `revisions:list`/`get` (`templates.ts:112–113`) وحدهما ·
+  `channels.allow.json` ٢٠٣ اسمًا · وأمر جرد D65 (منسوخًا من قيده ببرنامج) ← `203 | … 62 34 23 68 0 16 | بالبوّابة 26` · والكسر أعدتُه بنفسي (`elements:probe`
+  بـ`ipcMain.handle` في `ipc/elements.ts`، لم يُودَع): القاعدتان ٤ و٩ ✗ «ليست في tests/channels.allow.json — سجّل القناة الجديدة بـhandleChecked…»، وبعد `git checkout` ٩ ✓. ✓
+- **D71 بلا نصّ أمر** (سطرٌ في PLAN) — فكتبتُه من سطره بطريقة D60 (`docs/orders/D71.md`)؛ وشروطه: D70 ✅ ومُراجَع، ولا ⬜ قبله إلا D66 (يعتمد عليه)، ولا نصّ لـD66 ولا D72–D75. **التالي:** D71 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١١:٥٥ — D70 ✅ — القناة الجديدة تُنمَّط: `@shared/bridgeGuards` و`handleChecked`، والقاعدة ٩ «القنوات القائمة» · والتوقّف هنا (ر160)
 - **ما تغيّر:** `bridgeGuards.ts` (`id` `text(max)` `oneOf` `optional` `listOf`، خالصةٌ ورسالتها تسمّي المعامل) و`handleChecked` في `ipc/checked.ts` (ينادي `ipcMain.handle` فتلفّه البوّابة والترجمة، والزائد يُرفض) — `9d3f38d` ·
   `revisions:list`/`get` بـ`oneOf(KINDS)` و`id`، و`isKind` حُذف (لا منادي له) — **والنوع المجهول كان يعيد `[]`/`null` وصار يُرفض برسالة**، والواجهة لا ترسل إلا المعروف (`RevisionsMenu`: `template`/`letterhead`) ·
