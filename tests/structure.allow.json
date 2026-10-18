@@ -1,10 +1,8 @@
 {
-  "src/main/ipc/documents.ts": 473,
   "src/main/services/documents.ts": 912,
   "src/main/services/excelDoc.ts": 690,
   "src/main/services/import.ts": 553,
   "src/main/services/importFolder.ts": 418,
-  "src/main/services/render.ts": 471,
   "src/shared/blanks.ts": 658,
   "src/shared/deskew.ts": 467,
   "src/shared/fieldHints.ts": 519,
