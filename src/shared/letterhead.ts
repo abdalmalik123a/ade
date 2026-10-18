@@ -10,7 +10,8 @@
  * البنية تُخزَّن JSON في letterheads.layout_json ومع كل مسودة وكتاب.
  */
 
-import { docText, emptyDoc, normalizeDoc, type Block } from './doc';
+import { docText, emptyDoc, type Block } from './doc';
+import { normalizeDoc } from './docNormalize';
 import { cleanFamily, legacyFamily, stackOf } from './fonts';
 
 export type BlockKind = 'text' | 'image' | 'divider' | 'field' | 'spacer';

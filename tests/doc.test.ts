@@ -6,7 +6,6 @@ import {
   emptyDoc,
   fieldRef,
   makeField,
-  normalizeDoc,
   pageMm,
   paginate,
   paragraph,
@@ -21,6 +20,7 @@ import {
   type ListBlock,
   type TableBlock
 } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { missingRequired, renderDocHtml } from '../src/shared/docHtml';
 import { legacyFieldMeta, renderBody } from '../src/shared/template';
 

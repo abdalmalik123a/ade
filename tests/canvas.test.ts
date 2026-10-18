@@ -19,7 +19,8 @@ import {
   topZ
 } from '../src/shared/canvas';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
-import { fieldRef, normalizeDoc, reconcileFields, run, usedKeys, docText } from '../src/shared/doc';
+import { fieldRef, reconcileFields, run, usedKeys, docText } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 
 const ID_CARD = SIZE_PRESETS.find((p) => p.key === 'id-card')!.size;
 

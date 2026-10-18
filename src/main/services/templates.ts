@@ -1,6 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { legacyFieldMeta, type TemplateInput, type TemplateVariable } from '@shared/template';
-import { docFromLegacy, normalizeDoc, type Doc, type Issuing } from '@shared/doc';
+import { docFromLegacy, type Doc, type Issuing } from '@shared/doc';
+import { normalizeDoc } from '@shared/docNormalize';
 import type { TemplateSummary, TemplateStats, TemplateDetail, DraftRow, RevisionPayloads } from '@shared/api';
 import { forgetRevisions, prepareIdentity, recordRevision, stampNew, withoutIds } from './revisions';
 import { indexRow, unindexRow } from './searchIndex';

@@ -5,7 +5,8 @@
  * والتصميم كلّه في مفتاحٍ واحد `__design` (كما يحفظ المحرّر ورقته في `__doc`): الوثيقة بوجهها وظهرها وعنوانها وربط
  * أعمدة دفعتها، وما مُلئ من حقولها. فمسودّةٌ فيها `__design` تصميمٌ يُفتح في التصاميم، وما سواها كتابٌ يُفتح في المحرّر.
  */
-import { normalizeDoc, type Doc } from '../doc';
+import { type Doc } from '../doc';
+import { normalizeDoc } from '../docNormalize';
 
 export const DESIGN_DRAFT_KEY = '__design';
 

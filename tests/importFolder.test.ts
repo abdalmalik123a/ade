@@ -17,7 +17,8 @@ import { sheetToText } from '../src/main/services/sheetRead';
 import { FOLDER_DEPTH, skippedLines } from '../src/shared/importSkipped';
 import { listTemplates, prepareTemplates, templateDoc } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
-import { docText, emptyDoc, normalizeDoc, paragraph, run, type Block } from '../src/shared/doc';
+import { docText, emptyDoc, paragraph, run, type Block } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { strToU8, zipSync } from 'fflate';
 
 const FIXTURE = join(__dirname, 'fixtures', 'school-warning.docx');

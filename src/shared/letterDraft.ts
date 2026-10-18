@@ -6,7 +6,8 @@
  * `{وسوم}` وحقولًا في قائمةٍ جانبية (`letterFields`) — والمسودات والكتب التي حُفظت
  * به تُقرأ هنا وتُرحَّل إلى الكتل، فلا يضيع منها سطر.
  */
-import { docFromLegacy, docText, normalizeDoc, type Doc, type DocField } from './doc';
+import { docFromLegacy, docText, type Doc, type DocField } from './doc';
+import { normalizeDoc } from './docNormalize';
 import { missingRequired } from './docHtml';
 import { formatGregorian } from './dates';
 import { normalizeLayout, type LetterheadLayout } from './letterhead';

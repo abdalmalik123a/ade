@@ -11,7 +11,6 @@ import { join, resolve } from 'node:path';
 import {
   docFromLegacy,
   docText,
-  normalizeDoc,
   walkBlocks,
   type Block,
   type Doc,
@@ -21,6 +20,7 @@ import {
   type Orientation,
   type LetterheadMode
 } from '../../src/shared/doc';
+import { normalizeDoc } from '../../src/shared/docNormalize';
 import {
   AUTO_TOKENS,
   CITIZEN_TOKENS,

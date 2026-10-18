@@ -8,7 +8,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeDoc } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { renderCanvasHtml } from '../src/shared/canvasHtml';
 import { CANVAS_VERSION, canvasVersionOf, migrateCanvas, normalizeCanvas, SCREEN_DPI } from '../src/shared/canvas';
 

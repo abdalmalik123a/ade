@@ -4,7 +4,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { canvasDoc, emptyCanvas, shapeElement, textElement, CANVAS_VERSION } from '../src/shared/canvas';
-import { fieldRef, normalizeDoc, run } from '../src/shared/doc';
+import { fieldRef, run } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { DESIGN_DRAFT_KEY, designDraftValues, designKey, isDesignDraft, readDesignDraft } from '../src/shared/design/draft';
 import { letterValues, readSavedLetter, NO_REGISTRY } from '../src/shared/letterDraft';
 

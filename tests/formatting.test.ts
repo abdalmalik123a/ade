@@ -5,7 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { makeTable } from '../src/shared/docEdit';
-import { emptyDoc, normalizeDoc, paragraph, run, type ImageBlock } from '../src/shared/doc';
+import { emptyDoc, paragraph, run, type ImageBlock } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { renderDocHtml, watermarkHtml } from '../src/shared/docHtml';
 
 describe('الجدول: أعمدةٌ بأوزانٍ نسبية', () => {

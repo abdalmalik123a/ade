@@ -3,7 +3,8 @@
  */
 import type { Dispatch, SetStateAction } from 'react';
 import RevisionsMenu from '../../components/RevisionsMenu';
-import { type Doc, normalizeDoc, docFromLegacy } from '@shared/doc';
+import { type Doc, docFromLegacy } from '@shared/doc';
+import { normalizeDoc } from '@shared/docNormalize';
 import { legacyFieldMeta } from '@shared/template';
 import { count } from '@shared/arabic';
 import SpellingPanel from '../../components/SpellingPanel';

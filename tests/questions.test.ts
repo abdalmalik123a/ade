@@ -4,7 +4,6 @@ import {
   itemScore,
   listScore,
   newUuid,
-  normalizeDoc,
   paragraph,
   run,
   tallyScores,
@@ -12,6 +11,7 @@ import {
   type ListBlock,
   type ListItem
 } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { marker, renderDocHtml } from '../src/shared/docHtml';
 
 const item = (text: string, patch: Partial<ListItem> = {}): ListItem => ({

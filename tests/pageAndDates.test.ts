@@ -3,7 +3,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { formatDateIn, formatGregorian, formatHijri, fromIsoDate } from '../src/shared/dates';
-import { emptyDoc, fieldRef, isDateField, keepTogetherFrom, makeField, newUuid, normalizeDoc, paragraph, run, type Block, type Doc } from '../src/shared/doc';
+import { emptyDoc, fieldRef, isDateField, keepTogetherFrom, makeField, newUuid, paragraph, run, type Block, type Doc } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { pageCss, renderDocHtml } from '../src/shared/docHtml';
 import { makeTable } from '../src/shared/docEdit';
 

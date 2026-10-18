@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { listTemplates, saveTemplate } from '../src/main/services/templates';
-import { listScore, normalizeDoc, run, type ListItem } from '../src/shared/doc';
+import { listScore, run, type ListItem } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import { renderDocHtml } from '../src/shared/docHtml';
 import {
   EXAM_CATEGORY,

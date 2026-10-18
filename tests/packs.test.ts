@@ -16,7 +16,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { readZipIndex } from '../src/main/services/zip';
 import { unzipSync } from 'fflate';
-import { normalizeDoc, type Doc, type DocField } from '../src/shared/doc';
+import { type Doc, type DocField } from '../src/shared/doc';
+import { normalizeDoc } from '../src/shared/docNormalize';
 import {
   buildPack,
   DIWAN_PACK_NAMESPACE,
