@@ -15,7 +15,7 @@ const ENTRY_MAX = 10;
 describe('ميزانية الوثائق التي تقرؤها كلّ جلسة', () => {
   it('PLAN لوحة حالٍ قصيرة', () => {
     const size = statSync(PLAN).size;
-    expect(size, `docs/PLAN.md ${size} بايت فوق ${PLAN_MAX}: انقل جدول الموجة المكتملة بنصّه إلى docs/legacy/PLAN-<الموجة>.md، وتفاصيل البنود إلى docs/BACKLOG.md`).toBeLessThanOrEqual(PLAN_MAX);
+    expect(size, `docs/PLAN.md ${size} بايت فوق ${PLAN_MAX}: انقل جدول الموجة المكتملة بنصّه إلى docs/legacy/PLAN-<الموجة>.md (وأسطر ✅ المراجَعة كذلك، ر162)، وتفاصيل البنود إلى docs/BACKLOG.md`).toBeLessThanOrEqual(PLAN_MAX);
   });
 
   it('الدفتر قيود الأوامر الجارية وحدها', () => {
