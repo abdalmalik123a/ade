@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:٤٨ — D86 ✅ — A11 (١٠): `shared/fieldHints.ts` ٥١٩ ← ٣٧١ نقلًا حرفيًّا، وألفاظ الكشف والصياغة مع الجنس في `fieldWords.ts` · والتوقّف هنا (التالي D87 🧭 وحده، ر162) · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`5dd760f`): `move.cjs` (`tsconfig.web.json`، بلا `fromSrc`) ← الخمسة والعشرون بتعليقاتها وأسطر أقسامها إلى `fieldWords.ts` ١٦٧ · وفي الأصل بعد سطر `./gender` وما وضعه `move.cjs` بابٌ لـ`wrongGenderWords` · والاثنا عشر غير المصدَّرة بلا `export` (فالمصدَّر منه ١٣) · `prune.cjs` نظّف `guessGender` من `fieldHints.ts` · `typecheck` نظيف · والسقف (`dfd3a6b`): `RATCHET` فسقط `fieldHints.ts` من `structure.allow.json`.
+- **الوثائق** (`91648a0`): ARCHITECTURE §١ (بقي خمسة) و§٢ (الجدول #١١ ← D86 بأرقامه، وسطر الأوامر D86 ✅، والخمسة الباقية لـD87) · BACKLOG A11 (العشرة ✅، والخمسة لـD87).
+- **الفحص:** الحرفيّة `verbatim.cjs e94b1ca` ← «ضاع 0 · جديد 0» · `git show --stat 5dd760f` الملفّان وحدهما · المصدَّر من `fieldWords` ١٣، ومن `fieldHints` خمسة قبل وبعد · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← خمسة ملفّات بلا `fieldHints.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `wordHints` ٢٢ ✓ و`importFolder` ٣٤ ✓ بلا ✗.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، ومرجع الحرفيّة `e94b1ca` ← «ضاع 0 · جديد 0». **التالي:** `/next` يراجع D86 ثم يأخذ D87 🧭 (وحده بحكم ر162).
+
 ## ٢٠٢٦-١٠-١٩ ٠٠:٣٨ — مراجعة D85 ✓ · وحجز D86 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **رسالة المالك:** `/next`.
 - **D85 بـ«كيف يُراجَع»:** `verbatim.cjs b6b06c8` ← «ضاع 6 · جديد 0» (`emptyLayout` `newId` `Align` `ColumnCount` `LetterheadBlock` `LetterheadLayout` من استيراد `@shared/letterhead` الممتدّ كما في القيد) · `git show --stat be71dfb` الملفّان وحدهما · الرأس في `import.ts` بعد استيراداته وليس في `importLayout.ts` · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/main/services/import.ts`. ✓
