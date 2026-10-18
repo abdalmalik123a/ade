@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:٣٨ — مراجعة D85 ✓ · وحجز D86 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **رسالة المالك:** `/next`.
+- **D85 بـ«كيف يُراجَع»:** `verbatim.cjs b6b06c8` ← «ضاع 6 · جديد 0» (`emptyLayout` `newId` `Align` `ColumnCount` `LetterheadBlock` `LetterheadLayout` من استيراد `@shared/letterhead` الممتدّ كما في القيد) · `git show --stat be71dfb` الملفّان وحدهما · الرأس في `import.ts` بعد استيراداته وليس في `importLayout.ts` · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/main/services/import.ts`. ✓
+- **تحقّق D86 قبل البدء:** `fieldHints.ts` ٥١٩ وسقفه ٥١٩ · «مكوّنات 1 أكبرها 443» · لا `fieldWords.ts`. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٠:٣٤ — D85 ✅ — A11 (٩): `services/import.ts` ٥٥١ ← ٢٥٤ نقلًا حرفيًّا، والفقرات والترويسة وتخطيطها في `importLayout.ts` · والتوقّف هنا (٤ نقاط، ر162) · النموذج: Gemini 4 Argon (Medium)
 - **النقل** (`be71dfb`): `move.cjs` (`tsconfig.node.json`، بلا `fromSrc`) ← الستّة عشر بتعليقاتها إلى `importLayout.ts` ٢٩٩ · وبـEdit: الرأس (١٢ سطرًا) أُعيد من أعلى `importLayout.ts` إلى `import.ts` بعد استيراداته كما كان، وبابٌ لـ`ImageSaver`، والتسعة غير المصدَّرة بلا `export` (فالمصدَّر منه ٧) · `prune.cjs` وحذف بقيّة استيراد `@shared/letterhead` الممتدّ غير المستعمَل في `import.ts` · `typecheck` نظيف · والسقف (`a070394`): `RATCHET` فسقط `import.ts` من `structure.allow.json`.
 - **الوثائق** (`3e38e26`): ARCHITECTURE §١ (بقي ستّة) و§٢ (الجدول #١٠ ← D85 بأرقامه، وسطر الأوامر D85 ✅) · BACKLOG A11 (التسعة ✅، والستّة: D86 ثم D87).
