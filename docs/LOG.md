@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٠٩ — D91 ✅ — A11 (١٤): `shared/paperDoc.ts` ٤٤٧ ← ٣٣٤ نقلًا حرفيًّا، وأنواع القراءة وهندسة السطور وقطعها في `paperLines.ts` · والتوقّف هنا (٤ نقاط، ر162) · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`d49e6aa`): `move.cjs` (`tsconfig.web.json`، بلا `fromSrc`) ← السبعة عشر تصريحًا بتعليقاتها إلى `paperLines.ts` ١٢٧ · وبـEdit: بابٌ في `paperDoc.ts` يعيد تصدير الأنواع الأربعة (`OcrWord` `OcrLine` `PaperRead` `Piece`)، والأربعة غير المصدَّرة (`LETTERS` `BIDI` `joinWords` `suspicious`) بلا `export` (فالمصدَّر منه ١٣) · `prune.cjs` نظّف استيرادًا من `paperDoc.ts` · `typecheck` نظيف · والسقف (`3dc9eaf`): `RATCHET` فسقط `paperDoc.ts` من `structure.allow.json`.
+- **الوثائق** (`93723d4`): ARCHITECTURE §١ (بقي واحد) و§٢ (الجدول #١٥ ← D91 بأرقامه، وسطر الأوامر D91 ✅، والباقي لـD92) · BACKLOG A11 (الأربعة عشر ✅، والباقي لـD92).
+- **الفحص:** الحرفيّة `verbatim.cjs f902d96` ← «ضاع 0 · جديد 0» · `git show --stat d49e6aa` الملفّان وحدهما · المصدَّر من `paperLines` ١٣، ومن `paperDoc` ١١ قبل وبعد · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← ملفٌّ واحد (`importFolder.ts`) بلا `paperDoc.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `paperPhoto` ١٨ ✓ بلا ✗.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، ومرجع الحرفيّة `f902d96` ← «ضاع 0 · جديد 0». **التالي:** `/next` يراجع D91 ثم يأخذ D92 (م، نقطتان؛ وD93 🧭 بعده وحده بحكم ر162).
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٠٣ — مراجعة D90 ✓ · وحجز D91 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **D90 بـ«كيف يُراجَع»:** `verbatim.cjs 359103d` ← «ضاع 0 · جديد 0» · `git show --stat c03c400` الملفّان وحدهما · `export` في `imageFormDoc.ts` ٢ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/imageForm.ts`. ✓
 - **تحقّق D91 قبل البدء:** `paperDoc.ts` ٤٤٧ وسقفه ٤٤٧ · `inventory.cjs` ← «مكوّنات 1 أكبرها 367» و«دورات القيم: 0» · لا `paperLines.ts`. ✓

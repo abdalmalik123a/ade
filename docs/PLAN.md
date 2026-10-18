@@ -29,7 +29,7 @@
 | [D88](orders/done/D88.md) | A11 (١١): `shared/deskew.ts` — `detectQuad` في `quadDetect.ts` بلا بابٍ و`fromSrc` لـ`Quad` و`PixelData` | ✅ ١٩ ت١ (`8d6adec` `f75517b` `d0850da`) — ٤٦٧ ← ٣٢٦ و`quadDetect.ts` ١٤٥ ومستوردوه الثلاثة، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D87 |
 | [D89](orders/done/D89.md) | A11 (١٢): `shared/qr.ts` — حقل غالوا وReed-Solomon وتوزيع الكلمات في `qrCodewords.ts` ببابٍ يعيد التصدير | ✅ ١٩ ت١ (`38e6fd8` `afe26e1` `2287063`) — ٤٦٣ ← ٣١٣ و`qrCodewords.ts` ١٥٧ ببابٍ والمصدَّر ٦، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D88 |
 | [D90](orders/done/D90.md) | A11 (١٣): `shared/imageForm.ts` — بناء وثيقة الاستمارة المصوَّرة في `imageFormDoc.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `FormSlot` | ✅ ١٩ ت١ (`c03c400` `600fd14` `1d64c56`) — ٤٤٧ ← ٣٦٦ و`imageFormDoc.ts` ٨٨ ببابٍ و`fromSrc` والمصدَّر ٢، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D89 |
-| [D91](orders/D91.md) | A11 (١٤): `shared/paperDoc.ts` — أنواع التعرّف الضوئي وهندسة الصناديق وتقسيم السطر في `paperLines.ts` ببابٍ للأنواع الأربعة | 🔒 ١٩ ت١ ٠٢:٠٣ | ⚙️ م | D90 |
+| [D91](orders/done/D91.md) | A11 (١٤): `shared/paperDoc.ts` — أنواع التعرّف الضوئي وهندسة الصناديق وتقسيم السطر في `paperLines.ts` ببابٍ للأنواع الأربعة | ✅ ١٩ ت١ (`d49e6aa` `3dc9eaf` `93723d4`) — ٤٤٧ ← ٣٣٤ و`paperLines.ts` ١٢٧ ببابٍ للأنواع الأربعة والمصدَّر ١٣، والحرفيّة 0 و0، وخرج من السقوف | ⚙️ م | D90 |
 | [D92](orders/D92.md) | A11 (١٥ — الأخير): `services/importFolder.ts` — `applyImportPlan` وتعليقه في `importApply.ts` بلا باب، وإفراغ `tests/structure.allow.json` وإغلاق A11 | ⬜ | ⚙️ م | D91 |
 | D93 | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ⬜ | 🧭 | D92 |
 
