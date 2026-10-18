@@ -20,7 +20,7 @@ export function handOut<T extends string | null>(path: T): T {
 
 /** أأعطته الرئيسة في هذا التشغيل؟ — بالمسار المحلول، فشرطةٌ أخرى أو حرفٌ بحالةٍ أخرى على ويندوز هو هو. */
 export function wasHandedOut(path: unknown): path is string {
-  return typeof path === 'string' && path !== '' && !path.includes('\0') && handed.has(key(path));
+  return typeof path === 'string' && path !== '' && !path.includes('\u0000') && handed.has(key(path));
 }
 
 /** رسالة الرفض: المسار لم تعطه الرئيسة — فيُختار من حوار ديوان ثانيةً. */

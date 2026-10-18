@@ -3,14 +3,14 @@
  *
  * الواجهة في صندوقٍ بلا Node، ولا تغادر صفحة البرنامج ولو طُلب منها (رابطٌ إلى ملفٍّ على القرص)، ولا
  * تفتح نافذةً، وما سقط منها يُعاد. و«عن البرنامج» من رأس الشريط: الإصدار والمطوّر ورقمه والشعار
- * والإشعارات القانونية.
+ * والإشعارات القانونية. والمسارات عند الباب (A04، D69): ما أعطته الرئيسة وحده، وما في المخزن وحده.
  */
 import { join } from 'node:path';
-import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
-export default async function scenario(page, { shotsDir }) {
+export default async function scenario(page, { shotsDir, profile }) {
   const steps = [];
   if (shotsDir) await page.shot(join(shotsDir, 'header.png'));
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
@@ -72,6 +72,24 @@ export default async function scenario(page, { shotsDir }) {
   const escaped = await page.eval(`return fetch('diwan://store/..%5Cdata%5Cdiwan.db').then((r) => r.status, () => 'خطأ');`);
   ok(`والمخزن يعطي ملفّه (${served}) ولا يُخرج منه (${escaped})`, served === 200 && escaped === 403);
   rmSync(clipDir, { recursive: true, force: true });
+
+  // ── A04 (D69): مسارٌ مطلقٌ لم تعطه الرئيسة يُرفض قبل أن يُلمس، وصورة الشعار والختم من المخزن وحده ──
+  const preUpdate = join(profile, 'data', 'pre-update-backups');
+  const preCount = () => (existsSync(preUpdate) ? readdirSync(preUpdate).length : 0);
+  const preBefore = preCount();
+  const winIni = JSON.stringify('C:\\Windows\\win.ini');
+  const doors = await page.eval(`
+    const msg = (p) => p.then(() => 'قُبل', (e) => String(e?.message ?? e));
+    return { inspect: await msg(window.diwan.backup.inspect(${winIni}, null)), install: await msg(window.diwan.update.install(${winIni})) };`);
+  ok(`وفحص نسخةٍ بمسارٍ لم تعطه الرئيسة يُرفض برسالته («…${doors.inspect.slice(-32)}»)`, doors.inspect.includes('اختر الملفّ من ديوان ثانيةً'));
+  ok(`وتثبيت تحديثٍ بمسارٍ لم يُعطَ يُرفض ولا تُكتب نسخة ما قبل التحديث (${preBefore} ← ${preCount()})`, doors.install.includes('اختر الملفّ من ديوان ثانيةً') && preCount() === preBefore);
+  const seal = await page.eval(`return window.diwan.seals.add({ name: 'ختم تجريبي', kind: 'شعار', imagePath: '../diwan.db' }).then(() => 'قُبل', (e) => String(e?.message ?? e));`);
+  ok('وختمٌ صورته «../diwan.db» يُرفض: الصورة خارج مخزن ديوان', seal.includes('الصورة خارج مخزن ديوان'));
+  const logo = await page.eval(`
+    const c = await window.diwan.clients.save({ id: null, name: 'مدرسة النور' });
+    const done = await window.diwan.clients.setLogo(c.id, ${JSON.stringify(stored)});
+    return done.logo ?? null;`);
+  ok(`وشعار الجهة بمسار المخزن الصحيح يُحفظ كما في designBrandKit («${logo}»)`, logo === stored);
 
   // واجهةٌ تسقط تُعاد.
   await page.send('Page.crash').catch(() => undefined);
