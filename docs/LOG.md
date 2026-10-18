@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١١:٠٧ — D68 ✅ — القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`: الشبكة والاعتماديات وحال الترخيص · والتوقّف هنا (ر160)
+- **ما تغيّر** (`5ff63d4`؛ `tests/structure.test.ts` وحده، ٢٤٧ ← ٣٠٣ سطرًا): سطر ٨ في الرأس، و`it('٨ — …')` بأربعة أقسام وقوائم صريحة (`NET_MODULES` `NET_FETCH` `CONNECT_SRC` `DEPENDENCIES`
+  `LICENSE_SERVICE` `LICENSE_STATUS` `PRODUCTIVE`): (١) Node بلا وحدة شبكة ولا `fetch(` ولا `XMLHttpRequest`/`WebSocket`/`EventSource`/`sendBeacon`، و`net.fetch|request(` في `main/index.ts` وحده ·
+  (٢) `fetch(` الواجهة أوّله `diwan://` و`connect-src` واحدٌ `'self' diwan:` · (٣) `dependencies` السبع بالاتّجاهين · (٤) `services/license` و`licenseStatus(` و`requireProductive(` في ملفّاتها. و٨ ✓ على القائم.
+- **الكسور الأربعة** (كلٌّ وحده، `git checkout -- src` بعده، لم تُودَع): `fetch('https://example.com')` في `clock.ts` ← «ينادي fetch(» · `import 'node:https'` في `arabic.ts` ← «يستورد وحدة الشبكة» (ومعها القاعدة ١) ·
+  `https:` في `connect-src` ← «connect-src «'self' diwan: https:»» · `licenseStatus(true)` في `ipc/backup.ts` ← «ينادي licenseStatus(» — وبعد الإعادة ٨ ✓ ·
+  **وأربعةٌ زائدة** بالطريقة نفسها: `fetch(\`https://…\`)` في `UploadExportDialog` · `axios` في `package.json` · استيراد `services/license` في `backup.ts` · `net.fetch` في `clock.ts` — كلٌّ أسقطها برسالته.
+- **الوثائق** (`03f50dd`): «عقد الجسر» سطر D68 ✅ · BACKLOG A04 (٢) و(٣) · `system.md` سطرا A04 · ونُقل الأمر.
+- **الفحص:** `typecheck` ✓ · `structure` `lint` `gate` `license` **٤٠ ✓** · `docsBudget` `repoHygiene` ٧ ✓ · لا بناء ولا سيناريو (`src/` لم يتغيّر) · لا بايت تحكّم.
+- **وثغرةٌ خارج النطاق:** حزمة شبكةٍ في `devDependencies` تُستورد في الرئيسة تُحزم فيها ولا تراها القاعدة (تمنع `http` في `src` لا داخل الحزم) — يحسمها أمرٌ لاحق. **التالي:** `/next` يراجع D68 ثم D69 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ١١:٠٠ — مراجعة D67 ✓ · وحجز D68 🔒
 - **رسالة المالك:** `/next`.
 - **D67 بـ«كيف يُراجَع»:** `git show 673923e`: `const cut = shingles(item.text)` مرّةً في `groupDuplicates` (والمجموعة تحفظ `cuts`)، و`similarity(a: string | Set<string>, …)`، و`blanks.ts` ٦٥٨ وسقفه ٦٥٨ ·
