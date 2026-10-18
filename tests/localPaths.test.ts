@@ -2,11 +2,12 @@
  * مساراتٌ من الواجهة تصير ملفّاتٍ تُقرأ (و٥): صورة Word الملصوقة ملفٌّ محلّيّ في المجلّد المؤقّت أو المخزن وحده —
  * لا رابطٌ بمضيف ولا مسار شبكة (قراءته ترسل بصمة دخول الموظف إلى ذلك الجهاز) — و`diwan://store/…` داخل المخزن.
  */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { isInside, pastedImagePath, resolveStorePath } from '../src/main/services/localPaths';
+import { afterAll, describe, expect, it } from 'vitest';
+import { isInside, pastedImagePath, resolveStorePath, storeFile } from '../src/main/services/localPaths';
 import { docSchema } from '../src/shared/docPm';
 
 const TMP = tmpdir();
@@ -55,6 +56,32 @@ describe('ملفّ المخزن من مساره النسبي (و٥)', () => {
     expect(isInside(STORE, STORE)).toBe(true);
     expect(isInside(STORE, `${STORE}-other`)).toBe(false);
     expect(isInside(STORE, join(STORE, '..', 'x'))).toBe(false);
+  });
+});
+
+describe('ملفٌّ موجودٌ في المخزن — للشعار والختم وصور Word (A04، D69)', () => {
+  const store = mkdtempSync(join(TMP, 'diwan-storefile-'));
+  // ملفٌّ موجودٌ بجانب المخزن لا فيه — كقاعدة البيانات بجانب `store/`.
+  const outside = `${store}-outside.db`;
+  mkdirSync(join(store, 'seals'));
+  writeFileSync(join(store, 'seals', 'logo.png'), 'png');
+  writeFileSync(outside, 'db');
+  afterAll(() => {
+    rmSync(store, { recursive: true, force: true });
+    rmSync(outside, { force: true });
+  });
+
+  it('ملفٌّ في المخزن يعود مساره المحلول', () => {
+    expect(storeFile(store, 'seals/logo.png')).toBe(join(store, 'seals', 'logo.png'));
+    expect(storeFile(store, 'seals/../seals/logo.png')).toBe(join(store, 'seals', 'logo.png'));
+  });
+
+  it('و`null` لـ«..» ومطلقٍ ومسار شبكة وملفٍّ غير موجود ومجلّدٍ وغير نصّ', () => {
+    const bad: unknown[] = [`../${basename(outside)}`, '../diwan.db', outside, join(store, 'seals', 'logo.png'), 'C:/Windows/win.ini'];
+    bad.push('\\\\server\\share\\logo.png', '//server/share/logo.png', 'seals/missing.png', 'seals', '', 'seals/logo.png\0', null, 7);
+    for (const rel of bad) {
+      expect(storeFile(store, rel)).toBeNull();
+    }
   });
 });
 

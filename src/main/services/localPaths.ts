@@ -30,9 +30,9 @@ export function resolveStorePath(root: string, rel: string): string | null {
   return isInside(root, full) && fold(full) !== fold(resolve(root)) ? full : null;
 }
 
-/** ملفٌّ موجودٌ داخل المخزن من مساره النسبي — أو `null` (خارجه، أو مجلّد، أو غير موجود، أو ليس نصًّا). والاحتواء يُحسم قبل اللمس. */
+/** ملفٌّ موجودٌ داخل المخزن من مساره النسبي — أو `null` (خارجه، أو مطلق، أو مجلّد، أو غير موجود، أو ليس نصًّا). والاحتواء يُحسم قبل اللمس. */
 export function storeFile(root: string, rel: unknown): string | null {
-  const full = typeof rel === 'string' ? resolveStorePath(root, rel) : null;
+  const full = typeof rel === 'string' && !isAbsolute(rel) ? resolveStorePath(root, rel) : null;
   if (!full) return null;
   try {
     return statSync(full).isFile() ? full : null;
