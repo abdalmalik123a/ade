@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١١:١٢ — مراجعة D68 ✓ · وحجز D69 🔒
+- **رسالة المالك:** `/next`.
+- **D68 بـ«كيف يُراجَع»:** القاعدة ٨ في `structure.test.ts:251` بأقسامها الأربعة (Node · الواجهة و`connect-src` · السبع · الترخيص) وقوائمها الصريحة، وسطرها ٨ في الرأس ·
+  الكسور الأربعة ونتائجها في القيد، والأوّل أعدتُه بنفسي (`fetch('https://example.com')` في `clock.ts`، لم يُودَع) ← ١ ✗ «src/main/clock.ts: ينادي fetch(»، وبعد `git checkout` ٨ ✓ ·
+  `git diff --stat 5cc29c8..96c1163 -- src` فارغ. ✓
+- **شروط D69:** أمر جرد D65 (منسوخًا من قيده) ← `205 | … 62 34 23 68 2 16` (١٦ مسارًا) · `backup:inspect`/`restore` يناديان `openAndInspect(path` و`mirrorInspect`/`mirrorRestore` `readMirror(path` كما جاء ·
+  `createPreUpdateBackup` (`update.ts:39`) قبل `readUpdate` (٤١) · `includes('..')` في `documents.ts:457` و`templates.ts:271` · `documents.ts` ٤٧٣/٤٧٣ و`backup.ts` ٣٩١ · لا `handedPaths` ولا `storeFile(` في `src/`.
+  **التالي:** D69 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١١:٠٧ — D68 ✅ — القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`: الشبكة والاعتماديات وحال الترخيص · والتوقّف هنا (ر160)
 - **ما تغيّر** (`5ff63d4`؛ `tests/structure.test.ts` وحده، ٢٤٧ ← ٣٠٣ سطرًا): سطر ٨ في الرأس، و`it('٨ — …')` بأربعة أقسام وقوائم صريحة (`NET_MODULES` `NET_FETCH` `CONNECT_SRC` `DEPENDENCIES`
   `LICENSE_SERVICE` `LICENSE_STATUS` `PRODUCTIVE`): (١) Node بلا وحدة شبكة ولا `fetch(` ولا `XMLHttpRequest`/`WebSocket`/`EventSource`/`sendBeacon`، و`net.fetch|request(` في `main/index.ts` وحده ·
