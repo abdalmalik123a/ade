@@ -109,11 +109,11 @@ function writeAtomic(file: string, fill: (fd: number) => void): void {
 }
 
 /** يقرأ ملفًّا جزءًا جزءًا في مخزنٍ واحد — فالجزء صالحٌ حتى النداء التالي وحده. */
-function eachChunk(file: string, use: (chunk: Buffer) => void): void {
+function eachChunk(file: string, onChunk: (chunk: Buffer) => void): void {
   const fd = openSync(file, 'r');
   const buf = Buffer.allocUnsafe(CHUNK);
   try {
-    for (let n = readSync(fd, buf, 0, CHUNK, null); n > 0; n = readSync(fd, buf, 0, CHUNK, null)) use(buf.subarray(0, n));
+    for (let n = readSync(fd, buf, 0, CHUNK, null); n > 0; n = readSync(fd, buf, 0, CHUNK, null)) onChunk(buf.subarray(0, n));
   } finally {
     closeSync(fd);
   }
