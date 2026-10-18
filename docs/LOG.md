@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠١:٥٥ — مراجعة D89 ✓ · وحجز D90 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **رسالة المالك:** `/next`.
+- **D89 بـ«كيف يُراجَع»:** `verbatim.cjs 9cd7cc0` ← «ضاع 0 · جديد 0» · `git show --stat 38e6fd8` الملفّان وحدهما · `export` في `qrCodewords.ts` ٦ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/qr.ts`. ✓
+- **تحقّق D90 قبل البدء:** `imageForm.ts` ٤٤٧ وسقفه ٤٤٧ · `inventory.cjs` ← «مكوّنات 3 أكبرها 316» و«دورات القيم: 0» · لا `imageFormDoc.ts` · والثلاثة (`PT_PER_MM` `imageFormDoc` `formValues`) متتاليةٌ في آخر `imageForm.ts` بعد `assignKeys`. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠١:٤٥ — D89 ✅ — A11 (١٢): `shared/qr.ts` ٤٦٣ ← ٣١٣ نقلًا حرفيًّا، وحقل غالوا وريد-سولومون وكلمات الرمز في `qrCodewords.ts` · والتوقّف هنا (٤ نقاط، ر162) · النموذج: Gemini 4 Argon (Medium)
 - **النقل** (`38e6fd8`): `move.cjs` (`tsconfig.web.json`، بلا `fromSrc`) ← الأحد عشر تصريحًا بتعليقاتها إلى `qrCodewords.ts` ١٥٧ · وبـEdit: كتلة تهيئة `EXP` و`LOG` (١٠ أسطرٍ من `{` إلى `}`) نُقلت من `qr.ts` إلى موضعها بعد `const LOG` في `qrCodewords.ts`، وبابٌ للخمسة المصدَّرة (`gfMul` `reedSolomon` `pickVersion` `buildCodewords` `blockLayout`)، والخمسة غير المصدَّرة بلا `export` (فالمصدَّر منه ٦) · `prune.cjs` نظّف `EXP` و`LOG` من استيراد `qr.ts` · `typecheck` نظيف · والسقف (`afe26e1`): `RATCHET` فسقط `qr.ts` من `structure.allow.json`.
 - **الوثائق** (`2287063`): ARCHITECTURE §١ (بقي ثلاثة) و§٢ (الجدول #١٣ ← D89 بأرقامه، وسطر الأوامر D89 ✅، والثلاثة الباقية لـD90–D92) · BACKLOG A11 (الاثنا عشر ✅، والثلاثة لـD90–D92).
