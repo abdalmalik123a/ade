@@ -13,10 +13,11 @@ import { getDefaultLetterhead, getLetterhead } from '../services/letterheads';
 import { deleteClip, listClips, repeatedParagraphs, saveClip, touchClip } from '../services/clips';
 import { listRevisions, revisionPayload } from '../services/revisions';
 import type { Addressing, ImportedTemplate, RevisionKind } from '@shared/api';
+import { id, oneOf } from '@shared/bridgeGuards';
+import { handleChecked } from './checked';
 
-/** نوع القطعة يصل من الواجهة ويُبنى منه اسم جدول — فلا يُقبل إلا المعروف. */
+/** نوع القطعة يصل من الواجهة ويُبنى منه اسم جدول — فلا يُقبل إلا المعروف (`oneOf` عند الباب، D70). */
 const KINDS: RevisionKind[] = ['template', 'letterhead', 'clip'];
-const isKind = (k: unknown): k is RevisionKind => KINDS.includes(k as RevisionKind);
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 import { censusText, type WordCensus } from '@shared/wordLosses';
 import { imageMeta } from '../services/imageSize';
@@ -107,12 +108,10 @@ export function registerTemplateIpc(): void {
     repeatedParagraphs(getDb(), Array.isArray(paragraphs) ? paragraphs.slice(0, 40).map(String) : [])
   );
 
-  /** النسخ السابقة — للعودة إلى «نسخة أمس» من نموذجٍ أو ترويسةٍ أو كليشة. */
-  ipcMain.handle('revisions:list', (_e, kind: unknown, id: number) =>
-    isKind(kind) ? listRevisions(getDb(), kind, Number(id)) : []
-  );
-  ipcMain.handle('revisions:get', (_e, kind: unknown, id: number, revision: number) =>
-    isKind(kind) ? revisionPayload(getDb(), kind, Number(id), Number(revision)) : null
+  /** النسخ السابقة — للعودة إلى «نسخة أمس» من نموذجٍ أو ترويسةٍ أو كليشة. والنوع المجهول والمعرّف الفاسد يُرفضان عند الباب برسالتهما. */
+  handleChecked('revisions:list', { kind: oneOf(KINDS), id }, ({ kind, id }) => listRevisions(getDb(), kind, id));
+  handleChecked('revisions:get', { kind: oneOf(KINDS), id, revision: id }, ({ kind, id, revision }) =>
+    revisionPayload(getDb(), kind, id, revision)
   );
 
   /** وثيقة النموذج كتلًا — مقروءةً، ومُرحَّلةً إن حُفظت قبل النواة. */

@@ -7,7 +7,7 @@
  *    لا يستورد Electron ولا `db/` ولا `ipc/`.
  * ٢. **متغيّرات البيئة** في `src/main`: كلّ مفتاحٍ في قائمةٍ صريحة — ومفتاحٌ جديد يستلزم تعديلها عمدًا.
  * ٣. **`new BrowserWindow(`** في ملفّاتٍ معروفة وحدها.
- * ٤. **القنوات**: كلّ `invoke` في `preload` لها `ipcMain.handle` والعكس، وكذلك `send` ↔ `ipcMain.on`، و`on` ↔ `.send`.
+ * ٤. **القنوات**: كلّ `invoke` في `preload` لها `ipcMain.handle` (أو `handleChecked`) والعكس، وكذلك `send` ↔ `ipcMain.on`، و`on` ↔ `.send`.
  * ٥. **الحجم**: ملفٌّ فوق ٤٠٠ سطر مسجَّلٌ في `structure.allow.json` بحجمه — فلا يظهر ملفٌّ جديدٌ فوقه ولا ينمو مسجَّل.
  *    السقف ينخفض ولا يرتفع: `DIWAN_STRUCTURE_RATCHET=<مسار>[,<مسار>…] npx vitest run tests/structure.test.ts` يكتب
  *    الأحجام الأصغر لهذه الملفّات وحدها ويُسقط منها ما نزل تحت ٤٠٠ — ولا يضيف ملفًّا ولا يرفع رقمًا. و`=1` كان يخفض
@@ -18,6 +18,8 @@
  * ٨. **الأبواب الواحدة** (A04، D68): لا شبكة — لا وحدات الشبكة ولا `fetch(` ولا `XMLHttpRequest`/`WebSocket` في Node، و`net.fetch`
  *    في `main/index.ts` وحده، و`fetch(` الواجهة لـ`diwan://` وحده، و`connect-src` ثابت —؛ و`dependencies` قائمةٌ صريحة؛ وحال الترخيص
  *    من `licenseStatus()` في `ipc/license.ts` وحدها. وباب البوّابة (F01) يُضاف إلى قوائمها عمدًا حين يُبنى.
+ * ٩. **القنوات القائمة** (A04، D70): كلّ اسمٍ في `ipcMain.handle('…'`/`ipcMain.on('…'` في `channels.allow.json`، والقناة الجديدة بـ`handleChecked`
+ *    وحرّاسها (`@shared/bridgeGuards`)؛ و`${}` في `prepare`/`exec` في ملفّاته المعروفة وحدها — والقائمتان تتناقصان ولا تزيدان: ما انتقل أو زال يُحذف منهما.
  *
  * وهو الأصل العامّ: قواعد التصاميم (`designStructure`، DESIGNS.md ٣٫٤) تُبنى عليه لاحقًا.
  */
@@ -28,6 +30,7 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(__dirname, '..');
 const ALLOW_FILE = join(__dirname, 'structure.allow.json');
+const CHANNELS_FILE = join(__dirname, 'channels.allow.json');
 const SIZE_CAP = 400;
 
 const rel = (p: string) => relative(ROOT, p).replace(/\\/g, '/');
@@ -153,7 +156,7 @@ describe('اختبار الهيكل (ز١)', () => {
     const main = under('src/main/').map((s) => s.text).join('\n');
     const set = (text: string, rx: RegExp) => new Set([...text.matchAll(rx)].map((m) => m[1]!));
     const invoked = set(preload, /\binvoke(?:<[^>]*>)?\(\s*'([^']+)'/g);
-    const handled = set(main, /ipcMain\.handle\(\s*'([^']+)'/g);
+    const handled = set(main, /(?:ipcMain\.handle|handleChecked)\(\s*'([^']+)'/g);
     const sent = set(preload, /ipcRenderer\.(?:send|sendSync)\(\s*'([^']+)'/g);
     const heard = set(main, /ipcMain\.(?:on|once)\(\s*'([^']+)'/g);
     const listened = set(preload, /ipcRenderer\.(?:on|once)\(\s*'([^']+)'/g);
@@ -299,5 +302,50 @@ describe('اختبار الهيكل (ز١)', () => {
       if (/\brequireProductive\s*\(/.test(s.text) && !PRODUCTIVE.includes(s.path)) bad.push(`${s.path}: ينادي requireProductive( خارج ipc/gate.ts — القناة المنتِجة تُضاف إلى قائمة البوّابة هناك`);
     }
     expect(bad).toEqual([]);
+  });
+
+  it('٩ — القنوات القائمة: الجديدة بـhandleChecked وحرّاسها، و${} في SQL في ملفّاته المعروفة (A04)', () => {
+    // القائمتان تتناقصان ولا تزيدان: ما انتقل إلى handleChecked أو زال يُحذف منهما عمدًا، ولا يُضاف إليهما شيء.
+    const CHANNELS = new Set(JSON.parse(readFileSync(CHANNELS_FILE, 'utf8')) as string[]);
+    // `${}` في prepare/exec بسطرٍ واحد (جرد D65): أسماء جداول وأعمدة من قوائم ثابتة — والقيم كلّها تُربط بـ`?`.
+    const SQL_TEMPLATES = new Set([
+      'src/main/ipc/backup.ts',
+      'src/main/services/backup.ts',
+      'src/main/services/citizens.ts',
+      'src/main/services/clients.ts',
+      'src/main/services/clips.ts',
+      'src/main/services/contentPack.ts',
+      'src/main/services/dataVersion.ts',
+      'src/main/services/documents.ts',
+      'src/main/services/letterheads.ts',
+      'src/main/services/orders.ts',
+      'src/main/services/preUpdateBackup.ts',
+      'src/main/services/revisions.ts',
+      'src/main/services/searchIndex.ts',
+      'src/main/services/storeRefs.ts',
+      'src/main/services/templates.ts'
+    ]);
+    const bad: string[] = [];
+    const channels = new Set<string>();
+    const templates = new Set<string>();
+    for (const s of under('src/main/')) {
+      for (const m of s.text.matchAll(/ipcMain\.(?:handle|on|once|handleOnce)\(\s*(?:'([^']+)')?/g)) {
+        if (m[1] === undefined) {
+          if (s.path !== 'src/main/ipc/checked.ts') bad.push(`${s.path}: يسجّل قناةً باسمٍ غير حرفيّ — لا تراه القاعدتان ٤ و٩؛ سجّل القناة الجديدة بـhandleChecked('…' وحرّاسها`);
+          continue;
+        }
+        channels.add(m[1]);
+        if (!CHANNELS.has(m[1])) bad.push(`${s.path}: القناة «${m[1]}» ليست في tests/channels.allow.json — سجّل القناة الجديدة بـhandleChecked وحرّاسها (src/main/ipc/checked.ts)`);
+      }
+      if (s.text.split('\n').some((line) => /\b(?:prepare|exec)\(\s*`[^`]*\$\{/.test(line))) {
+        templates.add(s.path);
+        if (!SQL_TEMPLATES.has(s.path)) bad.push(`${s.path}: يبني SQL بقالب \${} في prepare/exec — القيم تُربط بـ? واسم الجدول من قائمةٍ ثابتة؛ وهذه القائمة لا تزيد`);
+      }
+    }
+    for (const c of CHANNELS) if (!channels.has(c)) bad.push(`tests/channels.allow.json: «${c}» لا يسجّله ipcMain.handle/on بعد اليوم — احذفه من القائمة (تتناقص ولا تزيد)`);
+    for (const p of SQL_TEMPLATES) if (!templates.has(p)) bad.push(`${p}: لم يعد يبني SQL بقالب \${} — احذفه من قائمة هذا الاختبار (تتناقص ولا تزيد)`);
+    expect(bad).toEqual([]);
+    // وسقفها يوم كُتبت (D70، بعد انتقال قناتي revisions:*) — ينخفض ولا يرتفع.
+    expect(CHANNELS.size).toBeLessThanOrEqual(203);
   });
 });
