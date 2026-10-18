@@ -1,4 +1,5 @@
 ---
+name: next
 description: نفّذ أمر العمل التالي في ديوان (docs/PLAN.md)
 ---
 اقرأ `.claude/commands/next.md` ونفّذه خطوةً خطوة كما هو — هو نصّ `/next` نفسه (ر163)، فلا نسخة ثانية تختلف عنه.

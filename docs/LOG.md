@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:١٠ — ر163 (تعديل): ترحيل `/next` في Antigravity من مسار عمل إلى مهارة · النموذج: Gemini (Antigravity)
+- **ما تغيّر:** إنشاء `.agents/skills/next/SKILL.md` بالإحالة نفسها إلى `.claude/commands/next.md` · نقل `.agents/workflows/next.md` بـ`git mv` إلى `legacy/.agents/workflows/next.md` مع سطر «انتهى — البديل …» · تحديث ذكر المسار في `AGENTS.md` وفي سطر ر163 من `docs/DECISIONS.md` («عُدّل ١٩ ت١: مسار العمل صار مهارة»).
+- **الفحص:** `npx vitest run tests/docsBudget.test.ts tests/repoHygiene.test.ts tests/agyHook.test.ts` ← ٣ ملفّات (١٢ اختبارًا) ✓ · وحارس Antigravity شغّال قبل كلّ أداة في هذه الجلسة.
+- **التالي:** `/next` في جلسةٍ جديدة (مراجعة D83 ثم D84 وD85).
+
 ## ٢٠٢٦-١٠-١٨ ٢٣:٥٣ — ر163 ✅: حارس Antigravity يُصلَح مساره، واختباره ووثائقه · وتبقى تجربة المالك الثانية
 - **تجربة المالك في Antigravity** (نقلها نصًّا): طلب قراءة الدفتر كلّه فمُنعت — لكن لأنّ الخطاف بحث عن `.agents/tools/hooks/agy.mjs` فخرج بـ`MODULE_NOT_FOUND`، فأوقف كلّ أداة:
   Antigravity يشغّل أمر `hooks.json` من مجلّد `.agents/`، وخطافٌ يخرج بخطأ يوقف الأداة هناك (لا يمرّرها).
