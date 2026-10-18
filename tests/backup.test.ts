@@ -10,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
 import { freshDb } from './helpers';
 import { assertRestorable, clearWorkDir, inspectDbFile, isEncrypted, openBackup, writeBackup } from '../src/main/services/backup';
-import { issueDocument, prepareDocuments } from '../src/main/services/documents';
+import { prepareDocuments } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
 import type { IssueInput } from '../src/shared/api';
 
 const text = (s: string) => new TextEncoder().encode(s);

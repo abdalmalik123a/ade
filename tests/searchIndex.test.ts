@@ -4,7 +4,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { issueDocument, listDocuments, prepareDocuments } from '../src/main/services/documents';
+import { prepareDocuments } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
+import { listDocuments } from '../src/main/services/documentList';
 import { deleteCitizen, ensureSearchColumn, listCitizens, saveCitizen } from '../src/main/services/citizens';
 import { deleteTemplate, saveTemplate } from '../src/main/services/templates';
 import { matchIds, prepareSearch, REBUILD_BATCH, rebuildIndex, syncIndexes } from '../src/main/services/searchIndex';

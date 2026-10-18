@@ -3,6 +3,10 @@ import { writeFile } from 'node:fs/promises';
 import { BrowserWindow, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import * as svc from '../services/documents';
+import { issueBatch, issueDocument, issueTransaction, linkTransactionCitizen } from '../services/issue';
+import { listDocuments, type ListOptions, periodStats } from '../services/documentList';
+import { verifyArchive } from '../services/archiveVerify';
+import { assertNotVoid, recordPrint, recordReprint } from '../services/printRecords';
 import { searchOthers } from '../services/search';
 import { printSheet, renderPdf } from '../services/render';
 import { sheetStyle } from '../services/sheetStyle';
@@ -83,7 +87,7 @@ export function registerDocumentIpc(): void {
     'documents:issue',
     async (e, input: IssueInput, print: boolean): Promise<IssueOutcome> => {
       const db = getDb();
-      const issued = svc.issueDocument(db, { ...input, serialYear: thisYear(), style: sheetStyle() });
+      const issued = issueDocument(db, { ...input, serialYear: thisYear(), style: sheetStyle() });
 
       let archivedPath: string | null = null;
       let archiveError: string | undefined;
@@ -120,7 +124,7 @@ export function registerDocumentIpc(): void {
         parent: w
       });
       // تُقيَّد الطبعة حين تتمّ — لا مع الإصدار.
-      if (result.ok) svc.recordPrint(db, issued.id, { copies: input.copies, printer: input.printer ?? null, operator: input.operator ?? null });
+      if (result.ok) recordPrint(db, issued.id, { copies: input.copies, printer: input.printer ?? null, operator: input.operator ?? null });
 
       return {
         id: issued.id,
@@ -136,9 +140,9 @@ export function registerDocumentIpc(): void {
 
   ipcMain.handle('documents:get', (_e, id: number) => svc.getDocument(getDb(), id));
 
-  ipcMain.handle('documents:list', (_e, opts: svc.ListOptions) => svc.listDocuments(getDb(), opts));
+  ipcMain.handle('documents:list', (_e, opts: ListOptions) => listDocuments(getDb(), opts));
 
-  ipcMain.handle('documents:stats', (_e, opts: svc.ListOptions) => svc.periodStats(getDb(), opts));
+  ipcMain.handle('documents:stats', (_e, opts: ListOptions) => periodStats(getDb(), opts));
 
   /**
    * إعادة طباعة طبق الأصل — من المتن المحفوظ لا من إعادة تركيبه، وبأنماطه يوم صدر (٢٫٤)،
@@ -176,7 +180,7 @@ export function registerDocumentIpc(): void {
           style: svc.documentStyle(db, id)
         });
         if (result.ok) {
-          svc.recordReprint(db, id, {
+          recordReprint(db, id, {
             copies: Math.max(1, copies),
             printer: target,
             operator: operator ?? null
@@ -194,7 +198,7 @@ export function registerDocumentIpc(): void {
     const w = win(e);
     const doc = svc.getDocument(getDb(), id);
     if (!w || !doc) return null;
-    svc.assertNotVoid(getDb(), id);
+    assertNotVoid(getDb(), id);
     // بأنماطه يوم صدر — فـPDF الكتاب القديم كورقته يومها (٢٫٤).
     const pdf = await renderPdf(doc.bodyHtml, undefined, svc.documentStyle(getDb(), id));
     return saveAs(w, pdf, `${safeName(doc.serial)}.pdf`, 'PDF', 'pdf');
@@ -209,8 +213,8 @@ export function registerDocumentIpc(): void {
       const w = win(e);
       if (!w) return null;
       const db = getDb();
-      const rows = svc.listDocuments(db, { ...opts, limit: 100000 });
-      const stats = svc.periodStats(db, opts);
+      const rows = listDocuments(db, { ...opts, limit: 100000 });
+      const stats = periodStats(db, opts);
       const buffer = await reportToExcel({
         title: opts.title ?? 'تقرير سجل الصادر',
         rows,
@@ -231,7 +235,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle(
     'documents:issueTransaction',
     (_e, input: TransactionInput): TransactionResult =>
-      svc.issueTransaction(getDb(), { ...input, serialYear: thisYear(), style: sheetStyle() })
+      issueTransaction(getDb(), { ...input, serialYear: thisYear(), style: sheetStyle() })
   );
 
   /**
@@ -240,7 +244,7 @@ export function registerDocumentIpc(): void {
    */
   ipcMain.handle('documents:issueBatch', (_e, inputs: TransactionInput[]): TransactionResult[] => {
     const style = sheetStyle();
-    return svc.issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear(), style })), testPause());
+    return issueBatch(getDb(), inputs.map((one) => ({ ...one, serialYear: thisYear(), style })), testPause());
   });
 
   ipcMain.handle('documents:repeatSource', (_e, id: number) => svc.repeatSource(getDb(), Number(id)));
@@ -249,7 +253,7 @@ export function registerDocumentIpc(): void {
   ipcMain.handle('documents:void', (_e, id: number, reason: string, operator: string | null) =>
     svc.voidDocument(getDb(), Number(id), String(reason ?? ''), operator ?? null)
   );
-  ipcMain.handle('documents:verify', () => svc.verifyArchive(getDb()));
+  ipcMain.handle('documents:verify', () => verifyArchive(getDb()));
   ipcMain.handle(
     'audit:list',
     (_e, opts?: { entity?: string | null; documentId?: number | null; query?: string; limit?: number }) =>
@@ -258,6 +262,6 @@ export function registerDocumentIpc(): void {
   ipcMain.handle('search:others', (_e, query: string) => searchOthers(getDb(), String(query ?? '')));
 
   ipcMain.handle('documents:linkCitizen', (_e, transactionId: number, citizenId: number) =>
-    svc.linkTransactionCitizen(getDb(), Number(transactionId), Number(citizenId))
+    linkTransactionCitizen(getDb(), Number(transactionId), Number(citizenId))
   );
 }

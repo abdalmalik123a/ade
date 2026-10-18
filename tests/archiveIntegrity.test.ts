@@ -5,19 +5,17 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import {
-  addPrintedCopy,
   CHAIN_GENESIS,
   chainLink,
   getDocument,
-  issueDocument,
   listAudit,
-  listDocuments,
   prepareDocuments,
-  recordPrint,
-  recordReprint,
-  verifyArchive,
   voidDocument
 } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
+import { listDocuments } from '../src/main/services/documentList';
+import { verifyArchive } from '../src/main/services/archiveVerify';
+import { addPrintedCopy, recordPrint, recordReprint } from '../src/main/services/printRecords';
 import { addAttachment, ensureSearchColumn, saveCitizen, setAttachmentOcr } from '../src/main/services/citizens';
 import { saveTemplate } from '../src/main/services/templates';
 import { searchOthers } from '../src/main/services/search';

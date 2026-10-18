@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { issueDocument } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
 import { repeatedParagraphs, saveClip } from '../src/main/services/clips';
 import { recordCorrection } from '../src/main/services/learning';
 import { normalizeFold } from '../src/shared/arabic';

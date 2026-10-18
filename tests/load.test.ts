@@ -11,7 +11,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { archiveStats, issueDocument, listDocuments, periodStats, prepareDocuments, verifyArchive } from '../src/main/services/documents';
+import { prepareDocuments } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
+import { archiveStats, listDocuments, periodStats } from '../src/main/services/documentList';
+import { verifyArchive } from '../src/main/services/archiveVerify';
 import { prepareSearch } from '../src/main/services/searchIndex';
 import { listTemplates, saveTemplate } from '../src/main/services/templates';
 import type { IssueInput } from '../src/shared/api';

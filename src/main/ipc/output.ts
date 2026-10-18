@@ -9,6 +9,7 @@ import { isJobId, printJournal, runJob, type PrintJob } from '../services/printJ
 import { getDb, storeDir } from '../db';
 import { storeFile } from '../services/localPaths';
 import * as svc from '../services/documents';
+import { addPrintedCopy, recordPrint } from '../services/printRecords';
 import { markWeekSeen, todayAgenda } from '../services/today';
 import { now } from '../clock';
 import { printSheet, renderPdf, renderPng } from '../services/render';
@@ -110,8 +111,8 @@ export function registerOutputIpc(): void {
       const from = sheet * job.perSheet;
       job.docIds.slice(from, from + job.perSheet).forEach((id, k) => {
         try {
-          if (job.docIds!.indexOf(id) < from + k) svc.addPrintedCopy(db, id);
-          else svc.recordPrint(db, id, { copies: 1, printer: job.printer, operator });
+          if (job.docIds!.indexOf(id) < from + k) addPrintedCopy(db, id);
+          else recordPrint(db, id, { copies: 1, printer: job.printer, operator });
         } catch {
           // الورقة طُبعت؛ وتقييدها لا يوقف الدفعة.
         }

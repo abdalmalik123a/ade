@@ -8,7 +8,8 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { isoDate, localStamp } from '../src/shared/dates';
-import { issueDocument, listDocuments } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
+import { listDocuments } from '../src/main/services/documentList';
 import type { IssueInput } from '../src/shared/api';
 
 const input = (): IssueInput => ({

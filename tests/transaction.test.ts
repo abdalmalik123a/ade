@@ -3,14 +3,11 @@ import { freshDb } from './helpers';
 import type { TransactionInput, TransactionSheet } from '../src/shared/api';
 import {
   getDocument,
-  issueBatch,
-  issueTransaction,
-  listDocuments,
-  linkTransactionCitizen,
   prepareDocuments,
-  repeatSource,
-  transactionSheets
+  repeatSource
 } from '../src/main/services/documents';
+import { issueBatch, issueTransaction, linkTransactionCitizen } from '../src/main/services/issue';
+import { listDocuments, transactionSheets } from '../src/main/services/documentList';
 import {
   ensureSearchColumn as prepareCitizens,
   listCitizenDocuments,

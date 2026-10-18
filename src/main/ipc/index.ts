@@ -26,7 +26,7 @@ import { orderCounts } from '../services/orders';
 import { parkedCount } from '../services/today';
 import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
-import { archiveStats } from '../services/documents';
+import { archiveStats } from '../services/documentList';
 import { workerHost } from '../services/workerHost';
 import type { WorkerJob } from '@shared/worker';
 import { normalizePrintRoles } from '@shared/printRoles';

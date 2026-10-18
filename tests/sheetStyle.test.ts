@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
-import { issueBatch, issueDocument, issueTransaction, prepareDocuments, verifyArchive } from '../src/main/services/documents';
+import { prepareDocuments } from '../src/main/services/documents';
+import { issueBatch, issueDocument, issueTransaction } from '../src/main/services/issue';
+import { verifyArchive } from '../src/main/services/archiveVerify';
 import type { IssueInput, SheetStyle, TransactionInput } from '../src/shared/api';
 
 /**

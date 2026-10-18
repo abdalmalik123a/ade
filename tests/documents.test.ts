@@ -4,20 +4,16 @@ import { freshDb } from './helpers';
 import { emptyLayout } from '../src/shared/letterhead';
 import { deleteLetterhead, listLetterheads, saveLetterhead } from '../src/main/services/letterheads';
 import {
-  archiveStats,
-  documentCount,
   fingerprint,
   getDocument,
   htmlToText,
-  issueDocument,
-  listDocuments,
   peekSerial,
-  periodStats,
   prepareDocuments,
-  recordPrint,
-  recordReprint,
   reserveSerial
 } from '../src/main/services/documents';
+import { issueDocument } from '../src/main/services/issue';
+import { archiveStats, documentCount, listDocuments, periodStats } from '../src/main/services/documentList';
+import { recordPrint, recordReprint } from '../src/main/services/printRecords';
 import type { IssueInput } from '../src/shared/api';
 
 const SHEET =
