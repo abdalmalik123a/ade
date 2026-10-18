@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٠:٥٠ — D77 ✅ — A11 (١): `doc.ts` ٨٥٢ ← ٣٧٤ نقلًا حرفيًّا، ودورة التصاميم قُطعت · والتوقّف هنا (ر160)
+- **الأداتان** (`4129df6`): `tools/split/verbatim.cjs` و`inventory.cjs` بنصّيهما (استخراجٌ ببرنامج من ARCHITECTURE والقيد، وسطرٌ جديد بعد الفواصل وحذفه يعيد النصّ) · والفرق: `structure.allow.json` من مجلّد العمل كما في الأمر،
+  و**`process.argv.slice(2)` لا `slice(1)`** في `verbatim` (في `node -e` أوّل الوسائط `argv[1]`، وفي ملفٍّ هو مسار الأداة) · `inventory.cjs` ← مخرج أمر القيد سطرًا بسطر (`diff` فارغ)، و`verbatim.cjs HEAD src/shared/qr.ts` ← 0 و0 (وسطرٌ غريب ← «جديد 1»).
+- **الأنواع والترقيم** (`c4641fc`) بـ`move.cjs`: الثمانية والثلاثون إلى `docTypes.ts` (٣٢٦)، و`Measured` `paginate` `keepTogetherFrom` إلى `docPaginate.ts` (٧٩)، والسطران `export type *` و`export { … }` · و`move.cjs` أضاف `export`
+  على `BlockBase` (لم يكن مصدَّرًا) فأظهره الباب اسمًا جديدًا من `doc.ts` ← أُعيد سطره كما كان (لا يستعمله إلا `docTypes`) · الأسماء المصدَّرة ببرنامج ٧٢ قبل وبعد، لا غائب ولا زائد.
+- **التطبيع** (`b149cb1`): الكتلة من `isObj` إلى `normalizeField` بـWrite وEdit إلى `docNormalize.ts` (١٠٦) بلا باب، والمستوردون الستّة عشر بسطور استيرادٍ وحدها (وCRLF الثلاثة كما هي) ·
+  و`import type { Canvas }` بعد `prune` (فلا يبقى استيرادٌ من `canvas.ts` عند البناء) · **السقف** (`997245d`): سقط الملفّان وحدهما · **الوثائق:** ARCHITECTURE §١ و§٢ (ودرس `BlockBase`) وBACKLOG A11 وA13.
+- **الفحص:** `typecheck` ✓ بعد كلّ خطوة · `verbatim.cjs 4129df6` على الأربعة ← «ضاع 0 · جديد 0» · `inventory.cjs` (قبل السقف) ← `doc.ts` ٣٧٤ و«دورات القيم: 1» (`documents`↔`searchIndex`) · `npx vitest run` ١٩٧٢ ✓ و٤ متخطّاة،
+  ولقطات الرسّام كما هي · `electron-vite build` ✓ ثم `editor` ٣٩ ✓ `pagedLetter` ١٤ `templates` ٤٠ `packs` ٢٧ `designDraft` ٢٥ `letterhead` ٤٠ — بلا ✗ · الجديدة ٤٠٠ فأقلّ · لا بايت تحكّم.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره بالإيداعات أعلاه (`verbatim.cjs 4129df6 …` و`inventory.cjs` و`git show b149cb1 --stat` و`structure.allow.json`)؛ وبعد السقف لا يعدّ `inventory.cjs` `doc.ts` (يقرأ ما في السقوف وحدها) فحجمه بـ`wc -l`. **التالي:** `/next` يراجع D77 ثم D78 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ٢٠:٣٠ — مراجعة D75 ✓ · وحجز D77 🔒
 - **رسالة المالك:** `/next`.
 - **D75 بـ«كيف يُراجَع»:** أمر الجرد منسوخًا من القيد (٨ ث) ← الأعداد نفسها: ستّة عشر ملفًّا مجموعها ٩٣١٨ (`docxDoc` ٩١٩ · `services/documents` ٩١٠ · `doc` ٨٥٢ ويستورده ١١٩/٤٧/٢ ·
