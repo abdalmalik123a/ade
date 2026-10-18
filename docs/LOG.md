@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:٠٤ — مراجعة D78 ✓ · وحجز D79 🔒
+- **رسالة المالك:** `/next`.
+- **D78 بـ«كيف يُراجَع»:** `verbatim.cjs 49c069d src/shared/docPm.ts src/shared/docPmSchema.ts` ← «ضاع 0 · جديد 0» · `git show 6516205 --stat` ← `docPm.ts` و`docPmSchema.ts` وحدهما (فلا مستورد تغيّر) ·
+  `structure.allow.json` أربعة عشر ملفًّا بلا `docPm.ts`. ✓
+- **شروط D79:** `docxDoc.ts` ٩١٩ وسقفه ٩١٩ · `inventory.cjs` ← `docxDoc.ts` «مكوّنات 2 أكبرها 790» و«دورات القيم: 1» · `move.cjs` يقرأ `tsconfig.web.json` ثابتًا (سطرا ٢٢ و٢٩) · لا `docxStyles.ts` ولا `docxRuns.ts`. **التالي:** D79 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:٠٢ — D78 ✅ — A11 (٢): `docPm.ts` ٤٩٩ ← ٢٥٦ نقلًا حرفيًّا · والتوقّف هنا (ر160)
 - **النقل** (`6516205`، الملفّان وحدهما) بـ`move.cjs` والمواصفة في مجلّد الجلسة (`names` العشرة، و`doc` رأسٌ بسطرٍ واحد): `docPmSchema.ts` ٢٥٣ يستورد من `./doc` (`import type`) و`./docPmMarks` وprosemirror-model، لا من `docPm.ts` ·
   والأداة أضافت `import { docSchema }` في الأصل (لـ`const S`)، ثم سطر الباب `export { docSchema, cssIndentToMm, cssLineHeight } from './docPmSchema';` بعد سطر `docPmMarks` · `prune.cjs` حذف أربعة (`Schema` `NodeSpec` `cssSizeToPx` `marks`) ·
