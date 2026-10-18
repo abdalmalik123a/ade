@@ -25,8 +25,8 @@
 |---|---|---|---|---|
 | D47–D74 | A01–A08 وA09 (أ) وA10 A12 A16 A19 وG34 وترشيق الوثائق: الأساس «أ» والترقيات والممشّيات والعامل والجسر والنسخ وثغرات exceljs | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
 | D75–D86 | A11 (١–١٠): الجرد والتصميم، ثم عشرة تقسيماتٍ (`doc` `docPm` `docxDoc` وطريق الطباعة و`documents` و`portraitMask` و`excelDoc` و`blanks` و`import` و`fieldHints`) | ✅ ١٩ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| [D87](orders/done/D87.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ✅ ١٩ ت١ — خمسة أوامر D88–D92 (A11 #١٢–#١٦، كلٌّ م) بمحاكاةٍ للنقل، وفرز A13 وA14 في BACKLOG، وسطر D93 🧭؛ تراجعها الجلسة التالية | 🧭 | D86 |
-| [D88](orders/D88.md) | A11 (١١): `shared/deskew.ts` — `detectQuad` في `quadDetect.ts` بلا بابٍ و`fromSrc` لـ`Quad` و`PixelData` | ⬜ | ⚙️ م | D87 |
+| [D87](orders/done/D87.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ✅ ١٩ ت١ (`bec649b`) — خمسة أوامر D88–D92 (A11 #١٢–#١٦، كلٌّ م) بمحاكاةٍ للنقل، وفرز A13 وA14 في BACKLOG، وسطر D93 🧭؛ مراجَعة | 🧭 | D86 |
+| [D88](orders/D88.md) | A11 (١١): `shared/deskew.ts` — `detectQuad` في `quadDetect.ts` بلا بابٍ و`fromSrc` لـ`Quad` و`PixelData` | 🔒 ١٩ ت١ ٠١:٢٤ | ⚙️ م | D87 |
 | [D89](orders/D89.md) | A11 (١٢): `shared/qr.ts` — حقل غالوا وReed-Solomon وتوزيع الكلمات في `qrCodewords.ts` ببابٍ يعيد التصدير | ⬜ | ⚙️ م | D88 |
 | [D90](orders/D90.md) | A11 (١٣): `shared/imageForm.ts` — بناء وثيقة الاستمارة المصوَّرة في `imageFormDoc.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `FormSlot` | ⬜ | ⚙️ م | D89 |
 | [D91](orders/D91.md) | A11 (١٤): `shared/paperDoc.ts` — أنواع التعرّف الضوئي وهندسة الصناديق وتقسيم السطر في `paperLines.ts` ببابٍ للأنواع الأربعة | ⬜ | ⚙️ م | D90 |
