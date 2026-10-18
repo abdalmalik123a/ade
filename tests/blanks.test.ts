@@ -7,6 +7,7 @@ import {
   detectBlanks,
   EMPTY_LINE_PX,
   fixZeroPeriods,
+  DUPLICATE_THRESHOLD,
   groupDuplicates,
   keyFromLabel,
   paragraphFromLine,
@@ -335,5 +336,55 @@ describe('كشف المكرّر', () => {
   it('وما لا يتشابه لا يُجمع', () => {
     expect(similarity(A, C)).toBeLessThan(0.3);
     expect(groupDuplicates([{ id: 'a', text: A }, { id: 'c', text: C }])).toEqual([]);
+  });
+
+  it('والقطع تُحسب مرّةً لكلّ نصّ — وبستّين نصًّا يجمع كما كان يجمع نصًّا لنصّ (D67)', () => {
+    // ستّة أصولٍ بثمانين كلمةً مختلَقة، ولكلٍّ عشرة: الأصل ونسخته بنقطة، وكلمةٌ تغيّرت آخره أو أوّله، وكلمتان آخره (على العتبة)،
+    // ووسطه (دون العتبة) ونسخته بنقطة ووسطه وآخره، وقصيرٌ أو أرقامٌ وحدها، ومقلوبٌ لا يشبه — فثلاث عشرة مجموعةً متداخلة.
+    const L = 'بتثجحخدذرزسشصضطظعغفقكلمنهوي';
+    const word = (i: number) => `${L[i % 27]}ا${L[Math.floor(i / 27) % 27]}`;
+    const items = Array.from({ length: 60 }, (_, i) => {
+      const b = i % 6;
+      const ws = Array.from({ length: 80 }, (_, k) => word(b * 80 + k));
+      const swap = (...at: number[]) => ws.map((w, k) => (at.includes(k) ? word(600 + b * 4 + at.indexOf(k)) : w)).join(' ');
+      const text = [
+        ws.join(' '),
+        `${ws.join(' ')}.`,
+        swap(79),
+        swap(40),
+        `${swap(40)} .`,
+        b % 2 ? '١٢٣ ٤٥٦' : ws.slice(0, 2).join(' '),
+        swap(0),
+        swap(78, 79),
+        swap(40, 79),
+        [...ws].reverse().join(' ')
+      ][Math.floor(i / 6)]!;
+      return { id: `ن${i}`, text };
+    });
+    // المرجع: الطريقة القديمة كما كانت — المقارنة نصًّا لنصّ، والقطع تُبنى في كلّ مقارنة.
+    const reference = (list: { id: string; text: string }[]) => {
+      const groups: { ids: string[]; texts: string[]; best: number }[] = [];
+      for (const item of list) {
+        let placed = false;
+        for (const g of groups) {
+          const score = Math.max(...g.texts.map((t) => similarity(t, item.text)));
+          if (score >= DUPLICATE_THRESHOLD) {
+            g.ids.push(item.id);
+            g.texts.push(item.text);
+            g.best = Math.min(g.best, score);
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) groups.push({ ids: [item.id], texts: [item.text], best: 1 });
+      }
+      return groups.filter((g) => g.ids.length > 1).map((g) => ({ ids: g.ids, confidence: g.best }));
+    };
+
+    const expected = reference(items);
+    expect(groupDuplicates(items)).toEqual(expected);
+    expect(expected).toHaveLength(13);
+    expect(expected.some((g) => g.confidence < 1)).toBe(true);
+    expect(expected.flatMap((g) => g.ids)).not.toContain('ن54');
   });
 });
