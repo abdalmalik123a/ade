@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٣:١٥ — ر163: جلسات Antigravity (Gemini) بالقواعد نفسها (قول المالك: «نعم، اكتب الملفّات الثلاثة الآن») · 🔄 لم يكتمل (نفد الرصيد)
+- **كُتب:** `AGENTS.md` إحالةٌ إلى CLAUDE.md · `.agents/workflows/next.md` يحيل إلى `.claude/commands/next.md` · `.agents/hooks.json` (PreToolUse) و`tools/hooks/agy.mjs` يترجم نداء Antigravity
+  إلى صيغة Claude ويسأل `guard.mjs` نفسه (`ask` ← `force_ask`)، وفحص ما بعد التعديل قبل `git commit`.
+- **الفحص (يدويًّا وحده):** `sed -i` ← deny · `git status` ← allow · `git push origin master` ← force_ask · الدفتر بلا مدى ← deny وبـ١–١٠٠ ← allow · مدخلٌ فاسد ← allow.
+- **بقي:** `tests/agyHook.test.ts` (كحالات `guardHook`) · QUALITY §٨ وسطر ر163 في DECISIONS · وتجربة المالك في Antigravity: يطلب قراءة الدفتر كلّه، فإن رُفض فالحارس يعمل.
+- **التالي:** يُكمَل «بقي» أوّلًا، ثم `/next` (مراجعة D83 ثم D84 وD85).
+
 ## ٢٠٢٦-١٠-١٨ ٢٣:٠٠ — D83 ✅ — A11 (٧): `services/excelDoc.ts` ٦٨٧ ← ٣٣٩ نقلًا حرفيًّا، والخلايا في `excelCells.ts` · والتوقّف هنا (٤ نقاط، ر162)
 - **النقل** (`c7f6b1d`): `move.cjs` و`tsconfig.node.json` بلا `fromSrc` ← الثمانية والعشرون بتعليقاتها وأسطر أقسامها (المقاسات، ورقة البيانات، نصّ الخليّة، المحاذاة) إلى `excelCells.ts` ٣٥١، و«الورقة» باقٍ ·
   وفي الأصل بعد استيراد `move.cjs` بابٌ واحد بنصّ الأمر · والثمانية (`PREPOSITIONS` `cellText` `fixZeros` `literalInlines` `marksOf` `fieldInline` `formulaInlines` `retarget`) بلا `export` فالمصدَّر ٢٠ ·
