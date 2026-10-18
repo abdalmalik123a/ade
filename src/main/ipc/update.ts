@@ -15,6 +15,7 @@ import type { DataGuard } from '../services/dataVersion';
 import { createPreUpdateBackup, findLatestPreUpdateBackup, rollbackToPreUpdateBackup } from '../services/preUpdateBackup';
 import { ownerPublicKeys } from './license';
 import { pickOpenPath } from './files';
+import { handOut, pickAgain, wasHandedOut } from './handedPaths';
 
 let startup: DataGuard | null = null;
 /** ما وجده الإقلاع: إن رُحّلت البيانات من إصدارٍ أقدم عُرض «ما الجديد» مرّةً. */
@@ -31,10 +32,12 @@ export function registerUpdateIpc(): void {
     const path = await pickOpenPath(w, { title: 'تحديث ديوان', buttonLabel: 'افحصه', filterName: 'تحديث ديوان', extensions: ['diwanupdate'] });
     if (!path) return null;
     const { manifest } = await readUpdate(path, ownerPublicKeys('update'), app.getVersion(), workDir());
-    return { path, version: manifest.version, notes: manifest.notes, size: manifest.size, issued: manifest.issued, current: app.getVersion() };
+    return { path: handOut(path), version: manifest.version, notes: manifest.notes, size: manifest.size, issued: manifest.issued, current: app.getVersion() };
   });
 
   ipcMain.handle('update:install', async (_e, path: string) => {
+    // الملفّ الذي فحصه «افحصه» وحده — قبل أن تُؤخذ نسخةٌ كاملة أو يُقرأ شيء (A04، D69).
+    if (!wasHandedOut(path)) throw pickAgain('الملفّ');
     // النسخ الاحتياطي الكامل من قاعدة البيانات ومخزن الملفات قبل تشغيل المثبّت
     await createPreUpdateBackup({ dataDir: dataDir(), currentVersion: app.getVersion() });
 

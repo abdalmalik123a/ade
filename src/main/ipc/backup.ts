@@ -28,6 +28,7 @@ import { atomicWriteJson, readWithBackup } from '../services/stateFile';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
 import { backupPasswordProblem } from '@shared/backupPassword';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
+import { handOut, pickAgain, wasHandedOut } from './handedPaths';
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
@@ -101,7 +102,7 @@ export async function createBackup(
   // «آخر نسخة منذ…» — يُذكَّر بها المكتب إن طالت (شاشة اليوم والإعدادات).
   setting('lastBackupAt', new Date().toISOString());
   logAudit(getDb(), 'backup', 'create', `${encrypted ? 'مشفّرة — ' : ''}${(size / 1024 / 1024).toFixed(1)} م.ب`);
-  return { path: target, bytes: size, encrypted };
+  return { path: handOut(target), bytes: size, encrypted };
 }
 
 /**
@@ -270,7 +271,7 @@ export function registerBackupIpc(): void {
 
   ipcMain.handle('backup:autoPickDir', async (e) => {
     const w = win(e);
-    return w ? pickFolderPath(w, { title: 'مجلّد النسخة التلقائية — فلاشةٌ أو قرصٌ آخر', buttonLabel: 'اختره' }) : null;
+    return w ? handOut(await pickFolderPath(w, { title: 'مجلّد النسخة التلقائية — فلاشةٌ أو قرصٌ آخر', buttonLabel: 'اختره' })) : null;
   });
 
   ipcMain.handle('backup:autoSet', (_e, config: { dir: string | null; keep?: number; password?: string | null }) => {
@@ -279,6 +280,8 @@ export function registerBackupIpc(): void {
       saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
       return autoStatus();
     }
+    // المجلّد أعطاه «اختره» أو هو المحفوظ نفسه — وما سواهما يُرفض قبل أن يُلمس (A04، D69).
+    if (!wasHandedOut(config.dir) && config.dir !== readSetting('autoBackupDir')) throw pickAgain('المجلّد');
     if (!existsSync(config.dir)) throw new Error('المجلّد غير موجود — أهي فلاشةٌ غير موصولة؟');
     // مجلّدٌ جديدٌ يختاره المكتب بنفسه اعتمادٌ له: تُنسى هويّة السابق، فتُكتب هويّةٌ للجديد عند أوّل نسخة.
     if (readSetting('autoBackupDir') !== config.dir) saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
@@ -309,17 +312,19 @@ export function registerBackupIpc(): void {
     const path = await pickFolderPath(w, { title: 'مجلّد النسخة التلقائية', buttonLabel: 'افحصه' });
     if (!path) return null;
     const info = mirrorInfo(path);
-    return { path, encrypted: info.encrypted, lastAt: info.lastAt, snapshots: mirrorSnapshots(path) };
+    return { path: handOut(path), encrypted: info.encrypted, lastAt: info.lastAt, snapshots: mirrorSnapshots(path) };
   });
 
   const mirrorSummary = (mirror: ReturnType<typeof readMirror>): BackupSummary =>
     inspectDbBytes(mirror.db, mirror.files, mirror.appVersion ? { appVersion: mirror.appVersion, createdAt: null } : null, app.getVersion());
 
-  ipcMain.handle('backup:mirrorInspect', (_e, path: string, password?: string | null, snapshot?: string | null): BackupSummary =>
-    mirrorSummary(readMirror(path, password ?? null, snapshot ?? null))
-  );
+  ipcMain.handle('backup:mirrorInspect', (_e, path: string, password?: string | null, snapshot?: string | null): BackupSummary => {
+    if (!wasHandedOut(path)) throw pickAgain('المجلّد');
+    return mirrorSummary(readMirror(path, password ?? null, snapshot ?? null));
+  });
 
   ipcMain.handle('backup:mirrorRestore', async (_e, path: string, password?: string | null, snapshot?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
+    if (!wasHandedOut(path)) throw pickAgain('المجلّد');
     const mirror = readMirror(path, password ?? null, snapshot ?? null);
     const summary = mirrorSummary(mirror);
     assertRestorable(summary, app.getVersion());
@@ -356,16 +361,18 @@ export function registerBackupIpc(): void {
     } finally {
       await h.close();
     }
-    return { path, encrypted: isEncrypted(head) };
+    return { path: handOut(path), encrypted: isEncrypted(head) };
   });
 
   ipcMain.handle('backup:inspect', async (_e, path: string, password?: string | null): Promise<BackupSummary> => {
+    if (!wasHandedOut(path)) throw pickAgain('الملفّ');
     const { summary, done } = await openAndInspect(path, password ?? null);
     done();
     return summary;
   });
 
   ipcMain.handle('backup:restore', async (_e, path: string, password?: string | null): Promise<{ summary: BackupSummary; aside: string }> => {
+    if (!wasHandedOut(path)) throw pickAgain('الملفّ');
     const { opened, dbFile, summary, done } = await openAndInspect(path, password ?? null);
     let aside: string;
     try {
