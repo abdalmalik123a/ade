@@ -53,7 +53,7 @@
 | [D74](orders/done/D74.md) | A12: `npm audit fix` لـbrace-expansion و`overrides` لـuuid تحت exceljs — بلا حزمةٍ جديدة ولا تغيير `dependencies` (وإلا 🛑)، و«0 vulnerabilities»؛ وpdf-lib 1.17.1 آخر إصدار | ✅ ١٨ ت١ — brace-expansion بـ`npm audit fix --omit=dev` (النسختان) وuuid 11.1.1 بـ`overrides` لـexceljs (`57e33a0`)، ولا اسم جديد ولا إصدار آخر (٧٧٨ مدخلًا) والقفل CRLF و`npm audit --omit=dev` صفر؛ و`excelImport` ١٩ ✓ و`citizenImport` ١٤ ✓ وuuid 11.1.1 في `app.asar`؛ والوثائق (`6f0da03`)؛ وأُغلق A12 | ⚙️ | D73 |
 | D75 D77–D80 | A11: الجرد والتصميم، ثم `doc.ts` و`docPm.ts` و`docxDoc.ts` وطريق الطباعة | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
 | [D81](orders/done/D81.md) | A11 (٥): `services/documents.ts` — الإصدار والقوائم والفحص وقيود الطبع في أربعة و«ما لا يُمسّ» مكانه، فتنقطع دورة `searchIndex`؛ و`fromSrc` في `move.cjs` | ✅ ١٨ ت١ — `documents.ts` ٩١٠ ← ٣٧٠ بأربعة ملفّات (`53dd954`)، و«دورات القيم: 0»، والقاعدة ٩ بكلمة المالك؛ والوحدة والسيناريوهات ✓ | ⚙️ | D80 |
-| D76 | فصّل ما بقي من الموجة ٣ (ما بقي من A11: عشرة ملفّات بترتيب ARCHITECTURE §٢ · A09 ب: FAT32 وحذف `before-restore-*` بتأكيد · A13 · A14 · A15؛ وA17 A18 بعد إصدار) — بعد أوامر A11 | ⬜ | 🧭 | D81 |
+| D76 | فصّل ما بقي من الموجة ٣ (ما بقي من A11: عشرة ملفّات بترتيب ARCHITECTURE §٢ · A09 ب: FAT32 وحذف `before-restore-*` بتأكيد · A13 · A14 · A15؛ وA17 A18 بعد إصدار) — بعد أوامر A11 | 🔒 ١٨ ت١ ٢٢:٢٤ | 🧭 | D81 |
 
 ## الموجات القادمة (تُفصَّل أوامرها حين يقترب دورها)
 البنود المفتوحة (G A E S R F) وتفاصيل الموجات القادمة: [`docs/BACKLOG.md`](BACKLOG.md).
