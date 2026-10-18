@@ -17,6 +17,7 @@ import { registerPdfIpc } from './pdf';
 import { registerTemplateIpc } from './templates';
 import { registerCitizenIpc } from './citizens';
 import { registerDocumentIpc } from './documents';
+import { registerOutputIpc } from './output';
 import { registerOrderIpc } from './orders';
 import { registerCameraIpc } from './camera';
 import { registerQuestionIpc } from './questions';
@@ -164,6 +165,7 @@ export function registerIpc(): void {
   registerTemplateIpc();
   registerCitizenIpc();
   registerDocumentIpc();
+  registerOutputIpc();
   registerOrderIpc();
   registerCameraIpc();
   registerPhotoIpc();
