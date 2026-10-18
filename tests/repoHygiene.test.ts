@@ -95,11 +95,18 @@ describe('نظافة المستودع (L56 وL60)', () => {
     expect(eolDrift(out!)).toEqual([]);
   });
 
-  it('٣ — package.json هو الأصل لا المحزوم (L60)', () => {
-    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { devDependencies?: object; scripts?: Record<string, string> };
+  it('٣ — package.json هو الأصل لا المحزوم (L60)، وفيه engines و.nvmrc وتعريب x64WinRequired (D95)', () => {
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
+      devDependencies?: object;
+      scripts?: Record<string, string>;
+      engines?: { node?: string };
+    };
     const why = 'package.json بلا ما في الأصل — أكتبته أداة asar فوقه؟ (L60) أعِده من git';
     expect(Object.keys(pkg.devDependencies ?? {}).length, why).toBeGreaterThan(0);
     expect(pkg.scripts?.['dev'], why).toBeTruthy();
     expect(pkg.scripts?.['dist'], why).toBeTruthy();
+    expect(pkg.engines?.node).toBe('>=22');
+    expect(readFileSync(join(ROOT, '.nvmrc'), 'utf8').trim()).toBe('22');
+    expect(readFileSync(join(ROOT, 'resources', 'installer.nsh'), 'utf8')).toContain('LangString x64WinRequired 1025');
   });
 });

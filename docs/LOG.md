@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٥٩ — D95 ✅ — A13 (٤–٥) وA15: `"engines"` و`.nvmrc`، وفقرة «إن لم يُفتح البرنامج» في `INSTALL.md`، وتعريب `x64WinRequired` في المثبّت · النموذج: Gemini 4 Argon (Medium)
+- **الإصلاحات:** `"engines": { "node": ">=22" }` في `package.json` و`.nvmrc` (`22`) · قسم `## إن لم يُفتح البرنامج` في `docs/INSTALL.md` مع مسار `%APPDATA%\Diwan\logs\diwan-errors.log` · `resources/installer.nsh` يعرّف `LangString x64WinRequired 1025` بالعربية ليغلب نصّ `messages.yml` في مثبّت NSIS (A15) · وحراستها في `tests/repoHygiene.test.ts`.
+- **الفحص:** `repoHygiene` ٤ ✓ · `docsBudget` ٣ ✓ · `structure` ١٠ ✓.
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D95.md`. **التالي:** مراجعة D95 وتنفيذ D96 (م).
+
+## ٢٠٢٦-١٠-١٩ ٠٢:٥٧ — مراجعة D94 ✓ · وحجز D95 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **D94 بـ«كيف يُراجَع»:** `renderPdf` و`renderLayerPdf` في `render.ts` يستعملان `pdfPageSizeOf` بالبوصات (`25.4`) · `psd.ts:72` يرفض `version !== 1` · `docHtml.ts` و`docFill.ts` يكرّران `mode === 'repeat'` لكلّ سطرٍ غير فارغ · و`verbatim.cjs e140ab4 src/main/services/import.ts src/main/services/importLayout.ts` ← «ضاع 0 · جديد 0». ✓
+- **تحقّق D95 قبل البدء:** D94 ✅ ومُراجَع · لا `.nvmrc` ولا `resources/installer.nsh` في المستودع. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٥٧ — D94 ✅ — A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات، ورفض PSB في `psd.ts`، وتكرار `repeat` في `GroupBlock`، وتجاهل أسماء الاستيراد في `verbatim.cjs` · النموذج: Gemini 4 Argon (Medium)
 - **الإصلاحات:** `pdfPageSizeOf` بالبوصات (`short / 25.4` و`long / 25.4`) لـ`renderPdf` و`renderLayerPdf` في `src/main/services/render.ts` (٣٧٥ سطرًا) · رفض `version !== 1` في `src/main/services/psd.ts:72` · تكرار كتل `GroupBlock` بوضع `repeat` لكلّ سطرٍ غير فارغٍ من `values[block.on]` في `src/shared/docHtml.ts` (٣٩٦ سطرًا) و`src/shared/docFill.ts` · وتجاهل أسماء الاستيراد الممتدّ في حلقة `O` في `tools/split/verbatim.cjs` و`docs/ARCHITECTURE.md` §٢.
 - **الفحص:** `typecheck` نظيف · `doc` ٤٢ ✓ · `realPsd` ١٧ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓ · `verbatim.cjs e140ab4 src/main/services/import.ts src/main/services/importLayout.ts` ← «ضاع 0 · جديد 0».
