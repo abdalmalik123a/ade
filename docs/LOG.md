@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٠٩:١٠ — مراجعة D57 ✓ · وحجز D60 🔒
+- **رسالة المالك:** `/next`.
+- **D57 بـ«كيف يُراجَع»:** `git diff a602b7e..5ac5c6e -- import.ts docxDoc.ts` فارغ · `letterheadImagePath` بنصّ ما كان في `storeLetterheadImage` (`sha256` وأوّل ٣٢ والامتداد بحروفٍ صغيرة و`letterheads/`) ·
+  أرقام القياس قبل وبعد في قيديه · `workerJobs` يقارن `JOBS.readTemplate` بنداء `importTemplateFile` المباشر بعد `withoutIds` · وأُعيد هنا: `workerJobs` ١٣ ✓ و`electron-vite build` ثم `import` ✓٣٣
+  وفيه «والخطّ الفاصل في المخزن». ✓
+- **التالي:** D60 🧭 (جارٍ): تفصيل أوامر الموجة ٣ التالية.
+
 ## ٢٠٢٦-١٠-١٨ ٠٩:٠٣ — D57 ✅ — قراءة Word نموذجًا في العامل: حلقة الرئيسة ١٦٣٤ ← ١١٦ م.ث · وأُغلق A03 · والتوقّف هنا (ر160)
 - **(٣–٤) `4eb953e`:** عمل `readTemplate` ينادي `importTemplateFile` كما هو بحافظٍ يعيد `letterheadImagePath` ويجمع البايتات (`slice()`) مرّةً لكلّ اسم، ومهلته ٦٠ ث ·
   `readTemplateFile` في `ipc/templates.ts`: `runOr` والقديم بديلٌ، ثم تكتب الرئيسة كلّ صورةٍ في مكانها، وإن تعذّرت كتابةٌ أعادت بالقديم · ويناديها `templates:importFile` و`inbox:importWord`.
