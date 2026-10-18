@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٣:٣٠ — D73 ✅ — القاعدة ٩ ترى قالب SQL ولو بدأ في السطر التالي لـ`prepare(`، و`SQL_TEMPLATES` ستّة عشر · والتوقّف هنا (ر160)
+- **الفحص** (`b4b326e`): النمط يُطابَق على `s.text` كلّه بدل `split('\n')`، و`'src/main/services/questionBank.ts'` في `SQL_TEMPLATES` بتعليقه («فاتت جرد D65… أُضيف في D73 مرّةً…»)، وسطر الرأس ٩ «بسطرٍ أو أكثر (D73)» · `structure` ١٠ ✓.
+- **الكسر المؤقّت** (لم يُودَع): (أ) `${'x'}` في قالب `elements.ts:65` (و`db.prepare(` في `:64`) ← ٩ ✗ «src/main/services/elements.ts: يبني SQL بقالب ${}…» · وعليه مع الفحص القديم (سطرًا سطرًا، أُعيد مؤقّتًا)
+  لم يُرَ `elements.ts`، والساقط وحده «questionBank.ts: لم يعد يبني SQL بقالب ${}» (العمى نفسه) · (ب) حذف `questionBank.ts` من القائمة ← ٩ ✗ «questionBank.ts: يبني SQL بقالب ${}…» · وبعد `git checkout` ١٠ ✓.
+- **ما ظهر:** النصّ كلّه ٦٤ نداءً مقابل ٤٩ سطرًا (جرد D65): الخمسة عشر الزائدة قوالب تمتدّ أسطرًا — `citizens` ٥ `documents` ٧ `searchIndex` ١ `templates` ١ `questionBank` ١ —
+  قرأتها: أسماءٌ وشروطٌ من ثوابت الكود (`SUMMARY` `FIELDS` `ROW_COLUMNS` `COLUMNS[name]` و`where.push('…?')`)، والقيم بـ`?`؛ فـ«واحدٌ يأخذ من الواجهة» (`kind`) كما هو.
+- **الوثائق** (`9c50720`): «عقد الجسر» سطر «اسم SQL» (٦٤ نداءً في ١٦ ملفًّا) · BACKLOG A04: «والقاعدة ٩ تقرأ القالب ولو بدأ في السطر التالي — D73 ✅» بدل «وبقي…» · `system.md` سطرا A04.
+- **الفحص:** `structure` `lint` `docsBudget` `repoHygiene` ١٨ ✓ · `typecheck` ✓ (خروج ٠) · لا بايت تحكّم · `src/` لم يُمسّ · `channels.allow.json` كما هو.
+- **كيف يُراجَع:** القاعدة ٩ تطابق `s.text` (`structure.test.ts:345`)، و`SQL_TEMPLATES` ستّة عشر وتعليق `questionBank.ts` فوقه · وأعِد الكسر (أ): ✗ ثم ✓ بعد الإعادة.
+  **التالي:** `/next` يراجع D73 ثم D74 ⚙️ (وD74 يتوقّف 🛑 إن احتاج حزمةً جديدة أو تغيير `dependencies`).
+
 ## ٢٠٢٦-١٠-١٨ ١٣:٢٣ — مراجعة D72 ✓ · وحجز D73 🔒
 - **رسالة المالك:** `/next`.
 - **D72 بـ«كيف يُراجَع»:** `grep -rn "clearWorkDir" src/main` ← تعريفها (`backup.ts:227`) والاستيراد ونداءٌ واحد (`index.ts:278`) بعد `recoverIncompleteRestore` ومعالجة «recovered»،
