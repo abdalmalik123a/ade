@@ -43,6 +43,8 @@
 - **الاستيراد يُحيي الملفّ لا ينسخه:** متغيّرات ملفّات المكتب فراغاتها، ولا وسم `{}`. **الترويسة تُعرف بالسياق** لا بوسم Word — الموضع وحدّ المتن وطول السطر
   والفارغة والمسافات، والعريض لا الحجم (`splitLeadingLetterhead`) — وتُستقبل متنًا أو ترويسة (ر103). والقواعد بدرجة ثقةٍ وعتبة ٠٫٨ (`APPLY_THRESHOLD`)،
   **ولا تخمين صامت:** يُعرض ما ظنّه ترويسةً وما ظنّه متنًا وبينهما حدٌّ يُسحب.
+  **وملفّ Word الواحد** (من المكتبة ومن «الملفّات») يُقرأ في العامل المستقلّ فلا يتجمّد البرنامج (D57: عشرون ألف فقرة ١٦٣٤ ← ١١٦ م.ث)، وصوره تكتبها الرئيسة باسم
+  بصمتها (`letterheadImagePath`)؛ والمجلّد وExcel في الرئيسة بعد (A19).
   **«استورد مجلدي»** بخطّةٍ تُعرض أوّلًا (٣٠٠ ملفّ ← نحو ٣٠ بطاقة وترويسة واحدة)، حتى خمسة مستويات (`FOLDER_DEPTH`)، وكلّ ملفٍّ بتنسيقه، والرأس المتكرّر ترويسةٌ
   واحدة؛ و«ما في ملفّ Word ولم يُنقل» بأعداده (٢٦ بندًا في `shared/wordLosses.ts`)، و«احفظ إحصاء الملفّات» بلا أسمائها.
   **«كتب من ملفّ Excel»** (`services/excelDoc.ts`): حدود الطباعة وحدها، والخلايا المتجاورة جملة، وورقة البيانات خاناتٌ باسم بيانها، والمكرّر يُترك.
@@ -121,7 +123,8 @@
   `pageAndDates` (الترقيم والهوامش وحقل التاريخ) · `hijriOffset`.
 - **الكتاب:** `letterDraft` («قبل الإصدار» واسم الموقّع) · `findReplace` · `symbols` · `letterFields` · `revisions` · `templates` · `issuedDocx` (الصادر إلى Word).
 - **الترويسات والكليشات:** `letterheads` · `clips` · `repeatedClip` (الفقرة المكرّرة تُقترح) · `sheetHead` (رأس الورقة ترويسةً).
-- **الاستيراد:** `import` · `importFolder` · `fixtures` (ملفّات Word من مكاتب) · `docxDoc` · `wordScan` (ما لا يُنقل) · `blanks` · `fieldHints` · `excelDoc`.
+- **الاستيراد:** `import` · `importFolder` · `fixtures` (ملفّات Word من مكاتب) · `docxDoc` · `wordScan` (ما لا يُنقل) · `blanks` · `fieldHints` · `excelDoc` ·
+  `workerJobs` (Word نموذجًا في العامل مطابقٌ للنداء المباشر، وصوره بأسمائها وبايتاتها، ورسائل الإخفاق بنصّها — D57).
 - **التعلّم:** `learning` · `learningKinds`. **والأسئلة:** `questions` · `examPaper` · `examVersions` (نموذجا أ وب) · `examAnalysis` · `questionBank` · `omr`.
 
 **ويشترك في حراسته:** `print` (`paperSize` و`sheetPage`) · `records` (`documents` و`auditFixes` و`searchIndex`) · `counter` (`language`) · `designs` (`fonts`).
