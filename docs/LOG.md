@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٠:٢١ — مراجعة D64 ✓ · وحجز D65 🔒
+- **رسالة المالك:** `/next`.
+- **D64 بـ«كيف يُراجَع»:** `grep -n "REVISIONS_KEEP\|DELETE" src/main/services/revisions.ts` ← الحذف في `recordRevision` (٨٦–٨٨) بشرط `kind` و`item_uuid` وأحدث `REVISIONS_KEEP` بـ`revision`،
+  و`forgetRevisions` (١٢٤) كما كان · الكسر المؤقّت (السقف ٢١) أسقط الحالات الثلاث في قيده · `letterTools.mjs:105` «وتقول إنها تحفظ آخر ٢٠» · وأعدتُ `revisions` **١٦ ✓**. ✓
+- **شروط D65:** D62 D63 D64 ✅ · `grep -rcE "ipcMain\.(handle|on|handleOnce|once)\(" src/main/ipc` ← **٢٠٢** `handle` في ٢٢ ملفًّا، وفي `main/index.ts` ثلاثة `ipcMain.on` (٥٩ ٧١ ١٩٢) ·
+  الشبكة في الرئيسة: `net.fetch` لملفٍّ محلّي (`index.ts:240`) و`openExternalSafe` (`harden.ts`) وحدهما · لا مكتبة تحقّقٍ في package.json · ولا أمر A04 في `docs/orders/`. ✓
+- **التالي:** D65 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٠:١٨ — D64 ✅ — آخر عشرين نسخةً سابقة لكلّ قطعة، و«تُحفظ آخر ٢٠ نسخة» في القائمة · والتوقّف هنا (ر160)
 - **ما تغيّر:** `REVISIONS_KEEP = 20` بجانب `Revision` في `shared/apiTemplates.ts` (يُستورد من `@shared/apiTemplates` لأنّ `@shared/api` أنواعٌ وحدها) · وفي `recordRevision` بعد الإدراج
   `DELETE … WHERE kind AND item_uuid AND revision NOT IN (أحدث عشرين)` في معاملة الحفظ، والحفظ الذي لم يغيّر شيئًا يعود قبله · وفي ذيل `RevisionsMenu` سطرٌ خافت `count(REVISIONS_KEEP, 'نسخة')` ← «تُحفظ آخر ٢٠ نسخة» (`f47979a`) ·
