@@ -19,7 +19,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 ### العمليات والمجلّدات العليا
 | المجلّد | ما فيه | أهمّ ملفّاته |
 |---|---|---|
-| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات — ومعها مدخل العامل المستقلّ (D53) | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٣ ملفًّا: بابٌ لكلّ مجال و`gate.ts` و`handedPaths.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` · `worker/index.ts` (عمليةٌ ثالثة بـ`utilityProcess` يُقلعها `services/workerHost.ts`، فتُبنى `out/main/worker.js`) |
+| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات — ومعها مدخل العامل المستقلّ (D53) | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٤ ملفًّا: بابٌ لكلّ مجال و`gate.ts` و`handedPaths.ts` و`checked.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` · `worker/index.ts` (عمليةٌ ثالثة بـ`utilityProcess` يُقلعها `services/workerHost.ts`، فتُبنى `out/main/worker.js`) |
 | `src/preload` | الجسر الوحيد للواجهة، أبوابًا؛ يعمل في الصندوق فلا يستورد إلا `electron` | `index.ts` · `invoke.ts` · `office.ts` · `archive.ts` · `citizens.ts` · `templates.ts` · `tools.ts` · `library.ts` |
 | `src/renderer` | الواجهة (React وTailwind)، في صندوقٍ بلا Node (`sandbox` و`contextIsolation`) | `src/App.tsx` · `shell/` (السكّة والرأس و`routeScreens.tsx`) · `screens/` · `components/` · `designs/` · `kit/` · `lib/` |
 | `src/shared` | دوالّ خالصة تعمل في العمليّتين وتُختبر بلا متصفّح ولا Electron | `doc.ts` و`docPm*.ts` · `design/` · `arabic.ts` · `license.ts` · `printRoles.ts` · `routes.ts` · `counterCards.ts` · `api*.ts` |
@@ -29,7 +29,8 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 | `content` | مصادر حزم الجهات المقروءة بشريًّا | `packs/CATALOG.md` · `packs/education/` · `packs/school-letters/` |
 
 **إضافة أداةٍ اليوم** (بعد تقسيم ١٢ ت١): مسارها في `src/shared/routes.ts`، وبطاقتها في `src/shared/counterCards.ts`، وشاشتها في
-`src/renderer/src/shell/routeScreens.tsx`، وقنواتها في بابها من `src/preload/` وأنواعها في بابها من `@shared/api*` — ولا شيء في `App.tsx`
+`src/renderer/src/shell/routeScreens.tsx`، وقنواتها في بابها من `src/preload/` وأنواعها في بابها من `@shared/api*`، ومعالجاتها في بابها من `src/main/ipc/`
+بـ`handleChecked` وحارسٍ لكلّ معامل من `@shared/bridgeGuards` (D70؛ و`ipcMain.handle` للقائمة القائمة وحدها، `tests/channels.allow.json`) — ولا شيء في `App.tsx`
 إلا أن تحتاج حالًا منه. والوجهات الخمس وتبويباتها في `src/renderer/src/lib/destinations.ts`.
 
 ### نموذج الوثيقة وإصداره
@@ -157,7 +158,7 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   `backup:inspect` `backup:restore` `backup:mirrorInspect` `backup:mirrorRestore` تقرأ أيّ مسارٍ تعطيه الواجهة · `clients:setLogo` و`seals:add` تخزّنان `imagePath` كما جاء ·
   `output:saveDocx` يقرأ صور الوثيقة بـ`src.includes('..')` لا `resolveStorePath` · و`bucket` في `files:pickImage` `files:pickImageFolder` `files:pickBackground` يُفحص (`BUCKET`) بعد الحوار.
 - **اسم SQL:** من ٤٩ موضعًا بقالب `${}` في `prepare`/`exec` (١٥ ملفًّا، بسطرٍ واحد) واحدٌ يأخذ من الواجهة: `kind` ← `TABLE[kind]` في `services/revisions.ts`، وقناتاه
-  (`revisions:list` و`revisions:get`) تفحصانه بـ`isKind`. والقيم كلّها تُربط بـ`?`، فالرقم والنصّ والكائن لا يصير SQL.
+  (`revisions:list` و`revisions:get`) تفحصانه عند الباب بـ`oneOf(KINDS)` (D70؛ وكان `isKind` يعيد `[]`/`null` للمجهول، وصار يُرفض برسالة). والقيم كلّها تُربط بـ`?`، فالرقم والنصّ والكائن لا يصير SQL.
 - **الشبكة اليوم:** لا شبكة في `src` إلا `net.fetch` لملفٍّ محلّي في بروتوكول `diwan://store` (`main/index.ts`) و`fetch('diwan://store/…')` في `UploadExportDialog.tsx`،
   و`connect-src 'self' diwan:` في `renderer/index.html`، و`openExternalSafe` يفتح http/https في متصفّح النظام لا في البرنامج، وtesseract.js بـ`langPath` محلّي؛ والاعتماديات سبعٌ بلا مكتبة شبكة.
 - **الترخيص اليوم:** الحال من موضعٍ واحد — `licenseStatus()` في `ipc/license.ts` (مخبّأٌ دقيقة، و`fresh` يعيد الحساب) —، ومناديه `license:status` و`license:activate`
@@ -170,7 +171,7 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
 - **باب الشبكة وطبقة الترخيص:** اليوم بلا شبكة، فحارسٌ في `structure.test.ts` يمنع وحدات الشبكة و`fetch(` و`net.fetch` خارج `main/index.ts`، ويثبّت `connect-src`
   والاعتماديات، ويمنع قراءة حال الترخيص أو توقيعه خارج `licenseStatus`. والباب نفسه (ملفٌّ واحدٌ يكلّم البوّابة) و«فترة السماح» ونقل الجهاز مع F01 (👤) — لا تُبنى قبله.
 - **الأوامر:** D67 ✅ قبلها بأمر D65 (A19: كشف المكرّر بقطعٍ تُحسب مرّةً لكلّ نصّ — في Node ١٥٢٢٣ ← ١٥٢ م.ث، وفي البرنامج حلقة الرئيسة ١٠٠٢٠ ← ٢٩٠ بالنتيجة نفسها، فلا نقل) ·
-  D68 ✅ حارسا الشبكة والترخيص (القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`، وأربعة كسورٍ مؤقّتة تُسقطها برسائلها) · D69 ✅ المسارات عند الباب (العشر صارت تُفحص: المطلق إن أعطته الرئيسة في هذا التشغيل — `handOut` في خمسٍ و`wasHandedOut` في ستّ —، ومسار المخزن ملفًّا داخله بـ`storeFile`، و`bucket` قبل الحوار؛ والرفض قبل لمس القرص) · D70 `handleChecked` والقائمة.
+  D68 ✅ حارسا الشبكة والترخيص (القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`، وأربعة كسورٍ مؤقّتة تُسقطها برسائلها) · D69 ✅ المسارات عند الباب (العشر صارت تُفحص: المطلق إن أعطته الرئيسة في هذا التشغيل — `handOut` في خمسٍ و`wasHandedOut` في ستّ —، ومسار المخزن ملفًّا داخله بـ`storeFile`، و`bucket` قبل الحوار؛ والرفض قبل لمس القرص) · D70 ✅ الجديد يُنمَّط (`@shared/bridgeGuards` — `id` `text` `oneOf` `optional` `listOf` — و`handleChecked` في `ipc/checked.ts`؛ والقاعدة ٩ «القنوات القائمة» في `structure.test.ts`: ٢٠٣ اسمًا في `tests/channels.allow.json` و`${}` في `prepare`/`exec` في ملفّاته الخمسة عشر، تتناقصان ولا تزيدان؛ وأوّل من انتقل قناتا `revisions:*`).
 
 ### اللغات لكلّ قسم
 | القسم | الواجهة | المحرّك | المكتبات (ترخيصها) |
