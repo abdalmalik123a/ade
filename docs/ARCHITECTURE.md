@@ -226,7 +226,10 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   `cssIndentToMm` `cssLineHeight` فلا مستورد تغيّر، والحرفيّة 0 و0، والأسماء المصدَّرة منه ٩ قبل وبعد · D79 `docxDoc.ts` ✅ — `move.cjs` يقرأ مفتاح `tsconfig` الاختياريّ (`tsconfig.web.json` إن غاب) ·
   ٩١٩ ← ٣٢٨، و`docxStyles.ts` ٢٩٢ و`docxRuns.ts` ٣١٣ قاعان (`docxRuns` يأخذ `chain` `readR` `Ctx` `RProps` من `docxStyles`) ببابٍ لـ`sizeOfTwips` و`SaveImage` فلا مستورد تغيّر،
   والأسماء المصدَّرة منه ستّة قبل وبعد؛ والحرفيّة «ضاع 6 · جديد 0» والستّة أسماءٌ من استيراد `@shared/doc` الممتدّ حذفها `prune` (جهة «ضاع» لا تتجاهل اسم الاستيراد الممتدّ)،
-  وبحذف جمل الاستيراد بالشجرة 0 و0 · D80 `render.ts` و`ipc/documents.ts` ·
+  وبحذف جمل الاستيراد بالشجرة 0 و0 · D80 `render.ts` و`ipc/documents.ts` ✅ — `render.ts` ٤٧١ ← ٣٦٥: `pngDensity.ts` ٤٥ و`sheetStyle.ts` ٤٣ و`calibration.ts` ٣٢
+  بـ`move.cjs` بلا باب (يُحدَّث مستوردوها `renderImage.ts` و`ipc/documents.ts`، و`CRC_TABLE` `styleCache` بلا `export` كما كانا)، والحرفيّة 0 و0 · و`ipc/documents.ts` ٤٧٠ ← ٢٦٣:
+  `ipc/output.ts` ٢٢١ يدويًّا — `registerOutputIpc` بجملٍ من `registerDocumentIpc` كما هي وبترتيبها، و`ipc/index.ts` يناديها بعد `registerDocumentIpc()`، و`win` يُصدَّر، والقنوات ٢٧ = ١٥ + ١٢،
+  والحرفيّة «ضاع 0 · جديد 2» (رأس الدالّة وقوسها) ·
   D81 `services/documents.ts` (و`fromSrc` في `move.cjs`) — كلّها ⚙️ بلا سؤالٍ ولا أداةٍ خارجية.
 
 ### اللغات لكلّ قسم
