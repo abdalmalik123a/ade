@@ -19,7 +19,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 ### العمليات والمجلّدات العليا
 | المجلّد | ما فيه | أهمّ ملفّاته |
 |---|---|---|
-| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات — ومعها مدخل العامل المستقلّ (D53) | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٢ ملفًّا: بابٌ لكلّ مجال و`gate.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` · `worker/index.ts` (عمليةٌ ثالثة بـ`utilityProcess` يُقلعها `services/workerHost.ts`، فتُبنى `out/main/worker.js`) |
+| `src/main` | عملية Electron الرئيسة: الإقلاع والنافذة وبروتوكول `diwan://` ونسخةٌ واحدة من البرنامج، والقاعدة، والخدمات، والقنوات — ومعها مدخل العامل المستقلّ (D53) | `index.ts` · `harden.ts` · `clock.ts` · `buildFlags.d.ts` · `errorLog.ts` · `db/` · `ipc/` (٢٣ ملفًّا: بابٌ لكلّ مجال و`gate.ts` و`handedPaths.ts`) · `services/` (٦٢ ملفًّا ومجلّد `design/`) · `license/ownerKey.ts` · `worker/index.ts` (عمليةٌ ثالثة بـ`utilityProcess` يُقلعها `services/workerHost.ts`، فتُبنى `out/main/worker.js`) |
 | `src/preload` | الجسر الوحيد للواجهة، أبوابًا؛ يعمل في الصندوق فلا يستورد إلا `electron` | `index.ts` · `invoke.ts` · `office.ts` · `archive.ts` · `citizens.ts` · `templates.ts` · `tools.ts` · `library.ts` |
 | `src/renderer` | الواجهة (React وTailwind)، في صندوقٍ بلا Node (`sandbox` و`contextIsolation`) | `src/App.tsx` · `shell/` (السكّة والرأس و`routeScreens.tsx`) · `screens/` · `components/` · `designs/` · `kit/` · `lib/` |
 | `src/shared` | دوالّ خالصة تعمل في العمليّتين وتُختبر بلا متصفّح ولا Electron | `doc.ts` و`docPm*.ts` · `design/` · `arabic.ts` · `license.ts` · `printRoles.ts` · `routes.ts` · `counterCards.ts` · `api*.ts` |
@@ -170,7 +170,7 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
 - **باب الشبكة وطبقة الترخيص:** اليوم بلا شبكة، فحارسٌ في `structure.test.ts` يمنع وحدات الشبكة و`fetch(` و`net.fetch` خارج `main/index.ts`، ويثبّت `connect-src`
   والاعتماديات، ويمنع قراءة حال الترخيص أو توقيعه خارج `licenseStatus`. والباب نفسه (ملفٌّ واحدٌ يكلّم البوّابة) و«فترة السماح» ونقل الجهاز مع F01 (👤) — لا تُبنى قبله.
 - **الأوامر:** D67 ✅ قبلها بأمر D65 (A19: كشف المكرّر بقطعٍ تُحسب مرّةً لكلّ نصّ — في Node ١٥٢٢٣ ← ١٥٢ م.ث، وفي البرنامج حلقة الرئيسة ١٠٠٢٠ ← ٢٩٠ بالنتيجة نفسها، فلا نقل) ·
-  D68 ✅ حارسا الشبكة والترخيص (القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`، وأربعة كسورٍ مؤقّتة تُسقطها برسائلها) · D69 المسارات عند الباب · D70 `handleChecked` والقائمة.
+  D68 ✅ حارسا الشبكة والترخيص (القاعدة ٨ «الأبواب الواحدة» في `structure.test.ts`، وأربعة كسورٍ مؤقّتة تُسقطها برسائلها) · D69 ✅ المسارات عند الباب (العشر صارت تُفحص: المطلق إن أعطته الرئيسة في هذا التشغيل — `handOut` في خمسٍ و`wasHandedOut` في ستّ —، ومسار المخزن ملفًّا داخله بـ`storeFile`، و`bucket` قبل الحوار؛ والرفض قبل لمس القرص) · D70 `handleChecked` والقائمة.
 
 ### اللغات لكلّ قسم
 | القسم | الواجهة | المحرّك | المكتبات (ترخيصها) |
