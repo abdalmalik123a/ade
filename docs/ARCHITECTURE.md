@@ -222,7 +222,8 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   آخر الخمسة لأنّه بندٌ واحد وقلب الأرشيف — بعد أن تثبت الطريقة في أربعة؛ والعشرة الباقية بالترتيب أعلاه يفصّلها D76.
 - **الأوامر:** D77 `doc.ts` (ومعه الأداتان و`ImportPlanDialog.tsx` يسقط سقفه) ✅ — ٨٥٢ ← ٣٧٤، و`docTypes.ts` ٣٢٦ و`docPaginate.ts` ٧٩ و`docNormalize.ts` ١٠٦، والحرفيّة 0 و0،
   والأسماء المصدَّرة ٧٢ قبل وبعد، و«دورات القيم: 1»؛ و`move.cjs` يصدّر كلّ ما ينقله، فنوعٌ داخليّ لا يستعمله إلا المنقول (`BlockBase`) يُعاد بلا `export` وإلا أظهره الباب `export type *` ·
-  `verbatim.cjs` و`inventory.cjs` في `tools/split/` بنصّيهما (والوسائط `slice(2)` في ملفّ) · D78 `docPm.ts` · D79 `docxDoc.ts` (و`tsconfig` في `move.cjs`) · D80 `render.ts` و`ipc/documents.ts` ·
+  `verbatim.cjs` و`inventory.cjs` في `tools/split/` بنصّيهما (والوسائط `slice(2)` في ملفّ) · D78 `docPm.ts` ✅ — ٤٩٩ ← ٢٥٦، و`docPmSchema.ts` ٢٥٣ قاعٌ ببابٍ لـ`docSchema`
+  `cssIndentToMm` `cssLineHeight` فلا مستورد تغيّر، والحرفيّة 0 و0، والأسماء المصدَّرة منه ٩ قبل وبعد · D79 `docxDoc.ts` (و`tsconfig` في `move.cjs`) · D80 `render.ts` و`ipc/documents.ts` ·
   D81 `services/documents.ts` (و`fromSrc` في `move.cjs`) — كلّها ⚙️ بلا سؤالٍ ولا أداةٍ خارجية.
 
 ### اللغات لكلّ قسم
