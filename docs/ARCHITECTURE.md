@@ -157,7 +157,8 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   `content:importBundled` (اسمٌ بحروفٍ معروفة) · `update:install` (التوقيع، لكن بعد نسخةٍ كاملة) · `backup:autoSet` (وجود المجلّد وحده) —، وبلا فحصٍ عند الباب عشر:
   `backup:inspect` `backup:restore` `backup:mirrorInspect` `backup:mirrorRestore` تقرأ أيّ مسارٍ تعطيه الواجهة · `clients:setLogo` و`seals:add` تخزّنان `imagePath` كما جاء ·
   `output:saveDocx` يقرأ صور الوثيقة بـ`src.includes('..')` لا `resolveStorePath` · و`bucket` في `files:pickImage` `files:pickImageFolder` `files:pickBackground` يُفحص (`BUCKET`) بعد الحوار.
-- **اسم SQL:** من ٤٩ موضعًا بقالب `${}` في `prepare`/`exec` (١٥ ملفًّا، بسطرٍ واحد) واحدٌ يأخذ من الواجهة: `kind` ← `TABLE[kind]` في `services/revisions.ts`، وقناتاه
+- **اسم SQL:** من ٦٤ نداءً بقالب `${}` في `prepare`/`exec` (٤٩ بسطرٍ واحد في جرد D65، و١٥ يمتدّ قالبها أسطرًا — أسماءٌ وشروطٌ من ثوابت الكود) في ١٦ ملفًّا
+  (الخمسة عشر بسطرٍ واحد، و`questionBank.ts` بسطرين — D73) واحدٌ يأخذ من الواجهة: `kind` ← `TABLE[kind]` في `services/revisions.ts`، وقناتاه
   (`revisions:list` و`revisions:get`) تفحصانه عند الباب بـ`oneOf(KINDS)` (D70؛ وكان `isKind` يعيد `[]`/`null` للمجهول، وصار يُرفض برسالة). والقيم كلّها تُربط بـ`?`، فالرقم والنصّ والكائن لا يصير SQL.
 - **الشبكة اليوم:** لا شبكة في `src` إلا `net.fetch` لملفٍّ محلّي في بروتوكول `diwan://store` (`main/index.ts`) و`fetch('diwan://store/…')` في `UploadExportDialog.tsx`،
   و`connect-src 'self' diwan:` في `renderer/index.html`، و`openExternalSafe` يفتح http/https في متصفّح النظام لا في البرنامج، وtesseract.js بـ`langPath` محلّي؛ والاعتماديات سبعٌ بلا مكتبة شبكة.
