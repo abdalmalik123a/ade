@@ -28,7 +28,7 @@
 | [D76](orders/done/D76.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: عشرة ملفّات بترتيب ARCHITECTURE §٢ · A09 ب · A13 · A14 · A15؛ وA17 A18 بعد إصدار) — بعد أوامر A11 | ✅ ١٨ ت١ — خمسة أوامر D82–D86 (A11 #٧–#١١، كلٌّ م) بمحاكاةٍ للنقل، وسطر D87 🧭 — مراجَع | 🧭 | D81 |
 | [D82](orders/done/D82.md) | A11 (٦): `shared/portraitMask.ts` — القاط في `suitFit.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `Landmarks` | ✅ ١٨ ت١ (05a0135) — ٥٤٠ ← ٣٣٥ و`suitFit.ts` ٢١٠، والحرفيّة 0 و0 | ⚙️ م | D76 |
 | [D83](orders/done/D83.md) | A11 (٧): `services/excelDoc.ts` — الخلايا والحقول في `excelCells.ts` ببابٍ يعيد التصدير | ✅ ١٨ ت١ (c7f6b1d) — ٦٨٧ ← ٣٣٩ و`excelCells.ts` ٣٥١، والحرفيّة «ضاع 6» أسماء استيراد و0 و0 بالشجرة — مراجَع | ⚙️ م | D82 |
-| [D84](orders/D84.md) | A11 (٨): `shared/blanks.ts` — تنظيف السطر وتسمية الخانة في `blankText.ts` ببابٍ يعيد التصدير | 🔒 ١٩ ت١ ٠٠:١٣ | ⚙️ م | D83 |
+| [D84](orders/done/D84.md) | A11 (٨): `shared/blanks.ts` — تنظيف السطر وتسمية الخانة في `blankText.ts` ببابٍ يعيد التصدير | ✅ ١٩ ت١ (e140ab4) — ٦٥٨ ← ٣٦٦ و`blankText.ts` ٣٠٨، والحرفيّة 0 و0 | ⚙️ م | D83 |
 | [D85](orders/D85.md) | A11 (٩): `services/import.ts` — الفقرات والترويسة وتخطيطها في `importLayout.ts` ببابٍ لـ`ImageSaver`، ورأس الملفّ في مكانه | ⬜ | ⚙️ م | D84 |
 | [D86](orders/D86.md) | A11 (١٠): `shared/fieldHints.ts` — ألفاظ الكشف والصياغة مع الجنس في `fieldWords.ts` ببابٍ لـ`wrongGenderWords` | ⬜ | ⚙️ م | D85 |
 | D87 | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ⬜ | 🧭 | D86 |

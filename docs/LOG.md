@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:٢٢ — D84 ✅ — A11 (٨): `shared/blanks.ts` ٦٥٨ ← ٣٦٦ نقلًا حرفيًّا، وتنظيف السطر وتسمية الخانة في `blankText.ts` · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`e140ab4`): `move.cjs` (`tsconfig.web.json`، بلا `fromSrc`) ← الأربعة والعشرون بتعليقاتها وأسطر أقسامها إلى `blankText.ts` ٣٠٨ · وفي الأصل بعد سطر `Confidence, Suggestion` بابٌ واحد للتسعة المصدَّرة · والخمسة عشر غير المصدَّرة بلا `export` (فالمصدَّر منه ٩) · `prune.cjs` · `typecheck` نظيف · والسقف (`6e9ee64`): `RATCHET` فسقط `blanks.ts` من `structure.allow.json`.
+- **الوثائق** (`af9294c`): ARCHITECTURE §١ (بقي سبعة) و§٢ (الجدول #٩ ← D84 بأرقامه، وسطر الأوامر D84 ✅) · BACKLOG A11 (الثمانية ✅، والسبعة: D85–D86 ثم D87).
+- **الفحص:** الحرفيّة `verbatim.cjs aebaf68` ← «ضاع 0 · جديد 0» · `git show --stat e140ab4` الملفّان وحدهما · المصدَّر من `blankText` ٩، ومن `blanks` ٢١ قبل وبعد · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← سبعة ملفّات بلا `blanks.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `import` ٣٣ ✓ و`wordHints` ٢٢ ✓ و`imageForm` ٩ ✓ بلا ✗.
+- **التالي:** مراجعة D84 بـ«كيف يُراجَع» ثم D85 (م، وبه تتمّ النقاط الأربع).
+
 ## ٢٠٢٦-١٠-١٩ ٠٠:١٣ — مراجعة D83 ✓ · وحجز D84 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **رسالة المالك:** `/next`.
 - **D83 بـ«كيف يُراجَع»:** `verbatim.cjs f1cafc7` ← «ضاع 6 · جديد 0» (`fieldRef` `makeField` `Doc` `DocField` `Inline` `Marks` من استيراد `@shared/doc` الممتدّ كما في القيد) · `git show --stat c7f6b1d` الملفّان وحدهما · `export` في `excelCells.ts` ٢٠ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `excelDoc.ts`. ✓
