@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٣:٠٠ — D83 ✅ — A11 (٧): `services/excelDoc.ts` ٦٨٧ ← ٣٣٩ نقلًا حرفيًّا، والخلايا في `excelCells.ts` · والتوقّف هنا (٤ نقاط، ر162)
+- **النقل** (`c7f6b1d`): `move.cjs` و`tsconfig.node.json` بلا `fromSrc` ← الثمانية والعشرون بتعليقاتها وأسطر أقسامها (المقاسات، ورقة البيانات، نصّ الخليّة، المحاذاة) إلى `excelCells.ts` ٣٥١، و«الورقة» باقٍ ·
+  وفي الأصل بعد استيراد `move.cjs` بابٌ واحد بنصّ الأمر · والثمانية (`PREPOSITIONS` `cellText` `fixZeros` `literalInlines` `marksOf` `fieldInline` `formulaInlines` `retarget`) بلا `export` فالمصدَّر ٢٠ ·
+  `prune.cjs` نظّف ثمانية (ومنها سطرا `./blanks` و`./cellText` كاملين) · `typecheck` نظيف · والسقف (`c342464`): `RATCHET` فسقط `excelDoc.ts`.
+- **الوثائق** (`3ad53eb`): ARCHITECTURE §١ (بقي ثمانية) و§٢ (الجدول #٨ ← D83 بأرقامه، وسطر الأوامر D83 ✅) · BACKLOG A11 (السبعة ✅، و«ضاع» D83 ستّة).
+- **الفحص:** الحرفيّة `verbatim.cjs f1cafc7` ← «ضاع 6 · جديد 0»: `fieldRef` `makeField` `Doc` `DocField` `Inline` `Marks` من استيراد `@shared/doc` الممتدّ حذفها `prune`، وبحذف جمل الاستيراد وإعادة التصدير بالشجرة
+  (سكربتٌ في مجلّد الجلسة) 0 و0 · `git show --stat c7f6b1d` الملفّان وحدهما · المصدَّر من `excelDoc` سبعة قبل وبعد · LF كما كان، ولا بايت تحكّم · `inventory.cjs` ← ثمانية بلا `excelDoc.ts` و«دورات القيم: 0» ·
+  `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `npx vitest run` كاملًا **١٩٧٢ ✓** و٤ متخطّاة ولقطات الرسّام كما هي · `npx electron-vite build` ثم `excelImport` ١٩ ✓ و`importFolder` ٣٤ ✓ بلا ✗.
+- **فرق التقدير:** قدّر الأمر (من D76) الجديد ≈٣١٦ والأصل ≈٣٧١، والواقع ٣٥١ و٣٣٩ (أكثر من ±١٠ — كأنّ المحاكاة عدّت `retarget` `adoptDataFields` في الباقي)، والاثنان دون ٤٠٠ فالهدف قائم ·
+  فلتقديرات D84–D86 أن تُقرأ تقريبيةً، و`move.cjs` وسقف ٤٠٠ يمسكان الخطأ.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، ومرجع الحرفيّة `f1cafc7` ← «ضاع 6 · جديد 0» (الأسماء أعلاه). **التالي:** `/next` يراجع D83 ثم D84 وD85 (م + م = ٤ نقاط).
+
 ## ٢٠٢٦-١٠-١٨ ٢٢:٥٤ — مراجعة D82 ✓ · وحجز D83 🔒
 - **D82 بـ«كيف يُراجَع»:** `verbatim.cjs 602cf14` ← «ضاع 0 · جديد 0» · `git show --stat 05a0135` الملفّان وحدهما · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `portraitMask.ts`. ✓
 - **تحقّق D83 قبل البدء:** `excelDoc.ts` ٦٨٧ وسقفه ٦٩٠ · «مكوّنات 2 أكبرها 537» · لا `excelCells.ts` · و`ExcelBook` `ExcelSheetDoc` لا يستوردهما ملفٌّ خارجه. ✓
