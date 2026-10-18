@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٩:١٥ — مراجعة D74 ✓ · وحجز D75 🔒
+- **رسالة المالك:** `/next`.
+- **D74 بـ«كيف يُراجَع»:** `npm audit --omit=dev` ← «found 0 vulnerabilities» · `git diff 73234ef..57e33a0 -- package.json` ← `overrides` وحده (`exceljs` ← `uuid` `^11.1.1`) ·
+  ومقارنة `packages` في القفل ببرنامج (`git show 73234ef:` و`HEAD:`) ← ٧٧٩ مفتاحًا قبل وبعد (٧٧٨ بلا الجذر)، لا اسم جديد ولا غائب، والمتغيّر ثلاثة وحدها:
+  `glob/…/brace-expansion` 1.1.18 ← 1.1.21 و`readdir-glob/…/brace-expansion` 2.1.4 ← 2.1.7 و`uuid` 8.3.2 ← 11.1.1 · والقفل `i/crlf`. ✓
+- **شروط D75:** D74 ✅ ومُراجَع · `wc -l` للستّة عشر كلّها عند سقوفها أو دونها (`docxDoc` ٩١٩ و`services/documents` ٩١٠ و`doc` ٨٥٢ …) و`ImportPlanDialog.tsx` ٣٩٦ (سقفه ٤٤٤) ·
+  لا قسم A11 في ARCHITECTURE · لا نصّ لـD77 فما بعد. **التالي:** D75 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٩:١٠ — D74 ✅ — ثغرتا exceljs العابرتان تُسدّان (brace-expansion وuuid) بلا حزمةٍ جديدة، وpdf-lib آخر إصدار (A12) · والتوقّف هنا (ر160)
 - **brace-expansion** (`57e33a0`): `npm audit fix` كما كُتب غيّر أربعةً وعشرين إصدارًا لأدوات التطوير (منها electron-builder 26.15.3 ← 26.17.0 و`@electron/rebuild` و`node-abi`) ونقل `@noble/hashes` ←
   فأعدتُ بـ`git checkout package-lock.json` و`npm ci` كما يقول الأمر · ثم `npm audit fix --omit=dev` (وبه يقيس الأمر) ← النسختان وحدهما: `glob/…` 1.1.18 ← 1.1.21 و`readdir-glob/…` 2.1.4 ← 2.1.7.
