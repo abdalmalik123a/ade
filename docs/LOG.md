@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:٣٤ — D85 ✅ — A11 (٩): `services/import.ts` ٥٥١ ← ٢٥٤ نقلًا حرفيًّا، والفقرات والترويسة وتخطيطها في `importLayout.ts` · والتوقّف هنا (٤ نقاط، ر162) · النموذج: Gemini 4 Argon (Medium)
+- **النقل** (`be71dfb`): `move.cjs` (`tsconfig.node.json`، بلا `fromSrc`) ← الستّة عشر بتعليقاتها إلى `importLayout.ts` ٢٩٩ · وبـEdit: الرأس (١٢ سطرًا) أُعيد من أعلى `importLayout.ts` إلى `import.ts` بعد استيراداته كما كان، وبابٌ لـ`ImageSaver`، والتسعة غير المصدَّرة بلا `export` (فالمصدَّر منه ٧) · `prune.cjs` وحذف بقيّة استيراد `@shared/letterhead` الممتدّ غير المستعمَل في `import.ts` · `typecheck` نظيف · والسقف (`a070394`): `RATCHET` فسقط `import.ts` من `structure.allow.json`.
+- **الوثائق** (`3e38e26`): ARCHITECTURE §١ (بقي ستّة) و§٢ (الجدول #١٠ ← D85 بأرقامه، وسطر الأوامر D85 ✅) · BACKLOG A11 (التسعة ✅، والستّة: D86 ثم D87).
+- **الفحص:** الحرفيّة `verbatim.cjs b6b06c8` ← «ضاع 6 · جديد 0» (`emptyLayout` `newId` `Align` `ColumnCount` `LetterheadBlock` `LetterheadLayout` من استيراد `@shared/letterhead` الممتدّ) · `git show --stat be71dfb` الملفّان وحدهما · `git diff b6b06c8 -- src/main/services/import.ts` لا يمسّ أسطر الرأس · المصدَّر من `importLayout` ٧، ومن `import` أربعة قبل وبعد · CRLF كما كان، ولا بايت تحكّم · `inventory.cjs` ← ستّة ملفّات بلا `import.ts` و«دورات القيم: 0» · `structure` ١٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `npx vitest run` كاملًا **١٩٧٧ ✓** و٤ متخطّاة (١٨٧ ملفًّا) ولقطات الرسّام كما هي · `npx electron-vite build` ثم `import` ٣٣ ✓ و`importFolder` ٣٤ ✓ و`inbox` ١٠ ✓ بلا ✗.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، ومرجع الحرفيّة `b6b06c8` ← «ضاع 6 · جديد 0» (الأسماء أعلاه). **التالي:** `/next` يراجع D85 ثم يأخذ D86 (م، نقطتان؛ وD87 🧭 بعده وحده بحكم ر162).
+
 ## ٢٠٢٦-١٠-١٩ ٠٠:٢٤ — مراجعة D84 ✓ · وحجز D85 🔒 · النموذج: Gemini 4 Argon (Medium)
 - **D84 بـ«كيف يُراجَع»:** `verbatim.cjs aebaf68` ← «ضاع 0 · جديد 0» · `git show --stat e140ab4` الملفّان وحدهما · `export` في `blankText.ts` ٩ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `src/shared/blanks.ts`. ✓
 - **تحقّق D85 قبل البدء:** `import.ts` ٥٥١ وسقفه ٥٥٣ · «مكوّنات 1 أكبرها 499» · لا `importLayout.ts` · والرأس سطوره الاثنا عشر بين `} from '@shared/letterhead';` و`const decodeEntities`. ✓
