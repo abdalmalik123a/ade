@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٣:٢٣ — مراجعة D72 ✓ · وحجز D73 🔒
+- **رسالة المالك:** `/next`.
+- **D72 بـ«كيف يُراجَع»:** `grep -rn "clearWorkDir" src/main` ← تعريفها (`backup.ts:227`) والاستيراد ونداءٌ واحد (`index.ts:278`) بعد `recoverIncompleteRestore` ومعالجة «recovered»،
+  و`if (!primary) return;` أوّل `whenReady` (`:223`) · `grep -n "mkdirSync(workDir" src/main/services/backup.ts` ← `:151` وحده في أوّل `openBackup` ·
+  والسقوط أعدتُه بنفسي (حذف السطر ١٥١، لم يُودَع) ← ✗ «ENOENT: no such file or directory, open '…\restore-work\inspect-1-1.db'»، وبعد `git checkout` `backup` ١٢ ✓. ✓
+- **شروط D73:** D72 ✅ ومُراجَع · النمط على النصّ كلّه في `src/main` ستّة عشر، وسطرًا سطرًا خمسة عشر، والزائد `services/questionBank.ts` وحده (ولا ناقص) ·
+  `git log -S'FROM question_bank ${where' … | tail -1` ← `08e9e0d`. **التالي:** D73 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١٢:٥٠ — D72 ✅ — `restore-work` يُنشأ قبل كلّ فكّ ويُفرَغ عند الإقلاع (A16، A09 أ) · والتوقّف هنا (ر160)
 - **A16** (`96448d9`): `mkdirSync(workDir…)` في أوّل `openBackup` (`backup.ts:151`) وحُذف من فرعي التشفير والوصف · وحالة «والقديمة غير المشفّرة تُفحص على جهازٍ لا مجلّد عملٍ فيه»: `legacyBackup(…, null)` تُفكّ قاعدتها إلى
   `restore-work/inspect-1-1.db` غائب وتساويها بايتًا ببايت · **وعلى الكود القديم** (`git show HEAD:…` مؤقّتًا، لم يُودَع) ← ✗ «ENOENT: no such file or directory, open '…\restore-work\inspect-1-1.db'»، وبعد الإعادة ١١ ✓.
