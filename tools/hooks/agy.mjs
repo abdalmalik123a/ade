@@ -1,7 +1,8 @@
 /**
  * حارس جلسات Antigravity (ر163): مترجمٌ يحوّل نداء أداته إلى صيغة Claude ويسأل `guard.mjs` نفسه — فالقواعد واحدةٌ لا نسختان.
  *
- * يشغّله `.agents/hooks.json` قبل الأداة: `node tools/hooks/agy.mjs` ومدخله JSON على stdin ({ toolCall: { name, args }, workspacePaths }).
+ * يشغّله `.agents/hooks.json` قبل الأداة: `node ../tools/hooks/agy.mjs` — من مجلّد `.agents/` نفسه (تجربة المالك ١٨ ت١: بلا `../` لم يُوجد
+ * السكربت، وخطافٌ يخرج بخطأ يوقف الأداة هناك) — ومدخله JSON على stdin ({ toolCall: { name, args }, workspacePaths }).
  * والمخرج `{ decision, reason }`: «deny» يُمنع، و«force_ask» يُسأل المالك ولو سبق إذنٌ دائم، و«allow» يمرّ إلى إذن البرنامج المعتاد.
  * وفحص ما بعد التعديل (L56) لا قرار له هناك، فيُجرى قبل `git commit` على كلّ ملفٍّ تغيّر. وعطل المترجم يمرّر الأداة كالحارس.
  */

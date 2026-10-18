@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٣:٥٣ — ر163 ✅: حارس Antigravity يُصلَح مساره، واختباره ووثائقه · وتبقى تجربة المالك الثانية
+- **تجربة المالك في Antigravity** (نقلها نصًّا): طلب قراءة الدفتر كلّه فمُنعت — لكن لأنّ الخطاف بحث عن `.agents/tools/hooks/agy.mjs` فخرج بـ`MODULE_NOT_FOUND`، فأوقف كلّ أداة:
+  Antigravity يشغّل أمر `hooks.json` من مجلّد `.agents/`، وخطافٌ يخرج بخطأ يوقف الأداة هناك (لا يمرّرها).
+- **الإصلاح:** الأمر `node ../tools/hooks/agy.mjs`، ورأس `agy.mjs` يقول لماذا · **والاختبار** `tests/agyHook.test.ts` (٥): الترجمة، وممنوعات الحارس نفسها و`force_ask`، والدفتر بمداه،
+  وفحص ما قبل الإيداع، وتشغيل الأمر كما في `hooks.json` من مجلّد `.agents/` (JSON دائمًا، و`allow` للمدخل الفاسد) · **والوثائق:** QUALITY §٨ (سطر Antigravity) · DECISIONS ر163.
+- **الفحص:** `agyHook` ٥ ✓ و`guardHook` ١٣ ✓ · `npm run typecheck` · `docsBudget` `repoHygiene` ✓ (في الإيداع).
+- **التالي:** المالك يعيد التجربة في Antigravity (قراءة الدفتر كلّه ← تُمنع بسبب الدفتر لا بالمسار، ثم `git status` ← يمرّ)، ثم `/next` هناك أو هنا: مراجعة D83 ثم D84 وD85.
+
 ## ٢٠٢٦-١٠-١٨ ٢٣:١٥ — ر163: جلسات Antigravity (Gemini) بالقواعد نفسها (قول المالك: «نعم، اكتب الملفّات الثلاثة الآن») · 🔄 لم يكتمل (نفد الرصيد)
 - **كُتب:** `AGENTS.md` إحالةٌ إلى CLAUDE.md · `.agents/workflows/next.md` يحيل إلى `.claude/commands/next.md` · `.agents/hooks.json` (PreToolUse) و`tools/hooks/agy.mjs` يترجم نداء Antigravity
   إلى صيغة Claude ويسأل `guard.mjs` نفسه (`ask` ← `force_ask`)، وفحص ما بعد التعديل قبل `git commit`.
