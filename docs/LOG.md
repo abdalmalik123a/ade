@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٩:١٠ — D74 ✅ — ثغرتا exceljs العابرتان تُسدّان (brace-expansion وuuid) بلا حزمةٍ جديدة، وpdf-lib آخر إصدار (A12) · والتوقّف هنا (ر160)
+- **brace-expansion** (`57e33a0`): `npm audit fix` كما كُتب غيّر أربعةً وعشرين إصدارًا لأدوات التطوير (منها electron-builder 26.15.3 ← 26.17.0 و`@electron/rebuild` و`node-abi`) ونقل `@noble/hashes` ←
+  فأعدتُ بـ`git checkout package-lock.json` و`npm ci` كما يقول الأمر · ثم `npm audit fix --omit=dev` (وبه يقيس الأمر) ← النسختان وحدهما: `glob/…` 1.1.18 ← 1.1.21 و`readdir-glob/…` 2.1.4 ← 2.1.7.
+- **uuid:** `"overrides": { "exceljs": { "uuid": "^11.1.1" } }` و`npm install` ← 8.3.2 ← 11.1.1 · والمقارنة ببرنامج (٧٧٨ مدخلًا قبل وبعد): لا اسم جديد ولا غائب ولا إصدار آخر، وفرق القفل ٢٥ سطرًا ·
+  وأُعيد CRLF (`i/crlf`، ولا سطر LF)، و`electronLanguages` لم يُفرد هذه المرّة · exceljs يحلّ `uuid/dist/cjs/index.js` 11.1.1 و`v4()` معرّفٌ صحيح · `npm audit --omit=dev` ← «found 0 vulnerabilities».
+- **الفحص:** `typecheck` ✓ · الملفّات التسعة ١٠٥ ✓ · `npm run notices` ٤٠ و`notices.json` كما هو · `electron-vite build` ✓ · `excelImport` ١٩ ✓ و`citizenImport` ١٤ ✓ بلا ✗ · `npm run pack` ✓ و`app.asar` فيه
+  uuid 11.1.1 (بـ`dist/cjs`) وbrace-expansion 1.1.21 و2.1.7 وexceljs 4.4.0 (بـ`@electron/asar` في Node) · `docsBudget` `repoHygiene` `structure` ✓ · لا بايت تحكّم · `src/` لم يُمسّ.
+- **ما ظهر:** بعد `npm ci` لا `electron.exe` (Electron 44 ينزّله عند أوّل `require('electron')`، و`drive.mjs` يأخذ المسار مباشرة فسقط بـENOENT) ← `node node_modules/electron/install.js` من المخبأ ·
+  وثغرات أدوات التطوير (`npm audit` كلّه ٢١ ← ١٩) خارج A12 ولا تُحزم · الوثائق (`6f0da03`): BACKLOG «أُغلق: A12» و`system.md`، وpdf-lib: `npm view` ← 1.17.1 = المثبَّت.
+- **كيف يُراجَع:** `npm audit --omit=dev` ← صفر · `git diff 73234ef..57e33a0 -- package.json` ← `overrides` وحده · ولا جديد في القفل (أعلاه). **التالي:** `/next` يراجع D74 ثم D75 🧭.
+
 ## ٢٠٢٦-١٠-١٨ ١٨:٥٨ — مراجعة D73 ✓ · وحجز D74 🔒
 - **رسالة المالك:** `/next`.
 - **D73 بـ«كيف يُراجَع»:** القاعدة ٩ تطابق `s.text` كلّه (`structure.test.ts:345`) لا الأسطر · `SQL_TEMPLATES` ستّة عشر وتعليق `questionBank.ts` فوقه (`:325`) ·
