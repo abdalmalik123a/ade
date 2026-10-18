@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٠٨:٢٩ — مراجعة نصّ D57 ✓ · وحجز D57 🔒
+- **رسالة المالك:** `/next`.
+- **النصّ:** يُنفَّذ بلا سؤال — لا مكتبة ولا أداة، وكلّ ما يلزمه قائم: `importTemplateFile` يُنادى في `templates.ts:116` و`inbox.ts:24` بـ`storeLetterheadImage` و`importFolder.ts:171` ·
+  `storeLetterheadImage` (`templates.ts:44`) بالاسم الموصوف و`null` · `import.ts` وما يستورده ٧٠ ملفًّا و`worker/index.ts` ١٠٧ بلا `electron` ولا `db/` ولا `ipc/` (ببرنامج) ·
+  لا `readTemplate` ولا `letterheadImage` في `src/` · `DIWAN_TEST_OPEN_FILE` و`new-word` و`templates-library-drafts` و«والخطّ الفاصل في المخزن» حيث وُصفت · والملفّان والسيناريوهات السبعة موجودة. ✓
+- **التالي:** D57 ⚙️ (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ٠٨:٢٢ — D57 🧭 — نصّه مكتوب (`docs/orders/D57.md`، ٦٢ سطرًا) ⚙️ · وD60 🧭 سطرًا · والتوقّف هنا (ر160)
 - **من الكود:** `importTemplateFile(path, saveImage?)` يُنادى من `templates:importFile` و`inbox:importWord` (بـ`storeLetterheadImage`) ومن `planFolderImport` · الاسم
   `letterheads/<sha256 ٣٢><امتداد>` و`null` إن تعذّرت الكتابة فيُسقط `docxToDoc` الصورة · `import.ts` وما يستورده (٧٠ ملفًّا معه) بلا `electron` ولا `db/` ولا `ipc/` (ببرنامج) · و`import.ts` عند سقفه ٥٥١/٥٥٣.
