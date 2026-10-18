@@ -61,8 +61,8 @@
 | A08 | النسخة التلقائية: streams وfsync والمؤقّت | system | | ب70 |
 | A09 | (أ) بقايا `restore-work` تُمحى عند الإقلاع — D72 ✅ (`clearWorkDir` في `services/backup.ts`، تحت `primary`) · **(ب)** تحذير FAT32 (فلاشةٌ حقيقية، G08 👤) وحذف `before-restore-*` يدويًّا بتأكيد | system | | ب71 D72 |
 | A10 | سقف النسخ السابقة (آخر ٢٠) | system | | ب72 |
-| A11 | ملفّات main وshared فوق ٤٠٠ سطر لم تُقسَّم | system | | ب67 |
-| A13 | صغائر البنية: الوصول بلوحة المفاتيح وقارئ الشاشة، CI و`engines`، دورتا استيراد، printToPDF، PSB، دليل «إن لم يُفتح البرنامج» | system | | ب79 |
+| A11 | ملفّات main وshared فوق ٤٠٠ سطر لم تُقسَّم — جُردت وصُمّمت (D75، ARCHITECTURE §٢ «تقسيم الملفّات الكبيرة»): ستّة عشر ملفًّا ٩٣١٨ سطرًا، لكلٍّ خطّ قطعه نقلًا حرفيًّا وكلّها بعده ٤٠٠ فأقلّ · أوامره D77–D81 (`doc.ts` `docPm.ts` `docxDoc.ts` `render.ts` و`ipc/documents.ts` `services/documents.ts`)، والعشرة الباقية بترتيبها يفصّلها D76 | system | | ب67 D75 |
+| A13 | صغائر البنية: الوصول بلوحة المفاتيح وقارئ الشاشة، CI و`engines`، دورتا استيراد، printToPDF، PSB، دليل «إن لم يُفتح البرنامج» · والدورتان جُردتا (D75): عشرة ملفّات حول `doc.ts` ↔ `canvas.ts` (سببها `normalizeCanvas` في `normalizeDoc`) يقطعها D77، و`services/documents.ts` ↔ `searchIndex.ts` يقطعها D81 | system | | ب79 D75 |
 | A14 | ديون: مفتاح Gemini القديم، الإلزامي في الواجهة وحدها، `integrity_check`، `openExternalSafe`، إيداعاتٌ خارج المثبّت | system | | ب81 |
 | A15 | المثبّت على ويندوز ٣٢ بت يقول بالإنكليزية «64-bit Windows is required» — لا ترجمة `x64WinRequired` عربية في قوالب electron-builder (D40) | system | | D40 |
 | A17 | حذف نداءات الترقية عند الطلب (`prepare*`/`ensure*` في خدماتها) بعد إصدارٍ يثبت المشغّل المرقّم — أثرها اليوم لا يتكرّر، فهي حمايةٌ لا عمل (D49) | system | | D49 |
