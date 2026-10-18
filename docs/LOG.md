@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٠:١٨ — D64 ✅ — آخر عشرين نسخةً سابقة لكلّ قطعة، و«تُحفظ آخر ٢٠ نسخة» في القائمة · والتوقّف هنا (ر160)
+- **ما تغيّر:** `REVISIONS_KEEP = 20` بجانب `Revision` في `shared/apiTemplates.ts` (يُستورد من `@shared/apiTemplates` لأنّ `@shared/api` أنواعٌ وحدها) · وفي `recordRevision` بعد الإدراج
+  `DELETE … WHERE kind AND item_uuid AND revision NOT IN (أحدث عشرين)` في معاملة الحفظ، والحفظ الذي لم يغيّر شيئًا يعود قبله · وفي ذيل `RevisionsMenu` سطرٌ خافت `count(REVISIONS_KEEP, 'نسخة')` ← «تُحفظ آخر ٢٠ نسخة» (`f47979a`) ·
+  ثلاث حالاتٍ في `revisions.test.ts` (`c04d0b3`) · وفحص `letterTools` (`16c36a1`). وفي `RevisionsMenu` سطر الاستيراد مع سطر النصّ (والأمر قال «سطرٌ واحد»).
+- **الفحص:** `typecheck` ✓ · `revisions` **١٦ ✓** (١٣ + ٣) · `revisions` `structure` `lint` و`tests/ui` **٣٤ ✓** · `electron-vite build` ثم `letterTools` **٢٦ ✓ بلا ✗** (والجديد «وتقول إنها تحفظ آخر ٢٠») ·
+  **الكسر المؤقّت:** السقف ٢١ أسقط الحالات الثلاث (٢١ بدل ٢٠)، وحذف شرط `item_uuid` أسقط «لا يُمسّان» وحدها؛ وبعد الإعادة ١٦ ✓ · لقطات الرسّام كما هي · لا بايت تحكّم.
+- **كيف يُراجَع:** `grep -n "REVISIONS_KEEP\|DELETE" src/main/services/revisions.ts` ← الحذف في `recordRevision` بشرط `kind` و`item_uuid` (وفي `forgetRevisions` كما كان).
+- **الوثائق:** `system.md` سطرا A10 · BACKLOG «أُغلق: A10» وسطر S02 · و`editor.md` لا يصف النسخ السابقة فلم يُمسّ · PLAN · ونُقل الأمر. **التالي:** `/next` يراجع D64 ثم D65 🧭.
+
 ## ٢٠٢٦-١٠-١٨ ١٠:١١ — مراجعة D63 ✓ · وحجز D64 🔒
 - **رسالة المالك:** `/next`.
 - **D63 بـ«كيف يُراجَع»:** `grep` في `autoBackup.ts`: لا `tmpdir`، و`fsyncSync` (١٠٤) قبل `renameSync` الوحيد (١٠٨)، و`readFileSync` في `readManifest` (١٦١) و`readMirror` (٣٥٨ ٣٦٨) وحدهما ·
