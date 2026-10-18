@@ -106,7 +106,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
   وWord بعشرين ألف فقرة ١٦٣٤ ← ١١٦)؛ و«استورد مجلدي» بخمسمئة ملف في الرئيسة لا يجمّدها: كشف المكرّر بقطعٍ تُحسب مرّةً ١٠٠٢٠ ← ٢٩٠ م.ث (D67) ·
   نافذة إخراجٍ مخفيّة لكلّ ورقة · لا كشيدة في Chromium (S13) ·
 الترقيات بلا ترقيم (A02) · عقد الجسر بلا تحقّقٍ موحّد: ٢٠٥ قنوات، وعشرٌ من ستّ عشرة تحمل مسارًا بلا فحصٍ عند بابها (A04، D65؛ أوامره D68–D70) · سقوف الاستيراد قبل القراءة (D51)، ومهلتها لأعمال العامل (D55)، وما في الرئيسة منه لا يجمّدها بالقياس (D62 D67) ·
-ستّة عشر ملفًّا في main وshared فوق ٤٠٠ سطر (٩٣١٨ سطرًا) بسقوفها، ودورتا استيراد — صُمّم تقسيمها نقلًا حرفيًّا («تقسيم الملفّات الكبيرة»، A11، D75؛ أوامره D77–D81)، و`doc.ts` قُسّم ومعه دورة التصاميم (D77)، ثم `docPm.ts` و`docxDoc.ts` وطريق الطباعة (D78–D80)، ثم `services/documents.ts` ومعه الدورة الثانية (D81)، ثم `portraitMask.ts` (D82) و`excelDoc.ts` (D83) و`blanks.ts` (D84) و`import.ts` (D85) و`fieldHints.ts` (D86) و`deskew.ts` (D88) و`qr.ts` (D89) و`imageForm.ts` (D90) و`paperDoc.ts` (D91): بقي واحد (D92) ولا دورة.
+ستّة عشر ملفًّا في main وshared فوق ٤٠٠ سطر (٩٣١٨ سطرًا) بسقوفها، ودورتا استيراد — صُمّم تقسيمها نقلًا حرفيًّا («تقسيم الملفّات الكبيرة»، A11، D75؛ أوامره D77–D86 وD88–D92)، وقُسّمت الستّة عشر كلّها (`doc.ts` `docPm.ts` `docxDoc.ts` وطريق الطباعة `render.ts` و`ipc/documents.ts` و`services/documents.ts` و`portraitMask.ts` و`excelDoc.ts` و`blanks.ts` و`import.ts` و`fieldHints.ts` و`deskew.ts` و`qr.ts` و`imageForm.ts` و`paperDoc.ts` و`importFolder.ts`) وانقطعت الدورتان: فلا ملفّ فوق ٤٠٠ ولا دورة، و`structure.allow.json` فارغة.
 
 ## ٢. الأساس «أ» — ثابت (ر159)
 
@@ -216,7 +216,7 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   | D89 | `shared/qr.ts` (٤٦٣) | `qrCodewords.ts` ١٥٧ (حقل غالوا وريد-سولومون وكلمات الرمز، وكتلة الجدولين معها) | ٣١٣ | — | باب (قاع) |
   | D90 | `shared/imageForm.ts` (٤٤٧) | `imageFormDoc.ts` ٨٨ (`imageFormDoc` `formValues`) | ٣٦٦ | — | باب (خمسة مستوردين؛ و`import type { FormSlot }` إلى الأصل) |
   | D91 | `shared/paperDoc.ts` (٤٤٧) | `paperLines.ts` ١٢٧ (هندسة السطور وقطعها، وأنواع OCR) | ٣٣٤ | — | باب (قاع) |
-  | ١٦ | `services/importFolder.ts` (٤١٨) | `importApply.ts` ≈٧٠ (`applyImportPlan`) | ≈٣٥٥ | — | مستوردوه اثنان: يُحدَّثان |
+  | D92 | `services/importFolder.ts` (٤١٨) | `importApply.ts` ٨١ (`applyImportPlan` وتعليقه) | ٣٤٥ | — | مستوردوه اثنان: يُحدَّثان |
 
   وبعدها كلّها لا ملفّ في main وshared فوق ٤٠٠، و`structure.allow.json` خالٍ منها. و`ipc/documents.ts` مع `render.ts` لأنّهما طريق الطباعة الواحد (يستورده)؛ و`services/documents.ts`
   آخر الخمسة لأنّه بندٌ واحد وقلب الأرشيف — بعد أن تثبت الطريقة في أربعة؛ والعشرة الباقية بالترتيب أعلاه يفصّلها D76.
@@ -253,8 +253,9 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   D90 `imageForm.ts` ✅ — ٤٤٧ ← ٣٦٦: `imageFormDoc.ts` ٨٨ (`PT_PER_MM` `imageFormDoc` `formValues`) بـ`move.cjs` و`fromSrc` (`import type { FormSlot }` من الأصل، يُمحى عند البناء) وبابٍ يعيد تصدير الاثنين فلا مستورد تغيّر،
   و`PT_PER_MM` بلا `export` (فالمصدَّر منه ٢)، والأسماء المصدَّرة من `imageForm` ثمانية قبل وبعد، والحرفيّة 0 و0، و«دورات القيم: 0» ·
   D91 `paperDoc.ts` ✅ — ٤٤٧ ← ٣٣٤: `paperLines.ts` ١٢٧ قاعٌ (سبعة عشر تصريحًا) بـ`move.cjs` وبابٍ للأنواع الأربعة فلا مستورد تغيّر،
-  والأربعة غير المصدَّرة بلا `export` (فالمصدَّر منه ١٣)، والأسماء المصدَّرة من `paperDoc` أحد عشر قبل وبعد، والحرفيّة 0 و0، و«دورات القيم: 0».
-  والباقي بترتيب الجدول لـD92.
+  والأربعة غير المصدَّرة بلا `export` (فالمصدَّر منه ١٣)، والأسماء المصدَّرة من `paperDoc` أحد عشر قبل وبعد، والحرفيّة 0 و0، و«دورات القيم: 0» ·
+  D92 `importFolder.ts` ✅ — ٤١٨ ← ٣٤٥: `importApply.ts` ٨١ قاعٌ (`applyImportPlan` وتعليقه) بـ`move.cjs` و`tsconfig.node.json` بلا باب،
+  ومستورداه الاثنان (`ipc/templates.ts` و`tests/importFolder.test.ts`) يُحدَّثان، والحرفيّة 0 و0، و«دورات القيم: 0» — وبه اكتملت الستّة عشر كلّها وفرغت `tests/structure.allow.json`.
 
 ### اللغات لكلّ قسم
 | القسم | الواجهة | المحرّك | المكتبات (ترخيصها) |
