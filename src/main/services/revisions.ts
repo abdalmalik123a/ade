@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Database } from 'better-sqlite3';
 import type { Revision, RevisionKind } from '@shared/api';
+import { REVISIONS_KEEP } from '@shared/apiTemplates';
 
 const TABLE: Record<RevisionKind, string> = {
   template: 'templates',
@@ -60,6 +61,8 @@ function identityOf(db: Database, kind: RevisionKind, id: number): Identity | nu
  * `before` هي الحالة المحفوظة الآن و`after` ما سيُكتب؛ فحفظٌ لم يغيّر شيئًا لا
  * يُنشئ نسخةً فارغة المعنى. و`comparable` يردّ القطعة إلى ما يُقارَن منها (بلا
  * المعرّفات الداخلية التي تتولّد عند كل قراءة). ويُستدعى داخل معاملة الحفظ نفسها.
+ * وتبقى آخر `REVISIONS_KEEP` نسخةً للقطعة وحدها، والأقدم يُحذف هنا — فما زاد في قاعدةٍ
+ * قديمة يُقصّ عند حفظ القطعة التالي، ولا يجري شيءٌ عند الإقلاع.
  */
 export function recordRevision<T>(
   db: Database,
@@ -79,6 +82,10 @@ export function recordRevision<T>(
     who.revision,
     prev
   );
+  db.prepare(
+    `DELETE FROM revisions WHERE kind = @kind AND item_uuid = @uuid AND revision NOT IN
+       (SELECT revision FROM revisions WHERE kind = @kind AND item_uuid = @uuid ORDER BY revision DESC LIMIT @keep)`
+  ).run({ kind, uuid: who.uuid, keep: REVISIONS_KEEP });
   db.prepare(`UPDATE ${TABLE[kind]} SET revision = revision + 1 WHERE id = ?`).run(id);
 }
 

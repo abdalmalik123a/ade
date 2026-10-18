@@ -6,6 +6,8 @@
  */
 import { useEffect, useState } from 'react';
 import type { Revision, RevisionKind, RevisionPayloads } from '@shared/api';
+import { REVISIONS_KEEP } from '@shared/apiTemplates';
+import { count } from '@shared/arabic';
 
 /** وقت القاعدة (UTC بلا منطقة) بتوقيت الجهاز: «أمس ١٠:٣٠» أو التاريخ. */
 function when(at: string): string {
@@ -85,6 +87,9 @@ export default function RevisionsMenu<K extends RevisionKind>({
               </button>
             ))
           )}
+          <span className="font-label-sm text-label-sm text-on-surface-variant pt-space-xs text-center" data-revisions-keep="">
+            تُحفظ آخر {count(REVISIONS_KEEP, 'نسخة')}
+          </span>
         </div>
       )}
     </span>

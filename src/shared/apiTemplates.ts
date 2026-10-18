@@ -137,6 +137,9 @@ export type RevisionKind = 'template' | 'letterhead' | 'clip';
 /** نسخةٌ سابقة لقطعة — رقمها ووقت حلول ما بعدها محلّها. */
 export type Revision = { revision: number; createdAt: string };
 
+/** ما يُبقى من النسخ السابقة لكلّ قطعة — والأقدم يُحذف في معاملة الحفظ نفسها (A10). */
+export const REVISIONS_KEEP = 20;
+
 /** ما يُحفظ من كل قطعةٍ في نسخها — ما يُحرَّر، لا ترتيب القائمة ولا عدّاداتها. */
 export type RevisionPayloads = {
   template: {
