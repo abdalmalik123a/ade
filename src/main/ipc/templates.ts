@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
+import { storeFile } from '../services/localPaths';
 import * as svc from '../services/templates';
 import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
@@ -266,14 +267,10 @@ export function registerTemplateIpc(): void {
     if (result.canceled || !result.filePath) return null;
 
     const letterhead = t.letterheadId ? getLetterhead(db, t.letterheadId) : getDefaultLetterhead(db);
-    // صور الوثيقة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
+    // صور الوثيقة من المخزن — ملفٌّ موجودٌ داخله وحده (`storeFile`)، كما في بروتوكول `diwan://`.
     const image = (src: string) => {
-      if (src.includes('..')) return null;
-      try {
-        return readFileSync(join(storeDir(), src));
-      } catch {
-        return null;
-      }
+      const file = storeFile(storeDir(), src);
+      return file ? readFileSync(file) : null;
     };
     await writeFile(result.filePath, await templateToDocx(t, letterhead, image));
     return result.filePath;

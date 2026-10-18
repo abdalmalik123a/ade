@@ -138,6 +138,11 @@ export async function pickFolderPath(
  */
 const BUCKET = /^[a-z][a-z0-9-]{0,31}$/;
 
+/** و`bucket` يُفحص عند الباب — قبل أن يُفتح حوارٌ يُختار فيه ملفٌّ لن يُحفظ (A04، D69). */
+function checkBucket(bucket: unknown): asserts bucket is string {
+  if (typeof bucket !== 'string' || !BUCKET.test(bucket)) throw new Error('مجلّد تخزينٍ غير معروف');
+}
+
 /** نوع الصورة من أوّل بايتاتها — لا من اسمٍ أو نوعٍ تقوله الواجهة. */
 export function imageExt(bytes: Uint8Array): '.png' | '.jpg' | '.gif' | '.webp' | null {
   const b = bytes;
@@ -153,7 +158,7 @@ export function imageExt(bytes: Uint8Array): '.png' | '.jpg' | '.gif' | '.webp' 
 const PASTE_MAX = 20 * 1024 * 1024;
 
 export async function importFile(sourcePath: string, bucket: string): Promise<string> {
-  if (!BUCKET.test(bucket)) throw new Error('مجلّد تخزينٍ غير معروف');
+  checkBucket(bucket);
   const bytes = await readFile(sourcePath);
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
   const name = `${hash}${extname(sourcePath).toLowerCase()}`;
@@ -206,6 +211,7 @@ export function registerFileIpc(): void {
   ipcMain.handle('files:discardTransient', (_e, paths: string[]) => discardTransient(storeDir(), Array.isArray(paths) ? paths : []));
 
   ipcMain.handle('files:pickImage', async (e, bucket: string): Promise<string | null> => {
+    checkBucket(bucket);
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
     // عبر pickOpenPath: بابُ المِقْود نفسه — فشعار الجهة يُختبر على التطبيق الحقيقي.
@@ -253,6 +259,7 @@ export function registerFileIpc(): void {
   ipcMain.handle(
     'files:pickImageFolder',
     async (e, bucket: string): Promise<{ name: string; src: string }[] | null> => {
+      checkBucket(bucket);
       const win = BrowserWindow.fromWebContents(e.sender);
       if (!win) return null;
       const dir = await pickFolderPath(win, { title: 'اختر مجلد الصور', buttonLabel: 'اختر' });
@@ -277,6 +284,7 @@ export function registerFileIpc(): void {
   ipcMain.handle(
     'files:pickBackground',
     async (e, bucket: string): Promise<{ src: string; meta: ImageMeta | null } | null> => {
+      checkBucket(bucket);
       const win = BrowserWindow.fromWebContents(e.sender);
       if (!win) return null;
       const source = await pickOpenPath(win, {

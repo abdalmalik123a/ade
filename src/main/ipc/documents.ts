@@ -4,6 +4,7 @@ import { writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { isJobId, printJournal, runJob, type PrintJob } from '../services/printJobs';
 import { getDb, storeDir } from '../db';
+import { storeFile } from '../services/localPaths';
 import * as svc from '../services/documents';
 import { searchOthers } from '../services/search';
 import { markWeekSeen, todayAgenda } from '../services/today';
@@ -452,14 +453,10 @@ export function registerDocumentIpc(): void {
     ): Promise<string | null> => {
       const w = win(e);
       if (!w) return null;
-      // صور الوثيقة والترويسة من المخزن — والمسار داخله وحده، كما في بروتوكول `diwan://`.
+      // صور الوثيقة والترويسة من المخزن — ملفٌّ موجودٌ داخله وحده (`storeFile`)، كما في بروتوكول `diwan://`.
       const image = (src: string) => {
-        if (src.includes('..')) return null;
-        try {
-          return readFileSync(join(storeDir(), src));
-        } catch {
-          return null;
-        }
+        const file = storeFile(storeDir(), src);
+        return file ? readFileSync(file) : null;
       };
       const docx = await docToDocx(fillDoc(payload.doc, payload.values), {
         title: payload.title,

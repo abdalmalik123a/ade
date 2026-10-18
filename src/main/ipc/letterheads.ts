@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
-import { getDb } from '../db';
+import { getDb, storeDir } from '../db';
+import { storeFile } from '../services/localPaths';
 import * as svc from '../services/letterheads';
 import type { LetterheadLayout } from '@shared/letterhead';
 
@@ -35,8 +36,10 @@ export function registerLetterheadIpc(): void {
   ipcMain.handle('letterheads:delete', (_e, id: number) => svc.deleteLetterhead(getDb(), id));
 
   ipcMain.handle('seals:list', () => svc.listSeals(getDb()));
-  ipcMain.handle('seals:add', (_e, input: { name: string; kind: string; imagePath: string | null }) =>
-    svc.addSeal(getDb(), input)
-  );
+  ipcMain.handle('seals:add', (_e, input: { name: string; kind: string; imagePath: string | null }) => {
+    // صورته ملفٌّ في المخزن أعطاه «اختر صورة» — لا مسارٌ يخرج منه (A04، D69).
+    if (input.imagePath != null && !storeFile(storeDir(), input.imagePath)) throw new Error('الصورة خارج مخزن ديوان — اخترها ثانيةً');
+    return svc.addSeal(getDb(), input);
+  });
   ipcMain.handle('seals:delete', (_e, id: number) => svc.deleteSeal(getDb(), id));
 }

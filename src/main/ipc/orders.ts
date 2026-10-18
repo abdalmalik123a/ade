@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
-import { getDb } from '../db';
+import { getDb, storeDir } from '../db';
+import { storeFile } from '../services/localPaths';
 import * as clients from '../services/clients';
 import * as orders from '../services/orders';
 import type { ClientInput, OrderInput, OrderStatus } from '@shared/orders';
@@ -8,7 +9,11 @@ import type { ClientInput, OrderInput, OrderStatus } from '@shared/orders';
 export function registerOrderIpc(): void {
   ipcMain.handle('clients:list', (_e, query?: string) => clients.listClients(getDb(), query ?? ''));
   ipcMain.handle('clients:save', (_e, input: ClientInput) => clients.saveClient(getDb(), input));
-  ipcMain.handle('clients:setLogo', (_e, id: number, imagePath: string) => clients.setClientLogo(getDb(), id, imagePath));
+  ipcMain.handle('clients:setLogo', (_e, id: number, imagePath: string) => {
+    // الشعار ملفٌّ في المخزن أعطاه «اختر صورة» — لا مسارٌ يخرج منه (A04، D69).
+    if (!storeFile(storeDir(), imagePath)) throw new Error('الصورة خارج مخزن ديوان — اخترها ثانيةً');
+    return clients.setClientLogo(getDb(), id, imagePath);
+  });
   ipcMain.handle('clients:delete', (_e, id: number) => clients.deleteClient(getDb(), id));
 
   ipcMain.handle('orders:list', (_e, filter?: orders.OrderFilter) => orders.listOrders(getDb(), filter ?? {}));
