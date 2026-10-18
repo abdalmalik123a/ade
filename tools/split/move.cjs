@@ -4,7 +4,7 @@
  *
  *   node tools/split/move.cjs spec.json        (من جذر المستودع؛ ثم tools/split/prune.cjs ثم npm run typecheck)
  *
- * spec: { src, outFile, names: [..], doc: [أسطر رأس الملفّ الجديد], tsconfig?: البرنامج ('tsconfig.web.json' إن غاب، و'tsconfig.node.json' لـmain) }
+ * spec: { src, outFile, names: [..], doc: [أسطر رأس الملفّ الجديد], tsconfig?: البرنامج ('tsconfig.web.json' إن غاب، و'tsconfig.node.json' لـmain), fromSrc?: true — ما يستعمله المنقول من الأصل يُستورد منه إن كان مصدَّرًا فيه (وإلا توقّف، وإن بقي الأصل يستعمل المنقول توقّف: دورة) }
  * ويتوقّف إن استعمل المنقولُ تعريفًا آخر في مستوى الوحدة لم يُذكر معه (فيُذكر معه، أو يُنقل قبله إلى ملفٍّ مشترك).
  */
 const fs = require('fs');
@@ -58,6 +58,7 @@ const topOf = (node) => {
 const used = new Set();
 const missing = new Set();
 const stillUsed = new Set();
+const fromOrig = new Map();
 (function walk(n) {
   if (ts.isIdentifier(n)) {
     const p = n.parent;
@@ -70,6 +71,7 @@ const stillUsed = new Set();
       const inMoved = movingSet.has(from);
       if (inMoved && !movingSet.has(to)) {
         if (ts.isImportDeclaration(to)) used.add(n.text);
+        else if (to !== from && spec.fromSrc) fromOrig.set(nameOf(to) ?? n.text, to);
         else if (to !== from) missing.add(nameOf(to) ?? n.text);
       }
       if (!inMoved && movingSet.has(to) && !ts.isImportDeclaration(from)) stillUsed.add(nameOf(to));
@@ -78,6 +80,12 @@ const stillUsed = new Set();
   ts.forEachChild(n, walk);
 })(sf);
 if (missing.size) throw new Error(`المنقول يستعمل من مستوى الوحدة ${[...missing].join('، ')} — اذكره معه`);
+const isExported = (st) => !!(ts.getCombinedModifierFlags(ts.isVariableStatement(st) ? st.declarationList.declarations[0] : st) & ts.ModifierFlags.Export);
+if (spec.fromSrc) {
+  const hidden = [...fromOrig].filter(([, st]) => !isExported(st)).map(([n]) => n);
+  if (hidden.length) throw new Error(`المنقول يستعمل من الأصل ${hidden.join('، ')} وليس مصدَّرًا فيه — لا تصدير جديد`);
+  if (stillUsed.size) throw new Error(`دورة: الأصل يبقى يستعمل من المنقول ${[...stillUsed].join('، ')}`);
+}
 
 const relFrom = (mod) => {
   if (!mod.startsWith('.')) return mod;
@@ -103,6 +111,15 @@ for (const [mod, e] of byMod) {
   else if (e.def && named) impLines.push(`import ${e.def}, { ${named} } from '${mod}';`);
   else if (e.def) impLines.push(`import ${e.def} from '${mod}';`);
   else if (named) impLines.push(`import { ${named} } from '${mod}';`);
+}
+if (fromOrig.size) {
+  // من الأصل بترتيب تعريفاته فيه، والأنواع بـtype.
+  const isTypeSt = (st) => ts.isTypeAliasDeclaration(st) || ts.isInterfaceDeclaration(st);
+  const all = [...fromOrig].sort((a, b) => a[1].pos - b[1].pos);
+  const allType = all.every(([, st]) => isTypeSt(st));
+  const names = all.map(([n, st]) => (!allType && isTypeSt(st) ? `type ${n}` : n)).join(', ');
+  const relSrc = path.relative(path.dirname(OUT), SRC).replace(/\\/g, '/').replace(/\.tsx?$/, '');
+  impLines.push(`import ${allType ? 'type ' : ''}{ ${names} } from '${relSrc.startsWith('.') ? relSrc : './' + relSrc}';`);
 }
 
 // نصّ كلّ تعريفٍ بتعليقه (من بداية سطر أوّل تعليقٍ يسبقه)
