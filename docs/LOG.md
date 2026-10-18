@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢١:١٤ — D79 ✅ — A11 (٣): `docxDoc.ts` ٩١٩ ← ٣٢٨ نقلًا حرفيًّا · والتوقّف هنا (ر160)
+- **`move.cjs`** (`64ec44e`): `const TSCONFIG = spec.tsconfig ?? 'tsconfig.web.json'` في قراءة الإعداد ورسالة «لم يُوجد الملفّ في البرنامج (…)» وسطر `spec:` · ومواصفةٌ بلا المفتاح على ملفٍّ في main ← «(tsconfig.web.json)» كما كانت.
+- **النقل** (`59d76ac`، الثلاثة وحدها) بـ`move.cjs` و`"tsconfig": "tsconfig.node.json"`، والمواصفتان في مجلّد الجلسة: العشرون إلى `docxStyles.ts` ٢٩٢، ثم الستّة عشر إلى `docxRuns.ts` ٣١٣ (أخذت `chain` `readR` `Ctx` `RProps` من `./docxStyles`) ·
+  وسطر الباب `export { sizeOfTwips, type SaveImage } from './docxStyles';` بعد باب `docxXml` · `prune.cjs tsconfig.node.json` حذف أحد عشر من `docxDoc.ts` · وعنوان «المقاسات» بقي فوق `TW_PER_PX` (تعليقه) · **السقف** (`292b43c`) · **الوثائق** (`a52d62d`).
+- **الفحص:** `typecheck` ✓ (خروج 0) · `verbatim.cjs 64ec44e` على الثلاثة ← **«ضاع 6 · جديد 0»**: الستّة `PAGE_MM,` `tokenInlines,` `type ImageBlock,` `type Marks,` `type PageSetup,` `type PageSize` — أسطر استيراد `@shared/doc` الممتدّ حذفها `prune`
+  (وهي في استيراد الجديدين بسطر)، وجهة «ضاع» في الأداة لا تتجاهلها؛ والفحص نفسه بحذف جمل الاستيراد كاملةً بشجرة TypeScript (سكربت في مجلّد الجلسة) ← 0 و0، وعلى D78 ← 0 و0، وسطرٌ معدَّل ← «ضاع 1 · جديد 1» ·
+  الأسماء المصدَّرة من `docxDoc.ts` بالمدقّق ستّة قبل وبعد · `npx vitest run` ١٩٧٢ ✓ و٤ متخطّاة (ومنه `docxDoc` `docPm` `fieldHints` `sheetHead` `issuedDocx` ٨١ ✓) ولقطات الرسّام كما هي · `inventory.cjs` ← «دورات القيم: 1» ·
+  `electron-vite build` ✓ ثم `import` ٣٣ ✓ `wordHints` ٢٢ `wordLosses` ١٣ `importFolder` ٣٤ — بلا ✗ · `import.ts` و`design/importWord.ts` لا يذكران الجديدين · لا بايت تحكّم · `docsBudget` ٣ ✓.
+- **كيف يُراجَع:** «كيف يُراجَع» في أمره، والحرفيّة ستُظهر «ضاع 6» نفسها (الأسماء أعلاه) لا 0 — وتعديل `verbatim.cjs` لأمرٍ يسمح به (BACKLOG A11). **التالي:** `/next` يراجع D79 ثم D80 ⚙️ (`render.ts` و`ipc/documents.ts`).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:٠٤ — مراجعة D78 ✓ · وحجز D79 🔒
 - **رسالة المالك:** `/next`.
 - **D78 بـ«كيف يُراجَع»:** `verbatim.cjs 49c069d src/shared/docPm.ts src/shared/docPmSchema.ts` ← «ضاع 0 · جديد 0» · `git show 6516205 --stat` ← `docPm.ts` و`docPmSchema.ts` وحدهما (فلا مستورد تغيّر) ·
