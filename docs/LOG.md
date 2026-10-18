@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٢:٠٢ — D81 🔄 — متوقّفٌ عند القاعدة ٩ في `structure.test.ts`: سؤالٌ للمالك 🛑
+- **(١) `fromSrc`** (`0708396`): تجربةٌ في مجلّد الجلسة — ما ليس مصدَّرًا ← «keepStyle، nidOf، searchFold وليس مصدَّرًا فيه» · الدورة ← «دورة: … assertNotVoid» · وبلا المفتاح الرسالة كالأداة القديمة، ونقلٌ ناجح بالأداتين بايتًا ببايت.
+- **(٢) النقل** (`53dd954`) أربع مرّات بـ`fromSrc`: `issue.ts` ٢٣٢ و`documentList.ts` ١٦٤ و`archiveVerify.ts` ١٠٤ و`printRecords.ts` ٦١ تستورد من `./documents` · `searchFold` `keepStyle` `nidOf` `ROW_COLUMNS` `LEGACY_SLOTS` `legacySlots` بلا `export` كما كانت (سابقة D77 وD80) ·
+  المستوردون بسكربتٍ في مجلّد الجلسة يحفظ CRLF: سطور الاستيراد و`svc.` وحدها (`ipc/documents.ts` `ipc/output.ts` `ipc/index.ts` والاختبارات الخمسة عشر) · `prune` حذف اثني عشر · `documents.ts` ٩١٠ ← ٣٧٠ ولا سطر `+` فيه، والستّة وكلّ الباقي (٢٣) بايتًا ببايت.
+- **(٣) السقف** (`d6503b2`): `documents.ts` خرج من `structure.allow.json`.
+- **الفحص:** `typecheck` ✓ · الحرفيّة بـ`0708396` «ضاع 7 · جديد 0» (`ArchiveCheck` `ArchiveStats` `DocumentRow` `IssueInput` `PeriodStats` `TransactionInput` `TransactionResult` — استيراد `@shared/api` الممتدّ، كـD79)، وبحذف جمل الاستيراد بالشجرة 0 و0، وحرفٌ مغيَّر ← 1 و1 ·
+  `inventory.cjs` ← «دورات القيم: 0» · `npx vitest run` ١٩٧١ ✓ و٤ متخطّاة و**١ ✗: القاعدة ٩** · `electron-vite build` ✓ ثم `issue` ١١٣ `batches` ٢٨ `copies` ١٠ `weekly` ١٥ `audit` ٨ `orderPrinted` ١٣ `receipt` ١٦ — بلا ✗ · لا بايت تحكّم.
+- **التوقّف:** القاعدة ٩ تقول «`documentList.ts` يبني SQL بقالب `${}` … وهذه القائمة لا تزيد»: الخمس المنقولة إليه تحمل قوالبها حرفيًّا. قوالب `prepare/exec` بـ`${}` كانت ٩ في `documents.ts`، وبعده ١ فيه و٨ في `documentList.ts` = ٩، فلا قالب جديد؛
+  لكنّ إصلاحه سطرٌ في `SQL_TEMPLATES` بـ`tests/structure.test.ts`، وهو خارج «المسموح» وتعليقه «لا يُضاف إليهما شيء». فلم يُمسّ.
+- **سؤال المالك:** (١) **توصيتي:** يُضاف `src/main/services/documentList.ts` إلى القائمة بتعليق «نُقل من documents.ts في D81 بقوالبه الثمانية، ولا قالب جديد» (كـ`questionBank.ts` في D73)، فتصير ١٧ ويبقى عدد القوالب ٩ · (٢) أو يُردّ النقل (`53dd954` `d6503b2`) ويبقى `documents.ts` ٩١٠.
+- **نقطة الاستئناف:** بعد الجواب (١): السطر في `structure.test.ts` ثم `structure` و`npx vitest run` كاملًا، ثم الخطوة ٤ (ARCHITECTURE §٢ سطر D81 و§١ «نقاط الضعف»، وBACKLOG A11 وA13) والختام. والسيناريوهات لا تُعاد (لا `src/` يتغيّر).
+
 ## ٢٠٢٦-١٠-١٨ ٢١:٤٦ — مراجعة D80 ✓ · وحجز D81 🔒
 - **رسالة المالك:** `/next`.
 - **D80 بـ«كيف يُراجَع»:** `verbatim.cjs da59a53` على `render.ts` والثلاثة ← «ضاع 0 · جديد 0» · `verbatim.cjs 6f15dec` على `ipc/documents.ts` و`ipc/output.ts` ← «ضاع 0 · جديد 2» (`function registerOutputIpc(): void {` و`}`) ·
