@@ -6,6 +6,10 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ٢٢:٥٤ — مراجعة D82 ✓ · وحجز D83 🔒
+- **D82 بـ«كيف يُراجَع»:** `verbatim.cjs 602cf14` ← «ضاع 0 · جديد 0» · `git show --stat 05a0135` الملفّان وحدهما · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `portraitMask.ts`. ✓
+- **تحقّق D83 قبل البدء:** `excelDoc.ts` ٦٨٧ وسقفه ٦٩٠ · «مكوّنات 2 أكبرها 537» · لا `excelCells.ts` · و`ExcelBook` `ExcelSheetDoc` لا يستوردهما ملفٌّ خارجه. ✓
+
 ## ٢٠٢٦-١٠-١٨ ٢٢:٥٣ — D82 ✅ — A11 (٦): `shared/portraitMask.ts` ٥٤٠ ← ٣٣٥ نقلًا حرفيًّا، والقاط في `suitFit.ts`
 - **النقل** (`05a0135`): `move.cjs` بمواصفةٍ في مجلّد الجلسة (`fromSrc`، والبرنامج `tsconfig.web.json`) ← الأحد عشر بتعليقاتها ومعها سطر `// ── القاط` إلى `suitFit.ts` ٢١٠، وفيه `import type { Landmarks } from './portraitMask'`
   وحده · وفي الأصل بعد سطر `photoPresets` بابٌ واحد بنصّ الأمر · `prune.cjs` لم يجد ما يحذف · `typecheck` نظيف · والسقف (`a9cd079`): `RATCHET` فسقط `portraitMask.ts` من `structure.allow.json`.
