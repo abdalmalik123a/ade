@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١١:٣٥ — مراجعة D69 ✓ · وحجز D70 🔒
+- **رسالة المالك:** `/next`.
+- **D69 بـ«كيف يُراجَع»:** `grep -n "handOut\|wasHandedOut" src/main/ipc/*.ts` ← خمسةٌ تعطي (`backup.ts:105` `274` `315` `364` و`update.ts:35`) وستٌّ تفحص (`backup.ts:284` `322` `327` `368` `375` و`update.ts:40`) ·
+  `grep -rn "includes('..')" src/main/ipc/` لا شيء · والكسر أعدتُه بنفسي (`wasHandedOut` يعيد `true`، لم يُودَع): `handedPaths.test.ts` ٢ ✗ («وما لم يُعطَ يُرفض…» و«ومسارٌ فارغ…»)، وبعد `git checkout` ٥ ✓ ·
+  وفحوص `harden` بكسرها «0 ← 1» في القيد. ✓
+- **شروط D70:** أمر جرد D65 ← `205 | … 62 34 23 68 2 16 | بالبوّابة 26` · `` grep -rlE '(prepare|exec)\(\s*`[^`]*\$\{' src/main `` ← ١٥ ملفًّا · `revisions:list`/`get` بـ`isKind` تعيدان `[]`/`null` (`templates.ts:111–115`) ·
+  لا `bridgeGuards` ولا `handleChecked` ولا `tests/channels.allow.json`. **التالي:** D70 (جارٍ).
+
 ## ٢٠٢٦-١٠-١٨ ١١:٣٢ — D69 ✅ — المسارات عند الباب: ما أعطته الرئيسة (`handedPaths`) وما في المخزن (`storeFile`) · والتوقّف هنا (ر160)
 - **ما تغيّر:** `ipc/handedPaths.ts` (جديد، لهذا التشغيل وحده): `handOut` في خمس (`backup:pick` `mirrorPick` `autoPickDir` و`createBackup` و`update:pick`) و`wasHandedOut` في ستّ (`inspect` `restore` `mirrorInspect`
   `mirrorRestore` و`update:install` قبل `createPreUpdateBackup`، و`autoSet` يقبل المحفوظ أيضًا) — `bbff476`، و`backup.ts` ٣٩٨ · و`storeFile` في `localPaths.ts` (ملفٌّ موجودٌ داخل المخزن، والمطلق يُرفض) لـ`clients:setLogo`
