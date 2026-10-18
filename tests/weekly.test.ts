@@ -24,7 +24,7 @@ function office() {
 function issue(db: ReturnType<typeof office>, name: string, at: Date) {
   const doc = issueDocument(db, {
     sheetHtml: '<p>نؤيد</p>', templateId: null, citizenId: null, authorityId: null, citizenName: name, nationalId: null,
-    docType: null, destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0,
+    docType: null, destination: null, purpose: null, values: {}, copies: 1, copyKind: null,
     gregorianDate: '', hijriDate: null, operator: null, printer: null, serialPrefix: 'م', serialYear: 2026, letterheadId: null
   });
   db.prepare('UPDATE documents SET issued_at = ? WHERE id = ?').run(stamp(at), doc.id);

@@ -107,7 +107,7 @@ describe.each(SOLD)('قاعدة %s المبيعة', (version) => {
     const { db, dir } = openRelease(version);
     const input: IssueInput = {
       sheetHtml: '<div class="a4-sheet">بعد التحديث</div>', templateId: null, citizenId: null, authorityId: null, citizenName: 'بعد التحديث',
-      nationalId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0,
+      nationalId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null,
       gregorianDate: '1 كانون الثاني 2027', hijriDate: null, operator: null, printer: null, serialPrefix: 'م', serialYear: 2026, letterheadId: null
     };
     const issued = issueDocument(db, input);

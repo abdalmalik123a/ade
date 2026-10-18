@@ -84,7 +84,7 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   const doc = (name: string, patch: Partial<IssueInput> = {}): IssueInput => ({
     sheetHtml: `<div class="a4-sheet"><div>إلى / مصرف الرشيد</div><div>نؤيد لكم أن السيد ${name} يعمل لدينا.</div></div>`,
     templateId: t.id, citizenId: null, authorityId: null, citizenName: name, nationalId: null, docType: 'تأييد استمرار بالخدمة',
-    destination: 'مصرف الرشيد', purpose: 'سلفة', values: { الاسم: name }, copies: 1, copyKind: 'نسخة أصلية', fee: 0,
+    destination: 'مصرف الرشيد', purpose: 'سلفة', values: { الاسم: name }, copies: 1, copyKind: 'نسخة أصلية',
     gregorianDate: '2 تشرين الأول 2026', hijriDate: null, operator: 'مشغّل 01', printer: 'ليزر المكتب', serialPrefix: 'م',
     serialYear: 2026, letterheadId: lh.id, style: STYLE, ...patch
   });
@@ -98,7 +98,7 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   }
   const wrong = issueDocument(db, doc('اسمٌ خاطئ'));
   voidDocument(db, wrong.id, 'صدر باسمٍ خاطئ', 'مشغّل 01');
-  const sheet = (n: string) => ({ sheetHtml: `<div class="a4-sheet">${n}</div>`, templateId: null, letterheadId: null, authorityId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0 });
+  const sheet = (n: string) => ({ sheetHtml: `<div class="a4-sheet">${n}</div>`, templateId: null, letterheadId: null, authorityId: null, docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null });
   const tx = (name: string) => ({ citizenId: null, citizenName: name, nationalId: null, operator: null, printer: null, serialPrefix: 'م', serialYear: 2026, gregorianDate: '2 تشرين الأول 2026', hijriDate: null, style: STYLE, sheets: [sheet(`${name} ١`), sheet(`${name} ٢`)] });
   issueTransaction(db, tx('أحمد كريم جاسم'));
   issueBatch(db, [tx('سالم'), tx('ليلى')]);

@@ -111,7 +111,6 @@ describe('قاعدة الإصدار الأوّل تُفتح بإصدار الي�
       values: {},
       copies: 1,
       copyKind: 'نسخة أصلية',
-      fee: 0,
       gregorianDate: '',
       hijriDate: '',
       operator: 'مشغّل',

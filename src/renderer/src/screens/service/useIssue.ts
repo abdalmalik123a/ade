@@ -86,9 +86,8 @@ export function useIssue(
         purpose: byRole('purpose') || null,
         values: use,
         copies,
-        copyKind: 'نسخة أصلية',
-        // المال صامت (§١): العمود باقٍ في القاعدة بلا قيمة.
-        fee: 0
+        // المال صامت (§١، ر161): العمود باقٍ في القاعدة بصفره، ولا يُرسل.
+        copyKind: 'نسخة أصلية'
       };
     });
     // `sheets` مرجع، و`byRole` تقرأ الحقول والقيم وهما في المصفوفة

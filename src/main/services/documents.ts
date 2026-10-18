@@ -116,7 +116,7 @@ const ROW_COLUMNS = `d.id, d.serial,
   d.destination,
   strftime('%H:%M', d.issued_at, 'localtime') AS issuedTime,
   date(d.issued_at, 'localtime') AS issuedDate,
-  d.copies, d.fee, d.status, d.void_reason AS voidReason`;
+  d.copies, d.status, d.void_reason AS voidReason`;
 
 /** أعمدة اسم المواطن ورقمه تُحفظ نصًّا أيضًا: الكتاب قد يصدر لمن لا ملفّ له. */
 export function ensureCitizenSnapshot(db: Database): void {
@@ -307,9 +307,9 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         `INSERT INTO documents (
            serial, serial_year, serial_seq, template_id, citizen_id, authority_id,
            citizen_name, citizen_nid, doc_type, destination, purpose, values_json,
-           body_html, copies, copy_kind, fee, gregorian_date, hijri_date, operator,
+           body_html, copies, copy_kind, gregorian_date, hijri_date, operator,
            sha256, status, search_fold, letterhead_id, transaction_id, chain, style_hash
-         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?,?,?)`
+         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'issued',?,?,?,?,?)`
       )
       .run(
         serial,
@@ -327,7 +327,6 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
         sheetHtml,
         Math.max(1, input.copies),
         input.copyKind,
-        Math.max(0, input.fee),
         input.gregorianDate,
         input.hijriDate,
         input.operator,
@@ -413,13 +412,12 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
   const citizenId = input.citizenId ?? citizenByNationalId(db, input.nationalId);
 
   return db.transaction((): TransactionResult => {
-    const fee = input.sheets.reduce((sum, s) => sum + Math.max(0, s.fee), 0);
     const tx = db
       .prepare(
-        `INSERT INTO transactions (citizen_id, citizen_name, citizen_nid, sheets, fee, operator)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO transactions (citizen_id, citizen_name, citizen_nid, sheets, operator)
+         VALUES (?, ?, ?, ?, ?)`
       )
-      .run(citizenId, name, nidOf(input.nationalId), input.sheets.length, fee, input.operator);
+      .run(citizenId, name, nidOf(input.nationalId), input.sheets.length, input.operator);
     const transactionId = Number(tx.lastInsertRowid);
 
     const documents = input.sheets.map((sheet) =>
@@ -444,7 +442,7 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
        VALUES ('transaction', ?, 'issue', ?, ?)`
     ).run(transactionId, `${input.sheets.length} ورقة — ${name}`, input.operator);
 
-    return { transactionId, fee, citizenId, documents };
+    return { transactionId, citizenId, documents };
   })();
 }
 
@@ -763,7 +761,7 @@ export function getDocument(db: Database, id: number): DocumentDetail | null {
               COALESCE(c.national_id, d.citizen_nid) AS nationalId,
               d.doc_type AS docType, d.destination, d.purpose,
               d.values_json AS valuesJson, d.body_html AS bodyHtml,
-              d.copies, d.copy_kind AS copyKind, d.fee,
+              d.copies, d.copy_kind AS copyKind,
               d.gregorian_date AS gregorianDate, d.hijri_date AS hijriDate,
               d.issued_at AS issuedAt, d.operator, d.sha256, d.status,
               (SELECT COALESCE(SUM(p.copies), 0) FROM document_prints p WHERE p.document_id = d.id)

@@ -38,7 +38,6 @@ function input(patch: Partial<IssueInput> = {}): IssueInput {
     values: { name: 'أحمد عبد الله الجبوري' },
     copies: 1,
     copyKind: 'نسخة أصلية',
-    fee: 1000,
     gregorianDate: '17 أيلول 2026',
     hijriDate: '5 ربيع الأول 1448',
     operator: 'مشغّل 01',
@@ -277,10 +276,10 @@ describe('البحث في السجل', () => {
 describe('المؤشرات والتقارير', () => {
   it('تعدّ الكتب والمخدومين والنسخ المطبوعة فعلًا — ولا مال فيها (المال صامت)', () => {
     const db = freshDb();
-    const a = issueDocument(db, input({ citizenName: 'أحمد', fee: 1000, copies: 2 }));
+    const a = issueDocument(db, input({ citizenName: 'أحمد', copies: 2 }));
     recordPrint(db, a.id, { copies: 2, printer: null, operator: null });
-    issueDocument(db, input({ citizenName: 'أحمد', fee: 500 })); // حُفظ بلا طباعة: لا نسخة
-    const c = issueDocument(db, input({ citizenName: 'زينب', fee: 250 }));
+    issueDocument(db, input({ citizenName: 'أحمد' })); // حُفظ بلا طباعة: لا نسخة
+    const c = issueDocument(db, input({ citizenName: 'زينب' }));
     recordPrint(db, c.id, { copies: 1, printer: null, operator: null });
     recordReprint(db, a.id, { copies: 4, printer: null, operator: null });
 
@@ -303,7 +302,7 @@ describe('المؤشرات والتقارير', () => {
     });
 
     const tpl = db.prepare("INSERT INTO templates (title, body_html) VALUES ('تأييد سكن', '')").run();
-    issueDocument(db, input({ templateId: Number(tpl.lastInsertRowid), fee: 750 }));
+    issueDocument(db, input({ templateId: Number(tpl.lastInsertRowid) }));
 
     const stats = archiveStats(db);
     expect(stats.issuedToday).toBe(1);
@@ -313,10 +312,10 @@ describe('المؤشرات والتقارير', () => {
 
   it('المدة تُقصي ما خرج عنها من التقرير', () => {
     const db = freshDb();
-    const old = issueDocument(db, input({ fee: 9000 }));
+    const old = issueDocument(db, input());
     recordPrint(db, old.id, { copies: 1, printer: null, operator: null });
     backdate(db, old.id, '2025-12-31');
-    const fresh = issueDocument(db, input({ fee: 1000 }));
+    const fresh = issueDocument(db, input());
     recordPrint(db, fresh.id, { copies: 1, printer: null, operator: null });
 
     const stats = periodStats(db, { from: '2026-01-01' });

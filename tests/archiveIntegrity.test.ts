@@ -36,7 +36,6 @@ const issue = (name: string, patch: Partial<IssueInput> = {}): IssueInput => ({
   values: {},
   copies: 1,
   copyKind: null,
-  fee: 0,
   gregorianDate: '27 أيلول 2026',
   hijriDate: null,
   operator: 'علي',

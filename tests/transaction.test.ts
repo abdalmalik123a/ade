@@ -2,14 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import type { TransactionInput, TransactionSheet } from '../src/shared/api';
 import {
+  getDocument,
   issueBatch,
   issueTransaction,
+  listDocuments,
   linkTransactionCitizen,
   prepareDocuments,
   repeatSource,
   transactionSheets
 } from '../src/main/services/documents';
-import { ensureSearchColumn as prepareCitizens, saveCitizen } from '../src/main/services/citizens';
+import {
+  ensureSearchColumn as prepareCitizens,
+  listCitizenDocuments,
+  saveCitizen
+} from '../src/main/services/citizens';
 import type { CitizenInput } from '../src/shared/api';
 import { docFromLegacy, emptyDoc, makeField, mergeFields } from '../src/shared/doc';
 
@@ -24,7 +30,6 @@ const sheet = (patch: Partial<TransactionSheet> = {}): TransactionSheet => ({
   values: {},
   copies: 1,
   copyKind: 'نسخة أصلية',
-  fee: 1000,
   ...patch
 });
 
@@ -100,18 +105,23 @@ describe('المعاملة الواحدة', () => {
     ]);
   });
 
-  it('وأجرتها مجموع أوراقها', () => {
+  it('والأجرة صامتة (ر161): العمودان باقيان بصفرهما، ولا أجرة فيما يعود', () => {
     const db = freshDb();
-    const out = issueTransaction(
-      db,
-      input({ sheets: [sheet({ fee: 1000 }), sheet({ fee: 500 }), sheet({ fee: 250 })] })
-    );
+    const out = issueTransaction(db, input({ sheets: [sheet(), sheet(), sheet()] }));
 
-    expect(out.fee).toBe(1750);
+    expect(out).not.toHaveProperty('fee');
     const tx = db
       .prepare('SELECT sheets, fee, citizen_name AS name FROM transactions WHERE id = ?')
       .get(out.transactionId) as { sheets: number; fee: number; name: string };
-    expect(tx).toMatchObject({ sheets: 3, fee: 1750, name: 'أحمد عادل كريم' });
+    expect(tx).toEqual({ sheets: 3, fee: 0, name: 'أحمد عادل كريم' });
+    const docs = db
+      .prepare('SELECT fee FROM documents WHERE transaction_id = ? ORDER BY id')
+      .all(out.transactionId);
+    expect(docs).toEqual([{ fee: 0 }, { fee: 0 }, { fee: 0 }]);
+    expect(getDocument(db, out.documents[0].id)).not.toHaveProperty('fee');
+    const rows = listDocuments(db);
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row).not.toHaveProperty('fee');
   });
 
   it('الكل أو لا شيء — ورقةٌ تسقط تردّ ما قبلها ولا تحرق رقمًا', () => {
@@ -256,6 +266,17 @@ describe('الكتاب يُربط بصاحبه', () => {
     saveCitizen(db, citizen({ nationalId: '111' }));
     const out = issueTransaction(db, input({ citizenId: null, nationalId: null }));
     expect(out.citizenId).toBeNull();
+  });
+
+  it('وكتبه في ملفّه بلا أجرة (ر161)', () => {
+    const db = freshDb();
+    prepareDocuments(db);
+    prepareCitizens(db);
+    const saved = saveCitizen(db, citizen());
+    issueTransaction(db, input({ citizenId: saved.id, sheets: [sheet(), sheet()] }));
+    const rows = listCitizenDocuments(db, saved.id);
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(row).not.toHaveProperty('fee');
   });
 
   it('وحين يُحفظ الزبون الجديد بعد الإصدار تُربط به كتب معاملته، والمتن والبصمة كما هما', () => {

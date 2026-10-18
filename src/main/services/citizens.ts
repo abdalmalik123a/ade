@@ -383,7 +383,7 @@ export function listCitizenDocuments(db: Database, citizenId: number): CitizenDo
   return db
     .prepare(
       `SELECT d.id, d.serial, d.doc_type AS docType, d.destination, d.purpose,
-              d.template_id AS templateId, d.copies, d.fee,
+              d.template_id AS templateId, d.copies,
               date(d.issued_at, 'localtime') AS issuedDate, d.status
        FROM documents d WHERE d.citizen_id = ? ORDER BY d.issued_at DESC`
     )

@@ -56,7 +56,7 @@ describe('التنبيهات', () => {
 
     issueDocument(db, {
       sheetHtml: '<p>نؤيد</p>', templateId: null, citizenId: null, authorityId: null, citizenName: 'أحمد', nationalId: null,
-      docType: null, destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0,
+      docType: null, destination: null, purpose: null, values: {}, copies: 1, copyKind: null,
       gregorianDate: '27 أيلول 2026', hijriDate: null, operator: null, printer: null, serialPrefix: 'م', serialYear: 2026, letterheadId: null
     });
     expect(todayAgenda(db, [], NOW).backupDue).toBe(true); // لم تُؤخذ قطّ

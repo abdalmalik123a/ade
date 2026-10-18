@@ -24,7 +24,6 @@ const input = (): IssueInput => ({
   values: {},
   copies: 1,
   copyKind: 'نسخة أصلية',
-  fee: 0,
   gregorianDate: '',
   hijriDate: '',
   operator: 'مشغّل',

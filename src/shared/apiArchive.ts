@@ -15,7 +15,6 @@ export type DocumentRow = {
   issuedTime: string;
   issuedDate: string;
   copies: number;
-  fee: number;
   /** `issued` أو `void` — والمُبطَل يبقى في الأرشيف برقمه وسببه. */
   status: string;
   voidReason: string | null;
@@ -36,7 +35,6 @@ export type DocumentDetail = {
   bodyHtml: string;
   copies: number;
   copyKind: string | null;
-  fee: number;
   gregorianDate: string;
   hijriDate: string | null;
   issuedAt: string;
@@ -91,7 +89,6 @@ export type IssueInput = {
   values: Record<string, string>;
   copies: number;
   copyKind: string | null;
-  fee: number;
   gregorianDate: string;
   hijriDate: string | null;
   operator: string | null;
@@ -127,7 +124,6 @@ export type TransactionSheet = Pick<
   | 'values'
   | 'copies'
   | 'copyKind'
-  | 'fee'
 >;
 
 export type TransactionInput = {
@@ -147,7 +143,6 @@ export type TransactionInput = {
 
 export type TransactionResult = {
   transactionId: number;
-  fee: number;
   /** ملف المواطن الذي رُبطت به — المختار، أو ما دلّ عليه رقمه الوطني، أو لا شيء. */
   citizenId: number | null;
   documents: { id: number; serial: string; sha256: string; sheetHtml: string }[];

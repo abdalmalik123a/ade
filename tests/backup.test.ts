@@ -33,7 +33,6 @@ function officeDb(dir: string, stamp: string | null = null): string {
     values: {},
     copies: 1,
     copyKind: null,
-    fee: 0,
     gregorianDate: '27 أيلول 2026',
     hijriDate: null,
     operator: null,

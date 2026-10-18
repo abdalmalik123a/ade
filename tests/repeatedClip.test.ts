@@ -24,7 +24,6 @@ const issue = (name: string, extra = CLOSING): IssueInput => ({
   values: {},
   copies: 1,
   copyKind: null,
-  fee: 0,
   gregorianDate: '27 أيلول 2026',
   hijriDate: null,
   operator: null,

@@ -120,7 +120,6 @@ export function useEditorOutput(
           values: letterValues(savedLetter()),
           copies: opts.copies,
           copyKind: opts.copyKind,
-          fee: 0,
           gregorianDate: registry.dateGreg || formatGregorian(new Date()),
           hijriDate: registry.dateHijri || null,
           operator: settings.operatorName || null,

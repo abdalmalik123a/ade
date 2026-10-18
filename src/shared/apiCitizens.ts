@@ -40,7 +40,6 @@ export type CitizenDocumentRow = {
   purpose: string | null;
   templateId: number | null;
   copies: number;
-  fee: number;
   issuedDate: string;
   status: string;
 };

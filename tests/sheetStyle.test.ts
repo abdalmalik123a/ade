@@ -22,7 +22,7 @@ function db() {
 const one = (patch: Partial<IssueInput> = {}): IssueInput => ({
   sheetHtml: '<div class="a4-sheet"><p>نؤيد أن السيد أحمد يعمل لدينا.</p></div>',
   templateId: null, citizenId: null, authorityId: null, citizenName: 'أحمد عبد الله', nationalId: null,
-  docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null, fee: 0,
+  docType: 'تأييد', destination: null, purpose: null, values: {}, copies: 1, copyKind: null,
   gregorianDate: '2 تشرين الأول 2026', hijriDate: null, operator: null, printer: null,
   serialPrefix: 'م', serialYear: 2026, letterheadId: null, ...patch
 });
@@ -31,10 +31,10 @@ const tx = (name: string, sheets: number, style: SheetStyle | null): Transaction
   citizenId: null, citizenName: name, nationalId: null, operator: null, printer: null,
   serialPrefix: 'م', serialYear: 2026, gregorianDate: '2 تشرين الأول 2026', hijriDate: null, style,
   sheets: Array.from({ length: sheets }, (_, i) => {
-    const { sheetHtml, templateId, letterheadId, authorityId, docType, destination, purpose, values, copies, copyKind, fee } = one({
+    const { sheetHtml, templateId, letterheadId, authorityId, docType, destination, purpose, values, copies, copyKind } = one({
       sheetHtml: `<div class="a4-sheet"><p>ورقة ${i + 1} لـ${name}</p></div>`
     });
-    return { sheetHtml, templateId, letterheadId, authorityId, docType, destination, purpose, values, copies, copyKind, fee };
+    return { sheetHtml, templateId, letterheadId, authorityId, docType, destination, purpose, values, copies, copyKind };
   })
 });
 
