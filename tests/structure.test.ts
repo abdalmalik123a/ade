@@ -19,7 +19,7 @@
  *    في `main/index.ts` وحده، و`fetch(` الواجهة لـ`diwan://` وحده، و`connect-src` ثابت —؛ و`dependencies` قائمةٌ صريحة؛ وحال الترخيص
  *    من `licenseStatus()` في `ipc/license.ts` وحدها. وباب البوّابة (F01) يُضاف إلى قوائمها عمدًا حين يُبنى.
  * ٩. **القنوات القائمة** (A04، D70): كلّ اسمٍ في `ipcMain.handle('…'`/`ipcMain.on('…'` في `channels.allow.json`، والقناة الجديدة بـ`handleChecked`
- *    وحرّاسها (`@shared/bridgeGuards`)؛ و`${}` في `prepare`/`exec` في ملفّاته المعروفة وحدها — والقائمتان تتناقصان ولا تزيدان: ما انتقل أو زال يُحذف منهما.
+ *    وحرّاسها (`@shared/bridgeGuards`)؛ و`${}` في `prepare`/`exec` بسطرٍ أو أكثر (D73) في ملفّاته المعروفة وحدها — والقائمتان تتناقصان ولا تزيدان: ما انتقل أو زال يُحذف منهما.
  * ١٠. **المال صامت** (A06، D66، ر161): كلّ سطرٍ في `src/` (ts وtsx وsql) فيه `fee` تعريفُ العمود `fee … INTEGER NOT NULL DEFAULT 0` وحده —
  *    ثلاثة: `schema.sql` مرّتين و`prepareDocuments` —، فالعمودان باقيان في القاعدة بصفرهما ولا يعودان إلى الأنواع ولا الاستعلامات ولا الشاشة.
  *
@@ -309,7 +309,7 @@ describe('اختبار الهيكل (ز١)', () => {
   it('٩ — القنوات القائمة: الجديدة بـhandleChecked وحرّاسها، و${} في SQL في ملفّاته المعروفة (A04)', () => {
     // القائمتان تتناقصان ولا تزيدان: ما انتقل إلى handleChecked أو زال يُحذف منهما عمدًا، ولا يُضاف إليهما شيء.
     const CHANNELS = new Set(JSON.parse(readFileSync(CHANNELS_FILE, 'utf8')) as string[]);
-    // `${}` في prepare/exec بسطرٍ واحد (جرد D65): أسماء جداول وأعمدة من قوائم ثابتة — والقيم كلّها تُربط بـ`?`.
+    // `${}` في prepare/exec بسطرٍ أو أكثر (جرد D65، وD73): أسماء جداول وأعمدة وشروطٌ من قوائم ثابتة — والقيم كلّها تُربط بـ`?`.
     const SQL_TEMPLATES = new Set([
       'src/main/ipc/backup.ts',
       'src/main/services/backup.ts',
@@ -322,6 +322,8 @@ describe('اختبار الهيكل (ز١)', () => {
       'src/main/services/letterheads.ts',
       'src/main/services/orders.ts',
       'src/main/services/preUpdateBackup.ts',
+      // فاتت جرد D65 (سطرٌ واحد) — فيه منذ 08e9e0d، أُضيف في D73 مرّةً، والقائمة بعده تتناقص ولا تزيد.
+      'src/main/services/questionBank.ts',
       'src/main/services/revisions.ts',
       'src/main/services/searchIndex.ts',
       'src/main/services/storeRefs.ts',
@@ -339,7 +341,8 @@ describe('اختبار الهيكل (ز١)', () => {
         channels.add(m[1]);
         if (!CHANNELS.has(m[1])) bad.push(`${s.path}: القناة «${m[1]}» ليست في tests/channels.allow.json — سجّل القناة الجديدة بـhandleChecked وحرّاسها (src/main/ipc/checked.ts)`);
       }
-      if (s.text.split('\n').some((line) => /\b(?:prepare|exec)\(\s*`[^`]*\$\{/.test(line))) {
+      // النصّ كلّه لا سطرًا سطرًا: `prepare(` في سطرٍ وقالبه في التالي (شكل الاستعلام الطويل بعد المنسّق) — و[^`]* يعبر الأسطر حتى أوّل علامة قالب.
+      if (/\b(?:prepare|exec)\(\s*`[^`]*\$\{/.test(s.text)) {
         templates.add(s.path);
         if (!SQL_TEMPLATES.has(s.path)) bad.push(`${s.path}: يبني SQL بقالب \${} في prepare/exec — القيم تُربط بـ? واسم الجدول من قائمةٍ ثابتة؛ وهذه القائمة لا تزيد`);
       }
