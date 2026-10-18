@@ -24,14 +24,13 @@
 | الرقم | الأمر | الحال | الوسم | يعتمد على |
 |---|---|---|---|---|
 | D47–D74 | A01–A08 وA09 (أ) وA10 A12 A16 A19 وG34 وترشيق الوثائق: الأساس «أ» والترقيات والممشّيات والعامل والجسر والنسخ وثغرات exceljs | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| D75–D86 | A11 (١–١٠): الجرد والتصميم، ثم عشرة تقسيماتٍ (`doc` `docPm` `docxDoc` وطريق الطباعة و`documents` و`portraitMask` و`excelDoc` و`blanks` و`import` و`fieldHints`) | ✅ ١٩ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| [D87](orders/done/D87.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ✅ ١٩ ت١ (`bec649b`) — خمسة أوامر D88–D92 (A11 #١٢–#١٦، كلٌّ م) بمحاكاةٍ للنقل، وفرز A13 وA14 في BACKLOG، وسطر D93 🧭؛ مراجَعة | 🧭 | D86 |
-| [D88](orders/done/D88.md) | A11 (١١): `shared/deskew.ts` — `detectQuad` في `quadDetect.ts` بلا بابٍ و`fromSrc` لـ`Quad` و`PixelData` | ✅ ١٩ ت١ (`8d6adec` `f75517b` `d0850da`) — ٤٦٧ ← ٣٢٦ و`quadDetect.ts` ١٤٥ ومستوردوه الثلاثة، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D87 |
-| [D89](orders/done/D89.md) | A11 (١٢): `shared/qr.ts` — حقل غالوا وReed-Solomon وتوزيع الكلمات في `qrCodewords.ts` ببابٍ يعيد التصدير | ✅ ١٩ ت١ (`38e6fd8` `afe26e1` `2287063`) — ٤٦٣ ← ٣١٣ و`qrCodewords.ts` ١٥٧ ببابٍ والمصدَّر ٦، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D88 |
-| [D90](orders/done/D90.md) | A11 (١٣): `shared/imageForm.ts` — بناء وثيقة الاستمارة المصوَّرة في `imageFormDoc.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `FormSlot` | ✅ ١٩ ت١ (`c03c400` `600fd14` `1d64c56`) — ٤٤٧ ← ٣٦٦ و`imageFormDoc.ts` ٨٨ ببابٍ و`fromSrc` والمصدَّر ٢، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D89 |
-| [D91](orders/done/D91.md) | A11 (١٤): `shared/paperDoc.ts` — أنواع التعرّف الضوئي وهندسة الصناديق وتقسيم السطر في `paperLines.ts` ببابٍ للأنواع الأربعة | ✅ ١٩ ت١ (`d49e6aa` `3dc9eaf` `93723d4`) — ٤٤٧ ← ٣٣٤ و`paperLines.ts` ١٢٧ ببابٍ للأنواع الأربعة والمصدَّر ١٣، والحرفيّة 0 و0، وخرج من السقوف؛ مُراجَع | ⚙️ م | D90 |
-| [D92](orders/done/D92.md) | A11 (١٥ — الأخير): `services/importFolder.ts` — `applyImportPlan` وتعليقه في `importApply.ts` بلا باب، وإفراغ `tests/structure.allow.json` وإغلاق A11 | ✅ ١٩ ت١ (`88371ba` `d498386` `a8e6e65`) — ٤١٨ ← ٣٤٥ و`importApply.ts` ٨١ بلا باب ومستورداه الاثنان، والحرفيّة 0 و0، و`structure.allow.json` فارغة `{}`، وأُغلق A11 | ⚙️ م | D91 |
-| D93 | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ⬜ | 🧭 | D92 |
+| D75–D92 | A11 (١–١٥ — اكتمل): الجرد والتصميم، ثم خمسة عشر تقسيمًا لملفّات main وshared الستّة عشر فوق ٤٠٠ سطر، وإفراغ `tests/structure.allow.json` | ✅ ١٩ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
+| [D93](orders/done/D93.md) | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ✅ ١٩ ت١ | 🧭 | D92 |
+| [D94](orders/D94.md) | A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات في `render.ts`، ورفض `PSB` في `psd.ts:72`، وتكرار `repeat` في `GroupBlock` (`docHtml.ts` و`docFill.ts`)، وتجاهل أسماء الاستيراد في `verbatim.cjs` | ⬜ | ⚙️ م | D93 |
+| [D95](orders/D95.md) | A13 (٤–٥) وA15: `"engines"` في `package.json` و`.nvmrc`، وفقرة «إن لم يُفتح البرنامج» في `docs/INSTALL.md`، وتعريب `x64WinRequired` في `resources/installer.nsh` | ⬜ | ⚙️ ص | D94 |
+| [D96](orders/D96.md) | A14 (١–٤): حذف `forgetGeminiKey` (`ipc/designs.ts`)، وفحص الحقول الإلزامية (`required`) في `services/issue.ts`، و`quick_check` عند فتح القاعدة (`db/index.ts`)، ورقم الإصدار في `errorLog.ts` | ⬜ | ⚙️ م | D95 |
+| [D97](orders/D97.md) | A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (`:focus-visible` في `styles.css`، وحلقة تركيز المدخلَين، و`role="dialog"` و`aria-modal="true"` للحوارات) | ⬜ | ⚙️ ص | D96 |
+| [D98](orders/D98.md) | A09 (ب): حذف مجلّدات `before-restore-*` يدويًّا بتأكيد في «البيانات والنسخ الاحتياطية»، وتوثيق حدّ FAT32، وختام أعمال الموجة ٣ قبل الإصدار | ⬜ | ⚙️ م | D97 |
 
 ## الموجات القادمة (تُفصَّل أوامرها حين يقترب دورها)
 البنود المفتوحة (G A E S R F) وتفاصيل الموجات القادمة: [`docs/BACKLOG.md`](BACKLOG.md).

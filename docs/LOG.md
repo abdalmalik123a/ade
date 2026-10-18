@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٢:٥٣ — D93 ✅ — تفصيل باقي الموجة ٣ في خمسة أوامر ⚙️ (D94–D98: ٨ نقاط = ٤ + ٤)، وترحيل D87–D92 إلى `legacy/PLAN-3.md` · النموذج: Gemini 4 Argon (Medium)
+- **التفصيل:** أوامر `docs/orders/D94.md`–`D98.md` كلها دون ٨٠ سطرًا وبأقسام `_TEMPLATE.md` الخمسة: D94 (م: A13 ١–٣ و`verbatim.cjs`) · D95 (ص: A13 ٤–٥ وA15) · D96 (م: A14 ١–٤) · D97 (ص: A13 ٦ وصول لوحة المفاتيح و`role="dialog"`) · D98 (م: A09 (ب) حذف `before-restore-*` يدويًّا وختام أعمال الموجة ٣ قبل الإصدار)؛ ويبقى A17 وA18 لما بعد أوّل إصدارٍ يثبت فيه المرقَّم والعامل في الميدان.
+- **اللوحة:** نقل أسطر D87–D92 المُراجَعة بنصّها حرفيًّا إلى `docs/legacy/PLAN-3.md`، وإضافة D94–D98 إلى `docs/PLAN.md` (`PLAN.md` ٣٧ سطرًا).
+- **الفحص:** `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓ · كلّ ملفّ أمرٍ دون ٨٠ سطرًا وبنهايات LF.
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D93.md`. **التالي:** مراجعة D93 وتنفيذ D94–D98 تباعًا بأمر المالك الصريح.
+
+## ٢٠٢٦-١٠-١٩ ٠٢:٤٥ — مراجعة D92 ✓ · وحجز D93 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **رسالة المالك:** `/next اكمل ما تبقى من الموجة الثالثة بالكامل بامر مني`.
+- **D92 بـ«كيف يُراجَع»:** `verbatim.cjs 7adb340` ← «ضاع 0 · جديد 0» · `git show --stat 88371ba` الملفّات الأربعة وحدها · `export` في `importApply.ts` ١ · `inventory.cjs` ← صفر ملفّات فوق ٤٠٠ و«دورات القيم: 0» · و`tests/structure.allow.json` فارغة `{}`. ✓
+- **تحقّق D93 قبل البدء:** D92 ✅ ومُراجَع · فرز A13 وA14 في `BACKLOG.md` مطابقٌ لمواضعه في الكود · لا نصّ لـD93 فما بعد في `docs/orders/`. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٢٥ — D92 ✅ — A11 (١٥ والأخير): `services/importFolder.ts` ٤١٨ ← ٣٤٥ نقلًا حرفيًّا، و`applyImportPlan` في `importApply.ts`، وإفراغ `structure.allow.json` وإغلاق A11 · والتوقّف هنا (التالي D93 🧭 وحده، ر162) · النموذج: Gemini 4 Argon (Medium)
 - **النقل** (`88371ba`): `move.cjs` (`tsconfig.node.json`، بلا `fromSrc`) ← `applyImportPlan` إلى `importApply.ts` ٨١ بلا باب · وبـEdit: تعليقه (الأسطر الستّة التي كانت فوق تعليق `applyHabits`) نُقل إلى أعلاه في `importApply.ts`، وتحديث مستوردَيه الاثنين (`src/main/ipc/templates.ts` و`tests/importFolder.test.ts`) · `prune.cjs` نظّف ٥ استيرادات من `importFolder.ts` · `typecheck` نظيف · والسقف (`d498386`): `RATCHET` فسقط `importFolder.ts` وصارت `tests/structure.allow.json` فارغة `{}`.
 - **الوثائق** (`a8e6e65`): ARCHITECTURE §١ (قُسّمت الستّة عشر كلّها ولا ملفّ فوق ٤٠٠ ولا دورة، و`structure.allow.json` فارغة) و§٢ (الجدول #١٦ ← D92 بأرقامه، وسطر الأوامر D92 ✅ واكتمال الستّة عشر) · BACKLOG (حذف صفّ A11 من جدول الموجة ٣ ونقل ملاحظة `verbatim.cjs` إلى سطر D93، وإضافة «أُغلق: A11 …» في آخر الملفّ).
