@@ -24,14 +24,14 @@
 | الرقم | الأمر | الحال | الوسم | يعتمد على |
 |---|---|---|---|---|
 | D47–D74 | A01–A08 وA09 (أ) وA10 A12 A16 A19 وG34 وترشيق الوثائق: الأساس «أ» والترقيات والممشّيات والعامل والجسر والنسخ وثغرات exceljs | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| D75 D77–D81 | A11: الجرد والتصميم، ثم `doc.ts` و`docPm.ts` و`docxDoc.ts` وطريق الطباعة و`services/documents.ts` | ✅ ١٨ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
-| [D76](orders/done/D76.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: عشرة ملفّات بترتيب ARCHITECTURE §٢ · A09 ب · A13 · A14 · A15؛ وA17 A18 بعد إصدار) — بعد أوامر A11 | ✅ ١٨ ت١ — خمسة أوامر D82–D86 (A11 #٧–#١١، كلٌّ م) بمحاكاةٍ للنقل، وسطر D87 🧭 — مراجَع | 🧭 | D81 |
-| [D82](orders/done/D82.md) | A11 (٦): `shared/portraitMask.ts` — القاط في `suitFit.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `Landmarks` | ✅ ١٨ ت١ (05a0135) — ٥٤٠ ← ٣٣٥ و`suitFit.ts` ٢١٠، والحرفيّة 0 و0 | ⚙️ م | D76 |
-| [D83](orders/done/D83.md) | A11 (٧): `services/excelDoc.ts` — الخلايا والحقول في `excelCells.ts` ببابٍ يعيد التصدير | ✅ ١٨ ت١ (c7f6b1d) — ٦٨٧ ← ٣٣٩ و`excelCells.ts` ٣٥١، والحرفيّة «ضاع 6» أسماء استيراد و0 و0 بالشجرة — مراجَع | ⚙️ م | D82 |
-| [D84](orders/done/D84.md) | A11 (٨): `shared/blanks.ts` — تنظيف السطر وتسمية الخانة في `blankText.ts` ببابٍ يعيد التصدير | ✅ ١٩ ت١ (e140ab4) — ٦٥٨ ← ٣٦٦ و`blankText.ts` ٣٠٨، والحرفيّة 0 و0 — مراجَع | ⚙️ م | D83 |
-| [D85](orders/done/D85.md) | A11 (٩): `services/import.ts` — الفقرات والترويسة وتخطيطها في `importLayout.ts` ببابٍ لـ`ImageSaver`، ورأس الملفّ في مكانه | ✅ ١٩ ت١ (be71dfb) — ٥٥١ ← ٢٥٤ و`importLayout.ts` ٢٩٩، والحرفيّة «ضاع 6» أسماء استيراد و0 و0 بالشجرة — مراجَع | ⚙️ م | D84 |
-| [D86](orders/done/D86.md) | A11 (١٠): `shared/fieldHints.ts` — ألفاظ الكشف والصياغة مع الجنس في `fieldWords.ts` ببابٍ لـ`wrongGenderWords` | ✅ ١٩ ت١ (5dd760f) — ٥١٩ ← ٣٧١ و`fieldWords.ts` ١٦٧، والحرفيّة 0 و0 | ⚙️ م | D85 |
-| D87 | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ⬜ | 🧭 | D86 |
+| D75–D86 | A11 (١–١٠): الجرد والتصميم، ثم عشرة تقسيماتٍ (`doc` `docPm` `docxDoc` وطريق الطباعة و`documents` و`portraitMask` و`excelDoc` و`blanks` و`import` و`fieldHints`) | ✅ ١٩ ت١ — مراجَعة، وأسطرها بنصّها في [`docs/legacy/PLAN-3.md`](legacy/PLAN-3.md) | | |
+| [D87](orders/done/D87.md) | فصّل ما بقي من الموجة ٣ (ما بقي من A11: `deskew.ts` `qr.ts` `imageForm.ts` `paperDoc.ts` `importFolder.ts` بترتيب ARCHITECTURE §٢ · فرز A13 وA14 بأمر بحثٍ لكلّ بند · A09 ب · A15؛ وA17 A18 بعد إصدار) — بعد D86 | ✅ ١٩ ت١ — خمسة أوامر D88–D92 (A11 #١٢–#١٦، كلٌّ م) بمحاكاةٍ للنقل، وفرز A13 وA14 في BACKLOG، وسطر D93 🧭؛ تراجعها الجلسة التالية | 🧭 | D86 |
+| [D88](orders/D88.md) | A11 (١١): `shared/deskew.ts` — `detectQuad` في `quadDetect.ts` بلا بابٍ و`fromSrc` لـ`Quad` و`PixelData` | ⬜ | ⚙️ م | D87 |
+| [D89](orders/D89.md) | A11 (١٢): `shared/qr.ts` — حقل غالوا وReed-Solomon وتوزيع الكلمات في `qrCodewords.ts` ببابٍ يعيد التصدير | ⬜ | ⚙️ م | D88 |
+| [D90](orders/D90.md) | A11 (١٣): `shared/imageForm.ts` — بناء وثيقة الاستمارة المصوَّرة في `imageFormDoc.ts` ببابٍ يعيد التصدير، و`fromSrc` لنوع `FormSlot` | ⬜ | ⚙️ م | D89 |
+| [D91](orders/D91.md) | A11 (١٤): `shared/paperDoc.ts` — أنواع التعرّف الضوئي وهندسة الصناديق وتقسيم السطر في `paperLines.ts` ببابٍ للأنواع الأربعة | ⬜ | ⚙️ م | D90 |
+| [D92](orders/D92.md) | A11 (١٥ — الأخير): `services/importFolder.ts` — `applyImportPlan` وتعليقه في `importApply.ts` بلا باب، وإفراغ `tests/structure.allow.json` وإغلاق A11 | ⬜ | ⚙️ م | D91 |
+| D93 | فصّل ما بقي من الموجة ٣ بعد إغلاق A11: الباقي من A13 (ستّ صغائر) وA14 (أربع ديون) بعد فرز D87 · A09 (ب) · A15 · و`verbatim.cjs`؛ وA17 A18 بعد إصدار — بعد D92 | ⬜ | 🧭 | D92 |
 
 ## الموجات القادمة (تُفصَّل أوامرها حين يقترب دورها)
 البنود المفتوحة (G A E S R F) وتفاصيل الموجات القادمة: [`docs/BACKLOG.md`](BACKLOG.md).
