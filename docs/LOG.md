@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٠:١٣ — مراجعة D83 ✓ · وحجز D84 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **رسالة المالك:** `/next`.
+- **D83 بـ«كيف يُراجَع»:** `verbatim.cjs f1cafc7` ← «ضاع 6 · جديد 0» (`fieldRef` `makeField` `Doc` `DocField` `Inline` `Marks` من استيراد `@shared/doc` الممتدّ كما في القيد) · `git show --stat c7f6b1d` الملفّان وحدهما · `export` في `excelCells.ts` ٢٠ · `inventory.cjs` ← «دورات القيم: 0» · و`structure.allow.json` بلا `excelDoc.ts`. ✓
+- **تحقّق D84 قبل البدء:** `blanks.ts` ٦٥٨ وسقفه ٦٥٨ · «مكوّنات 4 أكبرها 538» · لا `blankText.ts` · و`services/blanks.ts` بابٌ بـ`export * from '@shared/blanks'`. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٠:١٠ — ر163 (تعديل): ترحيل `/next` في Antigravity من مسار عمل إلى مهارة · النموذج: Gemini (Antigravity)
 - **ما تغيّر:** إنشاء `.agents/skills/next/SKILL.md` بالإحالة نفسها إلى `.claude/commands/next.md` · نقل `.agents/workflows/next.md` بـ`git mv` إلى `legacy/.agents/workflows/next.md` مع سطر «انتهى — البديل …» · تحديث ذكر المسار في `AGENTS.md` وفي سطر ر163 من `docs/DECISIONS.md` («عُدّل ١٩ ت١: مسار العمل صار مهارة»).
 - **الفحص:** `npx vitest run tests/docsBudget.test.ts tests/repoHygiene.test.ts tests/agyHook.test.ts` ← ٣ ملفّات (١٢ اختبارًا) ✓ · وحارس Antigravity شغّال قبل كلّ أداة في هذه الجلسة.
