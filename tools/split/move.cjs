@@ -4,7 +4,7 @@
  *
  *   node tools/split/move.cjs spec.json        (من جذر المستودع؛ ثم tools/split/prune.cjs ثم npm run typecheck)
  *
- * spec: { src, outFile, names: [..], doc: [أسطر رأس الملفّ الجديد] }
+ * spec: { src, outFile, names: [..], doc: [أسطر رأس الملفّ الجديد], tsconfig?: البرنامج ('tsconfig.web.json' إن غاب، و'tsconfig.node.json' لـmain) }
  * ويتوقّف إن استعمل المنقولُ تعريفًا آخر في مستوى الوحدة لم يُذكر معه (فيُذكر معه، أو يُنقل قبله إلى ملفٍّ مشترك).
  */
 const fs = require('fs');
@@ -19,14 +19,15 @@ const raw = fs.readFileSync(SRC, 'utf8');
 const CRLF = raw.includes('\r\n');
 const text = raw.replace(/\r\n/g, '\n');
 
-const cfg = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, 'tsconfig.web.json'), ts.sys.readFile).config, ts.sys, ROOT);
+const TSCONFIG = spec.tsconfig ?? 'tsconfig.web.json';
+const cfg = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, TSCONFIG), ts.sys.readFile).config, ts.sys, ROOT);
 const host = ts.createCompilerHost(cfg.options);
 const origGet = host.getSourceFile;
 host.getSourceFile = (f, lang, ...rest) => (path.resolve(f) === SRC ? ts.createSourceFile(f, text, lang, true) : origGet(f, lang, ...rest));
 const program = ts.createProgram({ rootNames: cfg.fileNames, options: cfg.options, host });
 const checker = program.getTypeChecker();
 const sf = program.getSourceFiles().find((s) => path.resolve(s.fileName) === SRC);
-if (!sf) throw new Error('لم يُوجد الملفّ في البرنامج (tsconfig.web.json)');
+if (!sf) throw new Error(`لم يُوجد الملفّ في البرنامج (${TSCONFIG})`);
 
 const nameOf = (st) =>
   ts.isFunctionDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isClassDeclaration(st)
