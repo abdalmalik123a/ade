@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٨ ١٢:٥٠ — D72 ✅ — `restore-work` يُنشأ قبل كلّ فكّ ويُفرَغ عند الإقلاع (A16، A09 أ) · والتوقّف هنا (ر160)
+- **A16** (`96448d9`): `mkdirSync(workDir…)` في أوّل `openBackup` (`backup.ts:151`) وحُذف من فرعي التشفير والوصف · وحالة «والقديمة غير المشفّرة تُفحص على جهازٍ لا مجلّد عملٍ فيه»: `legacyBackup(…, null)` تُفكّ قاعدتها إلى
+  `restore-work/inspect-1-1.db` غائب وتساويها بايتًا ببايت · **وعلى الكود القديم** (`git show HEAD:…` مؤقّتًا، لم يُودَع) ← ✗ «ENOENT: no such file or directory, open '…\restore-work\inspect-1-1.db'»، وبعد الإعادة ١١ ✓.
+- **A09 (أ)** (`ea73ecf`): `clearWorkDir(dir)` تمحو ما في المجلّد وتُبقيه ولا ترمي (الممسوك يُترك ويُعدّ، والغائب ٠)، وتُنادى في `index.ts:278` بعد `recoverIncompleteRestore` ومعالجة «recovered» —
+  وشرط `primary` قائمٌ بـ`if (!primary) return;` أوّل `whenReady` فلم يُكرَّر — والعدد غير الصفر بـ`logError('restoreWork', …)` · وحالة «بقايا الفكّ المنقطع»: `inspect-1-1.db` و`restore-1-1.zip` ومجلّدٌ فرعيّ تُمحى، و`before-restore-…` بجانبه كما هو، والغائب لا يرمي ولا يُنشأ.
+- **السيناريو** (`e20f275`): `betweenRestarts` تكتب البقيّتين في `data/restore-work`، و`afterRestart` «وبقايا الفكّ المنقطع تُمحى عند الإقلاع، وما جانبًا باقٍ (فارغ)» ✓.
+- **الفحص:** `typecheck` ✓ · `backup` `restoreSwap` `structure` ٤٠ ✓ · `docsBudget` `repoHygiene` ٧ ✓ · `eslint` للملفّين ✓ · `electron-vite build` ✓ · `restoreStuck` ١٢ ✓ و`backup` ٢٠ ✓ و`update` ٦ ✓ بلا ✗ ·
+  لقطات الرسّام لم تُمسّ · لا بايت تحكّم · `git diff 8b6df57..HEAD --stat` ستّة ملفّات كلّها في «المسموح».
+- **الوثائق** (`49706ee`): `system.md` مواضعه الثلاثة (ما بُني وما بقي) · BACKLOG: A09 بـ(أ) ✅ و(ب) FAT32 وحذف `before-restore-*` بتأكيد، وصفّ A16 حُذف و«أُغلق: A16».
+- **كيف يُراجَع:** `grep -rn "clearWorkDir" src/main` ← تعريفها (`backup.ts:227`) والاستيراد ونداءٌ واحد (`index.ts:278`) · `grep -n "mkdirSync(workDir" src/main/services/backup.ts` ← `:151` وحده · والسقوط على القديم أعلاه.
+  **التالي:** `/next` يراجع D72 ثم D73 ⚙️.
+
 ## ٢٠٢٦-١٠-١٨ ١٢:٤٢ — مراجعة D66 ✓ · وحجز D72 🔒
 - **رسالة المالك:** `/next`.
 - **D66 بـ«كيف يُراجَع»:** `grep -rnw fee src/` ← ثلاثة: `schema.sql:178` `:258` و`documents.ts:150` · `git diff 260ec58..2facfd9 --stat` خمسةٌ وعشرون ملفًّا كلّها في «المسموح» ولا `tools/` ·
