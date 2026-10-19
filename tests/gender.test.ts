@@ -32,4 +32,22 @@ describe('التذكير والتأنيث', () => {
     expect(guessGender('غسق عادل')).toEqual({ gender: 'ذكر', sure: false });
     expect(guessGender('')).toBeNull();
   });
+
+  it('الأسماء المشتركة مثل «نعمة» و«رحمة» لا تُحسم تلقائيًّا ويُسأل عنها دائمًا (S03)', () => {
+    // تصنيف نعمة ورحمة كأسماء غير مؤكدة (sure: false)
+    expect(guessGender('نعمة كريم')).toEqual({ gender: 'ذكر', sure: false });
+    expect(guessGender('رحمة علي')).toEqual({ gender: 'ذكر', sure: false });
+    expect(guessGender('نعمة')).toEqual({ gender: 'ذكر', sure: false });
+    expect(guessGender('رحمة')).toEqual({ gender: 'ذكر', sure: false });
+    // وحتى لو تعلّمها المكتب لا تُحسم يقينًا
+    expect(guessGender('نعمة كريم', { نعمة: 'ذكر' })).toEqual({ gender: 'ذكر', sure: false });
+    expect(guessGender('رحمة علي', { رحمة: 'أنثى' })).toEqual({ gender: 'ذكر', sure: false });
+  });
+
+  it('ملء الجنس المحفوظ مسبقًا في ملف الزبون مع إبقاء السؤال (ر150)', () => {
+    // زبون مسجل بجنس مؤنث يُملأ جنسه مسبقًا مع بقاء sure: false ليسأل عنه
+    expect(guessGender('علاء حسن', {}, 'أنثى')).toEqual({ gender: 'أنثى', sure: false, registered: true });
+    // زبون مسجل بجنس مذكر
+    expect(guessGender('نور الهدى', {}, 'ذكر')).toEqual({ gender: 'ذكر', sure: false, registered: true });
+  });
 });

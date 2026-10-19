@@ -57,7 +57,7 @@ const FEMALE = new Set(
     'رحاب هبة هبه رنا دينا لينا روان رشا رانيا غادة سعاد سهى شذى عفاف لبنى لقاء ميس ميساء نغم ولاء ' +
     'أريج اريج آمنة امنة أسيل اسيل ياسمين سماح نادية عبير أنوار انوار إخلاص اخلاص حلا غفران فرح نجلاء ' +
     'هالة وسن يقين أزهار ازهار بشرى تغريد جميلة حسناء دلال كريمة ملاك جنان طيبة رقية رقيه سرى مروة ' +
-    'مروه زهور سلوى نوال نسرين شيرين جيهان رحمة رحمه نعمة نعمه'
+    'مروه زهور سلوى نوال نسرين شيرين جيهان'
   ).split(/\s+/)
 );
 
@@ -71,7 +71,7 @@ const FEMALE = new Set(
 const MALE = new Set(
   (
     // على هيئة المؤنّث — فلا تغلبهم اللاحقة
-    'حمزة حمزه طلحة اسامة أسامة عبيدة معاوية قتيبة حذيفة عكرمة عطية علاء ضياء بهاء رضا زكريا ' +
+    'حمزة حمزه طلحة اسامة أسامة عبيدة معاوية قتيبة حذيفة عكرمة عطية علاء ضياء بهاء رضا زكريا نعمة نعمه رحمة رحمه ' +
     'مصطفى مرتضى مجتبى موسى عيسى يحيى مثنى هادي علي ' +
     // الشائع
     'محمد أحمد احمد محمود حامد حميد حمود حسن حسين حسان حسام عباس جعفر كاظم كريم جاسم قاسم ' +
@@ -105,7 +105,11 @@ const HARAKAT = /[ًٌٍَُِّْ]/g;
  * «نور» الأولى أنثى والثاني قد يكون ذكرًا. فتُسأل في كلّ مرّة (قرار المالك، ٦ تشرين الأول ٢٠٢٦)،
  * إلا ما حسمه اللقب («الطالبة نور») أو «الدين» بعدها («نور الدين» ذكر).
  */
-const UNISEX = new Set('نور ضياء علاء بهاء صفاء رضا تقى أنوار ملاك ولاء غفران نبأ يقين رند'.split(/\s+/).map((n) => normalizeFold(n)));
+const UNISEX = new Set(
+  'نور ضياء علاء بهاء صفاء رضا تقى أنوار ملاك ولاء غفران نبأ يقين رند نعمة رحمه نعمه رحمة'
+    .split(/\s+/)
+    .map((n) => normalizeFold(n))
+);
 
 /** أوّل الاسم بعد اللقب، وموضعه — أو عدم. */
 function firstName(fullName: string): { words: string[]; at: number } | null {
@@ -148,8 +152,13 @@ export type LearnedGenders = Record<string, Gender>;
  */
 export function guessGender(
   fullName: string,
-  learned: LearnedGenders = {}
-): { gender: Gender; sure: boolean; learned?: boolean } | null {
+  learned: LearnedGenders = {},
+  registeredGender?: Gender | null
+): { gender: Gender; sure: boolean; learned?: boolean; registered?: boolean } | null {
+  if (registeredGender === 'ذكر' || registeredGender === 'أنثى') {
+    // ر150: الجنس المحفوظ في ملفّ الزبون يُملأ مسبقًا ويبقى السؤال
+    return { gender: registeredGender, sure: false, registered: true };
+  }
   const f = firstName(fullName);
   if (!f) return null;
   const { words, at } = f;

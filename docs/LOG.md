@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠١:٥٥ — D116 ✅ — ملء الجنس المحفوظ مسبقًا وسؤال «نعمة/رحمة» المشتركين (S03 ر150) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/shared/gender.ts`: إدراج «نعمة» و«رحمة» ضمن قائمة الأسماء الملتبسة `UNISEX` وأسماء الذكور على هيئة المؤنّث، وإضافة خيار `registeredGender` إلى `guessGender` ليعيد `{ gender, sure: false, registered: true }` ر150 · `src/renderer/src/screens/service/useFillDerived.ts`: استعلام جنس المواطن المسجل مسبقًا وملؤه في `values['الجنس']` مع إبقاء السؤال للتأكيد · إضافة اختبارات في `tests/gender.test.ts` (٦ ✓) وإنشاء سيناريو `tools/scenarios/genderCounter.mjs` (٧ ✓) وتحديث `docs/QUALITY.md` ونقل D116 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/gender.test.ts` (٦ ✓) · `npx vitest run` كاملًا ٢٠٣١ ✓ و٤ متخطّاة (١٩٣ ملفًّا) · بناء `electron-vite build` نظيف وسيناريوهات `genderCounter.mjs` (٧ ✓) و`language.mjs` (٩ ✓) و`service.mjs` (٥٨ ✓) بلا ✗.
+- **التالي:** D117 (⚙️ ص: اختصارات التنقل Tab وEnter في الشبّاك وحصر Tab داخل الورقة S04) في جلسة جديدة أو محادثة مراجعة.
+
 ## ٢٠٢٦-١٠-٢٠ ٠١:٤٠ — D115 ✅ — الحفظ التلقائي لمعاملة الشبّاك ولورقة الأسئلة بلا ضياع عند انقطاع الكهرباء (S02) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/renderer/src/screens/service/useParked.ts`: حفظ تلقائي دوري مؤجّل (~١٫٨ ث) لمسودّة المعاملة الجارية في SQLite (`settings.parkedTransactions`) مع وسم `autosave: true` واسترجاعها تلقائيًّا عند الإقلاع وتفريغها عند الحفظ اليدوي أو الإلغاء أو الإتمام بنجاح · `src/renderer/src/screens/papers/usePaperOutput.ts`: حفظ تلقائي دوري مؤجّل للمسودّة واستعادتها بـ ID · `src/main/services/templates.ts`: تمرير `isAutosave: true` لمنع تسجيل `revision` في كلّ حفظ تلقائي · إنشاء اختبار `tests/autoSave.test.ts` (٢ ✓) وسيناريو `tools/scenarios/autoSave.mjs` (٥ ✓) مع محاكاة الانقطاع الفجائي بـ `killTree` وتحديث `docs/QUALITY.md` ونقل D115 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/autoSave.test.ts` (٢ ✓) · بناء `electron-vite build` نظيف (٨٫٣ ث) وسيناريو `autoSave.mjs` (٥ ✓) وسيناريو `service.mjs` (٥٨ ✓) بلا ✗ وبقاء مراجعات الورقة دون تضخّم.

@@ -54,11 +54,35 @@ export function useFillDerived(
       return values[key] ?? values[key.replace(/_/g, ' ')] ?? '';
     });
 
-  // الجنس يُقترح من الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة.
+  // الجنس يُقترح من السجلّ أو الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة (ر150).
   useEffect(() => {
     if (!needsGender || genderByHand || !citizenName) return;
-    const guess = guessGender(citizenName, learned);
-    if (guess && values[GENDER_KEY] !== guess.gender) setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
+    let active = true;
+    void (async () => {
+      let registeredGender: 'ذكر' | 'أنثى' | null = null;
+      try {
+        if (typeof window !== 'undefined' && window.diwan?.citizens?.list) {
+          const list = await window.diwan.citizens.list({ query: citizenName, limit: 5 });
+          const exact = (Array.isArray(list) ? list : []).find((c) => c.fullName === citizenName);
+          if (exact) {
+            const detail = await window.diwan.citizens.get(exact.id);
+            if (detail?.gender === 'ذكر' || detail?.gender === 'أنثى') {
+              registeredGender = detail.gender;
+            }
+          }
+        }
+      } catch {
+        // في بيئة الاختبار أو غياب السجلّ
+      }
+      if (!active) return;
+      const guess = guessGender(citizenName, learned, registeredGender);
+      if (guess && values[GENDER_KEY] !== guess.gender) {
+        setValues((prev) => ({ ...prev, [GENDER_KEY]: guess.gender }));
+      }
+    })();
+    return () => {
+      active = false;
+    };
     // الجنس يُقترح حين يتغيّر الاسم أو اختيار الموظف، والقيم تُقرأ حين يجري — لا يُعاد مع كلّ قيمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsGender, genderByHand, citizenName, learned]);
