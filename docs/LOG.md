@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٣:١٥ — D97 ✅ — A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (:focus-visible، وحلقة تركيز المدخلَين، وrole="dialog" للحوارات) · النموذج: Gemini 3.8 Flash (High)
+- **الإصلاحات:** `:focus-visible` في `src/renderer/src/styles.css` بنهايات CRLF الأصلية · إضافة `focus:ring-2 focus:ring-secondary` إلى `LetterheadTab.tsx:201` و`LibraryFilters.tsx:50` · إضافة `role="dialog"` و`aria-modal="true"` لـ٤٢ حاوية حوار في `src/renderer/` · تحديث `docs/QUALITY.md` و`docs/sections/system.md` وإغلاق A13 في `docs/BACKLOG.md`.
+- **الفحص:** `typecheck` نظيف · `rendererSnapshots` ١٦٤ ✓ · `theme` ٥ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓ (نهايات الأسطر وبايتات التحكّم).
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D97.md`. **التالي:** مراجعة D97 وتنفيذ D98 (م).
+
+## ٢٠٢٦-١٠-١٩ ٠٣:٠٩ — مراجعة D96 ✓ · وحجز D97 🔒 · النموذج: Gemini 3.8 Flash (High)
+- **D96 بـ«كيف يُراجَع»:** لا أثر لـ`forgetGeminiKey` في `src/` · `issueDocument` يرفض الحقل الإلزامي الفارغ في `required` · `getDb()` يفحص `quick_check(1)` عند الفتح · `errorLog.ts` يكتب رقم الإصدار، و`openExternalSafe` غير مصدَّرة. ✓
+- **تحقّق D97 قبل البدء:** D96 ✅ ومُراجَع · لا ملفّ في `src/renderer/` يقترب من ٤٠٠ سطر. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٣:٠٨ — D96 ✅ — A14 (١–٤): حذف `forgetGeminiKey`، وفحص الحقول الإلزامية في `issue.ts`، و`quick_check` عند فتح القاعدة، ورقم الإصدار في `errorLog.ts` · النموذج: Gemini 3.8 Flash (High)
 - **الإصلاحات:** حذف `forgetGeminiKey` و`rm` و`app` من `src/main/ipc/designs.ts` · إضافة `required?: string[]` إلى `IssueInput` و`TransactionSheet` وفحصها في `issueDocument` (`src/main/services/issue.ts`) وتمريرها من `useEditorOutput.ts` و`useIssue.ts` · فحص سلامة القاعدة بـ`PRAGMA quick_check(1)` عند فتحها في `src/main/db/index.ts` · كتابة `[v${app.getVersion()}]` في `src/main/errorLog.ts:30`، وجعل `openExternalSafe` دالّةً داخلية في `src/main/harden.ts`.
 - **الفحص:** `typecheck` نظيف · `documents` ٢٥ ✓ · `dataVersion` ١١ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓.

@@ -61,6 +61,12 @@
   box-shadow: inset 0 0 0 1px rgb(var(--c-outline-variant));
 }
 
+/* حلقة تركيز واضحة لعناصر التحكّم التفاعلية عند التنقّل بلوحة المفاتيح (A13 — D97) */
+:is(button, a, [role='button'], input[type='checkbox'], input[type='radio']):focus-visible {
+  outline: 2px solid rgb(var(--c-secondary));
+  outline-offset: 2px;
+}
+
 /* ── الطبقة الأساس: منقولة من <style> في ملفات التصميم ─────────────── */
 @layer base {
   html,

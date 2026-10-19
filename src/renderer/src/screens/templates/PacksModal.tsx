@@ -34,7 +34,7 @@ export function PacksModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-md"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-md"
       data-packs-modal=""
       onClick={onClose}
     >

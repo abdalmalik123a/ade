@@ -13,7 +13,7 @@ type Props = {
 
 export default function LogoPicker({ setLogoPicker, logoPicker, placeLogo, btn, logoFromDevice }: Props) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-pdf-logos="" onClick={() => setLogoPicker(null)}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-pdf-logos="" onClick={() => setLogoPicker(null)}>
       <div className="w-[560px] max-h-[70vh] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-headline-sm text-headline-sm">شعار أو صورة</h2>
         <div className="flex-1 overflow-y-auto grid grid-cols-4 gap-space-xs">

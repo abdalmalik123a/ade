@@ -66,7 +66,7 @@ export default function UploadExportDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-upload-export="" onClick={onClose}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-upload-export="" onClick={onClose}>
       <div className="w-[640px] max-h-[82vh] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-headline-sm text-headline-sm">المستمسكات للرفع — ملفٌّ لكلّ واحد</h2>
         <p className="font-label-md text-label-md text-on-surface-variant">

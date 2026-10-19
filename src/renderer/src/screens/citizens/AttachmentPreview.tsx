@@ -13,7 +13,7 @@ type Props = {
 export default function AttachmentPreview({ setPreview, preview }: Props) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-space-lg"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-space-lg"
       onClick={() => setPreview(null)}
     >
       <div className="mb-space-sm flex items-center gap-space-md text-on-primary">

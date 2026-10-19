@@ -50,7 +50,7 @@ export default function ResumePrintDialog() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-resume-print="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-resume-print="">
       <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
         <div className="flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-[28px] text-error">print_error</span>

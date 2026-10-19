@@ -47,7 +47,7 @@ export default function PresetsDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-presets-dialog="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-presets-dialog="">
       <div className="w-full max-w-xl max-h-[85vh] overflow-auto rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg space-y-space-md">
         <div className="flex items-center justify-between">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">قوالب المكتب</h2>

@@ -15,7 +15,7 @@ type Props = {
 
 export default function ImportedLetterhead({ pendingImport, setPendingImport, openImported, keepImportedLetterhead }: Props) {
   return (
-    <div className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
       <div className="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">

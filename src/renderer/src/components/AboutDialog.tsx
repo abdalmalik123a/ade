@@ -26,7 +26,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-scrim/50 p-space-md"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-[80] flex items-center justify-center bg-scrim/50 p-space-md"
       data-about=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >

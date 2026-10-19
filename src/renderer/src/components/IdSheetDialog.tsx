@@ -119,7 +119,7 @@ export default function IdSheetDialog({
     'h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm disabled:opacity-40';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" data-id-sheet="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" data-id-sheet="">
       <div className="w-full max-w-6xl h-[94vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden">
         <header className="px-space-lg py-space-sm flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-space-sm">

@@ -94,7 +94,7 @@ export default function CameraCapture({
   const frame = aspect ? { aspectRatio: `${aspect.w} / ${aspect.h}`, height: '86%' } : null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/60 p-space-md" data-camera-capture="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/60 p-space-md" data-camera-capture="">
       <div className="w-full max-w-3xl rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-secondary text-[22px]">photo_camera</span>

@@ -15,7 +15,7 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
   const isSchool = (c: Client) => SCHOOL_KINDS.includes(c.kind ?? '') || Boolean(c.schoolGender || c.governorate || c.principal);
   const rows = schools.filter((c) => !q || normalizeFold(c.name).includes(q)).sort((a, b) => Number(isSchool(b)) - Number(isSchool(a)));
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
       <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm" data-school-picker="">
         <span className="font-headline-sm text-headline-sm text-on-surface">هات المدرسة</span>
         <input
@@ -84,7 +84,7 @@ export function CitizenPicker({
   }, [query]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
       <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
           هات الزبون

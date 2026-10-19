@@ -30,7 +30,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50 p-space-md"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50 p-space-md"
       data-problem-report=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >

@@ -56,7 +56,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" data-clipart-modal="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" data-clipart-modal="">
       <div className="relative w-full max-w-3xl bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl p-space-lg flex flex-col gap-space-md text-right">
         {/* الرأس */}
         <header className="flex items-center justify-between border-b border-outline-variant pb-space-sm">

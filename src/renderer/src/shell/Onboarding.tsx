@@ -72,7 +72,7 @@ export default function Onboarding({
     }`;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/40 backdrop-blur-sm p-space-lg" data-onboarding="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/40 backdrop-blur-sm p-space-lg" data-onboarding="">
       <div className="w-full max-w-2xl rounded-2xl bg-surface-container-lowest shadow-2xl overflow-hidden flex flex-col max-h-full">
         <div className="px-space-xl pt-space-lg pb-space-md flex items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-sm">

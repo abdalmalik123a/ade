@@ -120,7 +120,7 @@ export default function CitizenForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px]" data-citizen-form="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px]" data-citizen-form="">
       <div className="w-[min(980px,94vw)] h-[min(760px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-space-sm">

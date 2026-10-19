@@ -11,7 +11,7 @@ export default function BackupDialog({ onClose, onDone }: { onClose: () => void;
   const [error, setError] = useState<string | null>(null);
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md"
       data-backup-dialog=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >

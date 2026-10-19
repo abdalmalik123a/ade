@@ -151,7 +151,7 @@ export function InsertMenu({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-28 bg-scrim/40" onClick={onClose}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-28 bg-scrim/40" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-sm flex flex-col gap-space-xs"
         onClick={(e) => e.stopPropagation()}

@@ -158,7 +158,7 @@ export default function CameraStudio({
   const frameW = (frameH * aspect.w) / aspect.h;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-studio="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-studio="">
       <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-lowest">
         <div className="flex items-center gap-space-md">
           <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" title="إغلاق (Esc)" type="button" onClick={onClose}>

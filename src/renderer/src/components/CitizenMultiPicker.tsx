@@ -45,7 +45,7 @@ export default function CitizenMultiPicker({
   const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : single ? [id] : [...p, id]));
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-citizen-picker="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-citizen-picker="">
       <div className="w-full max-w-2xl h-[80vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-xs">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">{title}</h2>

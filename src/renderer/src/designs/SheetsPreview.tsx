@@ -124,7 +124,7 @@ export default function SheetsPreview({
   const nav = 'w-10 h-10 rounded-full bg-surface-container-lowest hover:bg-surface-container-high flex items-center justify-center disabled:opacity-30';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-sheets="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-sheets="">
       <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-lowest">
         <div className="flex items-center gap-space-md">
           <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" title="رجوع (Esc)" type="button" onClick={onClose}>

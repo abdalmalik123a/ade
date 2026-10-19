@@ -47,7 +47,7 @@ export default function LibraryFilters({ active, setActive, stats, categories, q
           </div>
           <div className="h-6 w-px bg-surface-container-highest" />
           <select
-            className="h-9 px-space-sm bg-surface-container-low text-on-surface rounded-lg font-label-sm text-label-sm focus:outline-none cursor-pointer"
+            className="h-9 px-space-sm bg-surface-container-low text-on-surface rounded-lg font-label-sm text-label-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
             value={sort}
             onChange={(e) => setSort(e.target.value as typeof sort)}
           >

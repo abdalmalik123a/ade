@@ -32,7 +32,7 @@ export function PreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center overflow-auto py-space-lg"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex flex-col items-center overflow-auto py-space-lg"
       onClick={onClose}
     >
       <div

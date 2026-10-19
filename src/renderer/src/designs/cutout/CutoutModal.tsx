@@ -29,7 +29,7 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
   const ready = c.phase === 'ready';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-cutout={c.phase}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-cutout={c.phase}>
       <div className="w-full max-w-4xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">أزل الخلفية</h2>

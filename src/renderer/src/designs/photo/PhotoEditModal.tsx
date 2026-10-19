@@ -69,7 +69,7 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
   );
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-photo-edit={p.ready ? 'ready' : 'loading'}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-photo-edit={p.ready ? 'ready' : 'loading'}>
       <div className="w-full max-w-5xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">حسّن الصورة</h2>

@@ -17,7 +17,7 @@ export default function ClosingOverlay() {
   );
   if (!closing) return null;
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50" data-closing="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[90] flex items-center justify-center bg-scrim/50" data-closing="">
       <div className="rounded-2xl bg-surface-container-lowest px-space-lg py-space-md shadow-2xl flex items-center gap-space-sm font-label-lg text-label-lg text-on-surface">
         <span className="material-symbols-outlined animate-spin text-secondary">progress_activity</span>
         تُؤخذ النسخة التلقائية قبل الإغلاق…

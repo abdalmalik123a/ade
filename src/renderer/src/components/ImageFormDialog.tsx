@@ -144,7 +144,7 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
   const lowDpi = read ? read.dpi < 150 : false;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-lg" data-image-form="">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-lg" data-image-form="">
       <div className="w-full max-w-6xl max-h-full overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col">
         <div className="h-14 shrink-0 px-space-md flex items-center justify-between border-b border-outline-variant/40">
           <span className="font-headline-sm text-headline-sm text-on-surface">من صورة استمارة</span>

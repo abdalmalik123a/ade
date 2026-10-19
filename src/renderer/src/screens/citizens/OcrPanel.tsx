@@ -17,7 +17,7 @@ type Props = {
 export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }: Props) {
   return (
     <div
-      className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center"
       onClick={() => setOcrPanel(null)}
     >
       <div

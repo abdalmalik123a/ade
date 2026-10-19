@@ -69,7 +69,7 @@ export default function PrintChooser() {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/50 p-space-md"
+      role="dialog" aria-modal="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/50 p-space-md"
       data-print-chooser={req.role}
       onClick={(e) => e.target === e.currentTarget && finish(null)}
     >

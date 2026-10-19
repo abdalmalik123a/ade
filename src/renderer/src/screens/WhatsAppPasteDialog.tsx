@@ -46,7 +46,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">

@@ -153,7 +153,7 @@ export default function ImportPlanDialog({
   const skipped = skippedLines(plan.skipped);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-md">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-md">
       <div className="w-full max-w-5xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
         {/* الحصيلة */}
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-xs shrink-0">

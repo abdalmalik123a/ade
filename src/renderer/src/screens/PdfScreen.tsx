@@ -289,7 +289,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       )}
 
       {splitText !== null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-pdf-split-dialog="" onClick={() => setSplitText(null)}>
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-pdf-split-dialog="" onClick={() => setSplitText(null)}>
           <div className="w-[480px] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-headline-sm text-headline-sm">قسّم الملف</h2>
             <p className="font-label-md text-label-md text-on-surface-variant">
@@ -311,7 +311,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
       )}
 
       {busy && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/30" data-pdf-busy="">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/30" data-pdf-busy="">
           <div className="rounded-xl bg-surface-container-lowest px-space-lg py-space-md shadow-xl flex items-center gap-2 font-label-md text-label-md">
             <span className="material-symbols-outlined animate-spin">progress_activity</span>
             {busy}

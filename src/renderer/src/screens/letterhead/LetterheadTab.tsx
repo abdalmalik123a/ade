@@ -198,7 +198,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
             <label className="flex items-center gap-space-sm">
               <span className="font-label-sm text-label-sm text-on-surface-variant font-medium shrink-0">لجهة</span>
               <select
-                className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none"
+                className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
                 data-letterhead-client=""
                 value={authorityId ?? ''}
                 onChange={(e) => {

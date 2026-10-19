@@ -113,7 +113,7 @@ export default function CitizenImportDialog({
     : [];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-citizen-import="" onClick={onClose}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-citizen-import="" onClick={onClose}>
       <div className="w-[760px] max-h-[86vh] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-headline-sm text-headline-sm">استيراد الزبائن من Excel</h2>
         {!table ? (
