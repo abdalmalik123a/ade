@@ -3,6 +3,8 @@
  * `makePsdFixture.test.ts`) تُستورد فيظهر: الاسم بظلّه وحدّه، والعنوان على قوس، وحلقة صورة الموظف فوقها، والتوقيع صورةً
  * تُستبدل، والاسم والوظيفة مجموعةً تُحدَّد معًا ونقرتان تختاران أحدهما — و«ما جرى في الاستيراد» يقول النتوء باسم طبقته.
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FILE = fileURLToPath(new URL('../../tests/fixtures/psd-styles.psd', import.meta.url));
@@ -13,12 +15,15 @@ export function prepare() {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export default async function scenario(page) {
+export default async function scenario(page, { profile } = {}) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const click = (sel) => page.eval(`document.querySelector(${JSON.stringify(sel)})?.click(); return true;`);
   const drawn = () => page.eval(`return document.querySelector('[data-design]')?.innerHTML ?? '';`);
   const selected = () => page.eval(`return document.querySelectorAll('[data-handle].outline-primary').length;`);
+
+  const ping = await page.eval(`return window.diwan.app.workerPing().then((r) => r, (e) => ({ error: String(e?.message ?? e) }));`);
+  ok(`محرّك PSD يعمل ورقمه (${ping?.psd}) قبل الاستيراد`, typeof ping?.psd === 'string' && /^\d+\.\d+\.\d+/.test(ping.psd));
   /** مقبض العنصر الذي يُرسم تحته نصٌّ فيه `text` — بالعقدة الأخيرة (لا غلافٌ فيه نصوص اللوحة كلّها). */
   const handleOf = (text) => `
     const handles = [...document.querySelectorAll('[data-handle]')];
@@ -84,5 +89,12 @@ export default async function scenario(page) {
   await click('[data-act="import-notes-close"]');
   await wait(200);
   ok('واللوح يُغلق', !(await page.eval(`return Boolean(document.querySelector('[data-import-notes]'));`)));
+
+  if (profile) {
+    const errLog = join(profile, 'logs', 'diwan-errors.log');
+    const hasNativeError = existsSync(errLog) && readFileSync(errLog, 'utf8').includes('[native]');
+    ok('ولا سطر [native] في سجلّ أخطاء الملفّ الشخصي بعده', !hasNativeError);
+  }
+
   return steps.join('\n');
 }

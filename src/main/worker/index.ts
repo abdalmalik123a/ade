@@ -14,12 +14,12 @@ import { readDesign } from '../services/designImport';
 import { flattenPsd } from '../services/design/flatten';
 import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
-import { useNativePsd } from '../services/psd';
+import { setNativePsdReader } from '../services/psd';
 import { createNativePsdReader, loadNativePsd } from './nativePsd';
 
 const { addon: initialAddon } = loadNativePsd();
 if (initialAddon) {
-  useNativePsd(createNativePsdReader(initialAddon));
+  setNativePsdReader(createNativePsdReader(initialAddon));
 }
 
 type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Promise<WorkerOutput<J>>;

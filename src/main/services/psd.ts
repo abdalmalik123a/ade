@@ -205,7 +205,7 @@ let nativeReader: ((bytes: Uint8Array) => PsdImage | null) | null = null;
 /**
  * يضع قارئًا أصليًّا (A20، D104) — يضعه العامل وحده عند إقلاعه من nativePsd.ts.
  */
-export function useNativePsd(fn: ((bytes: Uint8Array) => PsdImage | null) | null): void {
+export function setNativePsdReader(fn: ((bytes: Uint8Array) => PsdImage | null) | null): void {
   nativeReader = fn;
 }
 

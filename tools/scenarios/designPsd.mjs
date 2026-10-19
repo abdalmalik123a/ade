@@ -4,7 +4,7 @@
  * يبني ملف .psd حقيقيًّا بمقاس هوية CR80 عند ٣٠٠ نقطة/إنش، ثم يستورده ويتفقّد:
  * أقُرئ المقاس من المورد ١٠٠٥؟ وأسُطّحت الصورة خلفيةً تُرسم فعلًا؟
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 
@@ -67,6 +67,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const click = (sel) => page.eval(`document.querySelector('${sel}')?.click(); return true;`);
 
+  const ping = await page.eval(`return window.diwan.app.workerPing().then((r) => r, (e) => ({ error: String(e?.message ?? e) }));`);
+  ok(`محرّك PSD يعمل ورقمه (${ping?.psd}) قبل الاستيراد`, typeof ping?.psd === 'string' && /^\d+\.\d+\.\d+/.test(ping.psd));
+
   await page.goto('designed-documents');
   await wait(700);
   await click('button[data-act="import"]');
@@ -104,6 +107,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وبخلفيةٍ بدقّة ٣٠٠', doc?.canvas?.background?.dpi === 300);
   // الهوية تُقصّ، فالنزف أصلٌ فيها.
   ok('وبنزفٍ ثلاثة ملّمات', doc?.canvas?.bleed === 3);
+
+  const errLog = join(profile, 'logs', 'diwan-errors.log');
+  const hasNativeError = existsSync(errLog) && readFileSync(errLog, 'utf8').includes('[native]');
+  ok('ولا سطر [native] في سجلّ أخطاء الملفّ الشخصي بعده', !hasNativeError);
 
   if (shotsDir) await page.shot(join(shotsDir, 'design-psd.png'));
   return steps.join('\n');

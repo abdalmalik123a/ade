@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٩:٢٠ — D105 ✅ — المحرّك في البرنامج كلّه: سيناريوهات Photoshop وworkerPath على البناء وعلى المحزوم، وقياس الفرق · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** تصحيحات خ٠: تغيير `useNativePsd` إلى `setNativePsdReader` في `psd.ts` و`worker/index.ts` وARCHITECTURE ونجاح `lint.test.ts` بلا خرق · مقارنة مباشرة بـ`createNativePsdReader` في `tests/nativePsdCompare.test.ts` بلا رجوع صامت · إصلاح (ب) طول المورد بـ`buf.len()` وإصلاح (ج) قراءة ما بعد آخر الصف في `unpack_bits` بـ`native/diwan-psd/src/lib.rs` وإضافة الحالات الثلاث المصنوعة (أ، ب، ج) إلى المقارنة وتطابقها · إضافة فحص `workerPing().psd` وخلوّ سجل الأخطاء من `[native]` في سيناريوي `designPsd.mjs` و`designPsdStyles.mjs` · إنشاء تجربة `tools/experiments/psdSpeed.mjs` وتوثيق الأرقام في `QUALITY.md` §٨ ونقل D105 إلى `done/`.
+- **القياس (psdSpeed):** ملف كبير ٤٠٠٠×٣٠٠٠ بـ RLE مضغوط (٥٨٠ ك.ب، ١٢ م.بكسل، ٤٨ م.ب RGBA) على Core i5-1035G1 CPU @ 1.00GHz (٨ نواة، ٨ غ.ب): وسيط ٥ قراءات: Rust الأصلي **٥٤٫١ م.ث** مقابل **٢٣٠٫٤ م.ث** لـ TypeScript (أسرع بنحو ٤٫٢٥x أضعاف، توفير ١٧٦٫٢ م.ث).
+- **الفحص:** `typecheck` نظيف · `npx vitest run` كاملًا أخضر: **٢٠١٢ ✓** و٤ متخطّاة (١٩٠ ملفًّا ناجحًا) ومنه `lint` و`nativePsdCompare` (٢١ ✓) · بناء التطوير `npm run build` ثم `designPsd` (١١ ✓) و`designPsdStyles` (١١ ✓) و`workerPath` (١٠ ✓) بلا ✗ · المحزوم `npm run pack` ثم الثلاثة بـ`DIWAN_EXE` على `release/test/win-unpacked/Diwan.exe` (١١ ✓ و١١ ✓ و١٠ ✓) بلا ✗.
+- **التالي:** D106 (التوثيق وإغلاق A20).
+
 ## ٢٠٢٦-١٠-١٩ ٠٩:١٥ — ر167 (تعديل): المراجعة الخطوة ٢ في `/next` بمحادثةٍ جديدة، لا أمرٌ منفصل · النموذج: Claude Opus 5.5
 - **قول المالك:** «الافضل كما كنا نعمل نيكست بمحادثة جديدة وهو يراجع هذا افضل».
 - **ما تغيّر:** الطريقة إلى `docs/REVIEW.md` (بقدر الأمر: الأقسام ١–٥ لكلّ أمر، و٦ لما يراه المكتب أو يمسّ البناء، وvitest كاملًا مرّةً) · `/next` خ٢ وCLAUDE.md خ٢ يراجعان بها، وCLAUDE.md يذكرها في الوثائق · `/verify` ومهارته بـ`git mv` إلى `legacy/` بسطر «انتهى» · AGENTS.md وDECISIONS ر167 وPLAN («أحدثها» وسطر 🛑 D105–D106).

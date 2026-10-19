@@ -35,16 +35,19 @@ pub fn unpack_bits(src: &[u8], mut at: usize, length: usize, out: &mut [u8], to:
             }
         } else if n != -128 {
             let count = (1 - (n as i16)) as usize;
-            if at < end {
-                let value = src[at];
+            let value = if at < src.len() {
+                let v = src[at];
                 at += 1;
-                for _ in 0..count {
-                    if write < out.len() {
-                        out[write] = value;
-                        write += 1;
-                    } else {
-                        break;
-                    }
+                v
+            } else {
+                0
+            };
+            for _ in 0..count {
+                if write < out.len() {
+                    out[write] = value;
+                    write += 1;
+                } else {
+                    break;
                 }
             }
         }
@@ -98,7 +101,7 @@ pub fn read_psd(bytes: Buffer) -> Option<PsdRead> {
         } else {
             name_length + 1
         };
-        if res + 4 > limit {
+        if res + 4 > buf.len() {
             break;
         }
         let size = u32::from_be_bytes([buf[res], buf[res + 1], buf[res + 2], buf[res + 3]]) as usize;

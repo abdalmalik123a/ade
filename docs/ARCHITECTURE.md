@@ -266,7 +266,7 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   **وما لا ينتقل:** كتابة PNG تبقى `writePng` بـTS (`services/png.ts` بلا مكتبة صور، بـ`fflate` — مبدأٌ مكتوبٌ في رأسه)، فيبقى ناتج `flattenPsd` هو نفسه بايتًا ببايت؛
   والطبقات (`psdRecords.ts` و`psdPixels.ts`) تبقى TS.
 - **الربط: Node-API بـnapi-rs** (لا WebAssembly): أسرع في البكسلات الكبيرة بلا سقف ذاكرة wasm32، ويحمّله Node في الاختبار وElectron في العامل، وMSVC 2022 على الجهاز.
-  - *الموضع الواحد:* `src/main/worker/nativePsd.ts` يحمّل الإضافة (بـ`createRequire`، والمسار من مرشّحين كما يفعل `sqlFile` في `db/index.ts`)، ويضعها في `psd.ts` بـ`useNativePsd(fn)`؛
+  - *الموضع الواحد:* `src/main/worker/nativePsd.ts` يحمّل الإضافة (بـ`createRequire`، والمسار من مرشّحين كما يفعل `sqlFile` في `db/index.ts`)، ويضعها في `psd.ts` بـ`setNativePsdReader(fn)`؛
     فـ`readPsd` يناديها إن وُضعت ويرجع إلى TS إن رمت. والعامل وحده يضعها — فطريق الرئيسة البديل TS دائمًا.
   - *الإخفاق لا يصمت:* العامل لا يستورد Electron ولا `errorLog.ts` (القاعدة في `structure.test.ts`)؛ فعمل `ping` القائم يعيد أيضًا رقم إصدار المحرّك أو سبب تعذّره
     (فيراه `app:workerPing` وسيناريو `workerPath`)، وترسله `workerHost.ts` مرّةً بعد إقلاع العامل فتكتب في سجلّ الأخطاء إن تعذّر.

@@ -11,9 +11,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { readPsd, readPsdScript, useNativePsd } from '../src/main/services/psd';
+import { readPsdScript, setNativePsdReader, type PsdImage } from '../src/main/services/psd';
 import { createNativePsdReader, loadNativePsd } from '../src/main/worker/nativePsd';
 import { layeredPsd } from './psdBuilder';
+
+let nativeReader: ((bytes: Uint8Array) => PsdImage | null) | null = null;
 
 function psdFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -23,7 +25,8 @@ function psdFiles(dir: string): string[] {
 
 function expectPsdMatch(bytes: Uint8Array, label: string) {
   const script = readPsdScript(bytes);
-  const native = readPsd(bytes);
+  if (!nativeReader) throw new Error('محرّك Rust غير مهيّأ');
+  const native = nativeReader(bytes);
 
   if (script === null) {
     expect(native, `${label}: يجب أن يعيد Rust قيمة null كما يعيدها TS`).toBeNull();
@@ -143,7 +146,8 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
     const { addon, error } = loadNativePsd();
     expect(error, `فشل تحميل إضافة Rust: ${error}`).toBeNull();
     expect(addon, 'إضافة Rust غير محمّلة (diwan_psd.node)').not.toBeNull();
-    useNativePsd(createNativePsdReader(addon!));
+    nativeReader = createNativePsdReader(addon!);
+    setNativePsdReader(nativeReader);
   });
 
   describe('١ — ملفّات psdBuilder (طبقات وصورة مسطَّحة)', () => {
@@ -265,6 +269,86 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
     it('ضغط غير مدعوم (ZIP = 2) يضع تحذير zip ويعيد rgba: null في المحرّكين', () => {
       const zip = buildRawPsd(10, 10, undefined, 3, [10, 20, 30], 8, 2);
       expectPsdMatch(zip, 'Compression 2 (ZIP)');
+    });
+
+    it('(أ) ملف ٢٨ بايتًا: TS يرمي RangeError و Rust يعيد null (مقبول ومكتوب)', () => {
+      const b28 = Buffer.alloc(28);
+      b28.write('8BPS', 0, 'ascii');
+      b28.writeUInt16BE(1, 4);
+      b28.writeUInt16BE(3, 12);
+      b28.writeUInt32BE(10, 14);
+      b28.writeUInt32BE(10, 18);
+      b28.writeUInt16BE(8, 22);
+      b28.writeUInt16BE(3, 24);
+      expect(() => readPsdScript(b28)).toThrow();
+      expect(nativeReader!(b28)).toBeNull();
+    });
+
+    it('(ب) مورد يتخطّى قسمه: TS و Rust متطابقان في استخراج الدقّة', () => {
+      const head = Buffer.alloc(26);
+      head.write('8BPS', 0, 'ascii');
+      head.writeUInt16BE(1, 4);
+      head.writeUInt16BE(3, 12);
+      head.writeUInt32BE(10, 14);
+      head.writeUInt32BE(10, 18);
+      head.writeUInt16BE(8, 22);
+      head.writeUInt16BE(3, 24);
+
+      const color = Buffer.alloc(4);
+
+      const resBlock = Buffer.alloc(12 + 16);
+      resBlock.write('8BIM', 0, 'ascii');
+      resBlock.writeUInt16BE(1005, 4);
+      resBlock.writeUInt8(0, 6);
+      resBlock.writeUInt8(0, 7);
+      resBlock.writeUInt32BE(16, 8);
+      resBlock.writeUInt32BE(Math.round(16 * 65536), 12);
+      resBlock.writeUInt32BE(Math.round(16 * 65536), 20);
+
+      const resLen = Buffer.alloc(4);
+      resLen.writeUInt32BE(16); // resourcesEnd أصغر من طول كتلة المورد لكن البايتات متوفّرة
+
+      const layers = Buffer.alloc(16);
+      layers.writeUInt32BE(12, 0);
+      layers.writeUInt32BE(8, 4);
+
+      const compression = Buffer.alloc(2);
+      compression.writeUInt16BE(0);
+      const px = Buffer.alloc(10 * 10 * 3);
+
+      const buf = Buffer.concat([head, color, resLen, resBlock, layers, compression, px]);
+      expectPsdMatch(buf, 'Resource exceeding section');
+    });
+
+    it('(ج) صفّ RLE ينتهي ببايت تكرار: TS و Rust متطابقان في فكّ الضغط', () => {
+      const head = Buffer.alloc(26);
+      head.write('8BPS', 0, 'ascii');
+      head.writeUInt16BE(1, 4);
+      head.writeUInt16BE(1, 12);
+      head.writeUInt32BE(2, 14);
+      head.writeUInt32BE(4, 18);
+      head.writeUInt16BE(8, 22);
+      head.writeUInt16BE(1, 24);
+
+      const color = Buffer.alloc(4);
+      const resources = Buffer.alloc(4);
+      const layers = Buffer.alloc(16);
+      layers.writeUInt32BE(12, 0);
+      layers.writeUInt32BE(8, 4);
+
+      const compression = Buffer.alloc(2);
+      compression.writeUInt16BE(1);
+
+      const lengths = Buffer.alloc(4);
+      lengths.writeUInt16BE(2, 0);
+      lengths.writeUInt16BE(1, 2);
+
+      const row0 = Buffer.from([0xfd, 253]);
+      const row1 = Buffer.from([0xfd]);
+      const trailing = Buffer.from([7, 0, 0, 0]);
+
+      const buf = Buffer.concat([head, color, resources, layers, compression, lengths, row0, row1, trailing]);
+      expectPsdMatch(buf, 'RLE row ending with repeat byte');
     });
   });
 
