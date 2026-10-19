@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
+import { PDFDocument } from 'pdf-lib';
 import { fitCanvasText } from '@shared/design/fit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
 import type { SheetStyle } from '@shared/api';
@@ -138,8 +139,7 @@ export async function withRenderWindow<T>(
     // صفحة التطبيق نفسها، بعلامة تمنع تركيب الواجهة — فتبقى الأنماط والخطوط.
     const devUrl = rendererDevUrl();
     if (devUrl) await win.loadURL(`${devUrl}/index.html?mode=print`);
-    else
-      await win.loadFile(join(__dirname, '../renderer/index.html'), { query: { mode: 'print' } });
+    else await win.loadFile(join(__dirname, '../renderer/index.html'), { query: { mode: 'print' } });
 
     const fonts = (await win.webContents.executeJavaScript(`
       (() => {
@@ -240,9 +240,7 @@ function testPrintLog(req: PrintRequest, page: PageMm): { ok: boolean; reason?: 
  */
 export function printerOffset(deviceName: string | undefined): { x: number; y: number } {
   try {
-    const rows = getDb()
-      .prepare("SELECT key, value FROM settings WHERE key IN ('printOffsets', 'defaultPrinter')")
-      .all() as { key: string; value: string }[];
+    const rows = getDb().prepare("SELECT key, value FROM settings WHERE key IN ('printOffsets', 'defaultPrinter')").all() as { key: string; value: string }[];
     const map = new Map(rows.map((r) => [r.key, r.value]));
     const offsets = JSON.parse(map.get('printOffsets') ?? '{}') as Record<string, { x: number; y: number }>;
     const o = offsets[deviceName ?? map.get('defaultPrinter') ?? ''];
@@ -298,22 +296,47 @@ function printWith(req: PrintRequest, silent: boolean, page: PageMm, landscape: 
   );
 }
 
-/** PDF بمقاس الورقة الحقيقي وبالخلفيات (الشعار والعلامة المائية) — وبأنماط الكتاب يوم صدر إن أُعطيت. */
-export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: SheetStyle | null = null): Promise<Buffer> {
-  const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
+const CHUNK_PAGE_SIZE = 8;
+
+/** يقسم علامات الورقة إلى أوراقٍ منفصلة إن كانت تحوي أكثر من ورقة (`print-page`). */
+export function splitPagesHtml(sheetHtml: string): string[] {
+  const parts = sheetHtml.split(/(?=(?:<div style="[^"]*break-inside:avoid[^"]*">\s*)?<div class="print-page")/g).filter(Boolean);
+  return parts.length > 0 ? parts : [sheetHtml];
+}
+
+async function mergePdfBuffers(buffers: Buffer[]): Promise<Buffer> {
+  if (buffers.length <= 1) return buffers[0] ?? Buffer.alloc(0);
+  const merged = await PDFDocument.create();
+  for (const buf of buffers) {
+    const doc = await PDFDocument.load(buf);
+    const pages = await merged.copyPages(doc, doc.getPageIndices());
+    for (const p of pages) merged.addPage(p);
+  }
+  return Buffer.from(await merged.save());
+}
+
+function renderSinglePdf(sheetHtml: string, page: PageMm, style: SheetStyle | null): Promise<Buffer> {
   const { landscape, pageSize } = pdfPageSizeOf(page);
   return withRenderWindow(
     sheetHtml,
-    (win) =>
-      win.webContents.printToPDF({
-        pageSize,
-        printBackground: true,
-        margins: { top: 0, bottom: 0, left: 0, right: 0 },
-        landscape,
-        preferCSSPageSize: true
-      }),
+    (win) => win.webContents.printToPDF({ pageSize, printBackground: true, margins: { top: 0, bottom: 0, left: 0, right: 0 }, landscape, preferCSSPageSize: true }),
     { page, style }
   );
+}
+
+/** PDF بمقاس الورقة الحقيقي وبالخلفيات — ويُجزَّأ في الدفعات الكبيرة لخفض ذروة الذاكرة (E08). */
+export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: SheetStyle | null = null): Promise<Buffer> {
+  const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
+  const pages = splitPagesHtml(sheetHtml);
+  if (pages.length <= CHUNK_PAGE_SIZE) return renderSinglePdf(sheetHtml, page, style);
+
+  const chunks: Buffer[] = [];
+  for (let i = 0; i < pages.length; i += CHUNK_PAGE_SIZE) {
+    chunks.push(await renderSinglePdf(pages.slice(i, i + CHUNK_PAGE_SIZE).join(''), page, style));
+    if (global.gc) try { global.gc(); } catch { /* ignore */ }
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  return mergePdfBuffers(chunks);
 }
 
 /**
