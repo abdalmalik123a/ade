@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٨:٣٠ — D104 ✅ — `readPsd` في Rust خلف موضعٍ واحد، ومقارنة المحرّكين على كلّ ملفّات PSD · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر (`07224ea`):** نقل `readPsd` و`unpackBits` إلى Rust في `native/diwan-psd/src/lib.rs` بدالّتي `read_psd` و`unpack_bits` بلا أيّ crate جديد · تحويل رموز التنبيهات في `worker/nativePsd.ts` (`depth:` و`mode:` و`truncated` و`unreadable` و`zip`) وتركيب القارئ الأصلي بـ`useNativePsd` في `worker/index.ts` وحدها (الرئيسة TS دائمًا) · جسم `readPsd` الأصلي صار `readPsdScript` بلا تغيير في `services/psd.ts` مع تفويض `readPsd` ورجوعه إليه إن رمى · معالجة `EBUSY` ومطابقة البايتات في `tools/buildNative.mjs` ورسالة عربية صريحة إن كانت الإضافة مفتوحة · إنشاء `tests/nativePsdCompare.test.ts` واختبار `readPsd` في `tests/nativePsd.test.ts` ونقل الأمر إلى `done/`.
+- **الملفّات المقارنة (٦٥ ملفّ قرص + ١٦ حالة بانية):** ملف `tests/fixtures/psd-styles.psd` و٦٤ ملفًّا حقيقيًّا من مجلّد GyanTech (مجلّدات GD 01 إلى GD 12 بكلّ تنويعات Back.psd وFront.psd الأصلية و(2) و(3)) وبُناة psdBuilder (RGB وCMYK) وبُناة designImport (خام وRLE لكلّ من RGB وCMYK وGrayscale بـDPI وبدونه) وPSB وملفّات مبتورة وحدية؛ وكلّها متطابقة في المقاس والدقّة والتنبيهات وrgba وplanes بايتًا ببايت وnull حيث يعيد TS null.
+- **الفحص:** `typecheck` نظيف · `npm run build` نظيف واكتشف مطابقة diwan_psd.node بلا إعادة نسخ · سبعة ملفّات اختبار ١٠٠ ✓ (`structure` ١٠ ✓ `psdLayers` ١٨ ✓ `nativePsd` ٤ ✓ `designImport` ٢٠ ✓ `nativePsdCompare` ١٨ ✓ `realPsd` ١٧ ✓ `workerJobs` ١٣ ✓) ومعها `docsBudget` ٣ ✓ و`repoHygiene` ٤ ✓ · تجربة تعطيل الإضافة بإعادة تسميتها: سقط اختبار المقارنة فورًا، وعند إعادتها اخضرّ كاملًا.
+- **التوقّف:** التوقّف التامّ عند سطر 🛑 «تحقّق Claude من D104» في PLAN كما أمر المالك وعدم بدء D105.
+- **التالي:** 🛑 تحقّق Claude من D104 (ر166).
+
 ## ٢٠٢٦-١٠-١٩ ٠٦:٤٥ — 🛑 تحقّق Claude من D103 (ر166) ✓ · النموذج: Claude Opus 5.5
 - **الكود على نصّ الأمر:** ملفّاته في «المسموح» وحدها، ولا `package-lock` ولا حزمة npm، وcrates الثلاث وحدها (`napi` 3 و`napi-derive` 3 و`napi-build` 2)، و`build:native` في `build` و`dist`، والإضافة في `native/diwan-psd/` لا في `out/`، و`onStart` يُرسل `ping` بعد إسناد العامل فلا عاملان.
 - **«كيف يُراجَع» (شُغّل):** حذفتُ `target/` والإضافة ثم `npm run build` ← بُنيت من الصفر (٢٣ ث لـRust، ١٫١٢ د كلّه) · `nativePsd` بلا الإضافة ٢ ✗ وبها ✓، ومع `structure` `workerJobs` `workerHost` `docsBudget` `repoHygiene` `lint` ٤٩ ✓ · `workerPath` ١٠ ✓ على البناء، و`npm run pack` ثم `workerPath` بـ`DIWAN_EXE` ١٠ ✓ و«محرّك PSD 0.1.0» من عامل المحزوم.

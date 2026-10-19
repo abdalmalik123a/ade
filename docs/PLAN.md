@@ -39,7 +39,7 @@
 | — | **🛑 المالك:** موافقته على الأدوات الثلاث (`rustup`، وcrates `napi` `napi-derive` `napi-build` — MIT) وتثبيته `rustup` (OWNER-GUIDE) | ✅ وافق ١٩ ت١ («موافق على الأدوات الثلاث») — والتثبيت بيده، ويتحقّق منه D103 بـ`rustc --version` | 🛑 | — |
 | [D103](orders/done/D103.md) | A20: محرّك Rust فارغ يمرّ في الطريق كلّه — `native/diwan-psd` و`tools/buildNative.mjs` في `build` و`dist`، و`worker/nativePsd.ts`، و`ping` يقول المحرّك، واختبارٌ يسقط إن غابت الإضافة، و`workerPath` على البناء وعلى المحزوم | ✅ ١٩ ت١ (`e88dcdb`) | ⚙️ ك | موافقة المالك وتثبيت `rustup` |
 | — | **🛑 تحقّق Claude من D103** (ر166) | ✅ ١٩ ت١ — بناءٌ من الصفر (حُذفت الإضافة و`target`) ١٫١٢ د، و`nativePsd` يسقط بلا الإضافة ويخضرّ بها، و`workerPath` ١٠ ✓ على البناء وعلى المحزوم («0.1.0»)؛ وعيبٌ صغير يُصلَح في D104 خ٥: البناء والإضافة مفتوحة يسقط `EBUSY` | 🛑 | D103 |
-| [D104](orders/D104.md) | A20: `readPsd` في Rust خلف `useNativePsd` في `psd.ts` (العامل وحده يضعه، والرئيسة TS)، و`nativePsdCompare` يطابق المحرّكين على كلّ ملفّات PSD | ⬜ | ⚙️ ك | تحقّق Claude من D103 |
+| [D104](orders/done/D104.md) | A20: `readPsd` في Rust خلف `useNativePsd` في `psd.ts` (العامل وحده يضعه، والرئيسة TS)، و`nativePsdCompare` يطابق المحرّكين على كلّ ملفّات PSD | ✅ ١٩ ت١ (`07224ea`) | ⚙️ ك | تحقّق Claude من D103 |
 | — | **🛑 تحقّق Claude من D104** (ر166) | ⬜ | 🛑 | D104 |
 | [D105](orders/D105.md) | A20: سيناريوهات Photoshop و`workerPath` على البناء وعلى المحزوم تقول المحرّك، وقياس `readPsd` بالمحرّكين | ⬜ | ⚙️ ك | تحقّق Claude من D104 |
 | [D106](orders/D106.md) | A20: الوثائق وإغلاق A20، والقديم بديلٌ ونقله بعد إصدار (A21) | ⬜ | ⚙️ ص | D105 |
