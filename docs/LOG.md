@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٢:٥٠ — مراجعة D115 وD116 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ لكلا الأمرين (الحفظ التلقائي بلا تضخّم مراجعات D115، وملء جنس الزبون وسؤال «نعمة/رحمة» المشتركين D116 مطابقان للكود والقواعد ر150).
+- **مُجرَّب ومن الكود (D115):** `npm run typecheck` نظيف · `tests/autoSave.test.ts` (٢ ✓) · الحارس: تعطيل حراسة `!input.isAutosave` في `saveTemplate` أسقط الاختبار فورًا (سجّل revision إضافي) واستعادتها أخضرته · سيناريو `autoSave.mjs` (٥ ✓) وسيناريو `service.mjs` (٥٨ ✓) بلا ✗ واسترجاع كامل لحالة الشبّاك ومسودّة الورقة بعد الإغلاق الفجائي · `templates.ts` (٣٥٥ سطرًا) و`usePaperOutput.ts` (٣١٩ سطرًا) و`useParked.ts` (٢٣٨ سطرًا) دون سقف ٤٠٠ سطر.
+- **مُجرَّب ومن الكود (D116):** `tests/gender.test.ts` (٦ ✓) · الحارس: حذف «نعمة» من `UNISEX` أسقط الاختبار فورًا واستعادتها أخضرته · سيناريو `genderCounter.mjs` (٧ ✓) وسيناريو `language.mjs` (٩ ✓) بلا ✗ · سؤال الجنس لم يُخفَ ولم يُتخطَّ عند توفّر القيمة السابقة (ر150) · `gender.ts` (٢١٣ سطرًا) و`useFillDerived.ts` (١٠٤ أسطر).
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٣١ ✓ و٤ متخطّاة (١٩٣ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D117 (⚙️ ص) وD118 (⚙️ ص) ضمن حدّ ٤ نقاط للجلسة.
+
 ## ٢٠٢٦-١٠-٢٠ ٠١:٥٥ — D116 ✅ — ملء الجنس المحفوظ مسبقًا وسؤال «نعمة/رحمة» المشتركين (S03 ر150) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/shared/gender.ts`: إدراج «نعمة» و«رحمة» ضمن قائمة الأسماء الملتبسة `UNISEX` وأسماء الذكور على هيئة المؤنّث، وإضافة خيار `registeredGender` إلى `guessGender` ليعيد `{ gender, sure: false, registered: true }` ر150 · `src/renderer/src/screens/service/useFillDerived.ts`: استعلام جنس المواطن المسجل مسبقًا وملؤه في `values['الجنس']` مع إبقاء السؤال للتأكيد · إضافة اختبارات في `tests/gender.test.ts` (٦ ✓) وإنشاء سيناريو `tools/scenarios/genderCounter.mjs` (٧ ✓) وتحديث `docs/QUALITY.md` ونقل D116 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/gender.test.ts` (٦ ✓) · `npx vitest run` كاملًا ٢٠٣١ ✓ و٤ متخطّاة (١٩٣ ملفًّا) · بناء `electron-vite build` نظيف وسيناريوهات `genderCounter.mjs` (٧ ✓) و`language.mjs` (٩ ✓) و`service.mjs` (٥٨ ✓) بلا ✗.
