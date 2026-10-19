@@ -28,7 +28,7 @@ export function hardenSession(): void {
 }
 
 /** يفتح رابط ويبٍ في متصفّح الجهاز — وما ليس رابط ويب لا يُفتح. */
-export function openExternalSafe(url: string): void {
+function openExternalSafe(url: string): void {
   try {
     const u = new URL(url);
     if (u.protocol === 'https:' || u.protocol === 'http:') void shell.openExternal(u.toString());

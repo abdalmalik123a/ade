@@ -11,7 +11,7 @@ import { renderDocHtml } from '@shared/docHtml';
 import { printsHijri } from '@shared/letterhead';
 import type { OfficeSettings, TransactionSheet } from '@shared/api';
 import { formatGregorian, formatHijri } from '@shared/dates';
-import { GENDER_KEY, guessGender, unsureNames, type Gender } from '@shared/gender';
+import { GENDER_KEY, guessGender, isChoiceKey, unsureNames, type Gender } from '@shared/gender';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { choosePrinter } from '../../lib/printChoice';
@@ -85,6 +85,9 @@ export function useIssue(
         destination: byRole('destination') || null,
         purpose: byRole('purpose') || null,
         values: use,
+        required: rowValues
+          ? (nameField ? [nameField.key] : [])
+          : fields.filter((f) => f.required && !isChoiceKey(f.key)).map((f) => f.key),
         copies,
         // المال صامت (§١، ر161): العمود باقٍ في القاعدة بصفره، ولا يُرسل.
         copyKind: 'نسخة أصلية'
@@ -92,7 +95,7 @@ export function useIssue(
     });
     // `sheets` مرجع، و`byRole` تقرأ الحقول والقيم وهما في المصفوفة
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, values, fields, asPrinted, copies]);
+  }, [loaded, values, fields, nameField, asPrinted, copies]);
 
   const common = (printer: string | null) => ({
     operator: settings?.operatorName || null,

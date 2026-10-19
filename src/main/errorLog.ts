@@ -27,7 +27,7 @@ export function logError(where: string, error: unknown): void {
       /* لا سجلّ بعد */
     }
     const e = error instanceof Error ? error : new Error(String(error));
-    appendFileSync(file, `${new Date().toISOString()} [${where}] ${e.message}\n${e.stack ?? ''}\n\n`, 'utf8');
+    appendFileSync(file, `${new Date().toISOString()} [v${app.getVersion()}] [${where}] ${e.message}\n${e.stack ?? ''}\n\n`, 'utf8');
   } catch {
     // السجلّ نفسه تعذّر (قرصٌ ممتلئ أو مجلّدٌ بلا صلاحية) — لا يُسقط البرنامج من أجله.
   }

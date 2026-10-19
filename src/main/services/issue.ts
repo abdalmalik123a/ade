@@ -38,6 +38,9 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
   const name = input.citizenName.trim();
   if (!name) throw new Error('لا يصدر كتاب بلا اسم صاحب العلاقة');
   if (!htmlToText(input.sheetHtml).trim()) throw new Error('لا يصدر كتاب بورقة فارغة');
+  for (const k of input.required ?? []) {
+    if (!input.values?.[k]?.trim()) throw new Error(`الحقل الإلزامي «${k}» فارغ — لا يصدر الكتاب قبله`);
+  }
 
   prepareDocuments(db);
 

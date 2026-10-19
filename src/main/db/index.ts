@@ -48,6 +48,12 @@ export function getDb(): Database.Database {
 
   db = new Database(file);
   configureConnection(db);
+  const check = db.pragma('quick_check(1)', { simple: true });
+  if (check !== 'ok') {
+    db.close();
+    db = null;
+    throw new Error(`قاعدة البيانات لا تجتاز فحص السلامة (${String(check)})`);
+  }
 
   /**
    * تهيئة المخطط الأساسي وجداول البحث (DDL) داخل معاملة ذرية متكاملة عند أول اتصال.

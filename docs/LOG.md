@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٣:٠٨ — D96 ✅ — A14 (١–٤): حذف `forgetGeminiKey`، وفحص الحقول الإلزامية في `issue.ts`، و`quick_check` عند فتح القاعدة، ورقم الإصدار في `errorLog.ts` · النموذج: Gemini 3.8 Flash (High)
+- **الإصلاحات:** حذف `forgetGeminiKey` و`rm` و`app` من `src/main/ipc/designs.ts` · إضافة `required?: string[]` إلى `IssueInput` و`TransactionSheet` وفحصها في `issueDocument` (`src/main/services/issue.ts`) وتمريرها من `useEditorOutput.ts` و`useIssue.ts` · فحص سلامة القاعدة بـ`PRAGMA quick_check(1)` عند فتحها في `src/main/db/index.ts` · كتابة `[v${app.getVersion()}]` في `src/main/errorLog.ts:30`، وجعل `openExternalSafe` دالّةً داخلية في `src/main/harden.ts`.
+- **الفحص:** `typecheck` نظيف · `documents` ٢٥ ✓ · `dataVersion` ١١ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓.
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D96.md`. **التالي:** مراجعة D96 وتنفيذ D97 (ص).
+
+## ٢٠٢٦-١٠-١٩ ٠٣:٠٢ — مراجعة D95 ✓ · وحجز D96 🔒 · النموذج: Gemini 4 Argon (Medium)
+- **D95 بـ«كيف يُراجَع»:** `package.json` فيه `"engines": { "node": ">=22" }`، و`.nvmrc` فيه `22` · `docs/INSTALL.md` فيه قسم `## إن لم يُفتح البرنامج` · `resources/installer.nsh` فيه `LangString x64WinRequired 1025` · و`repoHygiene` أخضر. ✓
+- **تحقّق D96 قبل البدء:** D95 ✅ ومُراجَع · لا مستورد لـ`openExternalSafe` خارج `src/main/harden.ts`. ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٢:٥٩ — D95 ✅ — A13 (٤–٥) وA15: `"engines"` و`.nvmrc`، وفقرة «إن لم يُفتح البرنامج» في `INSTALL.md`، وتعريب `x64WinRequired` في المثبّت · النموذج: Gemini 4 Argon (Medium)
 - **الإصلاحات:** `"engines": { "node": ">=22" }` في `package.json` و`.nvmrc` (`22`) · قسم `## إن لم يُفتح البرنامج` في `docs/INSTALL.md` مع مسار `%APPDATA%\Diwan\logs\diwan-errors.log` · `resources/installer.nsh` يعرّف `LangString x64WinRequired 1025` بالعربية ليغلب نصّ `messages.yml` في مثبّت NSIS (A15) · وحراستها في `tests/repoHygiene.test.ts`.
 - **الفحص:** `repoHygiene` ٤ ✓ · `docsBudget` ٣ ✓ · `structure` ١٠ ✓.

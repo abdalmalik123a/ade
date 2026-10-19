@@ -9,9 +9,9 @@
  * خانة المقاس وتقول لماذا.
  */
 import { createHash } from 'node:crypto';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { BrowserWindow, ipcMain, screen } from 'electron';
 import { PRINT_DPI, type Canvas, type CanvasSize } from '@shared/canvas';
 import { canvasFromImport, layerSuggestions, readDesign, type DesignImport } from '../services/designImport';
 import type { FieldSuggestion } from '@shared/api';
@@ -100,17 +100,7 @@ export type DesignImportResult = {
   fieldSuggestions: FieldSuggestion[];
 };
 
-/**
- * مفتاح Gemini القديم يُمحى من الجهاز: التصميم بالذكاء الاصطناعي حُذف (المبدأ ٣)،
- * فلا يبقى سرٌّ محفوظٌ لميزةٍ لم تعد موجودة.
- */
-function forgetGeminiKey(): void {
-  void rm(join(app.getPath('userData'), 'gemini.key'), { force: true }).catch(() => undefined);
-}
-
 export function registerDesignIpc(): void {
-  forgetGeminiKey();
-
   ipcMain.handle(
     'designs:import',
     async (e, fallback: CanvasSize | null): Promise<DesignImportResult | null> => {

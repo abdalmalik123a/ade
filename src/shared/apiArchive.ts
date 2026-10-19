@@ -103,6 +103,8 @@ export type IssueInput = {
   transactionId?: number | null;
   /** أنماط الورقة التي رُسم بها الكتاب — تملؤها العملية الرئيسة لا الواجهة (`render.ts`). */
   style?: SheetStyle | null;
+  /** مفاتيح الحقول الإلزامية في الورقة — تتحقّق العملية الرئيسية أنّها غير فارغة في values (A14 — D96). */
+  required?: string[];
 };
 
 /**
@@ -124,6 +126,7 @@ export type TransactionSheet = Pick<
   | 'values'
   | 'copies'
   | 'copyKind'
+  | 'required'
 >;
 
 export type TransactionInput = {

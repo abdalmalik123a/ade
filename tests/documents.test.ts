@@ -375,4 +375,13 @@ describe('الكتاب وترويسته', () => {
       .get(res.id) as { id: number | null };
     expect(row.id).toBeNull();
   });
+
+  it('يرفض إصدار كتابٍ فيه حقلٌ إلزاميٌّ فارغ في required، ويصدره حين يُملأ (D96)', () => {
+    const db = freshDb();
+    expect(() =>
+      issueDocument(db, input({ values: { القسم: '   ' }, required: ['القسم'] }))
+    ).toThrow(/الحقل الإلزامي «القسم» فارغ/);
+    const res = issueDocument(db, input({ values: { القسم: 'الحسابات' }, required: ['القسم'] }));
+    expect(res.id).toBeGreaterThan(0);
+  });
 });

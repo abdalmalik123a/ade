@@ -6,8 +6,9 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { IssueOutcome, OfficeSettings, TemplateSummary } from '@shared/api';
 import { formatGregorian } from '@shared/dates';
 import { docText, pageMm, type Doc, type DocField } from '@shared/doc';
+import { missingRequired } from '@shared/docHtml';
 import { resolveLayout, type Letterhead, type LetterheadLayout } from '@shared/letterhead';
-import { GENDER_KEY, guessGender, type Gender, type LearnedGenders } from '@shared/gender';
+import { GENDER_KEY, guessGender, isChoiceKey, type Gender, type LearnedGenders } from '@shared/gender';
 import { letterValues, type letterChecks, type Registry } from '@shared/letterDraft';
 import { errorText } from '../../lib/errors';
 import { choosePrinter } from '../../lib/printChoice';
@@ -117,7 +118,8 @@ export function useEditorOutput(
           docType: docType.trim() || null,
           destination: byRole('destination') || null,
           purpose: byRole('purpose') || null,
-          values: letterValues(savedLetter()),
+          values: letterValues({ ...savedLetter(), values: effective }),
+          required: missingRequired(doc, {}).filter((f) => !isChoiceKey(f.key)).map((f) => f.key),
           copies: opts.copies,
           copyKind: opts.copyKind,
           gregorianDate: registry.dateGreg || formatGregorian(new Date()),
