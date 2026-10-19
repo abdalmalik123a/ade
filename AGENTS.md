@@ -3,6 +3,7 @@
 **القواعد كلّها في [`CLAUDE.md`](CLAUDE.md): اقرأه أوّلًا واتبعه حرفيًّا.** هذا الملفّ إحالةٌ إليه لا نسخة (ر163)، فلا يُكتب هنا ما يخالفه.
 
 - **`/next`** مهارةٌ في `.agents/skills/next/SKILL.md`، ونصّها `.claude/commands/next.md` كما هو.
+- **`/verify`** مهارةٌ في `.agents/skills/verify/SKILL.md`، ونصّها `.claude/commands/verify.md`: التحقّق عند سطر 🛑 «تحقّق» في جلسةٍ جديدة غير جلسة التنفيذ (ر167).
 - **الحارس** `tools/hooks/guard.mjs` يعمل قبل أدواتك من `.agents/hooks.json` بمترجمه `tools/hooks/agy.mjs` — فإن منعك فاقرأ سببه وأصلح، ولا تلتفّ عليه.
 - من **`docs/LOG.md`** اقرأ أوّله وحده (١٢٠ سطرًا على الأكثر، بـStartLine وEndLine) — آخر قيدٍ في أعلاه.
 - ملفّ المواصفة لـ`tools/split/move.cjs` خارج المستودع، ولا يُودَع.
