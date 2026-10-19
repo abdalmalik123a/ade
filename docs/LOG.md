@@ -6,7 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
-## ٢٠٢٦-١٠-١٩ ٠٩:٢٠ — D105 ✅ — المحرّك في البرنامج كلّه: سيناريوهات Photoshop وworkerPath على البناء وعلى المحزوم، وقياس الفرق · النموذج: Gemini 3.8 Flash (High)
+## ٢٠٢٦-١٠-١٩ ٠٩:٢٥ — D106 ✅ (`f81c945`) — توثيق أوّل محرّك Rust وإغلاق A20، والقديم يبقى بديلًا (A21) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** وثيقة العمارة ARCHITECTURE §٢: تفصيل ما نُفّذ بالأدوات الثلاث المعتمدة وتحديث أرقام القياس الفعلي، وفي «ما يتغيّر» ٢ تمّ (D103–D105) · designs.md: قراءة Photoshop بـRust في العامل وTS بديلٌ في الرئيسة وعند التعذّر · QUALITY §١٣: اشتراط تثبيت rustup على أيّ جهاز جديد وسقوط nativePsd بدونه · BACKLOG §٣: إغلاق A20 بملخّصه الكامل، وإضافة صفّ A21 لنقل readPsdScript إلى legacy بعد إصدارٍ يثبت المحرّك (ر141) · ونقل D106 إلى done/.
+- **الفحص:** `git diff --stat` وثائقُ وحدها (ARCHITECTURE وdesigns وQUALITY وBACKLOG وPLAN وLOG) · `npx vitest run tests/docsBudget.test.ts tests/repoHygiene.test.ts` ٧ ✓ ونظافة نهايات الأسطر.
+- **التوقّف:** التوقّف التامّ عند سطر 🛑 «تحقّق من D105 وD106» في PLAN وختام الموجة ٣ كما تقضي الخطّة وقرارات المالك.
+- **التالي:** 🛑 تحقّق من D105 وD106 (ر166 ر167: محادثة جديدة).
+
+## ٢٠٢٦-١٠-١٩ ٠٩:٢٠ — D105 ✅ (`a228943`) — المحرّك في البرنامج كلّه: سيناريوهات Photoshop وworkerPath على البناء وعلى المحزوم، وقياس الفرق · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** تصحيحات خ٠: تغيير `useNativePsd` إلى `setNativePsdReader` في `psd.ts` و`worker/index.ts` وARCHITECTURE ونجاح `lint.test.ts` بلا خرق · مقارنة مباشرة بـ`createNativePsdReader` في `tests/nativePsdCompare.test.ts` بلا رجوع صامت · إصلاح (ب) طول المورد بـ`buf.len()` وإصلاح (ج) قراءة ما بعد آخر الصف في `unpack_bits` بـ`native/diwan-psd/src/lib.rs` وإضافة الحالات الثلاث المصنوعة (أ، ب، ج) إلى المقارنة وتطابقها · إضافة فحص `workerPing().psd` وخلوّ سجل الأخطاء من `[native]` في سيناريوي `designPsd.mjs` و`designPsdStyles.mjs` · إنشاء تجربة `tools/experiments/psdSpeed.mjs` وتوثيق الأرقام في `QUALITY.md` §٨ ونقل D105 إلى `done/`.
 - **القياس (psdSpeed):** ملف كبير ٤٠٠٠×٣٠٠٠ بـ RLE مضغوط (٥٨٠ ك.ب، ١٢ م.بكسل، ٤٨ م.ب RGBA) على Core i5-1035G1 CPU @ 1.00GHz (٨ نواة، ٨ غ.ب): وسيط ٥ قراءات: Rust الأصلي **٥٤٫١ م.ث** مقابل **٢٣٠٫٤ م.ث** لـ TypeScript (أسرع بنحو ٤٫٢٥x أضعاف، توفير ١٧٦٫٢ م.ث).
 - **الفحص:** `typecheck` نظيف · `npx vitest run` كاملًا أخضر: **٢٠١٢ ✓** و٤ متخطّاة (١٩٠ ملفًّا ناجحًا) ومنه `lint` و`nativePsdCompare` (٢١ ✓) · بناء التطوير `npm run build` ثم `designPsd` (١١ ✓) و`designPsdStyles` (١١ ✓) و`workerPath` (١٠ ✓) بلا ✗ · المحزوم `npm run pack` ثم الثلاثة بـ`DIWAN_EXE` على `release/test/win-unpacked/Diwan.exe` (١١ ✓ و١١ ✓ و١٠ ✓) بلا ✗.
