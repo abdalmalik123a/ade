@@ -89,6 +89,45 @@ describe('استرجاع النسخة', () => {
     expect(o.calls).toEqual(['snapshot', 'close', 'reopen']);
   });
 
+  /** خطأ SQLite برمزه — كما يرميه `VACUUM INTO` على قاعدةٍ متضرّرة. */
+  const sqliteError = (code: string) => Object.assign(new Error('database disk image is malformed'), { code });
+
+  it('القاعدة الحالية متضرّرة (لا تُنسخ نسخةً متّسقة): يمضي الاسترجاع، وأصلها جانبًا كما هو (D100)', async () => {
+    for (const code of ['SQLITE_CORRUPT', 'SQLITE_NOTADB']) {
+      const o = office();
+      await swapInBackup(
+        o.ops({
+          // VACUUM INTO يكتب بعض الملفّ ثم يسقط — وما كتبه لا يبقى كأنّه نسخة
+          snapshot: (target) => {
+            writeFileSync(target, 'نصف نسخة');
+            throw sqliteError(code);
+          }
+        })
+      );
+      expect(text(join(o.dir, 'diwan.db'))).toBe('قاعدة النسخة');
+      expect(text(join(o.aside, 'current.db'))).toBe('قاعدة المكتب');
+      expect(text(join(o.aside, 'current.db-wal'))).toBe('سجلّ القاعدة');
+      expect(text(join(o.aside, 'store', 'attachments', 'scan.png'))).toBe('مستمسك');
+      expect(existsSync(join(o.aside, 'diwan.db'))).toBe(false);
+      expect(o.calls).toEqual(['close', 'reopen']);
+    }
+  });
+
+  it('وغير التلف في النسخة المتّسقة (قرصٌ ممتلئ) يوقف الاسترجاع قبل أن يُمسّ شيء', async () => {
+    const o = office();
+    await expect(
+      swapInBackup(
+        o.ops({
+          snapshot: () => {
+            throw sqliteError('SQLITE_FULL');
+          }
+        })
+      )
+    ).rejects.toThrow('malformed');
+    o.intact();
+    expect(o.calls).toEqual([]);
+  });
+
   it('تتعثّر كتابة المخزن: يعود كلّ شيءٍ كما كان، ويُقال سبب التعثّر نفسه', async () => {
     const o = office();
     await expect(

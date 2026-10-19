@@ -108,6 +108,7 @@ describe('اختبار الهيكل (ز١)', () => {
     const ALLOWED = new Set([
       // أبواب الاختبار (المِقْود والسيناريوهات)
       'DIWAN_TEST_CLOSE_ANSWER',
+      'DIWAN_TEST_DAMAGED_DB',
       'DIWAN_TEST_FAKE_CAMERA',
       'DIWAN_TEST_INBOX',
       'DIWAN_TEST_LICENSE_PUBKEY',

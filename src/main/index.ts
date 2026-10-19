@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'electron';
 import { pathToFileURL } from 'node:url';
-import { getDb, closeDb, dataDir, storeDir } from './db';
+import { getDb, closeDb, dataDir, storeDir, DamagedDbError, acceptDamagedDb } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
 import { clearWorkDir } from './services/backup';
@@ -218,6 +218,42 @@ function createWindow(): void {
   }
 }
 
+/** «أغلق ديوان» أمام قاعدةٍ متضرّرة: خروجٌ بلا رسالة الخطأ العامّة — فقد قيل للمكتب ما حدث. */
+class ClosedOnDamage extends Error {}
+
+/**
+ * قاعدةٌ متضرّرة عند الإقلاع (D96 ثم D100): تُقال بالعربية ويُسأل المكتب، والتفصيل التقنيّ في سجلّ الأخطاء للمطوّر —
+ * وكانت «تعذّر تشغيل ديوان» بنصٍّ إنكليزي ثم خروجٌ بلا طريقٍ إلى نسخةٍ احتياطية.
+ * وللمِقْود جوابٌ جاهز (`DIWAN_TEST_DAMAGED_DB`: `open` أو `close`): حوار النظام لا يُضغط آليًّا.
+ */
+function openDbOrAsk(): ReturnType<typeof getDb> {
+  try {
+    return getDb();
+  } catch (e) {
+    if (!(e instanceof DamagedDbError)) throw e;
+    logError('dbIntegrity', e);
+    const answer = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_DAMAGED_DB'] : undefined;
+    const open = answer
+      ? answer === 'open'
+      : dialog.showMessageBoxSync({
+          type: 'warning',
+          title: 'قاعدة بيانات المكتب متضرّرة',
+          message: 'وجد ديوان تلفًا في قاعدة بيانات المكتب عند فتحها — وبياناتك لم تُحذف.',
+          detail:
+            'الأسلم: افتح ديوان واسترجع آخر نسخةٍ احتياطية من «الإعدادات ← البيانات والنسخ الاحتياطية» قبل أن تُصدر أيّ كتاب؛ ' +
+            'وما في القاعدة الحالية يُنقل جانبًا عند الاسترجاع ولا يُحذف.\n\n' +
+            'وإن لم تكن عندك نسخةٌ احتياطية فأغلق ديوان وراسل المطوّر — والتفصيل له في سجلّ الأخطاء.',
+          buttons: ['افتح لأسترجع نسخةً احتياطية', 'أغلق ديوان'],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true
+        }) === 0;
+    if (!open) throw new ClosedOnDamage();
+    acceptDamagedDb();
+    return getDb();
+  }
+}
+
 app.whenReady().then(async () => {
   // النسخة الثانية تخرج قبل أن تفتح القاعدة أو نافذة.
   if (!primary) return;
@@ -298,7 +334,7 @@ app.whenReady().then(async () => {
       dbFile,
       currentVersion: app.getVersion(),
       snapshotDir: join(dataDir(), 'before-update'),
-      openDb: () => getDb(),
+      openDb: () => openDbOrAsk(),
       // الترقيات المرقّمة كلّها (db/migrations.ts): ما فوق مستوى القاعدة يجري هنا مرّةً بترتيبه.
       migrations: [(db) => runMigrations(db)]
     });
@@ -325,6 +361,10 @@ app.whenReady().then(async () => {
       // تعذّر الفهرس لا يوقف الإقلاع — والبحث يعود إلى المسح
     }
   } catch (e) {
+    if (e instanceof ClosedOnDamage) {
+      app.quit();
+      return;
+    }
     dialog.showErrorBox(
       'تعذّر تشغيل ديوان',
       `لم تُفتح قاعدة بيانات المكتب:

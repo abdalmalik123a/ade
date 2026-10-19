@@ -71,7 +71,16 @@ export async function swapInBackup(o: SwapOps): Promise<void> {
   /** هل بدأت النسخة تكتب في مكان البيانات؟ قبلها لا يُمحى شيءٌ في مكانها. */
   let writing = false;
 
-  o.snapshot(join(o.aside, 'diwan.db'));
+  const snapshot = join(o.aside, 'diwan.db');
+  try {
+    o.snapshot(snapshot);
+  } catch (e) {
+    // قاعدةٌ متضرّرة لا تُنسخ نسخةً متّسقة (VACUUM يسقط عليها) — وأصلها كلّه يُنقل جانبًا كما هو بعد سطرين،
+    // فلا يمنع تلفُها استرجاعَ ما يُصلحها (D100). وغير التلف يوقف الاسترجاع قبل أن يُمسّ شيء.
+    if (!/^SQLITE_(CORRUPT|NOTADB)/.test(String((e as { code?: unknown } | null)?.code ?? ''))) throw e;
+    // وما كتبه VACUUM قبل أن يسقط ليس نسخة: لا يبقى فيحسبه الإقلاع أصلًا (`recoverIncompleteRestore`).
+    rmSync(snapshot, { force: true });
+  }
   o.close();
   try {
     for (const suffix of DB_SUFFIXES) move(dbFile + suffix, join(o.aside, `current.db${suffix}`));

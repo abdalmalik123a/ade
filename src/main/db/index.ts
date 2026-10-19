@@ -12,6 +12,23 @@ let db: Database.Database | null = null;
  */
 let locked: string | null = null;
 
+/**
+ * تلفٌ وجده `quick_check` عند فتح القاعدة (D96). لا تُفتح على حالها إلا بقول المكتب: يسأله الإقلاع (`main/index.ts`)
+ * «افتح لأسترجع نسخةً احتياطية» فيُستدعى `acceptDamagedDb` — والاسترجاع يمضي على القاعدة التالفة (`restoreSwap.ts`، D100).
+ */
+export class DamagedDbError extends Error {
+  constructor(readonly detail: string) {
+    super(`قاعدة بيانات المكتب متضرّرة — لا تجتاز فحص السلامة (${detail})`);
+    this.name = 'DamagedDbError';
+  }
+}
+let acceptDamaged = false;
+
+/** قال المكتب «افتح»: تُفتح القاعدة المتضرّرة في هذه الجلسة وحدها ليُسترجع عليها. */
+export function acceptDamagedDb(): void {
+  acceptDamaged = true;
+}
+
 /** مجلد بيانات المكتب. كل شيء يبقى على الجهاز — التطبيق «محلي». */
 export function dataDir(): string {
   const dir = join(app.getPath('userData'), 'data');
@@ -49,10 +66,10 @@ export function getDb(): Database.Database {
   db = new Database(file);
   configureConnection(db);
   const check = db.pragma('quick_check(1)', { simple: true });
-  if (check !== 'ok') {
+  if (check !== 'ok' && !acceptDamaged) {
     db.close();
     db = null;
-    throw new Error(`قاعدة البيانات لا تجتاز فحص السلامة (${String(check)})`);
+    throw new DamagedDbError(String(check));
   }
 
   /**
