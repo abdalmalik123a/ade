@@ -29,8 +29,8 @@
 | [D94](orders/done/D94.md) | A13 (١–٣) و`verbatim.cjs`: وحدات `printToPDF` بالبوصات في `render.ts`، ورفض `PSB` في `psd.ts:72`، وتكرار `repeat` في `GroupBlock` (`docHtml.ts` و`docFill.ts`)، وتجاهل أسماء الاستيراد في `verbatim.cjs` | ✅ ١٩ ت١ — مُراجَع | ⚙️ م | D93 |
 | [D95](orders/done/D95.md) | A13 (٤–٥) وA15: `"engines"` في `package.json` و`.nvmrc`، وفقرة «إن لم يُفتح البرنامج» في `docs/INSTALL.md`، وتعريب `x64WinRequired` في `resources/installer.nsh` | ✅ ١٩ ت١ — مُراجَع | ⚙️ ص | D94 |
 | [D96](orders/done/D96.md) | A14 (١–٤): حذف `forgetGeminiKey` (`ipc/designs.ts`)، وفحص الحقول الإلزامية (`required`) في `services/issue.ts`، و`quick_check` عند فتح القاعدة (`db/index.ts`)، ورقم الإصدار في `errorLog.ts` | ✅ ١٩ ت١ — مُراجَع | ⚙️ م | D95 |
-| [D97](orders/done/D97.md) | A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (`:focus-visible` في `styles.css`، وحلقة تركيز المدخلَين، و`role="dialog"` و`aria-modal="true"` للحوارات) | ✅ ١٩ ت١ | ⚙️ ص | D96 |
-| [D98](orders/D98.md) | A09 (ب): حذف مجلّدات `before-restore-*` يدويًّا بتأكيد في «البيانات والنسخ الاحتياطية»، وتوثيق حدّ FAT32، وختام أعمال الموجة ٣ قبل الإصدار | ⬜ | ⚙️ م | D97 |
+| [D97](orders/done/D97.md) | A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (`:focus-visible` في `styles.css`، وحلقة تركيز المدخلَين، و`role="dialog"` و`aria-modal="true"` للحوارات) | ✅ ١٩ ت١ — مُراجَع | ⚙️ ص | D96 |
+| [D98](orders/done/D98.md) | A09 (ب): حذف مجلّدات `before-restore-*` يدويًّا بتأكيد في «البيانات والنسخ الاحتياطية»، وتوثيق حدّ FAT32، وختام أعمال الموجة ٣ قبل الإصدار | ✅ ١٩ ت١ | ⚙️ م | D97 |
 
 ## الموجات القادمة (تُفصَّل أوامرها حين يقترب دورها)
 البنود المفتوحة (G A E S R F) وتفاصيل الموجات القادمة: [`docs/BACKLOG.md`](BACKLOG.md).

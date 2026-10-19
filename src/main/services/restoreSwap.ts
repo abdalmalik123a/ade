@@ -9,7 +9,7 @@
  *
  * والجهاز يُعطى بعمليّاته (`SwapOps`) — فيُختبر كلّ موضع تعثّرٍ بلا Electron (`tests/restoreSwap.test.ts`).
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type SwapOps = {
@@ -220,3 +220,63 @@ export function recoverIncompleteRestore(dir: string): Recovery {
   }
   return { state: 'recovered', aside, storeBack };
 }
+
+export type BeforeRestoreAside = { name: string; at: string; bytes: number };
+
+function dirSize(d: string): number {
+  let total = 0;
+  try {
+    for (const ent of readdirSync(d, { withFileTypes: true })) {
+      const full = join(d, ent.name);
+      if (ent.isDirectory()) total += dirSize(full);
+      else if (ent.isFile()) total += statSync(full).size;
+    }
+  } catch {
+    // ignore
+  }
+  return total;
+}
+
+/** قراءة مجلّدات before-restore-* داخل مجلّد البيانات (أحدثها أوّلًا، بحجم محتوياتها). */
+export function listBeforeRestore(dir: string): BeforeRestoreAside[] {
+  if (!existsSync(dir)) return [];
+  const entries: BeforeRestoreAside[] = [];
+  try {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      if (!ent.isDirectory()) continue;
+      const m = ent.name.match(/^before-restore-(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})$/);
+      if (!m) continue;
+      const at = `${m[1]}T${m[2]}:${m[3]}:${m[4]}`;
+      const bytes = dirSize(join(dir, ent.name));
+      entries.push({ name: ent.name, at, bytes });
+    }
+  } catch {
+    return [];
+  }
+  return entries.sort((a, b) => b.name.localeCompare(a.name));
+}
+
+/** حذف مجلّد قبل الاسترجاع يدويًّا — ويرفض الحذف إن كان المجلّد مذكورًا في أثر استرجاعٍ متعثّر لم يكتمل. */
+export function deleteBeforeRestore(dir: string, name: string): boolean {
+  if (!/^before-restore-[\w-]+$/.test(name) || name.includes('..')) return false;
+  const target = join(dir, name);
+  if (!existsSync(target)) return false;
+  const marker = join(dir, INCOMPLETE_MARKER);
+  if (existsSync(marker)) {
+    try {
+      const info = JSON.parse(readFileSync(marker, 'utf8')) as { aside?: string };
+      if (info.aside && (info.aside === target || info.aside.endsWith(name))) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  try {
+    rmSync(target, { recursive: true, force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+

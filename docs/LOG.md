@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٣:٢٨ — D98 ✅ — A09 (ب): حذف مجلّدات `before-restore-*` يدويًّا بتأكيد، وتوثيق FAT32، وختام أعمال الموجة ٣ · النموذج: Gemini 3.8 Flash (High)
+- **الإصلاحات:** دالّتا `listBeforeRestore` و`deleteBeforeRestore` في `src/main/services/restoreSwap.ts` (مع فحص الحماية من الالتفاف ومنع حذف مجلّد الاسترجاع غير المكتمل) · تسجيل قناتَي `backup:listAsides` و`backup:deleteAside` بـ`handleChecked` في `src/main/ipc/backup.ts` مع قيد التدقيق (٣٩٦ سطرًا) · إضافة `BeforeRestoreAside` في `apiOffice.ts` و`preload/office.ts` · إنشاء `src/renderer/src/components/BackupAsides.tsx` وتركيبه في `BackupPanel.tsx` (٣٩١ سطرًا) بحذفٍ بتأكيد `ask` · وتوثيق سلوك FAT32 في `docs/sections/system.md` وإغلاق A09 في `docs/BACKLOG.md`.
+- **الفحص:** `typecheck` نظيف · `restoreSwap` ٢١ ✓ · `backup` ١٢ ✓ · `structure` ١٠ ✓ · `repoHygiene` ٤ ✓ · `electron-vite build` وبناء التطبيق نجح · سيناريو `backup.mjs` أخضر كاملًا (٢٠ خطوة ✓).
+- **كيف يُراجَع:** «كيف يُراجَع» في `docs/orders/done/D98.md`. **التالي:** ختام الموجة ٣ وفحص vitest الشامل والدفع إلى origin/packs.
+
+## ٢٠٢٦-١٠-١٩ ٠٣:١٦ — مراجعة D97 ✓ · وحجز D98 🔒 · النموذج: Gemini 3.8 Flash (High)
+- **D97 بـ«كيف يُراجَع»:** `styles.css` فيه `:focus-visible`، والمدخلان فيهما حلقة تركيز · ٤٢ حوارًا بـ`role="dialog"` و`aria-modal="true"` (مع `role="alertdialog"` في `ConfirmHost.tsx`) · و`tests/rendererSnapshots.test.ts` أخضر. ✓
+- **تحقّق D98 قبل البدء:** D97 ✅ ومُراجَع · `ipc/backup.ts` ٣٩٨ سطرًا و`BackupPanel.tsx` ٣٨٨ سطرًا (كلاهما دون ٤٠٠). ✓
+
 ## ٢٠٢٦-١٠-١٩ ٠٣:١٥ — D97 ✅ — A13 (٦): الوصول بلوحة المفاتيح وقارئ الشاشة (:focus-visible، وحلقة تركيز المدخلَين، وrole="dialog" للحوارات) · النموذج: Gemini 3.8 Flash (High)
 - **الإصلاحات:** `:focus-visible` في `src/renderer/src/styles.css` بنهايات CRLF الأصلية · إضافة `focus:ring-2 focus:ring-secondary` إلى `LetterheadTab.tsx:201` و`LibraryFilters.tsx:50` · إضافة `role="dialog"` و`aria-modal="true"` لـ٤٢ حاوية حوار في `src/renderer/` · تحديث `docs/QUALITY.md` و`docs/sections/system.md` وإغلاق A13 في `docs/BACKLOG.md`.
 - **الفحص:** `typecheck` نظيف · `rendererSnapshots` ١٦٤ ✓ · `theme` ٥ ✓ · `structure` ١٠ ✓ · `docsBudget` ٣ ✓ · `repoHygiene` ٤ ✓ (نهايات الأسطر وبايتات التحكّم).

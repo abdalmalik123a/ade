@@ -23,12 +23,14 @@ import { stampDataVersion } from '../services/dataVersion';
 import { logAudit } from '../services/documents';
 import { runMigrations } from '../db/migrations';
 import { prepareSearch } from '../services/searchIndex';
-import { swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
+import { deleteBeforeRestore, listBeforeRestore, swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
 import { atomicWriteJson, readWithBackup } from '../services/stateFile';
 import type { AutoBackupStatus, BackupSummary } from '@shared/api';
 import { backupPasswordProblem } from '@shared/backupPassword';
 import { pickFolderPath, pickOpenPath, pickSavePath } from './files';
 import { handOut, pickAgain, wasHandedOut } from './handedPaths';
+import { handleChecked } from './checked';
+import { text } from '@shared/bridgeGuards';
 
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 
@@ -266,9 +268,9 @@ export function lastAnyBackup(manual: string | null): string | null {
 
 export function registerBackupIpc(): void {
   const win = (e: Electron.IpcMainInvokeEvent) => BrowserWindow.fromWebContents(e.sender);
+  const reloadAll = () => setTimeout(() => BrowserWindow.getAllWindows().forEach((w) => w.webContents.reload()), 400);
 
   ipcMain.handle('backup:autoGet', () => autoStatus());
-
   ipcMain.handle('backup:autoPickDir', async (e) => {
     const w = win(e);
     return w ? handOut(await pickFolderPath(w, { title: 'مجلّد النسخة التلقائية — فلاشةٌ أو قرصٌ آخر', buttonLabel: 'اختره' })) : null;
@@ -301,10 +303,7 @@ export function registerBackupIpc(): void {
   ipcMain.handle('backup:autoRun', () => runConfiguredAutoBackup());
 
   /** «اعتمد هذه الفلاشة»: يرضى المكتب بالقرص الموصول الآن — تُنسى الهويّة القديمة فتُكتب هويّةُ الجديد عند أوّل نسخة. */
-  ipcMain.handle('backup:autoAdopt', () => {
-    saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false });
-    return autoStatus();
-  });
+  ipcMain.handle('backup:autoAdopt', () => (saveAutoState({ mirrorId: null, mirrorDir: null, lastError: null, foreign: false }), autoStatus()));
 
   ipcMain.handle('backup:mirrorPick', async (e) => {
     const w = win(e);
@@ -330,9 +329,7 @@ export function registerBackupIpc(): void {
     assertRestorable(summary, app.getVersion());
     const aside = await applyRestore((dbFile) => writeFileSync(dbFile, mirror.db), mirror.writeStore);
     logAudit(getDb(), 'backup', 'restore', `من النسخة التلقائية (${mirror.snapshot}): ${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
-    setTimeout(() => {
-      for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
-    }, 400);
+    reloadAll();
     return { summary, aside };
   });
 
@@ -383,16 +380,17 @@ export function registerBackupIpc(): void {
       done();
     }
     logAudit(getDb(), 'backup', 'restore', `${summary.documents} كتابًا — وما كان قبلها في ${aside}`);
-    // الواجهة تُعاد لتقرأ البيانات الجديدة من أوّلها — بعد أن يصلها الجواب.
-    setTimeout(() => {
-      for (const w of BrowserWindow.getAllWindows()) w.webContents.reload();
-    }, 400);
+    reloadAll();
     return { summary, aside };
   });
 
-  ipcMain.handle('backup:shouldPromptAfterFirstIssue', () => shouldPromptAutoBackupAfterFirstIssue(getDb()));
-  ipcMain.handle('backup:markFirstIssuePromptShown', () => {
-    markAutoBackupPromptShown(getDb());
-    return true;
+  handleChecked('backup:listAsides', {}, () => listBeforeRestore(dataDir()));
+  handleChecked('backup:deleteAside', { name: text(120) }, ({ name }) => {
+    const ok = deleteBeforeRestore(dataDir(), name);
+    if (ok) logAudit(getDb(), 'backup', 'deleteAside', `حُذف المجلّد ${name}`);
+    return ok;
   });
+
+  ipcMain.handle('backup:shouldPromptAfterFirstIssue', () => shouldPromptAutoBackupAfterFirstIssue(getDb()));
+  ipcMain.handle('backup:markFirstIssuePromptShown', () => (markAutoBackupPromptShown(getDb()), true));
 }

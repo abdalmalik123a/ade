@@ -146,6 +146,9 @@ export type BackupSummary = {
   fromNewer: boolean;
 };
 
+/** مجلّد بيانات نُقل جانبًا عند الاسترجاع قبل أن يُستبدل بالأصل. */
+export type BeforeRestoreAside = { name: string; at: string; bytes: number };
+
 /**
  * حال التفعيل على هذا الجهاز (خطة Production، ٦٫٢): مفعَّل مدى الحياة، أو في المدّة التجريبية بأيّامها،
  * أو انتهت — ومعها رمز الجهاز الذي يُرسل إلى المطوّر، ورقمه.
@@ -287,6 +290,9 @@ export type OfficeApis = {
     /** تنبيه النسخ التلقائي بعد أول كتاب رسمي (المرحلة A، ٣ والجواب ٢). */
     shouldPromptAfterFirstIssue(): Promise<boolean>;
     markFirstIssuePromptShown(): Promise<boolean>;
+    /** مجلّدات ما نُقل جانبًا عند الاسترجاع (before-restore-*) لحذفها يدويًّا بتأكيد (A09 ب). */
+    listAsides(): Promise<BeforeRestoreAside[]>;
+    deleteAside(name: string): Promise<boolean>;
   };
   /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
   update: {

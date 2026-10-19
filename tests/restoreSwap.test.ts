@@ -11,6 +11,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   INCOMPLETE_MARKER,
+  deleteBeforeRestore,
+  listBeforeRestore,
   recoverIncompleteRestore,
   swapInBackup,
   writeIncompleteMarker,
@@ -336,3 +338,76 @@ describe('الإقلاع بعد استرجاعٍ لم تعد قاعدته', () =
     expect(existsSync(join(o.dir, INCOMPLETE_MARKER))).toBe(false);
   });
 });
+
+describe('مجلّدات ما قبل الاسترجاع (before-restore-*) — قائمة وحذف يدوي', () => {
+  it('listBeforeRestore تقرأ المجلّدات المطابقة وتفرزها أحدثًا أولًا وتحسب الحجم', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-asides-'));
+    try {
+      const d1 = join(dir, 'before-restore-2026-10-18-10-00-00');
+      const d2 = join(dir, 'before-restore-2026-10-19-12-30-00');
+      const notAside = join(dir, 'before-restore-invalid');
+      const regular = join(dir, 'store');
+      mkdirSync(d1);
+      mkdirSync(d2);
+      mkdirSync(notAside);
+      mkdirSync(regular);
+
+      writeFileSync(join(d1, 'file1.txt'), Buffer.alloc(100));
+      mkdirSync(join(d2, 'sub'));
+      writeFileSync(join(d2, 'sub', 'file2.txt'), Buffer.alloc(250));
+
+      const list = listBeforeRestore(dir);
+      expect(list).toHaveLength(2);
+      expect(list[0]).toEqual({
+        name: 'before-restore-2026-10-19-12-30-00',
+        at: '2026-10-19T12:30:00',
+        bytes: 250
+      });
+      expect(list[1]).toEqual({
+        name: 'before-restore-2026-10-18-10-00-00',
+        at: '2026-10-18T10:00:00',
+        bytes: 100
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('deleteBeforeRestore ترفض الأسماء غير المطابقة ومحاولات الالتفاف', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-asides-'));
+    try {
+      expect(deleteBeforeRestore(dir, '..')).toBe(false);
+      expect(deleteBeforeRestore(dir, '../secret')).toBe(false);
+      expect(deleteBeforeRestore(dir, 'before-restore-../evil')).toBe(false);
+      expect(deleteBeforeRestore(dir, 'random-folder')).toBe(false);
+      expect(deleteBeforeRestore(dir, 'before-restore-nonexistent')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('deleteBeforeRestore ترفض حذف المجلّد إن كان مذكورًا في أثر استرجاع غير مكتمل', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'diwan-asides-'));
+    try {
+      const targetName = 'before-restore-2026-10-19-10-00-00';
+      const targetDir = join(dir, targetName);
+      mkdirSync(targetDir);
+      writeFileSync(join(targetDir, 'data.db'), 'original data');
+
+      writeIncompleteMarker(dir, { aside: targetDir, reason: 'test stuck' });
+      expect(existsSync(join(dir, INCOMPLETE_MARKER))).toBe(true);
+
+      // يرفض حذفه لأن الأثر يعتمد عليه
+      expect(deleteBeforeRestore(dir, targetName)).toBe(false);
+      expect(existsSync(targetDir)).toBe(true);
+
+      // بعد إزالة الأثر (أو لمجلّد آخر لا يرتبط به)، يمكن الحذف
+      rmSync(join(dir, INCOMPLETE_MARKER));
+      expect(deleteBeforeRestore(dir, targetName)).toBe(true);
+      expect(existsSync(targetDir)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+

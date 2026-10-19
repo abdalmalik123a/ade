@@ -10,6 +10,7 @@ import { BACKUP_REMIND_DAYS, daysSince, sinceText } from '@shared/dates';
 import { errorText } from '../lib/errors';
 import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 import BackupCreate from './BackupCreate';
+import BackupAsides from './BackupAsides';
 import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -377,6 +378,8 @@ export default function BackupPanel({
           </div>
         )}
       </div>
+
+      <BackupAsides />
 
       {note && (
         <p className={`font-label-sm text-label-sm break-all ${note.tone === 'ok' ? 'text-secondary' : 'text-error'}`} data-backup-note="">
