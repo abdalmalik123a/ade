@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٣:٥٥ — تحقّقٌ مستقلّ من «الموجة ٣ اكتملت» ومراجعة D84–D98 (طلب المالك) · النموذج: Claude Opus 5.5
+- **الحكم: لم تكتمل كما كُتبت** — عمل D84–D98 سليم، وبقي من نطاقها المكتوب أمران بلا بندٍ ولا قرار (🛑 للمالك): (١) «أوّل محرّك Rust يمرّ في الطريق كلّه حتى المثبّت» في وصفها (BACKLOG §٣ وARCHITECTURE §٢ «ما يتغيّر» ٢) بلا رقم A، ونُبّه عليه في `legacy/LOG-3.md:225` ولم يُحسم · (٢) CI من A13 (ب79): أسقطه فرز D87 بصمت، وQUALITY §١٣ ما زال «ولا CI (A13)».
+- **وتوثيقًا:** D98 (خ٤) طلب بقاء A17 A18 وحدهما في جدول الموجة ٣، وبقي ١١ صفًّا: ثمانيةٌ لها «أُغلق»، وA04 بلا «أُغلق» وباقيه مؤجَّلٌ كتابةً (DECISIONS «مرفوضٌ بأسبابه» وF01 👤). وA17 A18 مؤجَّلان بقرار ✓.
+- **بعد 5b2bace (٤٧ إيداعًا):** لا ملفّ حُذف · `structure.allow.json` ← `{}` حذفًا وحده، و`designStructure.allow.json` واللقطات كما هي · لا بيانات حقيقية · `/next` مهارةٌ والقديم في `legacy/` بسطر «انتهى»، وAGENTS.md ور163 مصحَّحان ✓.
+- **«كيف يُراجَع»:** D84–D86 وD88–D92 الحرفيّة «ضاع 0 · جديد 0» بالهاش قبل الخطوة ١ (و`<hash>^` يبتلعه cmd فيقارن بالإيداع نفسه)، وstat وexport كما في أوامرها ✓ · D87 D93 ✓ · D94–D97 ✓ · **D98 ✓** إلا الجدول أعلاه.
+- **الفحص:** `inventory.cjs` «دورات القيم: 0» وأكبر ملفٍّ في src ٣٩٦ · `typecheck` نظيف · `npx vitest run` كاملًا **١٩٨٣ ✓** و٤ متخطّاة · `electron-vite build` ثم import ٣٣ wordHints ٢٢ imageForm ٩ importFolder ٣٤ inbox ١٠ idTools ٢١ paperPhoto ١٩ designs ٧٠ issue ١١٣ excelImport ١٩ backup ٢٠ ✓ بلا ✗.
+- **مخاطر لا نقص:** D96 `quick_check` يمنع الإقلاع كلّه عند أيّ تلفٍ بلا استرجاعٍ من داخله، وكلفته على قاعدةٍ كبيرة لم تُقس · D96 غيّر خارج نصّه ما يُحفظ في الأرشيف (`values: effective`) · D97 D98 واجهةٌ بلا سيناريو جديد · وقيد D89 «designs ١٧٥ وissue ١٠٤» لا يطابق السيناريوهين (٧٠ و١١٣).
+- **التالي:** المالك يقرّر (١) و(٢)؛ ولا أمر بعد D98 في PLAN.
+
 ## ٢٠٢٦-١٠-١٩ ٠٣:٢٨ — D98 ✅ — A09 (ب): حذف مجلّدات `before-restore-*` يدويًّا بتأكيد، وتوثيق FAT32، وختام أعمال الموجة ٣ · النموذج: Gemini 3.8 Flash (High)
 - **الإصلاحات:** دالّتا `listBeforeRestore` و`deleteBeforeRestore` في `src/main/services/restoreSwap.ts` (مع فحص الحماية من الالتفاف ومنع حذف مجلّد الاسترجاع غير المكتمل) · تسجيل قناتَي `backup:listAsides` و`backup:deleteAside` بـ`handleChecked` في `src/main/ipc/backup.ts` مع قيد التدقيق (٣٩٦ سطرًا) · إضافة `BeforeRestoreAside` في `apiOffice.ts` و`preload/office.ts` · إنشاء `src/renderer/src/components/BackupAsides.tsx` وتركيبه في `BackupPanel.tsx` (٣٩١ سطرًا) بحذفٍ بتأكيد `ask` · وتوثيق سلوك FAT32 في `docs/sections/system.md` وإغلاق A09 في `docs/BACKLOG.md`.
 - **الفحص:** `typecheck` نظيف · `restoreSwap` ٢١ ✓ · `backup` ١٢ ✓ · `structure` ١٠ ✓ · `repoHygiene` ٤ ✓ · `electron-vite build` وبناء التطبيق نجح · سيناريو `backup.mjs` أخضر كاملًا (٢٠ خطوة ✓).
