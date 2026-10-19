@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٨:٤٥ — 🛑 تحقّق Claude من D104 (ر166): المحرّك صحيح، و`lint` يسقط، وثلاثة إصلاحاتٍ صغيرة إلى D105 خ٠ · النموذج: Claude Opus 5.5
+- **صحيح (مجرَّب):** `read_psd` مباشرةً بلا رجوع إلى TS على ٦٥ ملفًّا (٦٤ من قوالب المالك و`psd-styles.psd`) ← ٦٥ متطابقة ولا رمي، والزمن كلّه ٨٠٠ م.ث مقابل ١٥٣٦ لـTS (هذا الجهاز، دافئ) · بلا الإضافة يسقط `nativePsdCompare` وبها يخضرّ · `readPsdScript` هو جسم `readPsd` القديم بلا تغيير · `npm run build` ثم `designPsd` ٩ ✓ و`designPsdStyles` ٩ ✓ وسجلّا أخطائهما بلا `[native]` ولا `worker-fallback`.
+- **يسقط:** `npx vitest run` كاملًا ← ٢٠٠٨ ✓ و**١ ✗**: `lint.test.ts` (`rules-of-hooks` على `useNativePsd` في `worker/index.ts` — اسمٌ يبدأ بـ`use` فيُعدّ خطّافًا؛ والاسم من نصّ D104 الذي كتبتُه) — ولم يشغّله D104.
+- **المقارنة تمرّ برجوعٍ صامت:** `expectPsdMatch` ينادي `readPsd`، فإن رمى Rust قارن TS بنفسه (لم يقع على الملفّات، لكنّ الاختبار لا يكشفه).
+- **فرقان في ملفّين تالفين مصنوعين (مجرَّب):** (ب) موردٌ يتخطّى قسمه: TS `dpi=16` وRust `null` · (ج) صفّ RLE ينتهي ببايت تكرار: TS يقرأ ما بعده `[253×4,7×4]` وRust `[7×4,0×4]` · و(أ) ملفّ ٢٨ بايتًا: TS يرمي `RangeError` وRust `null` — مقبول.
+- **التالي:** Gemini بـ`/next D105` (خطوته ٠ تصلح الثلاثة) ثم D106، ثم 🛑 تحقّق Claude.
+
 ## ٢٠٢٦-١٠-١٩ ٠٨:٣٠ — D104 ✅ — `readPsd` في Rust خلف موضعٍ واحد، ومقارنة المحرّكين على كلّ ملفّات PSD · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر (`07224ea`):** نقل `readPsd` و`unpackBits` إلى Rust في `native/diwan-psd/src/lib.rs` بدالّتي `read_psd` و`unpack_bits` بلا أيّ crate جديد · تحويل رموز التنبيهات في `worker/nativePsd.ts` (`depth:` و`mode:` و`truncated` و`unreadable` و`zip`) وتركيب القارئ الأصلي بـ`useNativePsd` في `worker/index.ts` وحدها (الرئيسة TS دائمًا) · جسم `readPsd` الأصلي صار `readPsdScript` بلا تغيير في `services/psd.ts` مع تفويض `readPsd` ورجوعه إليه إن رمى · معالجة `EBUSY` ومطابقة البايتات في `tools/buildNative.mjs` ورسالة عربية صريحة إن كانت الإضافة مفتوحة · إنشاء `tests/nativePsdCompare.test.ts` واختبار `readPsd` في `tests/nativePsd.test.ts` ونقل الأمر إلى `done/`.
 - **الملفّات المقارنة (٦٥ ملفّ قرص + ١٦ حالة بانية):** ملف `tests/fixtures/psd-styles.psd` و٦٤ ملفًّا حقيقيًّا من مجلّد GyanTech (مجلّدات GD 01 إلى GD 12 بكلّ تنويعات Back.psd وFront.psd الأصلية و(2) و(3)) وبُناة psdBuilder (RGB وCMYK) وبُناة designImport (خام وRLE لكلّ من RGB وCMYK وGrayscale بـDPI وبدونه) وPSB وملفّات مبتورة وحدية؛ وكلّها متطابقة في المقاس والدقّة والتنبيهات وrgba وplanes بايتًا ببايت وnull حيث يعيد TS null.
