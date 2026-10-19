@@ -14,6 +14,7 @@ import { readDesign } from '../services/designImport';
 import { flattenPsd } from '../services/design/flatten';
 import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
+import { loadNativePsd } from './nativePsd';
 
 type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Promise<WorkerOutput<J>>;
 
@@ -22,7 +23,15 @@ type Job<J extends WorkerJob> = (input: WorkerInput<J>) => WorkerOutput<J> | Pro
  * وفحصه وطول البكسلات في الرئيسة قبل الإرسال (`ipc/photos.ts`)، وكذلك حوار الملف وسقف حجمه وخطوط المكتب (`ipc/designs.ts`).
  */
 export const JOBS: { [J in WorkerJob]: Job<J> } = {
-  ping: () => ({ pid: process.pid, at: Date.now() }),
+  ping: () => {
+    const { addon, error } = loadNativePsd();
+    return {
+      pid: process.pid,
+      at: Date.now(),
+      psd: addon ? addon.psdEngineVersion() : null,
+      psdError: addon ? null : error
+    };
+  },
   crash: () => {
     // بابٌ للاختبار وحده: محذوفٌ من بناء الإصدار.
     if (__DIWAN_TEST_DOORS__) process.exit(1);

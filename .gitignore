@@ -29,3 +29,7 @@ diwan-owner-private.key
 # تقارير الفحص الشامل
 reports/
 __pycache__/
+
+# محرّك Rust (A20) — المخرجات لا تُودع ومصدره وCargo.lock يُودعان
+native/**/target/
+native/**/*.node

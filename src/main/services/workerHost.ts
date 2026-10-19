@@ -62,7 +62,7 @@ export class WorkerCancelledError extends Error {
  */
 export const IDLE_MS = 60_000;
 
-type Options = { idleMs?: number; timeoutMs?: (job: WorkerJob) => number };
+type Options = { idleMs?: number; timeoutMs?: (job: WorkerJob) => number; onStart?: (host: WorkerHost) => void };
 
 export class WorkerHost {
   readonly #spawn: () => WorkerProcess;
@@ -74,12 +74,14 @@ export class WorkerHost {
   readonly #falls = new Map<WorkerJob, number>();
   readonly #idleMs: number;
   readonly #timeoutMs: (job: WorkerJob) => number;
+  readonly #onStart?: (host: WorkerHost) => void;
   #idle: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(spawn: () => WorkerProcess, { idleMs = IDLE_MS, timeoutMs = (job) => WORKER_TIMEOUT_MS[job] }: Options = {}) {
+  constructor(spawn: () => WorkerProcess, { idleMs = IDLE_MS, timeoutMs = (job) => WORKER_TIMEOUT_MS[job], onStart }: Options = {}) {
     this.#spawn = spawn;
     this.#idleMs = idleMs;
     this.#timeoutMs = timeoutMs;
+    this.#onStart = onStart;
   }
 
   /** يجري العمل في العامل — ويُقلعه إن لم يكن قائمًا. */
@@ -141,6 +143,7 @@ export class WorkerHost {
       logError('worker', new Error(`خرج المعالج (${code}) وفي انتظاره ${this.#pending.size} طلب`));
       this.#rejectAll(() => null);
     });
+    this.#onStart?.(this);
     return proc;
   }
 
@@ -207,9 +210,19 @@ const TEST_TIMEOUT_MS = __DIWAN_TEST_DOORS__ ? Number(process.env['DIWAN_TEST_WO
 /** المضيف الواحد للبرنامج — والعامل `out/main/worker.js` بجانب `index.js` (مدخلٌ ثانٍ في `electron.vite.config.ts`). */
 export function workerHost(): WorkerHost {
   // والعامل يرث بيئة الرئيسة (الافتراضي في `fork`)، ومنها باب التأخير `DIWAN_TEST_SLOW_WORKER`.
-  host ??= new WorkerHost(() => utilityProcess.fork(join(__dirname, 'worker.js'), [], { serviceName: 'Diwan worker' }), {
-    timeoutMs: (job) => TEST_TIMEOUT_MS || WORKER_TIMEOUT_MS[job]
-  });
+  host ??= new WorkerHost(
+    () => utilityProcess.fork(join(__dirname, 'worker.js'), [], { serviceName: 'Diwan worker' }),
+    {
+      timeoutMs: (job) => TEST_TIMEOUT_MS || WORKER_TIMEOUT_MS[job],
+      onStart: (h) => {
+        void h.run('ping', null).then((res) => {
+          if (!res.psd) {
+            logError('native', new Error(res.psdError || 'تعذّر تحميل إضافة Rust (diwan-psd)'));
+          }
+        }).catch(() => {});
+      }
+    }
+  );
   return host;
 }
 

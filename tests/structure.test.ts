@@ -93,6 +93,9 @@ describe('اختبار الهيكل (ز١)', () => {
       }
       if (/shell\.openExternal\s*\(/.test(s.text) && s.path !== 'src/main/harden.ts') bad.push(`${s.path}: shell.openExternal خارج harden.ts — الروابط الخارجية تمرّ بـopenExternalSafe`);
       if (/utilityProcess\.fork\s*\(/.test(s.text) && s.path !== 'src/main/services/workerHost.ts') bad.push(`${s.path}: utilityProcess.fork خارج workerHost.ts — العامل المستقلّ يُقلعه مضيفه وحده (A03)`);
+      if (s.text.includes('diwan_psd.node') && s.path !== 'src/main/worker/nativePsd.ts') {
+        bad.push(`${s.path}: يذكر diwan_psd.node خارج worker/nativePsd.ts — الإضافة الأصلية تُحمَّل من موضعٍ واحد (A20)`);
+      }
     }
     // والعامل المستقلّ (A03، D53): لا Electron ولا القاعدة ولا القنوات — القاعدة والمخزن في الرئيسة وحدها.
     for (const s of under('src/main/worker/')) {

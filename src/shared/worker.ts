@@ -15,8 +15,8 @@ export type CutoutOutput = { alpha: Uint8Array; pixels: Uint8ClampedArray; ms: n
 
 /** الأعمال بمدخلها ومخرجها — وكلّ عملٍ ينتقل إلى العامل سطرٌ هنا. */
 export type WorkerJobs = {
-  /** «أنا هنا»: رقم عملية العامل ووقت الجواب. */
-  ping: { input: null; output: { pid: number; at: number } };
+  /** «أنا هنا»: رقم عملية العامل ووقت الجواب، ومحرّك PSD أو سبب تعذّره (D103). */
+  ping: { input: null; output: { pid: number; at: number; psd?: string | null; psdError?: string | null } };
   /** للاختبار وحده (أبواب الاختبار): يخرج العامل بـ`process.exit(1)` — فيُرى السقوط وما بعده. */
   crash: { input: null; output: never };
   /** «أزل الخلفية» للأشخاص (D54): MODNet، ووجهه بـYuNet إن وُجد نموذجه (`facePath`) — وتعذّر الوجه لا يُفشل الفصل. */

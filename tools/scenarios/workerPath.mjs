@@ -28,6 +28,7 @@ export default async function scenario(page, { profile }) {
   const first = await ping();
   ok(`«أنا هنا» من العامل (${first?.pid}) والرئيسة (${first?.main})`, Number.isInteger(first?.pid) && Number.isInteger(first?.main) && first.pid > 0);
   ok('ورقم العامل ليس رقم العملية الرئيسة', first?.pid !== first?.main);
+  ok(`ومحرّك PSD يعمل ورقمه (${first?.psd})`, typeof first?.psd === 'string' && /^\d+\.\d+\.\d+/.test(first.psd));
   const again = await ping();
   ok('وطلبٌ ثانٍ يُجاب من العملية نفسها', again?.pid === first?.pid);
 
