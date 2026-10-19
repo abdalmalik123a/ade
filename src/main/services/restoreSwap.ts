@@ -255,7 +255,8 @@ export function listBeforeRestore(dir: string): BeforeRestoreAside[] {
       if (!ent.isDirectory()) continue;
       const m = ent.name.match(/^before-restore-(\d{4}-\d{2}-\d{2})-(\d{2})-(\d{2})-(\d{2})$/);
       if (!m) continue;
-      const at = `${m[1]}T${m[2]}:${m[3]}:${m[4]}`;
+      // الاسم بتوقيت غرينتش (`stamp` في `ipc/backup.ts`) — فبلا `Z` يُقرأ محلّيًّا ويُعرض أبكر بفرق المنطقة (D101).
+      const at = `${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`;
       const bytes = dirSize(join(dir, ent.name));
       entries.push({ name: ent.name, at, bytes });
     }

@@ -4,6 +4,10 @@
 import { useEffect, useState } from 'react';
 import type { BeforeRestoreAside } from '@shared/api';
 import { ask } from '../kit/ask';
+import { count, type Noun } from '@shared/arabic';
+
+/** العدّ بأداته (`docs/UI.md`): «مجلّد واحد» و«مجلّدان» و«٣ مجلّدات» — لا «1 مجلّد». */
+const FOLDER: Noun = { one: 'مجلّد واحد', two: 'مجلّدان', few: 'مجلّدات', many: 'مجلّدًا', single: 'مجلّد' };
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} م.ب`;
@@ -59,7 +63,7 @@ export default function BackupAsides() {
       <div className="flex items-center justify-between">
         <span className="font-semibold text-on-surface">بيانات سابقة نُقلت جانبًا عند الاسترجاع:</span>
         <span className="text-on-surface-variant font-label-sm text-label-sm">
-          {asides.length} {asides.length === 1 ? 'مجلّد' : 'مجلّدات'}
+          {count(asides.length, FOLDER)}
         </span>
       </div>
       <p className="text-on-surface-variant font-label-sm text-label-sm">

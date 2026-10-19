@@ -399,14 +399,16 @@ describe('مجلّدات ما قبل الاسترجاع (before-restore-*) — �
       expect(list).toHaveLength(2);
       expect(list[0]).toEqual({
         name: 'before-restore-2026-10-19-12-30-00',
-        at: '2026-10-19T12:30:00',
+        at: '2026-10-19T12:30:00Z',
         bytes: 250
       });
       expect(list[1]).toEqual({
         name: 'before-restore-2026-10-18-10-00-00',
-        at: '2026-10-18T10:00:00',
+        at: '2026-10-18T10:00:00Z',
         bytes: 100
       });
+      // الاسم بتوقيت غرينتش، فالوقت يُقرأ هو نفسه أيًّا كانت منطقة الجهاز — ويُعرض بتوقيت المكتب (D101).
+      expect(new Date(list[0]!.at).toISOString()).toBe('2026-10-19T12:30:00.000Z');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -111,5 +111,35 @@ export default async function scenario(page, { profile }) {
   const found = await page.eval(`return (await window.diwan.citizens.list({ query: 'قبل' })).length;`);
   ok('والبحث يعمل على البيانات المسترجعة', found === 1);
 
+  // ── ما نُقل جانبًا عند الاسترجاع (D98، D101): يُرى في الإعدادات بوقته المحلّي، ولا يُحذف إلا بسؤال ──
+  await page.goto('office-settings');
+  await wait(1200);
+  const [kept] = readdirSync(join(profile, 'data')).filter((f) => f.startsWith('before-restore-'));
+  // اسمه بتوقيت غرينتش، ويُعرض بساعة الجهاز (كان يُعرض أبكر بفرق المنطقة)
+  const [y, mo, da, h, mi, se] = (kept ?? '').replace('before-restore-', '').split('-').map(Number);
+  const madeAt = new Date(Date.UTC(y, mo - 1, da, h, mi, se));
+  const hm = `${((madeAt.getHours() + 11) % 12) + 1}:${String(madeAt.getMinutes()).padStart(2, '0')}`;
+  const listed = await page.eval(`return document.querySelector('[data-before-restore-list]')?.innerText ?? '';`);
+  ok(`وما نُقل جانبًا يُرى في الإعدادات باسمه ووقته المحلّي (${hm}) و«مجلّد واحد»`, Boolean(kept) && listed.includes(kept) && listed.includes(hm) && listed.includes('مجلّد واحد'));
+  await page.eval(`document.querySelector('[data-act="delete-before-restore"]').click(); return true;`);
+  await wait(600);
+  const asked = await page.eval(`return document.querySelector('[data-confirm]')?.innerText ?? '';`);
+  ok('و«احذف» يسأل أوّلًا', asked.includes('حذف البيانات المنقولة جانبًا؟') && asked.includes('ابقِ عليها'));
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="keep"]').click(); return true;`);
+  await wait(800);
+  ok('و«ابقِ عليها» لا يحذف شيئًا', existsSync(join(profile, 'data', kept ?? '-')));
+  await page.eval(`document.querySelector('[data-act="delete-before-restore"]').click(); return true;`);
+  await wait(600);
+  await page.eval(`document.querySelector('[data-confirm] [data-choice="delete"]').click(); return true;`);
+  await wait(1500);
+  ok(
+    'و«احذف» يحذفه من القرص وتختفي القائمة',
+    !existsSync(join(profile, 'data', kept ?? '-')) && (await page.eval(`return !document.querySelector('[data-before-restore-list]');`))
+  );
+  const auditDb = db();
+  const deleted = auditDb.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE entity = 'backup' AND action = 'deleteAside'").get().n;
+  auditDb.close();
+  ok('ويُقيَّد الحذف في السجلّ', deleted === 1);
+
   return steps.join('\n');
 }

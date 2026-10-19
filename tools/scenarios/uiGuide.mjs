@@ -73,5 +73,17 @@ export default async function scenario(page) {
   const after = await page.eval(`const i = document.querySelector('[data-counter-search]'); return { value: i.value, focused: document.activeElement === i };`);
   ok('و✕ يمسحه ويُبقي المؤشّر فيه', after.value === '' && after.focused && !(await has('[data-act="search-clear"]')));
 
+  // ── لوحة المفاتيح (D97، D101): Tab يُظهر حلقة التركيز على ما وصل إليه ─────
+  await page.eval(`document.activeElement?.blur(); return true;`);
+  for (let i = 0; i < 3; i++) {
+    await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  }
+  await wait(300);
+  const ring = await page.eval(
+    `const e = document.activeElement; const s = getComputedStyle(e); return { tag: e.tagName, outline: s.outlineStyle + ' ' + s.outlineWidth, ring: s.boxShadow !== 'none' };`
+  );
+  ok(`Tab بلوحة المفاتيح يُظهر حلقة التركيز (${ring.tag}: ${ring.outline})`, ring.tag !== 'BODY' && (ring.outline.startsWith('solid') || ring.ring));
+
   return steps;
 }
