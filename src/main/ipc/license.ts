@@ -132,17 +132,19 @@ function readFileStore(): Stored {
   );
 }
 
+export function parseRegistryValues(out: string): Stored {
+  const value = (name: string) => new RegExp(`${name}\\s+REG_SZ\\s+(\\S+)`).exec(out)?.[1];
+  return { trialStart: value('TrialStart'), lastSeen: value('LastSeen'), lastVerified: value('LastVerified') };
+}
+
 function readRegistry(): Stored {
   if (!app.isPackaged) return {};
-  const value = (name: string) => {
-    try {
-      const out = execFileSync('reg', ['query', REG, '/v', name], { encoding: 'utf8', windowsHide: true });
-      return new RegExp(`${name}\\s+REG_SZ\\s+(\\S+)`).exec(out)?.[1];
-    } catch {
-      return undefined;
-    }
-  };
-  return { trialStart: value('TrialStart'), lastSeen: value('LastSeen'), lastVerified: value('LastVerified') };
+  try {
+    const out = execFileSync('reg', ['query', REG], { encoding: 'utf8', windowsHide: true });
+    return parseRegistryValues(out);
+  } catch {
+    return {};
+  }
 }
 
 function writeRegistry(s: Stored): void {

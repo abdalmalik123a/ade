@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { deviceCode, encodeKey, evaluate, normalizeDeviceCode, readKey, readKeyWith, readMachineGuid, RENEW_WARN_DAYS, MACHINE_GRACE_DAYS, type LicensePayload } from '../src/main/services/license';
-import { getMachineInfo, resetMachineIdCacheForTesting } from '../src/main/ipc/license';
+import { getMachineInfo, parseRegistryValues, resetMachineIdCacheForTesting } from '../src/main/ipc/license';
 import { OWNER_KEYS, OWNER_PUBLIC_KEY, OWNER_UPDATE_PUBLIC_KEY, keysFor } from '../src/main/license/ownerKey';
 
 const { privateKey, publicKey } = generateKeyPairSync('ed25519');
@@ -333,4 +333,56 @@ describe('ثوابت الترخيص الموحّدة (المرحلة A — ٤٫�
     expect(MACHINE_GRACE_DAYS).toBe(7);
   });
 });
+
+describe('قراءة السجل الموحّدة باستعلام واحد (E06, D111)', () => {
+  it('تستخرج القيم الثلاث عند وجودها في مخرج reg query', () => {
+    const raw = `
+HKEY_CURRENT_USER\\Software\\Diwan
+    TrialStart    REG_SZ    2026-10-02T15:18:04.716Z
+    LastSeen    REG_SZ    2026-10-19T03:27:30.671Z
+    LastVerified    REG_SZ    2026-10-15T10:00:00.000Z
+`;
+    expect(parseRegistryValues(raw)).toEqual({
+      trialStart: '2026-10-02T15:18:04.716Z',
+      lastSeen: '2026-10-19T03:27:30.671Z',
+      lastVerified: '2026-10-15T10:00:00.000Z'
+    });
+  });
+
+  it('تعيد undefined للقيم الغائبة عند وجود بعضها فقط', () => {
+    const raw = `
+HKEY_CURRENT_USER\\Software\\Diwan
+    TrialStart    REG_SZ    2026-10-02T15:18:04.716Z
+    LastSeen    REG_SZ    2026-10-19T03:27:30.671Z
+`;
+    expect(parseRegistryValues(raw)).toEqual({
+      trialStart: '2026-10-02T15:18:04.716Z',
+      lastSeen: '2026-10-19T03:27:30.671Z',
+      lastVerified: undefined
+    });
+  });
+
+  it('تعيد undefined لجميع القيم عند خلو المخرج أو تعذّر العثور على المفتاح', () => {
+    expect(parseRegistryValues('')).toEqual({
+      trialStart: undefined,
+      lastSeen: undefined,
+      lastVerified: undefined
+    });
+    expect(parseRegistryValues('ERROR: The system was unable to find the specified registry key or value.')).toEqual({
+      trialStart: undefined,
+      lastSeen: undefined,
+      lastVerified: undefined
+    });
+  });
+
+  it('تتعامل بسلاسة مع التبويبات والمسافات المختلفة ونهايات الأسطر', () => {
+    const raw = 'HKEY_CURRENT_USER\\Software\\Diwan\r\n\tTrialStart\tREG_SZ\t2026-10-01T00:00:00.000Z\r\n';
+    expect(parseRegistryValues(raw)).toEqual({
+      trialStart: '2026-10-01T00:00:00.000Z',
+      lastSeen: undefined,
+      lastVerified: undefined
+    });
+  });
+});
+
 
