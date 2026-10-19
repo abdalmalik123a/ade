@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٦:٤٥ — 🛑 تحقّق Claude من D103 (ر166) ✓ · النموذج: Claude Opus 5.5
+- **الكود على نصّ الأمر:** ملفّاته في «المسموح» وحدها، ولا `package-lock` ولا حزمة npm، وcrates الثلاث وحدها (`napi` 3 و`napi-derive` 3 و`napi-build` 2)، و`build:native` في `build` و`dist`، والإضافة في `native/diwan-psd/` لا في `out/`، و`onStart` يُرسل `ping` بعد إسناد العامل فلا عاملان.
+- **«كيف يُراجَع» (شُغّل):** حذفتُ `target/` والإضافة ثم `npm run build` ← بُنيت من الصفر (٢٣ ث لـRust، ١٫١٢ د كلّه) · `nativePsd` بلا الإضافة ٢ ✗ وبها ✓، ومع `structure` `workerJobs` `workerHost` `docsBudget` `repoHygiene` `lint` ٤٩ ✓ · `workerPath` ١٠ ✓ على البناء، و`npm run pack` ثم `workerPath` بـ`DIWAN_EXE` ١٠ ✓ و«محرّك PSD 0.1.0» من عامل المحزوم.
+- **عيبٌ صغير (مجرَّب):** إضافةٌ محمَّلة في عملية ثم `buildNative.mjs` ← `EBUSY` بالإنكليزية، فيسقط البناء وديوان أو اختبارٌ يعمل ← خطوة ٥ في D104 · وملاحظة: `[native]` يُكتب عند كلّ إقلاعٍ للعامل إن تعذّرت (لا مرّةً في الجلسة) — صغيرٌ لا يُصلَح الآن.
+- **التالي:** Gemini بـ`/next D104` ثم 🛑 تحقّق Claude من D104.
+
 ## ٢٠٢٦-١٠-١٩ ٠٦:٤٠ — D103 ✅ — محرّك Rust فارغ يمرّ في الطريق كلّه (A20) والتوقّف عند 🛑 تحقّق Claude · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر (`e88dcdb`):** حزمة `native/diwan-psd` (`Cargo.toml` `build.rs` `lib.rs` بدالّة `psd_engine_version` و`Cargo.lock`) و`.gitignore` لمخرجاتها · `tools/buildNative.mjs` بـcargo من PATH أو `.cargo\bin` وينسخ `.node` · `build:native` في `build` و`dist` و`native/**/*.node` في `build.files` · `src/main/worker/nativePsd.ts` بمرشّحي المسار بلا رمي · `ping` بالعامل يعيد `psd` وإصداره (`@shared/worker` و`worker/index.ts`) و`workerHost.ts` يسجّل `[native]` إن غاب · قاعدة `diwan_psd.node` في `structure.test.ts` واختبار `tests/nativePsd.test.ts` يسقط إن غابت · فحص إصدار المحرّك في سيناريو `workerPath.mjs` وتوثيق Rust في `QUALITY.md` §١٣ ونقل الأمر إلى `done/`.
 - **الفحص:** `typecheck` نظيف · خمسة ملفّات اختبار ٣٣ ✓ (`nativePsd` ٣ ✓ `structure` ١٠ ✓ `workerJobs` ١٣ ✓ `docsBudget` ٣ ✓ `repoHygiene` ٤ ✓) و`workerHost` ١٥ ✓ · `npm run build` والإضافة باقية في `native/diwan-psd/` وسيناريو `workerPath.mjs` أخضر (١٠ ✓) · `npm run pack` والإضافة المفكوكة في `app.asar.unpacked/native/diwan-psd/diwan_psd.node` موجودة وسيناريو `workerPath` بـ`DIWAN_EXE` على المحزوم أخضر (١٠ ✓) · `git status` نظيف.
