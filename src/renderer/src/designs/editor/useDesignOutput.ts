@@ -188,7 +188,10 @@ export function useDesignOutput(i: Inputs) {
       const path = await window.diwan.output.savePdf({
         sheetHtml: previewMark
           ? pages
-              .map((p) => `<div style="position:relative;break-inside:avoid">${p}${tiledWatermark({ text: WATERMARK_PRESETS.preview, opacity: 0.2, sizeMm: 9 })}</div>`)
+              .map((p, idx) => {
+                const cleanP = idx === pages.length - 1 ? p.replace(/page-break-after:\s*always;?/g, '').replace(/break-after:\s*page;?/g, '') : p;
+                return `<div style="position:relative;break-inside:avoid">${cleanP}${tiledWatermark({ text: WATERMARK_PRESETS.preview, opacity: 0.2, sizeMm: 9 })}</div>`;
+              })
               .join('')
           : pages.join(''),
         suggestedName: title.trim() || 'تصميم',

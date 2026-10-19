@@ -1,9 +1,9 @@
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BrowserWindow } from 'electron';
-import { PDFDocument } from 'pdf-lib';
-import { fitCanvasText } from '@shared/design/fit';
+import { CHUNK_PAGE_SIZE, renderChunkedPdf, splitPagesHtml } from './renderSplit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
+import { fitCanvasText } from '@shared/design/fit';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 import { rendererDevUrl } from '../devUrl';
@@ -296,24 +296,7 @@ function printWith(req: PrintRequest, silent: boolean, page: PageMm, landscape: 
   );
 }
 
-const CHUNK_PAGE_SIZE = 8;
-
-/** يقسم علامات الورقة إلى أوراقٍ منفصلة إن كانت تحوي أكثر من ورقة (`print-page`). */
-export function splitPagesHtml(sheetHtml: string): string[] {
-  const parts = sheetHtml.split(/(?=(?:<div style="[^"]*break-inside:avoid[^"]*">\s*)?<div class="print-page")/g).filter(Boolean);
-  return parts.length > 0 ? parts : [sheetHtml];
-}
-
-async function mergePdfBuffers(buffers: Buffer[]): Promise<Buffer> {
-  if (buffers.length <= 1) return buffers[0] ?? Buffer.alloc(0);
-  const merged = await PDFDocument.create();
-  for (const buf of buffers) {
-    const doc = await PDFDocument.load(buf);
-    const pages = await merged.copyPages(doc, doc.getPageIndices());
-    for (const p of pages) merged.addPage(p);
-  }
-  return Buffer.from(await merged.save());
-}
+export { splitPagesHtml } from './renderSplit';
 
 function renderSinglePdf(sheetHtml: string, page: PageMm, style: SheetStyle | null): Promise<Buffer> {
   const { landscape, pageSize } = pdfPageSizeOf(page);
@@ -329,14 +312,7 @@ export async function renderPdf(sheetHtml: string, pageIn?: PageMm, style: Sheet
   const page = pageIn ?? pageOfSheetHtml(sheetHtml) ?? A4;
   const pages = splitPagesHtml(sheetHtml);
   if (pages.length <= CHUNK_PAGE_SIZE) return renderSinglePdf(sheetHtml, page, style);
-
-  const chunks: Buffer[] = [];
-  for (let i = 0; i < pages.length; i += CHUNK_PAGE_SIZE) {
-    chunks.push(await renderSinglePdf(pages.slice(i, i + CHUNK_PAGE_SIZE).join(''), page, style));
-    if (global.gc) try { global.gc(); } catch { /* ignore */ }
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  return mergePdfBuffers(chunks);
+  return renderChunkedPdf(pages, page, style, renderSinglePdf);
 }
 
 /**

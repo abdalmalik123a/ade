@@ -93,7 +93,7 @@
 | PDF (2 · 2) | `pdfTools` `pdfForm` | `pdfEdit` `pdfLock` |
 | المسح والتعرّف (5 · 12) | `idTools` `mrzRead` `paperPhoto` `transientScans` `idSheet` | `deskew` `scanClean` `multiCard` `watermark` `mrz` `mrzRead` `paperDoc` `paperRules` `scanner` `transient` `idSheet` `idCardDuplex` |
 | الزبائن والسجلّ (6 · 12) | `citizens` `citizenImport` `citizenImportCap` `audit` `weekly` `storeRefs` | `citizens` `citizenImport` `idChecks` `documents` `archiveIntegrity` `searchIndex` `auditFixes` `weekly` `today` `attachmentExport` `storeRefs` `export` |
-| الطباعة والإخراج (7 · 8) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` `ui/printChooser` |
+| الطباعة والإخراج (8 · 9) | `printResume` `printRoles` `copies` `paperSize` `production` `sheetStyle` `pdfCompare` `pdfChunks` | `imposition` `printJobs` `calibration` `printRoles` `sheetStyle` `sheetPage` `pdfRefs` `renderSplit` `ui/printChooser` |
 | النظام (22 · 42) | `onboarding` `empty` `settings` `backup` `autoBackup` `restoreStuck` `damagedDb` `singleInstance` `update` `license` `keytool` `problemReport` `harden` `contentPack` `resilience` `deleteGuards` `leaveGuards` `rootBoundary` `screens` `uiGuide` `theme` `overview` | `agedDb` `autoBackup` `backup` `backupPassword` `backupPrompt` `contentPack` `corruptFiles` `dataVersion` `dbErrors` `devUrl` `durability` `gate` `keytool` `leaveGuard` `license` `load` `midnight` `migrations` `makeReleaseDb` `preUpdateBackup` `problemReport` `registryGuard` `releaseDb` `restoreSwap` `sections` `settingsKeys` `sharedHelpers` `stateFile` `structure` `theme` `update` `version` `zip` `overview` `listLimits` `shortcuts` `localPaths` `contextMenu` `repoHygiene` `sourceRules` `lint` `ui/useToast` |
 
 ## ٦. ميزانية الاختبار — ما يمسّه التغيير وحده (ر085)
@@ -143,7 +143,7 @@
 **القائم اليوم:** الطبقات في §٢، ولقطات الرسّام، والسقوف، وقواعد الإصدارات، **ومقارنة صور PDF** (المبدأ ٤ في ARCHITECTURE؛ G30 أُغلق — D34 D35): سيناريو
 `pdfCompare` يُخرج كتابًا وتصميمًا ونسخ هويةٍ وورقة أسئلةٍ وصورًا شخصية بمحتوى ثابت، ويقارن صفحاتها بصور المرجع في `tests/fixtures/pdf-ref/` (الأداة في §٤).
 **والمرجع يُحدَّث بقصدٍ وحده:** تغييرٌ مقصود في الرسم يُسقطها، فتُرى صورة الفرق، ثم `DIWAN_PDF_REF=update node tools/drive.mjs tools/scenarios/pdfCompare.mjs`،
-وتُرى الصور الجديدة، ويُذكر التحديث وسببه في الإيداع (كلقطات الرسّام). **وما يُبنى:** القياس على الجهاز المرجعي: **Core i5 بذاكرة ٨ غيغا**، مقياس كلّ هدف أداء. وأهداف وثيقة المتطلبات §٦ مقابل ما قيس:
+وتُرى الصور الجديدة، ويُذكر التحديث وسببه في الإيداع (كلقطات الرسّام). وسيناريو `pdfChunks` (D113) يحرس تجزئة الدفعات الكبيرة بعلامة «معاينة» وبلا علامة (٢٠ ورقة ← ٢٠ صفحة بالضبط ولا صفحة بيضاء). **وما يُبنى:** القياس على الجهاز المرجعي: **Core i5 بذاكرة ٨ غيغا**، مقياس كلّ هدف أداء. وأهداف وثيقة المتطلبات §٦ مقابل ما قيس:
 
 | الهدف | المقيس اليوم | البند |
 |---|---|---|
