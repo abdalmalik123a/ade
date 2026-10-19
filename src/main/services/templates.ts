@@ -149,7 +149,7 @@ export function isCodeTaken(db: Database, code: string, exceptId: number | null)
 
 export function saveTemplate(
   db: Database,
-  input: TemplateInput & { doc?: Doc | null }
+  input: TemplateInput & { doc?: Doc | null; isAutosave?: boolean }
 ): TemplateDetail {
   prepareTemplates(db);
   const title = input.title.trim();
@@ -179,7 +179,7 @@ export function saveTemplate(
 
   const id = db.transaction(() => {
     let templateId = input.id;
-    if (templateId !== null) {
+    if (templateId !== null && !input.isAutosave) {
       // الحالة المحفوظة تصير نسخةً قبل أن يُكتب فوقها — إن تغيّر شيء.
       const before = getTemplate(db, templateId);
       if (before) {

@@ -81,12 +81,12 @@
 
 ## ٥. السيناريوهات والاختبارات بأقسامها
 
-> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١١٠ سيناريوهات و١٨٢ ملفّ اختبار، منها ثلاثةٌ للمكوّنات في `tests/ui/` (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
+> كلٌّ في القسم الذي يحرسه أوّلًا، مرّةً واحدة: ١١١ سيناريو و١٨٣ ملفّ اختبار، منها ثلاثةٌ للمكوّنات في `tests/ui/` (بين القوسين عددا القسم). وما يخدم أكثر من قسمٍ تذكره وثيقة كلّ قسمٍ يحرسه،
 > وفيها ما يغطّيه كلٌّ وما لم يُغطَّ — فالجدول خريطة الوظائف والحرّاس، والتفصيل في الأقسام.
 
 | القسم | السيناريوهات (`tools/scenarios/`) | ملفّات الاختبار (`tests/*.test.ts`) |
 |---|---|---|
-| الشبّاك (14 · 9) | `service` `dailyWork` `firstDay` `parkedGone` `imageForm` `inbox` `packs` `language` `orders` `orderPrinted` `receipt` `schoolFile` `work` `workSettings` | `seasons` `imageForm` `packs` `orders` `receipt` `schoolFile` `transaction` `fillCard` `whatsappParser` |
+| الشبّاك (15 · 10) | `service` `dailyWork` `firstDay` `parkedGone` `imageForm` `inbox` `packs` `language` `orders` `orderPrinted` `receipt` `schoolFile` `work` `workSettings` `autoSave` | `seasons` `imageForm` `packs` `orders` `receipt` `schoolFile` `transaction` `fillCard` `whatsappParser` `autoSave` |
 | المحرّر (17 · 44) | `editor` `editorDraft` `pageEditor` `bookEditor` `issue` `pagedLetter` `letterTools` `letterhead` `templates` `import` `importFolder` `wordLosses` `wordHints` `excelImport` `papers` `questionBank` `omr` | `arabic` `count` `tafqeet` `gender` `genderLearning` `spelling` `doc` `docEdit` `docPm` `docPmList` `docPmTable` `formatting` `fontSize` `hijriOffset` `questions` `examPaper` `examVersions` `examAnalysis` `questionBank` `omr` `valuesOnly` `pageAndDates` `letterDraft` `findReplace` `symbols` `blanks` `fieldHints` `excelDoc` `import` `importFolder` `fixtures` `docxDoc` `wordScan` `sheetHead` `learning` `learningKinds` `letterheads` `clips` `repeatedClip` `letterFields` `revisions` `templates` `issuedDocx` `ui/letterSheet` |
 | التصاميم (30 · 45) | `designs` `designBatchCheck` `designBrandKit` `designCutout` `designDock` `designDraft` `designFonts` `designIcons` `designImage` `designImport` `designImsakiya` `designKitStyles` `designLayers` `designMouse` `designOrderFill` `designPacks` `designPaint` `designPaths` `designPdf` `designPhotoEdit` `designPsd` `designPsdStyles` `designResize` `designShapes` `designTable` `designTextEffects` `designUx` `elements` `fonts` `batches` | `canvas` `canvasEdit` `designKit` `designImport` `psdLayers` `realPsd` `psdStyles` `imageSize` `preflight` `kitPreflight` `securitySeal` `layerFields` `batchMap` `citizenFields` `brand` `bundledElements` `designDraft` `designFixtures` `designPack` `designStructure` `elementsService` `fillFrom` `fonts` `fontsService` `imageExport` `imageShapes` `imsakiya` `objectCutout` `paint` `pathShapes` `photoEdit` `relayout` `rendererSnapshots` `selectGeometry` `svgClean` `tableSizes` `tableStyles` `textEffects` `clipart` `barcode` `qr` `sheetRead` `cellText` `makeDesignFixtures` `makePsdFixture` |
 | الصور الشخصية (8 · 8) | `photos` `studio` `portrait` `photoSteps` `colorErase` `autoCollar` `faceChin` `repair` | `portrait` `portraitFace` `portraitLoad` `portraitSkin` `portraitTools` `colorErase` `inpaint` `photoSheet` |
@@ -171,7 +171,7 @@
   - *ONNX لم يُقَس:* الأرقام التي كانت هنا محسوبةٌ من نموذج كشف الوجوه ودقّتها مكتوبةٌ باليد — سُحبت (مراجعة ١٩ ت١).
   - *وثقة Tesseract ليست دقّة:* الدقّة الحقيقية تُقاس بنسبة خطأ الحروف (CER) على نصٍّ مكتوبٍ باليد، لا بنسبة الثقة المصرّح بها من المحرّك.
 
-- **الموثوقية** (§٦): كتابةٌ ذرّية لملفّات الحالة (`stateFile`) · حفظٌ تلقائي وحمايةٌ عند المغادرة (`editorDraft` `designDraft` `leaveGuards` `leaveGuard`؛
+- **الموثوقية** (§٦): كتابةٌ ذرّية لملفّات الحالة (`stateFile`) · حفظٌ تلقائي وحمايةٌ عند المغادرة (`editorDraft` `designDraft` `leaveGuards` `leaveGuard` `autoSave`؛
   وورقة الأسئلة ومعاملة الشبّاك S02) · لا فقد عند التحديث أو التراجع (`preUpdateBackup` `dataVersion` `releaseDb` `restoreSwap` `restoreStuck`).
 - **ما يجب أن يبقى** (مراجعة ٧ ت١): WAL مع `synchronous = FULL` (`durability`، L39) · نسخةٌ قبل الترقية (`preUpdateBackup`) · sandbox وFuses (`harden`) ·
   توقيع Ed25519 للتحديث والترخيص (`update` `license`) · لا كود شبكة، وحزمةٌ بلا مفاتيح خاصّة (لا حارس آليّ لهما — PRODUCT §٣).

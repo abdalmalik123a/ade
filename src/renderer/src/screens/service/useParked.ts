@@ -44,9 +44,17 @@ export function useParked(
   useEffect(() => {
     void window.diwan.service
       .parked()
-      .then((list) => setParkedState(list as Parked[]))
+      .then((list) => {
+        const all = list as (Parked & { autosave?: boolean })[];
+        setParkedState(all.filter((p) => !p.autosave));
+        const draft = all.find((p) => p.autosave);
+        if (draft && !resumeRequest) {
+          void resumeDraft(draft);
+        }
+      })
       .catch(() => undefined);
   }, []);
+
   /** كلّ تغييرٍ يُحفظ في القاعدة — فالمعلّقة لا تضيع بإغلاق البرنامج ولا بانقطاع الكهرباء. */
   const setParked = (update: (list: Parked[]) => Parked[]) =>
     setParkedState((list) => {
@@ -69,17 +77,74 @@ export function useParked(
     genderByHand
   });
 
-  /**
-   * ما يُترك قبل أن يكتمل يصل قيد العمل وحده (ن١٤): برنامجٌ يُغلق ومعاملةٌ في وسطها — نماذجها
-   * مختارة وفي ورقة الإدخال أو المراجعة — تُعلَّق قبل الإغلاق، فتنتظر صاحبها في «قيد العمل».
-   */
+  const autosaveTimer = useRef<number | null>(null);
+
+  const clearAutosave = () => {
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    setParked((list) => list.filter((x: any) => !x.autosave));
+  };
+
+  const prevStep = useRef<Step>(step);
+  useEffect(() => {
+    if (prevStep.current !== 'pick' && step === 'pick') {
+      clearAutosave();
+    }
+    prevStep.current = step;
+  }, [step]);
+
+  // حفظ تلقائي دوري مؤجّل (debounce ~1.8 ث) عند وجود بيانات في fill أو review
+  useEffect(() => {
+    if (loaded.length === 0 || step === 'pick') {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+      return;
+    }
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      const snap = { ...snapshot(), autosave: true };
+      setParked((list) => [...list.filter((x: any) => !x.autosave), snap as Parked]);
+    }, 1800);
+
+    return () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    };
+  }, [step, loaded, values, letterNo, citizenId, merge, names, valuesOnly, genderByHand, citizenName]);
+
   const closeFlush = useRef<() => unknown>(() => undefined);
-  closeFlush.current = () => (loaded.length > 0 && step !== 'pick' ? window.diwan.service.setParked([...parked, snapshot()]) : undefined);
+  closeFlush.current = () => {
+    if (loaded.length > 0 && step !== 'pick') {
+      const snap = { ...snapshot(), autosave: true };
+      const others = parked.filter((x: any) => !x.autosave);
+      return window.diwan.service.setParked([...others, snap]);
+    }
+    return undefined;
+  };
   useEffect(() => onBeforeClose(() => closeFlush.current()), []);
+
+  async function resumeDraft(p: Parked) {
+    const found = (await Promise.all((p.picked ?? []).map((id) => window.diwan.templates.get(id).catch(() => null)))).filter(Boolean).length;
+    if (!found) {
+      clearAutosave();
+      return;
+    }
+    const owner = p.citizenId === null || p.citizenId === undefined ? null : await window.diwan.citizens.get(p.citizenId).catch(() => null);
+    const ownerGone = p.citizenId !== null && p.citizenId !== undefined && !owner;
+    await goFill(p.picked ?? []);
+    setStep(p.step ?? 'fill');
+    setPicked(p.picked ?? []);
+    setValues(p.values ?? {});
+    setLetterNo(p.letterNo ?? '');
+    setCitizenId(ownerGone ? null : (p.citizenId ?? null));
+    setMerge(Boolean(p.merge));
+    setNames(p.names ?? '');
+    setValuesOnly(Boolean(p.valuesOnly));
+    setGenderByHand(Boolean(p.genderByHand));
+    setAt(0);
+  }
 
   /** تُعلَّق المعاملة كما هي، ويُفتح الشبّاك لزبونٍ آخر. */
   function park() {
-    setParked((list) => [...list, snapshot()]);
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    setParked((list) => [...list.filter((x: any) => !x.autosave), snapshot()]);
     reset();
     say('عُلّقت المعاملة — تُستأنف من «معاملات معلّقة» حين يعود صاحبها');
   }
@@ -97,11 +162,9 @@ export function useParked(
       say(`نماذج معاملة ${p.label} حُذفت منذ عُلّقت — لا تُستأنف`, 'warn');
       return;
     }
-    // الزبون الذي عُلّقت له قد يُحذف منذ ذاك (أو يُستبدل السجلّ باسترجاع): لا يُقيَّد كتابٌ بمفتاحٍ لا وجود له
-    // فيفشل القيد بخطأ قاعدةٍ لا يفهمه الموظف.
     const owner = p.citizenId === null ? null : await window.diwan.citizens.get(p.citizenId).catch(() => null);
     const ownerGone = p.citizenId !== null && !owner;
-    setParked((list) => [...list.filter((x) => x.key !== key), ...(current ? [current] : [])]);
+    setParked((list) => [...list.filter((x) => x.key !== key && !(x as any).autosave), ...(current ? [current] : [])]);
     await goFill(p.picked);
     setStep(p.step);
     setPicked(p.picked);
@@ -129,6 +192,7 @@ export function useParked(
    * و«تراجع» يستأنفها بما استأنفت به المعلّقة: ما في الشبّاك الآن إن كان فيه عملٌ يُعلَّق مكانها فلا يضيع.
    */
   function discardTransaction() {
+    clearAutosave();
     const gone = snapshot();
     reset();
     say('أُلغيت المعاملة — لم يُقيَّد شيء', 'ok', {
@@ -161,7 +225,7 @@ export function useParked(
   useEffect(() => {
     if (!resumeRequest) return;
     void window.diwan.service.parked().then((list) => {
-      const fresh = list as Parked[];
+      const fresh = (list as Parked[]).filter((x: any) => !x.autosave);
       setParkedState(fresh);
       void resume(resumeRequest.parkedKey, fresh);
     });
@@ -169,5 +233,5 @@ export function useParked(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeRequest?.key]);
 
-  return { parked, park, resume, discardTransaction, dropParked };
+  return { parked: parked.filter((p: any) => !p.autosave), park, resume, discardTransaction, dropParked };
 }
