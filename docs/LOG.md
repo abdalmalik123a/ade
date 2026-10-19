@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ١٠:٥٥ — مراجعة D108 (ر166 ر167) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (حراسة سباق عمال التعرّف وإغلاق مصادر PDF عند مغادرة الشاشة مطابقة تمامًا؛ والحارس يسقط ويعود).
+- **مُجرَّب ومن الكود:** `typecheck` نظيف · `tests/ocr.test.ts` (٤ ✓) و`tests/pdfEdit.test.ts` (٢٤ ✓) و`tests/nativePsdCompare.test.ts` (٢١ ✓) — ٤٩ ✓ · الحارس: إعادة `ocr.ts` السابق أسقطت `ocr.test.ts` (٤ ✗) واستعادتها أخضرته (٤ ✓) · `docsBudget` و`repoHygiene` ٧ ✓ · `structure.test.ts` و`lint.test.ts` ١١ ✓ بلا خرق · بناء `electron-vite build` (٩٫٩ ث) ثم سيناريو `pdfTools.mjs` (٢٨ ✓ بلا ✗) · الشجرة نظيفة وبلا حذف ملفات.
+- **الكود على نصّ الأمر:** وعود التهيئة في `ocr.ts` تحرس `worker` و`pageWorker` و`mrzWorker` وتنتظر في `shutdownOcr` وتصفّر في `finally` عند الفشل؛ و`PdfScreen.tsx` يستدعي `pdf.close(ids)` عند unmount بحفظ المصادر في مرجع.
+- **الخطوة التالية:** إيداع المراجعة ثم حجز وتنفيذ D109 (⚙️ م: خفض ذروة ذاكرة PDF في الدفعات إلى دون ١٫٥ غيغا — ضمن حدّ ٤ نقاط).
+
 ## ٢٠٢٦-١٠-١٩ ١٠:٤٠ — D108 ✅ — إصلاح سباق عمال التعرّف (E03) وإغلاق مصادر PDF عند المغادرة (E02) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/main/services/ocr.ts`: حراسة تهيئة `worker` و`pageWorker` و`mrzWorker` بوعود مشتركة تمنع سباق إنشاء عمال متعدّدين وتصفّر الوعد عند الفشل للمحاولة اللاحقة (E03) وإتاحة انتظارها في `shutdownOcr` · `src/renderer/src/screens/PdfScreen.tsx`: استدعاء `window.diwan.pdf.close(ids)` عند مغادرة الشاشة (unmount) لإغلاق المصادر المفتوحة في النواة (E02) · `tests/ocr.test.ts`: اختبار وحدة شامل لحراسة السباق وإعادة المحاولة وتفريغ العمال (٤ ✓) · `tests/nativePsdCompare.test.ts`: رفع مهلة فحص ٦٤ قالبًا للمالك إلى ٣٠ ثانية (خ٠) · نقل D108 إلى `done/`.
 - **الفحص:** `typecheck` نظيف · `tests/ocr.test.ts` (٤ ✓) و`tests/pdfEdit.test.ts` (٢٤ ✓) و`tests/nativePsdCompare.test.ts` (٢١ ✓) — ٤٩ ✓ بلا أيّ سقط · `electron-vite build` نظيف (٢٦٫٨ ث) ثم سيناريو `pdfTools.mjs` (٢٨ ✓ بلا ✗) · `docsBudget` و`repoHygiene` ٧ ✓ · `structure.test.ts` و`lint.test.ts` ١١ ✓ بلا أي خرق.
