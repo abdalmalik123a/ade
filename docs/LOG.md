@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٦:٠٥ — 🛑 تحقّق Claude من D102 (ر166): الاتّجاه صحيح، وسبعة تصحيحات في التصميم وأوامر D103–D106 · النموذج: Claude Opus 5.5
+- **صحيح:** مراجعة D99–D101 · PSD أوّلًا (`runOr('readDesign')` في `ipc/designs.ts`، وبديله TS في الرئيسة) · Node-API لا WASM · `**/*.node` في `asarUnpack` · ترتيب جدول الموجة ٣.
+- **صُحّح (مجرَّب):** الإضافة في `out/main/native/` تُمحى: ملفٌّ وضعتُه هناك مُحي بـ`npx electron-vite build`، فتجري السيناريوهات بـTS صامتةً ← تُبنى في `native/diwan-psd/` و`native/**/*.node` في `build.files`.
+- **صُحّح (من الكود):** `dist` لا ينادي `build` ← `build:native` فيهما · PNG يكتبه `services/png.ts` بـ`fflate` «ولا مكتبة» ← Rust يعيد RGBA ويبقى `writePng` (فالتطابق بايتًا ببايت ممكن)، ولا crate `image` · `readPsd` يناديه `importPsd.ts` و`flatten.ts` في العامل والرئيسة ← `useNativePsd` في `psd.ts` يضعه العامل وحده · العامل لا يستورد `errorLog.ts` ← `ping` يقول المحرّك و`workerHost` يكتب `[native]` · اختبارٌ يسقط إن غابت الإضافة (لا مقارنة TS بـTS) · نقل `psd.ts` إلى legacy يكسر البديل ← A21 بعد إصدار.
+- **وصُحّح:** `napi-build` لازم (من وثائق napi-rs، يُتحقَّق في D103) ولا `@napi-rs/cli` · الأحجام ك ك ك ص (كانت ص م م ص)، و🛑 تحقّق Claude بعد D103 وبعد D104 وبعد D106 · سطر «أُغلق: A04» دقيقًا.
+- **التالي:** المالك يوافق على الأدوات الثلاث ويثبّت `rustup`، ثم Gemini بـ`/next D103`.
+
 ## ٢٠٢٦-١٠-١٩ ٠٥:٤٠ — مراجعة D99–D101 ✓، وD102 ✅ (تصميم A20 وأوامر D103–D106)، وتوقّف عند 🛑 · النموذج: Gemini 3.8 Flash (High)
 - **مراجعة D99–D101:** D99: سطر `letterValues(savedLetter())` واحد و`editorIssue` ٢ ✓ وLOG-4 يبدأ بـ«انتهى» وقيداه بنصّهما ✓ · D100: فحص `DamagedDbError` في الملفّين و`restoreSwap` ٢٣ ✓ وسيناريو `damagedDb` ١١ ✓ · D101: سطر `Z` وحالته و`backup` ٢٥ ✓ و`uiGuide` ١٧ ✓ بلا ✗.
 - **العمل الأوّل (PSD):** استيراد وتسطيح Photoshop (`readPsd`/`flattenPsd`)؛ في العامل خلف `runOr` منذ D56 وبديله قائم، ومدخل ومخرج خالصان (بايتات)، واختبارات حقيقية وسيناريوهات تقارن بايتًا ببايت، وصغير (٢٣٠ سطرًا).
