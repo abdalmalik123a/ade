@@ -118,8 +118,12 @@ export function useEditorOutput(
           docType: docType.trim() || null,
           destination: byRole('destination') || null,
           purpose: byRole('purpose') || null,
-          values: letterValues({ ...savedLetter(), values: effective }),
-          required: missingRequired(doc, {}).filter((f) => !isChoiceKey(f.key)).map((f) => f.key),
+          // ما كتبه الموظف لا ما حُسب منه: «كتابة» الرقم الفارغة تُحسب عند كلّ رسم، فتُعاد بعد «كرّره» بالرقم الجديد (D99).
+          values: letterValues(savedLetter()),
+          // والإلزامي يُفحص في الرئيسة على ما كُتب — إلا خانات الاختيار، و«كتابة» يملؤها رقمها فيما طُبع.
+          required: missingRequired(doc, {})
+            .filter((f) => !isChoiceKey(f.key) && !(effective[f.key]?.trim() && !values[f.key]?.trim()))
+            .map((f) => f.key),
           copies: opts.copies,
           copyKind: opts.copyKind,
           gregorianDate: registry.dateGreg || formatGregorian(new Date()),
