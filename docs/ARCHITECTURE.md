@@ -257,6 +257,31 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   D92 `importFolder.ts` ✅ — ٤١٨ ← ٣٤٥: `importApply.ts` ٨١ قاعٌ (`applyImportPlan` وتعليقه) بـ`move.cjs` و`tsconfig.node.json` بلا باب،
   ومستورداه الاثنان (`ipc/templates.ts` و`tests/importFolder.test.ts`) يُحدَّثان، والحرفيّة 0 و0، و«دورات القيم: 0» — وبه اكتملت الستّة عشر كلّها وفرغت `tests/structure.allow.json`.
 
+### أوّل محرّك Rust (A20) — تصميم الطريق كلّه (D102، ١٩ ت١ ٢٠٢٦)
+- **العمل الأوّل (استيراد وتسطيح Photoshop):**
+  المعايير الأربعة وأدلّتها من الكود:
+  1. *في العامل خلف `runOr` والقديم بديلٌ قائم (ر141):* `workerHost().runOr('readDesign', ...)` في `src/main/ipc/designs.ts:124`، و`flattenPsd` في `src/main/worker/index.ts:50`، والقديم يعمل في الرئيسة بعد سقوطين متتاليين.
+  2. *مدخلٌ ومخرجٌ خالصان:* بايتات الملفّ الخام `Uint8Array` ← بنية `PsdImage` وتسطيح PNG في `Uint8Array`، بلا اتصالٍ بقاعدةٍ ولا Electron.
+  3. *اختباراتٌ تقارن القديم بالجديد بايتًا ببايت:* `tests/workerJobs.test.ts` (يقارن ناتج العامل بالنداء المباشر)، و`tests/realPsd.test.ts` (على قوالب حقيقية ورأس PSD)، وسيناريوها `tools/scenarios/designPsd.mjs` و`designPsdStyles.mjs`.
+  4. *حجمٌ صغير ومحصور:* فكّ PackBits RLE وقراءة المورد 1005 وقنوات RGBA/CMYK واستخراج الصورة المسطحة (نحو ٢٣٠ سطرًا: `psd.ts` و`flatten.ts`).
+- **الربط (Node-API بـnapi-rs لا WebAssembly):**
+  مقارنةٌ بلا تثبيت: Node-API أسرع في معالجة مصفوفات البكسل الضخمة وتسطيح الصور الكبيرة بلا كلفة نسخ ذاكرة ولا سقف 4GB؛ و`package.json` يفكّ `**/*.node` تلقائيًّا خارج asar (`asarUnpack` القائم) كحال `better-sqlite3` و`onnxruntime-node`؛ وأدوات MSVC 2022 متوفّرةٌ على الجهاز. بينما WASM أبطأ في البكسلات الكبيرة ويحتاج نسخ الذاكرة.
+  **التوصية:** Node-API عبر `napi-rs`. وإن تعذّر تحميل الملفّ الثنائي (`try/catch`) يلتقط العامل الخطأ ويقيّده في سجلّ الأخطاء (`logError`) ويرجع إلى TypeScript القديم تلقائيًّا.
+- **الطريق كلّه من المصدر حتى الحزمة:**
+  - *المصدر:* مجلّدٌ مستقلّ `native/diwan-psd/` يحوي `Cargo.toml` و`src/lib.rs`.
+  - *البناء:* أمر `build:native` يُضمّن في `npm run build`، ويبني الإضافة بـ`cargo build --release` (أو `napi build --platform --release`) ويضع الناتج في `out/main/native/diwan_psd.node`.
+  - *الحراسة:* قاعدةٌ في `tests/structure.test.ts` تضمن تحميل الإضافة الأصلية من ملفٍّ معروفٍ واحد في العامل (`src/main/worker/nativePsd.ts`)، ولا تستوردها الواجهة ولا الخدمات المباشرة.
+  - *الحزمة:* يُتحقَّق منها بـ`npm run pack` (`electron-builder --dir`) والتأكّد من وجود `.node` في `app.asar.unpacked`. وبوّابة `tools/release.mjs` تفحص خلوّ الحزمة من أبواب الاختبار.
+  - *ما يُودَع وما لا يُودَع:* يُودَع كود Rust المصدري و`Cargo.toml` و`Cargo.lock`؛ ولا يُودَع مجلّد `target/` ولا ملفّات `.node` الثنائية (تُستثنى في `.gitignore`).
+- **جدول الأدوات والتراخيص (تنتظر موافقة المالك):**
+  | الأداة / الحزمة / Crate | النوع | الترخيص | الغرض والسبب | الحالة |
+  |---|---|---|---|---|
+  | `rustup` و`rustc` و`cargo` (سلسلة `msvc`) | أداة نظام | MIT / Apache-2.0 | مترجم لغة Rust وأداة إدارة حزمها وبنائها تعتمد على MSVC المثبت | بانتظار موافقة المالك وتثبيته |
+  | `napi` | Rust Crate | MIT | ربط Rust مع Node-API بأمان وكفاءة عالية | بانتظار موافقة المالك |
+  | `napi-derive` | Rust Crate | MIT | توليد واجهات الربط لـNode-API تلقائيًّا | بانتظار موافقة المالك |
+  | `@napi-rs/cli` | npm devDependency | MIT | أداة سطر الأوامر لبناء حزم napi-rs | بانتظار موافقة المالك |
+  | `image` (أو فكّ/تركيب PNG ذاتي) | Rust Crate | MIT / Apache-2.0 | معالجة وضغط صورة PNG المسطحة | بانتظار موافقة المالك |
+
 ### اللغات لكلّ قسم
 | القسم | الواجهة | المحرّك | المكتبات (ترخيصها) |
 |---|---|---|---|
