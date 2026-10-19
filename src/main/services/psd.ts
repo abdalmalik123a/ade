@@ -54,11 +54,11 @@ export function unpackBits(src: Buffer, at: number, length: number, out: Uint8Ar
 }
 
 /**
- * يقرأ ملف PSD: مقاسَه ودقّتَه وصورتَه المسطَّحة.
+ * يقرأ ملف PSD: مقاسَه ودقّتَه وصورتَه المسطَّحة بـ TypeScript مباشرةً (المرجع والبديل).
  *
  * وما تعذّر منها لا يُخمَّن: تُرجَع `rgba: null` مع سببٍ، ويُمضى بالمقاس وحده.
  */
-export function readPsd(bytes: Uint8Array): PsdImage | null {
+export function readPsdScript(bytes: Uint8Array): PsdImage | null {
   const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
   if (buf.length < 26 || buf.toString('ascii', 0, 4) !== '8BPS') return null;
 
@@ -198,6 +198,31 @@ export function readPsd(bytes: Uint8Array): PsdImage | null {
 
   const colors = colorMode === 4 ? 4 : colorMode === 1 ? 1 : 3;
   return { width, height, dpi, rgba, planes: channelPlanes.slice(0, colors), warnings };
+}
+
+let nativeReader: ((bytes: Uint8Array) => PsdImage | null) | null = null;
+
+/**
+ * يضع قارئًا أصليًّا (A20، D104) — يضعه العامل وحده عند إقلاعه من nativePsd.ts.
+ */
+export function useNativePsd(fn: ((bytes: Uint8Array) => PsdImage | null) | null): void {
+  nativeReader = fn;
+}
+
+/**
+ * يقرأ ملف PSD: مقاسَه ودقّتَه وصورتَه المسطَّحة.
+ *
+ * ينادي القارئ الأصليّ إن وُضع (في العامل)، ويرجع إلى `readPsdScript` إن رمى.
+ */
+export function readPsd(bytes: Uint8Array): PsdImage | null {
+  if (nativeReader) {
+    try {
+      return nativeReader(bytes);
+    } catch {
+      return readPsdScript(bytes);
+    }
+  }
+  return readPsdScript(bytes);
 }
 
 /** المقاس والدقّة وحدهما — بلا فكّ الصورة. */

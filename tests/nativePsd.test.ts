@@ -33,4 +33,10 @@ describe('محرّك Rust الأصلي (diwan-psd)', () => {
     expect(res.psd).toBe(expectedVersion);
     expect(res.psdError).toBeNull();
   });
+
+  it('دالّة readPsd متاحة في الإضافة', () => {
+    const { addon } = loadNativePsd();
+    expect(typeof addon?.readPsd).toBe('function');
+  });
 });
+

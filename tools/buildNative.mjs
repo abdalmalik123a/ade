@@ -4,7 +4,7 @@
  * يُنادى في `build` و`dist` كليهما، ويجد cargo في PATH أو في `%USERPROFILE%\.cargo\bin\cargo.exe`.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,5 +47,27 @@ if (!existsSync(dll)) {
   process.exit(1);
 }
 
-copyFileSync(dll, nodeOut);
-console.log('✓ بُني محرّك Rust ونُسخ إلى native/diwan-psd/diwan_psd.node');
+const dllBuf = readFileSync(dll);
+if (existsSync(nodeOut)) {
+  try {
+    const existing = readFileSync(nodeOut);
+    if (existing.equals(dllBuf)) {
+      console.log('✓ محرّك Rust مطابقٌ لـ native/diwan-psd/diwan_psd.node (لم يتغيّر شيء)');
+      process.exit(0);
+    }
+  } catch {
+    // إن تعذّرت القراءة نمضي إلى محاولة النسخ
+  }
+}
+
+try {
+  copyFileSync(dll, nodeOut);
+  console.log('✓ بُني محرّك Rust ونُسخ إلى native/diwan-psd/diwan_psd.node');
+} catch (e) {
+  if (e && (e.code === 'EBUSY' || e.code === 'EPERM')) {
+    console.error('✗ إضافة Rust مفتوحةٌ في برنامجٍ يعمل — أغلق ديوان والاختبارات ثم أعد البناء');
+    process.exit(1);
+  }
+  throw e;
+}
+
