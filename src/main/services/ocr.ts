@@ -13,6 +13,7 @@ import type { LinesOcr, OcrLine } from './mrzRead';
  */
 
 let worker: Worker | null = null;
+let workerInitPromise: Promise<Worker> | null = null;
 
 function tessdataDir(): string {
   const candidates = [
@@ -27,14 +28,22 @@ export function ocrAvailable(): boolean {
   return existsSync(join(tessdataDir(), 'ara.traineddata.gz'));
 }
 
-async function getWorker(): Promise<Worker> {
+export async function getWorker(): Promise<Worker> {
   if (worker) return worker;
-  worker = await createWorker(['ara', 'eng'], 1, {
-    langPath: tessdataDir(),
-    gzip: true,
-    cacheMethod: 'none'
-  });
-  return worker;
+  if (workerInitPromise) return workerInitPromise;
+  workerInitPromise = (async () => {
+    try {
+      worker = await createWorker(['ara', 'eng'], 1, {
+        langPath: tessdataDir(),
+        gzip: true,
+        cacheMethod: 'none'
+      });
+      return worker;
+    } finally {
+      workerInitPromise = null;
+    }
+  })();
+  return workerInitPromise;
 }
 
 export type OcrResult = { text: string; confidence: number };
@@ -62,15 +71,24 @@ export async function recognize(imagePath: string): Promise<OcrResult> {
  * مستمسكٍ في أثناء قراءة ورقةٍ لا تنتظر دورها خلفها.
  */
 let pageWorker: Worker | null = null;
+let pageWorkerInitPromise: Promise<Worker> | null = null;
 
-async function getPageWorker(): Promise<Worker> {
+export async function getPageWorker(): Promise<Worker> {
   if (pageWorker) return pageWorker;
-  pageWorker = await createWorker(['ara', 'eng'], 1, {
-    langPath: tessdataDir(),
-    gzip: true,
-    cacheMethod: 'none'
-  });
-  return pageWorker;
+  if (pageWorkerInitPromise) return pageWorkerInitPromise;
+  pageWorkerInitPromise = (async () => {
+    try {
+      pageWorker = await createWorker(['ara', 'eng'], 1, {
+        langPath: tessdataDir(),
+        gzip: true,
+        cacheMethod: 'none'
+      });
+      return pageWorker;
+    } finally {
+      pageWorkerInitPromise = null;
+    }
+  })();
+  return pageWorkerInitPromise;
 }
 
 /**
@@ -104,11 +122,20 @@ export async function recognizeLayout(png: Uint8Array, dpi: number | null): Prom
 
 // ── ظهر البطاقة (تعميق الموجود ٨): الإنكليزيّ وحده، أسطرًا برموزها ومواضعها ─────
 let mrzWorker: Worker | null = null;
+let mrzWorkerInitPromise: Promise<Worker> | null = null;
 
 async function getMrzWorker(): Promise<Worker> {
   if (mrzWorker) return mrzWorker;
-  mrzWorker = await createWorker(['eng'], 1, { langPath: tessdataDir(), gzip: true, cacheMethod: 'none' });
-  return mrzWorker;
+  if (mrzWorkerInitPromise) return mrzWorkerInitPromise;
+  mrzWorkerInitPromise = (async () => {
+    try {
+      mrzWorker = await createWorker(['eng'], 1, { langPath: tessdataDir(), gzip: true, cacheMethod: 'none' });
+      return mrzWorker;
+    } finally {
+      mrzWorkerInitPromise = null;
+    }
+  })();
+  return mrzWorkerInitPromise;
 }
 
 /** أسطر صورةٍ برموزها — للقارئ الخاصّ (`mrzRead.ts`). */
@@ -137,6 +164,15 @@ export const recognizeLines: LinesOcr = async (png, opts) => {
 };
 
 export async function shutdownOcr(): Promise<void> {
+  if (workerInitPromise) {
+    try { await workerInitPromise; } catch { /* ignore */ }
+  }
+  if (pageWorkerInitPromise) {
+    try { await pageWorkerInitPromise; } catch { /* ignore */ }
+  }
+  if (mrzWorkerInitPromise) {
+    try { await mrzWorkerInitPromise; } catch { /* ignore */ }
+  }
   if (mrzWorker) {
     await mrzWorker.terminate();
     mrzWorker = null;

@@ -61,6 +61,16 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   const toastTimer = useRef<number | undefined>(undefined);
   const drag = useRef<Drag | null>(null);
   const stage = useRef<HTMLDivElement | null>(null);
+  const sourcesRef = useRef(sources);
+  sourcesRef.current = sources;
+
+  // إغلاق مصادر PDF في النواة عند مغادرة الشاشة (E02)
+  useEffect(() => {
+    return () => {
+      const ids = Object.keys(sourcesRef.current);
+      if (ids.length) void window.diwan.pdf.close(ids);
+    };
+  }, []);
 
   const say = useCallback((text: string, tone: 'ok' | 'warn' = 'ok') => {
     window.clearTimeout(toastTimer.current);

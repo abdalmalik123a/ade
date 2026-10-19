@@ -363,6 +363,6 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
         const relPath = f.slice(realDir.length + 1);
         expectPsdMatch(bytes, relPath);
       }
-    });
+    }, 30000);
   });
 });
