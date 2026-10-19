@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-١٩ ٠٦:٤٠ — D103 ✅ — محرّك Rust فارغ يمرّ في الطريق كلّه (A20) والتوقّف عند 🛑 تحقّق Claude · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر (`e88dcdb`):** حزمة `native/diwan-psd` (`Cargo.toml` `build.rs` `lib.rs` بدالّة `psd_engine_version` و`Cargo.lock`) و`.gitignore` لمخرجاتها · `tools/buildNative.mjs` بـcargo من PATH أو `.cargo\bin` وينسخ `.node` · `build:native` في `build` و`dist` و`native/**/*.node` في `build.files` · `src/main/worker/nativePsd.ts` بمرشّحي المسار بلا رمي · `ping` بالعامل يعيد `psd` وإصداره (`@shared/worker` و`worker/index.ts`) و`workerHost.ts` يسجّل `[native]` إن غاب · قاعدة `diwan_psd.node` في `structure.test.ts` واختبار `tests/nativePsd.test.ts` يسقط إن غابت · فحص إصدار المحرّك في سيناريو `workerPath.mjs` وتوثيق Rust في `QUALITY.md` §١٣ ونقل الأمر إلى `done/`.
+- **الفحص:** `typecheck` نظيف · خمسة ملفّات اختبار ٣٣ ✓ (`nativePsd` ٣ ✓ `structure` ١٠ ✓ `workerJobs` ١٣ ✓ `docsBudget` ٣ ✓ `repoHygiene` ٤ ✓) و`workerHost` ١٥ ✓ · `npm run build` والإضافة باقية في `native/diwan-psd/` وسيناريو `workerPath.mjs` أخضر (١٠ ✓) · `npm run pack` والإضافة المفكوكة في `app.asar.unpacked/native/diwan-psd/diwan_psd.node` موجودة وسيناريو `workerPath` بـ`DIWAN_EXE` على المحزوم أخضر (١٠ ✓) · `git status` نظيف.
+- **التوقّف:** التوقّف التامّ عند سطر 🛑 «تحقّق Claude من D103» في PLAN كما أمر المالك وعدم بدء D104.
+- **التالي:** 🛑 تحقّق Claude من D103 (ر166).
+
 ## ٢٠٢٦-١٠-١٩ ٠٦:٣٠ — تحقّق Claude من توقّف Gemini عند D103، وتقوية الأمر · النموذج: Claude Opus 5.5
 - **التوقّف صحيح:** إيداعه `e4a8b2e` الدفتر وحده، و`%USERPROFILE%\.cargo\bin` فيه `cargo 1.99.1` و`rustc 1.99.1` يعملان بمسارهما (شُغّلا) — فالتثبيت تمّ، والعلّة PATH جلسةٍ فُتحت قبله.
 - **D103:** شرطه يقبل الأداتين بمسارهما الكامل، و`tools/buildNative.mjs` يجد `cargo` في PATH وإلا في `%USERPROFILE%\.cargo\bin` — فلا يتعثّر البناء ثانيةً في برنامجٍ لم يُعَد فتحه.
