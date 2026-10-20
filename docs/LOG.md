@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٦:٥٥ — مراجعة D121 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (الدمج في الشبّاك من Excel أو CSV مباشرةً مطابق للكود والقواعد والقالب).
+- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/ui/counterMergeSheet.test.tsx` (٨ ✓) · الحارس: تعطيل `extractNamesFromSheetText` أسقط ٦ اختبارات فورًا واستعادتها أخضرته · بناء `electron-vite build` نظيف وسيناريو `counterMerge.mjs` (٥ ✓) وسيناريو `service.mjs` (٦٣ ✓) بلا ✗ وتفريغ الأسماء يعطّل الدمج · `CounterFill.tsx` ٣٩١ سطرًا (< ٤٠٠).
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٤٧ ✓ و٤ متخطّاة (١٩٥ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D122 (⚙️ م: تسريع استجابة كتابة الحرف في الوثائق الطويلة S43).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٦:١٥ — D121 ✅ — الدمج في الشبّاك من ملفّ Excel أو CSV مباشرةً (S36 · SV-5) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/renderer/src/screens/service/CounterFill.tsx`: إضافة دالّة `extractNamesFromSheetText` لاستخلاص الأسماء من نص الجداول (العمود المعنون «الاسم» أو العمود الأول متساهلة مع الترويسات والصيغ) وإضافة زر «من ملف Excel أو CSV» (`data-act="merge-sheet"`) برمز `table_view` بجانب زر الإضافة من الزبائن يقرأ الملف بـ `files:readSheet()` ويلحق الأسماء بـ `names` مباشرة · إنشاء اختبار واجهة `tests/ui/counterMergeSheet.test.tsx` (٨ ✓) وإنشاء سيناريو `tools/scenarios/counterMerge.mjs` (٥ ✓) وتحديث `docs/QUALITY.md` ونقل D121 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/ui/counterMergeSheet.test.tsx` (٨ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) · بناء `electron-vite build` نظيف (٧٫٤ ث) وسيناريو `counterMerge.mjs` (٥ ✓) وسيناريو `service.mjs` (٦٣ ✓) بلا ✗.
