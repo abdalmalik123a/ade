@@ -335,6 +335,7 @@ export default function CounterPick({
       {shown.length === 0 ? (
         <CounterEmpty
           empty={items.length === 0}
+          // «اكتبه على ورقة فارغة» يفتح المحرّر بورقة بيضاء نظيفة دون تمرير استعلام البحث نوعًا للكتاب (S16)
           onBlank={() => onOpenTool?.({ route: 'editor' }, citizenId)}
           onImport={() => onOpenTool?.({ route: 'templates' }, null)}
         />
