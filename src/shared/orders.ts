@@ -126,3 +126,42 @@ export function dueLabel(due: string | null, today: string): { text: string; ton
   return { text: `بعد ${d} أيام`, tone: 'later' };
 }
 
+/**
+ * هل الطلب متأخّر؟ (S05)
+ * يشترط أن يكون الطلب مفتوحًا وغير جاهز للتسليم (`status !== 'ready'`) وتاريخ استحقاقه سابقًا لليوم.
+ */
+export function isOrderOverdue(
+  order: { status: OrderStatus; dueDate: string | null },
+  today: string
+): boolean {
+  if (order.status === 'ready' || order.status === 'delivered' || order.status === 'cancelled') {
+    return false;
+  }
+  return Boolean(order.dueDate && order.dueDate < today);
+}
+
+/**
+ * هل ساعة الجهاز شاذة أو غير مضبوطة عند الإصدار؟ (S06)
+ * تكون شاذة إذا كانت سنة تاريخ الإصدار < 2026 أو تتجاوز أسبوعًا في المستقبل مقارنة بنهاية سنة السجل / التاريخ المرجعي.
+ */
+export function isClockAnomalous(
+  date: Date = new Date(),
+  options?: { serialYear?: number; referenceDate?: Date }
+): boolean {
+  if (Number.isNaN(date.getTime())) return true;
+  const y = date.getFullYear();
+  if (y < 2026) return true;
+  if (options?.referenceDate) {
+    const diff = (date.getTime() - options.referenceDate.getTime()) / 86_400_000;
+    if (diff > 7) return true;
+  }
+  const yearLimit = options?.serialYear ?? 2026;
+  if (y > yearLimit) {
+    const endOfLimit = new Date(yearLimit, 11, 31, 23, 59, 59, 999);
+    const diff = (date.getTime() - endOfLimit.getTime()) / 86_400_000;
+    if (diff > 7) return true;
+  }
+  return false;
+}
+
+

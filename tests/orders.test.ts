@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { deleteClient, getClient, listClients, prepareClients, saveClient, setClientLogo } from '../src/main/services/clients';
 import { deleteOrder, listOrders, orderCounts, saveOrder, setOrderStatus } from '../src/main/services/orders';
-import { dueLabel, statusOf } from '../src/shared/orders';
+import { dueLabel, isClockAnomalous, isOrderOverdue, statusOf } from '../src/shared/orders';
 import { localToday } from '../src/shared/dates';
 import { deleteCitizen, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
 import type { CitizenInput } from '../src/shared/api';
@@ -112,6 +112,37 @@ describe('الطلبات — بلا مبالغ', () => {
     saveOrder(db, { id: null, clientId: null, customer: 'x', title: '2', dueDate: '2026-09-25' });
     saveOrder(db, { id: null, clientId: null, customer: 'x', title: '3', dueDate: '2026-09-30' });
     expect(orderCounts(db, '2026-09-25')).toEqual({ open: 3, dueToday: 1, overdue: 1 });
+  });
+
+  it('توحيد تعريف «الطلب المتأخّر» واستثناء الجاهز للتسليم (S05)', () => {
+    const today = '2026-10-20';
+    expect(isOrderOverdue({ status: 'new', dueDate: '2026-10-18' }, today)).toBe(true);
+    expect(isOrderOverdue({ status: 'working', dueDate: '2026-10-19' }, today)).toBe(true);
+    expect(isOrderOverdue({ status: 'ready', dueDate: '2026-10-18' }, today)).toBe(false);
+    expect(isOrderOverdue({ status: 'delivered', dueDate: '2026-10-18' }, today)).toBe(false);
+    expect(isOrderOverdue({ status: 'cancelled', dueDate: '2026-10-18' }, today)).toBe(false);
+    expect(isOrderOverdue({ status: 'working', dueDate: '2026-10-20' }, today)).toBe(false);
+    expect(isOrderOverdue({ status: 'working', dueDate: '2026-10-25' }, today)).toBe(false);
+    expect(isOrderOverdue({ status: 'working', dueDate: null }, today)).toBe(false);
+  });
+
+  it('العدّادات: الجاهز للتسليم بموعدٍ ماضٍ لا يُحسب متأخّرًا (S05)', () => {
+    const db = freshDb();
+    const o1 = saveOrder(db, { id: null, clientId: null, customer: 'سالم', title: '1', dueDate: '2026-09-20' });
+    saveOrder(db, { id: null, clientId: null, customer: 'زينب', title: '2', dueDate: '2026-09-25' });
+    expect(orderCounts(db, '2026-09-25')).toEqual({ open: 2, dueToday: 1, overdue: 1 });
+    setOrderStatus(db, o1.id, 'ready');
+    expect(orderCounts(db, '2026-09-25')).toEqual({ open: 2, dueToday: 1, overdue: 0 });
+  });
+
+  it('فحص شذوذ ساعة الجهاز عند الإصدار (S06)', () => {
+    expect(isClockAnomalous(new Date('2024-05-10'))).toBe(true);
+    expect(isClockAnomalous(new Date('2025-12-31T23:59:59'))).toBe(true);
+    expect(isClockAnomalous(new Date('2026-10-20'))).toBe(false);
+    const ref = new Date('2026-10-20');
+    expect(isClockAnomalous(new Date('2026-10-25'), { referenceDate: ref })).toBe(false);
+    expect(isClockAnomalous(new Date('2026-11-05'), { referenceDate: ref })).toBe(true);
+    expect(isClockAnomalous(new Date('2030-01-01'), { serialYear: 2026 })).toBe(true);
   });
 
   it('وما تركه الزبون عندنا يُحفظ لوصله — وحفظٌ لا يرسله (والوصل مطفأ) لا يمحوه', () => {

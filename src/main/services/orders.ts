@@ -181,13 +181,13 @@ export function deleteOrder(db: Database, id: number): void {
   db.prepare('DELETE FROM orders WHERE id = ?').run(id);
 }
 
-/** ما يُعرض على الشريط: المفتوح، وما موعده اليوم، والمتأخّر. */
+/** ما يُعرض على الشريط: المفتوح، وما موعده اليوم، والمتأخّر (S05: يستثني جاهز للتسليم). */
 export function orderCounts(db: Database, today = localToday()): OrderCounts {
   const r = db
     .prepare(
       `SELECT COUNT(*) AS open,
          SUM(CASE WHEN due_date = ? THEN 1 ELSE 0 END) AS dueToday,
-         SUM(CASE WHEN due_date < ? THEN 1 ELSE 0 END) AS overdue
+         SUM(CASE WHEN status != 'ready' AND due_date < ? THEN 1 ELSE 0 END) AS overdue
        FROM orders WHERE status IN ('new','waiting','working','ready')`
     )
     .get(today, today) as { open: number; dueToday: number | null; overdue: number | null };

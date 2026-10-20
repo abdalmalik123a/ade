@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٣:٥٨ — D118 ✅ — توحيد تعريف «الطلب المتأخّر» (S05) وتنبيه الساعة الخاطئة عند الإصدار (S06) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/shared/orders.ts`: تعريف `isOrderOverdue` (الطلب مفتوح وغير جاهز وتاريخه مضى S05) ودالّة `isClockAnomalous` لكشف شذوذ سنة النظام أو تجاوزه المستقبل بأسبوع (S06) · `src/main/services/orders.ts`: استثناء الطلبات الجاهزة للتسليم (`ready`) من حساب `overdue` في `orderCounts` · `src/main/services/today.ts`: استخدام `isOrderOverdue` في تصفية `todayAgenda` · `src/renderer/src/screens/service/useIssue.ts`: إضافة فحص تنبيهي وقائي لساعة الجهاز عند الإصدار والدمج (`say(..., 'warn')`) دون منع قسري · `src/main/services/issue.ts`: تسجيل قيد تحذيري في `audit_log` عند شذوذ الساعة · إضافة اختبارات في `tests/orders.test.ts` (٢٣ ✓) وإنشاء سيناريو `tools/scenarios/orderLateClock.mjs` (٤ ✓) وتحديث `docs/QUALITY.md` ونقل D118 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/orders.test.ts` (٢٣ ✓) · `tests/today.test.ts` (٧ ✓) · فحص النظافة والهيكل (١٨ ✓) · بناء `electron-vite build` نظيف (٩٫٩ ث) وسيناريوهات `orderLateClock.mjs` (٤ ✓) و`orders.mjs` (٢٧ ✓) و`service.mjs` (٥٨ ✓) بلا ✗.
+- **التالي:** D119 (⚙️ ص: التحقّق من المبلغ الغامض مثل «٢٥.٠٠٠» وتنبيهه في الشبّاك S07) ضمن حدّ ٤ نقاط للجلسة أو في جلسة جديدة.
+
 ## ٢٠٢٦-١٠-٢٠ ٠٣:٣٥ — مراجعة D117 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (اختصارات التنقل Tab وEnter في الشبّاك وحصر Tab داخل الورقة مطابق للكود والقواعد).
 - **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/ui/counterKeys.test.tsx` (٤ ✓) · الحارس: تعطيل معالج Enter في `CitizenPicker` أسقط الاختبار فورًا (١ ✗ و٣ ✓) واستعادته أخضرته (٤ ✓) · بناء `electron-vite build` نظيف (١٠٫٠ ث) وسيناريو `counterNav.mjs` (٤ ✓) وسيناريو `service.mjs` (٥٨ ✓) بلا ✗ وبقاء التركيز محصورًا داخل ورقة الإدخال · `CounterPick.tsx` (٣٨٦ سطرًا) و`CounterFill.tsx` (٣٣٢ سطرًا) و`ServicePickers.tsx` (١٤٣ سطرًا) دون سقف ٤٠٠ سطر.

@@ -7,7 +7,7 @@
  */
 import type { Database } from 'better-sqlite3';
 import type { TodayAgenda, WeekSummary, WorkCounts } from '@shared/api';
-import type { Order } from '@shared/orders';
+import { isOrderOverdue, type Order } from '@shared/orders';
 import { normalizeFold } from '@shared/arabic';
 import { BACKUP_REMIND_DAYS, daysSince, isoDate, weekStart, localToday } from '@shared/dates';
 import { listOrders } from './orders';
@@ -89,7 +89,7 @@ export function todayAgenda(
   const today = localToday(now);
   const open = listOrders(db, { status: 'open' });
   const byDue = (a: Order, b: Order) => (a.dueDate ?? '').localeCompare(b.dueDate ?? '');
-  const overdue = open.filter((o) => o.status !== 'ready' && o.dueDate && o.dueDate < today).sort(byDue);
+  const overdue = open.filter((o) => isOrderOverdue(o, today)).sort(byDue);
   const dueToday = open.filter((o) => o.status !== 'ready' && o.dueDate === today);
   const ready = open.filter((o) => o.status === 'ready');
 

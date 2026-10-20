@@ -15,6 +15,7 @@ import { GENDER_KEY, guessGender, isChoiceKey, unsureNames, type Gender } from '
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { choosePrinter } from '../../lib/printChoice';
+import { isClockAnomalous } from '@shared/orders';
 import type { useToast } from '../../kit/useToast';
 import type { AfterIssue, Loaded, NewCitizen, RepeatOf } from './types';
 
@@ -114,6 +115,10 @@ export function useIssue(
       say('اكتب اسم صاحب العلاقة أولًا', 'warn');
       return;
     }
+    const issueDate = new Date();
+    if (isClockAnomalous(issueDate, { serialYear: settings?.serialYear })) {
+      say('تنبيه: ساعة الجهاز غير مضبوطة — تأكّد من ضبط التاريخ والوقت في ويندوز', 'warn');
+    }
     // الطابعة قبل الإصدار: تُقيَّد مع الكتاب، وإلغاء السؤال لا يُصدر شيئًا.
     const pick = print ? await choosePrinter('documents') : null;
     if (print && !pick) return;
@@ -182,6 +187,10 @@ export function useIssue(
     if (rows.length === 0) {
       say('اكتب أسماء القائمة أولًا — سطرٌ لكل اسم', 'warn');
       return;
+    }
+    const issueDate = new Date();
+    if (isClockAnomalous(issueDate, { serialYear: settings?.serialYear })) {
+      say('تنبيه: ساعة الجهاز غير مضبوطة — تأكّد من ضبط التاريخ والوقت في ويندوز', 'warn');
     }
     const unsure = needsGender ? unsureNames(rows, learned, decided) : [];
     if (unsure.length > 0) {

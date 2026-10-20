@@ -9,6 +9,7 @@ import { touchLetterhead } from './letterheads';
 import { indexRow } from './searchIndex';
 import { canonicalNationalId } from '@shared/idChecks';
 import { reserveSerial, fingerprint, htmlToText, CHAIN_GENESIS, chainLink, prepareDocuments } from './documents';
+import { isClockAnomalous } from '@shared/orders';
 
 /** الصورة المطبَّعة التي يجري عليها البحث — تُخزَّن مع السجل لا وقت الاستعلام. */
 function searchFold(parts: (string | null | undefined)[]): string {
@@ -117,6 +118,13 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
        VALUES ('document', ?, 'issue', ?, ?)`
     ).run(id, `${serial} — ${name}`, input.operator);
 
+    if (isClockAnomalous(new Date(), { serialYear: input.serialYear })) {
+      db.prepare(
+        `INSERT INTO audit_log (entity, entity_id, action, detail, operator)
+         VALUES ('system', ?, 'clock-warning', 'ساعة الجهاز غير مضبوطة عند الإصدار', ?)`
+      ).run(id, input.operator);
+    }
+
     indexRow(db, 'documents', id);
 
     return { id, serial, sha256, sheetHtml };
@@ -204,6 +212,13 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
       `INSERT INTO audit_log (entity, entity_id, action, detail, operator)
        VALUES ('transaction', ?, 'issue', ?, ?)`
     ).run(transactionId, `${input.sheets.length} ورقة — ${name}`, input.operator);
+
+    if (isClockAnomalous(new Date(), { serialYear: input.serialYear })) {
+      db.prepare(
+        `INSERT INTO audit_log (entity, entity_id, action, detail, operator)
+         VALUES ('system', ?, 'clock-warning', 'ساعة الجهاز غير مضبوطة عند الإصدار', ?)`
+      ).run(transactionId, input.operator);
+    }
 
     return { transactionId, citizenId, documents };
   })();
