@@ -11,9 +11,27 @@ type Props = {
   setVersions: Dispatch<SetStateAction<boolean>>;
   setShowB: Dispatch<SetStateAction<boolean>>;
   showB: boolean;
+  duplex?: boolean;
+  setDuplex?: Dispatch<SetStateAction<boolean>>;
+  isDuplex?: boolean;
+  pageView?: '1' | '2' | 'all';
+  setPageView?: Dispatch<SetStateAction<'1' | '2' | 'all'>>;
 };
 
-export default function PreviewBar({ total, answers, setAnswers, versions, setVersions, setShowB, showB }: Props) {
+export default function PreviewBar({
+  total,
+  answers,
+  setAnswers,
+  versions,
+  setVersions,
+  setShowB,
+  showB,
+  duplex = false,
+  setDuplex,
+  isDuplex = false,
+  pageView = 'all',
+  setPageView
+}: Props) {
   return (
     <div className="min-h-14 px-space-lg py-space-xs flex flex-wrap items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest">
       <span
@@ -72,6 +90,52 @@ export default function PreviewBar({ total, answers, setAnswers, versions, setVe
           </div>
         )}
 
+        <label
+          className="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"
+          title="طباعة الأسئلة على وجهي الورقة (أمام وخلف)"
+        >
+          <input
+            checked={Boolean(duplex)}
+            data-act="duplex"
+            type="checkbox"
+            onChange={(e) => setDuplex?.(e.target.checked)}
+          />
+          طباعة بوجهين
+        </label>
+        {isDuplex && (
+          <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-pages-view="">
+            <button
+              className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
+                pageView === '1' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+              }`}
+              data-page-view="1"
+              type="button"
+              onClick={() => setPageView?.('1')}
+            >
+              الوجه الأول
+            </button>
+            <button
+              className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
+                pageView === '2' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+              }`}
+              data-page-view="2"
+              type="button"
+              onClick={() => setPageView?.('2')}
+            >
+              الوجه الثاني
+            </button>
+            <button
+              className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
+                pageView === 'all' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+              }`}
+              data-page-view="all"
+              type="button"
+              onClick={() => setPageView?.('all')}
+            >
+              الصفحات المتتابعة
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

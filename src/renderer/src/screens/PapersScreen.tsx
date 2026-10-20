@@ -35,6 +35,8 @@ import {
   newQuestion,
   paperTitle,
   questionsOf,
+  splitExamItems,
+  splitExamPagesHtml,
   VERSION_KEY,
   versionItems
 } from '@shared/examPaper';
@@ -84,6 +86,8 @@ function PapersScreenInner(
   /** نموذجان «أ» و«ب»: الفروع بترتيبين، والنسخ تتناوب — فلا ينقل الطالب عن جاره. */
   const [versions, setVersions] = useState(false);
   const [showB, setShowB] = useState(false);
+  const [duplex, setDuplex] = useState(false);
+  const [pageView, setPageView] = useState<'1' | '2' | 'all'>('all');
   const [paperId, setPaperId] = useState<number | null>(null);
   const [omr, setOmr] = useState<OmrSpec>(newOmr);
   const [omrOpen, setOmrOpen] = useState(false);
@@ -141,6 +145,12 @@ function PapersScreenInner(
     [head, pick, dir, numerals]
   );
   const doc = useMemo(() => build(items), [build, items]);
+  const margins = doc.pageSetup.margins;
+
+  const { page1, page2, isDuplex } = useMemo(
+    () => splitExamItems(items, { duplex, answers }),
+    [items, duplex, answers]
+  );
 
   /** الورقة بنموذجها: «أ» الأسئلة كما كُتبت، و«ب» بفروعٍ مخلوطة. */
   const renderVersion = useCallback(
@@ -158,36 +168,15 @@ function PapersScreenInner(
     [build, items, doc, head, answers, numerals]
   );
 
-  const html = useMemo(
+  const fullHtml = useMemo(
     () => renderVersion(versions ? (showB ? 'ب' : 'أ') : null),
     [renderVersion, versions, showB]
   );
 
-  /** ورقةٌ بنموذجها — نسخةٌ من ورقة المعاينة، ومتنها النموذج المطلوب. */
-  const versionPage = useCallback(
-    (node: HTMLElement, version: string) => {
-      const clone = node.cloneNode(true) as HTMLElement;
-      clone.style.breakAfter = 'page';
-      const body = clone.querySelector('[data-paper]');
-      if (body) body.innerHTML = renderVersion(version);
-      return clone.outerHTML;
-    },
-    [renderVersion]
-  );
-
-  /**
-   * أوراق الطباعة: ورقةٌ واحدة بعدد النسخ، أو «أ» و«ب» بالتناوب — أ، ب، أ، ب —
-   * فيجلس كل طالبٍ بين جارين بنموذجٍ غير نموذجه.
-   */
-  const sheetsFor = useCallback((): { html: string; copies: number } | null => {
-    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
-    if (!node) return null;
-    node.style.transform = '';
-    if (!versions) return { html: node.outerHTML, copies: Math.max(1, copies) };
-    const a = versionPage(node, 'أ');
-    const b = versionPage(node, 'ب');
-    return { html: Array.from({ length: Math.max(1, copies) }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
-  }, [versions, copies, versionPage]);
+  const { page1Html, page2Html } = useMemo(() => {
+    if (!isDuplex || !page2.length) return { page1Html: fullHtml, page2Html: '' };
+    return splitExamPagesHtml(fullHtml, page1.length, head, 2);
+  }, [fullHtml, isDuplex, page1.length, page2.length, head]);
 
   const total = useMemo(() => {
     const list = questionsOf(doc);
@@ -224,8 +213,8 @@ function PapersScreenInner(
   // ── الحفظ والطباعة وPDF وفتح ورقةٍ محفوظة والدور الثاني — `papers/usePaperOutput.ts` ──
   const { print, save, exportPdf, fresh, secondRoundPaper, openPaper, after, setAfter, lastJob, send } = usePaperOutput({
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
-    sheetsFor, versions, copies, sheetRef, versionPage, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch,
-    setRebase, items
+    versions, copies, sheetRef, renderVersion, isDuplex, page1Length: page1.length, page2Length: page2.length, page1Html, page2Html, dir, margins,
+    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
   });
 
   useImperativeHandle(
@@ -237,8 +226,6 @@ function PapersScreenInner(
     }),
     [print, save, exportPdf]
   );
-
-  const margins = doc.pageSetup.margins;
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
@@ -258,42 +245,15 @@ function PapersScreenInner(
           </ToolHeader>
 
           {/* ── الرأس الثابت ──────────────────────────────────────── */}
-          <PaperHead
-            setHead={setHead}
-            head={head}
-            focused={focused}
-          />
+          <PaperHead setHead={setHead} head={head} focused={focused} />
 
           {/* ── المتن ─────────────────────────────────────────────── */}
           <PaperBody
-            numerals={numerals}
-            setNumerals={setNumerals}
-            dir={dir}
-            setDir={setDir}
-            pick={pick}
-            setPick={setPick}
-            items={items}
-            answers={answers}
-            patchItem={patchItem}
-            branch={branch}
-            remove={remove}
-            move={move}
-            saveToBank={saveToBank}
-            focused={focused}
-            addQuestion={addQuestion}
-            setBankOpen={setBankOpen}
-            bankOpen={bankOpen}
-            head={head}
-            bankTick={bankTick}
-            setItems={setItems}
-            say={say}
-            secondRoundPaper={secondRoundPaper}
-            setOmrOpen={setOmrOpen}
-            omrOpen={omrOpen}
-            omrEpoch={omrEpoch}
-            omr={omr}
-            title={title}
-            setOmr={setOmr}
+            numerals={numerals} setNumerals={setNumerals} dir={dir} setDir={setDir} pick={pick} setPick={setPick}
+            items={items} answers={answers} patchItem={patchItem} branch={branch} remove={remove} move={move}
+            saveToBank={saveToBank} focused={focused} addQuestion={addQuestion} setBankOpen={setBankOpen} bankOpen={bankOpen}
+            head={head} bankTick={bankTick} setItems={setItems} say={say} secondRoundPaper={secondRoundPaper}
+            setOmrOpen={setOmrOpen} omrOpen={omrOpen} omrEpoch={omrEpoch} omr={omr} title={title} setOmr={setOmr}
           />
 
           {/* ── الرموز ────────────────────────────────────────────── */}
@@ -329,29 +289,59 @@ function PapersScreenInner(
             setVersions={setVersions}
             setShowB={setShowB}
             showB={showB}
+            duplex={duplex}
+            setDuplex={setDuplex}
+            isDuplex={isDuplex}
+            pageView={pageView}
+            setPageView={setPageView}
           />
 
           <div
             ref={deskRef}
-            className="flex-1 overflow-auto flex flex-col items-center py-space-lg"
+            className="flex-1 overflow-auto flex flex-col items-center py-space-lg gap-space-lg"
           >
             <div
               ref={sheetRef}
-              className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
+              className="flex flex-col items-center gap-space-lg shrink-0"
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: 'top center'
               }}
             >
-              <div
-                className="text-black font-body-md text-body-md leading-relaxed"
-                dir={dir}
-                data-paper
-                dangerouslySetInnerHTML={{ __html: html }}
-                style={{
-                  padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
-                }}
-              />
+              {(pageView === '1' || pageView === 'all' || !isDuplex) && (
+                <div
+                  className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
+                  data-sheet-page="1"
+                  style={isDuplex ? { breakAfter: 'page', pageBreakAfter: 'always' } : undefined}
+                >
+                  <div
+                    className="text-black font-body-md text-body-md leading-relaxed"
+                    dir={dir}
+                    data-paper
+                    data-paper-page="1"
+                    dangerouslySetInnerHTML={{ __html: page1Html }}
+                    style={{
+                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
+                    }}
+                  />
+                </div>
+              )}
+              {isDuplex && Boolean(page2Html) && (pageView === '2' || pageView === 'all') && (
+                <div
+                  className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
+                  data-sheet-page="2"
+                >
+                  <div
+                    className="text-black font-body-md text-body-md leading-relaxed"
+                    dir={dir}
+                    data-paper-page="2"
+                    dangerouslySetInnerHTML={{ __html: page2Html }}
+                    style={{
+                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

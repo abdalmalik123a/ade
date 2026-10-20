@@ -3,7 +3,7 @@
  * بنسخها، وPDF، وفتح ورقةٍ محفوظة أو جديدة، وورقة الدور الثاني.
  */
 import { useCallback, useState, useRef, useEffect } from 'react';
-import { EXAM_CATEGORY, questionsOf, headOf, newQuestion, emptyHead } from '@shared/examPaper';
+import { EXAM_CATEGORY, questionsOf, headOf, newQuestion, emptyHead, splitExamPagesHtml } from '@shared/examPaper';
 import { textOf } from '../papersTree';
 import { errorText } from '../../lib/errors';
 import { useLeaveGuard } from '../../kit/useLeaveGuard';
@@ -33,11 +33,17 @@ export function usePaperOutput(
     loadPapers: () => Promise<void>;
     onChanged: (() => void) | undefined;
     dirty: boolean;
-    sheetsFor: () => { html: string; copies: number; } | null;
     versions: boolean;
     copies: number;
     sheetRef: RefObject<HTMLDivElement>;
-    versionPage: (node: HTMLElement, version: string) => string;
+    renderVersion: (version: string | null) => string;
+    isDuplex?: boolean;
+    page1Length: number;
+    page2Length: number;
+    page1Html: string;
+    page2Html: string;
+    dir: Dir;
+    margins: { top: number; right: number; bottom: number; left: number };
     setHead: Dispatch<SetStateAction<Record<string, string>>>;
     setItems: Dispatch<SetStateAction<ListItem[]>>;
     setPick: Dispatch<SetStateAction<number | undefined>>;
@@ -51,9 +57,46 @@ export function usePaperOutput(
 ) {
   const {
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
-    sheetsFor, versions, copies, sheetRef, versionPage, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch,
-    setRebase, items
+    versions, copies, sheetRef, renderVersion, isDuplex = false, page1Length, page2Length, page1Html, page2Html, dir, margins,
+    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
   } = ctx;
+
+  const versionPage = useCallback(
+    (node: HTMLElement, version: string) => {
+      const fullVHtml = renderVersion(version);
+      if (isDuplex && page2Length > 0) {
+        const { page1Html: p1, page2Html: p2 } = splitExamPagesHtml(fullVHtml, page1Length, head, 2);
+        return (
+          `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper data-paper-page="1" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${p1}</div></div>` +
+          `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper-page="2" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${p2}</div></div>`
+        );
+      }
+      const clone = node.cloneNode(true) as HTMLElement;
+      clone.style.breakAfter = 'page';
+      const body = clone.querySelector('[data-paper]');
+      if (body) body.innerHTML = fullVHtml;
+      return clone.outerHTML;
+    },
+    [renderVersion, isDuplex, page1Length, page2Length, head, dir, margins]
+  );
+
+  const sheetsFor = useCallback((): { html: string; copies: number } | null => {
+    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
+    if (!node) return null;
+    node.style.transform = '';
+    if (versions) {
+      const a = versionPage(node, 'أ');
+      const b = versionPage(node, 'ب');
+      return { html: Array.from({ length: Math.max(1, copies) }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
+    }
+    if (isDuplex && page2Length > 0) {
+      const duplexHtml =
+        `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper data-paper-page="1" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${page1Html}</div></div>` +
+        `<div class="a4-sheet print-sheet"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper-page="2" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${page2Html}</div></div>`;
+      return { html: duplexHtml, copies: Math.max(1, copies) };
+    }
+    return { html: node.outerHTML, copies: Math.max(1, copies) };
+  }, [versions, copies, versionPage, isDuplex, page2Length, page1Html, page2Html, dir, margins, sheetRef]);
 
   const autosaveTimer = useRef<number | null>(null);
   const paperIdRef = useRef<number | null>(paperId);
@@ -189,14 +232,20 @@ export function usePaperOutput(
 
   /** ما خرج آخر مرّة — يقوله شريط الإخراج، ومنه «أعد الطبع» بالنسخ نفسها (المرحلة ٥). */
   const [after, setAfter] = useState<Outcome | null>(null);
-  const lastJob = useRef<{ sheetHtml: string; copies: number; printer: string; system: boolean; what: string } | null>(null);
+  const lastJob = useRef<{ sheetHtml: string; copies: number; printer: string; system: boolean; what: string; duplex?: boolean } | null>(null);
 
   const send = useCallback(
-    async (job: { sheetHtml: string; copies: number; printer: string; system: boolean; what: string }) => {
+    async (job: { sheetHtml: string; copies: number; printer: string; system: boolean; what: string; duplex?: boolean }) => {
       setBusy(true);
       try {
         // بلا إصدار: لا رقم صادر ولا بصمة. ثلاثون نسخةً لا تحرق ثلاثين رقمًا.
-        const out = await window.diwan.output.print({ sheetHtml: job.sheetHtml, printer: job.printer, copies: job.copies, silent: !job.system });
+        const out = await window.diwan.output.print({
+          sheetHtml: job.sheetHtml,
+          printer: job.printer,
+          copies: job.copies,
+          silent: !job.system,
+          duplex: job.duplex
+        });
         if (!out.ok) {
           say(out.reason || 'لم تتم الطباعة', 'warn');
           return;
@@ -209,7 +258,7 @@ export function usePaperOutput(
         setBusy(false);
       }
     },
-    [say]
+    [say, setBusy]
   );
 
   const print = useCallback(async () => {
@@ -222,26 +271,24 @@ export function usePaperOutput(
       copies: sheets.copies,
       printer: pick.printer,
       system: pick.system,
-      what: versions ? `${count(copies, 'نسخة')} («أ» و«ب» بالتناوب)` : count(copies, 'نسخة')
+      what: versions ? `${count(copies, 'نسخة')} («أ» و«ب» بالتناوب)` : count(copies, 'نسخة'),
+      duplex: isDuplex
     });
-  }, [copies, versions, sheetsFor, send]);
+  }, [copies, versions, sheetsFor, send, isDuplex]);
 
   const exportPdf = useCallback(async () => {
-    // PDF النموذجين ورقتان: «أ» ثم «ب» — للمدرّس يطبع منه ما شاء.
-    const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
-    if (!node) return;
-    node.style.transform = '';
-    const html = versions ? versionPage(node, 'أ') + versionPage(node, 'ب') : node.outerHTML;
+    const sheets = sheetsFor();
+    if (!sheets) return;
     try {
       const path = await window.diwan.output.savePdf({
-        sheetHtml: html,
+        sheetHtml: sheets.html,
         suggestedName: versions ? `${title} — نموذجان` : title
       });
       if (path) say('حُفظت نسخة PDF');
     } catch (e) {
       say(errorText(e, 'تعذّر حفظ PDF'), 'warn');
     }
-  }, [title, versions, versionPage, say]);
+  }, [title, versions, sheetsFor, say]);
 
   const openPaper = useCallback(
     async (id: number) => {

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { listTemplates, saveTemplate } from '../src/main/services/templates';
-import { listScore, run, type ListItem } from '../src/shared/doc';
+import { listScore, run, type ListItem, type ParagraphBlock } from '../src/shared/doc';
 import { normalizeDoc } from '../src/shared/docNormalize';
 import { renderDocHtml } from '../src/shared/docHtml';
 import {
@@ -16,7 +16,7 @@ import {
   headOf,
   newQuestion,
   paperTitle,
-  questionsOf, VERSION_KEY } from '../src/shared/examPaper';
+  questionsOf, VERSION_KEY, splitExamItems, questionWeight, examPageFooterText, examPageFooterBlocks, examContinuationBlocks, splitExamPagesHtml } from '../src/shared/examPaper';
 
 const filledHead = () => ({
   ...emptyHead(),
@@ -232,5 +232,70 @@ describe('نماذج الرأس السريعة', () => {
   it('لا تمسّ المدرسة ولا المادة ولا الصف ولا التاريخ ولا العام', () => {
     const own = ['المحافظة', 'القضاء', 'المدرسة', 'المادة', 'الصف', 'الشعبة', 'التاريخ', 'العام الدراسي', 'مدرس المادة'];
     for (const preset of EXAM_PRESETS) for (const key of own) expect(preset.head).not.toHaveProperty(key);
+  });
+});
+
+describe('ورقة الأسئلة بالوجهين وترقيم الصفحات (S14)', () => {
+  it('ترقيم الصفحة يعيد «الصفحة ١ من ٢» و«الصفحة ٢ من ٢»', () => {
+    expect(examPageFooterText(1, 2)).toBe('الصفحة ١ من ٢');
+    expect(examPageFooterText(2, 2)).toBe('الصفحة ٢ من ٢');
+  });
+
+  it('كتل التذييل ورأس المتابعة تظهر عند وجود وجهين', () => {
+    expect(examPageFooterBlocks(1, 1)).toEqual([]);
+    const blocks = examPageFooterBlocks(1, 2);
+    expect(blocks).toHaveLength(2);
+    const p = blocks[1] as ParagraphBlock;
+    expect((p.inlines[0] as any).text).toContain('الصفحة ١ من ٢');
+    expect((p.inlines[0] as any).text).toContain('اقلب الصفحة');
+    const cont = examContinuationBlocks(filledHead());
+    expect(cont).toHaveLength(2);
+    expect(((cont[0] as ParagraphBlock).inlines[0] as any).text).toContain('الوجه الثاني');
+  });
+
+  it('احتساب وزن السؤال يتأثر بالفروع والإجابات', () => {
+    const single = q('سؤال قصير');
+    const withBranches = q('سؤال رئيسي', { items: [q('أ'), q('ب')] });
+    expect(questionWeight(withBranches)).toBeGreaterThan(questionWeight(single));
+  });
+
+  it('تقسيم الأسئلة: أسئلة قليلة بلا خيار الوجهين تبقى صفحة واحدة', () => {
+    const items = [q('عرّف ما يأتي'), q('حلّ المعادلة')];
+    const res = splitExamItems(items);
+    expect(res.isDuplex).toBe(false);
+    expect(res.page1).toHaveLength(2);
+    expect(res.page2).toHaveLength(0);
+  });
+
+  it('تفعيل خيار الوجهين صراحة يقسم الأسئلة بالتناصف حتى لو كانت قليلة', () => {
+    const items = [q('س1'), q('س2')];
+    const res = splitExamItems(items, { duplex: true });
+    expect(res.isDuplex).toBe(true);
+    expect(res.page1).toHaveLength(1);
+    expect(res.page2).toHaveLength(1);
+  });
+
+  it('تجاوز سعة الصفحة يقسم الأسئلة تلقائيًّا مع بقاء الترقيم المتتابع', () => {
+    const items = [
+      q('س1', { items: [q('أ'), q('ب'), q('ج')] }),
+      q('س2', { items: [q('أ'), q('ب'), q('ج')] }),
+      q('س3', { items: [q('أ'), q('ب'), q('ج')] }),
+      q('س4', { items: [q('أ'), q('ب'), q('ج')] }),
+      q('س5', { items: [q('أ'), q('ب')] })
+    ];
+    const res = splitExamItems(items);
+    expect(res.isDuplex).toBe(true);
+    expect(res.page1.length).toBeGreaterThan(0);
+    expect(res.page2.length).toBeGreaterThan(0);
+    expect(res.page1.length + res.page2.length).toBe(5);
+  });
+
+  it('تقسيم علامات HTML للوجهين يضع «الصفحة ١ من ٢» في الأولى و«الصفحة ٢ من ٢» في الثانية', () => {
+    const items = [q('س1'), q('س2'), q('س3'), q('س4')];
+    const doc = examDoc(filledHead(), examList(items));
+    const fullHtml = renderDocHtml(doc, filledHead(), { missing: 'blank', paragraphs: 'blocks' });
+    const { page1Html, page2Html } = splitExamPagesHtml(fullHtml, 2, filledHead(), 2);
+    expect(page1Html).toContain('الصفحة ١ من ٢');
+    expect(page2Html).toContain('الصفحة ٢ من ٢');
   });
 });
