@@ -7,7 +7,7 @@ import { Tool, ToolSep, BASE_SIZE, OFFICIAL_INDENT_MM } from '../editorKit';
 import { undo, redo } from 'prosemirror-history';
 import FontSelect from '../FontSelect';
 import { fontsIn } from '../../lib/fonts';
-import { M, setValueMark, markActive, markValue, setParagraphAttr, LINE_HEIGHTS, LIST_STYLES, clearMarks } from './commands';
+import { M, setValueMark, markActive, markValue, setParagraphAttr, paragraphValue, LINE_HEIGHTS, SPACE_AFTERS, LIST_STYLES, clearMarks } from './commands';
 import { ptToPx, WORD_SIZES_PT } from '@shared/fontSize';
 import { toggleMark, selectAll } from 'prosemirror-commands';
 import ColorTool from '../ColorTool';
@@ -37,6 +37,7 @@ type Props = {
 };
 
 export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh, curIndent, curList, listLabel, setMenu, all, toField, table, viewRef, setNotice }: Props) {
+  const curSpaceAfter = state ? (paragraphValue(state, 'spaceAfter') as number | null | undefined) : undefined;
   return (
     <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
       <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
@@ -103,6 +104,29 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
           </option>
         ))}
       </select>
+      <div className="flex items-center gap-1 bg-surface-container-low rounded-lg px-1.5 h-8" title="تباعد ما بعد الفقرة (S11)">
+        <span className="material-symbols-outlined text-[18px] text-on-surface-variant pointer-events-none">format_line_spacing</span>
+        <select
+          aria-label="تباعد الفقرات"
+          className="bg-transparent font-label-md text-label-md text-on-surface tabular outline-none cursor-pointer"
+          data-act="paragraph-spacing"
+          title="تباعد ما بعد الفقرة"
+          value={curSpaceAfter == null || curSpaceAfter === 0 ? '0' : String(curSpaceAfter)}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            run_(setParagraphAttr('spaceAfter', v > 0 ? v : null));
+          }}
+        >
+          {SPACE_AFTERS.map((v) => (
+            <option key={v} value={v}>
+              {v === 0 ? 'تباعد: ٠' : `تباعد: ${v}`}
+            </option>
+          ))}
+          {curSpaceAfter != null && curSpaceAfter > 0 && !SPACE_AFTERS.includes(curSpaceAfter as 0 | 6 | 12 | 18) && (
+            <option key={curSpaceAfter} value={String(curSpaceAfter)}>تباعد: {curSpaceAfter}</option>
+          )}
+        </select>
+      </div>
       <Tool
         act="indent"
         icon="format_indent_increase"

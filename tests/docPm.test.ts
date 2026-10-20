@@ -15,6 +15,8 @@ import { cssColor } from '../src/shared/docPmMarks';
 import { docToDocx } from '../src/main/services/docDocx';
 import { renderDocHtml } from '../src/shared/docHtml';
 import { emptyDoc, fieldRef, paragraph, run, walkBlocks, type Block, type Inline } from '../src/shared/doc';
+import { EditorState } from 'prosemirror-state';
+import { setParagraphAttr, setSpaceAfter, SPACE_AFTERS } from '../src/renderer/src/components/pageEditor/commands';
 
 /** المقاطع المتجاورة بالتنسيق نفسه مقطعٌ واحد، والمقطع الفارغ لا شيء. */
 function canonInlines(inlines: Inline[]): Inline[] {
@@ -261,5 +263,65 @@ describe('الشطب وأعلى السطر وأسفله واللون (محادث
     expect(x).toContain('<w:vertAlign w:val="superscript"/>');
     expect(x).toContain('<w:vertAlign w:val="subscript"/>');
     expect(x).toMatch(/<w:color w:val="ff0000"\/>/i);
+  });
+});
+
+describe('تباعد ما بعد الفقرة (S11)', () => {
+  it('يدعم تباعد ما بعد الفقرة في الكتل وتوليد ProseMirror وDOM', () => {
+    const d = emptyDoc();
+    d.blocks = [
+      paragraph([run('فقرة متباعدة')], { spaceAfter: 12 }),
+      paragraph([run('فقرة بلا تباعد')])
+    ];
+    const pm = blocksToPm(d.blocks);
+    const round = pmBlocks(pm);
+    expect(round[0]).toMatchObject({ spaceAfter: 12 });
+    expect((round[1] as { spaceAfter?: number }).spaceAfter).toBeUndefined();
+
+    const html = renderDocHtml(d, {}, { paragraphs: 'blocks' });
+    expect(html).toContain('margin-bottom:12px');
+
+    const pNode = pm.firstChild!;
+    expect(pNode.attrs.spaceAfter).toBe(12);
+    expect((pNode.type.spec.toDOM!(pNode) as [string, Record<string, string>, number])[1]).toMatchObject({
+      style: 'text-align:right;margin-bottom:12px'
+    });
+  });
+
+  it('أمر setParagraphAttr وsetSpaceAfter يضبطان spaceAfter على الفقرة المحددة في ProseMirror', () => {
+    expect(SPACE_AFTERS).toEqual([0, 6, 12, 18]);
+    const docNode = docSchema.node('doc', null, [
+      docSchema.node('paragraph', { spaceAfter: null }, [docSchema.text('الفقرة الأولى')]),
+      docSchema.node('paragraph', { spaceAfter: null }, [docSchema.text('الفقرة الثانية')])
+    ]);
+    let state = EditorState.create({ schema: docSchema, doc: docNode });
+
+    // تطبيق تباعد 18 نقطة على الفقرة الأولى
+    const cmd18 = setSpaceAfter(18);
+    cmd18(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.spaceAfter).toBe(18);
+
+    // أمر setParagraphAttr المباشر
+    const cmd12 = setParagraphAttr('spaceAfter', 12);
+    cmd12(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.spaceAfter).toBe(12);
+
+    // إعادة التباعد إلى 0 (إلغاء التباعد)
+    const cmd0 = setSpaceAfter(0);
+    cmd0(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.spaceAfter).toBeNull();
+  });
+
+  it('يصدر إلى Word بخصيصة w:spacing w:after', async () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('فقرة متباعدة في وورد')], { spaceAfter: 12 })];
+    const x = strFromU8(unzipSync(new Uint8Array(await docToDocx(d, { title: 'تباعد', blanks: true })))['word/document.xml']!);
+    expect(x).toMatch(/<w:spacing[^>]*w:after="\d+"[^>]*\/>/);
   });
 });

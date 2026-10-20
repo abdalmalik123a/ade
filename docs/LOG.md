@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٨:١٠ — D124 ✅ — تباعد الفقرات قبل وبعد في شريط المحرّر (S11) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/renderer/src/components/pageEditor/commands.ts`: توسيع `setParagraphAttr` ليشمل `'spaceAfter'` وتصدير `setSpaceAfter` وثابت خيارات التباعد `SPACE_AFTERS = [0, 6, 12, 18]` · `src/renderer/src/components/pageEditor/FormatBar.tsx`: إضافة أداة تباعد ما بعد الفقرة برمز `format_line_spacing` وقائمة سريعة `data-act="paragraph-spacing"` مرتبطة بالفقرة المحددة وقراءة `paragraphValue(state, 'spaceAfter')` · إضافة اختبارات في `tests/docPm.test.ts` (٢١ ✓) وسيناريو `tools/scenarios/paragraphSpacing.mjs` (٦ ✓) وتحديث `docs/QUALITY.md` ونقل D124 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (٣٩ ✓) و`commands.ts` ٢١٤ سطرًا و`FormatBar.tsx` ٢١٤ سطرًا (< ٤٠٠) · بناء `electron-vite build` نظيف وسيناريوهات `paragraphSpacing.mjs` (٦ ✓) و`customPaper.mjs` (١١ ✓) بلا ✗.
+- **التالي:** D125 (⚙️ ص: تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر S12) بمحادثة جديدة بـ`/next` تبدأ بمراجعة D124.
+
 ## ٢٠٢٦-١٠-٢٠ ٠٧:٥٨ — مراجعة D123 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (مقاس «مخصّص» للورقة بالمليمتر في المحرّر والطباعة وحوار الأبعاد المباشر مطابق للكود والقواعد والقالب).
 - **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/paperSize.test.ts` (٦ ✓) · `tests/sheetPage.test.ts` (٤ ✓) · الحارس: إعادة `doc.ts` لما قبل D123 أسقطت ٥ من ٦ اختبارات فورًا واستعادتها أخضرته · بناء `electron-vite build` نظيف (٢٦٫٨ ث) وسيناريو `customPaper.mjs` (١١ ✓) وسيناريو `pagedLetter.mjs` (١٤ ✓) بلا ✗ · `doc.ts` (٣٩٢ سطرًا) و`SheetBar.tsx` (٣٣١ سطرًا) دون سقف ٤٠٠ سطر.
