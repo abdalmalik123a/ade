@@ -67,6 +67,42 @@ export function usePmEditor(
     onChangeRef.current(next);
   }, []);
 
+  const pendingPmDoc = useRef<PMNode | null>(null);
+  const emitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** تفريغ الوثيقة المعلّقة وإرسالها فورًا إلى شجرة React (D122 — S43). */
+  const flushEmit = useCallback(
+    (explicitDoc?: PMNode) => {
+      if (emitTimer.current) {
+        clearTimeout(emitTimer.current);
+        emitTimer.current = null;
+      }
+      const target = explicitDoc ?? pendingPmDoc.current;
+      if (target) {
+        pendingPmDoc.current = null;
+        emit(target);
+      }
+    },
+    [emit]
+  );
+
+  /** تأجيل إرسال الوثيقة أثناء الكتابة السريعة المتتابعة لتفادي إعادة تحويل الكتل ورسم React مع كلّ حرف. */
+  const scheduleEmit = useCallback(
+    (pmDoc: PMNode) => {
+      pendingPmDoc.current = pmDoc;
+      if (emitTimer.current) clearTimeout(emitTimer.current);
+      emitTimer.current = setTimeout(() => {
+        emitTimer.current = null;
+        if (pendingPmDoc.current) {
+          const d = pendingPmDoc.current;
+          pendingPmDoc.current = null;
+          emit(d);
+        }
+      }, 250);
+    },
+    [emit]
+  );
+
   const nodeViews = useCallback(
     () => ({
       field: (node: PMNode) => new FieldView(node, (k) => labelRef.current(k)),
@@ -82,6 +118,7 @@ export function usePmEditor(
 
   /** F4: ما ظُلِّل يصير خانةً باسمه — نصًّا متّصلًا في سطرٍ واحد، بلا حقلٍ داخله. */
   const toField: Command = useCallback((state, dispatch) => {
+    flushEmit();
     const { $from, $to, from, to, empty } = state.selection;
     if (empty || !$from.sameParent($to) || !$from.parent.isTextblock) return false;
     let hasField = false;
@@ -98,10 +135,11 @@ export function usePmEditor(
       dispatch(state.tr.replaceWith(from, to, N.field.create({ ref: field.key, id: newUuid() })));
     }
     return true;
-  }, []);
+  }, [flushEmit]);
 
   /** كتلٌ بعد الكتلة التي فيها المؤشّر — والمؤشّر في أوّل سطرٍ يُكتب فيه منها. */
   const insertBlocks = useCallback((blocks: Block[]) => {
+    flushEmit();
     const view = viewRef.current;
     if (!view) return;
     const { state } = view;
@@ -113,7 +151,7 @@ export function usePmEditor(
     view.dispatch(tr.scrollIntoView());
     view.focus();
     setMenu(false);
-  }, []);
+  }, [flushEmit, setMenu]);
 
   const run_ = useCallback((cmd: Command) => {
     const view = viewRef.current;
@@ -122,6 +160,61 @@ export function usePmEditor(
     view.focus();
     return done;
   }, []);
+
+  // ── الصفحات ─────────────────────────────────────────────────────────
+  const page = pageMm(doc.pageSetup);
+  const margins = doc.pageSetup.margins;
+  // كما في `pageCss`: الترقيم يحتاج هامشًا سفليًّا لا يقلّ عن ١٤ ملم.
+  const bottomMm = doc.pageSetup.pageNumbers ? Math.max(margins.bottom, 14) : margins.bottom;
+  const repeatHead = doc.pageSetup.repeatLetterhead && Boolean(header);
+  /** عرض المتن بالبكسل — أعرض ما تُلصق به صورة. */
+  const contentWidth = useRef(0);
+  contentWidth.current = (page.w - margins.left - margins.right) * MM_PX;
+  const geo = useRef({ pageW: 0, pageH: 0, top: 0, bottom: 0, repeat: false });
+  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: bottomMm * MM_PX, repeat: repeatHead };
+  const frame = useRef(0);
+  const measureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** التنفيذ الفعلي لقياس الورقة وفواصلها في إطار الرسم. */
+  const doMeasure = useCallback(() => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const view = viewRef.current;
+      const paper = paperRef.current;
+      const mount = mountRef.current;
+      if (!view || !paper || !mount) return;
+      const g = geo.current;
+      const scale = paper.getBoundingClientRect().width / g.pageW || 1;
+      const head = g.repeat && headRef.current ? headRef.current.getBoundingClientRect().height / scale : 0;
+      const { breaks, pages: n } = measurePages(view, paper, mount, { pageW: g.pageW, pageH: g.pageH, gap: SHEET_GAP, top: g.top, bottom: g.bottom, repeatHead: head });
+      setPages(n);
+      if (!sameBreaks(pageFlowKey.getState(view.state)?.breaks ?? [], breaks)) {
+        view.dispatch(view.state.tr.setMeta(pageFlowKey, breaks).setMeta('addToHistory', false));
+      }
+    });
+  }, [headRef, mountRef, paperRef, setPages, viewRef]);
+
+  /**
+   * إعادة القياس: فوريٌّ عند تهيئة الورقة أو تغيّر هندستها، ومؤجَّلٌ (debounced) أثناء الكتابة السريعة
+   * لتفادي قياس مئات الصفحات مع كلّ نقرة حرف (D122 — S43).
+   */
+  const remeasure = useCallback(
+    (immediate = false) => {
+      if (measureTimer.current) {
+        clearTimeout(measureTimer.current);
+        measureTimer.current = null;
+      }
+      if (immediate) {
+        doMeasure();
+      } else {
+        measureTimer.current = setTimeout(() => {
+          measureTimer.current = null;
+          doMeasure();
+        }, 250);
+      }
+    },
+    [doMeasure]
+  );
 
   // المحرّر يُنشأ مرّة؛ وما بعدها يمرّ بالحالة.
   useEffect(() => {
@@ -186,12 +279,25 @@ export function usePmEditor(
         void pasteImages(v, files, contentWidth.current);
         return true;
       },
+      handleDOMEvents: {
+        blur: () => {
+          flushEmit();
+          remeasure(true);
+          return false;
+        }
+      },
       dispatchTransaction(tr) {
         const v = viewRef.current!;
         const before = v.state.doc;
         const next = v.state.apply(tr);
         v.updateState(next);
-        if (next.doc !== before) emit(next.doc);
+        if (next.doc !== before) {
+          if (tr.getMeta('paste') || tr.getMeta('forceEmit')) {
+            flushEmit(next.doc);
+          } else {
+            scheduleEmit(next.doc);
+          }
+        }
         if (tr.getMeta('paste')) void adoptPastedImages(v);
         setTick((t) => t + 1);
       }
@@ -199,19 +305,23 @@ export function usePmEditor(
     viewRef.current = view;
     ownBlocks.current = docRef.current.blocks;
     return () => {
+      flushEmit();
+      if (measureTimer.current) clearTimeout(measureTimer.current);
+      cancelAnimationFrame(frame.current);
       view.destroy();
       viewRef.current = null;
     };
-  }, [emit, nodeViews, toField]);
+  }, [emit, nodeViews, toField, flushEmit, scheduleEmit, remeasure, setTick]);
 
   // وثيقةٌ جاءت من الخارج (فتحُ نموذجٍ آخر، أو حذف حقلٍ من اللوح) تحلّ في المحرّر.
   useEffect(() => {
     const view = viewRef.current;
     if (!view || doc.blocks === ownBlocks.current) return;
+    flushEmit();
     ownBlocks.current = doc.blocks;
     view.updateState(EditorState.create({ doc: blocksToPm(doc.blocks), plugins: view.state.plugins }));
     setTick((t) => t + 1);
-  }, [doc.blocks]);
+  }, [doc.blocks, flushEmit, setTick]);
 
   // قيم الحقول وأسماؤها تتغيّر بلا أن تتغيّر الورقة — فتُعاد رسم الصناديق. وبالبصمة لا
   // بالمرجع: قائمة الحقول تُبنى من جديد مع كلّ حرف، وإعادة الرسم مع كلّ حرف تُربك الكتابة.
@@ -232,6 +342,7 @@ export function usePmEditor(
 
   /** اقتراحاتٌ قُبلت: الوثيقة كلّها خطوةً واحدة في المحرّر — يتراجع عنها Ctrl+Z. */
   const applyDoc = (next: Doc) => {
+    flushEmit();
     const view = viewRef.current;
     if (!view) return;
     const known = new Set(docRef.current.fields.map((f) => f.key));
@@ -246,54 +357,35 @@ export function usePmEditor(
     viewRef.current?.setProps({ nodeViews: nodeViews() });
   }, [labelSig, nodeViews]);
 
-  // ── الصفحات ─────────────────────────────────────────────────────────
-  const page = pageMm(doc.pageSetup);
-  const margins = doc.pageSetup.margins;
-  // كما في `pageCss`: الترقيم يحتاج هامشًا سفليًّا لا يقلّ عن ١٤ ملم.
-  const bottomMm = doc.pageSetup.pageNumbers ? Math.max(margins.bottom, 14) : margins.bottom;
-  const repeatHead = doc.pageSetup.repeatLetterhead && Boolean(header);
-  /** عرض المتن بالبكسل — أعرض ما تُلصق به صورة. */
-  const contentWidth = useRef(0);
-  contentWidth.current = (page.w - margins.left - margins.right) * MM_PX;
-  const geo = useRef({ pageW: 0, pageH: 0, top: 0, bottom: 0, repeat: false });
-  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: bottomMm * MM_PX, repeat: repeatHead };
-  const frame = useRef(0);
-
-  /** يقيس الورقة بعد أن تُرسم، ويضع الفواصل حيث تقسمها الطابعة. */
-  const remeasure = useCallback(() => {
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
-      const view = viewRef.current;
-      const paper = paperRef.current;
-      const mount = mountRef.current;
-      if (!view || !paper || !mount) return;
-      const g = geo.current;
-      const scale = paper.getBoundingClientRect().width / g.pageW || 1;
-      const head = g.repeat && headRef.current ? headRef.current.getBoundingClientRect().height / scale : 0;
-      const { breaks, pages: n } = measurePages(view, paper, mount, { pageW: g.pageW, pageH: g.pageH, gap: SHEET_GAP, top: g.top, bottom: g.bottom, repeatHead: head });
-      setPages(n);
-      if (!sameBreaks(pageFlowKey.getState(view.state)?.breaks ?? [], breaks)) {
-        view.dispatch(view.state.tr.setMeta(pageFlowKey, breaks).setMeta('addToHistory', false));
-      }
-    });
-  }, []);
-
-  // بعد كلّ رسم: كتابةٌ أو تنسيقٌ أو مقاسٌ أو هوامش. والقياس الذي لا يغيّر شيئًا لا يُرسل شيئًا.
+  // بعد كلّ رسم: كتابةٌ أو تنسيقٌ أو مقاسٌ أو هوامش. القياس الأوّل فوريّ، وما يليه أثناء الكتابة مؤجّل.
+  const initialMeasured = useRef(false);
   useEffect(() => {
-    remeasure();
+    if (!initialMeasured.current) {
+      initialMeasured.current = true;
+      remeasure(true);
+    } else {
+      remeasure(false);
+    }
   });
+
+  // تغيّر مقاس الورقة أو هوامشها أو ترقيمها يُقاس فورًا.
+  useEffect(() => {
+    remeasure(true);
+  }, [page.w, page.h, margins.top, margins.bottom, margins.left, margins.right, repeatHead, doc.pageSetup.pageNumbers, doc.pageSetup.numerals, remeasure]);
+
   // والخطوط حين تكتمل، وكلّ تغيّرٍ في ارتفاع المتن لم يمرّ بالمحرّر.
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
-    const ro = new ResizeObserver(() => remeasure());
+    const ro = new ResizeObserver(() => remeasure(true));
     ro.observe(mount);
-    void document.fonts?.ready.then(() => remeasure());
+    void document.fonts?.ready.then(() => remeasure(true));
     return () => {
       ro.disconnect();
+      if (measureTimer.current) clearTimeout(measureTimer.current);
       cancelAnimationFrame(frame.current);
     };
-  }, [remeasure]);
+  }, [mountRef, remeasure]);
 
   return { margins, run_, insertBlocks, page, toField, repeatHead, bottomMm, applyDoc };
 }
