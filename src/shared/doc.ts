@@ -66,13 +66,23 @@ export const PAGE_MM: Record<PageSize, { w: number; h: number }> = {
   A3: { w: 297, h: 420 },
   A6: { w: 105, h: 148 },
   LT: { w: 216, h: 279 },
-  LG: { w: 216, h: 356 }
+  LG: { w: 216, h: 356 },
+  custom: { w: 210, h: 297 }
 };
 
 export const isPageSize = (v: unknown): v is PageSize => typeof v === 'string' && Object.prototype.hasOwnProperty.call(PAGE_MM, v);
 
 /** أسماء المقاسات كما يقولها المكتب. */
-export const PAGE_NAMES: Record<PageSize, string> = { A4: 'A4', A5: 'A5', FS: 'فولسكاب', A3: 'A3', A6: 'A6', LT: 'Letter', LG: 'Legal' };
+export const PAGE_NAMES: Record<PageSize, string> = {
+  A4: 'A4',
+  A5: 'A5',
+  FS: 'فولسكاب',
+  A3: 'A3',
+  A6: 'A6',
+  LT: 'Letter',
+  LG: 'Legal',
+  custom: 'مخصّص'
+};
 
 /**
  * الهوامش بثلاث درجات (قرار ٣ تشرين الأول): ما يختاره الموظف بكلمة لا بأربعة أرقام.
@@ -103,10 +113,17 @@ export const DEFAULT_PAGE: PageSetup = {
   numerals: 'arabic'
 };
 
-/** مقاس الورقة بعد الاتجاه، بالمليمتر. */
+const clampMm = (n: number, def: number) => (Number.isFinite(n) ? Math.max(50, Math.min(1000, Math.round(n * 10) / 10)) : def);
+
+/** مقاس الورقة بعد الاتجاه، بالمليمتر (مع دعم المقاس المخصّص وحراسة ٥٠–١٠٠٠ ملم S09). */
 export function pageMm(setup: PageSetup): { w: number; h: number } {
-  const { w, h } = PAGE_MM[setup.size];
-  return setup.orientation === 'landscape' ? { w: h, h: w } : { w, h };
+  const base =
+    setup.size === 'custom'
+      ? setup.customSize
+        ? { w: clampMm(setup.customSize.w, 210), h: clampMm(setup.customSize.h, 297) }
+        : { w: 210, h: 297 }
+      : PAGE_MM[setup.size] ?? PAGE_MM.A4;
+  return setup.orientation === 'landscape' ? { w: base.h, h: base.w } : { w: base.w, h: base.h };
 }
 
 export function emptyDoc(): Doc {

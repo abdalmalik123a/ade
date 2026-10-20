@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٧:٤٥ — D123 ✅ — مقاس «مخصّص» للورقة بالمليمتر في المحرّر والطباعة (S09 · ر102) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/shared/docTypes.ts`: دعم `'custom'` في `PageSize` وإضافة `customSize?: { w: number; h: number }` إلى `PageSetup` · `src/shared/doc.ts`: دعم المقاس المخصّص في `pageMm` مع حراسة الحدود المنطقية (٥٠–١٠٠٠ ملم) ودعم `PAGE_NAMES.custom = 'مخصّص'` · `src/renderer/src/components/pageEditor/SheetBar.tsx`: إضافة خيار «مخصّص...» وحوار إدخال العرض والارتفاع وعناصر تحكّم مباشرة في شريط الورقة · إنشاء اختبار `tests/paperSize.test.ts` (٦ ✓) وسيناريو `tools/scenarios/customPaper.mjs` (١١ ✓) وتحديث `docs/QUALITY.md` ونقل D123 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/paperSize.test.ts` (٦ ✓) · `tests/sheetPage.test.ts` (٤ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) و`doc.ts` ٣٩٢ سطرًا و`SheetBar.tsx` ٣٣١ سطرًا (< ٤٠٠) · بناء `electron-vite build` نظيف وسيناريو `customPaper.mjs` (١١ ✓) بلا ✗.
+- **التالي:** D124 (⚙️ ص: تباعد الفقرات قبل وبعد في شريط المحرّر S11) ضمن حدّ ٤ نقاط للجلسة (D123 ص نقطة واحدة).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٧:٢٥ — مراجعة D122 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (تسريع استجابة كتابة الحرف في الوثائق الطويلة وقياسها مطابق للكود والقياس وسلس).
 - **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (١٨ ✓) · قياس فعلي بـ `measure.mjs` على وثيقة ١٣٣ صفحة: وسيط استجابة الحرف ٣٣ م.ث (وأبطؤه ٧٧ م.ث وتحت سقف ٦٠ م.ث) · بناء `electron-vite build` نظيف (٧٫١ ث) وسيناريو `editor.mjs` (٣٩ ✓) وسيناريو `pagedLetter.mjs` (١٤ ✓) بلا ✗ · الحارس: تجاوز ٤٠٠ سقف في `usePmEditor.ts` أسقط `tests/structure.test.ts` فورًا واستعادته أخضرته · `usePmEditor.ts` ٣٩٢ سطرًا (< ٤٠٠).
