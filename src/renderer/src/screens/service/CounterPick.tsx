@@ -3,7 +3,7 @@
  * الموسم، و«الملفّات»، وعرض حفظ الزبون الجديد، والمعاملات المعلّقة، والأكثر استخدامًا، والبحث والتصنيفات وبطاقات النماذج.
  * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها.
  */
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import type { Dispatch, MutableRefObject, SetStateAction, KeyboardEvent } from 'react';
 import { countIn } from '@shared/arabic';
 import type { InboxFile, OfficeSettings, TemplateSummary } from '@shared/api';
 import { ROUTES, type RouteKey } from '@shared/routes';
@@ -78,6 +78,38 @@ export default function CounterPick({
   resume,
   dropParked
 }: Props) {
+  const handleGridKeyDown = (e: KeyboardEvent<HTMLElement>, selector: string) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+    const container = e.currentTarget;
+    const items = Array.from(container.querySelectorAll<HTMLElement>(selector)).filter(
+      (el) => !el.hasAttribute('disabled')
+    );
+    if (!items.length) return;
+    const currentIdx = items.indexOf(document.activeElement as HTMLElement);
+    if (currentIdx === -1) return;
+
+    e.preventDefault();
+    let nextIdx = currentIdx;
+    if (e.key === 'ArrowRight') {
+      nextIdx = currentIdx > 0 ? currentIdx - 1 : items.length - 1;
+    } else if (e.key === 'ArrowLeft') {
+      nextIdx = currentIdx < items.length - 1 ? currentIdx + 1 : 0;
+    } else if (e.key === 'ArrowDown') {
+      nextIdx = Math.min(items.length - 1, currentIdx + (typeof window !== 'undefined' && window.innerWidth >= 768 ? 4 : 2));
+    } else if (e.key === 'ArrowUp') {
+      nextIdx = Math.max(0, currentIdx - (typeof window !== 'undefined' && window.innerWidth >= 768 ? 4 : 2));
+    } else if (e.key === 'Home') {
+      nextIdx = 0;
+    } else if (e.key === 'End') {
+      nextIdx = items.length - 1;
+    }
+    items[nextIdx]?.focus();
+  };
+
+  const cards = (settings?.counterCards ?? normalizeCounterCards(undefined))
+    .map((id) => COUNTER_CARDS.find((c) => c.id === id))
+    .filter((c): c is CounterCard => Boolean(c) && cardMatches(c!, query));
+
   return (
     <div className="flex flex-col gap-space-md">
       <div className="text-center max-w-2xl mx-auto mt-space-xs mb-space-xs">
@@ -98,12 +130,12 @@ export default function CounterPick({
         />
       )}
       {/* بطاقات الخدمات (ن١): الغرض أوّلًا — والبحث تحتها يصفّيها مع النماذج. */}
-      {(() => {
-        const cards = (settings?.counterCards ?? normalizeCounterCards(undefined))
-          .map((id) => COUNTER_CARDS.find((c) => c.id === id))
-          .filter((c): c is CounterCard => Boolean(c) && cardMatches(c!, query));
-        return cards.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-space-sm" data-cards="">
+      {cards.length > 0 ? (
+        <div
+          className="grid grid-cols-2 md:grid-cols-4 gap-space-sm"
+          data-cards=""
+          onKeyDown={(e) => handleGridKeyDown(e, 'button[data-card]')}
+        >
             {cards.map((c) => (
               <button
                 key={c.id}
@@ -123,8 +155,7 @@ export default function CounterPick({
               </button>
             ))}
           </div>
-        ) : null;
-      })()}
+        ) : null}
       {/* صفّ الموسم (ن١): ما يكثر طلبه الآن — وما لا يقدّمه المكتب ولا تجده نماذجه لا يُعرض (البند ٧). */}
       {(() => {
         const season = query.trim() ? null : seasonOf();
@@ -217,12 +248,17 @@ export default function CounterPick({
             <span className="material-symbols-outlined text-[18px]">star</span>
             الأكثر استخداماً في المكتب (وصول سريع)
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-space-xs">
+          <div
+            className="grid grid-cols-2 md:grid-cols-4 gap-space-xs"
+            data-top-favorites=""
+            onKeyDown={(e) => handleGridKeyDown(e, 'button[data-favorite-card]')}
+          >
             {topFavorites.map((f) => {
               const on = picked.includes(f.id);
               return (
                 <button
                   key={f.id}
+                  data-favorite-card={f.id}
                   className={`p-space-sm rounded-lg text-right flex items-center gap-2 transition-all ${
                     on
                       ? 'bg-primary-container text-on-primary font-bold shadow-sm'
@@ -251,6 +287,19 @@ export default function CounterPick({
           value={query}
           wrapClassName="w-full max-w-md"
           onChange={setQuery}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (picked.length === 0) {
+                if (ordered.length > 0) {
+                  e.preventDefault();
+                  toggle(ordered[0].id);
+                } else if (cards.length > 0) {
+                  e.preventDefault();
+                  onOpenTool?.(cards[0].target, citizenId);
+                }
+              }
+            }
+          }}
         />
         {/* شرائح التصنيف */}
         {categories.length > 0 && (

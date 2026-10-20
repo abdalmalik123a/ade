@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٣:٢٠ — D117 ✅ — اختصارات التنقل Tab وEnter في الشبّاك وحصر Tab داخل الورقة (S04) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/renderer/src/screens/service/CounterPick.tsx`: التقاط Enter في حقل بحث النماذج والبطاقات لاختيار أول نتيجة، ودعم مفاتيح الأسهم في بطاقات الخدمات والأكثر استخدامًا بـ `handleGridKeyDown` · `src/renderer/src/screens/service/CounterFill.tsx`: حصر مفتاح Tab داخل حاوية ورقة الإدخال (`data-fill-form`) بحلقة مغلقة تدور من الأخير إلى الأول وبالعكس مع Shift+Tab لمنع قفز التركيز إلى أشرطة التطبيق · `src/renderer/src/screens/ServicePickers.tsx`: التقاط Enter في حقل بحث «هات الزبون» و«هات المدرسة» لاختيار أول نتيجة مطابقة فورًا · إضافة اختبار `tests/ui/counterKeys.test.tsx` (٤ ✓) وسيناريو `tools/scenarios/counterNav.mjs` (٤ ✓) وتحديث `docs/QUALITY.md` ونقل D117 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/ui/counterKeys.test.tsx` (٤ ✓) · فحص النظافة والهيكل (١٨ ✓) بلا أيّ خرق لـ rules-of-hooks · بناء `electron-vite build` نظيف (٢٦٫٥ ث) وسيناريوهات `counterNav.mjs` (٤ ✓) و`service.mjs` (٥٨ ✓) بلا ✗.
+- **التالي:** D118 (⚙️ ص: توحيد تعريف «الطلب المتأخّر» S05 وتنبيه الساعة الخاطئة عند الإصدار S06) ضمن حدّ ٤ نقاط للجلسة أو في جلسة جديدة.
+
 ## ٢٠٢٦-١٠-٢٠ ٠٢:٥٠ — مراجعة D115 وD116 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ لكلا الأمرين (الحفظ التلقائي بلا تضخّم مراجعات D115، وملء جنس الزبون وسؤال «نعمة/رحمة» المشتركين D116 مطابقان للكود والقواعد ر150).
 - **مُجرَّب ومن الكود (D115):** `npm run typecheck` نظيف · `tests/autoSave.test.ts` (٢ ✓) · الحارس: تعطيل حراسة `!input.isAutosave` في `saveTemplate` أسقط الاختبار فورًا (سجّل revision إضافي) واستعادتها أخضرته · سيناريو `autoSave.mjs` (٥ ✓) وسيناريو `service.mjs` (٥٨ ✓) بلا ✗ واسترجاع كامل لحالة الشبّاك ومسودّة الورقة بعد الإغلاق الفجائي · `templates.ts` (٣٥٥ سطرًا) و`usePaperOutput.ts` (٣١٩ سطرًا) و`useParked.ts` (٢٣٨ سطرًا) دون سقف ٤٠٠ سطر.

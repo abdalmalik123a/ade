@@ -3,7 +3,7 @@
  * واتساب» و«ورقة مستمسكاته»، وقائمة الأسماء، والعدد على الكتاب، والجنس، والحقول بتنبيهها الخفيف، والمعاينة الحيّة.
  * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`fillFromSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف).
  */
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { useRef, type Dispatch, type MutableRefObject, type SetStateAction, type KeyboardEvent } from 'react';
 import { count } from '@shared/arabic';
 import { isDateField, type DocField } from '@shared/doc';
 import { GENDER_KEY, isChoiceKey } from '@shared/gender';
@@ -78,9 +78,43 @@ export default function CounterFill({
   registry,
   resolveHead
 }: Props) {
+  const formRef = useRef<HTMLDivElement | null>(null);
+
+  const handleFormKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const form = formRef.current;
+    if (!form) return;
+
+    const focusable = Array.from(
+      form.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => {
+      return !el.hasAttribute('hidden') && el.style.display !== 'none';
+    });
+
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const current = document.activeElement;
+
+    if (e.shiftKey) {
+      if (current === first || !form.contains(current)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (current === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-space-lg items-start">
-      <div className="flex flex-col gap-space-md">
+      <div ref={formRef} onKeyDown={handleFormKeyDown} className="flex flex-col gap-space-md" data-fill-form="">
       <div className="flex items-center gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
           بيانات صاحب العلاقة

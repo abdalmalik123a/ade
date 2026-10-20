@@ -25,6 +25,12 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && rows.length > 0) {
+              e.preventDefault();
+              onPick(rows[0]);
+            }
+          }}
         />
         <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
           {rows.length === 0 ? (
@@ -96,6 +102,12 @@ export function CitizenPicker({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && rows.length > 0) {
+              e.preventDefault();
+              onPick(rows[0].id);
+            }
+          }}
         />
         <div className="max-h-72 overflow-y-auto flex flex-col gap-1">
           {rows.length === 0 ? (
