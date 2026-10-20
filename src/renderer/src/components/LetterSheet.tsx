@@ -17,7 +17,7 @@ import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { sheetPageAttr } from '@shared/sheetPage';
 import type { LetterheadLayout } from '@shared/letterhead';
-import LetterheadView from './LetterheadView';
+import LetterheadView, { LetterheadFooterView } from './LetterheadView';
 
 /**
  * الفراغ فاصلٌ عن الترويسة المبنيّة. وبلا ترويسة يُنزل الورقة كلّها عن موضعها
@@ -83,6 +83,7 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
     );
   }
   // `data-letterhead`: به يُقاس ارتفاع الترويسة من الورقة في قائمة التحقّق.
+  const foot = layout ? <LetterheadFooterView footer={layout.footer} font={layout.font} /> : null;
   const head = layout ? (
     <div data-letterhead="">
       <LetterheadView layout={layout} registryValues={registry} resolve={resolve} />
@@ -98,7 +99,7 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
   return (
     // `data-page`: مقاس الورقة يرافق علاماتها فتُطبع وتُؤرشف وتُعاد طباعتها بمقاسها (`shared/sheetPage.ts`).
     <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} style={sheetStyle(doc)}>
-      <style>{pageCss(doc)}</style>
+      <style>{pageCss(doc, layout)}</style>
       <div dangerouslySetInnerHTML={{ __html: watermarkHtml(doc) }} />
       {doc.pageSetup.repeatLetterhead && head ? (
         // رأس جدولٍ تعيده الطابعة في أعلى كل صفحة — والشاشة ترى ورقةً واحدة كما هي.
@@ -113,12 +114,19 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
               <td style={{ padding: 0 }}>{body}</td>
             </tr>
           </tbody>
+          {foot && (
+            <tfoot>
+              <tr>
+                <td style={{ padding: 0 }}>{foot}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       ) : (
-        <>
+        <div className="flex flex-col justify-between" style={{ minHeight: 'inherit' }}><div>
           {head}
           {body}
-        </>
+        </div>{foot}</div>
       )}
     </div>
   );

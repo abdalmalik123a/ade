@@ -25,7 +25,37 @@ export type LetterheadViewProps = {
   resolve?: (value: string) => string;
   /** رسالة الفراغ تُعرض في المصمّم فقط، لا على ورقة الكتاب. */
   emptyHint?: string;
+  /** إظهار تذييل الورقة (القدم) مدمجًا إن وجد. */
+  showFooter?: boolean;
 };
+
+export function LetterheadFooterView({
+  footer,
+  font
+}: {
+  footer?: LetterheadLayout['footer'];
+  font?: string;
+}) {
+  if (!footer || !footer.show || !footer.text.trim()) return null;
+  const align = footer.align ?? 'center';
+  const size = footer.size ?? 10;
+  return (
+    <div
+      data-letterhead-footer=""
+      style={{
+        fontFamily: font ? fontStack(font) : undefined,
+        textAlign: align,
+        fontSize: `${size}px`,
+        lineHeight: 1.5,
+        borderTop: '1px solid currentColor',
+        paddingTop: '4px'
+      }}
+      className="text-on-surface"
+    >
+      {footer.text}
+    </div>
+  );
+}
 
 function Block({
   block,
@@ -106,7 +136,8 @@ export default function LetterheadView({
   layout,
   registryValues,
   resolve,
-  emptyHint
+  emptyHint,
+  showFooter = false
 }: LetterheadViewProps) {
   const sections = visibleSections(layout);
   const registryAt = sections.length - 1;
@@ -171,6 +202,7 @@ export default function LetterheadView({
         ))}
       </div>
       {layout.divider && <hr className="border-t-2 border-on-surface mt-space-sm" />}
+      {showFooter && <LetterheadFooterView footer={layout.footer} font={layout.font} />}
     </div>
   );
 }

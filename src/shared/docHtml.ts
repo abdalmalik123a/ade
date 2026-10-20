@@ -361,11 +361,12 @@ export function watermarkHtml(doc: Doc): string {
  * `@page` في الورقة نفسها يغلب `margin:0` العامّ في نافذة الطباعة لأنه بعده؛ والحشو
  * الأعلى والأسفل يُنزع في الطباعة وحدها — فالمعاينة على الشاشة كما هي.
  */
-export function pageCss(doc: Doc): string {
+export function pageCss(doc: Doc, letterhead?: { footer?: { show: boolean; text: string } } | null): string {
   const m = doc.pageSetup.margins;
   const indic = doc.pageSetup.numerals === 'indic' ? ', arabic-indic' : '';
   const numbers = doc.pageSetup.pageNumbers;
   const bottom = numbers ? Math.max(m.bottom, 14) : m.bottom;
+  const foot = letterhead?.footer?.show && letterhead.footer.text ? `@media print{[data-letterhead-footer]{position:fixed;bottom:${m.bottom}mm;left:${m.left}mm;right:${m.right}mm}}` : '';
   const box = numbers
     ? `@bottom-center{content:"صفحة " counter(page${indic}) " من " counter(pages${indic});` +
       `font-family:'Noto Naskh Arabic','Amiri',serif;font-size:10pt;color:#333;direction:rtl}`
@@ -373,7 +374,7 @@ export function pageCss(doc: Doc): string {
   return (
     `@page{margin:${m.top}mm 0 ${bottom}mm 0;${box}}` +
     `@media print{.print-root{min-height:0!important}` +
-    `[data-letter-sheet]{padding-top:0!important;padding-bottom:0!important;min-height:0!important}}`
+    `[data-letter-sheet]{padding-top:0!important;padding-bottom:0!important;min-height:0!important}}` + foot
   );
 }
 

@@ -20,6 +20,7 @@ import SectionBlocks from './letterheadDesigner/SectionBlocks';
 import BasmalaOptions from './letterheadDesigner/BasmalaOptions';
 import RegistryOptions from './letterheadDesigner/RegistryOptions';
 import PageOptions from './letterheadDesigner/PageOptions';
+import FooterOptions from './letterheadDesigner/FooterOptions';
 
 export type LetterheadDesignerProps = {
   layout: LetterheadLayout;
@@ -299,6 +300,12 @@ export default function LetterheadDesigner({
 
       {/* العدد والتاريخ: موضعهما القسم الأخير، وهما اختياريان */}
       <RegistryOptions
+        layout={layout}
+        onChange={onChange}
+      />
+
+      {/* تذييل الورقة */}
+      <FooterOptions
         layout={layout}
         onChange={onChange}
       />

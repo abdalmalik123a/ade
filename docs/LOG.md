@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ١٠:٢٥ — D127 ✅ — تذييل الورقة (عنوان المكتب وهاتفه) في المحرّر والترويسة (S10) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/shared/letterhead.ts`: إضافة `LetterheadFooter` ودعم حقل `footer` في `LetterheadLayout` وتطبيعه في `normalizeLayout` ودعمه في `isLayoutEmpty` و`layoutText` و`resolveLayout` · `src/renderer/src/components/LetterheadView.tsx`: تصدير `LetterheadFooterView` ودعم خيار `showFooter` · `src/renderer/src/components/LetterSheet.tsx`: إدراج التذييل أسفل الورقة وفي `tfoot` عند تكرار الترويسة · `src/renderer/src/components/letterheadDesigner/FooterOptions.tsx`: لوح إعدادات تفعيل التذييل ونصه وحجمه ومحاذاته وإدراجه في `LetterheadDesigner.tsx` ومعاينته بـ`LetterheadPreview.tsx` · `src/shared/docHtml.ts`: دعم التذييل في `pageCss` للطباعة · `src/main/services/docDocx.ts`: تصدير التذييل في Word بـ`Footer` و`w:ftr` تحت سقف ٤٠٠ سقف · إضافة اختبارات وحدة `tests/letterhead.test.ts` (٦ ✓) وسيناريو `tools/scenarios/letterheadFooter.mjs` (٩ ✓) وتحديث `docs/QUALITY.md` ونقل D127 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/letterhead.test.ts` (٦ ✓) · `tests/letterheads.test.ts` (٣٥ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) وجميع الملفات المعدلة دون سقف ٤٠٠ سطر (docDocx ٣٩٦، docHtml ٣٩٠، letterhead ٣٥٥) · بناء `electron-vite build` نظيف وسيناريوهات `letterheadFooter.mjs` (٩ ✓) و`letterhead.mjs` (٤٠ ✓) بلا ✗.
+- **التالي:** مراجعة D127 ثم تنفيذ D128 (⚙️ ص: ضبط انتقال ورقة فارغة من الشبّاك ومحليّة إخفاء أسماء الملفّات S16) ضمن حدّ ٤ نقاط للجلسة (D127 ص + D128 ص = نقطتان).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٩:٤٦ — مراجعة D126 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (تفصيل الدفعة الثالثة من الموجة ٥ D127–D131 مطابق للقالب والوقائع وبلا كود برمجي).
 - **مُجرَّب ومن الكود:** الأوامر الخمسة D127–D131 مفصّلة بأقسام القالب وكلّ أمر ٣٤–٣٥ سطرًا (≤ ٨٠ سطرًا) ومطابقة لواقع الكود في `letterhead.ts` و`CounterPick.tsx` و`docPmTable.ts` و`PapersScreen.tsx` و`QuestionNode.tsx` ور157 · فحص الإيداعين `33a508d` و`5d92112`: وثائق وحدها ضمن «المسموح»، بلا حذف ملفات، وبلا مساس بـ `src/` أو `tests/` أو `tools/`.

@@ -84,6 +84,16 @@ export type LetterheadBasmala = {
 export const BASMALA_TEXT = 'بسم الله الرحمن الرحيم';
 
 /**
+ * تذييل الورقة (القدم): سطرٌ في أسفل الورقة لعنوان المكتب والجهة وهواتفها وبريدها.
+ */
+export type LetterheadFooter = {
+  show: boolean;
+  text: string;
+  align: Align;
+  size?: number;
+};
+
+/**
  * خطّ الترويسة: واحد لها كلّها لا لكل سطر.
  *
  * خطٌّ لكل سطر يُخرج ترويسات مهلهلة، وهو باب «Word المصغّر». ويُختار من «خطوط ديوان» (DESIGNS.md ٠٫٧) بما فيها
@@ -123,6 +133,8 @@ export type LetterheadLayout = {
    * وعرض عموديه يختلف من سطر لسطر — وتحويله أقسامًا ثلاثة يزحزحه عن موضعه.
    * فيُحفظ كما هو، ويُرسم بالرسّام الذي يرسم المتن. وإن وُجد غلب الأقسام.
    */
+  /** تذييل الورقة (القدم): العنوان والهاتف أسفل الورقة. */
+  footer?: LetterheadFooter;
   sheet?: Block[];
 };
 
@@ -153,7 +165,8 @@ export function emptyLayout(opts: { basmala?: boolean } = {}): LetterheadLayout 
     divider: true,
     registry: { show: false, mode: 'manual' },
     basmala: { show: opts.basmala === true, text: BASMALA_TEXT, size: 14, align: 'center' },
-    font: 'naskh'
+    font: 'naskh',
+    footer: { show: false, text: '', align: 'center', size: 10 }
   };
 }
 
@@ -161,6 +174,18 @@ function normalizeRegistry(raw: unknown): LetterheadRegistry {
   if (!raw || typeof raw !== 'object') return { show: false, mode: 'manual' };
   const value = raw as Partial<LetterheadRegistry>;
   return { show: value.show === true, mode: value.mode === 'printed' ? 'printed' : 'manual' };
+}
+
+function normalizeFooter(raw: unknown): LetterheadFooter {
+  const base: LetterheadFooter = { show: false, text: '', align: 'center', size: 10 };
+  if (!raw || typeof raw !== 'object') return base;
+  const v = raw as Partial<LetterheadFooter>;
+  return {
+    show: v.show === true,
+    text: typeof v.text === 'string' ? v.text : '',
+    align: v.align === 'right' || v.align === 'left' ? v.align : 'center',
+    size: typeof v.size === 'number' && v.size > 0 ? v.size : base.size
+  };
 }
 
 function normalizeBasmala(raw: unknown): LetterheadBasmala {
@@ -209,7 +234,7 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
   // كتلٌ لا تُفهم تسقط كما تسقط من الوثيقة — بالقارئ نفسه.
   const sheet = Array.isArray(input.sheet) ? normalizeDoc({ blocks: input.sheet }).blocks : [];
   if (sheet.length) {
-    return { ...base, margins, divider: false, font: 'plex', sheet };
+    return { ...base, margins, divider: false, font: 'plex', sheet, footer: normalizeFooter(input.footer) };
   }
 
   if (Array.isArray(input.sections) && input.sections.length > 0) {
@@ -228,6 +253,7 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
       divider: input.divider !== false,
       registry: normalizeRegistry(input.registry),
       basmala: normalizeBasmala(input.basmala),
+      footer: normalizeFooter(input.footer),
       font: normalizeFont(input.font, 'plex')
     };
   }
@@ -245,11 +271,12 @@ export function normalizeLayout(raw: unknown): LetterheadLayout {
       divider: true,
       registry: { show: false, mode: 'manual' },
       basmala: normalizeBasmala(input.basmala),
+      footer: normalizeFooter(input.footer),
       font: normalizeFont(input.font, 'plex')
     };
   }
 
-  return { ...base, margins };
+  return { ...base, margins, footer: normalizeFooter(input.footer) };
 }
 
 /** الأقسام الظاهرة فعلًا على الورقة. */
@@ -260,6 +287,7 @@ export function visibleSections(layout: LetterheadLayout): LetterheadSection[] {
 /** هل في الترويسة ما يُطبع أصلًا؟ */
 export function isLayoutEmpty(layout: LetterheadLayout): boolean {
   if (layout.sheet?.length) return false;
+  if (layout.footer?.show && layout.footer.text.trim()) return false;
   return (
     !layout.registry.show &&
     !layout.basmala.show &&
@@ -276,7 +304,8 @@ export function resolveLayout(layout: LetterheadLayout, resolve: (value: string)
     ...s,
     blocks: s.blocks.map((b) => (b.kind === 'field' ? { ...b, kind: 'text' as const, value: resolve(b.value) } : b))
   })) as LetterheadLayout['sections'];
-  return { ...layout, sections };
+  const footer = layout.footer ? { ...layout.footer, text: resolve(layout.footer.text) } : undefined;
+  return { ...layout, sections, footer };
 }
 
 /** كل نصّ في الترويسة — للبحث عنها بما كُتب فيها لا باسمها وحده. */
@@ -286,6 +315,7 @@ export function layoutText(layout: LetterheadLayout): string {
     s.blocks.filter((b) => b.kind === 'text').map((b) => b.value)
   );
   if (layout.basmala.show) lines.push(layout.basmala.text);
+  if (layout.footer?.show && layout.footer.text.trim()) lines.push(layout.footer.text);
   return lines.join(' ');
 }
 

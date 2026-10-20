@@ -11,29 +11,14 @@
  * فتعود حقولًا (`tokenInlines`) — Word وسيطٌ لا نهاية.
  */
 import {
-  AlignmentType,
-  BorderStyle,
-  Document,
-  Header,
-  ImageRun,
-  PageBreak,
-  PageOrientation,
-  Packer,
-  Paragraph,
-  Table,
-  TableCell,
-  TableRow,
-  TextRun,
-  UnderlineType,
-  VerticalAlign,
-  WidthType,
-  type IBorderOptions,
-  type ParagraphChild
+  AlignmentType, BorderStyle, Document, Footer, Header, ImageRun, PageBreak, PageOrientation,
+  Packer, Paragraph, Table, TableCell, TableRow, TextRun, UnderlineType, VerticalAlign, WidthType,
+  type IBorderOptions, type ParagraphChild
 } from 'docx';
 import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock } from '@shared/doc';
 import { marker } from '@shared/docHtml';
 import { isHexColor } from '@shared/docPmMarks';
-import { defaultAlign, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
+import { defaultAlign, fontFamilyOf, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
 import { imageMeta } from './imageSize';
 import { toIndic } from '@shared/arabic';
 
@@ -353,6 +338,18 @@ function headBlocks(head: NonNullable<DocxOptions['head']>, ctx: Ctx): (Paragrap
   return out;
 }
 
+function footBlocks(head: { layout: LetterheadLayout }): Paragraph[] {
+  const f = head.layout.footer;
+  if (!f?.show || !f.text.trim()) return [];
+  const align = f.align === 'center' ? AlignmentType.CENTER : f.align === 'left' ? AlignmentType.LEFT : AlignmentType.RIGHT;
+  return [new Paragraph({
+    alignment: align,
+    border: { top: { ...LINE, size: 6 } },
+    spacing: { before: twipsFromPx(8) },
+    children: [new TextRun({ text: f.text, rightToLeft: true, size: halfPoints(f.size ?? 10), font: fontFamilyOf(head.layout.font) || 'Amiri' })]
+  })];
+}
+
 export async function docToDocx(doc: Doc, opts: DocxOptions): Promise<Buffer> {
   const setup = doc.pageSetup;
   const size = PAGE_MM[setup.size] ?? PAGE_MM.A4;
@@ -368,6 +365,7 @@ export async function docToDocx(doc: Doc, opts: DocxOptions): Promise<Buffer> {
     blanks: opts.blanks ?? false
   };
   const head = opts.head ? headBlocks(opts.head, ctx) : [];
+  const foot = opts.head ? footBlocks(opts.head) : [];
   // الترويسة المتكرّرة رأسُ صفحة Word — يعيده في كل صفحة كما تعيدها الطابعة.
   const repeat = setup.repeatLetterhead && head.length > 0;
   const children = [...(opts.before ?? []), ...(repeat ? [] : head), ...blocks(doc.blocks, ctx)];
@@ -388,6 +386,7 @@ export async function docToDocx(doc: Doc, opts: DocxOptions): Promise<Buffer> {
           }
         },
         headers: repeat ? { default: new Header({ children: head }) } : undefined,
+        footers: foot.length ? { default: new Footer({ children: foot }) } : undefined,
         // الملف لا يكون بلا فقرة — وثيقةٌ فارغة تُفتح صفحةً بيضاء لا ملفًّا تالفًا.
         children: children.length ? children : [new Paragraph('')]
       }
