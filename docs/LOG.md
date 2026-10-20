@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٨:٥٥ — D125 ✅ — تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر (S12) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/shared/docTypes.ts`: دعم `vAlign` في `TableCell` و`headerShading` في `TableBlock` · `src/shared/docPmSchema.ts` و`src/shared/docPm.ts`: تمرير وحفظ `vAlign` و`headerShading` في كتل ProseMirror وعقدها وقراءة/كتابة خصائص DOM · `src/shared/docPmTable.ts`: إضافة أمرين `toggleHeaderShading` و`setCellVAlign` وتحديث `tableState` · `src/renderer/src/components/pageEditor/FormatBar.tsx`: إضافة أزرار تظليل الرأس والمحاذاة العمودية (أعلى، وسط، أسفل) · `src/renderer/src/components/pageViews.ts` و`styles.css`: تطبيق فئة `pm-header-shading` ولون التظليل `#f1f5f9` في المحرّر · `src/shared/docHtml.ts` و`src/main/services/docDocx.ts`: تصدير التظليل والمحاذاة العمودية للطباعة وWord بـ`w:shd` و`w:vAlign` · إضافة اختبارات في `tests/docPmTable.test.ts` (٢٠ ✓) وسيناريو `tools/scenarios/tableAlign.mjs` (٧ ✓) وتحديث `docs/QUALITY.md` ونقل D125 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/docPmTable.test.ts` (٢٠ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) والملفات المعدّلة دون سقف ٤٠٠ سطر (docHtml ٣٩٠، docDocx ٣٩٨) · بناء `electron-vite build` نظيف (٧٫٥ ث) وسيناريوهات `tableAlign.mjs` (٧ ✓) و`paragraphSpacing.mjs` (٦ ✓) بلا ✗.
+- **الختام والتالي:** اكتمال الدفعة الثانية من الموجة ٥ (D121–D125) · المراجعة الخطوة ٢ بـ`/next` بمحادثة جديدة لـD125 (ر167 ر169) ثم تخطيط الدفعة التالية.
+
 ## ٢٠٢٦-١٠-٢٠ ٠٨:٣٥ — مراجعة D124 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (تباعد الفقرات قبل وبعد في شريط المحرّر S11 مطابق للكود والقواعد والقالب).
 - **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · الحارس: تعطيل `setSpaceAfter` أسقط الاختبار فورًا (١ ✗ و٢٠ ✓) واستعادته أخضرته · بناء `electron-vite build` نظيف (٨٫٥ ث) وسيناريو `paragraphSpacing.mjs` (٦ ✓) وسيناريو `customPaper.mjs` (١١ ✓) بلا ✗ · `FormatBar.tsx` (٢١٤ سطرًا) و`commands.ts` (٢١٤ سطرًا) دون سقف ٤٠٠ سطر.

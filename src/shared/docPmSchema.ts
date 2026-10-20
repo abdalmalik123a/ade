@@ -11,7 +11,8 @@ import { type Node as PMNode, type NodeSpec, Schema } from 'prosemirror-model';
  */
 export type DomEl = {
   getAttribute(name: string): string | null;
-  style: { textAlign: string; textIndent: string; lineHeight: string; fontSize: string; fontWeight: string };
+  className?: string;
+  style: { textAlign: string; textIndent: string; lineHeight: string; fontSize: string; fontWeight: string; verticalAlign?: string };
 };
 
 export const dom = (el: unknown) => el as DomEl;
@@ -140,9 +141,19 @@ export const nodes: Record<string, NodeSpec> = {
     content: 'table_row+',
     tableRole: 'table',
     isolating: true,
-    attrs: { ...blockAttrs, columns: { default: null }, header: { default: false }, borders: { default: null } },
-    parseDOM: [{ tag: 'table' }],
-    toDOM: () => ['table', ['tbody', 0]]
+    attrs: { ...blockAttrs, columns: { default: null }, header: { default: false }, headerShading: { default: false }, borders: { default: null } },
+    parseDOM: [
+      {
+        tag: 'table',
+        getAttrs: (el) => {
+          const d = dom(el);
+          return {
+            headerShading: d.getAttribute('data-header-shading') === 'true' || Boolean(d.className?.includes('pm-header-shading'))
+          };
+        }
+      }
+    ],
+    toDOM: (node) => ['table', node.attrs.headerShading ? { 'data-header-shading': 'true' } : {}, ['tbody', 0]]
   },
 
   table_row: {
@@ -157,18 +168,34 @@ export const nodes: Record<string, NodeSpec> = {
     content: 'paragraph+',
     tableRole: 'cell',
     isolating: true,
-    attrs: { id: { default: null }, colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null } },
+    attrs: { id: { default: null }, colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null }, vAlign: { default: null } },
     parseDOM: [
       {
         tag: 'td',
-        getAttrs: (el) => ({ colspan: Number(dom(el).getAttribute('colspan') || 1) })
+        getAttrs: (el) => {
+          const d = dom(el);
+          const v = d.getAttribute('data-valign') || (d.style.verticalAlign && ['top', 'middle', 'bottom'].includes(d.style.verticalAlign) ? d.style.verticalAlign : null);
+          return { colspan: Number(d.getAttribute('colspan') || 1), vAlign: v || null };
+        }
       },
       {
         tag: 'th',
-        getAttrs: (el) => ({ colspan: Number(dom(el).getAttribute('colspan') || 1) })
+        getAttrs: (el) => {
+          const d = dom(el);
+          const v = d.getAttribute('data-valign') || (d.style.verticalAlign && ['top', 'middle', 'bottom'].includes(d.style.verticalAlign) ? d.style.verticalAlign : null);
+          return { colspan: Number(d.getAttribute('colspan') || 1), vAlign: v || null };
+        }
       }
     ],
-    toDOM: (node) => ['td', node.attrs.colspan > 1 ? { colspan: node.attrs.colspan } : {}, 0]
+    toDOM: (node) => {
+      const attrs: Record<string, string | number> = {};
+      if (node.attrs.colspan > 1) attrs.colspan = node.attrs.colspan;
+      if (node.attrs.vAlign) {
+        attrs['data-valign'] = node.attrs.vAlign;
+        attrs.style = `vertical-align:${node.attrs.vAlign}`;
+      }
+      return ['td', attrs, 0];
+    }
   },
 
   /** الصورة من مخزن البرنامج وحده: صورةٌ ملصوقة من خارجه لا مسار لها هنا. */

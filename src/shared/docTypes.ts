@@ -142,7 +142,7 @@ export type ListBlock = BlockBase & {
   items: ListItem[];
 };
 
-export type TableCell = { id: Uuid; blocks: ParagraphBlock[]; colSpan?: number };
+export type TableCell = { id: Uuid; blocks: ParagraphBlock[]; colSpan?: number; vAlign?: 'top' | 'middle' | 'bottom' };
 
 export type TableRow = { id: Uuid; cells: TableCell[] };
 
@@ -152,6 +152,8 @@ export type TableBlock = BlockBase & {
   columns: number[];
   /** صفّ عناوين يتكرّر في الصفحة التالية عند انقسام الجدول. */
   header: boolean;
+  /** تظليل صفّ العناوين بلون خفيف (#f1f5f9). */
+  headerShading?: boolean;
   /**
    * جدولٌ بلا حدود: كثيرٌ من كتب Word ترتّب رأسها في جدولٍ مخفيّ الخطوط.
    * وغيابه يعني حدودًا — فالجداول القائمة كلّها ذات حدود.

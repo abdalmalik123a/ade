@@ -205,8 +205,15 @@ export class TableView implements NodeView {
     const cols = (this.node.attrs.columns as number[] | null) ?? [];
     const total = cols.reduce((a, b) => a + b, 0) || 1;
     this.colgroup.innerHTML = cols.map((w) => `<col style="width:${((w / total) * 100).toFixed(2)}%">`).join('');
-    // صفّ العناوين عريضٌ كما يطبعه `docHtml` (رأسٌ `th`) — وكان يُطبع عريضًا ولا يُرى في المحرّر.
-    this.dom.className = ['pm-table', this.node.attrs.borders === false && 'pm-noborder', this.node.attrs.header && 'pm-header']
+    if (this.node.attrs.headerShading) this.dom.setAttribute('data-header-shading', 'true');
+    else this.dom.removeAttribute('data-header-shading');
+    // صفّ العناوين عريضٌ ومظلَّلٌ كما يطبعه `docHtml` (رأسٌ `th`).
+    this.dom.className = [
+      'pm-table',
+      this.node.attrs.borders === false && 'pm-noborder',
+      this.node.attrs.header && 'pm-header',
+      this.node.attrs.headerShading && 'pm-header-shading'
+    ]
       .filter(Boolean)
       .join(' ');
   }

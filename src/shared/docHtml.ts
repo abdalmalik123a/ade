@@ -182,27 +182,21 @@ function renderBlock(
       const cols = block.columns
         .map((w) => `<col style="width:${(w * 100) / (block.columns.reduce((a, b) => a + b, 0) || 1)}%"/>`)
         .join('');
-      const row = (r: TableBlock['rows'][number], tag: 'th' | 'td') => {
+      const row = (r: TableBlock['rows'][number], tag: 'th' | 'td', isH = false) => {
         const cells = r.cells
-          .map((cell) => {
-            const span = cell.colSpan && cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
-            const body = cell.blocks
-              .map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' }))
-              .join('');
+          .map((c) => {
+            const span = c.colSpan && c.colSpan > 1 ? ` colspan="${c.colSpan}"` : '';
+            const body = c.blocks.map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' })).join('');
             const border = block.borders === false ? 'border:none' : 'border:1px solid currentColor';
-            return `<${tag}${span} style="${border};padding:2px 4px;vertical-align:top">${body}</${tag}>`;
+            const bg = isH && block.headerShading ? ';background-color:#f1f5f9' : '';
+            return `<${tag}${span} style="${border};padding:2px 4px;vertical-align:${c.vAlign || 'top'}${bg}">${body}</${tag}>`;
           })
           .join('');
-        // الصفّ لا يُشطر بين صفحتين: نصف خليّةٍ هنا ونصفها هناك لا يُقرأ.
         return `<tr style="break-inside:avoid">${cells}</tr>`;
       };
-      // صفّ العناوين رأسُ جدولٍ (thead) تعيده الطابعة أعلى كل صفحةٍ يمتدّ إليها الجدول
-      // — وكان صفًّا عاديًّا فيُطبع مرّةً واحدة ولو خُيِّر المكتب بتكراره.
       const [first, ...rest] = block.rows;
-      const head = block.header && first ? `<thead>${row(first, 'th')}</thead>` : '';
-      const body = (head ? rest : block.rows).map((r) => row(r, 'td')).join('');
-      // جدولٌ يسعه صفحةٌ ينزل كاملًا إلى التالية ولا يُشطر — كما يريه المحرّر (`pageFlow.ts`)؛
-      // وما طال عن صفحةٍ تقسمه الطابعة صفوفًا ويتكرّر رأسه.
+      const head = block.header && first ? `<thead>${row(first, 'th', true)}</thead>` : '';
+      const body = (head ? rest : block.rows).map((r, i) => row(r, 'td', !head && i === 0)).join('');
       return `<table${dir} style="width:100%;border-collapse:collapse;break-inside:avoid;page-break-inside:avoid"><colgroup>${cols}</colgroup>${head}<tbody>${body}</tbody></table>`;
     }
 

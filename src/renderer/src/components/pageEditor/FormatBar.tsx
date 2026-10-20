@@ -14,7 +14,17 @@ import ColorTool from '../ColorTool';
 import { toggleList, setListStyle } from '@shared/docPmList';
 import type { ListStyle, Align } from '@shared/doc';
 import { addRowBefore, addRowAfter, deleteRow, splitCell, deleteTable } from 'prosemirror-tables';
-import { addColumnKeepWidths, deleteColumnKeepWidths, resizeColumnBy, selectionSpansRows, mergeCellsInRow, toggleTableBorders, toggleHeaderRow } from '@shared/docPmTable';
+import {
+  addColumnKeepWidths,
+  deleteColumnKeepWidths,
+  resizeColumnBy,
+  selectionSpansRows,
+  mergeCellsInRow,
+  toggleTableBorders,
+  toggleHeaderRow,
+  toggleHeaderShading,
+  setCellVAlign
+} from '@shared/docPmTable';
 import type { Command, EditorState } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 
@@ -31,7 +41,13 @@ type Props = {
   setMenu: Dispatch<SetStateAction<boolean>>;
   all: boolean;
   toField: Command;
-  table: { borders: boolean; header: boolean; spansRows: boolean; } | null;
+  table: {
+    borders: boolean;
+    header: boolean;
+    headerShading?: boolean;
+    spansRows: boolean;
+    vAlign?: 'top' | 'middle' | 'bottom' | null;
+  } | null;
   viewRef: MutableRefObject<EditorView | null>;
   setNotice: Dispatch<SetStateAction<string | null>>;
 };
@@ -205,6 +221,34 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
             onRun={() => run_(toggleTableBorders)}
           />
           <Tool act="table-header" icon="title" title="صفّ عناوين يتكرّر في أعلى كلّ صفحة" active={table.header} onRun={() => run_(toggleHeaderRow)} />
+          <Tool
+            act="table-header-shading"
+            icon="format_color_fill"
+            title="تظليل صفّ العناوين بلون خفيف"
+            active={table.headerShading}
+            onRun={() => run_(toggleHeaderShading)}
+          />
+          <Tool
+            act="cell-valign-top"
+            icon="vertical_align_top"
+            title="محاذاة الخليّة إلى الأعلى"
+            active={table.vAlign === 'top' || table.vAlign == null}
+            onRun={() => run_(setCellVAlign('top'))}
+          />
+          <Tool
+            act="cell-valign-middle"
+            icon="vertical_align_center"
+            title="توسيط محتوى الخليّة عموديًّا"
+            active={table.vAlign === 'middle'}
+            onRun={() => run_(setCellVAlign('middle'))}
+          />
+          <Tool
+            act="cell-valign-bottom"
+            icon="vertical_align_bottom"
+            title="محاذاة الخليّة إلى الأسفل"
+            active={table.vAlign === 'bottom'}
+            onRun={() => run_(setCellVAlign('bottom'))}
+          />
           <Tool act="table-del" icon="delete" title="احذف الجدول كلّه" onRun={() => run_(deleteTable)} />
         </>
       )}

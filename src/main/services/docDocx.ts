@@ -25,6 +25,7 @@ import {
   TableRow,
   TextRun,
   UnderlineType,
+  VerticalAlign,
   WidthType,
   type IBorderOptions,
   type ParagraphChild
@@ -163,7 +164,7 @@ function items(list: ListItem[], styles: ListStyle[], depth: number, ctx: Ctx): 
 
 /** جدولٌ بأعمدته — وفي الكتاب العربي يُقرأ من اليمين: أوّل خانةٍ أقصاها يمينًا. */
 function table(
-  rows: { cells: { blocks: (Paragraph | Table)[]; span?: number }[]; header?: boolean }[],
+  rows: { cells: { blocks: (Paragraph | Table)[]; span?: number; vAlign?: 'top' | 'middle' | 'bottom'; shading?: boolean }[]; header?: boolean }[],
   weights: number[],
   borders: boolean,
   ctx: Ctx
@@ -171,6 +172,7 @@ function table(
   const sum = weights.reduce((a, b) => a + b, 0) || 1;
   const widths = weights.map((w) => Math.round((w / sum) * ctx.contentTwips));
   const b = borders ? LINE : NO_BORDER;
+  const va = (v?: 'top' | 'middle' | 'bottom') => (v === 'middle' ? VerticalAlign.CENTER : v === 'bottom' ? VerticalAlign.BOTTOM : VerticalAlign.TOP);
   return new Table({
     width: { size: ctx.contentTwips, type: WidthType.DXA },
     columnWidths: widths,
@@ -185,6 +187,8 @@ function table(
             (c) =>
               new TableCell({
                 columnSpan: c.span && c.span > 1 ? c.span : undefined,
+                verticalAlign: va(c.vAlign),
+                shading: c.shading ? { fill: 'f1f5f9' } : undefined,
                 // الخليّة لا تكون بلا فقرة في Word — وإلا رفض فتح الملف.
                 children: c.blocks.length ? c.blocks : [new Paragraph('')]
               })
@@ -209,7 +213,12 @@ function blocks(list: Block[], ctx: Ctx): (Paragraph | Table)[] {
           table(
             b.rows.map((r, i) => ({
               header: b.header && i === 0,
-              cells: r.cells.map((c) => ({ blocks: c.blocks.map((p) => paragraph(p, ctx)), span: c.colSpan }))
+              cells: r.cells.map((c) => ({
+                blocks: c.blocks.map((p) => paragraph(p, ctx)),
+                span: c.colSpan,
+                vAlign: c.vAlign,
+                shading: ((b.header && i === 0) || i === 0) && Boolean(b.headerShading)
+              }))
             })),
             b.columns,
             b.borders !== false,

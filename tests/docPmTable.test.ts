@@ -19,9 +19,14 @@ import {
   setTableColumns,
   tableState,
   toggleHeaderRow,
-  toggleTableBorders
+  toggleHeaderShading,
+  toggleTableBorders,
+  setCellVAlign
 } from '../src/shared/docPmTable';
-import type { TableBlock } from '../src/shared/doc';
+import { emptyDoc, type TableBlock } from '../src/shared/doc';
+import { renderDocHtml } from '../src/shared/docHtml';
+import { docToDocx } from '../src/main/services/docDocx';
+import { unzipSync, strFromU8 } from 'fflate';
 
 /** جدولٌ بثلاثة صفوفٍ وأوزانٍ مقصودة، في محرّرٍ بأوامر الجداول. */
 function editor(weights = [1, 3, 1]) {
@@ -134,7 +139,7 @@ describe('العمود والخليّة المدموجة', () => {
 describe('الحدود وصفّ العناوين', () => {
   it('تُخفى الحدود وتُعاد، ويُشعل صفّ العناوين ويُطفأ — وتحفظهما الوثيقة', () => {
     let s = inCell(editor(), 1, 1);
-    expect(tableState(s)).toEqual({ borders: true, header: false, spansRows: false });
+    expect(tableState(s)).toEqual({ borders: true, header: false, headerShading: false, spansRows: false, vAlign: 'top' });
     s = run(s, toggleTableBorders)!;
     expect(saved(s).borders).toBe(false);
     s = run(s, toggleHeaderRow)!;
@@ -147,9 +152,71 @@ describe('الحدود وصفّ العناوين', () => {
   it('وخارج الجدول لا تعمل', () => {
     const plain = EditorState.create({ doc: blocksToPm([]) });
     expect(tableState(plain)).toBeNull();
-    for (const cmd of [mergeCellsInRow, addColumnKeepWidths('after'), deleteColumnKeepWidths, resizeColumnBy(0.5), toggleTableBorders, toggleHeaderRow]) {
+    for (const cmd of [mergeCellsInRow, addColumnKeepWidths('after'), deleteColumnKeepWidths, resizeColumnBy(0.5), toggleTableBorders, toggleHeaderRow, toggleHeaderShading]) {
       expect(cmd(plain)).toBe(false);
     }
+  });
+});
+
+describe('تظليل صفّ العناوين ومحاذاة الخلايا عموديًّا (S12)', () => {
+  it('تظليل صفّ العناوين يُشعل ويُطفأ وتتبعه حال tableState والوثيقة المحفوظة', () => {
+    let s = inCell(editor(), 0, 0);
+    expect(tableState(s)?.headerShading).toBe(false);
+    s = run(s, toggleHeaderShading)!;
+    expect(tableState(s)?.headerShading).toBe(true);
+    expect(saved(s).headerShading).toBe(true);
+    s = run(s, toggleHeaderShading)!;
+    expect(tableState(s)?.headerShading).toBe(false);
+    expect(saved(s).headerShading).toBeUndefined();
+  });
+
+  it('محاذاة الخليّة عموديًّا تضبط vAlign على الخليّة الحالية وتُحفظ في الوثيقة', () => {
+    let s = inCell(editor(), 1, 1);
+    expect(tableState(s)?.vAlign).toBe('top');
+    s = run(s, setCellVAlign('middle'))!;
+    expect(tableState(s)?.vAlign).toBe('middle');
+    expect(saved(s).rows[1]!.cells[1]!.vAlign).toBe('middle');
+
+    s = run(s, setCellVAlign('bottom'))!;
+    expect(tableState(s)?.vAlign).toBe('bottom');
+    expect(saved(s).rows[1]!.cells[1]!.vAlign).toBe('bottom');
+
+    s = run(s, setCellVAlign('top'))!;
+    expect(tableState(s)?.vAlign).toBe('top');
+    expect(saved(s).rows[1]!.cells[1]!.vAlign).toBe('top');
+  });
+
+  it('محاذاة مجموعة خلايا محدّدة بـ CellSelection تضبط vAlign عليها معًا', () => {
+    let s = cells(editor(), [0, 0], [0, 2]);
+    s = run(s, setCellVAlign('middle'))!;
+    const t = saved(s);
+    expect(t.rows[0]!.cells.map((c) => c.vAlign)).toEqual(['middle', 'middle', 'middle']);
+    expect(t.rows[1]!.cells.map((c) => c.vAlign)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('تصدير التظليل والمحاذاة العمودية إلى HTML والطباعة', () => {
+    const t = makeTable(2, 2, true);
+    t.headerShading = true;
+    t.rows[0]!.cells[0]!.vAlign = 'middle';
+    t.rows[1]!.cells[1]!.vAlign = 'bottom';
+    const d = emptyDoc();
+    d.blocks = [t];
+    const html = renderDocHtml(d, {}, { paragraphs: 'blocks' });
+    expect(html).toContain('background-color:#f1f5f9');
+    expect(html).toContain('vertical-align:middle');
+    expect(html).toContain('vertical-align:bottom');
+  });
+
+  it('تصدير التظليل والمحاذاة العمودية إلى Word (docx)', async () => {
+    const t = makeTable(2, 2, true);
+    t.headerShading = true;
+    t.rows[0]!.cells[0]!.vAlign = 'middle';
+    const d = emptyDoc();
+    d.blocks = [t];
+    const buf = await docToDocx(d, { title: 'جدول', blanks: true });
+    const xml = strFromU8(unzipSync(new Uint8Array(buf))['word/document.xml']!);
+    expect(xml).toMatch(/<w:shd[^>]*w:fill="f1f5f9"[^>]*\/>/i);
+    expect(xml).toMatch(/<w:vAlign[^>]*w:val="center"[^>]*\/>/i);
   });
 });
 

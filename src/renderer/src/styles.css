@@ -234,6 +234,10 @@ table th {
 .pm-page .pm-header tr:first-child td {
   font-weight: 700;
 }
+.pm-page .pm-header-shading tr:first-child td,
+.pm-page .pm-table[data-header-shading='true'] tr:first-child td {
+  background-color: #f1f5f9;
+}
 /* الفأرة على الحدّ بين عمودين: سهما سحبٍ كما في Word (البند ١، editorPlugins.ts). */
 .pm-page.pm-col-resize,
 .pm-page.pm-col-resize * {

@@ -112,13 +112,13 @@ function blockToPm(b: Block): PMNode {
       return itemsToPm(b.items, { id: b.id, dir: b.dir ?? null, styles: b.styles, pick: b.pick ?? null, nested: false });
     case 'table':
       return S.nodes.table!.create(
-        { id: b.id, dir: b.dir ?? null, columns: b.columns, header: b.header, borders: b.borders ?? null },
+        { id: b.id, dir: b.dir ?? null, columns: b.columns, header: b.header, headerShading: b.headerShading ?? false, borders: b.borders ?? null },
         b.rows.map((r) =>
           S.nodes.table_row!.create(
             { id: r.id },
             r.cells.map((c) =>
               S.nodes.table_cell!.create(
-                { id: c.id, colspan: c.colSpan ?? 1 },
+                { id: c.id, colspan: c.colSpan ?? 1, vAlign: c.vAlign ?? null },
                 c.blocks.length ? c.blocks.map(paragraphToPm) : [emptyParagraph()]
               )
             )
@@ -206,6 +206,7 @@ function pmBlock(node: PMNode): Block | null {
           cell.forEach((p) => blocks.push(pmParagraph(p)));
           const c: TableBlock['rows'][number]['cells'][number] = { id: (cell.attrs.id as string) || newUuid(), blocks };
           if ((cell.attrs.colspan as number) > 1) c.colSpan = cell.attrs.colspan as number;
+          if (cell.attrs.vAlign) c.vAlign = cell.attrs.vAlign as 'top' | 'middle' | 'bottom';
           cells.push(c);
         });
         rows.push({ id: (row.attrs.id as string) || newUuid(), cells });
@@ -213,6 +214,7 @@ function pmBlock(node: PMNode): Block | null {
       const width = Math.max(1, ...rows.map((r) => r.cells.reduce((n, c) => n + (c.colSpan ?? 1), 0)));
       const columns = Array.isArray(a.columns) && a.columns.length === width ? (a.columns as number[]) : Array(width).fill(1);
       const b: TableBlock = { id, kind: 'table', columns, header: Boolean(a.header), rows };
+      if (a.headerShading) b.headerShading = true;
       if (a.borders != null) b.borders = a.borders as boolean;
       return withDir(b, a.dir);
     }

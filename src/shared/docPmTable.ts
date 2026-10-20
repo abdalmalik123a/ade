@@ -10,7 +10,7 @@
  */
 import type { Node as PMNode } from 'prosemirror-model';
 import type { Command, EditorState, Transaction } from 'prosemirror-state';
-import { CellSelection, TableMap, addColumn, isInTable, mergeCells, removeColumn, selectedRect } from 'prosemirror-tables';
+import { CellSelection, TableMap, addColumn, isInTable, mergeCells, removeColumn, selectedRect, selectionCell, setCellAttr } from 'prosemirror-tables';
 import { dragShare } from './shares';
 
 type Rect = ReturnType<typeof selectedRect>;
@@ -140,9 +140,49 @@ export const toggleHeaderRow: Command = (state, dispatch) => {
   return true;
 };
 
+/** تظليل صفّ العناوين: لون خفيف (#f1f5f9) يميّز ترويسة الجدول. */
+export const toggleHeaderShading: Command = (state, dispatch) => {
+  if (!isInTable(state)) return false;
+  if (dispatch) {
+    const rect = selectedRect(state);
+    dispatch(setTableAttrs(state.tr, tablePos(rect), { headerShading: !rect.table.attrs.headerShading }));
+  }
+  return true;
+};
+
+/** محاذاة محتوى الخلايا المحدَّدة عموديًّا (أعلى أو وسط أو أسفل). */
+export const setCellVAlign = (value: 'top' | 'middle' | 'bottom'): Command => setCellAttr('vAlign', value);
+
 /** حال الجدول الذي فيه المؤشّر — لتُضاء أزراره. */
-export function tableState(state: EditorState): { borders: boolean; header: boolean; spansRows: boolean } | null {
+export function tableState(state: EditorState): {
+  borders: boolean;
+  header: boolean;
+  headerShading: boolean;
+  spansRows: boolean;
+  vAlign: 'top' | 'middle' | 'bottom' | null;
+} | null {
   if (!isInTable(state)) return null;
   const rect = selectedRect(state);
-  return { borders: rect.table.attrs.borders !== false, header: Boolean(rect.table.attrs.header), spansRows: selectionSpansRows(state) };
+  let vAlign: 'top' | 'middle' | 'bottom' | null = null;
+  if (state.selection instanceof CellSelection) {
+    state.selection.forEachCell((cell) => {
+      const v = (cell.attrs.vAlign as 'top' | 'middle' | 'bottom' | null) ?? 'top';
+      if (vAlign === null) vAlign = v;
+      else if (vAlign !== v) vAlign = null;
+    });
+  } else {
+    try {
+      const $cell = selectionCell(state);
+      vAlign = ($cell.nodeAfter?.attrs.vAlign as 'top' | 'middle' | 'bottom' | null) ?? 'top';
+    } catch {
+      vAlign = null;
+    }
+  }
+  return {
+    borders: rect.table.attrs.borders !== false,
+    header: Boolean(rect.table.attrs.header),
+    headerShading: Boolean(rect.table.attrs.headerShading),
+    spansRows: selectionSpansRows(state),
+    vAlign
+  };
 }
