@@ -131,6 +131,8 @@ export type ListItem = {
   items?: ListItem[];
   /** «أجب عن ن من فروعه فقط» — فيُحسب المجموع على المطلوب لا على الكل. */
   pick?: number;
+  /** صورةٌ توضيحية داخل السؤال أو الفرع (S15 · ر157). */
+  image?: { path: string; width?: number; height?: number };
 };
 
 export type ListBlock = BlockBase & {

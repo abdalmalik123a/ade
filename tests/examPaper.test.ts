@@ -16,7 +16,7 @@ import {
   headOf,
   newQuestion,
   paperTitle,
-  questionsOf, VERSION_KEY, splitExamItems, questionWeight, examPageFooterText, examPageFooterBlocks, examContinuationBlocks, splitExamPagesHtml } from '../src/shared/examPaper';
+  questionsOf, VERSION_KEY, versionItems, splitExamItems, questionWeight, examPageFooterText, examPageFooterBlocks, examContinuationBlocks, splitExamPagesHtml } from '../src/shared/examPaper';
 
 const filledHead = () => ({
   ...emptyHead(),
@@ -297,5 +297,58 @@ describe('ورقة الأسئلة بالوجهين وترقيم الصفحات (
     const { page1Html, page2Html } = splitExamPagesHtml(fullHtml, 2, filledHead(), 2);
     expect(page1Html).toContain('الصفحة ١ من ٢');
     expect(page2Html).toContain('الصفحة ٢ من ٢');
+  });
+});
+
+describe('صورةٌ داخل السؤال في ورقة الأسئلة (S15 · ر157)', () => {
+  it('يدعم وجود صورة في السؤال وتصييرها داخل علامات HTML مع رابطها وعرضها', () => {
+    const items = [
+      q('س1: بالاعتماد على الشكل الآتي، أوجد شدة التيار:', {
+        image: { path: 'circuits/diagram1.png', width: 320 }
+      })
+    ];
+    const doc = examDoc(filledHead(), examList(items));
+    const html = renderDocHtml(doc, filledHead(), { missing: 'blank', paragraphs: 'blocks' });
+    expect(html).toContain('data-question-image');
+    expect(html).toContain('diwan://store/circuits/diagram1.png');
+    expect(html).toContain('width:320px');
+  });
+
+  it('يدعم صورة في الفرع وتصييرها مع الإجابة والدرجة', () => {
+    const items = [
+      q('س1:', {
+        items: [
+          q('أ) بيّن أجزاء الخلية النباتية في الرسم:', {
+            image: { path: 'cells/plant.png' },
+            score: 10
+          })
+        ]
+      })
+    ];
+    const doc = examDoc(filledHead(), examList(items));
+    const html = renderDocHtml(doc, filledHead(), { missing: 'blank', paragraphs: 'blocks' });
+    expect(html).toContain('diwan://store/cells/plant.png');
+    expect(html).toContain('max-height:160px');
+  });
+
+  it('احتساب وزن السؤال يزداد عند وجود صورة', () => {
+    const plain = q('س1');
+    const withImg = q('س1', { image: { path: 'img.png' } });
+    expect(questionWeight(withImg)).toBeGreaterThan(questionWeight(plain));
+  });
+
+  it('نموذج ب يحافظ على صورة السؤال وفروعه عند خلط الفروع', () => {
+    const items = [
+      q('س1', {
+        items: [
+          q('فرع 1', { image: { path: 'f1.png' } }),
+          q('فرع 2', { image: { path: 'f2.png' } })
+        ]
+      })
+    ];
+    const vB = versionItems(items);
+    const bBranches = vB[0]!.items!;
+    expect(bBranches.some((b) => b.image?.path === 'f1.png')).toBe(true);
+    expect(bBranches.some((b) => b.image?.path === 'f2.png')).toBe(true);
   });
 });

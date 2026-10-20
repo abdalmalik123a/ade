@@ -293,12 +293,15 @@ function renderItems(
       const kids = it.items?.length
         ? renderItems(it.items, styles, depth + 1, values, fields, opts, dir)
         : '';
+      const imgStyle = `display:inline-block;max-width:100%;${it.image?.width ? `width:${it.image.width}px;` : 'max-height:160px;'}${it.image?.height ? `height:${it.image.height}px;` : ''}object-fit:contain`;
+      const imgSrc = it.image?.path ? (it.image.path.startsWith('data:') || it.image.path.startsWith('http') || it.image.path.startsWith('diwan:') ? escapeHtml(it.image.path) : `diwan://store/${escapeHtml(it.image.path)}`) : '';
+      const imageHtml = imgSrc ? `<div data-question-image="" style="text-align:center;margin:6px 0;break-inside:avoid"><img alt="" src="${imgSrc}" style="${imgStyle}"/></div>` : '';
 
       return (
         `<div style="margin:2px 0">` +
         `${score}<span style="font-weight:700">${escapeHtml(head)}</span> ` +
         `${renderInlines(it.inlines, values, fields, opts)}` +
-        `${pick}${answer}${kids}</div>`
+        `${imageHtml}${pick}${answer}${kids}</div>`
       );
     })
     .join('');

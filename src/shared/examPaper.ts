@@ -287,6 +287,7 @@ export function questionWeight(item: ListItem, includeAnswers = false): number {
   const stem = (item.inlines ?? []).map((i) => (i.kind === 'run' ? i.text : '')).join('');
   let lines = Math.max(1, Math.ceil(stem.length / 50));
   if (item.score !== undefined) lines += 0.5;
+  if (item.image?.path) lines += 4;
   if (includeAnswers && item.answer) lines += 1.5;
   if (item.items?.length) {
     for (const b of item.items) {

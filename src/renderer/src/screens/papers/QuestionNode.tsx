@@ -87,6 +87,23 @@ export function QuestionNode(props: NodeProps) {
 
         <div className="flex-1" />
 
+        <button
+          className={ICON_BTN}
+          data-act="question-image"
+          title="أرفق صورة توضيحية للسؤال"
+          type="button"
+          onClick={async () => {
+            try {
+              const path = await window.diwan.files.pickImage('questions');
+              if (path) onPatch(item.id, { image: { path } });
+            } catch {
+              /* أُلغي الاختيار */
+            }
+          }}
+        >
+          <span className="material-symbols-outlined text-[18px]">image</span>
+        </button>
+
         {depth === 0 && props.onBank && (
           <button
             className={ICON_BTN}
@@ -134,6 +151,53 @@ export function QuestionNode(props: NodeProps) {
         onFocus={(e) => props.onFocusInput(e.currentTarget)}
         onChange={(e) => onPatch(item.id, { inlines: inlinesOf(e.target.value) })}
       />
+
+      {item.image?.path && (
+        <div
+          className="flex items-center gap-space-sm p-space-xs rounded-lg bg-surface-container-low border border-outline-variant"
+          data-question-image-preview={item.id}
+        >
+          <img
+            src={
+              item.image.path.startsWith('data:') || item.image.path.startsWith('http') || item.image.path.startsWith('diwan:')
+                ? item.image.path
+                : `diwan://store/${item.image.path}`
+            }
+            alt="صورة السؤال"
+            className="h-14 w-20 object-contain rounded bg-surface-container-lowest border border-outline-variant shrink-0"
+          />
+          <div className="flex-1 flex flex-wrap items-center gap-space-sm min-w-0">
+            <span className="font-label-sm text-label-sm text-on-surface-variant truncate">
+              صورة توضيحية
+            </span>
+            <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+              العرض:
+              <input
+                className="w-16 h-7 px-1.5 text-center rounded bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm tabular"
+                type="number"
+                min={40}
+                max={600}
+                placeholder="تلقائي"
+                value={item.image.width ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : undefined;
+                  onPatch(item.id, { image: { ...item.image!, width: val } });
+                }}
+              />
+              <span className="text-[11px]">بكسل</span>
+            </label>
+          </div>
+          <button
+            className={ICON_BTN}
+            data-act="remove-question-image"
+            title="احذف الصورة"
+            type="button"
+            onClick={() => onPatch(item.id, { image: undefined })}
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      )}
 
       {answers && (
         <input
