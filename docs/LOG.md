@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٣:٣٥ — مراجعة D117 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (اختصارات التنقل Tab وEnter في الشبّاك وحصر Tab داخل الورقة مطابق للكود والقواعد).
+- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/ui/counterKeys.test.tsx` (٤ ✓) · الحارس: تعطيل معالج Enter في `CitizenPicker` أسقط الاختبار فورًا (١ ✗ و٣ ✓) واستعادته أخضرته (٤ ✓) · بناء `electron-vite build` نظيف (١٠٫٠ ث) وسيناريو `counterNav.mjs` (٤ ✓) وسيناريو `service.mjs` (٥٨ ✓) بلا ✗ وبقاء التركيز محصورًا داخل ورقة الإدخال · `CounterPick.tsx` (٣٨٦ سطرًا) و`CounterFill.tsx` (٣٣٢ سطرًا) و`ServicePickers.tsx` (١٤٣ سطرًا) دون سقف ٤٠٠ سطر.
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٣٥ ✓ و٤ متخطّاة (١٩٤ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D118 (⚙️ ص) وD119 (⚙️ ص) ضمن حدّ ٤ نقاط للجلسة.
+
 ## ٢٠٢٦-١٠-٢٠ ٠٣:٢٠ — D117 ✅ — اختصارات التنقل Tab وEnter في الشبّاك وحصر Tab داخل الورقة (S04) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/renderer/src/screens/service/CounterPick.tsx`: التقاط Enter في حقل بحث النماذج والبطاقات لاختيار أول نتيجة، ودعم مفاتيح الأسهم في بطاقات الخدمات والأكثر استخدامًا بـ `handleGridKeyDown` · `src/renderer/src/screens/service/CounterFill.tsx`: حصر مفتاح Tab داخل حاوية ورقة الإدخال (`data-fill-form`) بحلقة مغلقة تدور من الأخير إلى الأول وبالعكس مع Shift+Tab لمنع قفز التركيز إلى أشرطة التطبيق · `src/renderer/src/screens/ServicePickers.tsx`: التقاط Enter في حقل بحث «هات الزبون» و«هات المدرسة» لاختيار أول نتيجة مطابقة فورًا · إضافة اختبار `tests/ui/counterKeys.test.tsx` (٤ ✓) وسيناريو `tools/scenarios/counterNav.mjs` (٤ ✓) وتحديث `docs/QUALITY.md` ونقل D117 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/ui/counterKeys.test.tsx` (٤ ✓) · فحص النظافة والهيكل (١٨ ✓) بلا أيّ خرق لـ rules-of-hooks · بناء `electron-vite build` نظيف (٢٦٫٥ ث) وسيناريوهات `counterNav.mjs` (٤ ✓) و`service.mjs` (٥٨ ✓) بلا ✗.
