@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٧:٥٨ — مراجعة D123 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (مقاس «مخصّص» للورقة بالمليمتر في المحرّر والطباعة وحوار الأبعاد المباشر مطابق للكود والقواعد والقالب).
+- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/paperSize.test.ts` (٦ ✓) · `tests/sheetPage.test.ts` (٤ ✓) · الحارس: إعادة `doc.ts` لما قبل D123 أسقطت ٥ من ٦ اختبارات فورًا واستعادتها أخضرته · بناء `electron-vite build` نظيف (٢٦٫٨ ث) وسيناريو `customPaper.mjs` (١١ ✓) وسيناريو `pagedLetter.mjs` (١٤ ✓) بلا ✗ · `doc.ts` (٣٩٢ سطرًا) و`SheetBar.tsx` (٣٣١ سطرًا) دون سقف ٤٠٠ سطر.
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٥٣ ✓ و٤ متخطّاة (١٩٦ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D124 (⚙️ ص: تباعد الفقرات قبل وبعد في شريط المحرّر S11).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٧:٤٥ — D123 ✅ — مقاس «مخصّص» للورقة بالمليمتر في المحرّر والطباعة (S09 · ر102) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/shared/docTypes.ts`: دعم `'custom'` في `PageSize` وإضافة `customSize?: { w: number; h: number }` إلى `PageSetup` · `src/shared/doc.ts`: دعم المقاس المخصّص في `pageMm` مع حراسة الحدود المنطقية (٥٠–١٠٠٠ ملم) ودعم `PAGE_NAMES.custom = 'مخصّص'` · `src/renderer/src/components/pageEditor/SheetBar.tsx`: إضافة خيار «مخصّص...» وحوار إدخال العرض والارتفاع وعناصر تحكّم مباشرة في شريط الورقة · إنشاء اختبار `tests/paperSize.test.ts` (٦ ✓) وسيناريو `tools/scenarios/customPaper.mjs` (١١ ✓) وتحديث `docs/QUALITY.md` ونقل D123 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/paperSize.test.ts` (٦ ✓) · `tests/sheetPage.test.ts` (٤ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) و`doc.ts` ٣٩٢ سطرًا و`SheetBar.tsx` ٣٣١ سطرًا (< ٤٠٠) · بناء `electron-vite build` نظيف وسيناريو `customPaper.mjs` (١١ ✓) بلا ✗.
