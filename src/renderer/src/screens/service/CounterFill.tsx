@@ -8,6 +8,7 @@ import { count } from '@shared/arabic';
 import { isDateField, type DocField } from '@shared/doc';
 import { GENDER_KEY, isChoiceKey } from '@shared/gender';
 import { nationalIdHint, phoneHint } from '@shared/idChecks';
+import { isAmbiguousAmount, isAmountField } from '@shared/tafqeet';
 import type { Client } from '@shared/orders';
 import DateTools from '../../components/DateTools';
 import LetterSheet from '../../components/LetterSheet';
@@ -296,12 +297,15 @@ export default function CounterFill({
               {/* تنبيهٌ خفيف لا منع (د١٣) */}
               {(() => {
                 const v = values[f.key] ?? '';
+                const isAmount = isAmountField(f, fields);
                 const hint =
                   f.role === 'nationalId' || f.source === 'nationalId'
                     ? nationalIdHint(v)
                     : f.source === 'phone' || /هاتف|موبايل|جوال/.test(f.label)
                       ? phoneHint(v)
-                      : null;
+                      : isAmount && isAmbiguousAmount(v)
+                        ? 'المبلغ غامض: إن كان بالآلاف فاكتبه بالفاصلة (25,000) أو صريحًا (25000)'
+                        : null;
                 return hint ? (
                   <span className="font-label-sm text-label-sm text-tertiary" data-field-hint={f.key}>
                     {hint}

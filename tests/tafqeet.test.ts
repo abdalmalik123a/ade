@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amountWordsField, countWords, derivedWords, isAmountField, parseAmount, tafqeet, wordsForField } from '../src/shared/tafqeet';
+import { amountWordsField, countWords, derivedWords, isAmbiguousAmount, isAmountField, parseAmount, tafqeet, wordsForField } from '../src/shared/tafqeet';
 
 describe('محرك التفقيط المالي بالدينار العراقي (Arabic Tafqeet)', () => {
   it('يفقط المبالغ اليومية الشائعة بالدينار العراقي بدقة فصيحة', () => {
@@ -87,6 +87,20 @@ describe('محرك التفقيط المالي بالدينار العراقي (
     expect(parseAmount('25.1234')).toBe(25.1234);
     expect(parseAmount('٢٥٫٠٠٠')).toBe(25);
     expect(parseAmount('1.500.000')).toBe(1500000);
+  });
+
+  it('كشف المبلغ الغامض بنقطة وثلاثة أصفار (S07)', () => {
+    expect(isAmbiguousAmount('25.000')).toBe(true);
+    expect(isAmbiguousAmount('٢٥.٠٠٠')).toBe(true);
+    expect(isAmbiguousAmount('1.500')).toBe(true);
+    expect(isAmbiguousAmount(' 25.000 ')).toBe(true);
+    expect(isAmbiguousAmount('25,000')).toBe(false);
+    expect(isAmbiguousAmount('25000')).toBe(false);
+    expect(isAmbiguousAmount('250.5')).toBe(false);
+    expect(isAmbiguousAmount('250.50')).toBe(false);
+    expect(isAmbiguousAmount('1.500.000')).toBe(false);
+    expect(isAmbiguousAmount('2026/01/15')).toBe(false);
+    expect(isAmbiguousAmount('')).toBe(false);
   });
 
   it('وما ليس مبلغًا لا يُفقَّط: التاريخ والهاتف', () => {

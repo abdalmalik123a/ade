@@ -205,6 +205,18 @@ export function parseAmount(value: string): number | null {
 }
 
 /**
+ * أهو مبلغ غامض بنقطة وثلاثة أصفار؟ (S07)
+ * مثل «25.000» أو «٢٥.٠٠٠» التي تحتمل أن تكون 25 ألفًا أو 25 دينارًا بثلاثة كسور.
+ */
+export function isAmbiguousAmount(value: string): boolean {
+  const s = value
+    .trim()
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[,٬\s]/g, '');
+  return /^\d{1,3}\.\d{3}$/.test(s);
+}
+
+/**
  * تحويل رقم مالي إلى نص عربي مفقط.
  *
  * والكسر لا يُسقط صامتًا: ٢٥٠٫٥ دينار «مئتان وخمسون دينارًا وخمسمئة فلس» —
@@ -262,10 +274,11 @@ function say(n: number, noun: Noun): string {
 
 // ── المبلغ وحقلُ كتابته ──────────────────────────────────────────────
 
-type NamedField = { id: string; token: string; label: string };
+type NamedField = { id?: string; token?: string; key?: string; label: string };
 
 const WORDS_TOKEN = /_كتاب[ةه]$/;
 const baseToken = (token: string) => token.replace(/_(رقما|رقماً|رقم|كتابة|كتابه)$/, '');
+const tok = (f: NamedField) => f.token ?? f.key ?? f.id ?? '';
 
 /**
  * حقلُ «الكتابة» الذي يقابل حقل المبلغ — أو `null`.
@@ -275,14 +288,16 @@ const baseToken = (token: string) => token.replace(/_(رقما|رقماً|رقم
  * «بدل_الإيجار_الشهري_رقما» يقابل «بدل_الإيجار_كتابة». وأطولُ تطابقٍ يغلب.
  */
 export function amountWordsField<T extends NamedField>(field: T, fields: T[]): T | null {
-  if (WORDS_TOKEN.test(field.token)) return null;
-  const own = baseToken(field.token);
+  const ownToken = tok(field);
+  if (WORDS_TOKEN.test(ownToken)) return null;
+  const own = baseToken(ownToken);
   let best: T | null = null;
   for (const f of fields) {
-    if (f.id === field.id || !WORDS_TOKEN.test(f.token)) continue;
-    const other = baseToken(f.token);
+    const otherToken = tok(f);
+    if ((f.id && f.id === field.id) || !WORDS_TOKEN.test(otherToken)) continue;
+    const other = baseToken(otherToken);
     if (!(own.startsWith(other) || other.startsWith(own))) continue;
-    if (!best || other.length > baseToken(best.token).length) best = f;
+    if (!best || other.length > baseToken(tok(best)).length) best = f;
   }
   return best;
 }
@@ -291,8 +306,9 @@ const AMOUNT_NAME = /مبلغ|بدل|سعر|ثمن|قيمة|دين|راتب|أج
 
 /** أهو حقلُ مبلغ؟ له حقلُ كتابةٍ يقابله، أو في اسمه ما يدلّ على المال. */
 export function isAmountField<T extends NamedField>(field: T, fields: T[]): boolean {
-  if (WORDS_TOKEN.test(field.token)) return false;
-  return amountWordsField(field, fields) !== null || AMOUNT_NAME.test(`${field.label} ${field.token}`);
+  const t = tok(field);
+  if (WORDS_TOKEN.test(t)) return false;
+  return amountWordsField(field, fields) !== null || AMOUNT_NAME.test(`${field.label} ${t}`);
 }
 
 // ── الدرجات والمدد: العدد ومعدوده ────────────────────────────────────
@@ -372,8 +388,10 @@ export function derivedWords(values: Record<string, string>, keys: string[]): Re
  * أو فارغٌ إن لم يكن رقمًا أو لم تُعرف وحدته. فالدرجة ٩٥ لا تُفقَّط دنانير.
  */
 export function wordsForField<T extends NamedField>(field: T, fields: T[]): string {
-  if (WORDS_TOKEN.test(field.token) || !field.token.trim()) return '';
+  const t = tok(field);
+  if (WORDS_TOKEN.test(t) || !t.trim()) return '';
   const partner = amountWordsField(field, fields);
-  const unit = unitOf(`${field.label} ${field.token} ${partner?.label ?? ''} ${partner?.token ?? ''}`);
+  const partnerTok = partner ? tok(partner) : '';
+  const unit = unitOf(`${field.label} ${t} ${partner?.label ?? ''} ${partnerTok}`);
   return unit === 'money' ? tafqeet((field as T & { value?: string }).value ?? '') : unit ? countWords((field as T & { value?: string }).value ?? '', unit) : '';
 }
