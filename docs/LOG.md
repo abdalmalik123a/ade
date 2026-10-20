@@ -6,6 +6,11 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٦:١٥ — D121 ✅ — الدمج في الشبّاك من ملفّ Excel أو CSV مباشرةً (S36 · SV-5) · النموذج: Gemini 3.8 Flash (High)
+- **ما تغيّر:** `src/renderer/src/screens/service/CounterFill.tsx`: إضافة دالّة `extractNamesFromSheetText` لاستخلاص الأسماء من نص الجداول (العمود المعنون «الاسم» أو العمود الأول متساهلة مع الترويسات والصيغ) وإضافة زر «من ملف Excel أو CSV» (`data-act="merge-sheet"`) برمز `table_view` بجانب زر الإضافة من الزبائن يقرأ الملف بـ `files:readSheet()` ويلحق الأسماء بـ `names` مباشرة · إنشاء اختبار واجهة `tests/ui/counterMergeSheet.test.tsx` (٨ ✓) وإنشاء سيناريو `tools/scenarios/counterMerge.mjs` (٥ ✓) وتحديث `docs/QUALITY.md` ونقل D121 إلى `done/`.
+- **الفحص:** `npm run typecheck` نظيف · `tests/ui/counterMergeSheet.test.tsx` (٨ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) · بناء `electron-vite build` نظيف (٧٫٤ ث) وسيناريو `counterMerge.mjs` (٥ ✓) وسيناريو `service.mjs` (٦٣ ✓) بلا ✗.
+- **التالي:** D122 (⚙️ م: تسريع استجابة كتابة الحرف في الوثائق الطويلة وقياسها S43) ضمن حدّ ٤ نقاط للجلسة (D121 ص + D122 م = ٣ نقاط).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٥:٥٥ — مراجعة D120 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
 - **الحكم:** ✓ (تفصيل الدفعة الثانية من الموجة ٥ D121–D125 مطابق للقالب والوقائع وبلا كود برمجي).
 - **مُجرَّب ومن الكود:** الأوامر الخمسة D121–D125 مفصّلة بأقسام القالب وكلّ أمر ٣٣–٣٥ سطرًا (≤ ٨٠ سطرًا) ومطابقة لواقع الكود في `CounterFill.tsx` و`usePmEditor.ts` و`SheetBar.tsx` و`FormatBar.tsx` · فحص الإيداعين `ce6d12a` و`97f62e4`: وثائق وحدها ضمن «المسموح»، بلا حذف ملفات، وبلا مساس بـ `src/` أو `tests/` أو `tools/`.

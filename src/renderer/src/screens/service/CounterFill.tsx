@@ -14,6 +14,43 @@ import DateTools from '../../components/DateTools';
 import LetterSheet from '../../components/LetterSheet';
 import type { Loaded } from './types';
 
+/** استخلاص الأسماء من نص جدول Excel أو CSV (D121 — S36). */
+export function extractNamesFromSheetText(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return [];
+
+  const splitLine = (l: string) => (l.includes('\t') ? l.split('\t') : l.includes('،') ? l.split('،') : l.includes(',') ? l.split(',') : [l]);
+  const rows = lines.map((l) => splitLine(l).map((c) => c.replace(/^["'\s]+|["'\s]+$/g, '').trim()));
+  const header = rows[0]!;
+
+  const nameIdx = header.findIndex((c) => {
+    const n = c.replace(/[\s_]+/g, ' ').trim();
+    return (
+      n === 'الاسم' ||
+      n === 'اسم' ||
+      n.includes('الاسم') ||
+      n.includes('اسم الطالب') ||
+      n.includes('اسم الزبون') ||
+      n.includes('اسم المواطن') ||
+      n.includes('اسم الموظف') ||
+      n.toLowerCase() === 'name' ||
+      n.toLowerCase() === 'student name'
+    );
+  });
+
+  const col = nameIdx >= 0 ? nameIdx : 0;
+  const start = nameIdx >= 0 ? 1 : 0;
+  const names: string[] = [];
+  for (let i = start; i < rows.length; i++) {
+    const val = rows[i]![col];
+    if (val && val.trim()) names.push(val.trim());
+  }
+  return names;
+}
+
 type Props = {
   loaded: Loaded[];
   fields: DocField[];
@@ -186,16 +223,34 @@ export default function CounterFill({
                 value={names}
                 onChange={(e) => setNames(e.target.value)}
               />
-              {/* الدمج من السجل (د١٢): صفٌّ مسجَّل يُختار كلّه بتصنيفه، لا يُكتب اسمًا اسمًا */}
-              <button
-                className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
-                data-act="merge-registry"
-                type="button"
-                onClick={() => setMergePicker(true)}
-              >
-                <span className="material-symbols-outlined text-[16px]">badge</span>
-                أضف من الزبائن
-              </button>
+              {/* استيراد الأسماء من جدول Excel أو CSV أو من السجل */}
+              <div className="flex items-center gap-2">
+                <button
+                  className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                  data-act="merge-sheet"
+                  type="button"
+                  onClick={async () => {
+                    const sheet = await window.diwan.files.readSheet();
+                    if (!sheet?.text) return;
+                    const extracted = extractNamesFromSheetText(sheet.text);
+                    if (extracted.length) {
+                      setNames((prev) => [prev.trim(), ...extracted].filter(Boolean).join('\n'));
+                    }
+                  }}
+                >
+                  <span className="material-symbols-outlined text-[16px]">table_view</span>
+                  من ملف Excel أو CSV
+                </button>
+                <button
+                  className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                  data-act="merge-registry"
+                  type="button"
+                  onClick={() => setMergePicker(true)}
+                >
+                  <span className="material-symbols-outlined text-[16px]">badge</span>
+                  أضف من الزبائن
+                </button>
+              </div>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 {count(rows.length, 'اسم')} × {count(loaded.length, 'ورقة')} ={' '}
                 <b>{rows.length * loaded.length}</b> ورقة، لكل اسم معاملتُه.
