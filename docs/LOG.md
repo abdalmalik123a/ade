@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٨:٣٥ — مراجعة D124 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (تباعد الفقرات قبل وبعد في شريط المحرّر S11 مطابق للكود والقواعد والقالب).
+- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · الحارس: تعطيل `setSpaceAfter` أسقط الاختبار فورًا (١ ✗ و٢٠ ✓) واستعادته أخضرته · بناء `electron-vite build` نظيف (٨٫٥ ث) وسيناريو `paragraphSpacing.mjs` (٦ ✓) وسيناريو `customPaper.mjs` (١١ ✓) بلا ✗ · `FormatBar.tsx` (٢١٤ سطرًا) و`commands.ts` (٢١٤ سطرًا) دون سقف ٤٠٠ سطر.
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٥٦ ✓ و٤ متخطّاة (١٩٦ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D125 (⚙️ ص: تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر S12).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٨:١٠ — D124 ✅ — تباعد الفقرات قبل وبعد في شريط المحرّر (S11) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/renderer/src/components/pageEditor/commands.ts`: توسيع `setParagraphAttr` ليشمل `'spaceAfter'` وتصدير `setSpaceAfter` وثابت خيارات التباعد `SPACE_AFTERS = [0, 6, 12, 18]` · `src/renderer/src/components/pageEditor/FormatBar.tsx`: إضافة أداة تباعد ما بعد الفقرة برمز `format_line_spacing` وقائمة سريعة `data-act="paragraph-spacing"` مرتبطة بالفقرة المحددة وقراءة `paragraphValue(state, 'spaceAfter')` · إضافة اختبارات في `tests/docPm.test.ts` (٢١ ✓) وسيناريو `tools/scenarios/paragraphSpacing.mjs` (٦ ✓) وتحديث `docs/QUALITY.md` ونقل D124 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (٣٩ ✓) و`commands.ts` ٢١٤ سطرًا و`FormatBar.tsx` ٢١٤ سطرًا (< ٤٠٠) · بناء `electron-vite build` نظيف وسيناريوهات `paragraphSpacing.mjs` (٦ ✓) و`customPaper.mjs` (١١ ✓) بلا ✗.
