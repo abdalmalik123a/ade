@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ١٣:٥٨ — مراجعة D130 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ (ورقة الأسئلة بالوجهين وترقيم «الصفحة ١ من ٢» في المعاينة والطباعة وPDF مطابق للكود والقواعد ومُجرَّب).
+- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/examPaper.test.ts` (٢٢ ✓) · الحارس: تعديل صيغة تذييل الصفحة في `examPaper.ts` أسقط ٣ اختبارات فورًا واستعادتها أخضرته (٢٢ ✓) · بناء `electron-vite build` نظيف (٢٦٫٩ ث) وسيناريوهات `examDuplex.mjs` (١١ ✓) و`papers.mjs` (٣٦ ✓) بلا ✗ مع تأكيد ظهور تذييل «الصفحة ١ من ٢» وتذييل «الصفحة ٢ من ٢» ورأس المتابعة · كل الملفات المعدلة دون سقف ٤٠٠ سطر.
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٨١ ✓ و٤ متخطّاة (٢٠٢ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أي خرق · الشجرة نظيفة وبلا حذف ملفات.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D131 (⚙️ ص: صورةٌ داخل السؤال في ورقة الأسئلة S15).
+
 ## ٢٠٢٦-١٠-٢٠ ١٣:٣٥ — D130 ✅ — ورقة الأسئلة بالوجهين وترقيم «الصفحة ١ من ٢» (S14) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/shared/examPaper.ts`: دوال احتساب وزن السؤال `questionWeight` وتقسيم الأسئلة `splitExamItems` وترقيم الصفحات `examPageFooterText` و`examPageFooterBlocks` و`examContinuationBlocks` ودالة `splitExamPagesHtml` لتقسيم HTML للوجهين مع تذييل «الصفحة ١ من ٢» ورأس المتابعة (٣٨٣ سطرًا) · `PreviewBar.tsx`: خيار «طباعة بوجهين» وأزرار تبديل المعاينة (الوجه الأول، الوجه الثاني، الصفحات المتتابعة) · `usePaperOutput.ts`: دعم duplex في الطباعة ونقل دوال تقسيم الصفحات وتصدير PDF تحت سقف ٤٠٠ سطر (٣٦٦) · `PapersScreen.tsx`: دعم حالتي duplex وpageView وعرض صفحتي A4 للوجهين (٣٧٨) · إضافة اختبارات وحدة شاملة `tests/examPaper.test.ts` (٢٢ ✓) وسيناريو `tools/scenarios/examDuplex.mjs` (١١ ✓) وتحديث `docs/QUALITY.md` ونقل D130 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/examPaper.test.ts` (٢٢ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) وجميع الملفات المعدلة دون سقف ٤٠٠ سطر · بناء `electron-vite build` نظيف وسيناريو `examDuplex.mjs` (١١ ✓) وسيناريو `papers.mjs` (٣٦ ✓) بلا ✗.
