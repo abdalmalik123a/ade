@@ -175,7 +175,7 @@ export const nodes: Record<string, NodeSpec> = {
         getAttrs: (el) => {
           const d = dom(el);
           const v = d.getAttribute('data-valign') || (d.style.verticalAlign && ['top', 'middle', 'bottom'].includes(d.style.verticalAlign) ? d.style.verticalAlign : null);
-          return { colspan: Number(d.getAttribute('colspan') || 1), vAlign: v || null };
+          return { colspan: Number(d.getAttribute('colspan') || 1), rowspan: Number(d.getAttribute('rowspan') || 1), vAlign: v || null };
         }
       },
       {
@@ -183,13 +183,14 @@ export const nodes: Record<string, NodeSpec> = {
         getAttrs: (el) => {
           const d = dom(el);
           const v = d.getAttribute('data-valign') || (d.style.verticalAlign && ['top', 'middle', 'bottom'].includes(d.style.verticalAlign) ? d.style.verticalAlign : null);
-          return { colspan: Number(d.getAttribute('colspan') || 1), vAlign: v || null };
+          return { colspan: Number(d.getAttribute('colspan') || 1), rowspan: Number(d.getAttribute('rowspan') || 1), vAlign: v || null };
         }
       }
     ],
     toDOM: (node) => {
       const attrs: Record<string, string | number> = {};
       if (node.attrs.colspan > 1) attrs.colspan = node.attrs.colspan;
+      if (node.attrs.rowspan > 1) attrs.rowspan = node.attrs.rowspan;
       if (node.attrs.vAlign) {
         attrs['data-valign'] = node.attrs.vAlign;
         attrs.style = `vertical-align:${node.attrs.vAlign}`;

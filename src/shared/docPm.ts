@@ -118,7 +118,7 @@ function blockToPm(b: Block): PMNode {
             { id: r.id },
             r.cells.map((c) =>
               S.nodes.table_cell!.create(
-                { id: c.id, colspan: c.colSpan ?? 1, vAlign: c.vAlign ?? null },
+                { id: c.id, colspan: c.colSpan ?? 1, rowspan: c.rowSpan ?? 1, vAlign: c.vAlign ?? null },
                 c.blocks.length ? c.blocks.map(paragraphToPm) : [emptyParagraph()]
               )
             )
@@ -206,6 +206,7 @@ function pmBlock(node: PMNode): Block | null {
           cell.forEach((p) => blocks.push(pmParagraph(p)));
           const c: TableBlock['rows'][number]['cells'][number] = { id: (cell.attrs.id as string) || newUuid(), blocks };
           if ((cell.attrs.colspan as number) > 1) c.colSpan = cell.attrs.colspan as number;
+          if ((cell.attrs.rowspan as number) > 1) c.rowSpan = cell.attrs.rowspan as number;
           if (cell.attrs.vAlign) c.vAlign = cell.attrs.vAlign as 'top' | 'middle' | 'bottom';
           cells.push(c);
         });

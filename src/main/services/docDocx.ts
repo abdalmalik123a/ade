@@ -15,7 +15,7 @@ import {
   Packer, Paragraph, Table, TableCell, TableRow, TextRun, UnderlineType, VerticalAlign, WidthType,
   type IBorderOptions, type ParagraphChild
 } from 'docx';
-import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock } from '@shared/doc';
+import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock, type TableBlock } from '@shared/doc';
 import { marker } from '@shared/docHtml';
 import { isHexColor } from '@shared/docPmMarks';
 import { defaultAlign, fontFamilyOf, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
@@ -149,10 +149,8 @@ function items(list: ListItem[], styles: ListStyle[], depth: number, ctx: Ctx): 
 
 /** جدولٌ بأعمدته — وفي الكتاب العربي يُقرأ من اليمين: أوّل خانةٍ أقصاها يمينًا. */
 function table(
-  rows: { cells: { blocks: (Paragraph | Table)[]; span?: number; vAlign?: 'top' | 'middle' | 'bottom'; shading?: boolean }[]; header?: boolean }[],
-  weights: number[],
-  borders: boolean,
-  ctx: Ctx
+  rows: { cells: { blocks: (Paragraph | Table)[]; span?: number; vMerge?: 'restart' | 'continue'; vAlign?: 'top' | 'middle' | 'bottom'; shading?: boolean }[]; header?: boolean }[],
+  weights: number[], borders: boolean, ctx: Ctx
 ): Table {
   const sum = weights.reduce((a, b) => a + b, 0) || 1;
   const widths = weights.map((w) => Math.round((w / sum) * ctx.contentTwips));
@@ -163,24 +161,42 @@ function table(
     columnWidths: widths,
     visuallyRightToLeft: ctx.rtl,
     borders: { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b },
-    rows: rows.map(
-      (r) =>
-        new TableRow({
-          tableHeader: r.header,
-          cantSplit: true,
-          children: r.cells.map(
-            (c) =>
-              new TableCell({
-                columnSpan: c.span && c.span > 1 ? c.span : undefined,
-                verticalAlign: va(c.vAlign),
-                shading: c.shading ? { fill: 'f1f5f9' } : undefined,
-                // الخليّة لا تكون بلا فقرة في Word — وإلا رفض فتح الملف.
-                children: c.blocks.length ? c.blocks : [new Paragraph('')]
-              })
-          )
-        })
-    )
+    rows: rows.map((r) => new TableRow({
+      tableHeader: r.header, cantSplit: true,
+      children: r.cells.map((c) => new TableCell({
+        columnSpan: c.span && c.span > 1 ? c.span : undefined, verticalMerge: c.vMerge, verticalAlign: va(c.vAlign),
+        shading: c.shading ? { fill: 'f1f5f9' } : undefined, children: c.blocks.length ? c.blocks : [new Paragraph('')]
+      }))
+    }))
   });
+}
+
+function docxTable(b: TableBlock, ctx: Ctx): Table {
+  const active: { count: number; span: number }[] = [];
+  const rows = b.rows.map((r, rIdx) => {
+    const cells: { blocks: (Paragraph | Table)[]; span?: number; vMerge?: 'restart' | 'continue'; vAlign?: 'top' | 'middle' | 'bottom'; shading?: boolean }[] = [];
+    let cIdx = 0;
+    let col = 0;
+    while (col < b.columns.length) {
+      const act = active[col];
+      if (act && act.count > 0) {
+        cells.push({ blocks: [], span: act.span > 1 ? act.span : undefined, vMerge: 'continue' });
+        act.count--;
+        col += act.span;
+      } else {
+        const c = r.cells[cIdx++];
+        if (!c) break;
+        const cSpan = c.colSpan ?? 1;
+        const rSpan = c.rowSpan ?? 1;
+        if (rSpan > 1) active[col] = { count: rSpan - 1, span: cSpan };
+        const shading = ((b.header && rIdx === 0) || rIdx === 0) && Boolean(b.headerShading);
+        cells.push({ blocks: c.blocks.map((p) => paragraph(p, ctx)), span: cSpan > 1 ? cSpan : undefined, vMerge: rSpan > 1 ? 'restart' : undefined, vAlign: c.vAlign, shading });
+        col += cSpan;
+      }
+    }
+    return { header: b.header && rIdx === 0, cells };
+  });
+  return table(rows, b.columns, b.borders !== false, ctx);
 }
 
 function blocks(list: Block[], ctx: Ctx): (Paragraph | Table)[] {
@@ -194,22 +210,7 @@ function blocks(list: Block[], ctx: Ctx): (Paragraph | Table)[] {
         out.push(...items(b.items, b.styles, 0, ctx));
         break;
       case 'table':
-        out.push(
-          table(
-            b.rows.map((r, i) => ({
-              header: b.header && i === 0,
-              cells: r.cells.map((c) => ({
-                blocks: c.blocks.map((p) => paragraph(p, ctx)),
-                span: c.colSpan,
-                vAlign: c.vAlign,
-                shading: ((b.header && i === 0) || i === 0) && Boolean(b.headerShading)
-              }))
-            })),
-            b.columns,
-            b.borders !== false,
-            ctx
-          )
-        );
+        out.push(docxTable(b, ctx));
         break;
       case 'columns':
         // عمودان لا يتدفّقان: صفٌّ واحد بلا حدود، وكلّ عمودٍ خليّةٌ بكتله.
@@ -272,8 +273,7 @@ function imageKind(bytes: Uint8Array): 'png' | 'jpg' | 'gif' | 'bmp' | null {
   if (bytes[0] === 0x89 && bytes[1] === 0x50) return 'png';
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'jpg';
   if (bytes[0] === 0x47 && bytes[1] === 0x49) return 'gif';
-  if (bytes[0] === 0x42 && bytes[1] === 0x4d) return 'bmp';
-  return null;
+  return bytes[0] === 0x42 && bytes[1] === 0x4d ? 'bmp' : null;
 }
 
 /** اسم خطّ الترويسة في Word — أوّل ما في رصّته. */
@@ -312,8 +312,7 @@ function headBlocks(head: NonNullable<DocxOptions['head']>, ctx: Ctx): (Paragrap
   };
   const registryLine = (label: string, value: string | undefined, bold: boolean) =>
     new Paragraph({
-      bidirectional: true,
-      alignment: alignment('right', true),
+      bidirectional: true, alignment: alignment('right', true),
       children: [
         new TextRun({ text: `${label} `, bold: true, size: halfPoints(12), rightToLeft: true, font }),
         value ? new TextRun({ text: value, bold, size: halfPoints(12), rightToLeft: true, font }) : blankRun(16, true, halfPoints(12))

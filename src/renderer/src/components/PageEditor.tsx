@@ -58,6 +58,7 @@ import FormatBar from './pageEditor/FormatBar';
 import SheetBar from './pageEditor/SheetBar';
 import type { HeadChoice } from './pageEditor/types';
 import { usePmEditor } from './pageEditor/usePmEditor';
+import { selectCellsInTable } from '@shared/docPmTable';
 export type { HeadChoice } from './pageEditor/types';
 
 export type PageEditorProps = EditorProps & { head?: HeadChoice };
@@ -87,6 +88,21 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
     const t = setTimeout(() => setNotice(null), 5000);
     return () => clearTimeout(t);
   }, [notice]);
+  useEffect(() => {
+    const el = mountRef.current?.querySelector('[data-page-editor]');
+    const fn = (r1: number, c1: number, r2: number, c2: number) => {
+      const v = viewRef.current;
+      if (!v) return;
+      const tr = selectCellsInTable(v.state, 0, r1, c1, r2, c2);
+      if (tr) v.dispatch(tr);
+    };
+    if (el) (el as any).__pmSelectCells = fn;
+    (window as any).__pmSelectCells = fn;
+    return () => {
+      if (el) delete (el as any).__pmSelectCells;
+      delete (window as any).__pmSelectCells;
+    };
+  });
   const [customMargins, setCustomMargins] = useState(false);
 
   const [trying, setTrying] = useState(false);

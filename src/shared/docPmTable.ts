@@ -31,18 +31,42 @@ function setTableAttrs(tr: Transaction, pos: number, patch: Record<string, unkno
   return tr.setNodeMarkup(pos, undefined, { ...table.attrs, ...patch });
 }
 
-/** أيمسّ تحديد الخلايا أكثر من صفّ؟ — فدمجه رأسيّ لا تحفظه الوثيقة. */
+/** تحديد خلايا الجدول من (r1, c1) إلى (r2, c2) لاختبارات وسيناريوهات الجداول. */
+export function selectCellsInTable(state: EditorState, tableIdx = 0, r1 = 0, c1 = 0, r2 = 0, c2 = 0): Transaction | null {
+  let tCount = 0;
+  let targetTable: PMNode | null = null;
+  let targetPos = 0;
+  state.doc.descendants((node, pos) => {
+    if (node.type.name === 'table') {
+      if (tCount === tableIdx) {
+        targetTable = node;
+        targetPos = pos;
+        return false;
+      }
+      tCount++;
+    }
+    return true;
+  });
+  if (!targetTable) return null;
+  const map = TableMap.get(targetTable);
+  const posA = targetPos + 1 + map.map[r1 * map.width + c1]!;
+  const posB = targetPos + 1 + map.map[r2 * map.width + c2]!;
+  return state.tr.setSelection(CellSelection.create(state.doc, posA, posB));
+}
+
+/** أيمسّ تحديد الخلايا أكثر من صفّ؟ */
 export function selectionSpansRows(state: EditorState): boolean {
   if (!(state.selection instanceof CellSelection)) return false;
   const rect = selectedRect(state);
   return rect.bottom - rect.top > 1;
 }
 
-/** «ادمج»: خلايا الصفّ الواحد وحدها. */
+/** «ادمج»: دمج الخلايا المحدَّدة (أفقيًّا أو رأسيًّا). */
 export const mergeCellsInRow: Command = (state, dispatch) => {
-  if (!(state.selection instanceof CellSelection) || selectionSpansRows(state)) return false;
+  if (!(state.selection instanceof CellSelection)) return false;
   return mergeCells(state, dispatch);
 };
+export const mergeCellsCommand: Command = mergeCellsInRow;
 
 /**
  * عمودٌ قبل الخليّة أو بعدها — في الورقة العربية يمينها أو يسارها — بوزن العمود الذي بجانبه،

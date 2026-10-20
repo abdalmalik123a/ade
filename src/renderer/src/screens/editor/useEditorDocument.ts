@@ -2,7 +2,7 @@
  * وثيقة المحرّر وترويسته ومصدرها (تقسيمه بعد ١٫٧٫٠) — منقولٌ من `EditorScreen` كما هو: تبديل الوثيقة، وقراءة الإعدادات والمكتبة،
  * والترويسة وحفظها، وفتح النموذج والمسودّة (وقراءتها القديمة) والكتاب الصادر نسخةً جديدة.
  */
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { type Doc, docText } from '@shared/doc';
 import { type Letterhead, normalizeLayout, emptyLayout, type LetterheadLayout } from '@shared/letterhead';
 import { blankLetter } from './shared';
@@ -48,10 +48,17 @@ export function useEditorDocument(
     setDocType, setError, setValues, setRegistry, setOwner, setDraft, setLinkedCitizen
   } = ctx;
 
+  const liveDoc = useRef(doc);
+  liveDoc.current = doc;
+
   const setDoc = useCallback((next: Doc | ((d: Doc) => Doc)) => {
     dirty.current = true;
-    setDocState(next);
-  }, []);
+    setDocState((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next;
+      liveDoc.current = resolved;
+      return resolved;
+    });
+  }, [dirty, setDocState]);
 
   useEffect(() => {
     void (async () => {
@@ -182,5 +189,5 @@ export function useEditorDocument(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
-  return { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout };
+  return { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout, liveDoc };
 }

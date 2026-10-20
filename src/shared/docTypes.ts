@@ -142,7 +142,7 @@ export type ListBlock = BlockBase & {
   items: ListItem[];
 };
 
-export type TableCell = { id: Uuid; blocks: ParagraphBlock[]; colSpan?: number; vAlign?: 'top' | 'middle' | 'bottom' };
+export type TableCell = { id: Uuid; blocks: ParagraphBlock[]; colSpan?: number; rowSpan?: number; vAlign?: 'top' | 'middle' | 'bottom' };
 
 export type TableRow = { id: Uuid; cells: TableCell[] };
 

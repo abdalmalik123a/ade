@@ -185,7 +185,7 @@ function renderBlock(
       const row = (r: TableBlock['rows'][number], tag: 'th' | 'td', isH = false) => {
         const cells = r.cells
           .map((c) => {
-            const span = c.colSpan && c.colSpan > 1 ? ` colspan="${c.colSpan}"` : '';
+            const span = (c.colSpan && c.colSpan > 1 ? ` colspan="${c.colSpan}"` : '') + (c.rowSpan && c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : '');
             const body = c.blocks.map((p) => paragraphHtml(p, ins(p.inlines), { ...opts, paragraphs: 'blocks' })).join('');
             const border = block.borders === false ? 'border:none' : 'border:1px solid currentColor';
             const bg = isH && block.headerShading ? ';background-color:#f1f5f9' : '';

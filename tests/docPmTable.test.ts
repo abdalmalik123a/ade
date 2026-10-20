@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { EditorState, TextSelection, type Command } from 'prosemirror-state';
-import { CellSelection, TableMap, mergeCells, splitCell, tableEditing } from 'prosemirror-tables';
+import { CellSelection, TableMap, splitCell, tableEditing } from 'prosemirror-tables';
 import { blocksToPm, pmBlocks } from '../src/shared/docPm';
 import { makeTable } from '../src/shared/docEdit';
 import {
@@ -61,13 +61,20 @@ function run(state: EditorState, cmd: Command): EditorState | null {
 const saved = (state: EditorState) => pmBlocks(state.doc)[0] as TableBlock;
 
 describe('الدمج', () => {
-  it('الدمج الرأسي يُمنع — والوثيقة لا تمثّله', () => {
+  it('الدمج الرأسي مسموح — والوثيقة تمثّله بـ rowSpan وتستعيده', () => {
     const s = cells(editor(), [0, 0], [1, 0]);
     expect(selectionSpansRows(s)).toBe(true);
-    expect(run(s, mergeCellsInRow)).toBeNull();
-    // وكان أمر المكتبة يدمجه فيضيع في المحفوظ: صفوفٌ بخلايا ٣ و٢ و٣.
-    const lost = run(s, mergeCells)!;
-    expect(saved(lost).rows.map((r) => r.cells.length)).toEqual([3, 2, 3]);
+    const merged = run(s, mergeCellsInRow)!;
+    expect(merged).not.toBeNull();
+    const t = saved(merged);
+    expect(t.rows.map((r) => r.cells.length)).toEqual([3, 2, 3]);
+    expect(t.rows[0]!.cells[0]!.rowSpan).toBe(2);
+
+    // التحقق من الاستعادة ذهابًا وإيابًا عبر blocksToPm
+    const reloaded = EditorState.create({ doc: blocksToPm([t]), plugins: [tableEditing()] });
+    const cellNode = reloaded.doc.firstChild!.firstChild!.firstChild!;
+    expect(cellNode.attrs.rowspan).toBe(2);
+    expect(saved(reloaded)).toEqual(t);
   });
 
   it('ودمج خلايا الصفّ الواحد يُحفظ بأوزانه', () => {
@@ -217,6 +224,28 @@ describe('تظليل صفّ العناوين ومحاذاة الخلايا عم�
     const xml = strFromU8(unzipSync(new Uint8Array(buf))['word/document.xml']!);
     expect(xml).toMatch(/<w:shd[^>]*w:fill="f1f5f9"[^>]*\/>/i);
     expect(xml).toMatch(/<w:vAlign[^>]*w:val="center"[^>]*\/>/i);
+  });
+
+  it('تصدير الدمج الرأسي إلى HTML والطباعة كـ rowspan', () => {
+    const t = makeTable(2, 2, false);
+    t.rows[0]!.cells[0]!.rowSpan = 2;
+    t.rows[1]!.cells = [t.rows[1]!.cells[1]!];
+    const d = emptyDoc();
+    d.blocks = [t];
+    const html = renderDocHtml(d, {}, { paragraphs: 'blocks' });
+    expect(html).toContain('rowspan="2"');
+  });
+
+  it('تصدير الدمج الرأسي إلى Word (docx) بـ w:vMerge', async () => {
+    const t = makeTable(2, 2, false);
+    t.rows[0]!.cells[0]!.rowSpan = 2;
+    t.rows[1]!.cells = [t.rows[1]!.cells[1]!];
+    const d = emptyDoc();
+    d.blocks = [t];
+    const buf = await docToDocx(d, { title: 'جدول', blanks: true });
+    const xml = strFromU8(unzipSync(new Uint8Array(buf))['word/document.xml']!);
+    expect(xml).toMatch(/<w:vMerge[^>]*w:val="restart"[^>]*\/>/i);
+    expect(xml).toMatch(/<w:vMerge[^>]*w:val="continue"[^>]*\/>/i);
   });
 });
 

@@ -18,7 +18,6 @@ import {
   addColumnKeepWidths,
   deleteColumnKeepWidths,
   resizeColumnBy,
-  selectionSpansRows,
   mergeCellsInRow,
   toggleTableBorders,
   toggleHeaderRow,
@@ -202,15 +201,8 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
           <Tool
             act="merge"
             icon="call_merge"
-            title={table.spansRows ? 'تُدمج خلايا الصفّ الواحد — الدمج الرأسي لا تحفظه الورقة' : 'ادمج الخلايا المحدَّدة'}
-            onRun={() => {
-              const view = viewRef.current;
-              if (view && selectionSpansRows(view.state)) {
-                setNotice('الدمج الرأسي لا تحفظه الورقة ولا يُطبع — تُدمج خلايا الصفّ الواحد');
-                return;
-              }
-              run_(mergeCellsInRow);
-            }}
+            title="ادمج الخلايا المحدَّدة"
+            onRun={() => run_(mergeCellsInRow)}
           />
           <Tool act="split" icon="call_split" title="افصل الخليّة" onRun={() => run_(splitCell)} />
           <Tool

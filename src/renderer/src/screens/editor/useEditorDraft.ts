@@ -24,7 +24,7 @@ export function useEditorDraft(
     linkedCitizen: number | null;
     draftName: string;
     savedLetter: () => Parameters<typeof letterValues>[0];
-    doc: Doc;
+    doc: Doc | MutableRefObject<Doc>;
     values: Record<string, string>;
     setSavedAt: Dispatch<SetStateAction<Date | null>>;
     dirty: MutableRefObject<boolean>;
@@ -54,7 +54,7 @@ export function useEditorDraft(
           citizenId: linkedCitizen,
           title: draftName,
           values: letterValues(savedLetter()),
-          bodyHtml: docText(doc, values)
+          bodyHtml: docText('current' in doc ? doc.current : doc, values)
         });
         setDraft(id);
         draftRef.current = id;
