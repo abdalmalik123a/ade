@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٠ ٠٤:٣٥ — مراجعة D118 وD119 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
+- **الحكم:** ✓ لكلا الأمرين (توحيد تعريف الطلب المتأخر وتنبيه الساعة D118، وتنبيه المبلغ الغامض في الشباك D119 مطابقان للكود والقواعد).
+- **مُجرَّب ومن الكود (D118):** `npm run typecheck` نظيف · `tests/orders.test.ts` (٢٣ ✓) · الحارس: إزالة استثناء `ready` من `isOrderOverdue` أسقط الاختبار فورًا (١ ✗ و٢٢ ✓) واستعادته أخضرته · بناء `electron-vite build` نظيف وسيناريو `orderLateClock.mjs` (٤ ✓) وسيناريو `orders.mjs` (٢٧ ✓) بلا ✗ وعدّاد `overdue` = 0 لطلبٍ جاهز بتاريخ ماضٍ مع تسجيل قيد التحذير في `audit_log` · `issue.ts` (٢٢٣ سطرًا)، `orders.ts` (١٨١)، `today.ts` (١٠٧)، `useIssue.ts` (٢٣٧)، `orders.ts` المشترك (١٥١).
+- **مُجرَّب ومن الكود (D119):** `tests/tafqeet.test.ts` (١٨ ✓) · الحارس: إرجاع `false` في `isAmbiguousAmount` أسقط الاختبار فورًا واستعادته أخضرته · سيناريو `tafqeetWarn.mjs` (٣ ✓) وسيناريو `language.mjs` (٩ ✓) بلا ✗ وظهور الإرشاد الوقائي لـ «25.000» واختفاؤه عند التصحيح لـ «25,000» مع تفقيط سليم · `tafqeet.ts` (٣٦٠ سطرًا) و`CounterFill.tsx` (٣٢٥ سطرًا).
+- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٣٩ ✓ و٤ متخطّاة (١٩٤ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة وبلا حذف ملفات.
+- **الخطوة التالية:** إيداع المراجعة أولاً، ثم تخطيط وحجز الدفعة التالية من الموجة ٥ (المحرّر والشبّاك).
+
 ## ٢٠٢٦-١٠-٢٠ ٠٤:١٢ — D119 ✅ — التحقّق من المبلغ الغامض مثل «٢٥.٠٠٠» وتنبيهه في الشبّاك (S07) · النموذج: Gemini 3.8 Flash (High)
 - **ما تغيّر:** `src/shared/tafqeet.ts`: تصدير دالّة `isAmbiguousAmount` لكشف المبالغ بنقطة وثلاثة أصفار مثل «25.000» و«٢٥.٠٠٠» وتعميم `NamedField` لتوافق حقول `DocField` مع `isAmountField` · `src/renderer/src/screens/service/CounterFill.tsx`: إظهار تلميح إرشادي وقائي تحت حقل المبلغ الغامض (`[data-field-hint]`) لإرشاد الموظف إلى كتابته بالفاصلة أو صريحًا دون منع · إضافة اختبارات كشف الغموض في `tests/tafqeet.test.ts` (١٨ ✓) وإنشاء سيناريو `tools/scenarios/tafqeetWarn.mjs` (٣ ✓) وتحديث `docs/QUALITY.md` ونقل D119 إلى `done/`.
 - **الفحص:** `npm run typecheck` نظيف · `tests/tafqeet.test.ts` (١٨ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) · بناء `electron-vite build` نظيف (١٠٫٠ ث) وسيناريوهات `tafqeetWarn.mjs` (٣ ✓) و`language.mjs` (٩ ✓) بلا ✗.
