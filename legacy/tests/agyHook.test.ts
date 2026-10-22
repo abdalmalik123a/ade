@@ -1,3 +1,4 @@
+// انتهى — البديل: لا بديل؛ أُلغي العمل بـGemini (Antigravity) في هذا المشروع، وClaude وحده ينفّذ ويراجع — ر170 — ٢٢ ت١ ٢٠٢٦
 /**
  * حارس جلسات Antigravity (`tools/hooks/agy.mjs`، ر163): يترجم نداء أداته إلى صيغة Claude ويسأل `guard.mjs` نفسه. بـ`git` مزيّف
  * يُجيب من جدول كـ`guardHook`؛ وحالةٌ أخيرة تشغّل السكربت كما يشغّله `.agents/hooks.json` (من مجلّد `.agents/`، وJSON على stdin).
