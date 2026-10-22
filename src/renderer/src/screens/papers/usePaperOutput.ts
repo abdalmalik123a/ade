@@ -80,14 +80,16 @@ export function usePaperOutput(
     [renderVersion, isDuplex, page1Length, page2Length, head, dir, margins]
   );
 
-  const sheetsFor = useCallback((): { html: string; copies: number } | null => {
+  /** الأوراق كما تخرج: الطباعة بعدد النسخ («أ» و«ب» بالتناوب)، وPDF النموذجين «أ» ثم «ب» مرّةً — للمدرّس يطبع منه ما شاء. */
+  const sheetsFor = useCallback((target: 'print' | 'pdf' = 'print'): { html: string; copies: number } | null => {
     const node = sheetRef.current?.cloneNode(true) as HTMLElement | undefined;
     if (!node) return null;
     node.style.transform = '';
     if (versions) {
       const a = versionPage(node, 'أ');
       const b = versionPage(node, 'ب');
-      return { html: Array.from({ length: Math.max(1, copies) }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
+      const sheets = target === 'pdf' ? 2 : Math.max(1, copies);
+      return { html: Array.from({ length: sheets }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
     }
     if (isDuplex && page2Length > 0) {
       const duplexHtml =
@@ -277,7 +279,7 @@ export function usePaperOutput(
   }, [copies, versions, sheetsFor, send, isDuplex]);
 
   const exportPdf = useCallback(async () => {
-    const sheets = sheetsFor();
+    const sheets = sheetsFor('pdf');
     if (!sheets) return;
     try {
       const path = await window.diwan.output.savePdf({

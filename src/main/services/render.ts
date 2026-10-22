@@ -48,6 +48,9 @@ function printCss(page: PageMm, offset: { x: number; y: number } = { x: 0, y: 0 
      والكتاب المشترك تخرج بيضاء. وبالخصوصية نفسها لا أعلى: ما أُخفي عمدًا
      (‎.invisible‎ أو نمطٌ مضمَّن) يبقى مخفيًّا. */
   body * { visibility: visible; }
+  /* وأنماط التطبيق تجعل كلّ ‎.print-sheet‎ عند الطباعة ‎position:absolute; inset:0‎ (لورقة المعاينة وحدها)، فتتراكب أوراق
+     ورقة الأسئلة المتعدّدة — الوجهان والنموذجان والنسخ — في الصفحة الأولى. وهنا كلّ ورقةٍ في مجرى الصفحة، وفاصلها بعدها. */
+  .print-root .print-sheet { position: relative !important; inset: auto !important; }
   .print-root {
     width: ${page.w}mm;
     min-height: ${page.h}mm;
