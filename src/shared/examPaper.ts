@@ -28,10 +28,12 @@ import {
   type GroupBlock,
   type ListBlock,
   type ListItem,
+  type Numerals,
   type ParagraphBlock,
   type SpacerBlock
 } from './doc';
 import { toIndic } from './arabic';
+import { escapeHtml } from './html';
 
 /** تصنيفُ ورقة الأسئلة في المكتبة — واحدٌ لكل المواد. */
 export const EXAM_CATEGORY = 'أسئلة';
@@ -281,103 +283,117 @@ export function versionItems(items: ListItem[], seed = 7): ListItem[] {
   return walk(items, 1);
 }
 
-// ── الوجهان وتعدد الصفحات (S14) ─────────────────────────────────────
-/** احتساب وزن السؤال لتقدير المساحة التي يشغلها في الصفحة */
-export function questionWeight(item: ListItem, includeAnswers = false): number {
-  const stem = (item.inlines ?? []).map((i) => (i.kind === 'run' ? i.text : '')).join('');
-  let lines = Math.max(1, Math.ceil(stem.length / 50));
-  if (item.score !== undefined) lines += 0.5;
-  if (item.image?.path) lines += 4;
-  if (includeAnswers && item.answer) lines += 1.5;
-  if (item.items?.length) {
-    for (const b of item.items) {
-      const bText = (b.inlines ?? []).map((i) => (i.kind === 'run' ? i.text : '')).join('');
-      lines += Math.max(1, Math.ceil(bText.length / 45)) + (includeAnswers && b.answer ? 1 : 0) + (b.items?.length ?? 0);
-    }
-  }
-  return lines + 1;
+// ── الصفحات بالقياس (S14 · D133) ─────────────────────────────────────
+/** رقم الصفحة بأرقام الورقة — لا الهندية دائمًا بجانب «س1» و«50 درجة». */
+export function examPageFooterText(page: number, totalPages: number, numerals: Numerals = 'indic'): string {
+  const n = (v: number) => (numerals === 'indic' ? toIndic(v) : String(v));
+  return `الصفحة ${n(page)} من ${n(totalPages)}`;
 }
 
-export function examPageFooterText(page: number, totalPages: number): string {
-  return `الصفحة ${toIndic(page)} من ${toIndic(totalPages)}`;
-}
-
-export function examPageFooterBlocks(page: number, totalPages: number): Block[] {
+export function examPageFooterBlocks(page: number, totalPages: number, numerals: Numerals = 'indic'): Block[] {
   if (totalPages <= 1) return [];
-  const text = examPageFooterText(page, totalPages);
+  const text = examPageFooterText(page, totalPages, numerals);
   const suffix = page < totalPages ? ' (اقلب الصفحة / يُتبع)' : '';
   return [spacer(12), paragraph([run(`${text}${suffix}`, { bold: true })], { align: 'center' })];
 }
 
-export function examContinuationBlocks(head: Record<string, string>): Block[] {
-  const subject = head['المادة']?.trim();
-  const type = head['نوع الامتحان']?.trim();
-  const title = [subject, type].filter(Boolean).join(' — ');
-  const text = title ? `تابع أسئلة ${title} — الوجه الثاني` : 'تابع أسئلة الامتحان — الوجه الثاني';
-  return [paragraph([run(text, { bold: true })], { align: 'center' }), spacer(8)];
+export const examContinuationBlocks = (head: Record<string, string>): Block[] => [paragraph([run(continuationText(head), { bold: true })], { align: 'center' }), spacer(8)];
+
+/** «تابع أسئلة الفيزياء — النهائي» في رأس كلّ صفحةٍ بعد الأولى (ورقمها في تذييلها). */
+function continuationText(head: Record<string, string>): string {
+  const title = [head['المادة']?.trim(), head['نوع الامتحان']?.trim()].filter(Boolean).join(' — ');
+  return title ? `تابع أسئلة ${title}` : 'تابع أسئلة الامتحان';
 }
 
-export function splitExamItems(items: ListItem[], options?: { duplex?: boolean; answers?: boolean }): { page1: ListItem[]; page2: ListItem[]; isDuplex: boolean } {
-  if (items.length <= 1) return { page1: items, page2: [], isDuplex: false };
-  const duplex = Boolean(options?.duplex);
-  const includeAnswers = Boolean(options?.answers);
-  const totalWeight = items.reduce((sum, it) => sum + questionWeight(it, includeAnswers), 0);
-  const autoDuplex = totalWeight > 18;
-  const isDuplex = duplex || autoDuplex;
-  if (!isDuplex) return { page1: items, page2: [], isDuplex: false };
-  if (duplex && !autoDuplex) {
-    const half = Math.ceil(items.length / 2);
-    return { page1: items.slice(0, half), page2: items.slice(half), isDuplex: true };
-  }
-  const page1: ListItem[] = [];
-  const page2: ListItem[] = [];
-  let w = 0;
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i]!;
-    const itemW = questionWeight(it, includeAnswers);
-    if ((page1.length === 0 || w + itemW <= 16) && i < items.length - 1) { page1.push(it); w += itemW; } else { page2.push(it); }
-  }
-  if (page2.length === 0 && page1.length > 1) page2.push(page1.pop()!);
-  return { page1, page2, isDuplex: true };
+/** رأس المتابعة في الصفحة `page` (من الثانية). */
+export function examContinuationHtml(head: Record<string, string>, page = 2): string {
+  return `<div data-paper-page-header="${page}" style="text-align:center;font-weight:700;font-size:11pt;color:#475569;margin-bottom:12px;border-bottom:1px solid #e2e8f0;padding-bottom:6px">${escapeHtml(continuationText(head))}</div>`;
 }
 
-export function splitExamPagesHtml(fullHtml: string, page1Count: number, head: Record<string, string>, totalPages = 2): { page1Html: string; page2Html: string } {
-  const p1Text = examPageFooterText(1, totalPages);
-  const p2Text = examPageFooterText(2, totalPages);
-  const foot1Html = `<div data-paper-page-footer="1" style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed #cbd5e1;padding-top:8px;margin-top:16px;font-size:11pt;color:#334155;font-weight:700"><span>اقلب الصفحة / يُتبع ⬅</span><span>${p1Text}</span></div>`;
-  const foot2Html = `<div data-paper-page-footer="2" style="display:flex;justify-content:center;align-items:center;border-top:1px dashed #cbd5e1;padding-top:8px;margin-top:16px;font-size:11pt;color:#334155;font-weight:700"><span>${p2Text}</span></div>`;
-  const subject = head['المادة']?.trim();
-  const type = head['نوع الامتحان']?.trim();
-  const title = [subject, type].filter(Boolean).join(' — ');
-  const contTitle = title ? `تابع أسئلة ${title} — الوجه الثاني` : 'تابع أسئلة الامتحان — الوجه الثاني';
-  const contHeadHtml = `<div data-paper-page-header="2" style="text-align:center;font-weight:700;font-size:11pt;color:#475569;margin-bottom:12px;border-bottom:1px solid #e2e8f0;padding-bottom:6px">${contTitle}</div>`;
-  const DP = (globalThis as unknown as { DOMParser?: new () => any }).DOMParser;
-  if (DP) {
-    const p = new DP();
-    const d1 = p.parseFromString(fullHtml, 'text/html');
-    const d2 = p.parseFromString(fullHtml, 'text/html');
-    const l1 = d1.body.querySelector('[data-flow="lines"]');
-    if (l1) {
-      Array.from(l1.children).slice(page1Count).forEach((el: any) => el.remove());
-      let next = l1.nextElementSibling;
-      while (next) { const toRemove = next; next = next.nextElementSibling; toRemove.remove(); }
-    }
-    const f1 = d1.createElement('div');
-    f1.innerHTML = foot1Html;
-    d1.body.appendChild(f1.firstElementChild || f1);
-    const l2 = d2.body.querySelector('[data-flow="lines"]');
-    if (l2) {
-      Array.from(l2.children).slice(0, page1Count).forEach((el: any) => el.remove());
-      let prev = l2.previousElementSibling;
-      while (prev) { const toRemove = prev; prev = prev.previousElementSibling; toRemove.remove(); }
-    }
-    const h2 = d2.createElement('div');
-    h2.innerHTML = contHeadHtml;
-    if (l2) d2.body.insertBefore(h2.firstElementChild || h2, l2); else d2.body.prepend(h2.firstElementChild || h2);
-    const f2 = d2.createElement('div');
-    f2.innerHTML = foot2Html;
-    d2.body.appendChild(f2.firstElementChild || f2);
-    return { page1Html: d1.body.innerHTML, page2Html: d2.body.innerHTML };
+/** تذييل الصفحة: «اقلب الصفحة / يُتبع» إلا الأخيرة، و«الصفحة ك من ن». */
+export function examFooterHtml(page: number, totalPages: number, numerals: Numerals): string {
+  const text = examPageFooterText(page, totalPages, numerals);
+  const more = page < totalPages;
+  return `<div data-paper-page-footer="${page}" style="display:flex;justify-content:${more ? 'space-between' : 'center'};align-items:center;border-top:1px dashed #cbd5e1;padding-top:8px;margin-top:16px;font-size:11pt;color:#334155;font-weight:700">${more ? '<span>اقلب الصفحة / يُتبع ⬅</span>' : ''}<span>${text}</span></div>`;
+}
+
+/** ما قيس من الورقة مرسومةً كاملة (بكسل): المتاح للمتن بعد الهامشين، والرأس، ورأس المتابعة، والتذييل، وما بعد الأسئلة، وكلّ سؤالٍ أمّ. */
+export type ExamMeasure = { page: number; head: number; cont: number; footer: number; tail: number; heights: number[] };
+
+/**
+ * عدد الأسئلة في كلّ صفحة — بالقياس لا بالتقدير (`examPagination.ts` يقيس).
+ *
+ * ما يسعه وجهٌ واحد صفحةٌ واحدة بلا ترقيم. وإلا تُملأ الصفحات بالترتيب عند حدود الأسئلة: لكلٍّ تذييلها، ورأس المتابعة من
+ * الثانية، وما بعد الأسئلة (التمنيات والتوقيع) في الأخيرة؛ والسؤال الأطول من صفحةٍ وحده في صفحته، ولا يُشطر سؤالٌ أمّ.
+ * و`halves` («بوجهين»): ورقةٌ تسعها صفحةٌ وفيها سؤالان فأكثر تُقسم نصفين بالارتفاع.
+ */
+export function examPageCounts(m: ExamMeasure, halves = false): number[] {
+  const n = m.heights.length;
+  const total = m.heights.reduce((a, b) => a + b, 0);
+  if (m.head + total + m.tail <= m.page) {
+    if (!halves || n < 2) return [n];
+    let [k, acc] = [1, m.heights[0]!];
+    while (k < n - 1 && Math.abs(2 * (acc + m.heights[k]!) - total) < Math.abs(2 * acc - total)) acc += m.heights[k++]!;
+    return [k, n - k];
   }
-  return { page1Html: `${fullHtml}${foot1Html}`, page2Html: `${contHeadHtml}${fullHtml}${foot2Html}` };
+  const room = m.page - m.footer;
+  const counts: number[] = [];
+  let [used, count] = [m.head, 0];
+  for (const h of m.heights) {
+    if (count > 0 && used + h > room) {
+      counts.push(count);
+      count = 0;
+      used = m.cont;
+    }
+    used += h;
+    count++;
+  }
+  // ما بعد الأسئلة في الأخيرة: إن لم يسعه نزل آخر سؤالٍ إلى صفحةٍ تالية.
+  if (count > 1 && used + m.tail > room) {
+    counts.push(count - 1);
+    count = 1;
+  }
+  counts.push(count);
+  return counts;
+}
+
+/** ما يلزم من DOM لتقطيع الورقة — بلا أنواع المتصفّح، فالملفّ مشتركٌ مع الرئيسية. */
+type El = {
+  children: ArrayLike<El>;
+  previousElementSibling: El | null;
+  nextElementSibling: El | null;
+  querySelector(selector: string): El | null;
+  insertAdjacentHTML(position: string, html: string): void;
+  remove(): void;
+  innerHTML: string;
+};
+
+/**
+ * صفحات الورقة بأعداد أسئلتها (`examPageCounts`): الرأس في الأولى، و«تابع أسئلة…» من الثانية، وما بعد الأسئلة في الأخيرة،
+ * ولكلٍّ تذييلها. والأخيرة تأخذ ما بقي من الأسئلة (فأعدادٌ قيست قبل تعديلٍ لا تُسقط سؤالًا). وصفحةٌ واحدة تعود كما هي بلا ترقيم.
+ */
+export function splitExamPagesHtml(fullHtml: string, counts: number[], head: Record<string, string>, numerals: Numerals): string[] {
+  const total = counts.length;
+  const Parser = (globalThis as unknown as { DOMParser?: new () => { parseFromString(html: string, type: string): { body: El } } }).DOMParser;
+  if (total <= 1 || !Parser) return [fullHtml];
+  const parser = new Parser();
+  let start = 0;
+  return counts.map((count, i) => {
+    const body = parser.parseFromString(fullHtml, 'text/html').body;
+    const list = body.querySelector('[data-flow="lines"]');
+    const last = i === total - 1;
+    if (list) {
+      Array.from(list.children).forEach((el, j) => {
+        if (j < start || (!last && j >= start + count)) el.remove();
+      });
+      if (i > 0) {
+        while (list.previousElementSibling) list.previousElementSibling.remove();
+        list.insertAdjacentHTML('beforebegin', examContinuationHtml(head, i + 1));
+      }
+      if (!last) while (list.nextElementSibling) list.nextElementSibling.remove();
+    }
+    start += count;
+    body.insertAdjacentHTML('beforeend', examFooterHtml(i + 1, total, numerals));
+    return body.innerHTML;
+  });
 }

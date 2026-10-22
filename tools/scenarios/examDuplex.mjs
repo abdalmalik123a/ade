@@ -1,12 +1,12 @@
 /**
- * سيناريو: ورقة الأسئلة بالوجهين وترقيم «الصفحة ١ من ٢» (S14 · D130).
+ * سيناريو: ورقة الأسئلة بالوجهين وترقيم «الصفحة 1 من 2» (S14 · D130، وD133).
  *
  * يفتح «الأسئلة»، ويملأ بيانات الرأس الثابت، ويفعّل خيار «طباعة بوجهين»
- * ويضيف أسئلة كافية للانقسام إلى صفحتين، ثم يتحقق من:
+ * ويضيف سؤالين قصيرين — ورقةٌ تسعها صفحة، و«بوجهين» يقسمها نصفين (D133) — ثم يتحقق من:
  * ١. انقسام الورقة إلى وجهين (صفحتين A4).
- * ٢. ظهور ترقيم «الصفحة ١ من ٢» في تذييل الوجه الأول مع عبارة «اقلب الصفحة / يُتبع».
- * ٣. ظهور ترقيم «الصفحة ٢ من ٢» في تذييل الوجه الثاني مع عنوان المتابعة «تابع أسئلة...».
- * ٤. أزرار تبديل العرض (الوجه الأول، الوجه الثاني، الصفحات المتتابعة) وتجاوب المعاينة معها.
+ * ٢. ظهور ترقيم «الصفحة 1 من 2» (بأرقام الورقة) في تذييل الوجه الأول مع عبارة «اقلب الصفحة / يُتبع».
+ * ٣. ظهور ترقيم «الصفحة 2 من 2» في تذييل الوجه الثاني مع عنوان المتابعة «تابع أسئلة...».
+ * ٤. أزرار تبديل العرض (الصفحة 1، الصفحة 2، الكلّ) وتجاوب المعاينة معها.
  */
 import { join } from 'node:path';
 
@@ -92,20 +92,20 @@ export default async function scenario(page, { shotsDir }) {
   ok('المعاينة تعرض وجهين (صفحتين)', sheetPages === 2);
 
   const page1Footer = await page.eval(`return document.querySelector('[data-paper-page-footer="1"]')?.innerText ?? '';`);
-  ok('تذييل الوجه الأول يحتوي «الصفحة ١ من ٢»', page1Footer.includes('الصفحة ١ من ٢'));
+  ok('تذييل الوجه الأول يحتوي «الصفحة 1 من 2»', page1Footer.includes('الصفحة 1 من 2'));
   ok('تذييل الوجه الأول يحتوي «اقلب الصفحة / يُتبع»', page1Footer.includes('اقلب الصفحة / يُتبع'));
 
   const page2Header = await page.eval(`return document.querySelector('[data-paper-page-header="2"]')?.innerText ?? '';`);
-  ok('رأس الوجه الثاني يحتوي عنوان المتابعة («الفيزياء — النهائي — الوجه الثاني»)', page2Header.includes('الفيزياء') && page2Header.includes('الوجه الثاني'));
+  ok('رأس الوجه الثاني يحتوي عنوان المتابعة («تابع أسئلة الفيزياء — النهائي»)', page2Header.includes('تابع أسئلة الفيزياء — النهائي'));
 
   const page2Footer = await page.eval(`return document.querySelector('[data-paper-page-footer="2"]')?.innerText ?? '';`);
-  ok('تذييل الوجه الثاني يحتوي «الصفحة ٢ من ٢»', page2Footer.includes('الصفحة ٢ من ٢'));
+  ok('تذييل الوجه الثاني يحتوي «الصفحة 2 من 2»', page2Footer.includes('الصفحة 2 من 2'));
 
-  // ٥. التحقق من أزرار تبديل المعاينة (الوجه الأول، الوجه الثاني، الصفحات المتتابعة)
+  // ٥. التحقق من أزرار تبديل المعاينة (الصفحة 1، الصفحة 2، الكلّ)
   const hasPagesView = await page.eval(`return Boolean(document.querySelector('[data-pages-view]'));`);
   ok('أزرار تبديل عرض الصفحات ظاهرة في الشريط', hasPagesView);
 
-  // تبديل إلى «الوجه الأول»
+  // تبديل إلى «الصفحة 1»
   await click('button[data-page-view="1"]');
   await wait(300);
   const onlyP1 = await page.eval(`
@@ -113,9 +113,9 @@ export default async function scenario(page, { shotsDir }) {
     const p2 = Boolean(document.querySelector('[data-sheet-page="2"]'));
     return p1 && !p2;
   `);
-  ok('اختيار «الوجه الأول» يُظهر الصفحة الأولى وحدها', onlyP1);
+  ok('اختيار «الصفحة 1» يُظهر الصفحة الأولى وحدها', onlyP1);
 
-  // تبديل إلى «الوجه الثاني»
+  // تبديل إلى «الصفحة 2»
   await click('button[data-page-view="2"]');
   await wait(300);
   const onlyP2 = await page.eval(`
@@ -123,9 +123,9 @@ export default async function scenario(page, { shotsDir }) {
     const p2 = Boolean(document.querySelector('[data-sheet-page="2"]'));
     return !p1 && p2;
   `);
-  ok('اختيار «الوجه الثاني» يُظهر الصفحة الثانية وحدها', onlyP2);
+  ok('اختيار «الصفحة 2» يُظهر الصفحة الثانية وحدها', onlyP2);
 
-  // إعادة العرض إلى «الصفحات المتتابعة»
+  // إعادة العرض إلى «الكلّ»
   await click('button[data-page-view="all"]');
   await wait(300);
   const bothPages = await page.eval(`
@@ -133,7 +133,7 @@ export default async function scenario(page, { shotsDir }) {
     const p2 = Boolean(document.querySelector('[data-sheet-page="2"]'));
     return p1 && p2;
   `);
-  ok('اختيار «الصفحات المتتابعة» يعيد عرض الوجهين معًا', bothPages);
+  ok('اختيار «الكلّ» يعيد عرض الوجهين معًا', bothPages);
 
   if (shotsDir) await page.shot(join(shotsDir, 'exam-duplex.png'));
 

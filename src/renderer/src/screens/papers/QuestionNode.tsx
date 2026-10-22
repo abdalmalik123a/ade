@@ -158,11 +158,7 @@ export function QuestionNode(props: NodeProps) {
           data-question-image-preview={item.id}
         >
           <img
-            src={
-              item.image.path.startsWith('data:') || item.image.path.startsWith('http') || item.image.path.startsWith('diwan:')
-                ? item.image.path
-                : `diwan://store/${item.image.path}`
-            }
+            src={`diwan://store/${item.image.path}`}
             alt="صورة السؤال"
             className="h-14 w-20 object-contain rounded bg-surface-container-lowest border border-outline-variant shrink-0"
           />

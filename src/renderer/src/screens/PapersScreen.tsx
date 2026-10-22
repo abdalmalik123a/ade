@@ -23,6 +23,7 @@ import {
 import type { TemplateSummary } from '@shared/api';
 import {
   listScore,
+  pageMm,
   type Dir,
   type ListItem,
   type Numerals
@@ -35,7 +36,6 @@ import {
   newQuestion,
   paperTitle,
   questionsOf,
-  splitExamItems,
   splitExamPagesHtml,
   VERSION_KEY,
   versionItems
@@ -53,6 +53,7 @@ import PreviewBar from './papers/PreviewBar';
 import PaperOutput from './papers/PaperOutput';
 import { usePaperTree } from './papers/usePaperTree';
 import { usePaperOutput } from './papers/usePaperOutput';
+import { useExamPages } from './papers/examPagination';
 
 // ── الشاشة ───────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ function PapersScreenInner(
   const [versions, setVersions] = useState(false);
   const [showB, setShowB] = useState(false);
   const [duplex, setDuplex] = useState(false);
-  const [pageView, setPageView] = useState<'1' | '2' | 'all'>('all');
+  const [pageView, setPageView] = useState<number | 'all'>('all');
   const [paperId, setPaperId] = useState<number | null>(null);
   const [omr, setOmr] = useState<OmrSpec>(newOmr);
   const [omrOpen, setOmrOpen] = useState(false);
@@ -147,11 +148,6 @@ function PapersScreenInner(
   const doc = useMemo(() => build(items), [build, items]);
   const margins = doc.pageSetup.margins;
 
-  const { page1, page2, isDuplex } = useMemo(
-    () => splitExamItems(items, { duplex, answers }),
-    [items, duplex, answers]
-  );
-
   /** الورقة بنموذجها: «أ» الأسئلة كما كُتبت، و«ب» بفروعٍ مخلوطة. */
   const renderVersion = useCallback(
     (version: string | null) =>
@@ -168,15 +164,18 @@ function PapersScreenInner(
     [build, items, doc, head, answers, numerals]
   );
 
-  const fullHtml = useMemo(
-    () => renderVersion(versions ? (showB ? 'ب' : 'أ') : null),
-    [renderVersion, versions, showB]
+  // الصفحات بقياس الأسئلة مرسومةً (`papers/examPagination.ts`) — لكلّ نموذجٍ ترتيب فروعه فتُقاس صفحاته وحده.
+  const variants = useMemo(
+    (): Record<string, string> => (versions ? { 'أ': renderVersion('أ'), 'ب': renderVersion('ب') } : { '': renderVersion(null) }),
+    [renderVersion, versions]
   );
-
-  const { page1Html, page2Html } = useMemo(() => {
-    if (!isDuplex || !page2.length) return { page1Html: fullHtml, page2Html: '' };
-    return splitExamPagesHtml(fullHtml, page1.length, head, 2);
-  }, [fullHtml, isDuplex, page1.length, page2.length, head]);
+  const pageCounts = useExamPages(variants, { dir, margins, pageH: pageMm(doc.pageSetup).h, numerals, head, halves: duplex });
+  const shown = versions ? (showB ? 'ب' : 'أ') : '';
+  const pages = useMemo(
+    () => splitExamPagesHtml(variants[shown] ?? '', pageCounts[shown] ?? [], head, numerals),
+    [variants, shown, pageCounts, head, numerals]
+  );
+  const view = pageView !== 'all' && pageView <= pages.length ? pageView : 'all';
 
   const total = useMemo(() => {
     const list = questionsOf(doc);
@@ -213,7 +212,7 @@ function PapersScreenInner(
   // ── الحفظ والطباعة وPDF وفتح ورقةٍ محفوظة والدور الثاني — `papers/usePaperOutput.ts` ──
   const { print, save, exportPdf, fresh, secondRoundPaper, openPaper, after, setAfter, lastJob, send } = usePaperOutput({
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
-    versions, copies, sheetRef, renderVersion, isDuplex, page1Length: page1.length, page2Length: page2.length, page1Html, page2Html, dir, margins,
+    versions, copies, sheetRef, renderVersion, duplex, pages, pageCounts, numerals, dir, margins,
     setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
   });
 
@@ -291,8 +290,8 @@ function PapersScreenInner(
             showB={showB}
             duplex={duplex}
             setDuplex={setDuplex}
-            isDuplex={isDuplex}
-            pageView={pageView}
+            pageCount={pages.length}
+            pageView={view}
             setPageView={setPageView}
           />
 
@@ -308,39 +307,27 @@ function PapersScreenInner(
                 transformOrigin: 'top center'
               }}
             >
-              {(pageView === '1' || pageView === 'all' || !isDuplex) && (
-                <div
-                  className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
-                  data-sheet-page="1"
-                  style={isDuplex ? { breakAfter: 'page', pageBreakAfter: 'always' } : undefined}
-                >
-                  <div
-                    className="text-black font-body-md text-body-md leading-relaxed"
-                    dir={dir}
-                    data-paper
-                    data-paper-page="1"
-                    dangerouslySetInnerHTML={{ __html: page1Html }}
-                    style={{
-                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
-                    }}
-                  />
-                </div>
-              )}
-              {isDuplex && Boolean(page2Html) && (pageView === '2' || pageView === 'all') && (
-                <div
-                  className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
-                  data-sheet-page="2"
-                >
-                  <div
-                    className="text-black font-body-md text-body-md leading-relaxed"
-                    dir={dir}
-                    data-paper-page="2"
-                    dangerouslySetInnerHTML={{ __html: page2Html }}
-                    style={{
-                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
-                    }}
-                  />
-                </div>
+              {pages.map(
+                (html, i) =>
+                  (view === 'all' || view === i + 1) && (
+                    <div
+                      key={i}
+                      className="a4-sheet print-sheet bg-surface-container-lowest shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)] shrink-0"
+                      data-sheet-page={i + 1}
+                      style={pages.length > 1 ? { breakAfter: 'page', pageBreakAfter: 'always' } : undefined}
+                    >
+                      <div
+                        className="text-black font-body-md text-body-md leading-relaxed"
+                        dir={dir}
+                        data-paper={i === 0 ? '' : undefined}
+                        data-paper-page={i + 1}
+                        dangerouslySetInnerHTML={{ __html: html }}
+                        style={{
+                          padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`
+                        }}
+                      />
+                    </div>
+                  )
               )}
             </div>
           </div>

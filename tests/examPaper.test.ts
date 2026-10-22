@@ -16,7 +16,12 @@ import {
   headOf,
   newQuestion,
   paperTitle,
-  questionsOf, VERSION_KEY, versionItems, splitExamItems, questionWeight, examPageFooterText, examPageFooterBlocks, examContinuationBlocks, splitExamPagesHtml } from '../src/shared/examPaper';
+  questionsOf, VERSION_KEY, versionItems, examPageFooterText, examPageFooterBlocks, examContinuationBlocks, examPageCounts, splitExamPagesHtml } from '../src/shared/examPaper';
+import { createRequire } from 'node:module';
+
+/** محلّل DOM لتقطيع الورقة كما في الواجهة — jsdom بلا أنواعه، فيُطلب بـrequire. */
+type Window = { DOMParser: unknown; document: { body: { textContent: string | null } } };
+const { JSDOM } = createRequire(import.meta.url)('jsdom') as { JSDOM: new (html: string) => { window: Window } };
 
 const filledHead = () => ({
   ...emptyHead(),
@@ -235,13 +240,14 @@ describe('نماذج الرأس السريعة', () => {
   });
 });
 
-describe('ورقة الأسئلة بالوجهين وترقيم الصفحات (S14)', () => {
-  it('ترقيم الصفحة يعيد «الصفحة ١ من ٢» و«الصفحة ٢ من ٢»', () => {
+describe('ورقة الأسئلة: الصفحات بالقياس و«الصفحة ك من ن» (S14 · D133)', () => {
+  it('ترقيم الصفحة بأرقام الورقة: الهندية لـindic، وإلا العربية', () => {
     expect(examPageFooterText(1, 2)).toBe('الصفحة ١ من ٢');
-    expect(examPageFooterText(2, 2)).toBe('الصفحة ٢ من ٢');
+    expect(examPageFooterText(2, 3, 'indic')).toBe('الصفحة ٢ من ٣');
+    expect(examPageFooterText(2, 3, 'arabic')).toBe('الصفحة 2 من 3');
   });
 
-  it('كتل التذييل ورأس المتابعة تظهر عند وجود وجهين', () => {
+  it('كتل التذييل ورأس المتابعة تظهر عند أكثر من صفحة', () => {
     expect(examPageFooterBlocks(1, 1)).toEqual([]);
     const blocks = examPageFooterBlocks(1, 2);
     expect(blocks).toHaveLength(2);
@@ -250,53 +256,72 @@ describe('ورقة الأسئلة بالوجهين وترقيم الصفحات (
     expect((p.inlines[0] as any).text).toContain('اقلب الصفحة');
     const cont = examContinuationBlocks(filledHead());
     expect(cont).toHaveLength(2);
-    expect(((cont[0] as ParagraphBlock).inlines[0] as any).text).toContain('الوجه الثاني');
+    expect(((cont[0] as ParagraphBlock).inlines[0] as any).text).toBe('تابع أسئلة الرياضيات — نصف السنة');
   });
 
-  it('احتساب وزن السؤال يتأثر بالفروع والإجابات', () => {
-    const single = q('سؤال قصير');
-    const withBranches = q('سؤال رئيسي', { items: [q('أ'), q('ب')] });
-    expect(questionWeight(withBranches)).toBeGreaterThan(questionWeight(single));
+  // صفحة A4 بهامشيها: ٩٠٠ بكسل للمتن، والرأس ٢٠٠، ورأس المتابعة ٤٠، والتذييل ٥٠، والتمنيات ٦٠.
+  const measure = (heights: number[]) => ({ page: 900, head: 200, cont: 40, footer: 50, tail: 60, heights });
+
+  it('ما يسعه وجهٌ واحد صفحةٌ واحدة — وإن كثرت أسئلته وفروعه', () => {
+    expect(examPageCounts(measure([100, 100, 100, 100, 100, 100]))).toEqual([6]);
+    expect(examPageCounts(measure([]))).toEqual([0]);
   });
 
-  it('تقسيم الأسئلة: أسئلة قليلة بلا خيار الوجهين تبقى صفحة واحدة', () => {
-    const items = [q('عرّف ما يأتي'), q('حلّ المعادلة')];
-    const res = splitExamItems(items);
-    expect(res.isDuplex).toBe(false);
-    expect(res.page1).toHaveLength(2);
-    expect(res.page2).toHaveLength(0);
+  it('وما زاد يُقسم صفحاتٍ عند حدود الأسئلة، بالترتيب، ولا يُشطر سؤال', () => {
+    // الأولى: ٢٠٠ + ١٥٠×٤ = ٨٠٠ ≤ ٨٥٠ · والثانية من ٤٠: ستّة · والثالثة الباقي.
+    const counts = examPageCounts(measure(Array.from({ length: 13 }, () => 150)));
+    expect(counts).toEqual([4, 5, 4]);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(13);
   });
 
-  it('تفعيل خيار الوجهين صراحة يقسم الأسئلة بالتناصف حتى لو كانت قليلة', () => {
-    const items = [q('س1'), q('س2')];
-    const res = splitExamItems(items, { duplex: true });
-    expect(res.isDuplex).toBe(true);
-    expect(res.page1).toHaveLength(1);
-    expect(res.page2).toHaveLength(1);
+  it('السؤال الأطول من صفحةٍ وحده في صفحته', () => {
+    expect(examPageCounts(measure([100, 1200, 100]))).toEqual([1, 1, 1]);
   });
 
-  it('تجاوز سعة الصفحة يقسم الأسئلة تلقائيًّا مع بقاء الترقيم المتتابع', () => {
-    const items = [
-      q('س1', { items: [q('أ'), q('ب'), q('ج')] }),
-      q('س2', { items: [q('أ'), q('ب'), q('ج')] }),
-      q('س3', { items: [q('أ'), q('ب'), q('ج')] }),
-      q('س4', { items: [q('أ'), q('ب'), q('ج')] }),
-      q('س5', { items: [q('أ'), q('ب')] })
-    ];
-    const res = splitExamItems(items);
-    expect(res.isDuplex).toBe(true);
-    expect(res.page1.length).toBeGreaterThan(0);
-    expect(res.page2.length).toBeGreaterThan(0);
-    expect(res.page1.length + res.page2.length).toBe(5);
+  it('ما بعد الأسئلة (التمنيات والتوقيع) في الأخيرة — وإن لم يسعه نزل آخر سؤال', () => {
+    // ٢٠٠ + ٦٠٠ + ٦٠ = ٨٦٠ ≤ ٩٠٠: صفحةٌ واحدة · و٢٠٠ + ٦٤٥ تسعهما الأولى بتذييلها (٨٤٥ ≤ ٨٥٠) والتمنيات لا تسعها بعدهما: ينزل الأخير.
+    expect(examPageCounts(measure([300, 300]))).toEqual([2]);
+    expect(examPageCounts(measure([300, 345]))).toEqual([1, 1]);
   });
 
-  it('تقسيم علامات HTML للوجهين يضع «الصفحة ١ من ٢» في الأولى و«الصفحة ٢ من ٢» في الثانية', () => {
-    const items = [q('س1'), q('س2'), q('س3'), q('س4')];
-    const doc = examDoc(filledHead(), examList(items));
-    const fullHtml = renderDocHtml(doc, filledHead(), { missing: 'blank', paragraphs: 'blocks' });
-    const { page1Html, page2Html } = splitExamPagesHtml(fullHtml, 2, filledHead(), 2);
-    expect(page1Html).toContain('الصفحة ١ من ٢');
-    expect(page2Html).toContain('الصفحة ٢ من ٢');
+  it('«بوجهين» يقسم ما تسعه صفحةٌ نصفين بالارتفاع، ولا يمسّ ما زاد على صفحة', () => {
+    expect(examPageCounts(measure([100, 100]), true)).toEqual([1, 1]);
+    expect(examPageCounts(measure([300, 50, 50, 50, 50]), true)).toEqual([1, 4]);
+    expect(examPageCounts(measure([100]), true)).toEqual([1]);
+    expect(examPageCounts(measure(Array.from({ length: 13 }, () => 150)), true)).toEqual([4, 5, 4]);
+  });
+
+  it('تقطيع الورقة: الرأس في الأولى، و«تابع أسئلة…» من الثانية، والتمنيات في الأخيرة، ولكلٍّ «الصفحة ك من ن»', () => {
+    const head = { ...filledHead(), التمنيات: 'مع تمنياتنا بالنجاح' };
+    const items = Array.from({ length: 5 }, (_, i) => q(`السؤال ${i + 1}`));
+    const fullHtml = renderDocHtml(examDoc(head, examList(items)), head, { missing: 'blank', paragraphs: 'blocks' });
+    // بلا محلّل DOM (الرئيسية): الورقة كما هي.
+    expect(splitExamPagesHtml(fullHtml, [2, 2, 1], head, 'arabic')).toEqual([fullHtml]);
+    const g = globalThis as { DOMParser?: unknown };
+    g.DOMParser = new JSDOM('').window.DOMParser;
+    try {
+      expect(splitExamPagesHtml(fullHtml, [5], head, 'arabic')).toEqual([fullHtml]);
+      const pages = splitExamPagesHtml(fullHtml, [2, 2, 1], head, 'arabic');
+      expect(pages).toHaveLength(3);
+      const text = pages.map((p) => new JSDOM(p).window.document.body.textContent ?? '');
+      expect(text[0]).toContain('المديرية العامة لتربية');
+      expect(text[1]).not.toContain('المديرية العامة لتربية');
+      expect(text[1]).toContain('تابع أسئلة الرياضيات — نصف السنة');
+      expect(text[2]).toContain('تابع أسئلة الرياضيات — نصف السنة');
+      expect(text.map((t) => (t.match(/السؤال \d/g) ?? []).join(' '))).toEqual(['السؤال 1 السؤال 2', 'السؤال 3 السؤال 4', 'السؤال 5']);
+      expect(text[0]).toContain('الصفحة 1 من 3');
+      expect(text[0]).toContain('اقلب الصفحة');
+      expect(text[2]).toContain('الصفحة 3 من 3');
+      expect(text[2]).not.toContain('اقلب الصفحة');
+      expect(text.filter((t) => t.includes('مع تمنياتنا بالنجاح'))).toHaveLength(1);
+      expect(text[2]).toContain('مع تمنياتنا بالنجاح');
+      // أعدادٌ قيست قبل إضافة سؤال: الأخيرة تأخذ ما بقي، فلا يسقط سؤال.
+      const stale = splitExamPagesHtml(fullHtml, [2, 1], head, 'indic');
+      expect(new JSDOM(stale[1]).window.document.body.textContent).toContain('السؤال 5');
+      expect(new JSDOM(stale[1]).window.document.body.textContent).toContain('الصفحة ٢ من ٢');
+    } finally {
+      delete g.DOMParser;
+    }
   });
 });
 
@@ -331,10 +356,12 @@ describe('صورةٌ داخل السؤال في ورقة الأسئلة (S15 · 
     expect(html).toContain('max-height:160px');
   });
 
-  it('احتساب وزن السؤال يزداد عند وجود صورة', () => {
-    const plain = q('س1');
-    const withImg = q('س1', { image: { path: 'img.png' } });
-    expect(questionWeight(withImg)).toBeGreaterThan(questionWeight(plain));
+  it('الصورة من مخزن ديوان وحده: لا رابط http ولا data:', () => {
+    const items = [q('س1', { image: { path: 'http://example.com/a.png' } }), q('س2', { image: { path: 'data:image/png;base64,AAAA' } })];
+    const html = renderDocHtml(examDoc(filledHead(), examList(items)), filledHead(), { missing: 'blank', paragraphs: 'blocks' });
+    expect(html).toContain('src="diwan://store/http://example.com/a.png"');
+    expect(html).toContain('src="diwan://store/data:image/png;base64,AAAA"');
+    expect(html).not.toMatch(/src="(http|data:)/);
   });
 
   it('نموذج ب يحافظ على صورة السؤال وفروعه عند خلط الفروع', () => {

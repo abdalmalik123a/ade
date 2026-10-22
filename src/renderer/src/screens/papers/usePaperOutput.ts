@@ -37,11 +37,12 @@ export function usePaperOutput(
     copies: number;
     sheetRef: RefObject<HTMLDivElement>;
     renderVersion: (version: string | null) => string;
-    isDuplex?: boolean;
-    page1Length: number;
-    page2Length: number;
-    page1Html: string;
-    page2Html: string;
+    /** «بوجهين»: الطباعة على الوجهين وحدها — والصفحات من القياس. */
+    duplex: boolean;
+    /** صفحات الورقة المعروضة، وعدد أسئلة كلّ صفحةٍ لكلّ نموذج (`papers/examPagination.ts`). */
+    pages: string[];
+    pageCounts: Record<string, number[]>;
+    numerals: Numerals;
     dir: Dir;
     margins: { top: number; right: number; bottom: number; left: number };
     setHead: Dispatch<SetStateAction<Record<string, string>>>;
@@ -57,19 +58,24 @@ export function usePaperOutput(
 ) {
   const {
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
-    versions, copies, sheetRef, renderVersion, isDuplex = false, page1Length, page2Length, page1Html, page2Html, dir, margins,
+    versions, copies, sheetRef, renderVersion, duplex, pages, pageCounts, numerals, dir, margins,
     setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
   } = ctx;
+
+  /** صفحةٌ من الورقة ورقةً تُطبع — وفاصل الصفحة بعدها إلا الأخيرة. */
+  const sheetOf = useCallback(
+    (html: string, page: number, more: boolean) =>
+      `<div class="a4-sheet print-sheet"${more ? ' style="break-after:page;page-break-after:always"' : ''}><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}"${page === 1 ? ' data-paper' : ''} data-paper-page="${page}" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${html}</div></div>`,
+    [dir, margins]
+  );
 
   const versionPage = useCallback(
     (node: HTMLElement, version: string) => {
       const fullVHtml = renderVersion(version);
-      if (isDuplex && page2Length > 0) {
-        const { page1Html: p1, page2Html: p2 } = splitExamPagesHtml(fullVHtml, page1Length, head, 2);
-        return (
-          `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper data-paper-page="1" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${p1}</div></div>` +
-          `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper-page="2" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${p2}</div></div>`
-        );
+      const counts = pageCounts[version] ?? [];
+      // ونموذجٌ بصفحةٍ والمعروض بصفحتين (أو العكس) لا يُنسخ من المعاينة: تبقى فيها صفحة النموذج الآخر.
+      if (counts.length > 1 || node.querySelectorAll('[data-sheet-page]').length !== 1) {
+        return splitExamPagesHtml(fullVHtml, counts, head, numerals).map((html, i) => sheetOf(html, i + 1, true)).join('');
       }
       const clone = node.cloneNode(true) as HTMLElement;
       clone.style.breakAfter = 'page';
@@ -77,7 +83,7 @@ export function usePaperOutput(
       if (body) body.innerHTML = fullVHtml;
       return clone.outerHTML;
     },
-    [renderVersion, isDuplex, page1Length, page2Length, head, dir, margins]
+    [renderVersion, pageCounts, head, numerals, sheetOf]
   );
 
   /** الأوراق كما تخرج: الطباعة بعدد النسخ («أ» و«ب» بالتناوب)، وPDF النموذجين «أ» ثم «ب» مرّةً — للمدرّس يطبع منه ما شاء. */
@@ -91,14 +97,10 @@ export function usePaperOutput(
       const sheets = target === 'pdf' ? 2 : Math.max(1, copies);
       return { html: Array.from({ length: sheets }, (_, i) => (i % 2 ? b : a)).join(''), copies: 1 };
     }
-    if (isDuplex && page2Length > 0) {
-      const duplexHtml =
-        `<div class="a4-sheet print-sheet" style="break-after:page;page-break-after:always"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper data-paper-page="1" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${page1Html}</div></div>` +
-        `<div class="a4-sheet print-sheet"><div class="text-black font-body-md text-body-md leading-relaxed" dir="${dir}" data-paper-page="2" style="padding:${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm">${page2Html}</div></div>`;
-      return { html: duplexHtml, copies: Math.max(1, copies) };
-    }
+    // صفحاتٌ عدّة تُبنى من نصّها لا من المعاينة: «الصفحة ٢» وحدها معروضةً لا تُسقط الأولى من الطباعة.
+    if (pages.length > 1) return { html: pages.map((html, i) => sheetOf(html, i + 1, i < pages.length - 1)).join(''), copies: Math.max(1, copies) };
     return { html: node.outerHTML, copies: Math.max(1, copies) };
-  }, [versions, copies, versionPage, isDuplex, page2Length, page1Html, page2Html, dir, margins, sheetRef]);
+  }, [versions, copies, versionPage, pages, sheetOf, sheetRef]);
 
   const autosaveTimer = useRef<number | null>(null);
   const paperIdRef = useRef<number | null>(paperId);
@@ -274,9 +276,9 @@ export function usePaperOutput(
       printer: pick.printer,
       system: pick.system,
       what: versions ? `${count(copies, 'نسخة')} («أ» و«ب» بالتناوب)` : count(copies, 'نسخة'),
-      duplex: isDuplex
+      duplex
     });
-  }, [copies, versions, sheetsFor, send, isDuplex]);
+  }, [copies, versions, sheetsFor, send, duplex]);
 
   const exportPdf = useCallback(async () => {
     const sheets = sheetsFor('pdf');

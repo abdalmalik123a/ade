@@ -1,5 +1,6 @@
 /**
  * شريط معاينة ورقة الأسئلة (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PapersScreen` كما هو: الاتجاه والأرقام والإجابات والنموذجان والتكبير.
+ * و«بوجهين» للطباعة وحدها، والصفحات من القياس: زرٌّ لكلّ صفحةٍ و«الكلّ» حين تزيد على واحدة (D133).
  */
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -13,9 +14,9 @@ type Props = {
   showB: boolean;
   duplex?: boolean;
   setDuplex?: Dispatch<SetStateAction<boolean>>;
-  isDuplex?: boolean;
-  pageView?: '1' | '2' | 'all';
-  setPageView?: Dispatch<SetStateAction<'1' | '2' | 'all'>>;
+  pageCount?: number;
+  pageView?: number | 'all';
+  setPageView?: Dispatch<SetStateAction<number | 'all'>>;
 };
 
 export default function PreviewBar({
@@ -28,7 +29,7 @@ export default function PreviewBar({
   showB,
   duplex = false,
   setDuplex,
-  isDuplex = false,
+  pageCount = 1,
   pageView = 'all',
   setPageView
 }: Props) {
@@ -102,28 +103,21 @@ export default function PreviewBar({
           />
           طباعة بوجهين
         </label>
-        {isDuplex && (
+        {pageCount > 1 && (
           <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-pages-view="">
-            <button
-              className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
-                pageView === '1' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
-              }`}
-              data-page-view="1"
-              type="button"
-              onClick={() => setPageView?.('1')}
-            >
-              الوجه الأول
-            </button>
-            <button
-              className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
-                pageView === '2' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
-              }`}
-              data-page-view="2"
-              type="button"
-              onClick={() => setPageView?.('2')}
-            >
-              الوجه الثاني
-            </button>
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
+                  pageView === n ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+                }`}
+                data-page-view={n}
+                type="button"
+                onClick={() => setPageView?.(n)}
+              >
+                الصفحة {n}
+              </button>
+            ))}
             <button
               className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
                 pageView === 'all' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
@@ -132,7 +126,7 @@ export default function PreviewBar({
               type="button"
               onClick={() => setPageView?.('all')}
             >
-              الصفحات المتتابعة
+              الكلّ
             </button>
           </div>
         )}
