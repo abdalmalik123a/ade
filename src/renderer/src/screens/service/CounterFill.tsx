@@ -1,9 +1,9 @@
 /**
  * الشبّاك — ٢ «املأ» (تقسيم الشبّاك بعد ١٫٧٫٠): منقولةٌ من `ServiceScreen` كما هي — «هات الزبون» و«هات المدرسة» و«لصق من
  * واتساب» و«ورقة مستمسكاته»، وقائمة الأسماء، والعدد على الكتاب، والجنس، والحقول بتنبيهها الخفيف، والمعاينة الحيّة.
- * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`fillFromSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف).
+ * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`fillFromSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف) — إلا رسالة ملفّ الأسماء.
  */
-import { useRef, type Dispatch, type MutableRefObject, type SetStateAction, type KeyboardEvent } from 'react';
+import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction, type KeyboardEvent } from 'react';
 import { count } from '@shared/arabic';
 import { isDateField, type DocField } from '@shared/doc';
 import { GENDER_KEY, isChoiceKey } from '@shared/gender';
@@ -12,44 +12,9 @@ import { isAmbiguousAmount, isAmountField } from '@shared/tafqeet';
 import type { Client } from '@shared/orders';
 import DateTools from '../../components/DateTools';
 import LetterSheet from '../../components/LetterSheet';
+import { errorText } from '../../lib/errors';
+import { namesFromSheet } from './sheetNames';
 import type { Loaded } from './types';
-
-/** استخلاص الأسماء من نص جدول Excel أو CSV (D121 — S36). */
-export function extractNamesFromSheetText(text: string): string[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return [];
-
-  const splitLine = (l: string) => (l.includes('\t') ? l.split('\t') : l.includes('،') ? l.split('،') : l.includes(',') ? l.split(',') : [l]);
-  const rows = lines.map((l) => splitLine(l).map((c) => c.replace(/^["'\s]+|["'\s]+$/g, '').trim()));
-  const header = rows[0]!;
-
-  const nameIdx = header.findIndex((c) => {
-    const n = c.replace(/[\s_]+/g, ' ').trim();
-    return (
-      n === 'الاسم' ||
-      n === 'اسم' ||
-      n.includes('الاسم') ||
-      n.includes('اسم الطالب') ||
-      n.includes('اسم الزبون') ||
-      n.includes('اسم المواطن') ||
-      n.includes('اسم الموظف') ||
-      n.toLowerCase() === 'name' ||
-      n.toLowerCase() === 'student name'
-    );
-  });
-
-  const col = nameIdx >= 0 ? nameIdx : 0;
-  const start = nameIdx >= 0 ? 1 : 0;
-  const names: string[] = [];
-  for (let i = start; i < rows.length; i++) {
-    const val = rows[i]![col];
-    if (val && val.trim()) names.push(val.trim());
-  }
-  return names;
-}
 
 type Props = {
   loaded: Loaded[];
@@ -117,6 +82,8 @@ export default function CounterFill({
   resolveHead
 }: Props) {
   const formRef = useRef<HTMLDivElement | null>(null);
+  /** ما يُقال عن ملفّ الأسماء: لا يُقرأ (`.xls` القديم)، أو فارغ، أو بلا أسماء — كان يسكت (D137). */
+  const [sheetError, setSheetError] = useState<string | null>(null);
 
   const handleFormKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Tab') return;
@@ -230,11 +197,18 @@ export default function CounterFill({
                   data-act="merge-sheet"
                   type="button"
                   onClick={async () => {
-                    const sheet = await window.diwan.files.readSheet();
-                    if (!sheet?.text) return;
-                    const extracted = extractNamesFromSheetText(sheet.text);
-                    if (extracted.length) {
+                    setSheetError(null);
+                    try {
+                      const sheet = await window.diwan.files.readSheet();
+                      if (!sheet) return;
+                      const extracted = namesFromSheet(sheet.text);
+                      if (!extracted.length) {
+                        setSheetError(sheet.text.trim() ? `لا عمود أسماءٍ في «${sheet.name}» — أعمدته أرقام` : `«${sheet.name}» فارغ — لا صفوف فيه`);
+                        return;
+                      }
                       setNames((prev) => [prev.trim(), ...extracted].filter(Boolean).join('\n'));
+                    } catch (err) {
+                      setSheetError(errorText(err, 'تعذّرت قراءة الملف'));
                     }
                   }}
                 >
@@ -251,6 +225,11 @@ export default function CounterFill({
                   أضف من الزبائن
                 </button>
               </div>
+              {sheetError && (
+                <span className="font-label-sm text-label-sm text-error" data-merge-sheet-error="" role="alert">
+                  {sheetError}
+                </span>
+              )}
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 {count(rows.length, 'اسم')} × {count(loaded.length, 'ورقة')} ={' '}
                 <b>{rows.length * loaded.length}</b> ورقة، لكل اسم معاملتُه.

@@ -128,7 +128,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
   // ── صاحب العلاقة والناقص ورأس الورقة وأسماء الدمج — `service/useFillDerived.ts` ──
   const { byRole, citizenName, nameField, rows, missing, printsRegistry, registry, resolveHead } = useFillDerived({
-    fields, values, letterNo, loaded, needsGender, genderByHand, learned, setValues, names
+    fields, values, letterNo, loaded, needsGender, genderByHand, learned, setValues, names, citizenId
   });
 
   // ── طباعة ما صدر (خطة Production، ٢٫٣): ورقةً ورقة بسجلٍّ يُستأنف — `service/usePrintRun.ts` ──

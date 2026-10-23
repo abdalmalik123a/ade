@@ -2,6 +2,7 @@
  * ما يُشتقّ من ورقة الإدخال (تقسيم الشبّاك بعد ١٫٧٫٠) — منقولٌ من `ServiceScreen` كما هو: اسم صاحب العلاقة، والحقول الناقصة، ورأس الورقة وحقول الترويسة، واقتراح الجنس من
  * الاسم، وأسماء قائمة الدمج.
  */
+import { normalizeFold } from '@shared/arabic';
 import type { DocField } from '@shared/doc';
 import { isChoiceKey, guessGender, GENDER_KEY, type LearnedGenders } from '@shared/gender';
 import { formatGregorian, formatHijri } from '@shared/dates';
@@ -20,9 +21,11 @@ export function useFillDerived(
     learned: LearnedGenders;
     setValues: Dispatch<SetStateAction<Record<string, string>>>;
     names: string;
+    /** الزبون المختار («هات الزبون»): منه وحده جنسه المحفوظ (D137). */
+    citizenId: number | null;
   }
 ) {
-  const { fields, values, letterNo, loaded, needsGender, genderByHand, learned, setValues, names } = ctx;
+  const { fields, values, letterNo, loaded, needsGender, genderByHand, learned, setValues, names, citizenId } = ctx;
 
   const byRole = (role: DocField['role']) => {
     const f = fields.find((x) => x.role === role);
@@ -55,21 +58,18 @@ export function useFillDerived(
     });
 
   // الجنس يُقترح من السجلّ أو الاسم ما لم يختره الموظف — وهو ظاهرٌ يُقلب بضغطة (ر150).
+  // والمحفوظ من ملفّ **الزبون المختار** وحده لا بحثًا بالاسم (D137): «نور علي حسن» قد يكونان اثنين، وكان يُؤخذ أوّلهما.
+  // وإن صار على الورقة اسمٌ غير اسمه فليس صاحبَها: التخمين من الاسم كما بلا زبون.
   useEffect(() => {
     if (!needsGender || genderByHand || !citizenName) return;
     let active = true;
     void (async () => {
       let registeredGender: 'ذكر' | 'أنثى' | null = null;
       try {
-        if (typeof window !== 'undefined' && window.diwan?.citizens?.list) {
-          const list = await window.diwan.citizens.list({ query: citizenName, limit: 5 });
-          const exact = (Array.isArray(list) ? list : []).find((c) => c.fullName === citizenName);
-          if (exact) {
-            const detail = await window.diwan.citizens.get(exact.id);
-            if (detail?.gender === 'ذكر' || detail?.gender === 'أنثى') {
-              registeredGender = detail.gender;
-            }
-          }
+        if (citizenId !== null && typeof window !== 'undefined' && window.diwan?.citizens?.get) {
+          const detail = await window.diwan.citizens.get(citizenId);
+          const same = detail && normalizeFold(detail.fullName) === normalizeFold(citizenName);
+          if (same && (detail.gender === 'ذكر' || detail.gender === 'أنثى')) registeredGender = detail.gender;
         }
       } catch {
         // في بيئة الاختبار أو غياب السجلّ
@@ -85,7 +85,7 @@ export function useFillDerived(
     };
     // الجنس يُقترح حين يتغيّر الاسم أو اختيار الموظف، والقيم تُقرأ حين يجري — لا يُعاد مع كلّ قيمة
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsGender, genderByHand, citizenName, learned]);
+  }, [needsGender, genderByHand, citizenName, citizenId, learned]);
 
   /** حقل الاسم: عليه يدور الدمج، وبغيره لا معنى لقائمة أسماء. */
   const nameField = fields.find((f) => f.role === 'name') ?? null;

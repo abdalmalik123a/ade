@@ -78,15 +78,33 @@ describe('محرك التفقيط المالي بالدينار العراقي (
     expect(parseAmount('٢٥.٠٠٠')).toBeNull();
     expect(parseAmount('1.500')).toBeNull();
     expect(tafqeet('25.000')).toBe('');
-    // الصريح يبقى: فاصلة الآلاف، وبلا نقطة، وأقلّ من ثلاث خاناتٍ أو أكثر منها، والفاصلة العشرية العربية.
+    // الصريح يبقى: فاصلة الآلاف، وبلا نقطة، وأقلّ من ثلاث خاناتٍ أو أكثر منها.
     expect(parseAmount('25,000')).toBe(25000);
     expect(parseAmount('25000')).toBe(25000);
     expect(parseAmount('1,500.000')).toBe(1500);
     expect(parseAmount('250.5')).toBe(250.5);
     expect(parseAmount('250.50')).toBe(250.5);
     expect(parseAmount('25.1234')).toBe(25.1234);
-    expect(parseAmount('٢٥٫٠٠٠')).toBe(25);
     expect(parseAmount('1.500.000')).toBe(1500000);
+  });
+
+  it('«،» من لوحة المفاتيح العربية فاصلة آلاف، و«٫» كالنقطة: بثلاث خاناتٍ غامضة (D137)', () => {
+    // كانت «٢٥،٠٠٠» لا تُقرأ ولا يُنبَّه لها، و«25٫000» تُقرأ ٢٥ دينارًا صامتة.
+    expect(parseAmount('٢٥،٠٠٠')).toBe(25000);
+    expect(parseAmount('25،000')).toBe(25000);
+    expect(parseAmount('١،٥٠٠،٠٠٠')).toBe(1500000);
+    expect(isAmbiguousAmount('٢٥،٠٠٠')).toBe(false);
+    expect(tafqeet('٢٥،٠٠٠')).toBe(tafqeet('25000'));
+    expect(parseAmount('25٫000')).toBeNull();
+    expect(parseAmount('٢٥٫٠٠٠')).toBeNull();
+    expect(isAmbiguousAmount('25٫000')).toBe(true);
+    expect(isAmbiguousAmount('٢٥٫٠٠٠')).toBe(true);
+    expect(tafqeet('٢٥٫٠٠٠')).toBe('');
+    // وما سواها كسرٌ عشريٌّ كما كان، وآلافٌ بها كالنقطة.
+    expect(parseAmount('25٫5')).toBe(25.5);
+    expect(parseAmount('٢٥٠٫٥٠')).toBe(250.5);
+    expect(isAmbiguousAmount('25٫5')).toBe(false);
+    expect(parseAmount('١٫٥٠٠٫٠٠٠')).toBe(1500000);
   });
 
   it('كشف المبلغ الغامض بنقطة وثلاثة أصفار (S07)', () => {

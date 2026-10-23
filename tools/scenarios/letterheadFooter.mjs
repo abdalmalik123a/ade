@@ -4,6 +4,7 @@
  * و(D136): التذييل لا يُطبع فوق المتن — كتابٌ من ٤٠ فقرة بترويسةٍ لها تذييل يصدر، ثم PDF من الأرشيف وصور صفحاته (`tools/pdfImage.mjs`):
  * شريط التذييل أسفل كلّ صفحة لا حبر فيه إلا التذييل، وما فوقه كالكتاب نفسه بلا تذييل أو نزلت سطوره إلى الصفحة التالية — ولا سطر ضاع،
  * وصفحات المحرّر (الشريط و«اطبع») عدد صفحات PDF. وبترويسةٍ مكرّرة وترقيم الصفحات أيضًا.
+ * و(مراجعة D136): كتابٌ على الحدّ — ٢٨ فقرة تسعها ورقةٌ بلا تذييل، وبالشريط تنزل الأخيرة إلى الثانية — فلا يمرّ محرّرٌ لا يعرف الشريط.
  */
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,11 +12,11 @@ import Database from 'better-sqlite3';
 import { pdfToImages } from '../pdfImage.mjs';
 
 const FOOT = { show: true, text: 'بغداد — شارع الرشيد | هاتف 07700000000', align: 'center', size: 10 };
-/** كتابٌ من ٤٠ فقرةً قصيرة مرقّمة — كلّ سطرٍ يختلف عن غيره فيُعرف موضعه في الصورة. */
-const bookDoc = (title, repeatLetterhead, pageNumbers) => ({
+/** كتابٌ من ٤٠ فقرةً قصيرة مرقّمة (أو `n`) — كلّ سطرٍ يختلف عن غيره فيُعرف موضعه في الصورة. */
+const bookDoc = (title, repeatLetterhead, pageNumbers, n = 40) => ({
   id: title, schemaVersion: 1, kind: 'flow', issuing: 'registered',
   pageSetup: { size: 'A4', orientation: 'portrait', margins: { top: 20, right: 20, bottom: 20, left: 20 }, letterheadMode: 'print', repeatLetterhead, pageNumbers, numerals: 'arabic' },
-  blocks: Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, kind: 'paragraph', align: 'right', inlines: [{ kind: 'run', text: `الفقرة ${i + 1}: نصٌّ لكتابٍ طويل إلى مدرسة النور` }] })),
+  blocks: Array.from({ length: n }, (_, i) => ({ id: `p${i}`, kind: 'paragraph', align: 'right', inlines: [{ kind: 'run', text: `الفقرة ${i + 1}: نصٌّ لكتابٍ طويل إلى مدرسة النور` }] })),
   fields: [], meta: {}
 });
 
@@ -96,13 +97,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   // ── (D136) الكتاب الطويل يُطبع وتذييله في شريطه — وPDF يُحفظ في مجلّد الحفظ الذي يعطيه `drive.mjs` ──
   mkdirSync(process.env.DIWAN_TEST_SAVE_DIR, { recursive: true });
   /** يُصدر الكتاب من نموذجه في المحرّر، ويعيد صفحات المحرّر وشريطه المحجوز وPDF من الأرشيف صفوفًا (حبر كلّ صفّ وموضعه). */
-  const issueBook = async ({ title, owner, footer, repeat = false, numbers = false }) => {
+  const issueBook = async ({ title, owner, footer, repeat = false, numbers = false, n = 40 }) => {
     await page.eval(`
       const lh = await window.diwan.letterheads.save({ id: null, name: ${JSON.stringify(title)}, authorityId: null, category: null,
         layout: { sections: [{ id: 's', weight: 1, blocks: [{ id: 'b', kind: 'text', value: 'مدرسة النور الابتدائية', align: 'center', size: 14, bold: true }] }],
           footer: ${JSON.stringify(footer ?? { show: false, text: '', align: 'center', size: 10 })} } });
       await window.diwan.templates.save({ id: null, code: null, title: ${JSON.stringify(title)}, subtitle: null, category: 'اختبار', subjectLine: null,
-        letterheadId: lh.id, bodyHtml: '<p>كتاب</p>', variables: [], doc: ${JSON.stringify(bookDoc(title, repeat, numbers))} });
+        letterheadId: lh.id, bodyHtml: '<p>كتاب</p>', variables: [], doc: ${JSON.stringify(bookDoc(title, repeat, numbers, n))} });
       return true;
     `);
     await page.goto('templates-library-drafts');
@@ -202,6 +203,13 @@ export default async function scenario(page, { profile, shotsDir }) {
   const plainLines = plain.images.reduce((s, img) => s + lineGroups(img.rows, Math.round(img.h - 20 * K) + 1), 0);
   ok(`بتذييل: لا سطر ضاع — أسطر المتن والترويسة ${lines} كما بلا تذييل ${plainLines}`, lines > 40 && lines === plainLines);
   checkBook('بترويسةٍ مكرّرة وترقيم', await issueBook({ title: 'كتاب بتذييل مكرر', owner: 'مريم جاسم', footer: FOOT, repeat: true, numbers: true }));
+
+  // (مراجعة D136) على الحدّ: المحرّر الذي لا يعرف الشريط يقول «ورقة واحدة» والمطبوع ورقتان — وكتاب الأربعين ورقتان بالشريط وبدونه فلا يراه.
+  const edge = await issueBook({ title: 'كتاب على الحد بتذييل', owner: 'ليلى عبد الله حسن', footer: FOOT, n: 28 });
+  const edgePlain = await issueBook({ title: 'كتاب على الحد بلا تذييل', owner: 'أحمد عادل كريم', footer: null, n: 28 });
+  const e = edge.editor;
+  ok(`على الحدّ (٢٨ فقرة) بتذييل: صدر، وصفحات المحرّر (الشريط ${e.bar}، و«${e.word}») = صفحات PDF (${edge.images.length}) = ٢`, edge.issued && e.bar === 2 && e.print === 2 && edge.images.length === 2);
+  ok(`والكتاب نفسه بلا تذييل ورقةٌ واحدة (المحرّر ${edgePlain.editor.bar}، وPDF ${edgePlain.images.length})`, edgePlain.issued && edgePlain.editor.bar === 1 && edgePlain.editor.print === 1 && edgePlain.images.length === 1);
 
   return steps.join('\n');
 }
