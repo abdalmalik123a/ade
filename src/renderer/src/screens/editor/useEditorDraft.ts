@@ -9,7 +9,7 @@ import type { LetterheadLayout } from '@shared/letterhead';
 import { letterValues, type Registry } from '@shared/letterDraft';
 import { errorText } from '../../lib/errors';
 import { onBeforeClose } from '../../lib/beforeClose';
-import { flushEditors } from '../../components/pageEditor/flushEditors';
+import { editorsPending, flushEditors } from '../../components/pageEditor/flushEditors';
 
 const AUTOSAVE_MS = 4000;
 
@@ -25,7 +25,8 @@ export function useEditorDraft(
     linkedCitizen: number | null;
     draftName: string;
     savedLetter: () => Parameters<typeof letterValues>[0];
-    doc: Doc | MutableRefObject<Doc>;
+    /** الوثيقة كما رُسمت: تغيّرها (إرسال المحرّر) يعيد موعد الحفظ التلقائي — والمحفوظ من `savedLetter` (D143). */
+    doc: Doc;
     values: Record<string, string>;
     setSavedAt: Dispatch<SetStateAction<Date | null>>;
     dirty: MutableRefObject<boolean>;
@@ -77,7 +78,8 @@ export function useEditorDraft(
 
   useEffect(() => {
     if (!dirty.current || !hasContent) return;
-    const timer = setTimeout(() => void saveDraft(true), AUTOSAVE_MS);
+    // والكتابة جارية (عند المحرّر ما لم يُرسل): لا يُستعجل في وسطها — يرسله المحرّر بعد ٢٥٠ م.ث فيتغيّر `doc` ويُعاد هذا الموعد (D143).
+    const timer = setTimeout(() => void (editorsPending() || saveDraft(true)), AUTOSAVE_MS);
     return () => clearTimeout(timer);
   }, [doc, values, registry, hasContent, saveDraft]);
 

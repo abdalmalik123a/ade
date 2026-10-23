@@ -334,6 +334,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ctrlS });
   await wait(1200);
   ok('وكلمةٌ ثم Ctrl+S فورًا: في المسودّة', draftHas('جدًّا'));
+  // ولا شيء بعدها: الحفظ التلقائي يحفظها بعد ٤ ث من إرسال المحرّر — وكان موعده لا يُعاد بالكتابة في المتن منذ D129 (`doc: liveDoc`).
+  await caretAfter('جدًّا');
+  await page.typeKeys(PM, ' تلقائيًّا');
+  ok('وكلمةٌ ثم لا شيء: يحفظها الحفظ التلقائي', await until(() => draftHas('تلقائيًّا'), 50, 200));
 
   await page.send('Emulation.clearDeviceMetricsOverride');
   return steps;

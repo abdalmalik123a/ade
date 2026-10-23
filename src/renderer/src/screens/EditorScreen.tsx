@@ -117,7 +117,7 @@ function EditorScreen(
   const baseDoc = useRef<Doc | null>(null);
 
   // ── الوثيقة والترويسة، وفتح النموذج والمسودّة والكتاب المكرَّر — `editor/useEditorDocument.ts` ──
-  const { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout, liveDoc, latestDoc } = useEditorDocument({
+  const { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout, latestDoc } = useEditorDocument({
     dirty, setDocState, setSettings, setLetterheads, setTemplates, setClips, templateId, draftId, documentId, toast, setToast,
     letterheads, letterheadId, setLetterheadId, setLayoutDirty, setLayout, doc, layout, setSaveLayoutOpen, setActiveTemplate,
     baseDoc, setDocType, setError, setValues, setRegistry, setOwner, setDraft, setLinkedCitizen
@@ -169,7 +169,7 @@ function EditorScreen(
   const draftName = draftTitle({ docType, owner: ownerName, doc, values });
   // ── حفظ المسودة: تلقائيًّا وبـCtrl+S وعند المغادرة والإغلاق — `editor/useEditorDraft.ts` ──
   const { saveDraft } = useEditorDraft({
-    draftId, draft, setDraft, hasContent, setError, setSaving, activeTemplate, linkedCitizen, draftName, savedLetter, doc: liveDoc, values,
+    draftId, draft, setDraft, hasContent, setError, setSaving, activeTemplate, linkedCitizen, draftName, savedLetter, doc, values,
     setSavedAt, dirty, setToast, registry, layout, owner, onLeave
   });
 

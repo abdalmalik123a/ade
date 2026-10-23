@@ -310,7 +310,7 @@ export function usePmEditor(
     });
     viewRef.current = view;
     ownBlocks.current = docRef.current.blocks;
-    const unregister = registerEditor(flushEmit);
+    const unregister = registerEditor({ flush: flushEmit, pending: () => pendingPmDoc.current !== null });
     return () => {
       unregister();
       flushEmit();
