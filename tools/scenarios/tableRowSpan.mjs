@@ -1,7 +1,7 @@
 /**
  * سيناريو: الدمج الرأسيّ لخلايا الجدول في المحرّر (S37 · DC-1 · D129).
  *
- * يفتح مصمّم النماذج، ويُدرج جدولًا ٣×٣، ويحدد خليتين متتاليتين رأسيًّا (0, 0) و(1, 0)،
+ * يفتح مصمّم النماذج، ويُدرج جدولًا ٣×٣، ويحدد بسحب الفأرة خليتين متتاليتين رأسيًّا (0, 0) و(1, 0)،
  * وينقر «ادمج»، ويتحقق من ظهور rowspan="2" في الخلية المدمجة وتكيّف خلايا الصف الثاني،
  * ثم يختبر فكّ الدمج، وإعادة الدمج الرأسي وثباته.
  */
@@ -37,16 +37,25 @@ export default async function scenario(page) {
   const T = `[...document.querySelectorAll('[data-page-editor] table')].at(-1)`;
   ok('أُدرج جدول ٣×٣ في المحرّر', await page.eval(`return Boolean(${T} && ${T}.rows.length === 3);`));
 
-  // ٣. تحديد الخليتين (0, 0) و (1, 0) رأسيًّا
-  await page.eval(`
-    const ed = document.querySelector('[data-page-editor]');
-    if (ed && typeof ed.__pmSelectCells === 'function') {
-      ed.__pmSelectCells(0, 0, 1, 0);
-      return true;
-    }
-    return false;
-  `);
-  await wait(400);
+  /** يسحب الفأرة من خليّةٍ إلى أخرى — فتُحدَّد الخلايا بينهما كما يحدّدها الكاتب (كما في `pageEditor.mjs`؛ ولا مقبض اختبار في المحرّر، D143). */
+  const dragCells = async (from, to) => {
+    const at = (r, c) => page.eval(`const b = ${T}.rows[${r}].cells[${c}].getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };`);
+    const a = await at(...from);
+    const b = await at(...to);
+    // مهلةٌ بين الحركات كما تتحرّك يدٌ حقيقية — متلاحقةً بلا مهلة لا يلحق المحرّر ببدء التحديد.
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: a.x, y: a.y, button: 'left', clickCount: 1 });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, button: 'left' });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: b.x, y: b.y, button: 'left' });
+    await wait(50);
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+    await wait(300);
+  };
+
+  // ٣. تحديد الخليتين (0, 0) و (1, 0) رأسيًّا بسحب الفأرة
+  await dragCells([0, 0], [1, 0]);
+  ok('السحب حدّد الخليّتين رأسيًّا', await page.eval(`return ${T}.querySelectorAll('.selectedCell').length === 2;`));
 
   const hasMergeBtn = await page.eval(`return Boolean(document.querySelector('[data-act="merge"]'));`);
   ok('زرّ دمج الخلايا ظاهر في شريط التنسيق', hasMergeBtn);
@@ -91,13 +100,9 @@ export default async function scenario(page) {
   const r1AfterSplit = await page.eval(`return ${T}.rows[1].cells.length;`);
   ok('فكّ الدمج يعيد الخلية إلى صفّ واحد ويعيد خلايا الصف الثاني إلى ٣', afterSplitSpan === '1' && r1AfterSplit === 3);
 
-  // ٩. إعادة الدمج الرأسي مرة أخرى للتأكيد على الثبات
-  await page.eval(`
-    const ed = document.querySelector('[data-page-editor]');
-    ed.__pmSelectCells(0, 0, 1, 0);
-    return true;
-  `);
-  await wait(400);
+  // ٩. إعادة الدمج الرأسي مرة أخرى للتأكيد على الثبات — والسحب من الخليّة الفارغة صعودًا إلى خليّة النصّ: السحب نزولًا من خليّةٍ فيها نصّ
+  // ينقل النصّ إلى التي تحتها ويزيد عمودًا بدل أن يحدّد (مُجرَّب في D143 قبله وبعده بأحداث الفأرة من CDP — الدفتر).
+  await dragCells([1, 0], [0, 0]);
   await click('[data-act="merge"]');
   await wait(500);
 
