@@ -275,9 +275,13 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   - *البناء:* `tools/buildNative.mjs` يشغّل `cargo build --release` وينسخ `target/release/diwan_psd.dll` إلى `native/diwan-psd/diwan_psd.node` —
     **لا داخل `out/`**: `npx electron-vite build` يمحو `out/main` كلّه في كلّ بناء (جُرّب بملفٍّ فيه فمُحي)، فتجري السيناريوهات بـTS صامتةً.
     ويُنادى من `build` ومن `dist` كليهما: `dist` لا ينادي `npm run build`، فبدونه يخرج المثبّت بلا محرّك.
+    **وبـCRT ساكن (D142):** `-C target-feature=+crt-static` لهدف `x86_64-pc-windows-msvc` في عملية cargo هذه وحدها، فلا يستورد `VCRUNTIME140` ولا `api-ms-win-crt-*` —
+    فويندوز يبحث عن مستورَدات الملحق بجانبه لا بجانب Diwan.exe، وبدونه سقط تحميله على الجهاز النظيف (صندوق D141).
   - *الحزمة:* `native/**/*.node` في `build.files`، و`asarUnpack` القائم (`**/*.node`) يفكّها؛ والتحقّق بـ`npm run pack` ثم تشغيل البرنامج المحزوم (`DIWAN_EXE`) لا بإصدار.
   - *الحراسة:* قاعدةٌ في `structure.test.ts`: `.node` المحرّك لا يُحمَّل إلا في `worker/nativePsd.ts` · واختبارٌ يسقط إن لم تُحمَّل الإضافة (لا تخطٍّ صامت) ·
-    ومقارنة `readPsd` بالمحرّكين على كلّ ملفّات PSD أعلاه: الأبعاد والدقّة و`rgba` و`planes` والتنبيهات متطابقة.
+    ومقارنة `readPsd` بالمحرّكين على كلّ ملفّات PSD أعلاه: الأبعاد والدقّة و`rgba` و`planes` والتنبيهات متطابقة ·
+    و**حارس التحزيم** (`tools/afterPack.cjs`، D142): كلّ `*.node` تحت `app.asar.unpacked` يُقرأ جدول استيراده، وما يستورده من `vcruntime*` و`msvcp*` ليس بجانبه
+    يُسقط البناء (`tests/afterPack.test.ts`) · والجهاز النظيف: `tools/sandbox/` (QUALITY §٧).
 - **الأدوات (وافق عليها المالك ر164، وتثبّتت بيده):**
   | الأداة | النوع | الترخيص | الدور في البناء |
   |---|---|---|---|

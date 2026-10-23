@@ -6,8 +6,21 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٣ ٢٠:٢٠ — D142 ✅ — محرّك Rust يُحمَّل على الجهاز النظيف، وحارس التحزيم، والمثبّت بـ-WX · النموذج: Claude Opus 5.5
+- **ما تغيّر:** fae0475 `buildNative.mjs` بـ`+crt-static` لهدف ويندوز في عملية cargo وحدها، وخطوة «٠» في `cleanCheck` · e6f53a4 `afterPack.cjs` يقرأ جدول استيراد كلّ `*.node` و`tests/afterPack.test.ts` ·
+  0659814 `installer.nsh` · وهذا الإيداع: ARCHITECTURE §٢ وL64 وQUALITY §٧، ونقل أقدم أربعة قيود إلى `docs/legacy/LOG-11.md`.
+- **قبل البدء (مُجرَّب):** المحرّك يستورد `VCRUNTIME140.dll` و`api-ms-win-crt-*` (dumpbin) · و`electron-builder --win` ✗ بـ6030. **وبعد:** مستورَداته kernel32 وntdll وbcryptprimitives وحدها، في المستودع وفي `release/check`.
+- **وُجد في التنفيذ (مُجرَّب) — الخطوة ٣ حرفيًّا تسقط:** الـpragma حول السطر في أعلى `installer.nsh` ← ✗ والتحذير في `messages.nsh:50`: electron-builder يضمّن الملفّين بمهامّ متوازية وجاء سطرنا أوّلًا ·
+  والأخير يغلب في makensis 3.0.4.1 (مثبّتان صغيران خارج المستودع: OURS-AR وTHEIRS-EN) — فتعريب D95 كان سيُغلب بالإنكليزيّ حتى لو مرّ. **فالسطر والـpragma نفسهما في `!macro customHeader`** (يُدرجه `installer.nsi` بعد التضمينات كلّها) ← ✓.
+- **الحرّاس تسقط (مُجرَّب):** `afterPack` القديم ← `afterPack.test` ✗٥ من ٧ · المحرّك القديم من `release/check` ← `VCRUNTIME140.dll` · بلا pragma ← ✗ في `macro:customHeader:1` (دليل أنّ تعريفنا هو الثاني). ثم أُعيدت.
+- **الفحص (مُجرَّب):** typecheck نظيف · `afterPack` ✓٧ و`nativePsd` ✓٤ و`repoHygiene` و`docsBudget` (١٨ ✓) · `nativePsdCompare` ✓٢٠ و✗١ بيئة · `npm run pack` ✓ والحارس مرّ فيه ·
+  مثبّت الفحص بلا تجاوز ✓ (`release/check/diwan-1.8.1-a22-setup.exe` ١٦٢٫٦ م.ب) ثم `electron-vite build` · **الصندوق ✓٢٢ ✗٠:** VC++ غائبةٌ من System32، و«محرّك PSD برقمه» 0.1.0، و«أزل الخلفية» ٣٫٠ و٩٫٤ ث، والسجلّ بلا `[native]`.
+  و`vitest` كاملًا ٢٠٩١ ✓ (٢٠٨٤ + ٧ جديدة) و٤ متخطّاة و١ ✗ `nativePsdCompare` (بيئة: مجلّد GyanTech).
+- **ما لم يُجرَّب:** ظهور الرسالة العربية فعلًا على ويندوز ٣٢ بت (من الكود والتجربتين: الأخير يغلب وتعريفنا الأخير).
+- **التالي:** `/next` ← مراجعة D142 في محادثةٍ جديدة، ثم D143 ⚙️ ك (حدّ الجلسة: D142 ك ثلاث نقاط ومراجعته تسبق D143).
+
 ## ٢٠٢٦-١٠-٢٣ ٢٠:٠٥ — مراجعة D141 (الخطوات ١–٥، و`tools/sandbox/`، ونصّا D142 D143) — **✓ بملاحظة** · النموذج: Claude Opus 5.5
-- **الإيداعات (مُجرَّب بـgit) من bf43944:** ستّةٌ كلّها في «المسموح»، لا حذف ولا اعتمادية ولا سقف ولا لقطة، LF كما كانت بلا بايت تحكّم، وكلّها دون ٤٠٠ سطر · والقيود الأربعة في `LOG-10.md` بنصّها (٤ من ٤).
+- **الإيداعات (مُجرَّب بـgit) من bf43944:** ستّةٌ كلّها في «المسموح»، لا حذف ولا اعتمادية ولا سقف ولا لقطة، LF كما كانت بلا بايت تحكّم، وكلّها دون ٤٠٠ سطر · والقيود الأربعة في `LOG-10.md` بنصّها (٢٣ سطرًا محذوفًا كلّها فيه).
 - **الأدوات (مُجرَّب):** `make.mjs` و`onHost.mjs` بلا وسيط ← رمز ١ برسالةٍ عربية · و`inside.mjs` على جهاز التطوير ← رمز ١ «لم يُلمس شيء» · و`result.txt` و`done.txt` كالقيد (✓١٩ ✗٣) ·
   وتقرير الفحص الشامل كالقيد (١٣٣، ١٢٨، ✓٢١٧٨ ✗٧، ٣٥٤٩ ث).
 - **الحارس يسقط (مُجرَّب):** `onHost` على «بناء الاختبار» (`release/test`) ← ✗ «workerCrash» أُجيب (توقّف المعالج) ورمز ١ · وعلى `release/check` ← ✓ كلّه ورمز ٠ (المحرّك 0.1.0) · والسجلّ بعدهما كما كان (`LastSeen` ١٩ ت١).
@@ -360,25 +373,3 @@
 - **الفحص:** الأوامر الخمسة مفصّلة بأقسام القالب ومسارات الكود القائم (≤٤٠ سطرًا لكلّ أمر) · نجاح `docsBudget` و`repoHygiene` · `git diff --stat` وثائق وحدها وبلا مساس بـ `src/` أو `tests/` أو `tools/`.
 - **التوقّف:** التوقّف التامّ عند ختام D126 (🧭 وحده، ر162).
 - **التالي:** `/next` في محادثة جديدة تبدأ بمراجعة D126 ثم حجز وتنفيذ أول أوامر الدفعة (D127 ⚙️ ص ثم D128 ⚙️ ص ضمن حدّ ٤ نقاط للجلسة).
-
-## ٢٠٢٦-١٠-٢٠ ٠٩:٠٥ — مراجعة D125 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
-- **الحكم:** ✓ (تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر S12 مطابق للكود والقواعد والقالب).
-- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/docPmTable.test.ts` (٢٠ ✓) · الحارس: تعطيل `toggleHeaderShading` أسقط الاختبار فورًا (١ ✗ و١٩ ✓) واستعادته أخضرته · بناء `electron-vite build` نظيف (١٠٫٧ ث) وسيناريو `tableAlign.mjs` (٧ ✓) وسيناريو `paragraphSpacing.mjs` (٦ ✓) بلا ✗ · `docDocx.ts` (٣٩٨ سطرًا) و`docHtml.ts` (٣٩٠ سطرًا) دون سقف ٤٠٠ سطر.
-- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٦١ ✓ و٤ متخطّاة (١٩٦ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
-- **الخطوة التالية:** إيداع المراجعة أولاً، ثم تخطيط الدفعة التالية من الموجة ٥ (الموجة ٥: المحرّر وباقي بنوده S10 وS14 وS15 وS16 أو حسب الأولويات في BACKLOG §٥) بأمر تخطيط 🧭.
-
-## ٢٠٢٦-١٠-٢٠ ٠٨:٥٥ — D125 ✅ — تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر (S12) · النموذج: Gemini 3.8 Flash (High)
-- **ما تغيّر:** `src/shared/docTypes.ts`: دعم `vAlign` في `TableCell` و`headerShading` في `TableBlock` · `src/shared/docPmSchema.ts` و`src/shared/docPm.ts`: تمرير وحفظ `vAlign` و`headerShading` في كتل ProseMirror وعقدها وقراءة/كتابة خصائص DOM · `src/shared/docPmTable.ts`: إضافة أمرين `toggleHeaderShading` و`setCellVAlign` وتحديث `tableState` · `src/renderer/src/components/pageEditor/FormatBar.tsx`: إضافة أزرار تظليل الرأس والمحاذاة العمودية (أعلى، وسط، أسفل) · `src/renderer/src/components/pageViews.ts` و`styles.css`: تطبيق فئة `pm-header-shading` ولون التظليل `#f1f5f9` في المحرّر · `src/shared/docHtml.ts` و`src/main/services/docDocx.ts`: تصدير التظليل والمحاذاة العمودية للطباعة وWord بـ`w:shd` و`w:vAlign` · إضافة اختبارات في `tests/docPmTable.test.ts` (٢٠ ✓) وسيناريو `tools/scenarios/tableAlign.mjs` (٧ ✓) وتحديث `docs/QUALITY.md` ونقل D125 إلى `done/`.
-- **الفحص:** `npm run typecheck` نظيف · `tests/docPmTable.test.ts` (٢٠ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (١٨ ✓) والملفات المعدّلة دون سقف ٤٠٠ سطر (docHtml ٣٩٠، docDocx ٣٩٨) · بناء `electron-vite build` نظيف (٧٫٥ ث) وسيناريوهات `tableAlign.mjs` (٧ ✓) و`paragraphSpacing.mjs` (٦ ✓) بلا ✗.
-- **الختام والتالي:** اكتمال الدفعة الثانية من الموجة ٥ (D121–D125) · المراجعة الخطوة ٢ بـ`/next` بمحادثة جديدة لـD125 (ر167 ر169) ثم تخطيط الدفعة التالية.
-
-## ٢٠٢٦-١٠-٢٠ ٠٨:٣٥ — مراجعة D124 (ر166 ر167 ر169) ✓ · النموذج: Gemini 3.8 Flash (High)
-- **الحكم:** ✓ (تباعد الفقرات قبل وبعد في شريط المحرّر S11 مطابق للكود والقواعد والقالب).
-- **مُجرَّب ومن الكود:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · الحارس: تعطيل `setSpaceAfter` أسقط الاختبار فورًا (١ ✗ و٢٠ ✓) واستعادته أخضرته · بناء `electron-vite build` نظيف (٨٫٥ ث) وسيناريو `paragraphSpacing.mjs` (٦ ✓) وسيناريو `customPaper.mjs` (١١ ✓) بلا ✗ · `FormatBar.tsx` (٢١٤ سطرًا) و`commands.ts` (٢١٤ سطرًا) دون سقف ٤٠٠ سطر.
-- **الفحص الشامل:** `npx vitest run` كاملًا ٢٠٥٦ ✓ و٤ متخطّاة (١٩٦ ملفًّا) · `tests/docsBudget.test.ts` و`tests/repoHygiene.test.ts` و`tests/lint.test.ts` و`tests/structure.test.ts` (١٨ ✓) بلا أيّ خرق · الشجرة نظيفة.
-- **الخطوة التالية:** إيداع المراجعة أولاً، ثم حجز وتنفيذ D125 (⚙️ ص: تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر S12).
-
-## ٢٠٢٦-١٠-٢٠ ٠٨:١٠ — D124 ✅ — تباعد الفقرات قبل وبعد في شريط المحرّر (S11) · النموذج: Gemini 3.8 Flash (High)
-- **ما تغيّر:** `src/renderer/src/components/pageEditor/commands.ts`: توسيع `setParagraphAttr` ليشمل `'spaceAfter'` وتصدير `setSpaceAfter` وثابت خيارات التباعد `SPACE_AFTERS = [0, 6, 12, 18]` · `src/renderer/src/components/pageEditor/FormatBar.tsx`: إضافة أداة تباعد ما بعد الفقرة برمز `format_line_spacing` وقائمة سريعة `data-act="paragraph-spacing"` مرتبطة بالفقرة المحددة وقراءة `paragraphValue(state, 'spaceAfter')` · إضافة اختبارات في `tests/docPm.test.ts` (٢١ ✓) وسيناريو `tools/scenarios/paragraphSpacing.mjs` (٦ ✓) وتحديث `docs/QUALITY.md` ونقل D124 إلى `done/`.
-- **الفحص:** `npm run typecheck` نظيف · `tests/docPm.test.ts` (٢١ ✓) · فحص النظافة والهيكل وESLint وميزانية الوثائق (٣٩ ✓) و`commands.ts` ٢١٤ سطرًا و`FormatBar.tsx` ٢١٤ سطرًا (< ٤٠٠) · بناء `electron-vite build` نظيف وسيناريوهات `paragraphSpacing.mjs` (٦ ✓) و`customPaper.mjs` (١١ ✓) بلا ✗.
-- **التالي:** D125 (⚙️ ص: تظليل صفّ العناوين ومحاذاة الخليّة عموديًّا في جداول المحرّر S12) بمحادثة جديدة بـ`/next` تبدأ بمراجعة D124.
