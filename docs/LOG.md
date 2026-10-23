@@ -6,7 +6,7 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
-## ٢٠٢٦-١٠-٢٤ ٠١:٣٥ — مراجعة D147 — **✓** · النموذج: Claude Opus 5.5
+## ٢٠٢٦-١٠-٢٤ ٠١:٢٧ — مراجعة D147 — **✓** · النموذج: Claude Opus 5.5
 - **الإيداعات (مُجرَّب بـgit) من 9ce30cb:** ستّة في «المسموح» وحده — `src` ملفٌّ واحد (`psd.ts`) · لا حذف (نقلان: `psdSpeed.mjs` والأمر) · السقوف واللقطات و`package*.json` و`native/` بلا فرق · LF بلا بايت تحكّم ·
   ونسخة `legacy/` بعد سطرها الأوّل = `psd.ts` من 5dfc3b4 (`cmp`)، و`psdSpeed.mjs` كذلك · و`grep -rn readPsdScript src tests tools` سطر الحارس وحده.
 - **الكود (من الكود):** `readPsd` يرمي `PSD_ENGINE_MISSING` بلا قارئ ويعيد `null` برميه · ولا مُنادٍ لـ`readPsd` في الرئيسة إلا بديل `readDesign` (`ipc/designs.ts`)، و`assertPixels` بـ`psdHeader` لا بـ`readPsd` ·
