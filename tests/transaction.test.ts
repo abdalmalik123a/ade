@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
+import { runMigrations } from '../src/main/db/migrations';
 import type { TransactionInput, TransactionSheet } from '../src/shared/api';
 import {
   getDocument,
@@ -185,11 +186,15 @@ describe('المعاملة الواحدة', () => {
 
 describe('ترحيل قاعدة المكتب القائمة', () => {
   it('قاعدة بلا جدول المعاملات تُرقّى بلا سقوط، والتكرار لا يضرّ', () => {
+    // قاعدةٌ قبل المعاملات وقبل المشغّل (مستواها صفر) — وفهرس العمود من ترقيته يسقط معه.
     const db = freshDb();
+    db.exec('DROP INDEX ix_docs_transaction');
     db.exec('DROP TABLE transactions');
     db.exec('ALTER TABLE documents DROP COLUMN transaction_id');
+    db.pragma('user_version = 0');
 
-    prepareDocuments(db);
+    // يرحّلها المشغّل كما عند الإقلاع (A17، D148).
+    runMigrations(db);
     prepareDocuments(db);
 
     const out = issueTransaction(db, input());

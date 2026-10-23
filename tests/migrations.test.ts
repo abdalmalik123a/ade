@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
+import { runMigrations } from '../src/main/db/migrations';
 import { listTemplates, prepareTemplates, saveTemplate } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { prepareDocuments } from '../src/main/services/documents';
@@ -29,7 +30,8 @@ describe('قاعدة المكتب القائمة لا تسقط بعمودٍ جد
   it('مكتبة النماذج تقوم على قاعدة بلا `doc_json`', () => {
     const db = agedDb(['ALTER TABLE templates DROP COLUMN doc_json']);
 
-    // القراءة نفسها تُرحِّل — فلا تسقط الشاشة على قاعدةٍ سبقت العمود.
+    // المشغّل يرحّلها كما عند الإقلاع (A17، D148) — فلا تسقط الشاشة على قاعدةٍ سبقت العمود.
+    runMigrations(db);
     expect(listTemplates(db)).toEqual([]);
     expect(
       (db.prepare('PRAGMA table_info(templates)').all() as { name: string }[]).map((c) => c.name)
@@ -85,7 +87,8 @@ describe('قاعدة المكتب القائمة لا تسقط بعمودٍ جد
     // الجدول في schema.sql كما بُني أوّل مرّة — وأعمدته اللاحقة (الوصل، والزبون) تضيفها prepareOrders.
     const db = agedDb([]);
     db.prepare("INSERT INTO orders (customer, title, status) VALUES ('سالم حسن', 'صور', 'new')").run();
-    // القراءة نفسها تُرحِّل — والطلب القديم بلا ملفّ.
+    // المشغّل يرحّلها كما عند الإقلاع (A17، D148) — والطلب القديم بلا ملفّ.
+    runMigrations(db);
     expect(listOrders(db, { status: 'open' })).toMatchObject([{ customer: 'سالم حسن', citizenId: null }]);
     expect((db.prepare('PRAGMA table_info(orders)').all() as { name: string }[]).map((c) => c.name)).toContain('citizen_id');
     prepareOrders(db);

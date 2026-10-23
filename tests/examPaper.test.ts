@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
+import { runMigrations } from '../src/main/db/migrations';
 import { listTemplates, saveTemplate } from '../src/main/services/templates';
 import { listScore, run, type ListItem, type ParagraphBlock } from '../src/shared/doc';
 import { normalizeDoc } from '../src/shared/docNormalize';
@@ -227,6 +228,8 @@ describe('الفصل بالحكم لا بالتصنيف', () => {
   it('وقاعدةُ مكتبٍ أُنشئت قبل العمود تُرحَّل ولا تسقط', () => {
     const conn = db();
     conn.exec('ALTER TABLE templates DROP COLUMN issuing');
+    // يرحّلها المشغّل كما عند الإقلاع (A17، D148).
+    runMigrations(conn);
     expect(() => listTemplates(conn)).not.toThrow();
     expect(listTemplates(conn)).toEqual([]);
   });

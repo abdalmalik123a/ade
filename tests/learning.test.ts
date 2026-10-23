@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
+import { runMigrations } from '../src/main/db/migrations';
 import {
   HABIT,
   learned,
@@ -230,6 +231,8 @@ describe('الجدول يُنشأ على قاعدةٍ لم تعرفه', () => {
   it('يُرحَّل ولا يسقط', () => {
     const conn = db();
     conn.exec('DROP TABLE corrections');
+    // يرحّلها المشغّل كما عند الإقلاع (A17، D148).
+    runMigrations(conn);
     expect(() => learningStats(conn)).not.toThrow();
     prepareLearning(conn);
     expect(learningStats(conn).total).toBe(0);

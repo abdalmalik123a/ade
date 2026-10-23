@@ -7,13 +7,14 @@
  * قديمٌ بلا وثيقة)، ومسودة، وعبارة، وخمسة كتبٍ في سنتين (منها معاملةٌ بورقتين) — وأوراقها
  * تحمل ما كان يُطبع يومها: رقم المكتب ورمز QR والبصمة.
  *
- * فتُفتح بإقلاع اليوم (المخطط، ثم ترحيل كلّ خدمة، ثم الفهارس)، ويُعمل عليها كما يُعمل.
+ * فتُفتح بإقلاع اليوم (المخطط، ثم الترقيات المرقّمة، ثم الفهارس)، ويُعمل عليها كما يُعمل.
  */
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
+import { runMigrations } from '../src/main/db/migrations';
 import { ensureSearchColumn, getCitizen, listCitizens } from '../src/main/services/citizens';
 import { getDocument, prepareDocuments } from '../src/main/services/documents';
 import { issueDocument } from '../src/main/services/issue';
@@ -34,10 +35,8 @@ function openAged(): Database.Database {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   for (const f of ['schema.sql', 'search.sql']) db.exec(readFileSync(join(process.cwd(), 'src', 'main', 'db', f), 'utf8'));
-  ensureSearchColumn(db);
-  prepareDocuments(db);
-  prepareLetterheads(db);
-  prepareTemplates(db);
+  // الترقيات كلّها في المشغّل (A17، D148) — والخدمات لا ترقّي عند الطلب.
+  runMigrations(db);
   prepareSearch(db);
   return db;
 }

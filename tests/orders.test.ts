@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
+import { runMigrations } from '../src/main/db/migrations';
 import { deleteClient, getClient, listClients, prepareClients, saveClient, setClientLogo } from '../src/main/services/clients';
 import { deleteOrder, listOrders, orderCounts, saveOrder, setOrderStatus } from '../src/main/services/orders';
 import { dueLabel, isClockAnomalous, isOrderOverdue, statusOf } from '../src/shared/orders';
@@ -53,10 +54,14 @@ describe('الجهات', () => {
   });
 
   it('وقاعدة المكتب القائمة بلا الأعمدة الجديدة تقوم', () => {
-    // المخطط الأصلي بلا الأعمدة الجديدة — وهي حال كل مكتبٍ قائم.
+    // المخطط الأصلي بلا الأعمدة الجديدة — وهي حال كل مكتبٍ قائم (قاعدةٌ قبل المشغّل: مستواها صفر).
     const db = freshDb();
+    for (const c of ['phone', 'address', 'color', 'notes']) db.exec(`ALTER TABLE authorities DROP COLUMN ${c}`);
+    db.pragma('user_version = 0');
     const cols = () => (db.prepare('PRAGMA table_info(authorities)').all() as { name: string }[]).map((c) => c.name);
     expect(cols()).not.toContain('phone');
+    // يرحّلها المشغّل كما عند الإقلاع (A17، D148).
+    runMigrations(db);
     expect(listClients(db)).toEqual([]);
     expect(cols()).toEqual(expect.arrayContaining(['phone', 'address', 'color', 'notes']));
     prepareClients(db);

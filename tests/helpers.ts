@@ -3,10 +3,11 @@ import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import Database from 'better-sqlite3';
 import { afterAll } from 'vitest';
+import { runMigrations } from '../src/main/db/migrations';
 import { setNativePsdReader } from '../src/main/services/psd';
 import { createNativePsdReader, loadNativePsd } from '../src/main/worker/nativePsd';
 
-/** قاعدة نظيفة في الذاكرة بنفس مخطط الإنتاج — بلا Electron. */
+/** قاعدة نظيفة في الذاكرة بنفس مخطط الإنتاج وترقياته المرقّمة (A17، D148) — بلا Electron. */
 export function freshDb(): Database.Database {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
@@ -14,6 +15,8 @@ export function freshDb(): Database.Database {
   for (const file of ['schema.sql', 'search.sql']) {
     db.exec(readFileSync(join(dir, file), 'utf8'));
   }
+  // كما يفتحها البرنامج: المشغّل بعد المخطط — فالخدمات لا ترقّي عند الطلب.
+  runMigrations(db);
   return db;
 }
 
