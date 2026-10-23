@@ -268,19 +268,23 @@ Chromium ثابت للرسم والطباعة، وSQLite بترقياتٍ مرق
   والطبقات (`psdRecords.ts` و`psdPixels.ts`) تبقى TS.
 - **الربط: Node-API بـnapi-rs** (لا WebAssembly): أسرع في البكسلات الكبيرة بلا سقف ذاكرة wasm32، ويحمّله Node في الاختبار وElectron في العامل، وMSVC 2022 على الجهاز.
   - *الموضع الواحد:* `src/main/worker/nativePsd.ts` يحمّل الإضافة (بـ`createRequire`، والمسار من مرشّحين كما يفعل `sqlFile` في `db/index.ts`)، ويضعها في `psd.ts` بـ`setNativePsdReader(fn)`؛
-    فـ`readPsd` يناديها إن وُضعت ويرجع إلى TS إن رمت. والعامل وحده يضعها — فطريق الرئيسة البديل TS دائمًا.
+    و`readPsd` يناديها **وحدها** (A21، D147): بلا قارئٍ يرمي `PSD_ENGINE_MISSING` («قراءة ملفّات Photoshop تحتاج محرّك ديوان — أعد تشغيل البرنامج، وإن تكرّر
+    فأعد تثبيته»)، ورميُها ملفٌّ لا يُقرأ (`null`، فيقول `psdDesign` رسالته)؛ وقارئ TS في `legacy/src/main/services/psd.ts`. والعامل وحده يضعها —
+    **فالأثر المقبول (ر141 ر171):** جهازٌ لا تُحمَّل فيه الإضافة لا يفتح PSD بل يرى الرسالة (و`[native]` في سجلّ الأخطاء كما كان)، وبديل `readDesign` في الرئيسة
+    (بعد سقوطين للعامل) يرى الرسالة نفسها في PSD، والصور وWord وPDF كما هي.
   - *الإخفاق لا يصمت:* العامل لا يستورد Electron ولا `errorLog.ts` (القاعدة في `structure.test.ts`)؛ فعمل `ping` القائم يعيد أيضًا رقم إصدار المحرّك أو سبب تعذّره
     (فيراه `app:workerPing` وسيناريو `workerPath`)، وترسله `workerHost.ts` مرّةً بعد إقلاع العامل فتكتب في سجلّ الأخطاء إن تعذّر.
 - **الطريق كلّه:**
   - *المصدر:* `native/diwan-psd/` (`Cargo.toml` و`build.rs` و`src/lib.rs`)، و`Cargo.lock` يُودَع، و`target/` والإضافة المبنيّة لا تُودَعان (`.gitignore`).
   - *البناء:* `tools/buildNative.mjs` يشغّل `cargo build --release` وينسخ `target/release/diwan_psd.dll` إلى `native/diwan-psd/diwan_psd.node` —
-    **لا داخل `out/`**: `npx electron-vite build` يمحو `out/main` كلّه في كلّ بناء (جُرّب بملفٍّ فيه فمُحي)، فتجري السيناريوهات بـTS صامتةً.
+    **لا داخل `out/`**: `npx electron-vite build` يمحو `out/main` كلّه في كلّ بناء (جُرّب بملفٍّ فيه فمُحي)، فتجري السيناريوهات بلا محرّك (بـTS صامتةً قبل D147، وبرسالته بعده).
     ويُنادى من `build` ومن `dist` كليهما: `dist` لا ينادي `npm run build`، فبدونه يخرج المثبّت بلا محرّك.
     **وبـCRT ساكن (D142):** `-C target-feature=+crt-static` لهدف `x86_64-pc-windows-msvc` في عملية cargo هذه وحدها، فلا يستورد `VCRUNTIME140` ولا `api-ms-win-crt-*` —
     فويندوز يبحث عن مستورَدات الملحق بجانبه لا بجانب Diwan.exe، وبدونه سقط تحميله على الجهاز النظيف (صندوق D141).
   - *الحزمة:* `native/**/*.node` في `build.files`، و`asarUnpack` القائم (`**/*.node`) يفكّها؛ والتحقّق بـ`npm run pack` ثم تشغيل البرنامج المحزوم (`DIWAN_EXE`) لا بإصدار.
   - *الحراسة:* قاعدةٌ في `structure.test.ts`: `.node` المحرّك لا يُحمَّل إلا في `worker/nativePsd.ts` · واختبارٌ يسقط إن لم تُحمَّل الإضافة (لا تخطٍّ صامت) ·
-    ومقارنة `readPsd` بالمحرّكين على كلّ ملفّات PSD أعلاه: الأبعاد والدقّة و`rgba` و`planes` والتنبيهات متطابقة ·
+    ومحرّك Rust على **المرجع الثابت** `tests/fixtures/psdGolden.json` (ناتج TS قبل نقله، D146 D147): الأبعاد والدقّة والتنبيهات وبصمة `rgba` و`planes` لكلّ حالة،
+    وقوالب المالك تُقرأ بلا رمي · و`nativePsd` يسقط إن رجع `readPsd` إلى TS ·
     و**حارس التحزيم** (`tools/afterPack.cjs`، D142): كلّ `*.node` تحت `app.asar.unpacked` يُقرأ جدول استيراده، وما يستورده من `vcruntime*` و`msvcp*` ليس بجانبه
     يُسقط البناء (`tests/afterPack.test.ts`) · والجهاز النظيف: `tools/sandbox/` (QUALITY §٧).
 - **الأدوات (وافق عليها المالك ر164، وتثبّتت بيده):**
