@@ -186,8 +186,8 @@ function PapersScreenInner(
   const title = paperTitle(head);
 
   // ── ما لم يُحفظ (ج٣) ─────────────────────────────────────────────────
-  // لا مسودّة تلقائية لورقة الأسئلة (قراره: بعد أوّل بيع)، فالانتقال و«ورقة جديدة» و«افتح محفوظة» وإغلاق البرنامج
-  // تسأل عمّا كُتب ولم يُحفظ. والحالة توقيعُ ما تحمله الورقة مقابل توقيع آخر حفظٍ أو فتحٍ أو ورقةٍ جديدة.
+  // الانتقال و«ورقة جديدة» و«افتح محفوظة» وإغلاق البرنامج تسأل عمّا كُتب ولم يُحفظ (ر104)، ومسودّته تحفظه من انقطاع الكهرباء
+  // (D134، `papers/usePaperOutput.ts`). والحالة توقيعُ ما تحمله الورقة مقابل توقيع آخر حفظٍ أو فتحٍ أو ورقةٍ جديدة.
   const signature = useMemo(() => JSON.stringify([head, items, pick ?? null, dir, numerals, omr]), [head, items, pick, dir, numerals, omr]);
   const signatureNow = useRef(signature);
   signatureNow.current = signature;
@@ -213,7 +213,7 @@ function PapersScreenInner(
   const { print, save, exportPdf, fresh, secondRoundPaper, openPaper, after, setAfter, lastJob, send } = usePaperOutput({
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
     versions, copies, sheetRef, renderVersion, duplex, pages, pageCounts, numerals, dir, margins,
-    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
+    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items, pick
   });
 
   useImperativeHandle(

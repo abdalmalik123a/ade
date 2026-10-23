@@ -1,125 +1,95 @@
 /**
- * الحفظ التلقائي ومنع تكرار النسخ السابقة في recordRevision (D115 — S02).
+ * الحفظ التلقائي بلا ضياعٍ ولا كتابةٍ فوق المحفوظ (D115 — S02، وD134).
+ *
+ * كان الحفظ التلقائي لورقة الأسئلة يكتب فوق الورقة المفتوحة بوسم `isAutosave` يتخطّى نسختها السابقة: تُفتح ورقةٌ محفوظة وتُعدَّل
+ * بلا «حفظ» فيضيع أصلها. واليوم يكتب مسودّةً في الإعدادات (`papers:setDraft`)، وكلّ حفظٍ يغيّر الورقة يحفظ ما قبله نسخةً سابقة.
+ * والمعاملة الجارية في الشبّاك (`autosave`) مسودّتُه لا معلّقةٌ تُعدّ.
  */
 import { describe, expect, it } from 'vitest';
+import type { Database } from 'better-sqlite3';
 import { freshDb } from './helpers';
-import { getTemplate, saveTemplate } from '../src/main/services/templates';
-import { listRevisions } from '../src/main/services/revisions';
-type ParkedItem = {
-  key: number;
-  label: string;
-  step: string;
-  picked: number[];
-  values: Record<string, string>;
-  letterNo: string;
-  citizenId: number | null;
-  merge: boolean;
-  names: string;
-  valuesOnly: boolean;
-  genderByHand: boolean;
-  autosave?: boolean;
-};
-
+import { deleteTemplate, getTemplate, saveTemplate } from '../src/main/services/templates';
+import { listRevisions, revisionPayload } from '../src/main/services/revisions';
+import { parkedCount, todayAgenda } from '../src/main/services/today';
+import { prepareClients } from '../src/main/services/clients';
+import { prepareDocuments } from '../src/main/services/documents';
+import type { RevisionPayloads } from '../src/shared/api';
 import type { TemplateInput } from '../src/shared/template';
 
 const tpl = (over: Partial<TemplateInput> = {}): TemplateInput => ({
   id: null,
   code: null,
-  title: 'ورقة امتحان تجريبية',
-  subtitle: 'ثانوية دجلة',
-  category: 'امتحانات',
+  title: 'أسئلة الفيزياء — الأصل',
+  subtitle: 'مدرسة النور',
+  category: 'أسئلة',
   subjectLine: null,
-  bodyHtml: 'س١: اكتب ما تعرفه عن تاريخ العراق.',
+  bodyHtml: 'س١: الأصل — عرّف الكمية الفيزيائية.',
   letterheadId: null,
   variables: [],
   ...over
 });
 
-describe('الحفظ التلقائي للورقة والنموذج (D115)', () => {
-  it('الحفظ التلقائي المتكرر لا يضيف مراجعات في سجل revisions (isAutosave: true)', () => {
+const setting = (db: Database, key: string, value: string) =>
+  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+const draftOf = (db: Database) => (db.prepare("SELECT value FROM settings WHERE key = 'paperDraft'").get() as { value: string } | undefined)?.value;
+
+describe('الحفظ لا يتخطّى النسخة السابقة (D134)', () => {
+  it('كلّ حفظٍ يغيّر الورقة يحفظ ما قبله نسخةً سابقة — ولا وسم يتخطّاها', () => {
     const db = freshDb();
-    // ١ — حفظ أولي للورقة
     const saved = saveTemplate(db, tpl());
-    expect(saved.id).toBeGreaterThan(0);
     expect(listRevisions(db, 'template', saved.id)).toHaveLength(0);
 
-    // ٢ — تعديلات متعددة عبر الحفظ التلقائي الدوري (isAutosave: true)
-    for (let i = 1; i <= 5; i++) {
-      const updated = saveTemplate(db, {
-        ...tpl({ id: saved.id, title: `ورقة امتحان تجريبية — تعديل ${i}` }),
-        isAutosave: true
-      });
-      expect(updated.title).toBe(`ورقة امتحان تجريبية — تعديل ${i}`);
-      // لم يُسجَّل أي revision جديد لأن الحفظ تلقائي
-      expect(listRevisions(db, 'template', saved.id)).toHaveLength(0);
-    }
+    // حفظٌ ثانٍ بتغيير — ولو حمل الوسم القديم `isAutosave` (أُزيل): الأصل نسخةٌ سابقة.
+    const second = { ...tpl({ id: saved.id, title: 'أسئلة الفيزياء — معدَّل', bodyHtml: 'س١: معدَّل' }), isAutosave: true } as TemplateInput;
+    saveTemplate(db, second);
+    const revs = listRevisions(db, 'template', saved.id);
+    expect(revs).toHaveLength(1);
+    const before = revisionPayload<RevisionPayloads['template']>(db, 'template', saved.id, revs[0]!.revision);
+    expect(before?.title).toBe('أسئلة الفيزياء — الأصل');
+    expect(before?.bodyHtml).toContain('الأصل');
+    expect(getTemplate(db, saved.id)?.title).toBe('أسئلة الفيزياء — معدَّل');
 
-    // التأكد من أن التعديل الأخير محفوظ فعليًّا في القاعدة
-    const loaded = getTemplate(db, saved.id);
-    expect(loaded?.title).toBe('ورقة امتحان تجريبية — تعديل 5');
-
-    // ٣ — حفظ يدوي صريح من المستخدم (بلا isAutosave) يسجل نسخة مراجعة
-    saveTemplate(db, {
-      ...tpl({ id: saved.id, title: 'ورقة امتحان تجريبية — حفظ نهائي' }),
-      isAutosave: false
-    });
-    const revsAfterManual = listRevisions(db, 'template', saved.id);
-    expect(revsAfterManual).toHaveLength(1);
-
-    // ٤ — حفظ تلقائي آخر بعد الحفظ اليدوي لا يزيد المراجعات
-    saveTemplate(db, {
-      ...tpl({ id: saved.id, title: 'ورقة امتحان تجريبية — تعديل تلقائي إضافي' }),
-      isAutosave: true
-    });
+    // حفظٌ بلا تغيير لا يزيدها.
+    saveTemplate(db, second);
     expect(listRevisions(db, 'template', saved.id)).toHaveLength(1);
   });
 
-  it('فرز وتفريغ المسودات التلقائية في المعاملات المعلّقة للشبّاك', () => {
-    const regularParked: ParkedItem = {
-      key: 1001,
-      label: 'معاملة سالم حسن',
-      step: 'fill',
-      picked: [1],
-      values: { الاسم: 'سالم حسن' },
-      letterNo: '١٢٣',
-      citizenId: 1,
-      merge: false,
-      names: '',
-      valuesOnly: false,
-      genderByHand: false
-    };
+  it('حذف الورقة يمحو مسودّتها وحدها — ومسودّةٌ فاسدة لا تمنع الحذف', () => {
+    const db = freshDb();
+    const paper = saveTemplate(db, tpl());
+    const other = saveTemplate(db, tpl({ title: 'أسئلة الكيمياء' }));
+    setting(db, 'paperDraft', JSON.stringify({ paperId: paper.id, head: {}, items: [] }));
 
-    const autosaveDraft: ParkedItem = {
-      key: 2002,
-      label: 'معاملة جارية تلقائية',
-      step: 'fill',
-      picked: [2],
-      values: { الاسم: 'زينب علي حسن' },
-      letterNo: '',
-      citizenId: null,
-      merge: false,
-      names: '',
-      valuesOnly: false,
-      genderByHand: false,
-      autosave: true
-    };
+    deleteTemplate(db, other.id);
+    expect(draftOf(db)).toBeDefined();
+    deleteTemplate(db, paper.id);
+    expect(draftOf(db)).toBeUndefined();
 
-    const allParked = [regularParked, autosaveDraft];
+    const third = saveTemplate(db, tpl({ title: 'أسئلة الأحياء' }));
+    setting(db, 'paperDraft', '{not json');
+    deleteTemplate(db, third.id);
+    expect(getTemplate(db, third.id)).toBeNull();
+    expect(draftOf(db)).toBe('{not json');
+  });
+});
 
-    // المعاملات المعروضة في الشباك تستثني المسودة التلقائية
-    const visible = allParked.filter((p) => !p.autosave);
-    expect(visible).toHaveLength(1);
-    expect(visible[0].key).toBe(1001);
+describe('المعاملة الجارية في الشبّاك ليست معلّقة (D134)', () => {
+  it('parkedCount و«التنبيهات» يستثنيان ما فيه autosave', () => {
+    const db = freshDb();
+    prepareClients(db);
+    prepareDocuments(db);
+    const parked = { key: 1001, label: 'سالم حسن', step: 'fill', picked: [1], values: { الاسم: 'سالم حسن' } };
+    const running = { key: 2002, label: 'زينب علي حسن', step: 'fill', picked: [2], values: { الاسم: 'زينب علي حسن' }, autosave: true };
 
-    // المسودة التلقائية تُعرف بوسمها للاسترجاع السلس
-    const draft = allParked.find((p) => p.autosave);
-    expect(draft).toBeDefined();
-    expect(draft?.key).toBe(2002);
-    expect(draft?.values['الاسم']).toBe('زينب علي حسن');
+    setting(db, 'parkedTransactions', JSON.stringify([parked, running]));
+    expect(parkedCount(db)).toBe(1);
+    expect(todayAgenda(db, []).parked).toBe(1);
 
-    // تفريغ المسودة التلقائية عند الإلغاء أو الإصدار يبقي فقط المعاملات المعلّقة يدويًّا
-    const cleared = allParked.filter((p) => !p.autosave);
-    expect(cleared).toHaveLength(1);
-    expect(cleared.some((p) => p.autosave)).toBe(false);
+    setting(db, 'parkedTransactions', JSON.stringify([running]));
+    expect(parkedCount(db)).toBe(0);
+    expect(todayAgenda(db, []).parked).toBe(0);
+
+    setting(db, 'parkedTransactions', JSON.stringify([null, parked]));
+    expect(parkedCount(db)).toBe(2);
   });
 });

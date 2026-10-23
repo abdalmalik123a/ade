@@ -1,11 +1,12 @@
 /**
  * حفظ ورقة الأسئلة وإخراجها (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PapersScreen` كما هو: الحفظ، وما لم يُحفظ عند المغادرة، والطباعة
- * بنسخها، وPDF، وفتح ورقةٍ محفوظة أو جديدة، وورقة الدور الثاني.
+ * بنسخها، وPDF، وفتح ورقةٍ محفوظة أو جديدة، وورقة الدور الثاني. والحفظ التلقائي مسودّةٌ لا الورقة (D134).
  */
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { EXAM_CATEGORY, questionsOf, headOf, newQuestion, emptyHead, splitExamPagesHtml } from '@shared/examPaper';
 import { textOf } from '../papersTree';
 import { errorText } from '../../lib/errors';
+import { onBeforeClose } from '../../lib/beforeClose';
 import { useLeaveGuard } from '../../kit/useLeaveGuard';
 import type { Outcome } from '../../components/OutputBar';
 import { choosePrinter } from '../../lib/printChoice';
@@ -54,12 +55,13 @@ export function usePaperOutput(
     setOmrEpoch: Dispatch<SetStateAction<number>>;
     setRebase: Dispatch<SetStateAction<boolean>>;
     items: ListItem[];
+    pick: number | undefined;
   }
 ) {
   const {
     written, say, signatureNow, setBusy, paperId, title, head, omr, doc, setPaperId, setBaseline, loadPapers, onChanged, dirty,
     versions, copies, sheetRef, renderVersion, duplex, pages, pageCounts, numerals, dir, margins,
-    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items
+    setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setRebase, items, pick
   } = ctx;
 
   /** صفحةٌ من الورقة ورقةً تُطبع — وفاصل الصفحة بعدها إلا الأخيرة. */
@@ -102,91 +104,83 @@ export function usePaperOutput(
     return { html: node.outerHTML, copies: Math.max(1, copies) };
   }, [versions, copies, versionPage, pages, sheetOf, sheetRef]);
 
+  // ── مسودّة الورقة (D134، ر151): ما كُتب لا يضيع بانقطاع الكهرباء، ولا يُكتب فوق ورقةٍ محفوظة إلا بـ«حفظ» ──
+  // الحفظ التلقائي يكتب مسودّةً واحدة (`papers.setDraft`) ما دامت الورقة تخالف آخر حفظ، وتُمحى حين تعود إليه، وبـ«حفظ» ناجح،
+  // و«ورقة جديدة»، وفتح ورقةٍ أخرى، و«اترك بلا حفظ»؛ وحذف ورقتها يمحوها في الرئيسة (`deleteTemplate`).
   const autosaveTimer = useRef<number | null>(null);
   const paperIdRef = useRef<number | null>(paperId);
   paperIdRef.current = paperId;
+  const dirtyNow = useRef(dirty);
+  dirtyNow.current = dirty;
+  /** في القاعدة مسودّةٌ من هذه الشاشة — فتُمحى حين لا يبقى ما لم يُحفظ. */
+  const drafted = useRef(false);
 
-  // استرجاع المسودّة التلقائية لورقة الأسئلة عند فتح الشاشة
-  useEffect(() => {
-    if (paperIdRef.current !== null) return;
-    try {
-      const lastIdStr = localStorage.getItem('diwan_paper_autosave_id');
-      if (lastIdStr) {
-        const lastId = parseInt(lastIdStr, 10);
-        if (Number.isFinite(lastId)) {
-          void window.diwan.templates
-            .doc(lastId)
-            .then((loaded) => {
-              const list = questionsOf(loaded);
-              setHead(headOf(loaded));
-              setItems(list?.items.length ? list.items : [newQuestion()]);
-              setPick(list?.pick);
-              setDir(list?.dir === 'ltr' ? 'ltr' : 'rtl');
-              setNumerals(loaded.pageSetup.numerals);
-              setOmr(loaded.meta.omr ?? newOmr());
-              setOmrEpoch((n) => n + 1);
-              setPaperId(lastId);
-              paperIdRef.current = lastId;
-              setRebase(true);
-            })
-            .catch(() => {
-              localStorage.removeItem('diwan_paper_autosave_id');
-            });
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setPaperId, setRebase]);
-
-  const lastAutosavedSig = useRef<string | null>(null);
-
-  // حفظ تلقائي دوري مؤجّل (debounce ~1.5 ث) مع وسم isAutosave لمنع تكرار المراجعات
-  const autosave = useCallback(async () => {
-    if (!written.length) return;
-    const currentSig = signatureNow.current;
-    try {
-      const saved = await (window.diwan.templates.save as any)({
-        id: paperIdRef.current,
-        code: null,
-        title,
-        subtitle: head['المدرسة']?.trim() || null,
-        category: EXAM_CATEGORY,
-        subjectLine: null,
-        bodyHtml: written.map((it) => textOf(it.inlines)).join('\n'),
-        letterheadId: null,
-        variables: [],
-        doc: omr.key.length ? { ...doc, meta: { ...doc.meta, omr } } : doc,
-        isAutosave: true
-      });
-      if (paperIdRef.current !== saved.id) {
-        setPaperId(saved.id);
-        paperIdRef.current = saved.id;
-      }
-      try {
-        localStorage.setItem('diwan_paper_autosave_id', String(saved.id));
-      } catch {
-        // ignore
-      }
-      lastAutosavedSig.current = currentSig;
-      setBaseline(currentSig);
-      void loadPapers();
-      onChanged?.();
-    } catch {
-      // Autosave fails silently
-    }
-  }, [written, title, head, doc, omr, loadPapers, onChanged, setPaperId, setBaseline, signatureNow]);
-
-  useEffect(() => {
-    if (!written.length || !dirty) return;
+  const dropDraft = useCallback(() => {
     if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = window.setTimeout(() => {
-      void autosave();
-    }, 1500);
+    drafted.current = false;
+    return window.diwan.papers.setDraft(null).catch(() => undefined);
+  }, []);
+
+  // عند فتح الشاشة: ورقةٌ لم تُحفظ تُستعاد كما تُركت — وعلى ورقتها المحفوظة إن كانت، فيحفظ «حفظ» فوقها بنسختها السابقة —
+  // وإلا ورقةٌ جديدة كما قبل D115 (لا يُفتح آخر ما حُفظ).
+  useEffect(() => {
+    let alive = true;
+    void window.diwan.papers
+      .draft()
+      .then((draft) => {
+        if (!alive || !draft) return;
+        setHead(draft.head);
+        setItems(draft.items.length ? draft.items : [newQuestion()]);
+        setPick(draft.pick ?? undefined);
+        setDir(draft.dir === 'ltr' ? 'ltr' : 'rtl');
+        setNumerals(draft.numerals === 'indic' ? 'indic' : 'arabic');
+        setOmr(draft.omr ?? newOmr());
+        setOmrEpoch((n) => n + 1);
+        setPaperId(draft.paperId);
+        paperIdRef.current = draft.paperId;
+        // «لم تُحفظ» حتى تُحفظ: فيسأل الحارس عند المغادرة، ويبقى الحفظ التلقائي يكتبها.
+        setBaseline('');
+        drafted.current = true;
+        say('استُعيدت ورقةٌ لم تُحفظ');
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [say, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setPaperId, setBaseline]);
+
+  const autosave = useCallback(async () => {
+    try {
+      await window.diwan.papers.setDraft({ paperId: paperIdRef.current, head, items, pick: pick ?? null, dir, numerals, omr });
+      drafted.current = true;
+    } catch {
+      // مسودّةٌ تعثّرت تُكتب مع التغيير التالي — والورقة كما هي.
+    }
+  }, [head, items, pick, dir, numerals, omr]);
+
+  // ١٫٥ ث بعد آخر تغيير ما دامت الورقة تخالف آخر حفظ؛ وعادت إليه ← تُمحى مسودّتها.
+  useEffect(() => {
+    if (!dirty) {
+      if (drafted.current) void dropDraft();
+      return;
+    }
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => void autosave(), 1500);
     return () => {
       if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
     };
-  }, [written, dirty, autosave]);
+  }, [dirty, autosave, dropDraft]);
+
+  // «اترك بلا حفظ»: الشاشة لا تُغادَر ولا يُغلق البرنامج وفيها ما لم يُحفظ إلا بعد السؤال — فما بقي عندها متروكٌ بقول الموظف.
+  // (وانقطاع الكهرباء لا يمرّ بهما: تبقى المسودّة.)
+  useEffect(() => {
+    const leftUnsaved = () => (dirtyNow.current ? dropDraft() : undefined);
+    const offClose = onBeforeClose(leftUnsaved);
+    return () => {
+      offClose();
+      void leftUnsaved();
+    };
+  }, [dropDraft]);
 
   const save = useCallback(async (): Promise<boolean> => {
     if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
@@ -212,12 +206,7 @@ export function usePaperOutput(
       });
       setPaperId(saved.id);
       paperIdRef.current = saved.id;
-      try {
-        localStorage.setItem('diwan_paper_autosave_id', String(saved.id));
-      } catch {
-        // ignore
-      }
-      lastAutosavedSig.current = savedSignature;
+      await dropDraft();
       setBaseline(savedSignature);
       await loadPapers();
       onChanged?.();
@@ -229,10 +218,9 @@ export function usePaperOutput(
     } finally {
       setBusy(false);
     }
-  }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say, signatureNow, setBaseline, setBusy, setPaperId]);
+  }, [written, paperId, title, head, doc, omr, loadPapers, onChanged, say, signatureNow, setBaseline, setBusy, setPaperId, dropDraft]);
 
-  const effectiveDirty = dirty && signatureNow.current !== lastAutosavedSig.current;
-  const leave = useLeaveGuard({ label: 'أوراق الأسئلة', dirty: effectiveDirty, save });
+  const leave = useLeaveGuard({ label: 'أوراق الأسئلة', dirty, save });
 
   /** ما خرج آخر مرّة — يقوله شريط الإخراج، ومنه «أعد الطبع» بالنسخ نفسها (المرحلة ٥). */
   const [after, setAfter] = useState<Outcome | null>(null);
@@ -309,28 +297,19 @@ export function usePaperOutput(
         setOmrEpoch((n) => n + 1);
         setPaperId(id);
         paperIdRef.current = id;
-        try {
-          localStorage.setItem('diwan_paper_autosave_id', String(id));
-        } catch {
-          // ignore
-        }
+        void dropDraft();
         setRebase(true);
         say('فُتحت الورقة');
       } catch (e) {
         say(errorText(e, 'تعذّر فتح الورقة'), 'warn');
       }
     },
-    [say, leave, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setPaperId, setRebase]
+    [say, leave, dropDraft, setHead, setItems, setPick, setDir, setNumerals, setOmr, setOmrEpoch, setPaperId, setRebase]
   );
 
   const fresh = useCallback(async () => {
     if (!(await leave())) return;
-    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
-    try {
-      localStorage.removeItem('diwan_paper_autosave_id');
-    } catch {
-      // ignore
-    }
+    void dropDraft();
     setHead(emptyHead());
     setItems([newQuestion()]);
     setPick(undefined);
@@ -340,7 +319,7 @@ export function usePaperOutput(
     paperIdRef.current = null;
     setRebase(true);
     say('ورقة جديدة');
-  }, [say, leave, setHead, setItems, setPick, setOmr, setOmrEpoch, setPaperId, setRebase]);
+  }, [say, leave, dropDraft, setHead, setItems, setPick, setOmr, setOmrEpoch, setPaperId, setRebase]);
 
   /** «الدور الثاني» من البنك (د٩) — ورقةٌ جديدة لا تُكتب فوق الأولى. */
   async function secondRoundPaper() {
@@ -351,6 +330,7 @@ export function usePaperOutput(
       say('لا أسئلة في البنك لهذه المادة والصفّ غير أسئلة هذه الورقة — احفظ أسئلةً في البنك أولًا', 'warn');
       return;
     }
+    void dropDraft();
     setItems(picks.map((p) => freshCopy(p.item)));
     setHead((h) => roundTwoHead(h));
     setPaperId(null);

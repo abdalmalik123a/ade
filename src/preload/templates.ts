@@ -82,6 +82,10 @@ export const templatesApi: TemplateApis = {
     }) => invoke('drafts:save', input),
     delete: (id: number) => invoke('drafts:delete', id)
   },
+  papers: {
+    draft: () => invoke('papers:draft'),
+    setDraft: (draft) => invoke('papers:setDraft', draft)
+  },
   bank: {
     save: (input: unknown) => invoke('bank:save', input),
     list: (filter?: unknown) => invoke('bank:list', filter ?? {}),

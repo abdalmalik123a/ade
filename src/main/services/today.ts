@@ -14,12 +14,15 @@ import { listOrders } from './orders';
 import { listDrafts } from './templates';
 import { workBetween } from './workLog';
 
-/** المعاملات المعلّقة في الشبّاك — مخزونةٌ في الإعدادات، وما فسد منها لا شيء. */
+/**
+ * المعاملات المعلّقة في الشبّاك — مخزونةٌ في الإعدادات، وما فسد منها لا شيء. والمعاملة الجارية (`autosave`) مسودّةٌ تُستعاد
+ * في الشبّاك وحده، لا معلّقةٌ تُعدّ (D134).
+ */
 export function parkedCount(db: Database): number {
   const row = db.prepare("SELECT value FROM settings WHERE key = 'parkedTransactions'").get() as { value: string } | undefined;
   try {
     const list = JSON.parse(row?.value ?? '[]') as unknown;
-    return Array.isArray(list) ? list.length : 0;
+    return Array.isArray(list) ? list.filter((p) => !(p as { autosave?: unknown } | null)?.autosave).length : 0;
   } catch {
     return 0;
   }

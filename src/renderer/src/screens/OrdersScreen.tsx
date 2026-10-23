@@ -93,7 +93,8 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
     const [d, p] = await Promise.all([window.diwan.drafts.list(), window.diwan.service.parked()]);
     const q = query.trim();
     setDrafts(d.filter((x) => !q || `${x.title} ${x.citizenName ?? ''} ${x.templateTitle ?? ''}`.includes(q)));
-    setParked((p as Parked[]).filter((x) => !q || x.label.includes(q)));
+    // والمعاملة الجارية في الشبّاك (`autosave`) مسودّتُه تُستعاد فيه، لا معلّقةٌ تُستأنف هنا ولا تُعدّ في «مفتوح» (D134).
+    setParked((p as (Parked & { autosave?: boolean })[]).filter((x) => !x.autosave && (!q || x.label.includes(q))));
   }, [tab, query]);
 
   /**

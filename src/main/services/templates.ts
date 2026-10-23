@@ -149,7 +149,7 @@ export function isCodeTaken(db: Database, code: string, exceptId: number | null)
 
 export function saveTemplate(
   db: Database,
-  input: TemplateInput & { doc?: Doc | null; isAutosave?: boolean }
+  input: TemplateInput & { doc?: Doc | null }
 ): TemplateDetail {
   prepareTemplates(db);
   const title = input.title.trim();
@@ -179,8 +179,9 @@ export function saveTemplate(
 
   const id = db.transaction(() => {
     let templateId = input.id;
-    if (templateId !== null && !input.isAutosave) {
-      // الحالة المحفوظة تصير نسخةً قبل أن يُكتب فوقها — إن تغيّر شيء.
+    if (templateId !== null) {
+      // الحالة المحفوظة تصير نسخةً قبل أن يُكتب فوقها — إن تغيّر شيء. ولا حفظ يتخطّاها: الحفظ التلقائي لورقة الأسئلة
+      // يكتب مسودّتها لا الورقة (D134).
       const before = getTemplate(db, templateId);
       if (before) {
         recordRevision(db, 'template', templateId, templatePayload(before), templatePayload(fields), (p) => ({
@@ -269,6 +270,17 @@ export function deleteTemplate(db: Database, id: number): void {
   forgetRevisions(db, 'template', id);
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
   unindexRow(db, 'templates', id);
+  forgetPaperDraft(db, id);
+}
+
+/** مسودّة ورقة الأسئلة (D134) لورقةٍ تُحذف تُمحى معها — فلا تُستعاد ورقةٌ محذوفة. وما فسد منها لا يمنع الحذف. */
+function forgetPaperDraft(db: Database, id: number): void {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'paperDraft'").get() as { value: string } | undefined;
+  try {
+    if (row && (JSON.parse(row.value) as { paperId?: unknown } | null)?.paperId === id) db.prepare("DELETE FROM settings WHERE key = 'paperDraft'").run();
+  } catch {
+    // مسودّةٌ لا تُقرأ تُترك: يعدّها فتح الشاشة لا شيء.
+  }
 }
 
 /**

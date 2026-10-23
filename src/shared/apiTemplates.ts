@@ -3,7 +3,8 @@
  * والأختام والمسودّات وبنك الأسئلة — أنواعها وقنواتها. ويُستورد كلّه من `@shared/api` كما كان.
  */
 import type { Letterhead, LetterheadLayout } from './letterhead';
-import type { Doc, ListItem, Suggestion } from './doc';
+import type { Dir, Doc, ListItem, Numerals, Suggestion } from './doc';
+import type { OmrSpec } from './omr';
 import type { OcrLine } from './paperDoc';
 import type { WordCensus, WordScan } from './wordLosses';
 import type { TemplateInput, TemplateVariable } from './template';
@@ -231,6 +232,20 @@ export type BankQuestion = {
   createdAt: string;
 };
 
+/**
+ * ما كُتب في ورقة الأسئلة ولم يُحفظ (D134): يكتبه الحفظ التلقائي مسودّةً واحدةً في الإعدادات — لا فوق الورقة المحفوظة،
+ * فـ«حفظ» وحده يكتبها بنسختها السابقة. و`paperId` ورقتها المحفوظة إن كانت، فتُستعاد عليها.
+ */
+export type PaperDraft = {
+  paperId: number | null;
+  head: Record<string, string>;
+  items: ListItem[];
+  pick: number | null;
+  dir: Dir;
+  numerals: Numerals;
+  omr: OmrSpec;
+};
+
 /** قنوات باب النماذج في `window.diwan`. */
 export type TemplateApis = {
   letterheads: {
@@ -338,6 +353,11 @@ export type TemplateApis = {
     /** كتابٌ (`values.__doc`) أو تصميمٌ لم يُحفظ (`values.__design`، DESIGNS.md ٠٫٦) — والجدول واحد. */
     save(input: { id: number | null; templateId: number | null; citizenId: number | null; title: string; values: Record<string, string>; bodyHtml: string }): Promise<number>;
     delete(id: number): Promise<void>;
+  };
+  /** مسودّة ورقة الأسئلة (D134): تُقرأ عند فتح الشاشة، وتُكتب أو تُمحى (`null`). */
+  papers: {
+    draft(): Promise<PaperDraft | null>;
+    setDraft(draft: PaperDraft | null): Promise<void>;
   };
   /** بنك الأسئلة: سؤالٌ يُحفظ مرّةً ويُدرج في كل ورقةٍ بعدها. */
   bank: {
