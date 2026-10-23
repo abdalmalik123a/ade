@@ -3,7 +3,8 @@
  * و`DIWAN_EXE` على البرنامج المثبَّت وملفّ تعريفٍ مؤقّت (فلا تُمسّ بيانات المكتب). وليس في `tools/scenarios/`: «بناء الاختبار» فيه أبوابٌ يُفحص هنا غيابها.
  *
  * الإصدار (`DIWAN_EXPECT_VERSION` إن ضُبط) · «أنا هنا» من العامل ومحرّك PSD (Rust) برقمه · ولا باب `workerCrash` (لا مُعالج له في بناء الإصدار) ·
- * والتفعيل يُقرأ (`DIWAN_EXPECT_LICENSE` إن ضُبط: «trial» في الصندوق) · والشبّاك والمكتبة يُقرآن · وسجلّ الأخطاء بلا `[native]` (يكتبه `workerHost` إن تعذّر المحرّك).
+ * والتفعيل يُقرأ (`DIWAN_EXPECT_LICENSE` إن ضُبط: «trial» في الصندوق) · و«أزل الخلفية» بـONNX في العامل · والشبّاك والمكتبة يُقرآن ·
+ * وسجلّ الأخطاء بلا `[native]` (يكتبه `workerHost` إن تعذّر المحرّك) ولا `[worker-fallback]`.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,6 +42,25 @@ export default async function scenario(page, { profile }) {
     wantLicense ? lic?.status === wantLicense : ['trial', 'activated', 'subscribed', 'expired'].includes(lic?.status)
   );
 
+  // «أزل الخلفية» في العامل (ONNX، A18): صورةٌ مصنوعة (شخصٌ على خلفيةٍ زرقاء) — وتعذّر ONNX فيه خطأٌ يظهر لا بديلٌ صامت (`runOr` لا يرجع إلا بعد سقوطين).
+  // و`photos:cutout` بوّابة إنتاج: يُجرَّب حين لا تكون المدّة منتهية؛ و`cutoutObject` بلا بوّابة فيُجرَّب دائمًا.
+  const cut = (channel) =>
+    page.eval(`
+      const w = 96, h = 128, px = new Uint8Array(w * h * 4);
+      for (let i = 0; i < w * h; i++) {
+        const x = i % w, y = Math.floor(i / w);
+        px.set((x - 48) ** 2 + (y - 40) ** 2 < 400 || (y > 60 && Math.abs(x - 48) < 30) ? [205, 160, 130, 255] : [40, 110, 210, 255], i * 4);
+      }
+      const t = performance.now();
+      return window.diwan.photos.${channel}({ pixels: px, width: w, height: h })
+        .then((r) => ({ ok: Boolean(r), ms: Math.round(performance.now() - t) }), (e) => ({ error: String(e?.message ?? e) }));
+    `);
+  const tried = lic?.status === 'expired' ? ['cutoutObject'] : ['cutout', 'cutoutObject'];
+  for (const channel of tried) {
+    const r = await cut(channel);
+    ok(`و«أزل الخلفية» (${channel}) يُجيب من العامل${r?.ms != null ? ` في ${r.ms} م.ث` : ''}${r?.error ? ` — ${r.error.slice(0, 120)}` : ''}`, r?.ok === true);
+  }
+
   await page.goto('service-counter');
   ok('والشبّاك يُقرأ', await until(async () => (await page.text()).length > 50));
   await page.goto('templates-library-drafts');
@@ -48,6 +68,9 @@ export default async function scenario(page, { profile }) {
 
   const log = join(profile, 'logs', 'diwan-errors.log');
   const text = existsSync(log) ? readFileSync(log, 'utf8') : '';
-  ok(`وسجلّ الأخطاء بلا [native] (${text ? `${text.split('\n\n').filter(Boolean).length} قيدًا` : 'لا سجلّ'})`, !text.includes('[native]'));
+  ok(
+    `وسجلّ الأخطاء بلا [native] ولا [worker-fallback] (${text ? `${text.split('\n\n').filter(Boolean).length} قيدًا` : 'لا سجلّ'})`,
+    !text.includes('[native]') && !text.includes('[worker-fallback]')
+  );
   return steps.join('\n');
 }
