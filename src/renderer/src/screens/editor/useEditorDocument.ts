@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { type Doc, docText } from '@shared/doc';
 import { type Letterhead, normalizeLayout, emptyLayout, type LetterheadLayout } from '@shared/letterhead';
 import { blankLetter } from './shared';
+import { flushEditors } from '../../components/pageEditor/flushEditors';
 import { readSavedLetter, type Registry } from '@shared/letterDraft';
 import type { DocumentDetail, OfficeSettings, TemplateSummary } from '@shared/api';
 import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
@@ -53,12 +54,23 @@ export function useEditorDocument(
 
   const setDoc = useCallback((next: Doc | ((d: Doc) => Doc)) => {
     dirty.current = true;
+    // وثيقةٌ كاملة (من المحرّر) تصير الحاضرة فورًا: يقرؤها `latestDoc` بعد الاستعجال في الحدث نفسه بلا انتظار رسم (D143).
+    if (typeof next !== 'function') liveDoc.current = next;
     setDocState((prev) => {
       const resolved = typeof next === 'function' ? next(prev) : next;
       liveDoc.current = resolved;
       return resolved;
     });
   }, [dirty, setDocState]);
+
+  /**
+   * الوثيقة كما في المحرّر الآن (D143): ما كُتب ولم يُرسل بعد (تأجيل D122) يُرسل أوّلًا. وكلّ ما يقرأ الوثيقة من خارج المحرّر يمرّ بها
+   * (`savedLetter` في `EditorScreen`): «احفظ» وCtrl+S والحفظ التلقائي والمغادرة والإغلاق، والإصدار وWord و«اجعله نموذجًا».
+   */
+  const latestDoc = useCallback(() => {
+    flushEditors();
+    return liveDoc.current;
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -189,5 +201,5 @@ export function useEditorDocument(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId]);
 
-  return { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout, liveDoc };
+  return { setDoc, loadTemplate, letterhead, applyLetterhead, storeLayout, liveDoc, latestDoc };
 }

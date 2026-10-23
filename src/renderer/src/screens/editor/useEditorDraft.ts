@@ -9,6 +9,7 @@ import type { LetterheadLayout } from '@shared/letterhead';
 import { letterValues, type Registry } from '@shared/letterDraft';
 import { errorText } from '../../lib/errors';
 import { onBeforeClose } from '../../lib/beforeClose';
+import { flushEditors } from '../../components/pageEditor/flushEditors';
 
 const AUTOSAVE_MS = 4000;
 
@@ -48,13 +49,15 @@ export function useEditorDraft(
       }
       setSaving(true);
       try {
+        // الوثيقة بآخر ما كُتب فيها (D143) — والمتن النصّيّ منها نفسها.
+        const letter = savedLetter();
         const id = await window.diwan.drafts.save({
           id: draft,
           templateId: activeTemplate,
           citizenId: linkedCitizen,
           title: draftName,
-          values: letterValues(savedLetter()),
-          bodyHtml: docText('current' in doc ? doc.current : doc, values)
+          values: letterValues(letter),
+          bodyHtml: docText(letter.doc, values)
         });
         setDraft(id);
         draftRef.current = id;
@@ -87,6 +90,8 @@ export function useEditorDraft(
    */
   const flushDraft = useRef<() => Promise<void>>(async () => undefined);
   flushDraft.current = async () => {
+    // ما كُتب في آخر ٢٥٠ م.ث يصل إلى الوثيقة أوّلًا فيُعلِّمها «لم تُحفظ» (D143) — والمحرّر يُفكّ بعد هذه الشاشة.
+    flushEditors();
     if (dirty.current && hasContent) await saveDraft(true);
   };
   const leave = useRef({ draftName, onLeave });

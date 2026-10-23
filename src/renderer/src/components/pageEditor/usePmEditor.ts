@@ -22,6 +22,7 @@ import { tableResizing, listMarkersPlugin, listMarkersKey } from '../editorPlugi
 import { caretAfterPaste, cleanPastedHtml, pasteImages, adoptPastedImages } from '../editorPaste';
 import { pageFlowPlugin, MM_PX, measurePages, sameBreaks, pageFlowKey } from '../pageFlow';
 import { footerBandMm, type LetterheadFooter } from '@shared/letterhead';
+import { registerEditor } from './flushEditors';
 import type { Dispatch, SetStateAction, MutableRefObject, ReactNode } from 'react';
 
 export function usePmEditor(
@@ -309,7 +310,9 @@ export function usePmEditor(
     });
     viewRef.current = view;
     ownBlocks.current = docRef.current.blocks;
+    const unregister = registerEditor(flushEmit);
     return () => {
+      unregister();
       flushEmit();
       if (measureTimer.current) clearTimeout(measureTimer.current);
       cancelAnimationFrame(frame.current);

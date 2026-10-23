@@ -73,11 +73,11 @@ export function useEditorOutput(
     }
   }
   const exportPdf = () => run('حُفظ PDF', () => window.diwan.output.savePdf({ sheetHtml: sheetHtml(), suggestedName: sheetName, page: pageOf() }));
-  // من الوثيقة وقيمها وترويستها — فيخرج Word بجداوله وأعمدته ومحاذاته (تعميق الموجود ٩).
+  // من الوثيقة وقيمها وترويستها — فيخرج Word بجداوله وأعمدته ومحاذاته (تعميق الموجود ٩). والوثيقة بآخر ما كُتب فيها (D143).
   const exportWord = () =>
     run('حُفظ مستند Word', () =>
       window.diwan.output.saveDocx({
-        doc,
+        doc: savedLetter().doc,
         values: effective,
         head: headLayout ? { layout: resolveLayout(headLayout, resolvePrinted), registry: regValues } : null,
         suggestedName: sheetName,
@@ -107,6 +107,8 @@ export function useEditorOutput(
     setBusy(true);
     setError(null);
     try {
+      // الوثيقة بآخر ما كُتب فيها (D143)، وما يُقيَّد ويُفحص منها نفسها.
+      const letter = savedLetter();
       const outcome = await window.diwan.documents.issue(
         {
           sheetHtml: sheetHtml(),
@@ -119,9 +121,9 @@ export function useEditorOutput(
           destination: byRole('destination') || null,
           purpose: byRole('purpose') || null,
           // ما كتبه الموظف لا ما حُسب منه: «كتابة» الرقم الفارغة تُحسب عند كلّ رسم، فتُعاد بعد «كرّره» بالرقم الجديد (D99).
-          values: letterValues(savedLetter()),
+          values: letterValues(letter),
           // والإلزامي يُفحص في الرئيسة على ما كُتب — إلا خانات الاختيار، و«كتابة» يملؤها رقمها فيما طُبع.
-          required: missingRequired(doc, {})
+          required: missingRequired(letter.doc, {})
             .filter((f) => !isChoiceKey(f.key) && !(effective[f.key]?.trim() && !values[f.key]?.trim()))
             .map((f) => f.key),
           copies: opts.copies,
@@ -142,7 +144,7 @@ export function useEditorOutput(
       dirty.current = false;
       // الصياغة التي تتكرّر (لا الأسماء): فقراتُ الورقة بقيمها تُقارن بما صدر.
       void window.diwan.clips
-        .repeated(docText(doc, effective).split('\n'))
+        .repeated(docText(letter.doc, effective).split('\n'))
         .then(setRepeated)
         .catch(() => setRepeated([]));
       // جنسٌ حسمه الموظف لاسمٍ لم يُعرف، أو قلب فيه الاقتراح: يُحفظ فلا يُسأل عنه ثانيةً.
@@ -189,6 +191,8 @@ export function useEditorOutput(
 
   /** «اجعله نموذجًا»: الكتاب يصير نموذجًا في المكتبة — بحقوله فارغةً لا بقيمه (§١٠، البند ٦). */
   async function saveAsTemplate(title: string) {
+    // الوثيقة بآخر ما كُتب فيها (D143).
+    const { doc } = savedLetter();
     try {
       await window.diwan.templates.save({
         id: null,
