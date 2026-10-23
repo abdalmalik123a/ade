@@ -9,7 +9,7 @@
  * الأولى في الثلاث. فأُسقطت، وقُرئت الصورة المسطَّحة عندنا بلا تبعيّة وبالألوان الصحيحة.
  *
  * والقراءة **بمحرّك Rust وحده** (`native/diwan-psd`، A20 A21): يضعه العامل عند إقلاعه بـ`setNativePsdReader`،
- * وقارئ TS القديم (`readPsdScript`) في `legacy/src/main/services/psd.ts` (D147)، ومرجعه الثابت `tests/fixtures/psdGolden.json`.
+ * وقارئ TS القديم في `legacy/src/main/services/psd.ts` (D147)، ومرجعه الثابت `tests/fixtures/psdGolden.json`.
  *
  * والبنية (Adobe Photoshop File Formats):
  * ترويسةٌ (٢٦ بايت) · بيانات الصيغة اللونية · موارد الصورة · الطبقات والأقنعة ·

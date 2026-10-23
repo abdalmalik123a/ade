@@ -4,7 +4,7 @@
  * - psdEngineVersion() يساوي إصدار Cargo.toml
  * - JOBS.ping() يعيد رقم إصدار المحرّك وpsdError فارغ
  * - يسقط إن غابت الإضافة ولا يتخطّاها (لا skip).
- * - و(A21، D147) `readPsd` بالقارئ الأصليّ وحده: بلا قارئٍ يرمي `PSD_ENGINE_MISSING`، ورميُ القارئ يُعاد `null`، ولا `readPsdScript` في `psd.ts`.
+ * - و(A21، D147) `readPsd` بالقارئ الأصليّ وحده: بلا قارئٍ يرمي `PSD_ENGINE_MISSING`، ورميُ القارئ يُعاد `null`، وقارئ TS في `legacy/` لا في `psd.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
