@@ -486,9 +486,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await click('[data-act="merge"]');
   await wait(400);
   ok(
-    '«ادمج» رأسيًّا لا يدمج، ويقول لماذا — فالورقة لا تحفظه',
-    (await page.eval(`return document.querySelector('${ed} [data-editor-notice]')?.innerText ?? '';`)).includes('الدمج الرأسي') &&
-      (await page.eval(`return [...${T}.rows].map((r) => r.cells.length).join(',');`)) === '4,4,4'
+    '«ادمج» رأسيًّا يدمج (S37 — D129): خليّةٌ بارتفاع صفّين، والصفّ تحتها بثلاث',
+    (await page.eval(`return ${T}.rows[1].cells[0].rowSpan === 2 && [...${T}.rows].map((r) => r.cells.length).join(',') === '4,4,3';`))
   );
   await dragCells([0, 0], [0, 1]);
   await click('[data-act="merge"]');
@@ -504,12 +503,13 @@ export default async function scenario(page, { profile, shotsDir }) {
     const tables = (savedDoc?.blocks ?? []).filter((b) => b.kind === 'table');
     const t = tables.at(-1);
     ok(
-      'والمسودة تحفظ ما صُنع: الأوزان، والحدود المخفيّة، وبلا صفّ عناوين، والدمج الأفقي',
+      'والمسودة تحفظ ما صُنع: الأوزان، والحدود المخفيّة، وبلا صفّ عناوين، والدمج الأفقي والرأسيّ',
       JSON.stringify(t?.columns) === JSON.stringify([1, 1.5, 1.5, 1]) &&
         t?.borders === false &&
         t?.header === false &&
         t?.rows?.[0]?.cells?.[0]?.colSpan === 2 &&
-        t?.rows?.map((r) => r.cells.length).join(',') === '3,4,4'
+        t?.rows?.[1]?.cells?.[0]?.rowSpan === 2 &&
+        t?.rows?.map((r) => r.cells.length).join(',') === '3,4,3'
     );
   }
   if (shotsDir) await page.shot(join(shotsDir, 'page-editor-table.png'));
