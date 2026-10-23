@@ -301,6 +301,40 @@ export default async function scenario(page, { profile, shotsDir }) {
     table?.columns?.length === 3 && table.columns[0] > 1.4 && table.columns[1] < 0.6 && table.columns[2] === 1 && Math.abs(table.columns.reduce((a, b) => a + b, 0) - 3) < 0.02
   );
 
+  // ── وما كُتب للتوّ يُحفظ: «احفظ» وCtrl+S فورًا بعد الكتابة، والمحرّر يؤجّل إرسال الوثيقة ٢٥٠ م.ث (D122 — D143) ──
+  /** المؤشّر بعد كلمةٍ على الورقة. */
+  const caretAfter = (word) =>
+    page.eval(`
+      const root = document.querySelector('${PM}');
+      root.focus();
+      const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const at = n.data.indexOf(${JSON.stringify(word)});
+        if (at < 0) continue;
+        const range = document.createRange();
+        range.setStart(n, at + ${word.length});
+        range.collapse(true);
+        const sel = getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+      }
+      return false;
+    `);
+  const draftHas = (word) => JSON.stringify(lastDraftDoc()?.blocks ?? []).includes(word);
+  await caretAfter('دائرتنا');
+  await page.typeKeys(PM, ' عاجلًا');
+  await click(`${ed} [data-act="save"]`);
+  await wait(1200);
+  ok('كلمةٌ كُتبت ثم «حفظ مسودة» فورًا: في المسودّة', draftHas('عاجلًا'));
+  await caretAfter('عاجلًا');
+  await page.typeKeys(PM, ' جدًّا');
+  const ctrlS = { code: 'KeyS', key: 's', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83, modifiers: 2 };
+  await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ctrlS });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ctrlS });
+  await wait(1200);
+  ok('وكلمةٌ ثم Ctrl+S فورًا: في المسودّة', draftHas('جدًّا'));
+
   await page.send('Emulation.clearDeviceMetricsOverride');
   return steps;
 }
