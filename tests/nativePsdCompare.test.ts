@@ -1,29 +1,27 @@
 /**
- * مقارنة محرّك Rust الأصلي بـ TypeScript على كلّ ملفّات PSD (A20، D104):
- * - الأبعاد والدقّة وrgba بايتًا ببايت وplanes بايتًا ببايت والتنبيهات
+ * محرّك Rust على المرجع الثابت لكلّ ملفّات PSD (A20 A21، D104 D146 D147):
+ * - الأبعاد والدقّة والتنبيهات وبصمة rgba وكلّ قناةٍ (sha256) لكلّ حالةٍ باسمها في `fixtures/psdGolden.json`
  * - بُناة psdBuilder وdesignImport (RGB وCMYK وGrayscale وRLE وخام)
  * - ملف psd-styles.psd
  * - PSB وملفّات مبتورة وحالات الخطأ
- * - قوالب المالك الحقيقية (realPsd / GyanTech)
+ * - قوالب المالك الحقيقية (realPsd / GyanTech): تُقرأ بلا رمي، وخارج المرجع (لا أسماؤها ولا بصماتها في ملفٍّ يُودَع)
  * - ويسقط الاختبار صراحةً إن لم تُحمَّل الإضافة.
- * و(A21، D146) **المرجع الثابت** `fixtures/psdGolden.json`: بصمة ناتج TS لكلّ حالةٍ من الأقسام ١–٤ باسمها، يُقارن به Rust فوق مقارنته
- * بـTS — فيبقى الحارس بعد نقل TS إلى `legacy/` (D147). ولا شيء من ملفّات المالك فيه (القسم ٥). ويُكتب مرّةً:
- *   PSD_GOLDEN_OUT=tests/fixtures/psdGolden.json npx vitest run tests/nativePsdCompare.test.ts
+ * والمرجع **ناتج قارئ TS** كتبه D146 قبل نقله إلى `legacy/src/main/services/psd.ts` (D147): ثابتٌ لا يُولَّد من Rust،
+ * فحالةٌ جديدة تُضاف إليه عمدًا — وما ليس فيه يسقط.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readPsdScript, setNativePsdReader, type PsdImage } from '../src/main/services/psd';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setNativePsdReader, type PsdImage } from '../src/main/services/psd';
 import { createNativePsdReader, loadNativePsd } from '../src/main/worker/nativePsd';
 import { layeredPsd } from './psdBuilder';
 
 let nativeReader: ((bytes: Uint8Array) => PsdImage | null) | null = null;
 
 type Print = { width: number; height: number; dpi: number | null; warnings: string[]; rgba: string | null; planes: string[] | null } | null;
-const GOLDEN_OUT = process.env['PSD_GOLDEN_OUT'];
-const golden: Record<string, Print> = GOLDEN_OUT ? {} : JSON.parse(readFileSync(join(__dirname, 'fixtures', 'psdGolden.json'), 'utf8'));
+const golden: Record<string, Print> = JSON.parse(readFileSync(join(__dirname, 'fixtures', 'psdGolden.json'), 'utf8'));
 const sha256 = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const print = (img: PsdImage | null): Print =>
   img && { width: img.width, height: img.height, dpi: img.dpi, warnings: img.warnings, rgba: img.rgba ? sha256(img.rgba) : null, planes: img.planes ? img.planes.map(sha256) : null };
@@ -34,50 +32,11 @@ function psdFiles(dir: string): string[] {
   );
 }
 
-/** `ref`: يُكتب في المرجع الثابت أو يُقارَن به — إلا ملفّات المالك (القسم ٥). */
-function expectPsdMatch(bytes: Uint8Array, label: string, ref = true) {
-  const script = readPsdScript(bytes);
+/** ناتج Rust يطابق بصمة الحالة في المرجع الثابت. */
+function expectGolden(bytes: Uint8Array, label: string) {
   if (!nativeReader) throw new Error('محرّك Rust غير مهيّأ');
-  const native = nativeReader(bytes);
-
-  if (ref && GOLDEN_OUT) {
-    expect(Object.hasOwn(golden, label), `${label}: اسمٌ مكرّر في المرجع الثابت`).toBe(false);
-    golden[label] = print(script);
-  } else if (ref) {
-    expect(Object.hasOwn(golden, label), `${label}: ليس في المرجع الثابت`).toBe(true);
-    expect(print(native), `${label}: المرجع الثابت`).toEqual(golden[label]);
-  }
-
-  if (script === null) {
-    expect(native, `${label}: يجب أن يعيد Rust قيمة null كما يعيدها TS`).toBeNull();
-    return;
-  }
-
-  expect(native, `${label}: ناتج Rust غير فارغ`).not.toBeNull();
-  expect(native!.width, `${label}: العرض`).toBe(script.width);
-  expect(native!.height, `${label}: الارتفاع`).toBe(script.height);
-  expect(native!.dpi, `${label}: الدقّة DPI`).toBe(script.dpi);
-  expect(native!.warnings, `${label}: التنبيهات`).toEqual(script.warnings);
-
-  if (script.rgba === null) {
-    expect(native!.rgba, `${label}: rgba يجب أن تكون null`).toBeNull();
-  } else {
-    expect(native!.rgba, `${label}: rgba غير فارغة`).not.toBeNull();
-    expect(native!.rgba!.length, `${label}: طول rgba`).toBe(script.rgba.length);
-    const diff = Buffer.compare(Buffer.from(native!.rgba!), Buffer.from(script.rgba));
-    expect(diff, `${label}: تطابق rgba بايتًا ببايت`).toBe(0);
-  }
-
-  if (!script.planes) {
-    expect(native!.planes, `${label}: planes غير معرّفة`).toBeUndefined();
-  } else {
-    expect(native!.planes, `${label}: planes معرّفة`).toBeDefined();
-    expect(native!.planes!.length, `${label}: عدد القنوات`).toBe(script.planes.length);
-    for (let c = 0; c < script.planes.length; c++) {
-      const diff = Buffer.compare(Buffer.from(native!.planes![c]!), Buffer.from(script.planes[c]!));
-      expect(diff, `${label}: تطابق القناة ${c} بايتًا ببايت`).toBe(0);
-    }
-  }
+  expect(Object.hasOwn(golden, label), `${label}: ليس في المرجع الثابت`).toBe(true);
+  expect(print(nativeReader(bytes)), `${label}: المرجع الثابت`).toEqual(golden[label]);
 }
 
 /** باني PSD خام لمختلف الصيغ والأعماق (منقول من designImport.test.ts). */
@@ -161,19 +120,13 @@ function buildRlePsd(w: number, h: number, channelValues: number[], colorMode = 
   return Buffer.concat([head, color, resources, layers, compression, lengths, ...rows]);
 }
 
-describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript على كلّ ملفّات PSD (A20، D104)', () => {
+describe('محرّك Rust على المرجع الثابت (A20 A21، D104 D147)', () => {
   beforeAll(() => {
     const { addon, error } = loadNativePsd();
     expect(error, `فشل تحميل إضافة Rust: ${error}`).toBeNull();
     expect(addon, 'إضافة Rust غير محمّلة (diwan_psd.node)').not.toBeNull();
     nativeReader = createNativePsdReader(addon!);
     setNativePsdReader(nativeReader);
-  });
-
-  afterAll(() => {
-    if (!GOLDEN_OUT) return;
-    const sorted = Object.fromEntries(Object.keys(golden).sort().map((k) => [k, golden[k]]));
-    writeFileSync(GOLDEN_OUT, JSON.stringify(sorted, null, 2) + '\n');
   });
 
   describe('١ — ملفّات psdBuilder (طبقات وصورة مسطَّحة)', () => {
@@ -185,7 +138,7 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
         composite: (x, y) => [(x * 7) % 256, (y * 9) % 256, ((x + y) * 5) % 256],
         layers: []
       });
-      expectPsdMatch(buf, 'psdBuilder RGB');
+      expectGolden(buf, 'psdBuilder RGB');
     });
 
     it('CMYK layered PSD (RAW composite مقلوب كما يخزّنه Photoshop)', () => {
@@ -197,34 +150,34 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
         composite: (x, y) => [(x * 5) % 256, (y * 7) % 256, 128, 200],
         layers: []
       });
-      expectPsdMatch(buf, 'psdBuilder CMYK');
+      expectGolden(buf, 'psdBuilder CMYK');
     });
   });
 
   describe('٢ — بُناة designImport (خام و RLE لمختلف الأنماط والألوان)', () => {
     it('RGB خام مع DPI وبدونه', () => {
-      expectPsdMatch(buildRawPsd(20, 15, 300, 3, [255, 128, 0]), 'Raw RGB with DPI');
-      expectPsdMatch(buildRawPsd(20, 15, undefined, 3, [100, 150, 200]), 'Raw RGB without DPI');
+      expectGolden(buildRawPsd(20, 15, 300, 3, [255, 128, 0]), 'Raw RGB with DPI');
+      expectGolden(buildRawPsd(20, 15, undefined, 3, [100, 150, 200]), 'Raw RGB without DPI');
     });
 
     it('CMYK خام بأربع قنوات', () => {
-      expectPsdMatch(buildRawPsd(16, 16, 300, 4, [10, 50, 150, 220]), 'Raw CMYK');
+      expectGolden(buildRawPsd(16, 16, 300, 4, [10, 50, 150, 220]), 'Raw CMYK');
     });
 
     it('Grayscale خام بقناة واحدة', () => {
-      expectPsdMatch(buildRawPsd(16, 16, 300, 1, [175]), 'Raw Grayscale');
+      expectGolden(buildRawPsd(16, 16, 300, 1, [175]), 'Raw Grayscale');
     });
 
     it('RGB بضغط RLE (PackBits)', () => {
-      expectPsdMatch(buildRlePsd(30, 20, [10, 20, 30], 3), 'RLE RGB');
+      expectGolden(buildRlePsd(30, 20, [10, 20, 30], 3), 'RLE RGB');
     });
 
     it('CMYK بضغط RLE (PackBits)', () => {
-      expectPsdMatch(buildRlePsd(30, 20, [10, 20, 30, 40], 4), 'RLE CMYK');
+      expectGolden(buildRlePsd(30, 20, [10, 20, 30, 40], 4), 'RLE CMYK');
     });
 
     it('Grayscale بضغط RLE (PackBits)', () => {
-      expectPsdMatch(buildRlePsd(30, 20, [128], 1), 'RLE Grayscale');
+      expectGolden(buildRlePsd(30, 20, [128], 1), 'RLE Grayscale');
     });
   });
 
@@ -233,12 +186,12 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       const p = join(__dirname, 'fixtures', 'psd-styles.psd');
       expect(existsSync(p), `الملف ${p} غير موجود`).toBe(true);
       const bytes = readFileSync(p);
-      expectPsdMatch(bytes, 'psd-styles.psd');
+      expectGolden(bytes, 'psd-styles.psd');
     });
   });
 
   describe('٤ — الحالات الحدّية وملفّات تالفة أو غير مدعومة', () => {
-    it('PSB (الإصدار ٢) يُرفض ويعيد null في المحرّكين', () => {
+    it('PSB (الإصدار ٢) يُرفض ويعيد null', () => {
       const psb = Buffer.alloc(40);
       psb.write('8BPS', 0, 'ascii');
       psb.writeUInt16BE(2, 4);
@@ -247,29 +200,29 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       psb.writeUInt32BE(100, 18);
       psb.writeUInt16BE(8, 22);
       psb.writeUInt16BE(3, 24);
-      expectPsdMatch(psb, 'PSB version 2');
+      expectGolden(psb, 'PSB version 2');
     });
 
-    it('ملف مبتور أصغر من ٢٦ بايت يعيد null في المحرّكين', () => {
-      expectPsdMatch(Buffer.from('8BPS'), 'Truncated < 26');
+    it('ملف مبتور أصغر من ٢٦ بايت يعيد null', () => {
+      expectGolden(Buffer.from('8BPS'), 'Truncated < 26');
     });
 
-    it('ملف بتوقيع غير 8BPS يعيد null في المحرّكين', () => {
+    it('ملف بتوقيع غير 8BPS يعيد null', () => {
       const bad = Buffer.alloc(30);
       bad.write('JPEG', 0, 'ascii');
-      expectPsdMatch(bad, 'Invalid magic');
+      expectGolden(bad, 'Invalid magic');
     });
 
-    it('ملف بأبعاد صفرية يعيد null في المحرّكين', () => {
+    it('ملف بأبعاد صفرية يعيد null', () => {
       const zero = Buffer.alloc(30);
       zero.write('8BPS', 0, 'ascii');
       zero.writeUInt16BE(1, 4);
       zero.writeUInt32BE(0, 14);
       zero.writeUInt32BE(0, 18);
-      expectPsdMatch(zero, 'Zero dimensions');
+      expectGolden(zero, 'Zero dimensions');
     });
 
-    it('ملف مبتور بعد الموارد وقبل الطبقات يعيد تحذير "الملف مبتور" في المحرّكين', () => {
+    it('ملف مبتور بعد الموارد وقبل الطبقات يعيد تحذير "الملف مبتور"', () => {
       const truncated = Buffer.alloc(34);
       truncated.write('8BPS', 0, 'ascii');
       truncated.writeUInt16BE(1, 4);
@@ -279,25 +232,25 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       truncated.writeUInt16BE(8, 22);
       truncated.writeUInt16BE(3, 24);
       // color length = 0 at 26, resources length = 0 at 30
-      expectPsdMatch(truncated, 'Truncated before layers');
+      expectGolden(truncated, 'Truncated before layers');
     });
 
-    it('عمق غير ٨ بتّات (١٦ بتًّا) يضع تحذير depth ويعيد rgba: null في المحرّكين', () => {
+    it('عمق غير ٨ بتّات (١٦ بتًّا) يضع تحذير depth ويعيد rgba: null', () => {
       const d16 = buildRawPsd(10, 10, undefined, 3, [10, 20, 30], 16);
-      expectPsdMatch(d16, 'Depth 16');
+      expectGolden(d16, 'Depth 16');
     });
 
-    it('نمط ألوان غير مدعوم (Lab = 9) يضع تحذير mode ويعيد rgba: null في المحرّكين', () => {
+    it('نمط ألوان غير مدعوم (Lab = 9) يضع تحذير mode ويعيد rgba: null', () => {
       const m9 = buildRawPsd(10, 10, undefined, 9, [10, 20, 30]);
-      expectPsdMatch(m9, 'Mode 9 (Lab)');
+      expectGolden(m9, 'Mode 9 (Lab)');
     });
 
-    it('ضغط غير مدعوم (ZIP = 2) يضع تحذير zip ويعيد rgba: null في المحرّكين', () => {
+    it('ضغط غير مدعوم (ZIP = 2) يضع تحذير zip ويعيد rgba: null', () => {
       const zip = buildRawPsd(10, 10, undefined, 3, [10, 20, 30], 8, 2);
-      expectPsdMatch(zip, 'Compression 2 (ZIP)');
+      expectGolden(zip, 'Compression 2 (ZIP)');
     });
 
-    it('(أ) ملف ٢٨ بايتًا: TS يرمي RangeError و Rust يعيد null (مقبول ومكتوب)', () => {
+    it('(أ) ملف ٢٨ بايتًا: Rust يعيد null (وكان TS يرمي RangeError — مقبول ومكتوب، وخارج المرجع)', () => {
       const b28 = Buffer.alloc(28);
       b28.write('8BPS', 0, 'ascii');
       b28.writeUInt16BE(1, 4);
@@ -306,11 +259,10 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       b28.writeUInt32BE(10, 18);
       b28.writeUInt16BE(8, 22);
       b28.writeUInt16BE(3, 24);
-      expect(() => readPsdScript(b28)).toThrow();
       expect(nativeReader!(b28)).toBeNull();
     });
 
-    it('(ب) مورد يتخطّى قسمه: TS و Rust متطابقان في استخراج الدقّة', () => {
+    it('(ب) مورد يتخطّى قسمه: الدقّة كما في المرجع', () => {
       const head = Buffer.alloc(26);
       head.write('8BPS', 0, 'ascii');
       head.writeUInt16BE(1, 4);
@@ -343,10 +295,10 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       const px = Buffer.alloc(10 * 10 * 3);
 
       const buf = Buffer.concat([head, color, resLen, resBlock, layers, compression, px]);
-      expectPsdMatch(buf, 'Resource exceeding section');
+      expectGolden(buf, 'Resource exceeding section');
     });
 
-    it('(ج) صفّ RLE ينتهي ببايت تكرار: TS و Rust متطابقان في فكّ الضغط', () => {
+    it('(ج) صفّ RLE ينتهي ببايت تكرار: فكّ الضغط كما في المرجع', () => {
       const head = Buffer.alloc(26);
       head.write('8BPS', 0, 'ascii');
       head.writeUInt16BE(1, 4);
@@ -374,7 +326,7 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       const trailing = Buffer.from([7, 0, 0, 0]);
 
       const buf = Buffer.concat([head, color, resources, layers, compression, lengths, row0, row1, trailing]);
-      expectPsdMatch(buf, 'RLE row ending with repeat byte');
+      expectGolden(buf, 'RLE row ending with repeat byte');
     });
   });
 
@@ -382,12 +334,15 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
     const realDir = process.env.DIWAN_REAL_PSD ?? join(homedir(), 'Downloads', 'Employee Photo Identity Card PSD Template By GyanTech');
     const files = existsSync(realDir) ? psdFiles(realDir) : [];
 
-    it(`تطابق المحرّكين على ملفّات المالك الحقيقية (${files.length} ملفًّا)`, () => {
+    it(`Rust يقرأ ملفّات المالك الحقيقية (${files.length} ملفًّا)`, () => {
       expect(files.length, 'مجلّد قوالب المالك الحقيقية غير موجود').toBeGreaterThan(0);
       for (const f of files) {
-        const bytes = readFileSync(f);
         const relPath = f.slice(realDir.length + 1);
-        expectPsdMatch(bytes, relPath, false);
+        // بلا رمي، والصورة المسطَّحة بطول العرض×الطول×٤ أو تنبيهٌ يقول لماذا لم تُقرأ.
+        const img = nativeReader!(readFileSync(f));
+        expect(img, `${relPath}: لم يُقرأ`).not.toBeNull();
+        if (img!.rgba) expect(img!.rgba.length, `${relPath}: طول rgba`).toBe(img!.width * img!.height * 4);
+        else expect(img!.warnings.length, `${relPath}: بلا صورةٍ ولا تنبيه`).toBeGreaterThan(0);
       }
     }, 30000);
   });
