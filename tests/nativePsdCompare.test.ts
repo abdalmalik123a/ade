@@ -6,16 +6,27 @@
  * - PSB وملفّات مبتورة وحالات الخطأ
  * - قوالب المالك الحقيقية (realPsd / GyanTech)
  * - ويسقط الاختبار صراحةً إن لم تُحمَّل الإضافة.
+ * و(A21، D146) **المرجع الثابت** `fixtures/psdGolden.json`: بصمة ناتج TS لكلّ حالةٍ من الأقسام ١–٤ باسمها، يُقارن به Rust فوق مقارنته
+ * بـTS — فيبقى الحارس بعد نقل TS إلى `legacy/` (D147). ولا شيء من ملفّات المالك فيه (القسم ٥). ويُكتب مرّةً:
+ *   PSD_GOLDEN_OUT=tests/fixtures/psdGolden.json npx vitest run tests/nativePsdCompare.test.ts
  */
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readPsdScript, setNativePsdReader, type PsdImage } from '../src/main/services/psd';
 import { createNativePsdReader, loadNativePsd } from '../src/main/worker/nativePsd';
 import { layeredPsd } from './psdBuilder';
 
 let nativeReader: ((bytes: Uint8Array) => PsdImage | null) | null = null;
+
+type Print = { width: number; height: number; dpi: number | null; warnings: string[]; rgba: string | null; planes: string[] | null } | null;
+const GOLDEN_OUT = process.env['PSD_GOLDEN_OUT'];
+const golden: Record<string, Print> = GOLDEN_OUT ? {} : JSON.parse(readFileSync(join(__dirname, 'fixtures', 'psdGolden.json'), 'utf8'));
+const sha256 = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
+const print = (img: PsdImage | null): Print =>
+  img && { width: img.width, height: img.height, dpi: img.dpi, warnings: img.warnings, rgba: img.rgba ? sha256(img.rgba) : null, planes: img.planes ? img.planes.map(sha256) : null };
 
 function psdFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -23,10 +34,19 @@ function psdFiles(dir: string): string[] {
   );
 }
 
-function expectPsdMatch(bytes: Uint8Array, label: string) {
+/** `ref`: يُكتب في المرجع الثابت أو يُقارَن به — إلا ملفّات المالك (القسم ٥). */
+function expectPsdMatch(bytes: Uint8Array, label: string, ref = true) {
   const script = readPsdScript(bytes);
   if (!nativeReader) throw new Error('محرّك Rust غير مهيّأ');
   const native = nativeReader(bytes);
+
+  if (ref && GOLDEN_OUT) {
+    expect(Object.hasOwn(golden, label), `${label}: اسمٌ مكرّر في المرجع الثابت`).toBe(false);
+    golden[label] = print(script);
+  } else if (ref) {
+    expect(Object.hasOwn(golden, label), `${label}: ليس في المرجع الثابت`).toBe(true);
+    expect(print(native), `${label}: المرجع الثابت`).toEqual(golden[label]);
+  }
 
   if (script === null) {
     expect(native, `${label}: يجب أن يعيد Rust قيمة null كما يعيدها TS`).toBeNull();
@@ -148,6 +168,12 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
     expect(addon, 'إضافة Rust غير محمّلة (diwan_psd.node)').not.toBeNull();
     nativeReader = createNativePsdReader(addon!);
     setNativePsdReader(nativeReader);
+  });
+
+  afterAll(() => {
+    if (!GOLDEN_OUT) return;
+    const sorted = Object.fromEntries(Object.keys(golden).sort().map((k) => [k, golden[k]]));
+    writeFileSync(GOLDEN_OUT, JSON.stringify(sorted, null, 2) + '\n');
   });
 
   describe('١ — ملفّات psdBuilder (طبقات وصورة مسطَّحة)', () => {
@@ -361,7 +387,7 @@ describe('مقارنة المحرّكين الأصلي (Rust) و TypeScript عل
       for (const f of files) {
         const bytes = readFileSync(f);
         const relPath = f.slice(realDir.length + 1);
-        expectPsdMatch(bytes, relPath);
+        expectPsdMatch(bytes, relPath, false);
       }
     }, 30000);
   });

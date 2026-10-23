@@ -1,0 +1,187 @@
+{
+  "Compression 2 (ZIP)": {
+    "width": 10,
+    "height": 10,
+    "dpi": null,
+    "warnings": [
+      "صورةُ الملف مضغوطةٌ بصيغةٍ لا تُقرأ (ZIP)"
+    ],
+    "rgba": null,
+    "planes": null
+  },
+  "Depth 16": {
+    "width": 10,
+    "height": 10,
+    "dpi": null,
+    "warnings": [
+      "عمقُ الملف 16 بتًّا — تُقرأ ثمانيةٌ وحدها",
+      "تعذّرت قراءة الصورة المسطَّحة"
+    ],
+    "rgba": null,
+    "planes": null
+  },
+  "Invalid magic": null,
+  "Mode 9 (Lab)": {
+    "width": 10,
+    "height": 10,
+    "dpi": null,
+    "warnings": [
+      "نمط ألوان الملف (9) غير مدعوم — يُدعم RGB و CMYK و Grayscale",
+      "تعذّرت قراءة الصورة المسطَّحة"
+    ],
+    "rgba": null,
+    "planes": null
+  },
+  "PSB version 2": null,
+  "RLE CMYK": {
+    "width": 30,
+    "height": 20,
+    "dpi": null,
+    "warnings": [],
+    "rgba": "0914441b7ebfcf44b2872371ececd86d85b4d676c17ea04ba25a03d4398aad12",
+    "planes": [
+      "10a3e93183614dfd9868092b6396688cad0cdfa226bd7332c2da9a829ab6a861",
+      "b04b85cb8462f255b3a9da8e443efbc0d2af8d81ff4069c76305ce116185e33e",
+      "169f3730ac7026cfdd97f4947637042f36cc0a63b1bf880ca98f139078fbfea0",
+      "a14154be6b76fc3c4688e42816969b56787144c9e1c1cbc29f07557fb0c486a7"
+    ]
+  },
+  "RLE Grayscale": {
+    "width": 30,
+    "height": 20,
+    "dpi": null,
+    "warnings": [],
+    "rgba": "bf13f5ed909f7db4ce64bc7af89a556b58c50386c0c25c2274ed88213a1953d1",
+    "planes": [
+      "e5ea72c7878a00f28340dc92e95168f90ec945934e21c1357ad973436b590072"
+    ]
+  },
+  "RLE RGB": {
+    "width": 30,
+    "height": 20,
+    "dpi": null,
+    "warnings": [],
+    "rgba": "721f9899aaae59bfb994f6e4d1941fba76ef490dcc3f48e56f42939a6135e0d3",
+    "planes": [
+      "10a3e93183614dfd9868092b6396688cad0cdfa226bd7332c2da9a829ab6a861",
+      "b04b85cb8462f255b3a9da8e443efbc0d2af8d81ff4069c76305ce116185e33e",
+      "169f3730ac7026cfdd97f4947637042f36cc0a63b1bf880ca98f139078fbfea0"
+    ]
+  },
+  "RLE row ending with repeat byte": {
+    "width": 4,
+    "height": 2,
+    "dpi": null,
+    "warnings": [],
+    "rgba": "0917da38bf8af345db4a4dc80491e542449fea7b75712018ff986de86ff6f60b",
+    "planes": [
+      "0d75810e42df8e75c631eaa07253ffb006132a88a73fd1ec3ca42f3fd1f1ae76"
+    ]
+  },
+  "Raw CMYK": {
+    "width": 16,
+    "height": 16,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "998fb2aa0b7a8396252e64e3c1616441727fff3a1444d682fab55727be00138b",
+    "planes": [
+      "98a78051865776937de080caa6bedab036b4578b26a5ced17a6277e0749f4d9f",
+      "531fe66bbe5922652e3c016f65c645bd21320b431fc756e4da8c6292e07f2e2c",
+      "841b9f425819c081dad8c379664ff767abb9eb5d88386163d9fa4a2485577325",
+      "912c450b54df92c0e7f4c887cb0984715111e901307ab652b41bd9c110080962"
+    ]
+  },
+  "Raw Grayscale": {
+    "width": 16,
+    "height": 16,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "bc58bfde1d10ee2b9d5a21844548f8811f1191274e540b7f898a0931924b9d11",
+    "planes": [
+      "098632e1d64ab756cf9885347b5961d1030f86537c19324f03e020f66e1b5288"
+    ]
+  },
+  "Raw RGB with DPI": {
+    "width": 20,
+    "height": 15,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "8d21d7b2edef5148d50d5e17b10dcd5e44e1e0cc02e387a9268da20eab196da0",
+    "planes": [
+      "5263250339d3961c91f0bb1150e95ff862f8cd6a4ca873bc8d274dbe86fd6ce7",
+      "a02b8868d669060f176d2496cbd334db89527f5a75be8b76dade24f58025985d",
+      "d13d4a8b3b8add19b5970157f09d00c12cbda4fed4d74d8493156523f7069b66"
+    ]
+  },
+  "Raw RGB without DPI": {
+    "width": 20,
+    "height": 15,
+    "dpi": null,
+    "warnings": [],
+    "rgba": "e2a2ca2a897db21741a0c558613b01c752fa32ce90047e068e8802b083c5223f",
+    "planes": [
+      "63c29b7d223e3d582a479bc591f260d4b2e072c613d65033c3b19f4e84cf2d3b",
+      "8f9068778d2eac105ec4c7d95991e690f40c041f5ce67fe3362378d8a7a6fada",
+      "dc010e6240715ea4283156bfbfcd7aaf1ceed0335c2bfa455c6795701c46a4d3"
+    ]
+  },
+  "Resource exceeding section": {
+    "width": 10,
+    "height": 10,
+    "dpi": 16,
+    "warnings": [
+      "صورةُ الملف مضغوطةٌ بصيغةٍ لا تُقرأ (ZIP)"
+    ],
+    "rgba": null,
+    "planes": null
+  },
+  "Truncated < 26": null,
+  "Truncated before layers": {
+    "width": 10,
+    "height": 10,
+    "dpi": null,
+    "warnings": [
+      "الملف مبتور"
+    ],
+    "rgba": null,
+    "planes": null
+  },
+  "Zero dimensions": null,
+  "psd-styles.psd": {
+    "width": 360,
+    "height": 240,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "859dcb533db54dd9da767b5edc89df0e9f826b49a5b9a7a24f23224d29559783",
+    "planes": [
+      "11202ca687995f7753b7af4b9b594dc4c81046957e77d1eb6666e6e0064f2b5f",
+      "bb02481c4fd1ac841d1258b9b7c76ba403d89369a5095d96d160aaa7ecabea09",
+      "fa95b17ca3a9d5e2b90f5b2def3ef40c21e2529ef4230d0f059842e772a4faea"
+    ]
+  },
+  "psdBuilder CMYK": {
+    "width": 50,
+    "height": 40,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "36fc15a941f6a3abd1460bdf936c8a28c5c8488cafa32e3519e7b13162029489",
+    "planes": [
+      "8ce73f6cc260b35bcf79218777b665878a23c1f1d4703b722a0a96e719c87673",
+      "f48c1e66c6d27adb8772de40701be145c9e84573f6e9cd185ff17bd9e36db6d3",
+      "9907f87ade465115c7576b01d7775eb9eab16e4f72295f68c170e04beca5fe72",
+      "cc7af2af515540ebc14a599d6c6ecb538c41408e18cdd114b40f0c47efae8e49"
+    ]
+  },
+  "psdBuilder RGB": {
+    "width": 50,
+    "height": 40,
+    "dpi": 300,
+    "warnings": [],
+    "rgba": "a1e4263a09b3f0186cc9987afa3381d470dc54b584e42f4d3d259ee9f754d1be",
+    "planes": [
+      "1973c7ae3c06902ab658b33c72d76e1c8882ad2befcd2a4c03a4776494092511",
+      "1c26fc58e0a3b5cd6b09f63819ab80d950817b473e51b4ec0b076c7b2af37032",
+      "f4970b06ccccfbda5a97c1b2e3441ee051a9b302dc81e8a4e3aadaf9b0d650af"
+    ]
+  }
+}
