@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٠١:٣٥ — مراجعة D147 — **✓** · النموذج: Claude Opus 5.5
+- **الإيداعات (مُجرَّب بـgit) من 9ce30cb:** ستّة في «المسموح» وحده — `src` ملفٌّ واحد (`psd.ts`) · لا حذف (نقلان: `psdSpeed.mjs` والأمر) · السقوف واللقطات و`package*.json` و`native/` بلا فرق · LF بلا بايت تحكّم ·
+  ونسخة `legacy/` بعد سطرها الأوّل = `psd.ts` من 5dfc3b4 (`cmp`)، و`psdSpeed.mjs` كذلك · و`grep -rn readPsdScript src tests tools` سطر الحارس وحده.
+- **الكود (من الكود):** `readPsd` يرمي `PSD_ENGINE_MISSING` بلا قارئ ويعيد `null` برميه · ولا مُنادٍ لـ`readPsd` في الرئيسة إلا بديل `readDesign` (`ipc/designs.ts`)، و`assertPixels` بـ`psdHeader` لا بـ`readPsd` ·
+  `nativePsdCompare` بالمرجع وحده، والقسم ٥ أشدّ من نصّ الأمر (لا `null` أيضًا) — مقبول.
+- **الفحص (مُجرَّب):** typecheck نظيف · `nativePsd` ٥ `nativePsdCompare` ٢٠ و✗١ القسم ٥ (بيئة؛ وبـ`DIWAN_REAL_PSD=tests/fixtures` ✓٢١) `corruptFiles` ١٠ `designImport` ٢٠ `psdLayers` ١٨ `psdStyles` ١٢ `realPsd` ١
+  `workerJobs` ١٣ `structure` ١٠ `lint` ١ · `vitest` كاملًا ٢٠٩٦ ✓ و٤ متخطّاة و١ ✗ (القسم ٥) · البناء ثم `designPsd` ✓١١ `designPsdStyles` ✓١١ `designLayers` ✓٨ `workerPath` ✓١٠ ·
+  `npm run pack` ثم `designPsd` على المحزوم ✓١١ (المحرّك 0.1.0)، والرسالة في `app.asar` ولا `readPsdScript` فيه — كالقيد.
+- **الحرّاس تسقط (مُجرَّب، ثم أُعيد كلّ شيء والشجرة نظيفة):** `psd.ts` من 5dfc3b4 ← `nativePsd` ✗ «قارئ TS في legacy/» · و`return null` بدل الرمي ← ✗ «بلا قارئٍ لا رجوع إلى TS» · وبصمة `RLE RGB` مغيَّرة ← ✗ حالتها وحدها.
+- **في البرنامج (مُجرَّب):** المحزوم والملحق مُخفًى مؤقّتًا ← `workerPing` بلا محرّك، واستيراد PSD يُري «قراءة ملفّات Photoshop تحتاج محرّك ديوان — أعد تشغيل البرنامج، وإن تكرّر فأعد تثبيته»، ثم أُعيد الملحق.
+- **الحكم:** D147 ✓ — بلا خطوة «٠» لـD148.
+
 ## ٢٠٢٦-١٠-٢٤ ٠١:٠٠ — D147 ✅ — قراءة PSD (ب): قارئ TS و`psdSpeed` إلى `legacy/`، و`readPsd` بمحرّك Rust وحده (A21) · النموذج: Claude Opus 5.5
 - **ما تغيّر:** 5dfc3b4 الحجز · c1089bc `legacy/src/main/services/psd.ts` (نسخة HEAD بايتًا ببايت + سطر «انتهى») و`psdSpeed.mjs` بـ`git mv` إلى `legacy/tools/experiments/` + سطر «انتهى» ·
   5f29c8b و337fcec `psd.ts` ٨٥ سطرًا (خرج `readPsdScript` و`RAW`/`RLE`، و`PSD_ENGINE_MISSING` مصدَّرة، وبقي `unpackBits` و`psdMeta`) و`nativePsdCompare` على المرجع وحده (بلا مولّد) وحارس `nativePsd` ·
