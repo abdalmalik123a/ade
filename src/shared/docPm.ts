@@ -80,6 +80,7 @@ function paragraphToPm(b: ParagraphBlock): PMNode {
       dir: b.dir ?? null,
       align: b.align,
       indent: b.indent ?? null,
+      spaceBefore: b.spaceBefore ?? null,
       spaceAfter: b.spaceAfter ?? null,
       size: b.size ?? null,
       lineHeight: b.lineHeight ?? null
@@ -164,6 +165,7 @@ function pmParagraph(node: PMNode): ParagraphBlock {
   const a = node.attrs;
   const b: ParagraphBlock = { id: (a.id as string) || newUuid(), kind: 'paragraph', align: a.align as Align, inlines: pmInlines(node) };
   if (a.indent != null) b.indent = a.indent as number;
+  if (a.spaceBefore != null) b.spaceBefore = a.spaceBefore as number;
   if (a.spaceAfter != null) b.spaceAfter = a.spaceAfter as number;
   if (a.size != null) b.size = a.size as number;
   if (a.lineHeight != null) b.lineHeight = a.lineHeight as number;

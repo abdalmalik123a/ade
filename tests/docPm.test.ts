@@ -325,3 +325,56 @@ describe('تباعد ما بعد الفقرة (S11)', () => {
     expect(x).toMatch(/<w:spacing[^>]*w:after="\d+"[^>]*\/>/);
   });
 });
+
+describe('تباعد ما قبل الفقرة (S11، D139)', () => {
+  it('يُحفظ في الكتلة ويعود من ProseMirror، ويُطبع margin-top — وما بعدها كما كان', () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('عنوان متباعد')], { spaceBefore: 12, spaceAfter: 6 }), paragraph([run('فقرة بلا تباعد')])];
+    const pm = blocksToPm(d.blocks);
+    expect(pm.firstChild!.attrs.spaceBefore).toBe(12);
+    const round = pmBlocks(pm);
+    expect(round[0]).toMatchObject({ spaceBefore: 12, spaceAfter: 6 });
+    expect((round[1] as { spaceBefore?: number }).spaceBefore).toBeUndefined();
+    expect((pm.firstChild!.type.spec.toDOM!(pm.firstChild!) as [string, Record<string, string>, number])[1]).toMatchObject({
+      style: 'text-align:right;margin-top:12px;margin-bottom:6px'
+    });
+    const html = renderDocHtml(d, {}, { paragraphs: 'blocks' });
+    expect(html).toContain('margin-top:12px');
+    expect(html).toContain('margin-bottom:6px');
+  });
+
+  it('setParagraphAttr يضبط spaceBefore على الفقرة ويمحوه بـnull', () => {
+    let state = EditorState.create({
+      schema: docSchema,
+      doc: docSchema.node('doc', null, [docSchema.node('paragraph', null, [docSchema.text('الفقرة الأولى')])])
+    });
+    setParagraphAttr('spaceBefore', 18)(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.spaceBefore).toBe(18);
+    expect(state.doc.firstChild!.attrs.spaceAfter).toBeNull();
+    setParagraphAttr('spaceBefore', null)(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.spaceBefore).toBeNull();
+  });
+
+  it('يصدر إلى Word بخصيصة w:spacing w:before، ويُستورد منه بلا ملاحظة «لا تُستورد»', async () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('فقرة متباعدة في وورد')], { spaceBefore: 12, spaceAfter: 6 })];
+    const x = strFromU8(unzipSync(new Uint8Array(await docToDocx(d, { title: 'تباعد', blanks: true })))['word/document.xml']!);
+    // ١٢ بكسلًا = ٩ نقاط = ١٨٠ جزءًا من عشرين من النقطة.
+    expect(x).toMatch(/<w:spacing[^>]*w:before="180"[^>]*w:after="90"[^>]*\/>|<w:spacing[^>]*w:after="90"[^>]*w:before="180"[^>]*\/>/);
+
+    const body =
+      '<w:p><w:pPr><w:bidi/><w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:t>عنوان بمسافة قبله</w:t></w:r></w:p>' +
+      '<w:p><w:pPr><w:bidi/></w:pPr><w:r><w:t>فقرة بلا مسافة</w:t></w:r></w:p>' +
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>';
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="w"><w:body>${body}</w:body></w:document>`;
+    const { doc, notes } = docxToDoc(unzipSync(zipSync({ 'word/document.xml': strToU8(xml) })));
+    const paras = walkBlocks(doc.blocks).filter((b) => b.kind === 'paragraph');
+    expect(paras[0]).toMatchObject({ spaceBefore: 16, spaceAfter: 8 });
+    expect((paras[1] as { spaceBefore?: number }).spaceBefore).toBeUndefined();
+    expect(notes.join(' ')).not.toContain('المسافة قبل');
+  });
+});

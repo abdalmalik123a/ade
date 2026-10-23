@@ -93,6 +93,8 @@ export type ParagraphBlock = BlockBase & {
   align: Align;
   /** مسافة بادئة لأول سطر — والكتاب الرسمي يترك ٢ سم. */
   indent?: number;
+  /** تباعد ما قبل الفقرة وما بعدها بالبكسل (S11، D139). */
+  spaceBefore?: number;
   spaceAfter?: number;
   /**
    * حجم الفقرة الأساسي بالبكسل، وما في مقاطعها من `marks.size` يغلبه.

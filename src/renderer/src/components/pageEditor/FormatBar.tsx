@@ -27,6 +27,39 @@ import {
 import type { Command, EditorState } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 
+/**
+ * تباعد الفقرة قبلها أو بعدها (S11، D139) — بالبكسل كما يُحفظ ويُطبع، والوحدة في النصّ (كانت «تباعد: ١٢» بلا وحدة).
+ * وما جاء من Word بغير هذه القيم يظهر كما هو.
+ */
+function SpacingSelect({ side, cur, onPick }: { side: 'spaceBefore' | 'spaceAfter'; cur: number | null | undefined; onPick: (px: number | null) => void }) {
+  const word = side === 'spaceBefore' ? 'قبل' : 'بعد';
+  const label = (v: number) => (v === 0 ? `${word}: ٠` : `${word}: ${v} بكسل`);
+  return (
+    <select
+      aria-label={`التباعد ${word} الفقرة`}
+      className="bg-transparent font-label-md text-label-md text-on-surface tabular outline-none cursor-pointer"
+      data-act={side === 'spaceBefore' ? 'paragraph-spacing-before' : 'paragraph-spacing'}
+      title={`تباعد ما ${word} الفقرة — بالبكسل`}
+      value={cur == null || cur === 0 ? '0' : String(cur)}
+      onChange={(e) => {
+        const v = Number(e.target.value);
+        onPick(v > 0 ? v : null);
+      }}
+    >
+      {SPACE_AFTERS.map((v) => (
+        <option key={v} value={v}>
+          {label(v)}
+        </option>
+      ))}
+      {cur != null && cur > 0 && !SPACE_AFTERS.includes(cur as 0 | 6 | 12 | 18) && (
+        <option key={cur} value={String(cur)}>
+          {label(cur)}
+        </option>
+      )}
+    </select>
+  );
+}
+
 type Props = {
   run_: (cmd: Command) => boolean;
   state: EditorState | null;
@@ -52,6 +85,7 @@ type Props = {
 };
 
 export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh, curIndent, curList, listLabel, setMenu, all, toField, table, viewRef, setNotice }: Props) {
+  const curSpaceBefore = state ? (paragraphValue(state, 'spaceBefore') as number | null | undefined) : undefined;
   const curSpaceAfter = state ? (paragraphValue(state, 'spaceAfter') as number | null | undefined) : undefined;
   return (
     <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
@@ -119,28 +153,10 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
           </option>
         ))}
       </select>
-      <div className="flex items-center gap-1 bg-surface-container-low rounded-lg px-1.5 h-8" title="تباعد ما بعد الفقرة (S11)">
+      <div className="flex items-center gap-1 bg-surface-container-low rounded-lg px-1.5 h-8" title="تباعد الفقرة: قبلها وبعدها بالبكسل (S11)">
         <span className="material-symbols-outlined text-[18px] text-on-surface-variant pointer-events-none">format_line_spacing</span>
-        <select
-          aria-label="تباعد الفقرات"
-          className="bg-transparent font-label-md text-label-md text-on-surface tabular outline-none cursor-pointer"
-          data-act="paragraph-spacing"
-          title="تباعد ما بعد الفقرة"
-          value={curSpaceAfter == null || curSpaceAfter === 0 ? '0' : String(curSpaceAfter)}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            run_(setParagraphAttr('spaceAfter', v > 0 ? v : null));
-          }}
-        >
-          {SPACE_AFTERS.map((v) => (
-            <option key={v} value={v}>
-              {v === 0 ? 'تباعد: ٠' : `تباعد: ${v}`}
-            </option>
-          ))}
-          {curSpaceAfter != null && curSpaceAfter > 0 && !SPACE_AFTERS.includes(curSpaceAfter as 0 | 6 | 12 | 18) && (
-            <option key={curSpaceAfter} value={String(curSpaceAfter)}>تباعد: {curSpaceAfter}</option>
-          )}
-        </select>
+        <SpacingSelect side="spaceBefore" cur={curSpaceBefore} onPick={(px) => run_(setParagraphAttr('spaceBefore', px))} />
+        <SpacingSelect side="spaceAfter" cur={curSpaceAfter} onPick={(px) => run_(setParagraphAttr('spaceAfter', px))} />
       </div>
       <Tool
         act="indent"

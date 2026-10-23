@@ -111,6 +111,7 @@ function paragraph(p: ParagraphBlock, ctx: Ctx): Paragraph {
     alignment: alignment(p.align, rtl),
     indent: p.indent ? { firstLine: twipsFromMm(p.indent) } : undefined,
     spacing: {
+      before: p.spaceBefore ? twipsFromPx(p.spaceBefore) : undefined,
       after: p.spaceAfter ? twipsFromPx(p.spaceAfter) : undefined,
       line: p.lineHeight ? Math.round(240 * p.lineHeight) : undefined
     },

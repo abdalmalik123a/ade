@@ -58,6 +58,7 @@ export function paragraphDomAttrs(node: PMNode): Record<string, string> {
     a.size ? `font-size:${a.size}px` : '',
     a.lineHeight ? `line-height:${a.lineHeight}` : '',
     a.indent ? `text-indent:${a.indent}mm` : '',
+    a.spaceBefore ? `margin-top:${a.spaceBefore}px` : '',
     a.spaceAfter ? `margin-bottom:${a.spaceAfter}px` : ''
   ]
     .filter(Boolean)
@@ -82,6 +83,7 @@ export const nodes: Record<string, NodeSpec> = {
       ...blockAttrs,
       align: { default: 'right' },
       indent: { default: null },
+      spaceBefore: { default: null },
       spaceAfter: { default: null },
       size: { default: null },
       lineHeight: { default: null }

@@ -48,7 +48,7 @@ export const M = S.marks as Record<string, MarkType>;
 /** تباعد الأسطر كما في Word: مفرد، و١٫١٥، ونصف، ومزدوج. */
 export const LINE_HEIGHTS = [1, 1.15, 1.5, 2, 2.5];
 
-/** خيارات تباعد الفقرات (بعد الفقرة) بالنقطة/البكسل (S11). */
+/** خيارات تباعد الفقرات — قبلها وبعدها (D139) — بالبكسل (S11). */
 export const SPACE_AFTERS = [0, 6, 12, 18] as const;
 
 /** أشكال الترقيم كما في Word (البند ٣): النقطيّ والرقميّ والحروف «أ)» والترتيبيّ «أولًا:» واللاتينيّ «a)». */
@@ -78,9 +78,9 @@ export function selectedParagraphs(state: EditorState): { node: PMNode; pos: num
   return out;
 }
 
-/** صفةٌ لكلّ فقرةٍ في التحديد: المحاذاة والتباعد والبادئة وتباعد ما بعد الفقرة. */
+/** صفةٌ لكلّ فقرةٍ في التحديد: المحاذاة والتباعد والبادئة وتباعد ما قبل الفقرة وما بعدها. */
 export const setParagraphAttr =
-  (attr: 'align' | 'lineHeight' | 'indent' | 'spaceAfter', value: unknown): Command =>
+  (attr: 'align' | 'lineHeight' | 'indent' | 'spaceBefore' | 'spaceAfter', value: unknown): Command =>
   (state, dispatch) => {
     const paras = selectedParagraphs(state);
     if (!paras.length) return false;

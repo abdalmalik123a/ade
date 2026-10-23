@@ -156,6 +156,7 @@ function paragraphHtml(
     block.size ? `font-size:${block.size}px` : '',
     block.lineHeight ? `line-height:${block.lineHeight}` : '',
     block.indent ? `text-indent:${block.indent}mm` : '',
+    block.spaceBefore ? `margin-top:${block.spaceBefore}px` : '',
     block.spaceAfter ? `margin-bottom:${block.spaceAfter}px` : ''
   ]
     .filter(Boolean)

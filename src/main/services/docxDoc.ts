@@ -46,8 +46,6 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
   const dir = bidi ? undefined : ('ltr' as const);
   const { pieces, images } = readPieces(p, ctx, styleR, align);
 
-  if (pp.before) ctx.notes.add('المسافة قبل الفقرات لا تُستورد — تبقى المسافة بعدها');
-
   // الترقيم الذي يرسمه Word يُكتب نصًّا في أوّل الفقرة.
   if (pp.numId) {
     const label = ctx.numbering(pp.numId, pp.ilvl ?? 0);
@@ -59,6 +57,8 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
   }
 
   const markPx = sizePx(markR, bidi || Boolean(markR.rtl));
+  // والمسافة قبل الفقرة تُستورد كالتي بعدها (D139) — كانت تُترك بملاحظة.
+  const spaceBefore = pp.before !== undefined ? round1(pp.before / TW_PER_PX) : undefined;
   const spaceAfter = pp.after !== undefined ? round1(pp.after / TW_PER_PX) : undefined;
   const lineHeight =
     pp.line && (pp.lineRule ?? 'auto') === 'auto'
@@ -104,6 +104,8 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
       ...(dir ? { dir } : {}),
       size: basePx,
       ...(lineHeight ? { lineHeight } : {}),
+      // وما قبلها لأوّل الفقرة وحده: ما بعد فاصل الصفحة تكملتُها.
+      ...(spaceBefore && gi === 0 ? { spaceBefore } : {}),
       ...(spaceAfter ? { spaceAfter } : {})
     };
 
