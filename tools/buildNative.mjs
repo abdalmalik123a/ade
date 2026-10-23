@@ -29,9 +29,12 @@ if (!cargo) {
 }
 
 const manifest = join(ROOT, 'native', 'diwan-psd', 'Cargo.toml');
+// CRT ساكن (D142): بدونه يستورد الملحق `VCRUNTIME140.dll`، وويندوز يبحث عنه بجانب الملحق لا بجانب Diwan.exe — فلا يُحمَّل على جهازٍ بلا VC++.
+// ولهدف ويندوز في عملية cargo هذه وحدها، لا `RUSTFLAGS` عامّة؛ و`afterPack.cjs` يُسقط التحزيم إن بقي الاستيراد.
 const res = spawnSync(cargo, ['build', '--release', '--manifest-path', manifest], {
   cwd: ROOT,
-  stdio: 'inherit'
+  stdio: 'inherit',
+  env: { ...process.env, CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: '-C target-feature=+crt-static' }
 });
 
 if (res.status !== 0) {

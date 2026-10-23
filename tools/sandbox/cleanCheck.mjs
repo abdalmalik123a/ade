@@ -11,7 +11,8 @@ import { join } from 'node:path';
 
 export default async function scenario(page, { profile }) {
   const steps = [];
-  const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
+  // الرسالة الملصقة بالعنوان قد تكون أسطرًا (خطأ التحميل ثم مسار الملحق) — و`inside.mjs` يأخذ ما يبدأ بـ✓ أو ✗ وحده، فتُجمع في سطر.
+  const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${String(label).replace(/\s*[\r\n]+\s*/g, ' ')}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   /** ينتظر الشرط حتى مهلةٍ قصوى — ولا مهلة ثابتة بين الخطوات. */
   const until = async (check, ms = 15_000) => {
