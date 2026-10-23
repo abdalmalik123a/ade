@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٠١:٠٠ — D147 ✅ — قراءة PSD (ب): قارئ TS و`psdSpeed` إلى `legacy/`، و`readPsd` بمحرّك Rust وحده (A21) · النموذج: Claude Opus 5.5
+- **ما تغيّر:** 5dfc3b4 الحجز · c1089bc `legacy/src/main/services/psd.ts` (نسخة HEAD بايتًا ببايت + سطر «انتهى») و`psdSpeed.mjs` بـ`git mv` إلى `legacy/tools/experiments/` + سطر «انتهى» ·
+  5f29c8b و337fcec `psd.ts` ٨٥ سطرًا (خرج `readPsdScript` و`RAW`/`RLE`، و`PSD_ENGINE_MISSING` مصدَّرة، وبقي `unpackBits` و`psdMeta`) و`nativePsdCompare` على المرجع وحده (بلا مولّد) وحارس `nativePsd` ·
+  a9dea3d ARCHITECTURE §٢ وdesigns.md وQUALITY وBACKLOG «أُغلق: A21» · وهذا الإيداع: PLAN والدفتر و«وُجد في التنفيذ» ونقل الأمر. ولا ملفّ حُذف، و`src` ملفٌّ واحد.
+- **الفحص (مُجرَّب):** typecheck نظيف · `nativePsd` ٥ (+١ الحارس) `nativePsdCompare` ٢٠ و✗١ القسم ٥ (بيئة؛ وبـ`DIWAN_REAL_PSD=tests/fixtures` ✓٢١) والخمسة بأعدادها (`corruptFiles` ١٠ `designImport` ٢٠ `psdLayers` ١٨ `psdStyles` ١٢ `realPsd` ١)
+  و`workerJobs` ١٣ `structure` ١٠ `lint` ١ · `vitest` كاملًا ٢٠٩٦ ✓ و٤ متخطّاة و١ ✗ (القسم ٥) · البناء ثم `designPsd` ✓١١ `designPsdStyles` ✓١١ `designLayers` ✓٨ `workerPath` ✓١٠ بلا ✗ ·
+  `npm run pack` ثم `designPsd` على `release/test/win-unpacked/Diwan.exe` ✓١١ (المحرّك 0.1.0 من `app.asar.unpacked`، ورسالة المحرّك في حزمة `out/main`).
+- **الحارس يسقط (مُجرَّب):** `psd.ts` من c1089bc ← `nativePsd` ✗ «قارئ TS في legacy/ لا في psd.ts»، ثم أُعيد ✓ والشجرة نظيفة · و`grep -rn readPsdScript src tests tools` سطر الحارس وحده.
+- **الأثر المقبول (ARCHITECTURE §٢):** بلا محرّكٍ لا يُفتح PSD بل تُقال «قراءة ملفّات Photoshop تحتاج محرّك ديوان…»، وكذلك في بديل `readDesign` بالرئيسة بعد سقوطين؛ والصور وWord وPDF كما هي.
+- **التالي:** `/next` ← مراجعة D147 في محادثةٍ جديدة، ثم D148 ⚙️ ك وحده (ر162).
+
 ## ٢٠٢٦-١٠-٢٤ ٠٠:٤٥ — مراجعة D145 وD146 — **✓ كلاهما** · النموذج: Claude Opus 5.5
 - **الإيداعات (مُجرَّب بـgit) من c1de246:** ثمانية في «المسموح» وحده — `src` ملفّان (`photos.ts` و`index.ts`) في D145، واختباراتٌ و`psdGolden.json` (٥٧٤٧ بايتًا) في D146 · لا حذف · السقوف واللقطات و`package*.json` و`native/` بلا فرق · LF بلا بايت تحكّم · ولا اسم من ملفّات المالك في المرجع (عشرون اسمًا مختلَقًا، و`psd-styles.psd` من المستودع).
 - **الكود (من الكود):** القناتان بـ`run` وفحص النموذج والطول قبلهما كما هما، و`closePortrait` خرج وحده · `withNativePsd()` تضع القارئ عند النداء وترمي بلا إضافة · `print()` من TS في التوليد ومن Rust في المقارنة، والقسم ٥ `ref=false`.
