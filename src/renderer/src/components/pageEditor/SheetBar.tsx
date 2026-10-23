@@ -21,6 +21,48 @@ type Props = {
   pages: number;
 };
 
+/**
+ * بُعد الورقة المخصّصة بالملّم (D135): نصٌّ يتبع الكتابة بلا حصر، ويُعتمد محصورًا ٥٠–١٠٠٠ عند ترك الخانة أو Enter، وEsc يعيد ما كان —
+ * كالحوار. وكان يُحصر مع كلّ حرف فتصير «150» وهي تُكتب ألفًا: «1» ← ٥٠ ثم «501» ← ١٠٠٠.
+ */
+function SizeMm({ axis, label, value, onSet }: { axis: 'w' | 'h'; label: string; value: number; onSet: (mm: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const commit = () => {
+    const mm = Number(text.trim().replace(',', '.'));
+    if (!text.trim() || !Number.isFinite(mm)) return setText(String(value));
+    const clamped = Math.max(50, Math.min(1000, Math.round(mm * 10) / 10));
+    setText(String(clamped));
+    if (clamped !== value) onSet(clamped);
+  };
+  return (
+    <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+      {label}
+      <input
+        className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
+        {...{ [`data-custom-${axis}`]: '' }}
+        max={1000}
+        min={50}
+        type="number"
+        value={text}
+        onBlur={commit}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          } else if (e.key === 'Escape' && text !== String(value)) {
+            // Esc يعيد ما كُتب ولم يُعتمد — ولا يمضي إلى ما يُغلق.
+            e.preventDefault();
+            e.stopPropagation();
+            setText(String(value));
+          }
+        }}
+      />
+    </label>
+  );
+}
+
 export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage, preset, customMargins, setCustomMargins, margins, pages }: Props) {
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [tempW, setTempW] = useState(doc.pageSetup.customSize?.w ?? 210);
@@ -135,44 +177,18 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
       </select>
       {doc.pageSetup.size === 'custom' && (
         <div className="flex items-center gap-1" data-custom-size-controls="">
-          <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-            عرض
-            <input
-              className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
-              data-custom-w=""
-              max={1000}
-              min={50}
-              type="number"
-              value={doc.pageSetup.customSize?.w ?? 210}
-              onInput={(e) => {
-                const w = Math.max(50, Math.min(1000, Number((e.target as HTMLInputElement).value) || 50));
-                setPage({ customSize: { w, h: doc.pageSetup.customSize?.h ?? 297 } });
-              }}
-              onChange={(e) => {
-                const w = Math.max(50, Math.min(1000, Number(e.target.value) || 50));
-                setPage({ customSize: { w, h: doc.pageSetup.customSize?.h ?? 297 } });
-              }}
-            />
-          </label>
-          <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
-            ارتفاع
-            <input
-              className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
-              data-custom-h=""
-              max={1000}
-              min={50}
-              type="number"
-              value={doc.pageSetup.customSize?.h ?? 297}
-              onInput={(e) => {
-                const h = Math.max(50, Math.min(1000, Number((e.target as HTMLInputElement).value) || 50));
-                setPage({ customSize: { w: doc.pageSetup.customSize?.w ?? 210, h } });
-              }}
-              onChange={(e) => {
-                const h = Math.max(50, Math.min(1000, Number(e.target.value) || 50));
-                setPage({ customSize: { w: doc.pageSetup.customSize?.w ?? 210, h } });
-              }}
-            />
-          </label>
+          <SizeMm
+            axis="w"
+            label="عرض"
+            value={doc.pageSetup.customSize?.w ?? 210}
+            onSet={(w) => setPage({ customSize: { w, h: doc.pageSetup.customSize?.h ?? 297 } })}
+          />
+          <SizeMm
+            axis="h"
+            label="ارتفاع"
+            value={doc.pageSetup.customSize?.h ?? 297}
+            onSet={(h) => setPage({ customSize: { w: doc.pageSetup.customSize?.w ?? 210, h } })}
+          />
           <button
             className="h-8 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
             data-act="custom-size-dialog-btn"

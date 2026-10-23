@@ -5,7 +5,7 @@
 import { normalizeCanvas } from './canvas';
 import { normalizeTree } from './docTree';
 import { migrateDoc } from './docVersion';
-import { DEFAULT_PAGE, isPageSize, emptyDoc, DOC_SCHEMA, newUuid, reconcileFields, makeField, DEFAULT_FIELD_WIDTH } from './doc';
+import { DEFAULT_PAGE, isPageSize, emptyDoc, DOC_SCHEMA, newUuid, reconcileFields, makeField, DEFAULT_FIELD_WIDTH, pageMm } from './doc';
 import type { PageSetup, Watermark, Doc, DocField } from './docTypes';
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -15,8 +15,11 @@ function normalizePage(raw: unknown): PageSetup {
   const base: PageSetup = { ...DEFAULT_PAGE, margins: { ...DEFAULT_PAGE.margins } };
   if (!isObj(raw)) return base;
   const v = raw as Partial<PageSetup>;
+  const size = isPageSize(v.size) ? v.size : 'A4';
+  const customSize = size === 'custom' ? normalizeCustomSize(v.customSize) : undefined;
   return {
-    size: isPageSize(v.size) ? v.size : 'A4',
+    size,
+    ...(customSize ? { customSize } : {}),
     orientation: v.orientation === 'landscape' ? 'landscape' : 'portrait',
     margins: { ...base.margins, ...(isObj(v.margins) ? (v.margins as PageSetup['margins']) : {}) },
     letterheadMode:
@@ -26,6 +29,15 @@ function normalizePage(raw: unknown): PageSetup {
     numerals: v.numerals === 'indic' ? 'indic' : 'arabic',
     watermark: normalizeWatermark(v.watermark)
   };
+}
+
+/**
+ * المقاس المخصّص (S09، D135) يبقى بعرضه وارتفاعه أعدادًا محصورةً ٥٠–١٠٠٠ ملم بحدّ `pageMm` نفسه — وكان يسقط هنا فيُرسم ما حُفظ A4.
+ * وما ليس عددين يسقط، فترسمه `pageMm` A4.
+ */
+function normalizeCustomSize(raw: unknown): PageSetup['customSize'] {
+  if (!isObj(raw) || typeof raw.w !== 'number' || typeof raw.h !== 'number' || !Number.isFinite(raw.w) || !Number.isFinite(raw.h)) return undefined;
+  return pageMm({ ...DEFAULT_PAGE, size: 'custom', orientation: 'portrait', customSize: { w: raw.w, h: raw.h } });
 }
 
 /** علامةٌ لا تُفهم تسقط بلا أن تُسقط الورقة، والشفافية تُحصر فلا تحجب المتن. */

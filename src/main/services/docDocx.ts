@@ -15,7 +15,7 @@ import {
   Packer, Paragraph, Table, TableCell, TableRow, TextRun, UnderlineType, VerticalAlign, WidthType,
   type IBorderOptions, type ParagraphChild
 } from 'docx';
-import { PAGE_MM, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock, type TableBlock } from '@shared/doc';
+import { pageMm, type Align, type Block, type Doc, type DocField, type Inline, type ListItem, type ListStyle, type ParagraphBlock, type TableBlock } from '@shared/doc';
 import { marker } from '@shared/docHtml';
 import { isHexColor } from '@shared/docPmMarks';
 import { defaultAlign, fontFamilyOf, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
@@ -351,7 +351,8 @@ function footBlocks(head: { layout: LetterheadLayout }): Paragraph[] {
 
 export async function docToDocx(doc: Doc, opts: DocxOptions): Promise<Buffer> {
   const setup = doc.pageSetup;
-  const size = PAGE_MM[setup.size] ?? PAGE_MM.A4;
+  // المقاس قائمًا ومنه المخصّص (D135)، وWord يقلبه للأفقيّة بنفسه.
+  const size = pageMm({ ...setup, orientation: 'portrait' });
   const landscape = setup.orientation === 'landscape';
   const pageW = landscape ? size.h : size.w;
   const m = setup.margins;
