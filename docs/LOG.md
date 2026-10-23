@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٠٠:٤٥ — مراجعة D145 وD146 — **✓ كلاهما** · النموذج: Claude Opus 5.5
+- **الإيداعات (مُجرَّب بـgit) من c1de246:** ثمانية في «المسموح» وحده — `src` ملفّان (`photos.ts` و`index.ts`) في D145، واختباراتٌ و`psdGolden.json` (٥٧٤٧ بايتًا) في D146 · لا حذف · السقوف واللقطات و`package*.json` و`native/` بلا فرق · LF بلا بايت تحكّم · ولا اسم من ملفّات المالك في المرجع (عشرون اسمًا مختلَقًا، و`psd-styles.psd` من المستودع).
+- **الكود (من الكود):** القناتان بـ`run` وفحص النموذج والطول قبلهما كما هما، و`closePortrait` خرج وحده · `withNativePsd()` تضع القارئ عند النداء وترمي بلا إضافة · `print()` من TS في التوليد ومن Rust في المقارنة، والقسم ٥ `ref=false`.
+- **الفحص (مُجرَّب):** typecheck نظيف · `runOr(` سطران (`designs.ts` و`templates.ts`) ولا مستورد لـ`portrait`/`objectCutout` خارج `worker/` و`services/` · الأحد عشر بأعداد القيدين: `structure` ١٠ `workerHost` ١٥ `workerJobs` ١٣ `lint` ١
+  `nativePsd` ٤ `corruptFiles` ١٠ `designImport` ٢٠ `psdLayers` ١٨ `psdStyles` ١٢ `realPsd` ١ و`nativePsdCompare` ٢٠ و✗١ القسم ٥ (بيئة) · البناء ثم `portrait` ✓١٥ `designCutout` ✓٦ `workerPath` ✓١٠ بلا ✗ ·
+  و`vitest` كاملًا ٢٠٩٥ ✓ و٤ متخطّاة و١ ✗ (القسم ٥) — كالقيد.
+- **الحرّاس تسقط (مُجرَّب، ثم أُعيد كلّ شيء والشجرة نظيفة):** `photos.ts` من f4f02e6 ← `structure` ✗ بثلاث رسائل، و`index.ts` منه ← ✗ (`./services/portrait`) · المولّد ثانيةً إلى ملفٍّ مؤقّت = المرجع (`cmp`) ·
+  قناةٌ من `Raw CMYK` مغيَّرة ← ✗ «Raw CMYK: المرجع الثابت» · وفي `psdStyles` ملفّ (أ) ٢٨ بايتًا ← `null` مع `withNativePsd()` و`RangeError` بدونها.
+- **الحكم:** D145 ✓ وD146 ✓ — بلا خطوة «٠» لـD147.
+
 ## ٢٠٢٦-١٠-٢٤ ٠٠:٢٥ — D146 ✅ — قراءة PSD (أ): المرجع الثابت واختبارات PSD على Rust (A21) · النموذج: Claude Opus 5.5
 - **ما تغيّر:** 9387957 الحجز · 3f2a724 `withNativePsd()` في `helpers.ts` (تضع القارئ حين تُنادى — خطوة «٠» — وترمي إن غابت الإضافة، و`afterAll` يعيد `null`) ونداؤها في رأس الخمسة ·
   b0584e1 `psdGolden.json` (٢٠ حالة من الأقسام ١–٤، ٥٫٧ ك.ب، بلا ملفّات المالك) و`nativePsdCompare` يكتبه بـ`PSD_GOLDEN_OUT` ويقارن به Rust فوق TS · وهذا الإيداع: PLAN والدفتر ونقل الأمر — ولا ملفّ في `src/` ولا `tools/`.
