@@ -4,7 +4,7 @@
  * ١. **الطبقات**: `shared` لا يستورد Electron ولا وحدات Node ولا الواجهة ولا العملية الرئيسة؛ والواجهة لا تستورد العملية
  *    الرئيسة ولا Electron ولا Node؛ وخدمات العملية الرئيسة لا تستورد قنواتها؛ و`child_process` في ملفّاتٍ معروفة؛
  *    و`shell.openExternal` في `harden.ts` وحده؛ و`utilityProcess.fork` في `workerHost.ts` وحده، والعامل (`src/main/worker/`)
- *    لا يستورد Electron ولا `db/` ولا `ipc/`.
+ *    لا يستورد Electron ولا `db/` ولا `ipc/`؛ و«أزل الخلفية» في العامل وحده (A18).
  * ٢. **متغيّرات البيئة** في `src/main`: كلّ مفتاحٍ في قائمةٍ صريحة — ومفتاحٌ جديد يستلزم تعديلها عمدًا.
  * ٣. **`new BrowserWindow(`** في ملفّاتٍ معروفة وحدها.
  * ٤. **القنوات**: كلّ `invoke` في `preload` لها `ipcMain.handle` (أو `handleChecked`) والعكس، وكذلك `send` ↔ `ipcMain.on`، و`on` ↔ `.send`.
@@ -103,6 +103,13 @@ describe('اختبار الهيكل (ز١)', () => {
         const to = resolved(s, spec) ?? '';
         if (spec === 'electron' || to.startsWith('src/main/db') || to.startsWith('src/main/ipc')) bad.push(`${s.path}: العامل يستورد «${spec}» — لا Electron ولا db/ ولا ipc/ فيه`);
       }
+    }
+    // و«أزل الخلفية» في العامل وحده (A18، D145): نماذجها لا تُفتح في الرئيسة، ولا طريق قديم بعد السقوط.
+    for (const s of under('src/main/').filter((f) => !f.path.startsWith('src/main/worker/') && !f.path.startsWith('src/main/services/'))) {
+      for (const spec of importsOf(s.text)) {
+        if (/^src\/main\/services\/(portrait|objectCutout)$/.test(resolved(s, spec) ?? '')) bad.push(`${s.path}: يستورد «${spec}» — أزل الخلفية في العامل وحده (A18)`);
+      }
+      if (s.path === 'src/main/ipc/photos.ts' && s.text.includes('runOr(')) bad.push(`${s.path}: يذكر runOr( — أزل الخلفية في العامل وحده (A18)`);
     }
     expect(bad).toEqual([]);
   });

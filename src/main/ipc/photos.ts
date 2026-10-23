@@ -10,8 +10,6 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
-import { cutout, detectFace } from '../services/portrait';
-import { objectCutout } from '../services/objectCutout';
 import { workerHost } from '../services/workerHost';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
@@ -61,20 +59,9 @@ export function registerPhotoIpc(): void {
     if (!existsSync(path)) throw new Error('نموذج إزالة الخلفية غير مثبّت مع البرنامج');
     if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
     const facePath = modelPath(FACE_MODEL);
-    // في العامل المستقلّ (A03، D54) فلا تتجمّد الرئيسة — والطريق القديم هنا بديلٌ بعد سقوطين (ر141).
+    // في العامل المستقلّ وحده (A03، D54، A18) فلا تتجمّد الرئيسة ولا تُفتح فيها النماذج.
     const job = { modelPath: path, facePath: existsSync(facePath) ? facePath : null, pixels: input.pixels, width: input.width, height: input.height };
-    return workerHost().runOr('cutout', job, async () => {
-      const [cut, face] = await Promise.all([
-        cutout(path, input.pixels, input.width, input.height),
-        existsSync(facePath)
-          ? detectFace(facePath, input.pixels, input.width, input.height).catch((e: unknown) => {
-              console.error('[photos] تعذّر كشف الوجه', e);
-              return null;
-            })
-          : null
-      ]);
-      return { ...cut, face };
-    });
+    return workerHost().run('cutout', job);
   });
 
   /** الشيء مفصولًا عن خلفيّته (المنتج والكوب والشعار في التصاميم) — بنموذج الأشياء وحده. */
@@ -82,9 +69,7 @@ export function registerPhotoIpc(): void {
     const path = modelPath(OBJECT_MODEL);
     if (!existsSync(path)) throw new Error('نموذج إزالة خلفية الأشياء غير مثبّت مع البرنامج');
     if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
-    return workerHost().runOr('cutoutObject', { modelPath: path, pixels: input.pixels, width: input.width, height: input.height }, () =>
-      objectCutout(path, input.pixels, input.width, input.height)
-    );
+    return workerHost().run('cutoutObject', { modelPath: path, pixels: input.pixels, width: input.width, height: input.height });
   });
 
   /** صورةٌ في الحافظة (من واتساب الحاسوب أو المتصفّح) تُحفظ في المخزن كأيّ صورةٍ تُفتح. */

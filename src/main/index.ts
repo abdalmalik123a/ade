@@ -16,7 +16,6 @@ import { runMigrations } from './db/migrations';
 import { prepareSearch } from './services/searchIndex';
 import { installMainErrorHandlers, logError } from './errorLog';
 import { shutdownOcr } from './services/ocr';
-import { closePortrait } from './services/portrait';
 import { closeWorker } from './services/workerHost';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
@@ -388,8 +387,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   closeDb();
-  // عمّال القارئ الضوئي ونموذج الصور يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية.
+  // عمّال القارئ الضوئي يُغلَقون بإغلاق البرنامج — لا يُتركون لنهاية العملية؛ ونماذج الصور في العامل وحده (A18) فتُقتل بقتله.
   void shutdownOcr();
-  void closePortrait();
   closeWorker();
 });
