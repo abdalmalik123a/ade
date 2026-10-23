@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ١٠٠ ك.ب ينقل الأمر الخاتم أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع —
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٠٠:١٥ — D145 ✅ — «أزل الخلفية» في العامل وحده (A18) · النموذج: Claude Opus 5.5
+- **ما تغيّر:** f4f02e6 الحجز · 9dd9b0b `photos.ts` (القناتان بـ`workerHost().run` واستيراد `portrait`/`objectCutout` خرج) و`index.ts` (`closePortrait` واستيراده) وحارس `structure` ١ (٣٨٨ سطرًا) ·
+  a5d4f1a الوثائق: ARCHITECTURE §١ (خطوة «٠») و§٢، و`photos.md` و`system.md`، و«أُغلق: A18» في BACKLOG وسطره من الجدول · وهذا الإيداع: PLAN والدفتر ونقل الأمر.
+- **الفحص (مُجرَّب):** typecheck نظيف · `structure` `workerHost` `workerJobs` `lint` ✓٣٩ · `grep -rn "runOr(" src/main` سطران (`designs.ts` و`templates.ts`) · `docsBudget` و`repoHygiene` ✓ ·
+  `electron-vite build` ثم `portrait` ✓١٥ و`designCutout` ✓٦ (الفصل ٦٫٢ ث) و`workerPath` ✓١٠ (السقوط برسالته، والطلب التالي يُقلع عاملًا برقمٍ جديد) — ولا ✗.
+- **الحارس يسقط (مُجرَّب):** `photos.ts` من f4f02e6 ← `structure` ✗ بثلاث رسائل (الاستيرادان و`runOr(`)، و`index.ts` منه ← ✗ (`./services/portrait`)، ثم أُعيدا ✓ والشجرة كما أُودعت.
+- **السلوك:** ما دام العامل يعمل لا يتغيّر شيء؛ وسقوطه يُرفض «توقّف المعالج — جرّب ثانيةً» كلّ مرّة بدل الرجوع إلى الرئيسة بعد سقوطين.
+- **التالي:** «كيف يُراجَع» D145 ثم D146 ⚙️ م في هذه المحادثة (٢+٢)، ثم التوقّف.
+
 ## ٢٠٢٦-١٠-٢٤ ٠٠:١٠ — مراجعة D144 (أوامر D145–D148 على الكود) — **✓ بملاحظتين** · النموذج: Claude Opus 5.5
 - **الإيداعات (مُجرَّب بـgit) من 6162955:** ثلاثة (a5306b2 وb73f1be و3a540f0) وثائق وحدها في «المسموح» (و`LOG-14.md` بنقل docsBudget: الأسطر الـ٢٥ المحذوفة كلّها فيه بنصّها)، لا حذف، LF بلا بايت تحكّم.
 - **الوقائع (من الكود و`grep`):** `runOr(` أربعة: القناتان و`readDesign` و`readTemplate` · مستوردو `portrait`/`objectCutout` الأربعة كما كُتب · `closePortrait` في `before-quit` وحده · `readPsdScript` في ثلاثة و`RAW`/`RLE` فيه وحده ·
