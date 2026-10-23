@@ -1,3 +1,4 @@
+// انتهى — البديل: لا مقارنة بعد غياب قارئ TS (legacy/src/main/services/psd.ts)، وقياس D105 المكتوب في QUALITY §٨ باقٍ — الأمر D147 — ٢٤ ت١ ٢٠٢٦
 /**
  * قياس أداء readPsd بين محرّك Rust الأصلي وبديل TypeScript (A20، D105).
  *
