@@ -89,7 +89,6 @@ export function listTemplates(
   category?: string | null,
   issuing: Issuing = 'registered'
 ): TemplateSummary[] {
-  prepareTemplates(db);
   const rows = db
     .prepare(
       `SELECT ${SUMMARY}, ${MONTH_COUNT} FROM templates t
@@ -117,7 +116,6 @@ export function getTemplate(db: Database, id: number): TemplateDetail | null {
  * أوراقٌ لا تُقيَّد تُسرد في شاشتيهما، فيُضغط الزرّ فتخرج قائمةٌ فارغة.
  */
 export function listCategories(db: Database, issuing: Issuing = 'registered'): { name: string; count: number }[] {
-  prepareTemplates(db);
   return db
     .prepare(
       `SELECT category AS name, COUNT(*) AS count FROM templates
@@ -151,7 +149,6 @@ export function saveTemplate(
   db: Database,
   input: TemplateInput & { doc?: Doc | null }
 ): TemplateDetail {
-  prepareTemplates(db);
   const title = input.title.trim();
   if (!title) throw new Error('عنوان النموذج مطلوب');
   const code = input.code?.trim() || null;
@@ -251,7 +248,6 @@ export function saveTemplate(
  * جديدة: هو ما تعلّمه التصميم من قائمةٍ لُصقت، لا تعديلٌ في رسمه.
  */
 export function setBatchMap(db: Database, id: number, map: Record<string, string | null>): void {
-  prepareTemplates(db);
   const row = db.prepare('SELECT doc_json AS docJson FROM templates WHERE id = ?').get(id) as { docJson: string | null } | undefined;
   if (!row?.docJson) return;
   let doc: Record<string, unknown>;
@@ -266,7 +262,6 @@ export function setBatchMap(db: Database, id: number, map: Record<string, string
 }
 
 export function deleteTemplate(db: Database, id: number): void {
-  prepareTemplates(db);
   forgetRevisions(db, 'template', id);
   db.prepare('DELETE FROM templates WHERE id = ?').run(id);
   unindexRow(db, 'templates', id);

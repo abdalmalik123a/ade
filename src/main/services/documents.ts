@@ -208,14 +208,12 @@ export function styleByHash(db: Database, hash: string | null | undefined): Shee
 
 /** أنماط الكتاب يوم صدر — لإعادة طبعه وتصديره كما صدر (خطة Production، ٢٫٤). */
 export function documentStyle(db: Database, id: number): SheetStyle | null {
-  prepareDocuments(db);
   const row = db.prepare('SELECT style_hash AS h FROM documents WHERE id = ?').get(id) as { h: string | null } | undefined;
   return styleByHash(db, row?.h);
 }
 
 /** بصمة أنماط الكتاب — تُحفظ مع مهمّة الطباعة فيُستأنف بها بعد الانقطاع. */
 export function documentStyleHash(db: Database, id: number): string | null {
-  prepareDocuments(db);
   return (db.prepare('SELECT style_hash AS h FROM documents WHERE id = ?').get(id) as { h: string | null } | undefined)?.h ?? null;
 }
 
@@ -242,7 +240,6 @@ export type RepeatSource =
  * لا يعرف مفاتيحها، فيفتح فارغًا.
  */
 export function repeatSource(db: Database, id: number): RepeatSource | null {
-  prepareDocuments(db);
   const doc = db
     .prepare('SELECT serial, template_id AS templateId, transaction_id AS tx, values_json AS v FROM documents WHERE id = ?')
     .get(id) as { serial: string; templateId: number | null; tx: number | null; v: string } | undefined;
@@ -278,7 +275,6 @@ export function repeatSource(db: Database, id: number): RepeatSource | null {
  * البصمة ولا السلسلة: هو حكمٌ على الكتاب لا تعديلٌ فيه.
  */
 export function voidDocument(db: Database, id: number, reason: string, operator: string | null): DocumentDetail {
-  prepareDocuments(db);
   const why = reason.trim();
   if (!why) throw new Error('اذكر سبب الإبطال — يُقيَّد مع الكتاب');
   return db.transaction(() => {
@@ -302,7 +298,6 @@ export function listAudit(
   db: Database,
   opts: { entity?: string | null; documentId?: number | null; query?: string; limit?: number } = {}
 ): AuditEntry[] {
-  prepareDocuments(db);
   const where: string[] = [];
   const args: unknown[] = [];
   if (opts.entity) {
@@ -347,7 +342,6 @@ export function logAudit(
 }
 
 export function getDocument(db: Database, id: number): DocumentDetail | null {
-  prepareDocuments(db);
   const row = db
     .prepare(
       `SELECT d.id, d.serial, d.template_id AS templateId, d.citizen_id AS citizenId,

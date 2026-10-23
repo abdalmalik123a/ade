@@ -6,7 +6,6 @@ import type { DocumentRow, ArchiveStats, PeriodStats } from '@shared/api';
 import { LIST_LIMITS } from '@shared/limits';
 import { normalizeFold } from '@shared/arabic';
 import { matchSql, digitsOf } from './searchIndex';
-import { prepareDocuments } from './documents';
 
 const ROW_COLUMNS = `d.id, d.serial,
   COALESCE(c.full_name, d.citizen_name, '') AS citizenName,
@@ -37,7 +36,6 @@ export type ListOptions = {
 };
 
 export function listDocuments(db: Database, opts: ListOptions = {}): DocumentRow[] {
-  prepareDocuments(db);
   const limit = opts.limit ?? LIST_LIMITS.documents;
   const from = opts.from ?? null;
   const to = opts.to ?? null;
@@ -107,7 +105,6 @@ export function archiveStats(db: Database): ArchiveStats {
 
 /** مؤشرات مدة: الكتب والمخدومون والنسخ المطبوعة فعلًا — والمال صامت (قرار المالك). */
 export function periodStats(db: Database, opts: ListOptions = {}): PeriodStats {
-  prepareDocuments(db);
   const from = opts.from ?? null;
   const to = opts.to ?? null;
   const range = [from, from, to, to];

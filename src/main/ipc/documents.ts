@@ -76,8 +76,6 @@ const testPause = (): (() => void) | undefined => {
 };
 
 export function registerDocumentIpc(): void {
-  svc.prepareDocuments(getDb());
-
   /**
    * الإصدار كاملًا في نداء واحد: قيد في السجل ببصمته ورقمه ورمزه، ثم نسخة PDF
    * مؤرشفة داخل مخزن التطبيق، ثم الطباعة. لو فشلت الطباعة بقي الكتاب مسجّلًا —

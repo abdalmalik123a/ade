@@ -31,8 +31,6 @@ function absolute(relative: string): string {
 }
 
 export function registerCitizenIpc(): void {
-  svc.ensureSearchColumn(getDb());
-
   ipcMain.handle(
     'citizens:list',
     (_e, opts: { query?: string; category?: string | null; limit?: number }) =>

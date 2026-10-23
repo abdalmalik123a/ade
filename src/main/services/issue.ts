@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { touchLetterhead } from './letterheads';
 import { indexRow } from './searchIndex';
 import { canonicalNationalId } from '@shared/idChecks';
-import { reserveSerial, fingerprint, htmlToText, CHAIN_GENESIS, chainLink, prepareDocuments } from './documents';
+import { reserveSerial, fingerprint, htmlToText, CHAIN_GENESIS, chainLink } from './documents';
 import { isClockAnomalous } from '@shared/orders';
 
 /** الصورة المطبَّعة التي يجري عليها البحث — تُخزَّن مع السجل لا وقت الاستعلام. */
@@ -42,8 +42,6 @@ export function issueDocument(db: Database, input: IssueInput): IssueResult {
   for (const k of input.required ?? []) {
     if (!input.values?.[k]?.trim()) throw new Error(`الحقل الإلزامي «${k}» فارغ — لا يصدر الكتاب قبله`);
   }
-
-  prepareDocuments(db);
 
   return db.transaction((): IssueResult => {
     const { serial, seq } = reserveSerial(db, input.serialPrefix, input.serialYear);
@@ -179,7 +177,6 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
   if (!name) throw new Error('لا تصدر معاملة بلا اسم صاحب العلاقة');
   if (input.sheets.length === 0) throw new Error('لا تصدر معاملة بلا ورقة واحدة');
 
-  prepareDocuments(db);
   const citizenId = input.citizenId ?? citizenByNationalId(db, input.nationalId);
 
   return db.transaction((): TransactionResult => {
@@ -239,7 +236,6 @@ export function issueTransaction(db: Database, input: TransactionInput): Transac
  */
 export function issueBatch(db: Database, inputs: TransactionInput[], afterEach?: () => void): TransactionResult[] {
   if (inputs.length === 0) throw new Error('لا تصدر دفعة بلا اسم واحد');
-  prepareDocuments(db);
   return db.transaction(() =>
     inputs.map((one) => {
       const out = issueTransaction(db, one);

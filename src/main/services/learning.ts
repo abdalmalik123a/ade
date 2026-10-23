@@ -71,7 +71,6 @@ const key = (input: string): string => input.replace(/\s+/g, ' ').trim().slice(0
  * الموافقات يُغرق الجدول بما لا يُسأل عنه.
  */
 export function recordCorrection(db: Database, c: Correction): boolean {
-  prepareLearning(db);
   const chosen = c.chosen.trim();
   if (!chosen || chosen === (c.suggested ?? '').trim()) return false;
   db.prepare('INSERT INTO corrections (kind, input, suggested, chosen) VALUES (?, ?, ?, ?)').run(
@@ -84,7 +83,6 @@ export function recordCorrection(db: Database, c: Correction): boolean {
 }
 
 export function recordCorrections(db: Database, list: Correction[]): number {
-  prepareLearning(db);
   return db.transaction(() => list.filter((c) => recordCorrection(db, c)).length)();
 }
 
@@ -95,7 +93,6 @@ export function recordCorrections(db: Database, list: Correction[]): number {
  * خمسٍ موزّعةٍ على ثلاثة. ولا تبلغ اليقين أبدًا — فالموظف يحكم.
  */
 export function learned(db: Database, kind: CorrectionKind, input: string): Suggestion<string> | null {
-  prepareLearning(db);
   const rows = db
     .prepare(
       `SELECT chosen, COUNT(*) AS n FROM corrections
@@ -159,7 +156,6 @@ export type LearningStats = {
 
 /** ما تعلّمه البرنامج من هذا المكتب — يُعرض، فالتعلّم لا يكون صامتًا. */
 export function learningStats(db: Database): LearningStats {
-  prepareLearning(db);
   const total = (db.prepare('SELECT COUNT(*) AS n FROM corrections').get() as { n: number }).n;
   const byKind = db
     .prepare('SELECT kind, COUNT(*) AS count FROM corrections GROUP BY kind ORDER BY count DESC')

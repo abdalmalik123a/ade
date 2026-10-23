@@ -3,7 +3,7 @@
  */
 import type { Database } from 'better-sqlite3';
 import type { ArchiveCheck } from '@shared/api';
-import { fingerprint, htmlToText, CHAIN_GENESIS, chainLink, prepareDocuments } from './documents';
+import { fingerprint, htmlToText, CHAIN_GENESIS, chainLink } from './documents';
 
 /**
  * «تحقّق من سلامة الأرشيف» (د٥): كل بصمةٍ تُعاد من متن كتابها، والسلسلة من أوّلها،
@@ -35,7 +35,6 @@ function legacySlots(html: string): string {
 }
 
 export function verifyArchive(db: Database): ArchiveCheck {
-  prepareDocuments(db);
   // صفًّا صفًّا (`iterate`) لا الكلّ معًا (البند ٢٣): خمسون ألف كتابٍ بمتونها لا تُحمَّل في الذاكرة — يبقى من كلّ صفٍّ رقمه.
   // ولا يُسأل الاتصال عن غيره أثناء المرور: البصمة والسلسلة حسابٌ لا قاعدة.
   const rows = db

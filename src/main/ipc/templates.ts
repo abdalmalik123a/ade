@@ -75,10 +75,6 @@ export async function readTemplateFile(path: string): Promise<ImportedTemplate> 
 }
 
 export function registerTemplateIpc(): void {
-  // عمود الوثيقة يُضاف هنا مرّة — قبل أول استعلام يقرأه. وبغيره تسقط مكتبة
-  // النماذج على قاعدة مكتبٍ أُنشئت قبله، لأن القراءة تطلب عمودًا لا وجود له.
-  svc.prepareTemplates(getDb());
-
   ipcMain.handle('templates:list', (_e, category: string | null, issuing?: Issuing) =>
     svc.listTemplates(getDb(), category, issuing ?? 'registered')
   );

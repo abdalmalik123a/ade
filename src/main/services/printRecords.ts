@@ -2,11 +2,9 @@
  * قيود طباعة الكتاب الصادر: الإصدار الأوّل ونسخه وإعادة طبعه — نُقل من `documents.ts` (D81).
  */
 import type { Database } from 'better-sqlite3';
-import { prepareDocuments } from './documents';
 
 /** كتابٌ مُبطَل لا يُعاد طبعه ولا يُخرَج PDF: ورقته لو خرجت لم يعرف حاملُها أنها باطلة. */
 export function assertNotVoid(db: Database, id: number): void {
-  prepareDocuments(db);
   const row = db.prepare('SELECT serial, status FROM documents WHERE id = ?').get(id) as
     | { serial: string; status: string }
     | undefined;

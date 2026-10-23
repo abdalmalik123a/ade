@@ -23,7 +23,6 @@ export function prepareGenderMemory(db: Database): void {
 
 /** يحفظ جواب المكتب لأسماءٍ — ويعيد كم اسمًا حُفظ. */
 export function learnGenders(db: Database, answers: { name: string; gender: Gender }[]): number {
-  prepareGenderMemory(db);
   const upsert = db.prepare(
     `INSERT INTO name_genders (name, gender) VALUES (?, ?)
      ON CONFLICT(name) DO UPDATE SET
@@ -45,7 +44,6 @@ export function learnGenders(db: Database, answers: { name: string; gender: Gend
 
 /** ما يعرفه المكتب كلّه — عشرات الأسماء، تُحمَّل مرّةً إلى الواجهة. */
 export function learnedGenders(db: Database): Record<string, Gender> {
-  prepareGenderMemory(db);
   const rows = db.prepare('SELECT name, gender FROM name_genders').all() as { name: string; gender: Gender }[];
   return Object.fromEntries(rows.map((r) => [r.name, r.gender]));
 }

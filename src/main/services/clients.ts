@@ -43,20 +43,17 @@ const SELECT = `
 const clean = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
 
 export function listClients(db: Database, query = ''): Client[] {
-  prepareClients(db);
   const q = normalizeFold(query.trim());
   const rows = db.prepare(`${SELECT} ORDER BY a.name`).all() as Row[];
   return q ? rows.filter((r) => normalizeFold(`${r.name} ${r.kind ?? ''} ${r.phone ?? ''}`).includes(q)) : rows;
 }
 
 export function getClient(db: Database, id: number): Client | null {
-  prepareClients(db);
   return (db.prepare(`${SELECT} WHERE a.id = ?`).get(id) as Row | undefined) ?? null;
 }
 
 /** يحفظ الجهة — والاسم لا يتكرّر: «مدرسة الرافدين» مرّتين تفرّقان طلباتها بين ملفّين. */
 export function saveClient(db: Database, input: ClientInput): Client {
-  prepareClients(db);
   const name = input.name.trim();
   if (!name) throw new Error('اسم الجهة مطلوب');
   const dup = db

@@ -12,7 +12,6 @@ import { normalizeFold } from '@shared/arabic';
 import { ADDRESSING, guessAddressing } from '@shared/addressing';
 import type { Addressing, Clip, RevisionPayloads } from '@shared/api';
 import { forgetRevisions, prepareIdentity, recordRevision, stampNew } from './revisions';
-import { prepareLearning } from './learning';
 
 export type { Clip };
 
@@ -41,7 +40,6 @@ const asDirection = (v: unknown): Addressing | null =>
   ADDRESSING.includes(v as Addressing) ? (v as Addressing) : null;
 
 export function listClips(db: Database, query = ''): Clip[] {
-  prepareClips(db);
   const q = normalizeFold(query);
   if (!q) return db.prepare(`${SELECT} ${ORDER}`).all() as Clip[];
   // الكليشات عشرات، فالمسح على العمود المطبَّع أبسط من فهرس وأكفأ منه هنا.
@@ -64,7 +62,6 @@ export function saveClip(
     direction?: Addressing | null;
   }
 ): Clip {
-  prepareClips(db);
   const title = input.title.trim();
   if (!title) throw new Error('سمِّ الكليشة أولًا');
   if (!input.body.trim()) throw new Error('لا تُحفظ كليشة فارغة');
@@ -98,14 +95,12 @@ export function saveClip(
 }
 
 export function deleteClip(db: Database, id: number): void {
-  prepareClips(db);
   forgetRevisions(db, 'clip', id);
   db.prepare('DELETE FROM clips WHERE id = ?').run(id);
 }
 
 /** تُستدعى عند الإدراج — عليها يقوم ترتيب المكتبة. */
 export function touchClip(db: Database, id: number): void {
-  prepareClips(db);
   db.prepare("UPDATE clips SET used_at = datetime('now') WHERE id = ?").run(id);
 }
 
@@ -123,8 +118,6 @@ export function repeatedParagraphs(
   paragraphs: string[],
   minTimes = 3
 ): { text: string; count: number }[] {
-  prepareClips(db);
-  prepareLearning(db);
   const clips = (db.prepare('SELECT search_fold AS f FROM clips').all() as { f: string | null }[]).map((r) => r.f ?? '');
   const rejected = new Set(
     (

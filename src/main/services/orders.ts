@@ -2,7 +2,6 @@ import type { Database } from 'better-sqlite3';
 import { normalizeFold } from '@shared/arabic';
 import { isOrderStatus, type Order, type OrderCounts, type OrderInput, type OrderStatus } from '@shared/orders';
 import { localToday } from '@shared/dates';
-import { prepareClients } from './clients';
 
 /**
  * الطلبات — ما يُطلب اليوم ويُسلَّم لاحقًا، بحالته وموعده.
@@ -83,8 +82,6 @@ export type OrderFilter = { status?: 'open' | OrderStatus; clientId?: number; ci
  * والمسلَّمة الأحدثُ تسليمًا أولًا.
  */
 export function listOrders(db: Database, filter: OrderFilter = {}): Order[] {
-  prepareClients(db);
-  prepareOrders(db);
   const where: string[] = [];
   const args: unknown[] = [];
   if (filter.status === 'open') where.push(`o.status IN ('new','waiting','working','ready')`);
@@ -120,8 +117,6 @@ export function getOrder(db: Database, id: number): Order | null {
 }
 
 export function saveOrder(db: Database, input: OrderInput): Order {
-  prepareClients(db);
-  prepareOrders(db);
   const title = input.title.trim();
   if (!title) throw new Error('اكتب ما طُلب — مثال: ٤٠٠ هويّة للصفّ الخامس');
   if (!input.clientId && !clean(input.customer)) throw new Error('لمن الطلب؟ اختر جهةً أو اكتب اسم الزبون');

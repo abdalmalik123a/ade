@@ -6,9 +6,6 @@ import type { LetterheadLayout } from '@shared/letterhead';
 
 /** الطبقة رقيقة عمدًا: المنطق كله في services/letterheads.ts ليبقى قابلًا للاختبار. */
 export function registerLetterheadIpc(): void {
-  // أعمدة المكتبة تُضاف هنا مرّة — قبل أول استعلام يمسّها.
-  svc.prepareLetterheads(getDb());
-
   ipcMain.handle('letterheads:list', (_e, opts: svc.LetterheadQuery = {}) =>
     svc.listLetterheads(getDb(), opts)
   );

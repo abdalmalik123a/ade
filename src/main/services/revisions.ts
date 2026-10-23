@@ -91,7 +91,6 @@ export function recordRevision<T>(
 
 /** النسخ السابقة لقطعة، الأحدث أولًا — بلا حمولتها. */
 export function listRevisions(db: Database, kind: RevisionKind, id: number): Revision[] {
-  prepareIdentity(db, kind);
   const who = identityOf(db, kind, id);
   if (!who) return [];
   return db
@@ -104,7 +103,6 @@ export function listRevisions(db: Database, kind: RevisionKind, id: number): Rev
 
 /** حمولة نسخةٍ سابقة كما حُفظت — أو عدم. */
 export function revisionPayload<T>(db: Database, kind: RevisionKind, id: number, revision: number): T | null {
-  prepareIdentity(db, kind);
   const who = identityOf(db, kind, id);
   if (!who) return null;
   const row = db
