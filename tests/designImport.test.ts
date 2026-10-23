@@ -11,6 +11,9 @@ import {
   wordDesign
 } from '../src/main/services/designImport';
 import { psdMeta, readPsd } from '../src/main/services/psd';
+import { withNativePsd } from './helpers';
+
+withNativePsd();
 
 // ── ملفاتٌ تُبنى بايتًا بايتًا، فما يُقاس هو القراءة ─────────────────
 

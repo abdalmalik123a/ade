@@ -14,6 +14,9 @@ import { importTemplateFile } from '../src/main/services/import';
 import { readDesign } from '../src/main/services/designImport';
 import { sheetToText } from '../src/main/services/sheetRead';
 import { imageMeta } from '../src/main/services/imageSize';
+import { withNativePsd } from './helpers';
+
+withNativePsd();
 
 const dir = mkdtempSync(join(tmpdir(), 'diwan-corrupt-'));
 const garbage = Buffer.from('هذا ليس ملفًّا — بل نصٌّ أُعيدت تسميته. '.repeat(40), 'utf8');

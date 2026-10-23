@@ -11,6 +11,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { unzlibSync } from 'fflate';
 import { psdDesign } from '../src/main/services/designImport';
+import { withNativePsd } from './helpers';
+
+withNativePsd();
 
 // مجلّد القوالب: `DIWAN_REAL_PSD`، وإلا «التنزيلات» لمن يشغّل الاختبار — لا اسم مستخدمٍ في المستودع.
 const folder = process.env.DIWAN_REAL_PSD ?? join(homedir(), 'Downloads', 'Employee Photo Identity Card PSD Template By GyanTech');

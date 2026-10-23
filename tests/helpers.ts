@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import Database from 'better-sqlite3';
+import { afterAll } from 'vitest';
+import { setNativePsdReader } from '../src/main/services/psd';
+import { createNativePsdReader, loadNativePsd } from '../src/main/worker/nativePsd';
 
 /** قاعدة نظيفة في الذاكرة بنفس مخطط الإنتاج — بلا Electron. */
 export function freshDb(): Database.Database {
@@ -12,6 +15,17 @@ export function freshDb(): Database.Database {
     db.exec(readFileSync(join(dir, file), 'utf8'));
   }
   return db;
+}
+
+/**
+ * قراءة PSD بمحرّك Rust كما في البرنامج (A21، D146): تُنادى في رأس الملفّ فتضع القارئ الأصليّ حينها — قبل جمع الاختبارات،
+ * فما يقرأ في جسم `describe` يقرأ به أيضًا (لا في `beforeAll`: يأتي متأخّرًا) — وترمي إن تعذّرت الإضافة، وتعيده `null` بعد الملفّ.
+ */
+export function withNativePsd(): void {
+  const { addon, error } = loadNativePsd();
+  if (!addon) throw new Error(`محرّك Rust غير محمّل (diwan_psd.node): ${error}`);
+  setNativePsdReader(createNativePsdReader(addon));
+  afterAll(() => setNativePsdReader(null));
 }
 
 /** PNG بثمانية بتّات — رماديّ أو RGB أو RGBA أو رماديّ بشفافية — بكسلاتٍ RGBA. */

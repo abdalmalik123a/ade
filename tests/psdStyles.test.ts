@@ -11,6 +11,9 @@ import { readTextLayer } from '../src/main/services/psdLayers';
 import { canvasFromImport, psdDesign } from '../src/main/services/designImport';
 import type { TextElement, ImageElement } from '../src/shared/canvas';
 import { deg, descriptor, en, layeredPsd, lfx2, obj, on, pct, px, rgb, tagged, tyshFull, u32, type DV, type Rect } from './psdBuilder';
+import { withNativePsd } from './helpers';
+
+withNativePsd();
 
 const ENGINE = '/EngineDict << /StyleRun << /RunArray [ << /StyleSheet << /StyleSheetData << /FontSize 8.0 >> >> >> ] >> >>';
 const shadow = (o: { angle?: number; global?: boolean; distance?: number; size?: number; opacity?: number } = {}): [string, DV] => [

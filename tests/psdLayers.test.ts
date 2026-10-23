@@ -11,6 +11,9 @@ import { readPsd } from '../src/main/services/psd';
 import { eraseLayers, parsePsdLayers, psdItems, readTextLayer } from '../src/main/services/psdLayers';
 import { psdDesign } from '../src/main/services/designImport';
 import { fontSet, layeredPsd, tysh, type Rect } from './psdBuilder';
+import { withNativePsd } from './helpers';
+
+withNativePsd();
 
 
 const inside = (r: Rect, x: number, y: number) => x >= r.left && x < r.right && y >= r.top && y < r.bottom;
