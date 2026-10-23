@@ -2,6 +2,7 @@
  * مشغّل الترقيات المرقّمة (A02، D49): القاعدة تحمل مستواها في `user_version`، والقائمة تجري ما فوقه مرّةً بترتيبه
  * داخل معاملة الإقلاع — فقاعدة كلّ إصدارٍ مبيع تبلغ آخر مستوًى بأعمدة القاعدة الجديدة نفسها، ولا يضيع منها صفّ،
  * وعطلُ خطوةٍ يردّ كلّ شيءٍ كما كان.
+ * و(A17، D148) **المشغّل وحده يرقّي:** لا نداء لخطوةٍ من `MIGRATIONS` في `src/main` خارج تعريفها، ولا `prepareIdentity` إلا في جسم ترقيات قِطَعها.
  */
 import { copyFileSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -146,5 +147,30 @@ describe('العطل والقاعدة الأحدث', () => {
     expect(() => runMigrations(db)).toThrow(NEWER_SCHEMA);
     expect(schemaLevel(db)).toBe(LAST + 1);
     expect(tablesOf(db)).toEqual([]);
+  });
+});
+
+describe('الترقية في المشغّل وحده (A17، D148)', () => {
+  const MAIN = join(process.cwd(), 'src', 'main');
+  const sources = (readdirSync(MAIN, { recursive: true }) as string[])
+    .map((p) => p.replace(/\\/g, '/'))
+    .filter((p) => p.endsWith('.ts') && p !== 'db/migrations.ts')
+    .map((p) => ({ path: p, text: readFileSync(join(MAIN, p), 'utf8') }));
+  /** نداءات الاسم في النصّ — لا تعريفه (`function name(`). */
+  const calls = (text: string, name: string) => [...text.matchAll(new RegExp(String.raw`(?<!function )\b${name}\(`, 'g'))].length;
+  /** جسم ترقيات القوالب والترويسات والكليشات (الخطوات ٥ و٦ و٧) ينادي `prepareIdentity` مرّةً. */
+  const IDENTITY = ['services/clips.ts', 'services/letterheads.ts', 'services/templates.ts'];
+
+  it('لا نداء لخطوةٍ من MIGRATIONS خارج تعريفها، ولا prepareIdentity إلا في جسم ترقيات قِطَعها', () => {
+    expect(sources.length).toBeGreaterThan(100);
+    const names = MIGRATIONS.map((m) => m.up.name);
+    expect(names).toContain('prepareDocuments');
+    const found: string[] = [];
+    for (const { path, text } of sources) {
+      for (const name of names) if (calls(text, name)) found.push(`${path}: ${name}`);
+      const identity = calls(text, 'prepareIdentity');
+      if (identity !== (IDENTITY.includes(path) ? 1 : 0)) found.push(`${path}: prepareIdentity ×${identity}`);
+    }
+    expect(found, 'الترقية في MIGRATIONS وحدها (A17)').toEqual([]);
   });
 });
