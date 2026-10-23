@@ -5,12 +5,14 @@
  * - الضغط على Enter في حقل بحث النماذج يختار أول نموذج.
  * - مفاتيح الأسهم تتنقل بين بطاقات الخدمات والأكثر استخدامًا.
  * - الضغط المتكرّر على Tab في ورقة الإدخال يدور داخل عناصرها ولا يخرج — ومعها شريط القرار: «راجع الأوراق» و«اطبع» (D138).
+ * - و«هات الزبون» و«هات المدرسة»: Tab يدور فيهما ولا يخرج، وEsc يغلقهما ويعود التركيز إلى زرّهما (D140).
  */
-import { act } from 'react';
+import { act, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CitizenPicker } from '../../src/renderer/src/screens/ServicePickers';
+import { CitizenPicker, SchoolPicker } from '../../src/renderer/src/screens/ServicePickers';
 import CounterPick from '../../src/renderer/src/screens/service/CounterPick';
-import CounterFill, { tabStops, trapTab } from '../../src/renderer/src/screens/service/CounterFill';
+import CounterFill from '../../src/renderer/src/screens/service/CounterFill';
+import { tabStops, trapTab } from '../../src/renderer/src/kit/trapTab';
 import DecisionBar from '../../src/renderer/src/screens/service/DecisionBar';
 import { fakeDiwan, mount, settle } from './mount';
 import { emptyDoc } from '@shared/doc';
@@ -275,5 +277,73 @@ describe('اختصارات التنقل في الشبّاك (D117 — S04)', () 
     expect(document.activeElement?.textContent).toBe('الورقة السابقة');
     press(root, true);
     expect(document.activeElement).toBe(print);
+  });
+
+  /** يضغط مفتاحًا حيث التركيز — والنافذة تسمعه على `window` كما في البرنامج — ويعيد الحدث. */
+  function key(name: string, shiftKey = false): KeyboardEvent {
+    const ev = new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true, cancelable: true });
+    act(() => {
+      (document.activeElement ?? document.body).dispatchEvent(ev);
+    });
+    return ev;
+  }
+
+  it('«هات الزبون»: Tab يدور على بحثها ونتائجها و«إغلاق» ولا يخرج، وEsc يغلقها ويعود التركيز إلى زرّها (D140)', async () => {
+    function Host() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button data-opener="" type="button" onClick={() => setOpen(true)}>هات الزبون</button>
+          {open && <CitizenPicker onClose={() => setOpen(false)} onPick={() => {}} />}
+        </>
+      );
+    }
+    const host = mount(<Host />);
+    const opener = host.querySelector('[data-opener]') as HTMLButtonElement;
+    opener.focus();
+    act(() => opener.click());
+    await settle();
+    await settle();
+
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    const search = dialog.querySelector('input[type="search"]') as HTMLInputElement;
+    const close = [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'إغلاق')!;
+    expect(document.activeElement).toBe(search);
+    expect(tabStops(dialog).length).toBe(4); // البحث والزبونان و«إغلاق»
+
+    // من «إغلاق» إلى البحث، ومن البحث بـShift+Tab إلى «إغلاق» — وما بينهما يمشيه المتصفّح كعادته.
+    close.focus();
+    expect(key('Tab').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(search);
+    key('Tab', true);
+    expect(document.activeElement).toBe(close);
+    expect(key('Tab', true).defaultPrevented).toBe(false);
+
+    // والتركيز خارجها وهي مفتوحة يعود إليها.
+    opener.focus();
+    key('Tab');
+    expect(document.activeElement).toBe(search);
+
+    // Esc يغلقها كما يغلقها «إغلاق»، ويعود التركيز إلى زرّها — لا يضيع على الصفحة.
+    key('Escape');
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('«هات المدرسة» كذلك: Tab من «إغلاق» إلى البحث، وEsc يغلقها (D140)', async () => {
+    const onClose = vi.fn();
+    const schools: any[] = [{ id: 1, name: 'مدرسة النور', kind: 'مدرسة' }];
+    const host = mount(<SchoolPicker schools={schools} onClose={onClose} onPick={() => {}} />);
+    await settle();
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement;
+    const search = dialog.querySelector('input[type="search"]') as HTMLInputElement;
+    const close = [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'إغلاق')!;
+    close.focus();
+    key('Tab');
+    expect(document.activeElement).toBe(search);
+    key('Tab', true);
+    expect(document.activeElement).toBe(close);
+    key('Escape');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

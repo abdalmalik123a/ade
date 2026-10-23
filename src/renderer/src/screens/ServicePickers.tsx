@@ -3,10 +3,34 @@
  *
  * كانتا في `ServiceScreen.tsx` حتى بلغ سقفه، فنُقلتا كما هما (محادثة «الشبّاك واليوم الأوّل»).
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { normalizeFold } from '@shared/arabic';
 import { SCHOOL_KINDS } from '@shared/schoolFile';
 import type { Client } from '@shared/orders';
+import { trapTab } from '../kit/trapTab';
+import { useEscape } from '../kit/useEscape';
+
+/**
+ * لوحة المفاتيح في النافذتين (D140): Esc يغلقها كما يغلقها «إغلاق» (`useEscape` — العليا وحدها)، وTab وShift+Tab يدوران على بحثها ونتائجها
+ * و«إغلاق» ولا يخرجان منها (`trapTab`) — كانت ضغطتان تخرجان إلى الشريط العلوي والسكّة وهي مفتوحة، وEsc لا يغلقها.
+ * وبعد إغلاقها يعود التركيز إلى ما فتحها إن لم يأخذه شيءٌ بعدها — كان يضيع على الصفحة.
+ */
+function useDialogKeys(onClose: () => void): RefObject<HTMLDivElement> {
+  const ref = useRef<HTMLDivElement>(null);
+  // ما فتحها يُقرأ قبل أن يأخذ بحثُها التركيز (`autoFocus` قبل التأثيرات).
+  const [opener] = useState(() => document.activeElement as HTMLElement | null);
+  useEscape(onClose);
+  useEffect(() => {
+    const onTab = (e: KeyboardEvent) => trapTab(e, ref.current, true);
+    window.addEventListener('keydown', onTab);
+    return () => {
+      window.removeEventListener('keydown', onTab);
+      const now = document.activeElement;
+      if ((!now || now === document.body) && opener?.isConnected) opener.focus();
+    };
+  }, [opener]);
+  return ref;
+}
 
 /** «هات المدرسة» (ملفّ المدارس): جهات المكتب والمدارسُ أوّلها، ويُبحث فيها بالاسم. */
 export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; onClose: () => void; onPick: (school: Client) => void }) {
@@ -14,8 +38,9 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
   const q = normalizeFold(query.trim());
   const isSchool = (c: Client) => SCHOOL_KINDS.includes(c.kind ?? '') || Boolean(c.schoolGender || c.governorate || c.principal);
   const rows = schools.filter((c) => !q || normalizeFold(c.name).includes(q)).sort((a, b) => Number(isSchool(b)) - Number(isSchool(a)));
+  const ref = useDialogKeys(onClose);
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
+    <div ref={ref} role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
       <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm" data-school-picker="">
         <span className="font-headline-sm text-headline-sm text-on-surface">هات المدرسة</span>
         <input
@@ -88,9 +113,10 @@ export function CitizenPicker({
       alive = false;
     };
   }, [query]);
+  const ref = useDialogKeys(onClose);
 
   return (
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
+    <div ref={ref} role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
       <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
           هات الزبون

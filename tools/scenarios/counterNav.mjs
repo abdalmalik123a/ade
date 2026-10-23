@@ -8,8 +8,12 @@
  * ٤ — تدوير Shift+Tab من العنصر الأول إلى العنصر الأخير داخل الورقة.
  * و(D138) بضغطات Tab حقيقية (`Input.dispatchKeyEvent`) لا بحدثٍ من داخل الصفحة: تبلغ «راجع الأوراق» في شريط القرار ولا تخرج من الشاشة —
  * كانت ٤٥ ضغطة تدور بين حقول الورقة وحدها — ثم Enter عليه ← خطوة المراجعة، وفيها تبلغ «اطبع» كذلك.
+ * و(D140) قبلها: Enter على «هات الزبون» يفتحها والتركيز في بحثها، فعشر ضغطات Tab وعشر Shift+Tab حقيقية لا تخرج منها — كانت ضغطتان تخرجان
+ * إلى الشريط العلوي والسكّة والنافذة باقية — ثم Esc يغلقها ويعود التركيز إلى «هات الزبون».
  */
 const TAB = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 };
+const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
+const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 };
 export default async function scenario(page) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
@@ -115,10 +119,43 @@ export default async function scenario(page) {
       return {
         inScreen: Boolean(el && el !== document.body && el.closest('[data-screen="service"]')),
         inForm: Boolean(el && el.closest('[data-fill-form]')),
+        inDialog: Boolean(el && el.closest('[role="dialog"]')),
         text: (el?.innerText || el?.getAttribute('aria-label') || el?.tagName || '').trim().slice(0, 40)
       };
     `);
   };
+  /** Enter يضغط الزرّ كما يُضغط (keyDown بحرفه لا rawKeyDown). */
+  const enter = async () => {
+    await page.send('Input.dispatchKeyEvent', { type: 'keyDown', ...ENTER, text: '\r', unmodifiedText: '\r' });
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ENTER });
+  };
+
+  // (D140) «هات الزبون» بلوحة المفاتيح: Tab يدور فيها ولا يخرج، وEsc يغلقها ويعيد التركيز إلى زرّها.
+  await page.eval(`document.querySelector('[data-screen="service"] [data-act="pick-customer"]')?.focus(); return true;`);
+  await enter();
+  await wait(700);
+  const opened = await page.eval(`
+    const d = document.querySelector('[role="dialog"]');
+    return Boolean(d && d.contains(document.activeElement) && document.activeElement.type === 'search');
+  `);
+  ok('(D140) Enter على «هات الزبون» يفتحها والتركيز في بحثها', opened);
+  const inPicker = [];
+  for (let i = 0; i < 10; i++) inPicker.push(await tab());
+  for (let i = 0; i < 10; i++) inPicker.push(await tab(true));
+  const escaped = inPicker.find((s) => !s.inDialog);
+  ok(
+    `(D140) ١٠ ضغطات Tab و١٠ Shift+Tab في «هات الزبون» تدور على (${[...new Set(inPicker.map((s) => s.text))].join('، ')}) ولا تخرج منها${escaped ? ` — خرجت إلى «${escaped.text}»` : ''}`,
+    opened && !escaped
+  );
+  await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
+  await wait(500);
+  const afterEsc = await page.eval(`
+    const el = document.activeElement;
+    return { open: Boolean(document.querySelector('[role="dialog"]')), back: el?.getAttribute('data-act') || el?.tagName || null };
+  `);
+  ok(`(D140) Esc يغلقها (${afterEsc.open ? 'باقية' : 'أُغلقت'}) ويعود التركيز إلى «هات الزبون» (${afterEsc.back})`, !afterEsc.open && afterEsc.back === 'pick-customer');
+
   /** ٤٥ ضغطة كتجربة المراجعة — ويعيد ما مرّت به. */
   const walk = async () => {
     const seen = [];
@@ -139,10 +176,8 @@ export default async function scenario(page) {
   const back = await tab(true);
   ok(`(D138) Shift+Tab من أوّل الورقة ← «${back.text}» آخرَ الدورة`, back.text === 'راجع الأوراق');
 
-  // Enter على «راجع الأوراق» يضغطه كما يُضغط الزرّ (keyDown بحرفه لا rawKeyDown).
-  const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
-  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', ...ENTER, text: '\r', unmodifiedText: '\r' });
-  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ENTER });
+  // Enter على «راجع الأوراق» يضغطه كما يُضغط الزرّ.
+  await enter();
   await wait(800);
   const inReview = await page.eval(`
     return !document.querySelector('[data-fill-form]') && [...document.querySelectorAll('[data-screen="service"] button')].some((b) => b.innerText.trim().startsWith('اطبع'));

@@ -15,6 +15,7 @@ import { count } from '@shared/arabic';
 import type { Attachment } from '@shared/api';
 import { papersWord } from '../components/OutputBar';
 import { useToast } from '../kit/useToast';
+import { trapTab } from '../kit/trapTab';
 import mark from '../assets/brand/diwan-mark.png';
 import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
 import { usePrintRun } from './service/usePrintRun';
@@ -24,7 +25,7 @@ import { useNewCitizen } from './service/useNewCitizen';
 import { useParked } from './service/useParked';
 import { useIssue } from './service/useIssue';
 import CounterPick from './service/CounterPick';
-import CounterFill, { trapTab } from './service/CounterFill';
+import CounterFill from './service/CounterFill';
 import CounterReview from './service/CounterReview';
 import DecisionBar from './service/DecisionBar';
 import type { Loaded, RepeatOf, ServiceScreenProps, Step } from './service/types';
@@ -108,7 +109,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, step, picked, query]);
 
-  // Tab في «املأ» و«راجع» يدور على الورقة وشريط القرار معًا ولا يخرج من الشاشة (D117، D138) — `trapTab` في `service/CounterFill.tsx`.
+  // Tab في «املأ» و«راجع» يدور على الورقة وشريط القرار معًا ولا يخرج من الشاشة (D117، D138) — `trapTab` في `kit/trapTab.ts`.
   const trapRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!active || step === 'pick') return;
