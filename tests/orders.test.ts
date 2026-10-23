@@ -197,6 +197,18 @@ describe('الموعد بكلام الموظف', () => {
     expect(dueLabel(due, '2026-09-25')).toEqual({ text, tone });
   });
 
+  it('والجاهز للتسليم وإن فات موعده ليس «متأخّرًا» — كتعريف `isOrderOverdue` في الشريط والجرس (D138 — S05)', () => {
+    expect(dueLabel('2026-09-24', '2026-09-25', 'ready')).toEqual({ text: 'جاهز للتسليم', tone: 'none' });
+    expect(dueLabel('2026-09-20', '2026-09-25', 'ready').tone).not.toBe('late');
+    // وغير الجاهز متأخّرٌ كما كان، والجاهز في يومه أو قبله بموعده.
+    expect(dueLabel('2026-09-24', '2026-09-25', 'working')).toEqual({ text: 'متأخّر يومًا', tone: 'late' });
+    expect(dueLabel('2026-09-23', '2026-09-25', 'waiting')).toEqual({ text: 'متأخّر يومين', tone: 'late' });
+    expect(dueLabel('2026-09-25', '2026-09-25', 'ready')).toEqual({ text: 'اليوم', tone: 'today' });
+    for (const status of ['new', 'waiting', 'working', 'ready'] as const) {
+      expect(dueLabel('2026-09-24', '2026-09-25', status).tone === 'late').toBe(isOrderOverdue({ status, dueDate: '2026-09-24' }, '2026-09-25'));
+    }
+  });
+
   it('واليوم محلّيٌّ لا عالميّ', () => {
     expect(localToday(new Date(2026, 8, 25, 23, 30))).toBe('2026-09-25');
   });

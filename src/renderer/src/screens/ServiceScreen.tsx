@@ -24,7 +24,7 @@ import { useNewCitizen } from './service/useNewCitizen';
 import { useParked } from './service/useParked';
 import { useIssue } from './service/useIssue';
 import CounterPick from './service/CounterPick';
-import CounterFill from './service/CounterFill';
+import CounterFill, { trapTab } from './service/CounterFill';
 import CounterReview from './service/CounterReview';
 import DecisionBar from './service/DecisionBar';
 import type { Loaded, RepeatOf, ServiceScreenProps, Step } from './service/types';
@@ -107,6 +107,15 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
     // Enter لا تعمل إلا بعد اختيار بطاقة، والاختيار يغيّر `picked` فيُعاد التسجيل بـ`goFill` جديدة
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, step, picked, query]);
+
+  // Tab في «املأ» و«راجع» يدور على الورقة وشريط القرار معًا ولا يخرج من الشاشة (D117، D138) — `trapTab` في `service/CounterFill.tsx`.
+  const trapRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!active || step === 'pick') return;
+    const onTab = (e: KeyboardEvent) => trapTab(e, trapRef.current);
+    window.addEventListener('keydown', onTab);
+    return () => window.removeEventListener('keydown', onTab);
+  }, [active, step]);
 
   // ── الحقول والجنس والقيم كما تُطبع — `service/useCounterFields.ts` ──
   const { fields, needsGender, genderByHand, learned, setGenderByHand, asPrinted, remember, setGenderReview, effective, setMergePicker, mergePicker, genderReview } = useCounterFields({
@@ -218,7 +227,7 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         data-watermark=""
         src={mark}
       />
-      <div className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+      <div ref={trapRef} className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         {/* الخطوات الثلاث */}
         <StepsHeader step={step} picked={picked} />
 

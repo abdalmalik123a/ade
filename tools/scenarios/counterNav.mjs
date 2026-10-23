@@ -6,7 +6,10 @@
  * ٢ — اختيار الزبون من نافذة «هات الزبون» بالضغط على Enter في حقل بحثها مباشرة.
  * ٣ — حصر مفتاح Tab داخل حاوية ورقة الإدخال بحيث يدور من الأخير إلى الأول بلا ضياع التركيز إلى أشرطة التطبيق.
  * ٤ — تدوير Shift+Tab من العنصر الأول إلى العنصر الأخير داخل الورقة.
+ * و(D138) بضغطات Tab حقيقية (`Input.dispatchKeyEvent`) لا بحدثٍ من داخل الصفحة: تبلغ «راجع الأوراق» في شريط القرار ولا تخرج من الشاشة —
+ * كانت ٤٥ ضغطة تدور بين حقول الورقة وحدها — ثم Enter عليه ← خطوة المراجعة، وفيها تبلغ «اطبع» كذلك.
  */
+const TAB = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 };
 export default async function scenario(page) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
@@ -100,31 +103,55 @@ export default async function scenario(page) {
   const pageText = await page.text();
   ok('الضغط على Enter في بحث «هات الزبون» يختار أول نتيجة ويملأ بياناته', dialogGone && pageText.includes('استُوردت بيانات المواطن'));
 
-  // ٥. اختبار حصر مفتاح Tab داخل ورقة الإدخال (Focus Trap)
-  const trapWorks = await page.eval(`
-    const form = document.querySelector('[data-screen="service"] [data-fill-form]');
-    if (!form) return false;
-    const focusable = Array.from(
-      form.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])')
-    ).filter((el) => !el.hasAttribute('hidden') && el.style.display !== 'none');
-    if (focusable.length < 2) return false;
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    // تركيز على آخر عنصر ثم ضغط Tab
-    last.focus();
-    form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
-    const cycledToFirst = document.activeElement === first;
-
-    // تركيز على أول عنصر ثم ضغط Shift+Tab
-    first.focus();
-    form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
-    const cycledToLast = document.activeElement === last;
-
-    return cycledToFirst && cycledToLast;
+  // ٥. حصر Tab (D138): الورقة وشريط القرار معًا، بضغطاتٍ حقيقية — ولا خروج إلى السكّة أو الشريط العلوي.
+  /** ضغطة Tab (أو Shift+Tab) من خارج الصفحة كما يضغطها الموظف — ويعيد أين صار التركيز. */
+  const tab = async (shift = false) => {
+    const modifiers = shift ? 8 : 0;
+    await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...TAB, modifiers });
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...TAB, modifiers });
+    await wait(60);
+    return page.eval(`
+      const el = document.activeElement;
+      return {
+        inScreen: Boolean(el && el !== document.body && el.closest('[data-screen="service"]')),
+        inForm: Boolean(el && el.closest('[data-fill-form]')),
+        text: (el?.innerText || el?.getAttribute('aria-label') || el?.tagName || '').trim().slice(0, 40)
+      };
+    `);
+  };
+  /** ٤٥ ضغطة كتجربة المراجعة — ويعيد ما مرّت به. */
+  const walk = async () => {
+    const seen = [];
+    for (let i = 0; i < 45; i++) seen.push(await tab());
+    return seen;
+  };
+  const focusFirst = () => page.eval(`
+    document.querySelector('[data-screen="service"] [data-fill-form] :is(button, input, textarea, select):not([disabled])')?.focus();
+    return Boolean(document.activeElement?.closest('[data-fill-form]'));
   `);
-  ok('الضغط على Tab في آخر عنصر يدور إلى أول عنصر وShift+Tab يعكس ولا يخرج عن الورقة', trapWorks);
+  await focusFirst();
+  const fill = await walk();
+  const review = fill.findIndex((s) => s.text === 'راجع الأوراق');
+  const out = fill.find((s) => !s.inScreen);
+  ok(`(D138) ٤٥ ضغطة Tab في «املأ» تبلغ «راجع الأوراق» (${review >= 0 ? `الضغطة ${review + 1}` : 'لم تبلغه'}) ولا تخرج من الشاشة${out ? ` — خرجت إلى «${out.text}»` : ''}`, review >= 0 && !out);
+  ok('(D138) وبعد «راجع الأوراق» تعود إلى أوّل الورقة', review >= 0 && review + 1 < fill.length && fill[review + 1].inForm);
+  await focusFirst();
+  const back = await tab(true);
+  ok(`(D138) Shift+Tab من أوّل الورقة ← «${back.text}» آخرَ الدورة`, back.text === 'راجع الأوراق');
+
+  // Enter على «راجع الأوراق» يضغطه كما يُضغط الزرّ (keyDown بحرفه لا rawKeyDown).
+  const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', ...ENTER, text: '\r', unmodifiedText: '\r' });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...ENTER });
+  await wait(800);
+  const inReview = await page.eval(`
+    return !document.querySelector('[data-fill-form]') && [...document.querySelectorAll('[data-screen="service"] button')].some((b) => b.innerText.trim().startsWith('اطبع'));
+  `);
+  ok('(D138) Enter على «راجع الأوراق» ← خطوة المراجعة', inReview);
+  const rev = await walk();
+  const print = rev.findIndex((s) => s.text.startsWith('اطبع'));
+  const outRev = rev.find((s) => !s.inScreen);
+  ok(`(D138) ٤٥ ضغطة Tab في «راجع» تبلغ «اطبع» (${print >= 0 ? `الضغطة ${print + 1}` : 'لم تبلغه'}) ولا تخرج من الشاشة${outRev ? ` — خرجت إلى «${outRev.text}»` : ''}`, print >= 0 && !outRev);
 
   return steps;
 }

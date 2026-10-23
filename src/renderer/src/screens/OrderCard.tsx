@@ -29,7 +29,7 @@ export default function OrderCard({
   /** وصل الاستلام — لمكتبٍ شغّله من الإعدادات. */
   onReceipt?: () => void;
 }) {
-  const due = dueLabel(order.dueDate, today);
+  const due = dueLabel(order.dueDate, today, order.status);
   const info = statusOf(order.status);
   return (
     <article

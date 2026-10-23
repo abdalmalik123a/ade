@@ -20,6 +20,7 @@ import { readyMessage } from '@shared/agenda';
 import {
   OPEN_STATUSES,
   dueLabel,
+  isOrderOverdue,
   statusOf,
   type Order,
   type OrderStatus
@@ -151,7 +152,8 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
   const counts = useMemo(() => {
     const open = orders.filter((o) => OPEN_STATUSES.includes(o.status));
     return {
-      late: open.filter((o) => dueLabel(o.dueDate, today).tone === 'late').length,
+      // «متأخّر» كما يعدّه الشريط والجرس: الجاهز للتسليم ليس منه (S05، D138).
+      late: open.filter((o) => isOrderOverdue(o, today)).length,
       today: open.filter((o) => dueLabel(o.dueDate, today).tone === 'today').length,
       open: open.length
     };

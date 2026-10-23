@@ -4,13 +4,14 @@
  * - الضغط على Enter في حقل بحث «هات الزبون» يختار أول زبون مطابق.
  * - الضغط على Enter في حقل بحث النماذج يختار أول نموذج.
  * - مفاتيح الأسهم تتنقل بين بطاقات الخدمات والأكثر استخدامًا.
- * - الضغط المتكرّر على Tab في ورقة الإدخال يدور داخل عناصرها ولا يخرج.
+ * - الضغط المتكرّر على Tab في ورقة الإدخال يدور داخل عناصرها ولا يخرج — ومعها شريط القرار: «راجع الأوراق» و«اطبع» (D138).
  */
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CitizenPicker } from '../../src/renderer/src/screens/ServicePickers';
 import CounterPick from '../../src/renderer/src/screens/service/CounterPick';
-import CounterFill from '../../src/renderer/src/screens/service/CounterFill';
+import CounterFill, { tabStops, trapTab } from '../../src/renderer/src/screens/service/CounterFill';
+import DecisionBar from '../../src/renderer/src/screens/service/DecisionBar';
 import { fakeDiwan, mount, settle } from './mount';
 import { emptyDoc } from '@shared/doc';
 
@@ -176,77 +177,103 @@ describe('اختصارات التنقل في الشبّاك (D117 — S04)', () 
     expect(document.activeElement).toBe(buttons[0]);
   });
 
-  it('الضغط على Tab في آخر عنصر داخل ورقة الإدخال يدور إلى أول عنصر ولا يخرج (focus trap)', async () => {
+  /** شريط القرار بلا شيءٍ يُصدر — لا يُضغط فيه إلا Tab. */
+  const bar = (step: 'fill' | 'review') => (
+    <DecisionBar
+      step={step} setStep={() => {}} busy={false} picked={[1]} goFill={async () => {}} setAt={() => {}} park={() => {}} discardTransaction={() => {}}
+      valuesOnly={false} setValuesOnly={() => {}} merge={false} rows={[]} loaded={[]} missing={[]} genderUnsure={false} citizenName=""
+      setGenderByHand={() => {}} setValues={() => {}} settings={null} copies={1} setCopies={() => {}} blocked={false} issue={async () => {}}
+    />
+  );
+  /** يضغط Tab (أو Shift+Tab) حيث التركيز، و`trapTab` على النافذة كما تسجّله `ServiceScreen` — ويعيد الحدث. */
+  function press(root: HTMLElement, shiftKey = false): KeyboardEvent {
+    const onTab = (e: KeyboardEvent) => trapTab(e, root);
+    window.addEventListener('keydown', onTab);
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+    act(() => {
+      (document.activeElement ?? document.body).dispatchEvent(ev);
+    });
+    window.removeEventListener('keydown', onTab);
+    return ev;
+  }
+
+  it('Tab في «املأ» يدور على الورقة وشريط القرار معًا: من آخر حقلٍ إلى «راجع الأوراق» ثم إلى الأوّل — كان محصورًا في الورقة (D138)', async () => {
     const fields: any[] = [
       { key: 'الاسم', label: 'الاسم الكامل', type: 'text', role: 'name', required: true },
       { key: 'ملاحظات', label: 'ملاحظات إضافية', type: 'text' }
     ];
 
     const host = mount(
-      <CounterFill
-        loaded={[{ summary: {} as any, detail: {} as any, doc: emptyDoc(), layout: { columns: 0, sections: [], registry: { show: false }, basmala: { show: false } } as any }]}
-        fields={fields}
-        values={{}}
-        setValues={() => {}}
-        effective={{}}
-        citizenId={null}
-        setPicker={() => {}}
-        setPasteOpen={() => {}}
-        openIdSheet={async () => {}}
-        nameField={fields[0]}
-        merge={false}
-        setMerge={() => {}}
-        names=""
-        setNames={() => {}}
-        rows={[]}
-        setMergePicker={() => {}}
-        printsRegistry={false}
-        letterNo=""
-        setLetterNo={() => {}}
-        needsGender={false}
-        genderByHand={false}
-        setGenderByHand={() => {}}
-        schoolOn={false}
-        setSchoolPicker={() => {}}
-        schoolNameKey={null}
-        schools={[]}
-        fillFromSchool={() => {}}
-        schoolFilled={{ current: {} }}
-        registry={{ number: '', date: '' }}
-        resolveHead={(t) => t}
-      />
+      <div data-trap="">
+        <CounterFill
+          loaded={[{ summary: {} as any, detail: {} as any, doc: emptyDoc(), layout: { columns: 0, sections: [], registry: { show: false }, basmala: { show: false } } as any }]}
+          fields={fields} values={{}} setValues={() => {}} effective={{}} citizenId={null} setPicker={() => {}} setPasteOpen={() => {}}
+          openIdSheet={async () => {}} nameField={fields[0]} merge={false} setMerge={() => {}} names="" setNames={() => {}} rows={[]}
+          setMergePicker={() => {}} printsRegistry={false} letterNo="" setLetterNo={() => {}} needsGender={false} genderByHand={false}
+          setGenderByHand={() => {}} schoolOn={false} setSchoolPicker={() => {}} schoolNameKey={null} schools={[]} fillFromSchool={() => {}}
+          schoolFilled={{ current: {} }} registry={{ number: '', date: '' }} resolveHead={(t) => t}
+        />
+        {/* «راجع» في «املأ» مخفيّةٌ بصنفها كما في `CounterReview` — كانت ستصير آخرَ الدورة فلا يُبلغ الشريط */}
+        <div className="hidden">
+          <button type="button">الورقة التالية</button>
+        </div>
+        {bar('fill')}
+      </div>
     );
     await settle();
 
-    const form = host.querySelector('[data-fill-form]') as HTMLElement;
-    expect(form).not.toBeNull();
+    const root = host.querySelector('[data-trap]') as HTMLElement;
+    const form = root.querySelector('[data-fill-form]') as HTMLElement;
+    const stops = tabStops(root);
+    const review = stops.find((el) => el.textContent?.includes('راجع الأوراق'))!;
+    const inForm = stops.filter((el) => form.contains(el));
+    const lastField = inForm[inForm.length - 1]!;
+    expect(inForm.length).toBeGreaterThan(1);
+    // بعد آخر حقلٍ أزرار الشريط وحدها، وآخرها «راجع الأوراق» — لا المخفيّ.
+    expect(stops[stops.length - 1]).toBe(review);
+    expect(stops.slice(stops.indexOf(lastField) + 1).every((el) => !form.contains(el))).toBe(true);
+    expect(stops.some((el) => el.textContent?.includes('الورقة التالية'))).toBe(false);
 
-    const focusable = Array.from(
-      form.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])'
-      )
+    // من آخر حقل: المتصفّح يمضي إلى الشريط كعادته (لا منع)، ومن «راجع الأوراق» يعود إلى الأوّل.
+    lastField.focus();
+    expect(press(root).defaultPrevented).toBe(false);
+    review.focus();
+    expect(press(root).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(stops[0]);
+    expect(form.contains(document.activeElement)).toBe(true);
+
+    // Shift+Tab من الأوّل ← «راجع الأوراق».
+    press(root, true);
+    expect(document.activeElement).toBe(review);
+
+    // والتركيز الضائع على الصفحة يعود إلى الحاوية لا إلى السكّة — إلا ونافذةٌ مفتوحة.
+    review.blur();
+    press(root);
+    expect(document.activeElement).toBe(stops[0]);
+    const dialog = document.body.appendChild(document.createElement('div'));
+    dialog.setAttribute('role', 'dialog');
+    (document.activeElement as HTMLElement).blur();
+    expect(press(root).defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(document.body);
+    dialog.remove();
+  });
+
+  it('وفي «راجع» كذلك: آخر الدورة «اطبع»، وبعده الأوّل (D138)', async () => {
+    const host = mount(
+      <div data-trap="">
+        <button type="button">الورقة السابقة</button>
+        {bar('review')}
+      </div>
     );
-    expect(focusable.length).toBeGreaterThan(1);
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    // نضع التركيز على آخر عنصر في النموذج
-    last.focus();
-    expect(document.activeElement).toBe(last);
-
-    // نضغط Tab
-    act(() => {
-      form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
-    });
-    // يجب أن يدور التركيز إلى أول عنصر
-    expect(document.activeElement).toBe(first);
-
-    // نضغط Shift+Tab من أول عنصر
-    act(() => {
-      form.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
-    });
-    // يجب أن يدور التركيز إلى آخر عنصر
-    expect(document.activeElement).toBe(last);
+    await settle();
+    const root = host.querySelector('[data-trap]') as HTMLElement;
+    const stops = tabStops(root);
+    const print = stops[stops.length - 1]!;
+    expect(print.textContent).toContain('اطبع');
+    print.focus();
+    press(root);
+    expect(document.activeElement?.textContent).toBe('الورقة السابقة');
+    press(root, true);
+    expect(document.activeElement).toBe(print);
   });
 });

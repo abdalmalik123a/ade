@@ -52,6 +52,14 @@ describe('الدمج في الشبّاك من جدول Excel أو CSV (D121 — 
       expect(namesFromSheet('الاسم\n"زينب علي حسن"\n\n  \n"سالم حسن كاظم"')).toEqual(two);
     });
 
+    it('ورأس الجمع «أسماء الطلبة» و«الأسماء» عنوانٌ بلا عمود «ت» — كان يدخل اسمًا؛ و«أسماء علي حسن» أوّل قائمةٍ بلا عنوان اسمٌ (D138)', () => {
+      expect(namesFromSheet('أسماء الطلبة\tالصف\nزينب علي حسن\tالخامس\nسالم حسن كاظم\tالخامس')).toEqual(two);
+      expect(namesFromSheet('الأسماء\nزينب علي حسن\nسالم حسن كاظم')).toEqual(two);
+      expect(namesFromSheet('قائمة أسماء الموظفين\nزينب علي حسن\nسالم حسن كاظم')).toEqual(two);
+      expect(namesFromSheet('أسماء علي حسن\nزينب علي حسن')).toEqual(['أسماء علي حسن', 'زينب علي حسن']);
+      expect(namesFromSheet('أسماء طالب حسن\tالخامس\nزينب علي حسن\tالخامس')).toEqual(['أسماء طالب حسن', 'زينب علي حسن']);
+    });
+
     it('تعيد مصفوفة فارغة لنصٍّ فارغ أو أعمدةٍ كلّها أرقام', () => {
       expect(namesFromSheet('')).toEqual([]);
       expect(namesFromSheet('   \n  ')).toEqual([]);

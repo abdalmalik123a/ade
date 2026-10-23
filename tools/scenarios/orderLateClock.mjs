@@ -6,6 +6,7 @@
  * ٢ — التأكّد من أن الطلب الجاهز لا يُحسب متأخّرًا في شارة السكّة ولا في جرس التنبيهات (overdue = 0).
  * ٣ — فتح الشبّاك وإصدار معاملة عند محاكاة ساعة جهاز غير مضبوطة (سنة تسبق 2026).
  * ٤ — التأكّد من ظهور تنبيه للموظف بشأن ساعة الجهاز مع إتمام التوثيق بلا منع قسري.
+ * و(D138) قيد العمل نفسه: الجاهز لا يُعدّ «متأخّر ١» فوق اللوحة، وبطاقته «جاهز للتسليم» بلا إطارٍ أحمر — كانت «متأخّر يومًا».
  */
 export default async function scenario(page) {
   const steps = [];
@@ -43,6 +44,7 @@ export default async function scenario(page) {
     const counts = await window.diwan.counts.sidebar();
     const agenda = await window.diwan.today.agenda();
     return {
+      orderId: order.id,
       yesterday,
       sidebarOverdue: counts.orders.overdue,
       agendaOverdueCount: agenda.overdue.length,
@@ -52,6 +54,17 @@ export default async function scenario(page) {
 
   ok('طلبٌ جاهز بتاريخ أمس لا يزيد عدّاد overdue في إحصاءات الشريط (overdue = 0)', setup.sidebarOverdue === 0);
   ok('ولا يظهر كمتأخّر في قائمة الجرس والأجندة ويظهر في الجاهز للتسليم', setup.agendaOverdueCount === 0 && setup.agendaReadyCount >= 1);
+
+  // (D138) وقيد العمل: لا «متأخّر» فوق اللوحة، والبطاقة بحالها لا بلون التأخّر.
+  await page.goto('orders-board');
+  await wait(900);
+  const board = await page.eval(`
+    const card = document.querySelector('[data-order="${setup.orderId}"]');
+    const header = document.querySelector('[data-orders-summary]')?.innerText ?? '';
+    return { found: Boolean(card), due: card?.querySelector('[data-due]')?.dataset.due ?? null, chip: card?.querySelector('[data-due]')?.innerText ?? '', ring: Boolean(card?.className.includes('ring-error')), summary: Boolean(document.querySelector('[data-orders-summary]')), lateCount: /متأخّر/.test(header) };
+  `);
+  ok(`(D138) قيد العمل بلا «متأخّر» للجاهز فوق اللوحة${board.lateCount ? ' — فيه «متأخّر»' : ''}`, board.found && board.summary && !board.lateCount);
+  ok(`(D138) وبطاقته «${board.chip}» بلا إطارٍ أحمر`, board.found && board.due !== 'late' && board.chip === 'جاهز للتسليم' && !board.ring);
 
   // ٢. فتح الشبّاك واختيار النموذج
   await page.goto('templates-library-drafts');

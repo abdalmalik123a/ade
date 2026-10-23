@@ -2,8 +2,9 @@
  * الشبّاك — ٢ «املأ» (تقسيم الشبّاك بعد ١٫٧٫٠): منقولةٌ من `ServiceScreen` كما هي — «هات الزبون» و«هات المدرسة» و«لصق من
  * واتساب» و«ورقة مستمسكاته»، وقائمة الأسماء، والعدد على الكتاب، والجنس، والحقول بتنبيهها الخفيف، والمعاينة الحيّة.
  * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها (و`fillFromSchool` دالّةٌ تملأ خانات المدرسة لا خطّاف) — إلا رسالة ملفّ الأسماء.
+ * وفيه حصر Tab للشبّاك (`trapTab`): كان معالجًا على الورقة وحدها.
  */
-import { useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction, type KeyboardEvent } from 'react';
+import { useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { count } from '@shared/arabic';
 import { isDateField, type DocField } from '@shared/doc';
 import { GENDER_KEY, isChoiceKey } from '@shared/gender';
@@ -15,6 +16,39 @@ import LetterSheet from '../../components/LetterSheet';
 import { errorText } from '../../lib/errors';
 import { namesFromSheet } from './sheetNames';
 import type { Loaded } from './types';
+
+const TABBABLE = 'button:not([disabled]), input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * ما يقف عنده Tab في الحاوية بترتيبه — بلا المعطَّل ولا المخفيّ بصنفه أو بأبيه (`hidden` و`hidden lg:flex`): فلا يُعدّ أوّلًا ولا آخرًا،
+ * و«راجع» المخفيّة في «املأ» كانت ستصير آخرَ الدورة ولا يُبلغ. وبلا تخطيطٍ (jsdom) لا يُقاس الظاهر فيُعرف المخفيّ بصنفه.
+ */
+export function tabStops(root: HTMLElement): HTMLElement[] {
+  const measured = root.getClientRects().length > 0;
+  return Array.from(root.querySelectorAll<HTMLElement>(TABBABLE)).filter(
+    (el) => el.tabIndex >= 0 && (measured ? el.getClientRects().length > 0 : !el.closest('[hidden], .hidden') && el.style.display !== 'none')
+  );
+}
+
+/**
+ * حصر Tab في الشبّاك (D117 — S04): يدور في «املأ» على ورقة الإدخال **وشريط القرار** معًا، وفي «راجع» على الأوراق والشريط، ولا يخرج إلى السكّة
+ * أو الشريط العلوي (D138) — كان محصورًا في الورقة وحدها فلا تبلغ ٤٥ ضغطةً «راجع الأوراق» ولا «اطبع». وما بين الأوّل والآخر يمشيه المتصفّح كعادته،
+ * والتركيز الضائع على الصفحة (زرٌّ ضُغط فزال) يعود إلى الحاوية — إلا ونافذةٌ مفتوحة.
+ */
+export function trapTab(e: KeyboardEvent, root: HTMLElement | null): void {
+  if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey || !root) return;
+  const current = document.activeElement;
+  const lost = !current || current === document.body;
+  if (lost ? document.querySelector('[role="dialog"]') : !root.contains(current)) return;
+  const stops = tabStops(root);
+  if (!stops.length) return;
+  const first = stops[0]!;
+  const last = stops[stops.length - 1]!;
+  const to = e.shiftKey ? (lost || current === first ? last : null) : lost || current === last ? first : null;
+  if (!to) return;
+  e.preventDefault();
+  to.focus();
+}
 
 type Props = {
   loaded: Loaded[];
@@ -81,45 +115,13 @@ export default function CounterFill({
   registry,
   resolveHead
 }: Props) {
-  const formRef = useRef<HTMLDivElement | null>(null);
   /** ما يُقال عن ملفّ الأسماء: لا يُقرأ (`.xls` القديم)، أو فارغ، أو بلا أسماء — كان يسكت (D137). */
   const [sheetError, setSheetError] = useState<string | null>(null);
 
-  const handleFormKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'Tab') return;
-    const form = formRef.current;
-    if (!form) return;
-
-    const focusable = Array.from(
-      form.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter((el) => {
-      return !el.hasAttribute('hidden') && el.style.display !== 'none';
-    });
-
-    if (focusable.length === 0) return;
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const current = document.activeElement;
-
-    if (e.shiftKey) {
-      if (current === first || !form.contains(current)) {
-        e.preventDefault();
-        last.focus();
-      }
-    } else {
-      if (current === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  };
-
+  // وTab يُحصر في الشاشة كلّها لا في الورقة وحدها: `trapTab` أعلاه، تسجّله `ServiceScreen` (D138).
   return (
     <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-space-lg items-start">
-      <div ref={formRef} onKeyDown={handleFormKeyDown} className="flex flex-col gap-space-md" data-fill-form="">
+      <div className="flex flex-col gap-space-md" data-fill-form="">
       <div className="flex items-center gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
           بيانات صاحب العلاقة

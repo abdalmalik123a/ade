@@ -114,11 +114,18 @@ export type OrderCounts = { open: number; dueToday: number; overdue: number };
 /**
  * قرب الموعد بكلام الموظف: «متأخّر يومين»، «اليوم»، «غدًا»، «بعد ٤ أيام».
  * `today` وسيطٌ لا ساعة النظام — فيُختبر بلا تاريخٍ متحرّك.
+ * و«متأخّر» تعريفه `isOrderOverdue` وحده (S05، D138): بالحالة، فالجاهز للتسليم وإن فات موعده يقول حاله بلا لون التأخّر —
+ * كانت بطاقته في «قيد العمل» «متأخّر يومًا» بإطارٍ أحمر، والشريط والجرس لا يعدّانه.
  */
-export function dueLabel(due: string | null, today: string): { text: string; tone: 'late' | 'today' | 'soon' | 'later' | 'none' } {
+export function dueLabel(
+  due: string | null,
+  today: string,
+  status?: OrderStatus
+): { text: string; tone: 'late' | 'today' | 'soon' | 'later' | 'none' } {
   if (!due) return { text: 'بلا موعد', tone: 'none' };
   const d = Math.round((Date.parse(`${due}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
   if (Number.isNaN(d)) return { text: due, tone: 'none' };
+  if (d < 0 && status && !isOrderOverdue({ status, dueDate: due }, today)) return { text: statusOf(status).label, tone: 'none' };
   if (d < 0) return { text: d === -1 ? 'متأخّر يومًا' : d === -2 ? 'متأخّر يومين' : `متأخّر ${-d} أيام`, tone: 'late' };
   if (d === 0) return { text: 'اليوم', tone: 'today' };
   if (d === 1) return { text: 'غدًا', tone: 'soon' };
