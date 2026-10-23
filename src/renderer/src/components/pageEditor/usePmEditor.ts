@@ -21,6 +21,7 @@ import { gapCursor } from 'prosemirror-gapcursor';
 import { tableResizing, listMarkersPlugin, listMarkersKey } from '../editorPlugins';
 import { caretAfterPaste, cleanPastedHtml, pasteImages, adoptPastedImages } from '../editorPaste';
 import { pageFlowPlugin, MM_PX, measurePages, sameBreaks, pageFlowKey } from '../pageFlow';
+import { footerBandMm, type LetterheadFooter } from '@shared/letterhead';
 import type { Dispatch, SetStateAction, MutableRefObject, ReactNode } from 'react';
 
 export function usePmEditor(
@@ -39,6 +40,8 @@ export function usePmEditor(
     shownValues: Record<string, string> | undefined;
     trying: boolean;
     header: ReactNode;
+    /** تذييل الترويسة: شريطه يُحجز أسفل كلّ صفحة كما في الطباعة (D136). */
+    footer?: LetterheadFooter | null;
     paperRef: MutableRefObject<HTMLDivElement | null>;
     headRef: MutableRefObject<HTMLDivElement | null>;
     setPages: Dispatch<SetStateAction<number>>;
@@ -46,7 +49,7 @@ export function usePmEditor(
 ) {
   const {
     ownBlocks, docRef, pendingFields, onChangeRef, labelRef, viewRef, setMenu, mountRef, wrongRef, setTick, doc, shownValues, trying,
-    header, paperRef, headRef, setPages
+    header, footer, paperRef, headRef, setPages
   } = ctx;
 
   /** ما في المحرّر إلى الوثيقة — والحقول تتبع ما على الورقة. */
@@ -166,12 +169,14 @@ export function usePmEditor(
   const margins = doc.pageSetup.margins;
   // كما في `pageCss`: الترقيم يحتاج هامشًا سفليًّا لا يقلّ عن ١٤ ملم.
   const bottomMm = doc.pageSetup.pageNumbers ? Math.max(margins.bottom, 14) : margins.bottom;
+  // والمتن ينتهي فوق شريط التذييل (`footerBandMm`، D136) — وعلامة الترقيم تبقى في الهامش.
+  const footMm = footerBandMm(footer, page.w - margins.left - margins.right);
   const repeatHead = doc.pageSetup.repeatLetterhead && Boolean(header);
   /** عرض المتن بالبكسل — أعرض ما تُلصق به صورة. */
   const contentWidth = useRef(0);
   contentWidth.current = (page.w - margins.left - margins.right) * MM_PX;
   const geo = useRef({ pageW: 0, pageH: 0, top: 0, bottom: 0, repeat: false });
-  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: bottomMm * MM_PX, repeat: repeatHead };
+  geo.current = { pageW: page.w * MM_PX, pageH: page.h * MM_PX, top: margins.top * MM_PX, bottom: (bottomMm + footMm) * MM_PX, repeat: repeatHead };
   const frame = useRef(0);
   const measureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -371,7 +376,7 @@ export function usePmEditor(
   // تغيّر مقاس الورقة أو هوامشها أو ترقيمها يُقاس فورًا.
   useEffect(() => {
     remeasure(true);
-  }, [page.w, page.h, margins.top, margins.bottom, margins.left, margins.right, repeatHead, doc.pageSetup.pageNumbers, doc.pageSetup.numerals, remeasure]);
+  }, [page.w, page.h, margins.top, margins.bottom, margins.left, margins.right, repeatHead, footMm, doc.pageSetup.pageNumbers, doc.pageSetup.numerals, remeasure]);
 
   // والخطوط حين تكتمل، وكلّ تغيّرٍ في ارتفاع المتن لم يمرّ بالمحرّر.
   useEffect(() => {

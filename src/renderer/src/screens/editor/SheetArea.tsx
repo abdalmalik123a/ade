@@ -148,7 +148,7 @@ export default function SheetArea({
 
       <div className="flex-1 min-h-0">
         {view === 'edit' ? (
-          <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} head={headChoice} header={head} values={effective} onChange={setDoc} />
+          <PageEditor apiRef={api} aside={null} clips={clips} doc={doc} footer={headLayout?.footer} head={headChoice} header={head} values={effective} onChange={setDoc} />
         ) : (
           <div className="h-full overflow-auto flex justify-center py-space-lg bg-surface-dim/40" data-preview="">
             <div style={{ zoom: 0.85 }} className="w-fit">

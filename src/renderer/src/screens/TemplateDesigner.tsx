@@ -350,6 +350,7 @@ export default function TemplateDesigner({
             <PageEditor
               clips={clips}
               doc={doc}
+              footer={letterhead ? normalizeLayout(letterhead.layout).footer : null}
               head={headChoice}
               onChange={setDoc}
               header={

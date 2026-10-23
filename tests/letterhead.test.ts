@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
+import { pageCss } from '../src/shared/docHtml';
 import {
   emptyLayout,
+  footerBandMm,
   isLayoutEmpty,
   layoutText,
   normalizeLayout,
@@ -97,5 +99,40 @@ describe('تذييل الورقة (القدم) في الترويسة', () => {
     const footerXml = strFromU8(files[footerXmlKey!]!);
     expect(footerXml).toContain('w:ftr');
     expect(footerXml).toContain('مكتب ديوان للطباعة — هاتف 07701234567');
+  });
+});
+
+describe('شريط التذييل محجوزٌ أسفل كلّ صفحة فلا يُطبع فوق المتن (D136)', () => {
+  const foot = (text: string, size = 10, show = true) => ({ show, text, align: 'center' as const, size });
+
+  it('footerBandMm: لا شيء للمطفأ والفارغ، وسطرٌ بخطّه وحشوه وخطّه العلوي وفسحته، ويكبر بالخطّ وبالنصّ الطويل', () => {
+    expect(footerBandMm(null, 170)).toBe(0);
+    expect(footerBandMm(foot('بغداد', 10, false), 170)).toBe(0);
+    expect(footerBandMm(foot('   '), 170)).toBe(0);
+    // سطرٌ واحد بخطّ ١٠: (١٥ + ٤ + ١) بكسل ≈ ٥٫٢٩ ملم، وفسحة ٢ ← ٧٫٣.
+    const one = footerBandMm(foot('بغداد — شارع الرشيد | هاتف 07700000000'), 170);
+    expect(one).toBe(7.3);
+    expect(footerBandMm(foot('بغداد — شارع الرشيد | هاتف 07700000000', 14), 170)).toBeGreaterThan(one);
+    // نصٌّ لا يسعه سطرٌ على عرض المتن يحجز سطرين.
+    expect(footerBandMm(foot('بغداد — شارع الرشيد | '.repeat(12)), 170)).toBeGreaterThan(one + 3.9);
+  });
+
+  it('pageCss: الحشو السفلي بالشريط في كلّ صفحة والتذييل فيه — والهامش كما هو، والورقة بلا تذييل كما كانت', () => {
+    const doc = emptyDoc();
+    doc.pageSetup.margins = { top: 20, right: 20, bottom: 20, left: 20 };
+    const css = pageCss(doc, { footer: foot('بغداد — شارع الرشيد') });
+    expect(css).toContain('@page{margin:20mm 0 20mm 0;}');
+    expect(css).toContain('[data-letter-sheet]{padding-bottom:7.3mm!important;-webkit-box-decoration-break:clone;box-decoration-break:clone}');
+    expect(css).toContain('[data-letterhead-footer]{position:fixed;bottom:0;left:20mm;right:20mm}');
+    // الحشو بعد قاعدة نزعه فيغلبها، وكلاهما في الطباعة وحدها.
+    expect(css.indexOf('padding-bottom:7.3mm')).toBeGreaterThan(css.indexOf('padding-bottom:0!important'));
+    expect(css.lastIndexOf('}}')).toBe(css.length - 2);
+
+    // وكان التذييل `bottom:<الهامش>` داخل المتن بلا حجز — فوق آخر سطرين.
+    expect(css).not.toContain('bottom:20mm;left');
+    const plain = '@page{margin:20mm 0 20mm 0;}@media print{.print-root{min-height:0!important}' +
+      '[data-letter-sheet]{padding-top:0!important;padding-bottom:0!important;min-height:0!important}}';
+    expect(pageCss(doc)).toBe(plain);
+    expect(pageCss(doc, { footer: foot('بغداد', 10, false) })).toBe(plain);
   });
 });

@@ -70,7 +70,8 @@ export default async function scenario(page) {
   const customHVal = await page.eval(`return document.querySelector('[data-custom-h]')?.value;`);
   ok('حقول الأبعاد المباشرة في الشريط تعكس القيم المخصّصة (170×250)', customWVal === '170' && customHVal === '250');
 
-  // ٦. تعديل العرض من عناصر التحكّم المباشرة في شريط الورقة — يُعتمد عند ترك الخانة (D135)
+  // ٦. تعديل العرض من عناصر التحكّم المباشرة في شريط الورقة — يُعتمد عند ترك الخانة (D135).
+  // والكتابة ثم ترك الخانة خطوتان بينهما رسم كما يفعل الإنسان: في المهمّة نفسها يعتمد `onBlur` النصّ القديم (مراجعة D135).
   await page.eval(`
     const w = document.querySelector('[data-custom-w]');
     if (w) {
@@ -78,10 +79,11 @@ export default async function scenario(page) {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(w, '185');
       w.dispatchEvent(new Event('input', { bubbles: true }));
       w.dispatchEvent(new Event('change', { bubbles: true }));
-      w.blur();
     }
     return true;
   `);
+  await wait(300);
+  await page.eval(`document.querySelector('[data-custom-w]')?.blur(); return true;`);
   await wait(500);
 
   const inlineWidth = await page.eval(`return document.querySelector('[data-paper]')?.style.width;`);

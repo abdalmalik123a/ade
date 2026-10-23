@@ -57,15 +57,17 @@ import { trialValues, N, M, SHEET_GAP, markValue, paragraphValue, insertFieldFal
 import FormatBar from './pageEditor/FormatBar';
 import SheetBar from './pageEditor/SheetBar';
 import type { HeadChoice } from './pageEditor/types';
+import type { LetterheadFooter } from '@shared/letterhead';
 import { usePmEditor } from './pageEditor/usePmEditor';
 import { selectCellsInTable } from '@shared/docPmTable';
 export type { HeadChoice } from './pageEditor/types';
 
-export type PageEditorProps = EditorProps & { head?: HeadChoice };
+/** `footer`: تذييل الترويسة — يُحجز شريطه أسفل كلّ صفحة فتقع الفواصل حيث تقع في الطباعة (D136). */
+export type PageEditorProps = EditorProps & { head?: HeadChoice; footer?: LetterheadFooter | null };
 
 // ── المحرّر ─────────────────────────────────────────────────────────────
 
-export default function PageEditor({ doc, onChange, clips = [], header, values, aside, apiRef, head }: PageEditorProps) {
+export default function PageEditor({ doc, onChange, clips = [], header, footer, values, aside, apiRef, head }: PageEditorProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const docRef = useRef(doc);
@@ -133,7 +135,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, values, 
   // ── قلب المحرّر والصفحات: ProseMirror على الورقة والوثيقة بينهما، والصفحات كما تقسمها الطابعة — `pageEditor/usePmEditor.ts` ──
   const { margins, run_, insertBlocks, page, toField, repeatHead, bottomMm, applyDoc } = usePmEditor({
     ownBlocks, docRef, pendingFields, onChangeRef, labelRef, viewRef, setMenu, mountRef, wrongRef, setTick, doc, shownValues,
-    trying, header, paperRef, headRef, setPages
+    trying, header, footer, paperRef, headRef, setPages
   });
 
   /** الخطّ الفاصل تحت أسطر الرأس: أوّل خطٍّ في أعلى الورقة — أو صورة Word الممطوطة. */

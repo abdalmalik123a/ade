@@ -33,7 +33,8 @@ export function useSheetMeasure(
     const body = sheet.querySelector<HTMLElement>('[data-body]');
     // الصفحات بمحاكاة الطابعة نفسها التي يعرض بها المحرّر صفحاته (`pageFlow.ts`) — لا بقسمة
     // الارتفاع: تلك لا ترى فاصل الصفحة ولا السطر الذي ينزل وحده.
-    const bottomMm = doc.pageSetup.pageNumbers ? Math.max(m.bottom, 14) : m.bottom;
+    // والهامش السفلي الفعّال يزيد بشريط التذييل الذي تحجزه الورقة في كلّ صفحة (`data-foot-mm`، D136).
+    const bottomMm = (doc.pageSetup.pageNumbers ? Math.max(m.bottom, 14) : m.bottom) + (Number(sheet.dataset.footMm) || 0);
     setMeasure({
       headRatio: head ? head.getBoundingClientRect().height / pagePx : null,
       pages: body

@@ -94,6 +94,21 @@ export type LetterheadFooter = {
 };
 
 /**
+ * شريط التذييل بالملّم (D136): ما يُحجز له أسفل كلّ صفحةٍ مطبوعة فلا يقع عليه سطرٌ من المتن — ولا شيء إن كان مطفأً أو فارغًا
+ * (كـ`LetterheadFooterView`). وارتفاعه من رسمه هناك: أسطرٌ بخطّه بالبكسل وسطرها مرّةً ونصف، وحشوٌ ٤ بكسل وخطٌّ علويّ ١، وفسحةٌ ٢ ملم
+ * فوقه عن آخر سطر. وأسطره تقديرٌ سخيّ من طول النصّ على عرض المتن (٠٫٦ من الخطّ للحرف): فالطويل يحجز سطرين ولا يُغطّي.
+ * يقرؤه `pageCss` للطباعة، وصفحات المحرّر والمعاينة — فتقع الفواصل حيث تقع في الطباعة.
+ */
+export function footerBandMm(footer: Pick<LetterheadFooter, 'show' | 'text' | 'size'> | null | undefined, widthMm: number): number {
+  const text = footer?.show ? footer.text.trim() : '';
+  if (!text) return 0;
+  const size = footer?.size ?? 10;
+  const lines = Math.max(1, Math.ceil((text.length * size * 0.6) / ((Math.max(widthMm, 10) * 96) / 25.4)));
+  const px = lines * size * 1.5 + 4 + 1;
+  return Math.ceil(((px * 25.4) / 96 + 2) * 10) / 10;
+}
+
+/**
  * خطّ الترويسة: واحد لها كلّها لا لكل سطر.
  *
  * خطٌّ لكل سطر يُخرج ترويسات مهلهلة، وهو باب «Word المصغّر». ويُختار من «خطوط ديوان» (DESIGNS.md ٠٫٧) بما فيها

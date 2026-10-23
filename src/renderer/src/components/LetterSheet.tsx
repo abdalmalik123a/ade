@@ -16,7 +16,7 @@ import { pageCss, renderDocHtml, watermarkHtml } from '@shared/docHtml';
 import { renderCanvasHtml } from '@shared/canvasHtml';
 import { SCREEN_DPI } from '@shared/canvas';
 import { sheetPageAttr } from '@shared/sheetPage';
-import type { LetterheadLayout } from '@shared/letterhead';
+import { footerBandMm, type LetterheadLayout } from '@shared/letterhead';
 import LetterheadView, { LetterheadFooterView } from './LetterheadView';
 
 /**
@@ -96,9 +96,12 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
       dangerouslySetInnerHTML={{ __html: renderDocHtml(doc, values, { missing: 'blank', paragraphs: 'blocks' }) }}
     />
   );
+  // `data-foot-mm`: شريط التذييل المحجوز أسفل كلّ صفحةٍ مطبوعة (`pageCss`، D136) — به تعدّ `useSheetMeasure` الصفحات كما تُطبع.
+  const m = doc.pageSetup.margins;
+  const footMm = footerBandMm(layout?.footer, pageMm(doc.pageSetup).w - m.left - m.right);
   return (
     // `data-page`: مقاس الورقة يرافق علاماتها فتُطبع وتُؤرشف وتُعاد طباعتها بمقاسها (`shared/sheetPage.ts`).
-    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} style={sheetStyle(doc)}>
+    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} data-foot-mm={footMm || undefined} style={sheetStyle(doc)}>
       <style>{pageCss(doc, layout)}</style>
       <div dangerouslySetInnerHTML={{ __html: watermarkHtml(doc) }} />
       {doc.pageSetup.repeatLetterhead && head ? (
