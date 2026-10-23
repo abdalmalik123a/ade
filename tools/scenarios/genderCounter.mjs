@@ -74,6 +74,36 @@ export default async function scenario(page) {
   const questionVisible = await page.eval(`return Boolean(document.querySelector('[data-gender]'));`);
   ok('سؤال الجنس ظاهرٌ في الواجهة لم يُخفَ ولم يُتخطَّ (ر150)', questionVisible);
 
+  // (D137) زبونان باسمٍ واحد «نور علي حسن» ذكرٌ وأنثى: الجنس من المختار منهما — كان يُبحث بالاسم فيُؤخذ أوّلهما.
+  await page.eval(`
+    await window.diwan.citizens.save({ id: null, fullName: 'نور علي حسن', gender: 'ذكر', nationalId: '100000000001', verified: false });
+    await window.diwan.citizens.save({ id: null, fullName: 'نور علي حسن', gender: 'أنثى', nationalId: '100000000002', verified: false });
+    const input = document.querySelector('label input[type="text"]');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await wait(400);
+  /** «هات الزبون» ثم «نور علي حسن» برقمه — ويعيد الاسم على الورقة والجنس المختار. */
+  const pickNour = async (id) => {
+    await page.eval(`document.querySelector('[data-screen="service"] [data-act="pick-customer"]')?.click(); return true;`);
+    await wait(600);
+    await page.eval(`
+      const btn = [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.includes('نور علي حسن') && b.textContent?.includes(${JSON.stringify(id)}));
+      btn?.click();
+      return Boolean(btn);
+    `);
+    await wait(900);
+    return page.eval(`
+      const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-secondary'));
+      return { name: document.querySelector('label input[type="text"]')?.value ?? '', gender: on?.dataset.genderValue ?? '' };
+    `);
+  };
+  const male = await pickNour('100000000001');
+  ok(`(D137) «نور علي حسن» الأوّل (ذكر) من الاسمين: «${male.name}» ${male.gender}`, male.name === 'نور علي حسن' && male.gender === 'ذكر');
+  const female = await pickNour('100000000002');
+  ok(`(D137) ثم الثاني (أنثى) والاسم نفسه على الورقة: ${female.gender}`, female.name === 'نور علي حسن' && female.gender === 'أنثى');
+
   // ٣. كتابة اسم «نعمة علي حسين» والتحقق من عدم حسمه وتوقف الشاشة عند السؤال
   await page.eval(`
     const input = document.querySelector('label input[type="text"]');

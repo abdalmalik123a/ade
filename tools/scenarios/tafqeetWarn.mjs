@@ -95,5 +95,25 @@ export default async function scenario(page) {
   `);
   ok('ظهور التفقيط المالي الصحيح بالدينار في المعاينة', previewText.includes('خمسة وعشرون ألف دينار'));
 
+  // ٥. (D137) بلوحة المفاتيح العربية، بضغطاتٍ حقيقية: «٢٥،٠٠٠» فاصلتها «،» — كانت لا تُقرأ ولا يُنبَّه لها؛
+  // و«25٫000» بالفاصلة العشرية العربية غامضةٌ كـ«25.000» — كانت تُقرأ ٢٥ دينارًا صامتة.
+  /** يمحو حقل المبلغ ويكتب فيه حرفًا حرفًا، ويعيد التنبيه تحته والمعاينة. */
+  const typeAmount = async (text) => {
+    await page.type('[data-fill-form] input', '');
+    await page.typeKeys('[data-fill-form] input', text);
+    await wait(600);
+    return page.eval(`
+      return {
+        value: document.querySelector('[data-fill-form] input')?.value ?? '',
+        hint: document.querySelector('[data-field-hint="المبلغ"]')?.innerText ?? null,
+        preview: document.querySelector('[data-screen="service"] [data-body]')?.innerText ?? ''
+      };
+    `);
+  };
+  const comma = await typeAmount('٢٥،٠٠٠');
+  ok(`(D137) «${comma.value}» بالفاصلة العربية: لا تنبيه، والتفقيط «خمسة وعشرون ألف دينار»`, comma.value === '٢٥،٠٠٠' && comma.hint === null && comma.preview.includes('خمسة وعشرون ألف دينار'));
+  const decimal = await typeAmount('25٫000');
+  ok(`(D137) «${decimal.value}» بالفاصلة العشرية العربية: التنبيه، ولا تفقيط «خمسة وعشرون دينارًا»`, decimal.value === '25٫000' && Boolean(decimal.hint?.includes('المبلغ غامض')) && !decimal.preview.includes('خمسة وعشرون دينار'));
+
   return steps;
 }
