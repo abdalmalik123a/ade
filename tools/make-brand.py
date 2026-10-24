@@ -3,17 +3,18 @@
 
     python tools/make-brand.py
 
-- **شعار «ديوان» وأيقونته** (أرسله المالك ١٣ ت١ ٢٠٢٦): الأصل `resources/brand/source/diwan-logo.ico` بمقاساته السبعة
-  (١٦ إلى ٢٥٦) كما رسمها مصمّمه — فأيقونة ويندوز (`resources/icon.ico`) نسخته كما هي بلا إعادة تصغير، و`icon.png` وصورة الواجهة
-  (`diwan-icon.png`) مقاسه الأكبر ٢٥٦ بلا تكبير. و**علامته** للعلامة المائية الخافتة في الشبّاك (`diwan-mark.png`) هو نفسه بلا خلفيّته
-  الكحليّة («اللون إلى شفافيّة» من لون الزاوية — فلا يبقى مربّعٌ باهت خلف العمل).
+- **رمز «ديوان» وأيقونته** (ملفّ المالك الجديد ٢٤ ت١ ٢٠٢٦، ر175 يعدّل ر130): الأصل `resources/brand/source/diwan-logo.ico` مقاسٌ واحد
+  ٢٥٦ بخلفيةٍ شفّافة، وتحت الرمز كلمة «DIWAN» **بيضاء**. والمأخوذ منه **الرمز وحده**: الكلمة البيضاء لا تُرى على الواجهة الفاتحة
+  ولا على شريط المهامّ وسطح المكتب، ولا تُقرأ دون ٤٨ نقطة. فالرمز ما فوق الشريط الشفّاف الذي يفصله عن الكلمة (لا أرقام باليد:
+  يُحسب من الصورة ويُطبع)، ويُوضع في مربّع. ومنه أيقونة ويندوز (`resources/icon.ico`) بمقاساتها السبعة، كلٌّ مصغّرٌ من الرمز نفسه
+  (الأصل مقاسٌ واحد فلا مقاساتٍ رسمها مصمّم)، و`icon.png` وصورة الواجهة (`diwan-icon.png`) بـ٢٥٦ لا أكبر،
+  و**علامته** للعلامة المائية الخافتة في الشبّاك (`diwan-mark.png`) الرمز نفسه مقصوصًا.
 - **شعار MADA TECH** (المطوّر): الأصل (resources/brand/source/madatech-logo.jpg) على خلفيّةٍ سوداء؛ فالأسود يصير
   شفّافًا («اللون إلى شفافيّة»: الشفافيّة من أسطع القنوات، واللون يُقسم عليها فلا يبقى هالةٌ رمادية)،
   ويُقصّ على ما فيه. وحروفه البيضاء لا تُرى على ورقٍ فاتح — فيُعرض على بطاقةٍ داكنة.
 
 والأصول لا تُحزم في المثبّت؛ ما يُحزم هو ما يُكتب هنا.
 """
-import shutil
 from pathlib import Path
 
 from PIL import Image
@@ -22,29 +23,30 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / 'resources' / 'brand' / 'source'
 UI = ROOT / 'src' / 'renderer' / 'src' / 'assets' / 'brand'
 LOGO = SRC / 'diwan-logo.ico'
+ICON_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
-def logo_at(size: int) -> Image.Image:
-    """مقاسٌ من الأيقونة كما رسمه مصمّمها — لا تصغيرٌ من الأكبر."""
+def symbol(pad_share: float) -> tuple[Image.Image, tuple[int, int, int, int]]:
+    """الرمز بلا الكلمة البيضاء تحته: ما فوق أوّل سطرٍ شفّافٍ كلّه تحت أعلى محتوى، مقصوصًا على ما ليس شفّافًا بهامشٍ صغير.
+    (حدّ «أوّل بياضٍ معتم» يُدخل حافّة الكلمة المنعّمة الرماديّة فوقه — فالحدّ الشريط الشفّاف نفسه، مراجعة D154.)"""
     im = Image.open(LOGO)
-    im.size = (size, size)
     im.load()
-    return im.convert('RGBA')
+    im = im.convert('RGBA')
+    alpha = im.getchannel('A')
+    top = alpha.getbbox()[1]
+    rows = (alpha.crop((0, y, im.width, y + 1)).getbbox() for y in range(top, im.height))
+    gap = top + next(i for i, row in enumerate(rows) if row is None)
+    box = alpha.crop((0, 0, im.width, gap)).getbbox()
+    pad = round(pad_share * max(box[2] - box[0], box[3] - box[1]))
+    return im.crop((max(0, box[0] - pad), max(0, box[1] - pad), min(im.width, box[2] + pad), min(gap, box[3] + pad))), box
 
 
-def without_background(im: Image.Image) -> Image.Image:
-    """الخلفية (لون الزاوية) شفّافة: الشفافيّة من بُعد البكسل عن لونها (أقصى فرقٍ في قناة) — ما دون ٨ خلفيةٌ تامّة، وما فوق
-    ٤٠ معتمٌ تامّ. والقسمة على قنوات الكحليّ الصغيرة (الأحمر ٤) كانت تضخّم فروق الضغط الخفيفة نقاطًا ظاهرة — فلا قسمة."""
-    bg = im.getpixel((0, 0))[:3]
-    out = []
-    pixels = im.get_flattened_data() if hasattr(im, 'get_flattened_data') else im.getdata()
-    for r, g, b, _ in pixels:
-        d = max(abs(r - bg[0]), abs(g - bg[1]), abs(b - bg[2]))
-        a = max(0.0, min(1.0, (d - 8) / 32))
-        out.append((r, g, b, round(a * 255)) if a else (0, 0, 0, 0))
-    res = Image.new('RGBA', im.size)
-    res.putdata(out)
-    return res
+def squared(im: Image.Image) -> Image.Image:
+    """في مربّعٍ شفّاف، في وسطه."""
+    side = max(im.size)
+    sq = Image.new('RGBA', (side, side))
+    sq.paste(im, ((side - im.width) // 2, (side - im.height) // 2))
+    return sq
 
 
 def transparent(src: Image.Image) -> Image.Image:
@@ -74,19 +76,22 @@ def trim(rgba: Image.Image, pad_share: float) -> Image.Image:
 
 def main() -> None:
     UI.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(LOGO, ROOT / 'resources' / 'icon.ico')
-    big = logo_at(256)
+    mark, box = symbol(0.02)
+    mark.save(UI / 'diwan-mark.png', optimize=True)
+    sq = squared(mark)
+    sizes = [sq.resize((n, n), Image.LANCZOS) for n in ICON_SIZES]
+    big = sizes[-1]
     big.save(ROOT / 'resources' / 'icon.png', optimize=True)
     big.save(UI / 'diwan-icon.png', optimize=True)
-    mark = trim(without_background(big), 0.02)
-    mark.save(UI / 'diwan-mark.png', optimize=True)
+    big.save(ROOT / 'resources' / 'icon.ico', sizes=[(n, n) for n in ICON_SIZES], append_images=sizes[:-1])
 
     full = transparent(Image.open(SRC / 'madatech-logo.jpg').convert('RGB'))
     lg = trim(full, 0.04)
     w = min(900, lg.width)
     lg.resize((w, round(lg.height * w / lg.width)), Image.LANCZOS).save(UI / 'madatech-logo.png', optimize=True)
 
-    print('icon:', LOGO.name, '-> resources/icon.ico, resources/icon.png, assets/brand/diwan-icon.png')
+    print('symbol: x', box[0], '-', box[2] - 1, 'y', box[1], '-', box[3] - 1, 'from', LOGO.name)
+    print('icon:', ICON_SIZES, '-> resources/icon.ico; 256 -> resources/icon.png, assets/brand/diwan-icon.png')
     print('mark:', mark.size, '-> assets/brand/diwan-mark.png')
     print('logo:', lg.size, '-> assets/brand/madatech-logo.png')
 
