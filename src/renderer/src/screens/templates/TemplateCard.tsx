@@ -41,7 +41,7 @@ export function TemplateCard({
     null;
 
   return (
-    <article className="bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col overflow-hidden">
+    <article className="bg-surface-container-lowest rounded-card shadow-low flex flex-col overflow-hidden">
       <div className="p-space-md flex items-start justify-between gap-space-sm">
         <div className="flex flex-col gap-space-xs min-w-0">
           <div className="flex items-center gap-space-xs">
@@ -78,7 +78,7 @@ export function TemplateCard({
               أسفل حافة الشاشة، والحذف لا يجوز أن يحتاج تمريرًا للوصول إليه. */}
           <div className="flex flex-col gap-1">
             <button
-              className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+              className="w-8 h-8 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
               title="صدّره مستند Word — للمشاركة والطباعة خارج المكتب"
               type="button"
               onClick={onExport}
@@ -86,7 +86,7 @@ export function TemplateCard({
               <span className="material-symbols-outlined text-[16px]">download</span>
             </button>
             <button
-              className="w-8 h-8 rounded-lg bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
+              className="w-8 h-8 rounded-btn bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
               title="حذف النموذج"
               type="button"
               onClick={() => void askDelete()}
@@ -128,7 +128,7 @@ export function TemplateCard({
           </span>
           <div className="flex items-center gap-space-xs">
             <button
-              className="flex-1 h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"
+              className="flex-1 h-9 rounded-btn bg-error text-on-error font-label-md text-label-md font-semibold"
               type="button"
               onClick={() => {
                 setConfirming(false);
@@ -138,7 +138,7 @@ export function TemplateCard({
               نعم، احذف
             </button>
             <button
-              className="flex-1 h-9 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md"
+              className="flex-1 h-9 rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md"
               type="button"
               onClick={() => setConfirming(false)}
             >
@@ -149,7 +149,7 @@ export function TemplateCard({
       ) : (
         <div className="p-space-md pt-0 mt-auto flex items-center gap-space-xs">
           <button
-            className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-all"
+            className="flex-1 h-9 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-all"
             type="button"
             onClick={onOpen}
           >
@@ -157,7 +157,7 @@ export function TemplateCard({
             <span>فتح في المحرر</span>
           </button>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
             title="تعديل صيغ المتغيرات"
             type="button"
             onClick={onEdit}
@@ -165,7 +165,7 @@ export function TemplateCard({
             <span className="material-symbols-outlined text-[18px]">tune</span>
           </button>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
             title="نسخ النموذج — نسخة مستقلّة تُعدَّل دون المساس بالأصل"
             type="button"
             onClick={onDuplicate}
@@ -173,7 +173,7 @@ export function TemplateCard({
             <span className="material-symbols-outlined text-[18px]">content_copy</span>
           </button>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
             title="معاينة بالحجم الكامل A4"
             type="button"
             onClick={onZoom}
@@ -181,7 +181,7 @@ export function TemplateCard({
             <span className="material-symbols-outlined text-[18px]">zoom_in</span>
           </button>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+            className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
             title="صدّره مستند Word — للمشاركة والطباعة خارج المكتب"
             type="button"
             onClick={onExport}
@@ -189,7 +189,7 @@ export function TemplateCard({
             <span className="material-symbols-outlined text-[18px]">download</span>
           </button>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
+            className="w-9 h-9 rounded-btn bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
             title="حذف النموذج"
             type="button"
             onClick={() => void askDelete()}

@@ -16,9 +16,9 @@ type Props = {
 
 export default function WatermarkSection({ watermark, wantImage, setWantImage, setWatermark, sealImages }: Props) {
   return (
-    <section className="mt-space-md bg-surface-container-low rounded-xl p-space-md space-y-space-sm">
+    <section className="mt-space-md bg-surface-container-low rounded-card p-space-md space-y-space-sm">
       <h3 className="font-headline-sm text-headline-sm text-on-surface">العلامة المائية</h3>
-      <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-surface-container-lowest">
+      <div className="grid grid-cols-3 gap-1 p-0.5 rounded-card bg-surface-container-lowest">
         {(
           [
             { key: 'none', label: 'بلا' },
@@ -37,7 +37,7 @@ export default function WatermarkSection({ watermark, wantImage, setWantImage, s
               key={o.key}
               className={`h-8 rounded-md font-label-md text-label-md transition-colors ${
                 on
-                  ? 'bg-primary-container text-on-primary font-semibold'
+                  ? 'bg-primary-fixed text-primary font-semibold'
                   : 'text-on-surface-variant hover:bg-surface-container-high'
               }`}
               data-act={`wm-${o.key}`}
@@ -75,7 +75,7 @@ export default function WatermarkSection({ watermark, wantImage, setWantImage, s
             {['مسودة', 'نسخة', 'سري', 'للاستعمال الرسمي'].map((t) => (
               <button
                 key={t}
-                className="h-7 px-2 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
+                className="h-7 px-2 rounded-chip bg-surface-container-lowest hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
                 type="button"
                 onClick={() => setWatermark({ kind: 'text', text: t })}
               >
@@ -96,10 +96,10 @@ export default function WatermarkSection({ watermark, wantImage, setWantImage, s
             {sealImages.map((s) => (
               <button
                 key={s.id}
-                className={`p-1 rounded-lg flex flex-col items-center gap-0.5 ${
+                className={`p-1 rounded-card border-2 flex flex-col items-center gap-0.5 ${
                   watermark?.kind === 'image' && watermark.src === s.imagePath
-                    ? 'bg-secondary-fixed ring-2 ring-secondary'
-                    : 'bg-surface-container-lowest hover:bg-surface-container-high'
+                    ? 'border-cyan bg-grad-sel shadow-sel'
+                    : 'border-transparent bg-surface-container-lowest hover:bg-surface-container-high'
                 }`}
                 type="button"
                 onClick={() => setWatermark({ kind: 'image', src: s.imagePath! })}

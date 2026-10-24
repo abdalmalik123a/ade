@@ -20,7 +20,7 @@ export default function SectionBlocks({ shown, patchBlock, pickImage, section, m
       {shown.map((block) => (
         <div
           key={block.id}
-          className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs"
+          className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs"
         >
           <div className="flex items-center gap-space-xs">
             <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
@@ -29,7 +29,7 @@ export default function SectionBlocks({ shown, patchBlock, pickImage, section, m
 
             {block.kind === 'text' && (
               <input
-                className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="input-field flex-1 h-8 px-2 text-on-surface font-label-md text-label-md"
                 placeholder="اكتب محتوى السطر"
                 type="text"
                 value={block.value}

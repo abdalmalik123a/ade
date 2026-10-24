@@ -39,7 +39,7 @@ export function PacksModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[85vh] overflow-hidden"
+        className="w-full max-w-2xl bg-surface-container-lowest rounded-card shadow-card border border-outline-variant flex flex-col max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-16 px-space-lg flex items-center justify-between border-b border-outline-variant bg-surface-container-low shrink-0">
@@ -53,7 +53,7 @@ export function PacksModal({
             </div>
           </div>
           <button
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            className="w-8 h-8 rounded-btn flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
             title="إغلاق (Esc)"
             type="button"
             onClick={onClose}
@@ -72,14 +72,14 @@ export function PacksModal({
               {packs.map((p) => (
                 <div
                   key={p.id}
-                  className="p-space-md rounded-xl border border-outline-variant bg-surface-container-low flex flex-col gap-space-xs"
+                  className="p-space-md rounded-card border border-outline-variant bg-surface-container-low flex flex-col gap-space-xs"
                   data-pack-card={p.id}
                 >
                   <div className="flex items-start justify-between gap-space-sm">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-space-xs flex-wrap">
                         <span className="font-title-md text-title-md font-bold text-on-surface">{p.title}</span>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-semibold">
+                        <span className="text-[11px] px-2 py-0.5 rounded-chip bg-primary-fixed text-primary font-semibold">
                           {p.section}
                         </span>
                         <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">
@@ -98,10 +98,10 @@ export function PacksModal({
                       <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">{p.description}</p>
                     </div>
                     <button
-                      className={`h-9 px-space-md rounded-lg font-label-md text-label-md font-bold shrink-0 transition-colors flex items-center gap-space-xs ${
+                      className={`h-9 px-space-md rounded-btn font-label-md text-label-md font-bold shrink-0 transition-colors flex items-center gap-space-xs ${
                         p.imported
                           ? 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface'
-                          : 'bg-primary-container text-on-primary hover:opacity-95'
+                          : 'btn-act'
                       }`}
                       data-act={`import-bundled-${p.id}`}
                       disabled={busy}
@@ -123,7 +123,7 @@ export function PacksModal({
             </div>
           )}
 
-          <div className="pt-space-md border-t border-outline-variant flex items-center justify-between gap-space-md bg-surface-container-lowest p-space-sm rounded-xl">
+          <div className="pt-space-md border-t border-outline-variant flex items-center justify-between gap-space-md bg-surface-container-lowest p-space-sm rounded-card">
             <div>
               <h3 className="font-label-md text-label-md font-bold text-on-surface">استيراد حزمة من ملف خارجي</h3>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
@@ -131,7 +131,7 @@ export function PacksModal({
               </p>
             </div>
             <button
-              className="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-bold shrink-0 flex items-center gap-space-xs transition-colors"
+              className="h-9 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-bold shrink-0 flex items-center gap-space-xs transition-colors"
               data-act="content-import-file"
               disabled={busy}
               type="button"
@@ -145,7 +145,7 @@ export function PacksModal({
 
         <div className="h-14 px-space-lg flex items-center justify-end border-t border-outline-variant bg-surface-container-low shrink-0">
           <button
-            className="h-9 px-space-lg rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold transition-colors"
+            className="h-9 px-space-lg rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold transition-colors"
             type="button"
             onClick={onClose}
           >

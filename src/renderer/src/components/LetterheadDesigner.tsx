@@ -156,13 +156,13 @@ export default function LetterheadDesigner({
         <span className="font-label-sm text-label-sm text-on-surface-variant">
           تقسيم الترويسة
         </span>
-        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-card">
           {COLUMN_CHOICES.map((c) => (
             <button
               key={c.value}
               className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
                 layout.columns === c.value
-                  ? 'bg-primary-container text-on-primary font-semibold'
+                  ? 'bg-primary-fixed text-primary font-semibold'
                   : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
               }`}
               type="button"
@@ -184,7 +184,7 @@ export default function LetterheadDesigner({
           {layout.sections.slice(0, layout.columns).map((s, i) => (
             <button
               key={s.id}
-              className={`flex-1 h-8 rounded-lg font-label-sm text-label-sm transition-colors ${
+              className={`flex-1 h-8 rounded-btn font-label-sm text-label-sm transition-colors ${
                 i === index
                   ? 'bg-surface-container-high text-on-surface font-semibold'
                   : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
@@ -218,7 +218,7 @@ export default function LetterheadDesigner({
       </div>
 
       {/* وضع التحرير */}
-      <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+      <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-card">
         {(
           [
             { value: 'lines', label: 'أسطر', hint: 'اكتب أو الصق من Word' },
@@ -229,7 +229,7 @@ export default function LetterheadDesigner({
             key={m.value}
             className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
               mode === m.value
-                ? 'bg-primary-container text-on-primary font-semibold'
+                ? 'bg-primary-fixed text-primary font-semibold'
                 : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
             }`}
             type="button"
@@ -244,7 +244,7 @@ export default function LetterheadDesigner({
       {mode === 'lines' && (
         <div className="flex flex-col gap-1">
           <textarea
-            className="w-full min-h-[104px] p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md leading-7 focus:outline-none focus:ring-1 focus:ring-secondary resize-y"
+            className="input-field w-full min-h-[104px] p-space-sm text-on-surface font-label-md text-label-md leading-7 resize-y"
             placeholder={'جمهورية العراق\nوزارة التربية\nالمديرية العامة للتربية في محافظة …\nمديرية تربية …'}
             spellCheck={false}
             value={lines}
@@ -261,7 +261,7 @@ export default function LetterheadDesigner({
         {(mode === 'lines' ? KIND_META.filter((k) => k.kind !== 'text') : KIND_META).map((k) => (
           <button
             key={k.kind}
-            className="h-8 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors"
+            className="h-8 px-2 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors"
             type="button"
             onClick={() => addBlock(k.kind)}
           >
@@ -274,7 +274,7 @@ export default function LetterheadDesigner({
       {/* كتل القسم */}
       {shown.length === 0 ? (
         mode === 'detail' ? (
-          <div className="py-space-md rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-1 text-on-surface-variant">
+          <div className="py-space-md rounded-card border border-dashed border-outline-variant flex flex-col items-center gap-1 text-on-surface-variant">
             <span className="font-label-md text-label-md">هذا القسم فارغ</span>
             <span className="font-label-sm text-label-sm">أضف سطرًا أو شعارًا من الأعلى</span>
           </div>

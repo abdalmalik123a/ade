@@ -13,7 +13,7 @@ type Props = {
 
 export default function BasmalaOptions({ layout, onChange, adoptBasmala, basmalaNote }: Props) {
   return (
-    <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+    <div className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs">
       <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
         <input
           className="w-4 h-4 accent-secondary"
@@ -36,7 +36,7 @@ export default function BasmalaOptions({ layout, onChange, adoptBasmala, basmala
       {layout.basmala.show && (
         <div className="flex items-center gap-space-xs">
           <input
-            className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+            className="input-field flex-1 h-8 px-2 text-on-surface font-label-md text-label-md"
             type="text"
             value={layout.basmala.text}
             onChange={(e) =>

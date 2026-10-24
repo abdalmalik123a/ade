@@ -36,7 +36,7 @@ export function PreviewModal({
       onClick={onClose}
     >
       <div
-        className="bg-surface-container-lowest rounded-lg shadow-2xl shrink-0"
+        className="bg-surface-container-lowest rounded-card shadow-card shrink-0"
         style={{ width: 794 }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -46,7 +46,7 @@ export function PreviewModal({
           </span>
           <div className="flex items-center gap-space-sm">
             <button
-              className="px-space-md h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+              className="px-space-md h-8 btn-act font-label-md text-label-md font-semibold"
               type="button"
               onClick={onOpen}
             >

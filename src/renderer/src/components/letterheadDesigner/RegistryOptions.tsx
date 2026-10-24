@@ -10,7 +10,7 @@ type Props = {
 
 export default function RegistryOptions({ layout, onChange }: Props) {
   return (
-    <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+    <div className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs">
       <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
         <input
           className="w-4 h-4 accent-secondary"
@@ -24,7 +24,7 @@ export default function RegistryOptions({ layout, onChange }: Props) {
       </label>
 
       {layout.registry.show && (
-        <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-card">
           {(
             [
               { value: 'manual', label: 'فراغ يُملأ باليد', hint: 'يكتبهما موظّف الاستلام' },
@@ -35,7 +35,7 @@ export default function RegistryOptions({ layout, onChange }: Props) {
               key={c.value}
               className={`flex-1 h-9 rounded font-label-sm text-label-sm transition-colors flex flex-col items-center justify-center leading-tight ${
                 layout.registry.mode === c.value
-                  ? 'bg-primary-container text-on-primary font-semibold'
+                  ? 'bg-primary-fixed text-primary font-semibold'
                   : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
               }`}
               type="button"

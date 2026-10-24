@@ -27,10 +27,10 @@ type Props = {
 export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipCategory, setClipCategory, clipBody, setClipBody, clipDirection, setClipDirection, saveClip, setEditingClipId, clipsList, clipQuery, setClipQuery, deleteClip }: Props) {
   return (
     <div className="flex-1 flex flex-col p-space-md space-y-space-md overflow-y-auto">
-      <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-xs space-y-space-sm">
+      <div className="bg-surface-container-lowest p-space-md rounded-card shadow-xs space-y-space-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-lg bg-primary-container text-on-primary">
+            <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
               <span className="material-symbols-outlined text-[18px]">post_add</span>
             </span>
             <h3 className="font-headline-sm text-headline-sm text-on-surface">
@@ -72,7 +72,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
               محتوى النص / الكليشة <span className="text-error">*</span>
             </span>
             <textarea
-              className="w-full min-h-[100px] p-space-sm rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md leading-6 focus:outline-none focus:ring-2 focus:ring-secondary resize-y"
+              className="input-field w-full min-h-[100px] p-space-sm text-on-surface font-label-md text-label-md leading-6 resize-y"
               placeholder="اكتب العبارة أو النص الذي تعيد استخدامه دائمًا…"
               value={clipBody}
               onChange={(e) => setClipBody(e.target.value)}
@@ -105,7 +105,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
 
           <div className="flex items-center gap-space-xs pt-space-xs">
             <button
-              className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all"
+              className="flex-1 h-9 btn-act font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all"
               type="button"
               onClick={() => void saveClip()}
             >
@@ -114,7 +114,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
             </button>
             {editingClipId && (
               <button
-                className="h-9 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+                className="h-9 px-3 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
                 type="button"
                 onClick={() => {
                   setEditingClipId(null);
@@ -132,14 +132,14 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
       </div>
 
       {/* قائمة الكليشات */}
-      <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-xs space-y-space-sm flex-1 flex flex-col min-h-0">
+      <div className="bg-surface-container-lowest p-space-md rounded-card shadow-xs space-y-space-sm flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between">
           <span className="font-headline-sm text-headline-sm text-on-surface">
             الكليشات المحفوظة ({clipsList.length})
           </span>
           <div className="w-48 relative">
             <input
-              className="w-full h-8 pr-7 pl-2 rounded-lg bg-surface-container-low text-on-surface font-label-sm text-label-sm focus:outline-none focus:ring-1 focus:ring-secondary"
+              className="input-field w-full h-8 pr-7 pl-2 text-on-surface font-label-sm text-label-sm"
               placeholder="بحث في الكليشات…"
               type="search"
               value={clipQuery}
@@ -162,7 +162,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
             clipsList.map((c) => (
               <div
                 key={c.id}
-                className="p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 border border-outline-variant/20"
+                className="p-space-sm rounded-card bg-surface-container-low hover:bg-surface-container-high transition-all flex flex-col gap-1 border border-outline-variant/20"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-label-md text-label-md text-on-surface font-bold">
@@ -175,7 +175,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
                       </span>
                     )}
                     {c.category && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-secondary-container text-on-secondary-container font-semibold">
+                      <span className="px-2 py-0.5 rounded-chip text-[10px] bg-primary-fixed text-primary font-semibold">
                         {c.category}
                       </span>
                     )}

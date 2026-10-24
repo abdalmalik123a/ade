@@ -30,7 +30,7 @@ export default function LibraryHeader({ stats, openDesigner, importing, busy, se
         </p>
       </div>
       <button
-        className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-bold flex items-center gap-space-xs"
+        className="h-11 px-space-lg btn-act font-label-lg text-label-lg font-bold flex items-center gap-space-xs"
         data-act="new-blank"
         title="اكتب على الورقة، وظلّل ما يتغيّر واضغط F4"
         type="button"
@@ -42,7 +42,7 @@ export default function LibraryHeader({ stats, openDesigner, importing, busy, se
       <div className="relative">
         <button
           aria-expanded={importing}
-          className="h-11 px-space-lg rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-space-xs shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-50"
+          className="h-11 px-space-lg rounded-card bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-space-xs shadow-low disabled:opacity-50"
           data-act="import-menu"
           disabled={busy}
           type="button"
@@ -54,7 +54,7 @@ export default function LibraryHeader({ stats, openDesigner, importing, busy, se
         </button>
         {/* في الصفحة دائمًا ومخفيّةٌ حتى تُفتح — فالطرق تُعدّ وتُختبر بأسمائها. */}
         <div
-          className={`${importing ? '' : 'hidden'} absolute z-30 top-full mt-1 end-0 w-[22rem] p-space-xs rounded-xl bg-surface-container-lowest shadow-xl border border-outline-variant`}
+          className={`${importing ? '' : 'hidden'} absolute z-30 top-full mt-1 end-0 w-[22rem] p-space-xs surface-panel border border-outline-variant`}
           data-import-menu=""
         >
           {(
@@ -70,7 +70,7 @@ export default function LibraryHeader({ stats, openDesigner, importing, busy, se
           ).map((o) => (
             <button
               key={o.act}
-              className="w-full px-space-sm py-1.5 rounded-lg hover:bg-surface-container-high transition-colors text-right flex items-center gap-space-sm disabled:opacity-50"
+              className="w-full px-space-sm py-1.5 rounded-btn hover:bg-surface-container-high transition-colors text-right flex items-center gap-space-sm disabled:opacity-50"
               data-act={o.act}
               disabled={busy}
               type="button"

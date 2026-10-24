@@ -13,7 +13,7 @@ type Props = {
 
 export default function PagesSection({ doc, setDoc, letterhead }: Props) {
   return (
-    <section className="mt-space-md bg-surface-container-low rounded-xl p-space-md space-y-space-sm" data-designer-page="">
+    <section className="mt-space-md bg-surface-container-low rounded-card p-space-md space-y-space-sm" data-designer-page="">
       <h3 className="font-headline-sm text-headline-sm text-on-surface">الصفحات</h3>
       <label className="flex items-center gap-space-xs cursor-pointer font-label-md text-label-md text-on-surface">
         <input

@@ -71,8 +71,8 @@ export default function SheetArea({
 }: Props) {
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
-      <div className="h-12 shrink-0 px-space-md flex items-center gap-space-xs bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex-wrap">
-        <div className="flex p-0.5 rounded-lg bg-surface-container-low">
+      <div className="h-12 shrink-0 px-space-md flex items-center gap-space-xs bg-surface-container-lowest shadow-low flex-wrap">
+        <div className="flex p-0.5 rounded-card bg-surface-container-low">
           {(
             [
               ['edit', 'تحرير على الورقة'],
@@ -81,7 +81,7 @@ export default function SheetArea({
           ).map(([v, label]) => (
             <button
               key={v}
-              className={`h-8 px-3 rounded-md font-label-md text-label-md ${view === v ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+              className={`h-8 px-3 rounded-md font-label-md text-label-md ${view === v ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
               data-view={v}
               type="button"
               onClick={() => setView(v)}
@@ -98,7 +98,7 @@ export default function SheetArea({
         )}
         <span className="w-px h-6 bg-outline-variant/60 mx-1" />
         <button
-          className={`h-9 px-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${tool === 'find' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
+          className={`h-9 px-2.5 rounded-btn font-label-sm text-label-sm flex items-center gap-1 ${tool === 'find' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
           data-act="find"
           type="button"
           onClick={() => setTool((t) => (t === 'find' ? null : 'find'))}
@@ -107,7 +107,7 @@ export default function SheetArea({
           بحث واستبدال
         </button>
         <button
-          className={`h-9 px-2.5 rounded-lg font-label-sm text-label-sm flex items-center gap-1 ${tool === 'symbols' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
+          className={`h-9 px-2.5 rounded-btn font-label-sm text-label-sm flex items-center gap-1 ${tool === 'symbols' ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'}`}
           data-act="symbols"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
@@ -117,23 +117,23 @@ export default function SheetArea({
           رموز
         </button>
         <span className="flex-1" />
-        <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="save" type="button" onClick={() => void saveDraft(false)}>
+        <button className="h-9 px-2.5 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="save" type="button" onClick={() => void saveDraft(false)}>
           <span className="material-symbols-outlined text-[18px]">save</span>
           حفظ مسودة
         </button>
-        <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="as-template" type="button" onClick={() => setTemplateOpen(true)}>
+        <button className="h-9 px-2.5 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1" data-act="as-template" type="button" onClick={() => setTemplateOpen(true)}>
           <span className="material-symbols-outlined text-[18px]">library_add</span>
           اجعله نموذجًا
         </button>
-        <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-word" disabled={exporting || busy} type="button" onClick={() => void exportWord()}>
+        <button className="h-9 px-2.5 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-word" disabled={exporting || busy} type="button" onClick={() => void exportWord()}>
           <span className="material-symbols-outlined text-[18px] text-secondary">description</span>
           Word
         </button>
-        <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-pdf" disabled={exporting || busy} type="button" onClick={() => void exportPdf()}>
+        <button className="h-9 px-2.5 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-pdf" disabled={exporting || busy} type="button" onClick={() => void exportPdf()}>
           <span className="material-symbols-outlined text-[18px] text-error">picture_as_pdf</span>
           PDF
         </button>
-        <button className="h-9 px-2.5 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-png" disabled={exporting || busy} type="button" onClick={() => void exportPng()}>
+        <button className="h-9 px-2.5 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1 disabled:opacity-40" data-act="export-png" disabled={exporting || busy} type="button" onClick={() => void exportPng()}>
           <span className="material-symbols-outlined text-[18px]">image</span>
           صورة عالية الدقّة
         </button>

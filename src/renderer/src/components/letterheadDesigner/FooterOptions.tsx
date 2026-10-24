@@ -12,7 +12,7 @@ type Props = {
 export default function FooterOptions({ layout, onChange }: Props) {
   const footer = layout.footer ?? { show: false, text: '', align: 'center', size: 10 };
   return (
-    <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs" data-footer-options="">
+    <div className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs" data-footer-options="">
       <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
         <input
           className="w-4 h-4 accent-secondary"
@@ -29,7 +29,7 @@ export default function FooterOptions({ layout, onChange }: Props) {
       {footer.show && (
         <div className="flex items-center gap-space-xs">
           <input
-            className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+            className="input-field flex-1 h-8 px-2 text-on-surface font-label-md text-label-md"
             placeholder="مثال: بغداد — شارع الرشيد | هاتف: 07701234567 | info@example.com"
             type="text"
             data-act="footer-text"

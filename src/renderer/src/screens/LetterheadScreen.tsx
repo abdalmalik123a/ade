@@ -288,7 +288,7 @@ export default function LetterheadScreen() {
               <button
                 className={`h-10 px-4 rounded-t-xl font-headline-sm text-headline-sm flex items-center gap-2 transition-all ${
                   activeTab === 'letterhead'
-                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-sm'
+                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-low'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 type="button"
@@ -300,7 +300,7 @@ export default function LetterheadScreen() {
               <button
                 className={`h-10 px-4 rounded-t-xl font-headline-sm text-headline-sm flex items-center gap-2 transition-all ${
                   activeTab === 'clips'
-                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-sm'
+                    ? 'bg-surface-container-lowest text-on-surface border-t-2 border-secondary font-bold shadow-low'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
                 type="button"
@@ -382,8 +382,8 @@ export default function LetterheadScreen() {
         <div
           className={
             toast.tone === 'ok'
-              ? 'fixed bottom-6 right-80 z-50 px-space-lg py-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md shadow-lg flex items-center gap-space-xs'
-              : 'fixed bottom-6 right-80 z-50 px-space-lg py-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md shadow-lg flex items-center gap-space-xs'
+              ? 'fixed bottom-6 right-80 z-50 px-space-lg py-space-sm rounded-card bg-inverse-surface text-inverse-on-surface font-label-md text-label-md shadow-soft flex items-center gap-space-xs'
+              : 'fixed bottom-6 right-80 z-50 px-space-lg py-space-sm rounded-card bg-error-container text-on-error-container font-label-md text-label-md shadow-soft flex items-center gap-space-xs'
           }
         >
           <span className="material-symbols-outlined text-[18px]">

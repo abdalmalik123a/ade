@@ -12,8 +12,8 @@ import { confirmAction } from '../kit/ask';
 import { useToast } from '../kit/useToast';
 import { errorText } from '../lib/errors';
 
-const BUTTON = 'h-10 px-space-md rounded-lg font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50';
-const TILE = 'rounded-xl bg-surface-container-lowest p-space-sm flex flex-col gap-1 shadow-[0_1px_3px_rgba(15,23,42,0.08)]';
+const BUTTON = 'h-10 px-space-md rounded-btn font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50';
+const TILE = 'rounded-card bg-surface-container-lowest p-space-sm flex flex-col gap-1 shadow-low';
 
 function importMessage(out: ElementImport): { text: string; tone: 'ok' | 'warn' } {
   const added = out.added.length ? `أُضيف ${count(out.added.length, 'عنصر')}` : '';
@@ -84,7 +84,7 @@ export default function ElementsScreen() {
           <div className="flex items-center gap-space-sm">
             <select
               aria-label="صنف ما يُستورد"
-              className="h-10 px-2 rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface"
+              className="h-10 px-2 rounded-field bg-surface-container-low font-label-md text-label-md text-on-surface"
               data-act="elements-category"
               value={category}
               onChange={(e) => setCategory(e.target.value as ElementCategory)}
@@ -95,7 +95,7 @@ export default function ElementsScreen() {
                 </option>
               ))}
             </select>
-            <button className={`${BUTTON} bg-primary text-on-primary shadow-md`} data-act="elements-import" disabled={busy} type="button" onClick={() => void importFiles()}>
+            <button className={`${BUTTON} btn-act`} data-act="elements-import" disabled={busy} type="button" onClick={() => void importFiles()}>
               <span className="material-symbols-outlined text-[18px]">upload_file</span>
               استورد SVG أو PNG
             </button>
@@ -151,7 +151,7 @@ export default function ElementsScreen() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 left-6 z-50 max-w-[560px] px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'}`}>
+        <div className={`fixed bottom-6 left-6 z-50 max-w-[560px] px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${toast.tone === 'ok' ? 'bg-inverse-surface text-inverse-on-surface' : 'bg-error text-on-error'}`}>
           {toast.text}
         </div>
       )}

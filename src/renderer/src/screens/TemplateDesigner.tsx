@@ -272,7 +272,7 @@ export default function TemplateDesigner({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-stretch bg-scrim/40 backdrop-blur-[2px]">
-      <div className="m-auto w-[min(1520px,98vw)] h-[min(880px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="m-auto w-[min(1520px,98vw)] h-[min(880px,92vh)] surface-panel flex flex-col overflow-hidden">
         {/* الترويسة */}
         <DesignerHeader
           editing={editing}

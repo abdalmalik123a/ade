@@ -42,14 +42,14 @@ export default function DesignerFooter({ restored, error, editing, confirmDelete
                 {usage > 0 ? `صدر عنه ${count(usage, 'كتاب')} — احذف؟` : 'تأكيد الحذف؟'}
               </span>
               <button
-                className="px-space-md h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"
+                className="px-space-md h-9 rounded-btn bg-error text-on-error font-label-md text-label-md font-semibold"
                 type="button"
                 onClick={() => void remove()}
               >
                 نعم، احذف
               </button>
               <button
-                className="px-space-md h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+                className="px-space-md h-9 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
                 type="button"
                 onClick={() => setConfirmDelete(false)}
               >
@@ -58,7 +58,7 @@ export default function DesignerFooter({ restored, error, editing, confirmDelete
             </div>
           ) : (
             <button
-              className="px-space-md h-9 rounded-lg text-error hover:bg-error-container transition-colors font-label-md text-label-md flex items-center gap-space-xs"
+              className="px-space-md h-9 rounded-btn text-error hover:bg-error-container transition-colors font-label-md text-label-md flex items-center gap-space-xs"
               type="button"
               onClick={() => setConfirmDelete(true)}
             >
@@ -67,14 +67,14 @@ export default function DesignerFooter({ restored, error, editing, confirmDelete
             </button>
           ))}
         <button
-          className="px-space-md h-9 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+          className="px-space-md h-9 rounded-btn text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
           type="button"
           onClick={() => void closeDesigner()}
         >
           إلغاء
         </button>
         <button
-          className="px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-space-xs transition-all disabled:opacity-40"
+          className="px-space-lg h-9 btn-act font-label-md text-label-md font-bold flex items-center gap-space-xs transition-all disabled:opacity-40"
           type="button"
           disabled={saving}
           onClick={() => void save()}

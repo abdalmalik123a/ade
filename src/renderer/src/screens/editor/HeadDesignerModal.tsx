@@ -30,7 +30,7 @@ export default function HeadDesignerModal({ setDesignerOpen, layout, setLayout, 
       </div>
       <div className="flex items-center justify-between pt-space-md">
         <span className="font-label-sm text-label-sm text-on-surface-variant">التعديل يخصّ هذا الكتاب. لإبقائه لكتب أخرى احفظه في المكتبة.</span>
-        <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" type="button" onClick={() => setDesignerOpen(false)}>
+        <button className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold" type="button" onClick={() => setDesignerOpen(false)}>
           تم
         </button>
       </div>

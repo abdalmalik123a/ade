@@ -11,7 +11,7 @@ import { countIn } from '@shared/arabic';
 const COPY_KINDS = ['نسخة أصلية', 'نسخة مصدقة', 'نسخة مختومة'];
 
 export const inputCls =
-  'w-full h-9 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+  'input-field w-full h-9 px-3 text-on-surface font-label-md text-label-md';
 
 export function SaveLayoutDialog({ current, onClose, onSave }: { current: Letterhead | null; onClose: () => void; onSave: (name: string, asNew: boolean) => void }) {
   const [name, setName] = useState(current?.name ?? '');
@@ -20,16 +20,16 @@ export function SaveLayoutDialog({ current, onClose, onSave }: { current: Letter
       <div className="flex flex-col gap-space-md">
         <input autoFocus className={inputCls} placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="flex items-center justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             تراجع
           </button>
           {current && (
-            <button className="h-10 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => onSave(name || current.name, false)}>
+            <button className="h-10 px-space-md rounded-btn bg-surface-container hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => onSave(name || current.name, false)}>
               تحديث «{current.name}»
             </button>
           )}
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-50"
             disabled={!name.trim()}
             type="button"
             onClick={() => onSave(name, true)}
@@ -52,11 +52,11 @@ export function AsTemplateDialog({ initial, onClose, onSave }: { initial: string
         </p>
         <input autoFocus className={inputCls} data-template-title="" placeholder="عنوان النموذج" value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="flex items-center justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             تراجع
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-50"
             data-act="save-as-template"
             disabled={!title.trim()}
             type="button"
@@ -94,7 +94,7 @@ export function IssueDialog({
   return (
     <Modal title="اطبع الكتاب" onClose={onClose}>
       <div className="flex flex-col gap-space-md">
-        <div className="p-space-sm rounded-lg bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
+        <div className="p-space-sm rounded-card bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
           يُحفظ الكتاب في السجلّ تلقائيًّا برقمٍ داخلي وبصمة — والرقم للسجلّ وحده، لا يُطبع على الكتاب ولا يُلغى بعد الحفظ.
           <div className="mt-1 text-on-surface">
             صاحب العلاقة: <span className="font-bold">{name}</span>
@@ -131,11 +131,11 @@ export function IssueDialog({
           )}
         </div>
         <div className="flex items-center justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             تراجع
           </button>
           <button
-            className="h-10 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-50"
+            className="h-10 px-space-md rounded-btn bg-surface-container hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-50"
             data-act="issue-no-print"
             disabled={busy}
             type="button"
@@ -144,7 +144,7 @@ export function IssueDialog({
             احفظ بلا طباعة
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-50"
             disabled={busy}
             type="button"
             onClick={() => onIssue({ copies, copyKind, print: true })}
@@ -194,14 +194,14 @@ export function IssuedDialog({
           </span>
         </div>
         {repeated.map((r) => (
-          <div key={r.text} className="p-space-sm rounded-lg bg-secondary-fixed/60 flex flex-col gap-space-xs" data-repeated-clip="">
+          <div key={r.text} className="p-space-sm rounded-card bg-secondary-fixed/60 flex flex-col gap-space-xs" data-repeated-clip="">
             <span className="font-label-md text-label-md text-on-surface">
               كتبتَ هذه الفقرة في {r.count} كتب — احفظها كليشة تُدرج بضغطة؟
             </span>
             <span className="font-label-sm text-label-sm text-on-surface-variant line-clamp-2">«{r.text}»</span>
             <div className="flex gap-space-xs">
               <button
-                className="h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md"
+                className="h-8 px-3 btn-act font-label-md text-label-md"
                 data-act="repeated-save"
                 type="button"
                 onClick={() => void onSaveClip(r.text)}
@@ -209,7 +209,7 @@ export function IssuedDialog({
                 احفظها كليشة
               </button>
               <button
-                className="h-8 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+                className="h-8 px-3 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
                 data-act="repeated-reject"
                 type="button"
                 onClick={() => onRejectClip(r.text)}
@@ -220,13 +220,13 @@ export function IssuedDialog({
           </div>
         ))}
         <div className="flex items-center justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onExport()}>
+          <button className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onExport()}>
             حفظ PDF
           </button>
-          <button className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onReprint()}>
+          <button className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => void onReprint()}>
             طباعة نسخة أخرى
           </button>
-          <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" type="button" onClick={onClose}>
+          <button className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold" type="button" onClick={onClose}>
             تم
           </button>
         </div>
@@ -245,7 +245,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 p-space-lg">
-      <div className="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
+      <div className="w-full max-w-2xl bg-surface-container-lowest rounded-card shadow-soft overflow-hidden">
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">{title}</span>
           <button className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" type="button" onClick={onClose}>

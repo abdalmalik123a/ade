@@ -74,7 +74,7 @@ export default function TemplateSection({
           ))}
         </select>
         <button
-          className="h-9 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm flex items-center gap-1"
+          className="h-9 px-2.5 btn-act font-label-sm text-label-sm flex items-center gap-1"
           type="button"
           onClick={() => setDesignerOpen(true)}
         >

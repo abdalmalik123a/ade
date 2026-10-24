@@ -52,7 +52,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
   return (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="p-space-md bg-surface-container-low flex flex-col gap-space-sm shrink-0 border-b border-outline-variant/30">
-            <div className="bg-surface-container-lowest p-space-sm rounded-xl shadow-xs flex flex-col gap-space-xs">
+            <div className="bg-surface-container-lowest p-space-sm rounded-card shadow-xs flex flex-col gap-space-xs">
               <div className="flex items-center justify-between">
                 <label className="font-label-sm text-label-sm text-on-surface-variant font-medium">
                   الترويسة الحالية
@@ -71,7 +71,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
                   search
                 </span>
                 <input
-                  className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                  className="input-field w-full h-9 pr-9 pl-3 text-on-surface font-label-md text-label-md"
                   placeholder="ابحث: هيت، تربية، بلدية…"
                   type="search"
                   value={query}
@@ -88,9 +88,9 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
             ].map((c) => (
               <button
                 key={c.key ?? 'all'}
-                className={`h-7 px-2.5 rounded-full font-label-sm text-label-sm transition-colors ${
+                className={`h-7 px-2.5 rounded-chip font-label-sm text-label-sm transition-colors ${
                   filter === c.key
-                    ? 'bg-primary-container text-on-primary font-semibold'
+                    ? 'bg-primary-fixed text-primary font-semibold'
                     : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface'
                 }`}
                 type="button"
@@ -111,9 +111,9 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
               list.map((item) => (
                 <div
                   key={item.id}
-                  className={`group flex items-center gap-1 h-9 pr-2 pl-1 rounded-lg transition-colors ${
+                  className={`group flex items-center gap-1 h-9 pr-2 pl-1 rounded-card transition-colors ${
                     item.id === currentId
-                      ? 'bg-primary-container text-on-primary'
+                      ? 'bg-primary-fixed text-primary'
                       : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'
                   }`}
                 >
@@ -161,7 +161,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
                 اسم الترويسة <span className="text-error">*</span>
               </label>
               <input
-                className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                className="input-field w-full h-9 px-3 text-on-surface font-label-md text-label-md"
                 placeholder="مثال: مديرية تربية بغداد / الرصافة الأولى"
                 type="text"
                 value={name}
@@ -176,7 +176,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
                 التصنيف
               </label>
               <input
-                className="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                className="input-field w-full h-9 px-3 text-on-surface font-label-md text-label-md"
                 list="letterhead-categories"
                 placeholder="مدارس"
                 type="text"
@@ -198,7 +198,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
             <label className="flex items-center gap-space-sm">
               <span className="font-label-sm text-label-sm text-on-surface-variant font-medium shrink-0">لجهة</span>
               <select
-                className="flex-1 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                className="input-field flex-1 h-9 px-3 text-on-surface font-label-md text-label-md"
                 data-letterhead-client=""
                 value={authorityId ?? ''}
                 onChange={(e) => {
@@ -217,7 +217,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
           )}
 
           <button
-            className="h-9 px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
+            className="h-9 px-2.5 rounded-btn bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center justify-center gap-1 transition-colors disabled:opacity-40"
             type="button"
             title="اجعلها الافتراضية لكل كتاب جديد"
             disabled={currentId === null || isDefault}
@@ -253,7 +253,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
               </span>
             )}
             <button
-              className="flex-1 h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all disabled:opacity-40"
+              className="flex-1 h-9 btn-act font-label-md text-label-md font-bold flex items-center justify-center gap-space-xs transition-all disabled:opacity-40"
               type="button"
               disabled={saving || !dirty}
               onClick={() => void save()}
@@ -262,7 +262,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
               <span>{saving ? 'جارٍ الحفظ...' : 'حفظ الترويسة'}</span>
             </button>
             <button
-              className="h-9 px-3 rounded-lg text-error hover:bg-error-container transition-colors font-label-md text-label-md disabled:opacity-40"
+              className="h-9 px-3 rounded-btn text-error hover:bg-error-container transition-colors font-label-md text-label-md disabled:opacity-40"
               data-act="delete-letterhead"
               title="حذف الترويسة"
               type="button"
@@ -277,7 +277,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
 
       <div className="flex-1 overflow-y-auto p-space-md space-y-space-md">
         {/* بناء الترويسة بالأقسام */}
-        <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+        <div className="bg-surface-container-lowest rounded-card p-space-md shadow-low space-y-space-sm">
           <div className="flex items-center justify-between pb-space-xs">
             <div className="flex items-center gap-space-xs">
               <span className="material-symbols-outlined text-secondary text-[20px]">
@@ -307,7 +307,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
         </div>
 
         {/* الشعارات — والختم والتوقيع حيّان بيد الجهة بعد الطباعة */}
-        <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+        <div className="bg-surface-container-lowest rounded-card p-space-md shadow-low space-y-space-sm">
           <div className="flex items-center justify-between pb-space-xs">
             <div className="flex items-center gap-space-xs">
               <span className="material-symbols-outlined text-secondary text-[20px]">
@@ -337,7 +337,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
               {seals.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-lg bg-surface-container-low p-space-sm flex flex-col items-center gap-space-xs"
+                  className="rounded-card bg-surface-container-low p-space-sm flex flex-col items-center gap-space-xs"
                 >
                   <img
                     alt={s.name}
@@ -345,7 +345,7 @@ export default function LetterheadTab({ startFresh, query, setQuery, categories,
                     src={storeUrl(s.imagePath) ?? undefined}
                   />
                   <input
-                    className="w-full h-7 px-1 rounded bg-surface-container-lowest text-on-surface font-label-sm text-label-sm text-center focus:outline-none focus:ring-1 focus:ring-secondary"
+                    className="input-field w-full h-7 px-1 text-on-surface font-label-sm text-label-sm text-center"
                     value={s.name}
                     onChange={(e) =>
                       setSeals((prev) =>

@@ -39,7 +39,7 @@ export default function RegistrySection({
         </label>
       </div>
       <button
-        className="h-8 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
+        className="h-8 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm"
         type="button"
         onClick={stampToday}
       >

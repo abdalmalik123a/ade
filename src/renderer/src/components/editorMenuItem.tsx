@@ -15,7 +15,7 @@ export default function MenuItem({
 }) {
   return (
     <button
-      className={`h-10 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 ${wide ? 'col-span-2' : ''}`}
+      className={`h-10 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-2 ${wide ? 'col-span-2' : ''}`}
       data-act={act}
       type="button"
       onClick={onClick}

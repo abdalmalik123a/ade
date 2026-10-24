@@ -59,7 +59,7 @@ export default function ValuesSection({
         'badge',
         'القيم',
         <button
-          className="h-8 px-2.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+          className="h-8 px-2.5 rounded-btn bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
           type="button"
           onClick={() => setPickerOpen(true)}
         >
@@ -81,7 +81,7 @@ export default function ValuesSection({
           {ownerHints.map((n) => (
             <button
               key={n}
-              className="h-7 px-2.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-semibold hover:bg-secondary-fixed-dim"
+              className="h-7 px-2.5 rounded-chip bg-secondary-fixed text-on-secondary-fixed font-semibold hover:bg-secondary-fixed-dim"
               data-owner-hint={n}
               type="button"
               onClick={() => takeOwner(n)}
@@ -97,8 +97,8 @@ export default function ValuesSection({
           {(['ذكر', 'أنثى'] as const).map((g) => (
             <button
               key={g}
-              className={`h-8 px-3 rounded-lg font-label-sm text-label-sm ${
-                values[GENDER_KEY] === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
+              className={`h-8 px-3 rounded-btn font-label-sm text-label-sm ${
+                values[GENDER_KEY] === g ? 'bg-primary-fixed text-primary font-bold' : 'bg-surface-container-low text-on-surface'
               }`}
               type="button"
               onClick={() => {
@@ -154,7 +154,7 @@ export default function ValuesSection({
                   <input className={inputCls} value={values[f.key] ?? ''} placeholder="—" onChange={(e) => setValue(f.key, e.target.value)} />
                   {words && (
                     <button
-                      className="h-9 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-secondary shrink-0"
+                      className="h-9 px-2 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-secondary shrink-0"
                       title={`كتابةً: ${words}`}
                       type="button"
                       onClick={() => writeWords(f.key)}
@@ -169,7 +169,7 @@ export default function ValuesSection({
           })
       )}
       <button
-        className="h-9 rounded-lg border border-dashed border-outline-variant hover:border-secondary text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+        className="h-9 rounded-btn border border-dashed border-outline-variant hover:border-secondary text-on-surface-variant hover:text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
         data-act="add-field"
         type="button"
         onMouseDown={(e) => e.preventDefault()}

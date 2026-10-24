@@ -70,7 +70,7 @@ export function Tool({
 }) {
   return (
     <button
-      className={`h-8 min-w-[2rem] px-1.5 rounded-lg flex items-center justify-center gap-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+      className={`h-8 min-w-[2rem] px-1.5 rounded-btn flex items-center justify-center gap-0.5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
         active ? 'bg-secondary-fixed text-secondary' : 'text-on-surface hover:bg-surface-container-high'
       }`}
       data-act={act}
@@ -141,7 +141,7 @@ export function InsertMenu({
 
   const back = (
     <button
-      className="self-start h-8 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1"
+      className="self-start h-8 px-2 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm flex items-center gap-1"
       type="button"
       onClick={() => setView('main')}
     >
@@ -153,14 +153,14 @@ export function InsertMenu({
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-28 bg-scrim/40" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-sm flex flex-col gap-space-xs"
+        className="w-full max-w-md surface-panel p-space-sm flex flex-col gap-space-xs"
         onClick={(e) => e.stopPropagation()}
       >
         {view === 'main' && (
           <>
             <input
               autoFocus
-              className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+              className="input-field h-10 px-3 text-on-surface font-label-md text-label-md"
               placeholder="ابحث عن كليشة، أو اختر ما تُدرج"
               type="search"
               value={query}
@@ -190,7 +190,7 @@ export function InsertMenu({
                   shown.map((c) => (
                     <button
                       key={c.id}
-                      className="text-right p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high flex flex-col gap-0.5"
+                      className="text-right p-space-sm rounded-btn bg-surface-container-low hover:bg-surface-container-high flex flex-col gap-0.5"
                       data-clip-direction={c.direction ?? ''}
                       type="button"
                       onClick={() => onClip(c)}
@@ -259,7 +259,7 @@ export function InsertMenu({
                 {seals.map((s) => (
                     <button
                       key={s.id}
-                      className="p-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high flex flex-col items-center gap-1"
+                      className="p-1 rounded-btn bg-surface-container-low hover:bg-surface-container-high flex flex-col items-center gap-1"
                       type="button"
                       onClick={() => onImage(s.imagePath!, 'center')}
                     >
@@ -272,7 +272,7 @@ export function InsertMenu({
               </div>
             )}
             <button
-              className="h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+              className="h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
               type="button"
               onClick={() => void fromDevice()}
             >

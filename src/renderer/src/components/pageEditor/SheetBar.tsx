@@ -39,7 +39,7 @@ function SizeMm({ axis, label, value, onSet }: { axis: 'w' | 'h'; label: string;
     <label className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
       {label}
       <input
-        className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
+        className="h-8 w-14 rounded-field bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
         {...{ [`data-custom-${axis}`]: '' }}
         max={1000}
         min={50}
@@ -90,7 +90,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
           return (
             <button
               key={m}
-              className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors disabled:opacity-40 ${
+              className={`h-8 px-2.5 rounded-btn font-label-md text-label-md transition-colors disabled:opacity-40 ${
                 head.mode === m ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
               }`}
               data-head={m}
@@ -114,7 +114,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
         {head.mode === 'formal' && head.letterheads.length > 1 && (
           <select
             aria-label="الترويسة الرسمية"
-            className="h-8 max-w-[11rem] rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+            className="h-8 max-w-[11rem] rounded-field bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
             data-act="letterhead"
             value={head.letterheadId ?? ''}
             onChange={(e) => e.target.value && head.onChoose({ mode: 'formal', id: Number(e.target.value) })}
@@ -141,7 +141,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
         )}
         {head.mode === 'formal' && head.onEdit && (
           <button
-            className="h-8 px-2 rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-high"
+            className="h-8 px-2 rounded-btn font-label-md text-label-md text-secondary hover:bg-surface-container-high"
             data-act="head-edit"
             type="button"
             onClick={head.onEdit}
@@ -155,7 +155,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
     <span className="font-label-sm text-label-sm text-on-surface-variant ms-1">الورقة</span>
       <select
         aria-label="مقاس الورقة"
-        className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+        className="h-8 rounded-field bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
         data-act="page-size"
         value={doc.pageSetup.size}
         onChange={(e) => {
@@ -190,7 +190,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
             onSet={(h) => setPage({ customSize: { w: doc.pageSetup.customSize?.w ?? 210, h } })}
           />
           <button
-            className="h-8 px-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
+            className="h-8 px-2 rounded-btn text-on-surface-variant hover:bg-surface-container-high"
             data-act="custom-size-dialog-btn"
             title="حوار مقاس الورقة المخصّص"
             type="button"
@@ -205,7 +205,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
       {/* أرقام الورقة كما في ورقة الأسئلة: الترقيم و«صفحة ١ من ٢» — ونصّ الكتاب كما كُتب (ما بعد البند ٣). */}
       <select
         aria-label="أرقام الترقيم والصفحات"
-        className="h-8 rounded-lg bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
+        className="h-8 rounded-field bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface"
         data-act="numerals"
         title="أرقام الترقيم وأرقام الصفحات — ونصّ الكتاب يبقى كما كُتب"
         value={doc.pageSetup.numerals}
@@ -219,7 +219,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
       {(Object.keys(MARGIN_PRESETS) as MarginPreset[]).map((k) => (
         <button
           key={k}
-          className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
+          className={`h-8 px-2.5 rounded-btn font-label-md text-label-md transition-colors ${
             preset === k && !customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
           }`}
           data-margins={k}
@@ -236,7 +236,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
         </button>
       ))}
       <button
-        className={`h-8 px-2.5 rounded-lg font-label-md text-label-md transition-colors ${
+        className={`h-8 px-2.5 rounded-btn font-label-md text-label-md transition-colors ${
           preset === null || customMargins ? 'bg-secondary-fixed text-secondary font-bold' : 'text-on-surface hover:bg-surface-container-high'
         }`}
         data-margins="custom"
@@ -259,7 +259,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
           <label key={side} className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
             {label}
             <input
-              className="h-8 w-14 rounded-lg bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
+              className="h-8 w-14 rounded-field bg-surface-container-lowest px-1.5 text-center font-label-md text-label-md text-on-surface tabular"
               data-margin={side}
               max={60}
               min={0}
@@ -285,7 +285,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
             if (e.target === e.currentTarget) setShowCustomDialog(false);
           }}
         >
-          <div className="bg-surface-container-high p-space-md rounded-2xl shadow-xl border border-outline-variant/30 flex flex-col gap-3 min-w-[18rem]">
+          <div className="bg-surface-container-high p-space-md rounded-card shadow-card border border-outline-variant/30 flex flex-col gap-3 min-w-[18rem]">
             <h3 className="font-title-sm text-title-sm text-on-surface">مقاس مخصّص للورقة (ملم)</h3>
             <div className="flex items-center gap-2">
               <label className="flex-1 flex flex-col gap-1 font-label-sm text-on-surface-variant">
@@ -293,7 +293,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
                 <input
                   type="number"
                   data-dialog-custom-w=""
-                  className="h-9 rounded-lg bg-surface-container-lowest px-2 font-body-md text-on-surface tabular border border-outline-variant/40"
+                  className="h-9 rounded-field bg-surface-container-lowest px-2 font-body-md text-on-surface tabular border border-outline-variant/40"
                   min={50}
                   max={1000}
                   value={tempW}
@@ -306,7 +306,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
                 <input
                   type="number"
                   data-dialog-custom-h=""
-                  className="h-9 rounded-lg bg-surface-container-lowest px-2 font-body-md text-on-surface tabular border border-outline-variant/40"
+                  className="h-9 rounded-field bg-surface-container-lowest px-2 font-body-md text-on-surface tabular border border-outline-variant/40"
                   min={50}
                   max={1000}
                   value={tempH}
@@ -319,7 +319,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
               <button
                 type="button"
                 data-act="custom-size-cancel"
-                className="h-9 px-3 rounded-lg hover:bg-surface-container-highest text-on-surface font-label-md"
+                className="h-9 px-3 rounded-btn hover:bg-surface-container-highest text-on-surface font-label-md"
                 onClick={() => setShowCustomDialog(false)}
               >
                 إلغاء
@@ -327,7 +327,7 @@ export default function SheetBar({ head, topRule, toggleLinesRule, doc, setPage,
               <button
                 type="button"
                 data-act="custom-size-apply"
-                className="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md font-bold"
+                className="h-9 px-4 btn-act font-label-md font-bold"
                 onClick={() => {
                   const w = Math.max(50, Math.min(1000, tempW || 210));
                   const h = Math.max(50, Math.min(1000, tempH || 297));

@@ -48,7 +48,7 @@ export function FindReplaceBar({
           {find.trim() ? `${count} في الكتاب` : ''}
         </span>
         <button
-          className="h-9 px-3 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm disabled:opacity-40"
+          className="h-9 px-3 btn-act font-label-sm text-label-sm disabled:opacity-40"
           data-act="replace-all"
           disabled={count === 0}
           type="button"
@@ -66,7 +66,7 @@ export function FindReplaceBar({
         <div className="flex flex-wrap items-center gap-1 font-label-sm text-label-sm">
           <span className="text-on-surface-variant">وفي المكتبة:</span>
           {inLibrary.slice(0, 12).map((t) => (
-            <button key={t.id} className="h-7 px-2 rounded-full bg-surface-container-lowest hover:bg-surface-container-high" type="button" onClick={() => onOpenTemplate(t.id)}>
+            <button key={t.id} className="h-7 px-2 rounded-chip bg-surface-container-lowest hover:bg-surface-container-high" type="button" onClick={() => onOpenTemplate(t.id)}>
               {t.title}
             </button>
           ))}
@@ -149,7 +149,7 @@ export function FieldPicker({ existing, onClose, onPick }: { existing: string[];
             }}
           />
           <button
-            className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-9 px-space-md btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             disabled={!custom.trim()}
             type="button"
             onClick={() => onPick({ label: custom.trim(), token: custom.trim() })}
@@ -168,7 +168,7 @@ export function FieldPicker({ existing, onClose, onPick }: { existing: string[];
                 {g.fields.map((f) => (
                   <button
                     key={f.token}
-                    className={`h-8 px-space-sm rounded-lg font-label-sm text-label-sm ${used.has(f.label) ? 'bg-surface-container text-on-surface-variant' : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'}`}
+                    className={`h-8 px-space-sm rounded-btn font-label-sm text-label-sm ${used.has(f.label) ? 'bg-surface-container text-on-surface-variant' : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'}`}
                     type="button"
                     onClick={() => onPick(f)}
                   >

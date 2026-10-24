@@ -41,7 +41,7 @@ type Props = {
 
 export default function TemplateFields({ title, setTitle, subtitle, setSubtitle, code, setCode, category, setCategory, categories, catSuggest, subjectLine, setSubjectLine, letterheadId, setLetterheadId, heads, doc, setDoc, headSplit, headLines, setHeadCount, canGrow, habitCount, headCount, edgeHabit, headName, setHeadName, saveHead }: Props) {
   return (
-    <section className="bg-surface-container-low rounded-xl p-space-md space-y-space-sm">
+    <section className="bg-surface-container-low rounded-card p-space-md space-y-space-sm">
       <h3 className="font-headline-sm text-headline-sm text-on-surface">تعريف النموذج</h3>
       <div className="grid grid-cols-2 gap-space-sm">
         <div className="flex flex-col gap-1 col-span-2">
@@ -146,7 +146,7 @@ export default function TemplateFields({ title, setTitle, subtitle, setSubtitle,
         </div>
         {headSplit && (
           <div
-            className="col-span-2 flex flex-col gap-space-xs p-space-sm rounded-lg bg-surface-container-lowest"
+            className="col-span-2 flex flex-col gap-space-xs p-space-sm rounded-card bg-surface-container-lowest"
             data-head-offer=""
           >
             <span className="font-label-md text-label-md text-on-surface font-semibold">
@@ -198,7 +198,7 @@ export default function TemplateFields({ title, setTitle, subtitle, setSubtitle,
               onChange={(e) => setHeadName(e.target.value)}
             />
             <button
-              className="h-9 rounded-lg bg-secondary-fixed text-on-secondary-fixed hover:brightness-95 font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs"
+              className="h-9 rounded-btn bg-secondary-fixed text-on-secondary-fixed hover:brightness-95 font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs"
               data-act="save-head"
               type="button"
               onClick={() => void saveHead()}

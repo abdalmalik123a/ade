@@ -16,7 +16,7 @@ type Props = {
 export default function ImportedLetterhead({ pendingImport, setPendingImport, openImported, keepImportedLetterhead }: Props) {
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center p-space-lg">
-      <div className="w-full max-w-3xl bg-surface-container-lowest rounded-xl shadow-lg overflow-hidden">
+      <div className="w-full max-w-3xl bg-surface-container-lowest rounded-card shadow-soft overflow-hidden">
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">
             وُجدت ترويسة في الملف
@@ -41,13 +41,13 @@ export default function ImportedLetterhead({ pendingImport, setPendingImport, op
             وغيره، أو اتركها فتبقى ضمن المتن.
           </p>
 
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-space-md">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-card p-space-md">
             <LetterheadView layout={normalizeLayout(pendingImport.letterhead)} />
           </div>
 
           <div className="flex items-center justify-end gap-space-sm">
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+              className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
               type="button"
               onClick={() => {
                 const imported = pendingImport;
@@ -58,7 +58,7 @@ export default function ImportedLetterhead({ pendingImport, setPendingImport, op
               لا تحفظها
             </button>
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold"
               type="button"
               onClick={() => void keepImportedLetterhead(pendingImport)}
             >

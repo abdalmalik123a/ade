@@ -36,7 +36,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
   return (
     <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
       <div className="flex items-center gap-space-sm">
-        <span className="p-1 rounded-lg bg-primary-container text-on-primary">
+        <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
           <span className="material-symbols-outlined text-[18px]">data_object</span>
         </span>
         <span className="font-headline-sm text-headline-sm text-on-surface">
@@ -73,7 +73,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
       </div>
       <div className="flex items-center gap-space-sm">
         <button
-          className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+          className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
           type="button"
           onClick={() => void importFile()}
         >
@@ -82,7 +82,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
         </button>
         <span className="relative">
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             data-act="spelling"
             type="button"
             onClick={() => setSpellOpen((o) => !o)}
@@ -91,7 +91,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
             <span>تدقيق إملائي{spelling.length ? ` (${spelling.length})` : ' ✓'}</span>
           </button>
           {spellOpen && (
-            <div className="absolute left-0 top-11 z-10 w-96 shadow-xl rounded-xl bg-surface-container-lowest">
+            <div className="absolute left-0 top-11 z-10 w-96 shadow-card rounded-card bg-surface-container-lowest">
               {spelling.length ? (
                 <SpellingPanel
                   issues={spelling}
@@ -108,7 +108,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
           )}
         </span>
         <button
-          className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+          className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
           type="button"
           onClick={() => void saveAsClip()}
         >
@@ -116,7 +116,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
           <span>حفظ ككليشة</span>
         </button>
         <button
-          className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
+          className="w-9 h-9 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
           title="إغلاق"
           type="button"
           onClick={() => void closeDesigner()}

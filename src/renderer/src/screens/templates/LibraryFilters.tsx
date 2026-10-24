@@ -19,7 +19,7 @@ type Props = {
 
 export default function LibraryFilters({ active, setActive, stats, categories, query, setQuery, sort, setSort }: Props) {
   return (
-    <section className="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex flex-col gap-space-md" data-library-sections="">
+    <section className="bg-surface-container-lowest p-space-md rounded-card shadow-low flex flex-col gap-space-md" data-library-sections="">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
         <div className="flex items-center gap-space-xs overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
           <Chip active={active === null} onClick={() => setActive(null)}>
@@ -38,7 +38,7 @@ export default function LibraryFilters({ active, setActive, stats, categories, q
               search
             </span>
             <input
-              className="h-9 w-56 pr-9 pl-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-on-surface-variant font-label-sm text-label-sm focus:outline-none focus:ring-1 focus:ring-secondary"
+              className="input-field h-9 w-56 pr-9 pl-3 text-on-surface placeholder:text-on-surface-variant font-label-sm text-label-sm"
               placeholder="ابحث في النماذج..."
               type="text"
               value={query}
@@ -47,7 +47,7 @@ export default function LibraryFilters({ active, setActive, stats, categories, q
           </div>
           <div className="h-6 w-px bg-surface-container-highest" />
           <select
-            className="h-9 px-space-sm bg-surface-container-low text-on-surface rounded-lg font-label-sm text-label-sm focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
+            className="input-field h-9 px-space-sm text-on-surface font-label-sm text-label-sm cursor-pointer"
             value={sort}
             onChange={(e) => setSort(e.target.value as typeof sort)}
           >

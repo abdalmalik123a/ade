@@ -12,7 +12,7 @@ import { errorText } from '../lib/errors';
 import { loadFonts, useLibraryFonts } from '../lib/fonts';
 
 const SAMPLE = 'بسم الله الرحمن الرحيم — شهادة شكر وتقدير ١٢٣٤٥';
-const BUTTON = 'h-10 px-space-md rounded-lg font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50';
+const BUTTON = 'h-10 px-space-md rounded-btn font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50';
 
 /** ما يُقال بعد استيراد: كم وجهًا أُضيف، وما رُفض بسببه. */
 function importMessage(out: FontImport): { text: string; tone: 'ok' | 'warn' } {
@@ -77,7 +77,7 @@ export default function FontsScreen() {
               <span className="material-symbols-outlined text-[18px]">computer</span>
               من خطوط Windows
             </button>
-            <button className={`${BUTTON} bg-primary text-on-primary shadow-md`} data-act="fonts-import" disabled={busy} type="button" onClick={() => void run(() => window.diwan.fonts.importFiles())}>
+            <button className={`${BUTTON} btn-act`} data-act="fonts-import" disabled={busy} type="button" onClick={() => void run(() => window.diwan.fonts.importFiles())}>
               <span className="material-symbols-outlined text-[18px]">upload_file</span>
               استورد ملفّ خطّ
             </button>
@@ -112,7 +112,7 @@ export default function FontsScreen() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 left-6 z-50 max-w-[560px] px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'}`}>
+        <div className={`fixed bottom-6 left-6 z-50 max-w-[560px] px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${toast.tone === 'ok' ? 'bg-inverse-surface text-inverse-on-surface' : 'bg-error text-on-error'}`}>
           {toast.text}
         </div>
       )}
@@ -122,7 +122,7 @@ export default function FontsScreen() {
 
 function FontCard({ font, onRemove }: { font: LibraryFont; onRemove?: () => void }) {
   return (
-    <article className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm shadow-[0_1px_3px_rgba(15,23,42,0.08)]" data-font={font.family}>
+    <article className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm shadow-low" data-font={font.family}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="font-label-md text-label-md text-on-surface font-semibold truncate">{font.label}</div>
@@ -132,7 +132,7 @@ function FontCard({ font, onRemove }: { font: LibraryFont; onRemove?: () => void
           </div>
         </div>
         {onRemove && (
-          <button className="w-8 h-8 shrink-0 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center" data-act="font-remove" title="احذفه من خطوط ديوان" type="button" onClick={onRemove}>
+          <button className="w-8 h-8 shrink-0 rounded-btn text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center" data-act="font-remove" title="احذفه من خطوط ديوان" type="button" onClick={onRemove}>
             <span className="material-symbols-outlined text-[18px]">delete</span>
           </button>
         )}
@@ -160,10 +160,10 @@ function WindowsFonts({ busy, onAdd }: { busy: boolean; onAdd: (family: string) 
   const added = (family: string) => fonts.some((f) => f.source === 'imported' && f.family.toLowerCase() === family.toLowerCase());
 
   return (
-    <section className="rounded-xl bg-surface-container-low p-space-md space-y-space-sm" data-panel="windows-fonts">
+    <section className="rounded-card bg-surface-container-low p-space-md space-y-space-sm" data-panel="windows-fonts">
       <div className="flex flex-wrap items-center gap-space-sm">
         <input
-          className="h-9 flex-1 min-w-[220px] px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
+          className="h-9 flex-1 min-w-[220px] px-space-sm rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
           data-windows-fonts-search=""
           placeholder="ابحث باسم الخطّ — Simplified Arabic…"
           value={query}
@@ -179,7 +179,7 @@ function WindowsFonts({ busy, onAdd }: { busy: boolean; onAdd: (family: string) 
       ) : shown.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">لا خطّ بهذا الاسم.</p>
       ) : (
-        <div className="max-h-[360px] overflow-auto divide-y divide-outline-variant/40 rounded-lg bg-surface-container-lowest">
+        <div className="max-h-[360px] overflow-auto divide-y divide-outline-variant/40 rounded-card bg-surface-container-lowest">
           {shown.map((f) => (
             <div key={f.family} className="flex items-center gap-space-md px-space-md py-space-sm" data-windows-font={f.family}>
               <div className="w-56 shrink-0 font-label-md text-label-md text-on-surface truncate" dir="ltr">
@@ -193,7 +193,7 @@ function WindowsFonts({ busy, onAdd }: { busy: boolean; onAdd: (family: string) 
               {added(f.family) ? (
                 <span className="shrink-0 font-label-md text-label-md text-secondary">في المكتبة ✓</span>
               ) : (
-                <button className={`${BUTTON} h-8 shrink-0 bg-primary-container text-on-primary`} data-act="font-add" disabled={busy} type="button" onClick={() => onAdd(f.family)}>
+                <button className={`${BUTTON} h-8 shrink-0 btn-act`} data-act="font-add" disabled={busy} type="button" onClick={() => onAdd(f.family)}>
                   أضِف
                 </button>
               )}

@@ -64,10 +64,10 @@ export function FieldRow({
   onMove: (key: string, dir: -1 | 1) => void;
 }) {
   return (
-    <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+    <div className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-1">
       <div className="flex items-center gap-1">
         <input
-          className="flex-1 min-w-0 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+          className="input-field flex-1 min-w-0 h-8 px-2 text-on-surface font-label-md text-label-md"
           type="text"
           value={field.label}
           onChange={(e) => onChange(patchField(doc, field.key, { label: e.target.value }))}

@@ -95,7 +95,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       <FontSelect
         act="font"
         blank="خطّ الورقة"
-        className="h-8 w-40 rounded-lg bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
+        className="h-8 w-40 rounded-card bg-surface-container-low px-2 font-label-md text-label-md text-on-surface"
         title="الخطّ من «خطوط ديوان» — لما حُدِّد، أو لما سيُكتب"
         used={state ? fontsIn(state.doc, M.font) : []}
         value={curFont}
@@ -103,7 +103,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       />
       <select
         aria-label="حجم الخطّ"
-        className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
+        className="h-8 w-16 rounded-field bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
         data-act="size"
         title="حجم الخطّ بالنقطة كما في Word — لما حُدِّد، أو لما سيُكتب"
         value={String(curPt)}
@@ -140,7 +140,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       ))}
       <select
         aria-label="تباعد الأسطر"
-        className="h-8 w-16 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
+        className="h-8 w-16 rounded-field bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"
         data-act="line-height"
         title="تباعد الأسطر"
         value={curLh == null ? '' : String(curLh)}
@@ -153,7 +153,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
           </option>
         ))}
       </select>
-      <div className="flex items-center gap-1 bg-surface-container-low rounded-lg px-1.5 h-8" title="تباعد الفقرة: قبلها وبعدها بالبكسل (S11)">
+      <div className="flex items-center gap-1 bg-surface-container-low rounded-card px-1.5 h-8" title="تباعد الفقرة: قبلها وبعدها بالبكسل (S11)">
         <span className="material-symbols-outlined text-[18px] text-on-surface-variant pointer-events-none">format_line_spacing</span>
         <SpacingSelect side="spaceBefore" cur={curSpaceBefore} onPick={(px) => run_(setParagraphAttr('spaceBefore', px))} />
         <SpacingSelect side="spaceAfter" cur={curSpaceAfter} onPick={(px) => run_(setParagraphAttr('spaceAfter', px))} />
@@ -169,7 +169,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       <Tool act="numbers" icon="format_list_numbered" title="ترقيم" active={curList === 'number'} onRun={() => run_(toggleList('number'))} />
       <select
         aria-label="شكل الترقيم"
-        className="h-8 w-24 rounded-lg bg-surface-container-low px-1 font-label-md text-label-md text-on-surface"
+        className="h-8 w-24 rounded-field bg-surface-container-low px-1 font-label-md text-label-md text-on-surface"
         data-act="list-style"
         title="شكل الترقيم — كما يُطبع، ولمستوى القائمة الذي فيه المؤشّر"
         value={curList ?? ''}
@@ -184,7 +184,7 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       </select>
       <ToolSep />
       <button
-        className="h-8 px-2.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold flex items-center gap-1 hover:bg-primary transition-all shadow-xs"
+        className="h-8 px-2.5 btn-act font-label-sm text-label-sm font-bold flex items-center gap-1 transition-all shadow-xs"
         type="button"
         data-act="insert"
         title="إدراج جدول أو صورة أو كليشة أو فاصل صفحة"

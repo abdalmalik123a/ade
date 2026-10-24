@@ -68,7 +68,7 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
     return (
       <div
         ref={sheetRef}
-        className={`a4-sheet bg-white text-black shadow-lg ${className}`}
+        className={`a4-sheet bg-white text-black shadow-soft ${className}`}
         data-letter-sheet=""
         data-page={sheetPageAttr({ w, h })}
         data-form={doc.meta.form ? '' : undefined}
@@ -101,7 +101,7 @@ export default function LetterSheet({ doc, layout, values, registry, resolve, cl
   const footMm = footerBandMm(layout?.footer, pageMm(doc.pageSetup).w - m.left - m.right);
   return (
     // `data-page`: مقاس الورقة يرافق علاماتها فتُطبع وتُؤرشف وتُعاد طباعتها بمقاسها (`shared/sheetPage.ts`).
-    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-lg ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} data-foot-mm={footMm || undefined} style={sheetStyle(doc)}>
+    <div ref={sheetRef} className={`a4-sheet bg-white text-black shadow-soft ${className}`} data-letter-sheet="" data-page={sheetPageAttr(pageMm(doc.pageSetup))} data-foot-mm={footMm || undefined} style={sheetStyle(doc)}>
       <style>{pageCss(doc, layout)}</style>
       <div dangerouslySetInnerHTML={{ __html: watermarkHtml(doc) }} />
       {doc.pageSetup.repeatLetterhead && head ? (
