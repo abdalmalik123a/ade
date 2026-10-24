@@ -97,7 +97,7 @@ export default function CounterFill({
           تُكتب مرّة وتملأ {loaded.length} أوراق
         </span>
         <button
-          className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+          className="h-9 px-3 btn-soft font-label-md text-label-md flex items-center gap-1"
           data-act="pick-customer"
           type="button"
           onClick={() => setPicker(true)}
@@ -107,7 +107,7 @@ export default function CounterFill({
         </button>
         {schoolOn && (
           <button
-            className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+            className="h-9 px-3 btn-soft font-label-md text-label-md flex items-center gap-1"
             data-act="pick-school"
             title="اسم المدرسة وجنسها ومحافظتها ومديرها من ملفّها في «الجهات»"
             type="button"
@@ -118,7 +118,7 @@ export default function CounterFill({
           </button>
         )}
         <button
-          className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+          className="h-9 px-3 btn-soft font-label-md text-label-md flex items-center gap-1"
           data-act="whatsapp-paste"
           type="button"
           onClick={() => setPasteOpen(true)}
@@ -128,7 +128,7 @@ export default function CounterFill({
         </button>
         {citizenId !== null && (
           <button
-            className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+            className="h-9 px-3 btn-soft font-label-md text-label-md flex items-center gap-1"
             data-act="counter-id-sheet"
             title="مستمسكات صاحب العلاقة من ملفّه بمقاسها الحقيقي على ورقة A4 واحدة"
             type="button"
