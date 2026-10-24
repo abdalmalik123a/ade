@@ -1,6 +1,6 @@
 /**
  * الشبّاك — شريط القرار (تقسيم الشبّاك بعد ١٫٧٫٠): منقولٌ من `ServiceScreen` كما هو — «رجوع» و«علّق المعاملة» و«ألغِ
- * المعاملة»، و«على استمارةٍ مطبوعة»، وما يمنع الإصدار، و«املأ» و«راجع الأوراق»، والنسخ و«احفظ بلا طباعة» و«اطبع».
+ * المعاملة»، و«على استمارةٍ مطبوعة»، وما يمنع الإصدار، و«راجع الأوراق»، والنسخ و«احفظ بلا طباعة» و«اطبع» — و«املأ» في «سلّة النماذج» (D157).
  * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليه بأسمائها.
  */
 import type { Dispatch, SetStateAction } from 'react';
@@ -15,8 +15,6 @@ type Props = {
   step: Step;
   setStep: Dispatch<SetStateAction<Step>>;
   busy: boolean;
-  picked: number[];
-  goFill: (ids?: number[]) => Promise<void>;
   setAt: Dispatch<SetStateAction<number>>;
   park: () => void;
   discardTransaction: () => void;
@@ -41,8 +39,6 @@ export default function DecisionBar({
   step,
   setStep,
   busy,
-  picked,
-  goFill,
   setAt,
   park,
   discardTransaction,
@@ -148,16 +144,6 @@ export default function DecisionBar({
         </>
       )}
 
-      {step === 'pick' && (
-        <button
-          className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
-          type="button"
-          disabled={picked.length === 0 || busy}
-          onClick={() => void goFill()}
-        >
-          املأ {picked.length > 0 ? `(${picked.length})` : ''}
-        </button>
-      )}
       {step === 'fill' && (
         <button
           className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"

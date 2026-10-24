@@ -59,6 +59,10 @@ module.exports = {
     extend: {
           // الألوان أدوارٌ متغيّراتها في الصفحة (`src/shared/theme.ts`) — فالمظهر الليلي والنهاري بلا إعادة بناء.
           "colors": Object.fromEntries(ROLES.map((r) => [r, `rgb(var(--c-${r}) / <alpha-value>)`])),
+          // وصبغتا «ب٢» (ر175) لا دوران — فليستا في `colors` (الأدوار وحدها، يطابقها tests/theme.test.ts):
+          // السماويّ حدٌّ للمختار (`border-cyan`)، والبرتقاليّ لأيقونةٍ أو نجمةٍ بجانب نصٍّ يحمل المعنى (`text-orange`).
+          "borderColor": { "cyan": { "DEFAULT": "#21C8E7" } },
+          "textColor": { "orange": { "DEFAULT": "#F89800" } },
           // زوايا «ورقة شجر» (ر175، «ب٢»): أعلى اليمين وأسفل اليسار أكبر، وبعضها بيضويّ.
           "borderRadius": {
                 "DEFAULT": "0.125rem",

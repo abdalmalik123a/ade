@@ -65,9 +65,6 @@ describe('ضبط ورقة فارغة ومحلية إخفاء الأسماء (D12
         newCitizen={null}
         setNewCitizen={vi.fn()}
         saveNewCitizen={vi.fn()}
-        parked={[]}
-        resume={vi.fn()}
-        dropParked={vi.fn()}
       />
     );
 

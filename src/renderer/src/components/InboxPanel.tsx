@@ -108,7 +108,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
   const shown = (files ?? []).slice(0, 8);
 
   return (
-    <section className="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-space-xs" data-inbox="">
+    <section className="p-space-sm rounded-card border-[1.5px] border-dashed border-outline bg-surface-container-low/80 flex flex-col gap-space-xs" data-inbox="">
       <div className="flex items-center gap-space-xs px-1">
         <span className="material-symbols-outlined text-[18px] text-secondary">inbox</span>
         <span className="font-label-md text-label-md text-on-surface font-semibold">آخر ما وصل</span>

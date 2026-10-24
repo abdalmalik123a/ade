@@ -1,6 +1,7 @@
 /**
  * الشبّاك — ١ «اختر» (تقسيم الشبّاك بعد ١٫٧٫٠): منقولةٌ من `ServiceScreen` كما هي — ما خرج الآن، وبطاقات الخدمات وصفّ
- * الموسم، و«الملفّات»، وعرض حفظ الزبون الجديد، والمعاملات المعلّقة، والأكثر استخدامًا، والبحث والتصنيفات وبطاقات النماذج.
+ * الموسم، و«الملفّات»، وعرض حفظ الزبون الجديد، والأكثر استخدامًا، والبحث والتصنيفات وبطاقات النماذج — بمظهر «ب٢» (D157، ر175):
+ * الخدمات سطحٌ واحد، والمختار بحدٍّ سماويّ يرتفع. والمعاملات المعلّقة و«املأ» في «سلّة النماذج» (`CounterBasket`).
  * عرضٌ وحده: الحال والدوالّ كلّها في الشاشة، وتمرّ إليها بأسمائها.
  */
 import type { Dispatch, MutableRefObject, SetStateAction, KeyboardEvent } from 'react';
@@ -13,7 +14,7 @@ import InboxPanel, { type InboxOpen } from '../../components/InboxPanel';
 import CounterEmpty from '../../components/CounterEmpty';
 import { AfterPrint } from '../../components/OutputBar';
 import SearchField from '../../components/SearchField';
-import type { AfterIssue, NewCitizen, Parked, Step } from './types';
+import type { AfterIssue, NewCitizen, Step } from './types';
 
 type Props = {
   after: AfterIssue | null;
@@ -42,9 +43,6 @@ type Props = {
   newCitizen: NewCitizen | null;
   setNewCitizen: Dispatch<SetStateAction<NewCitizen | null>>;
   saveNewCitizen: () => Promise<void>;
-  parked: Parked[];
-  resume: (key: number) => Promise<void>;
-  dropParked: (p: Parked) => void;
 };
 
 export default function CounterPick({
@@ -73,10 +71,7 @@ export default function CounterPick({
   step,
   newCitizen,
   setNewCitizen,
-  saveNewCitizen,
-  parked,
-  resume,
-  dropParked
+  saveNewCitizen
 }: Props) {
   const handleGridKeyDown = (e: KeyboardEvent<HTMLElement>, selector: string) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
@@ -111,12 +106,10 @@ export default function CounterPick({
     .filter((c): c is CounterCard => Boolean(c) && cardMatches(c!, query));
 
   return (
-    <div className="flex flex-col gap-space-md">
-      <div className="text-center max-w-2xl mx-auto mt-space-xs mb-space-xs">
-        <h1 className="font-headline-lg text-headline-lg text-on-surface">
-          ماذا يطلب الزبون؟
-        </h1>
-        <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 px-1 pt-0.5">
+        <h1 className="m-0 text-[21px] leading-[30px] font-bold text-on-surface">ماذا يطلب الزبون؟</h1>
+        <p className="m-0 font-body-sm text-body-sm text-on-surface-variant">
           انقر ما يريده — واحدةً أو عدّة أوراقٍ معًا — ثم املأها مرّةً واحدة.
         </p>
       </div>
@@ -132,20 +125,20 @@ export default function CounterPick({
       {/* بطاقات الخدمات (ن١): الغرض أوّلًا — والبحث تحتها يصفّيها مع النماذج. */}
       {cards.length > 0 ? (
         <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-space-sm"
+          className="grid grid-cols-2 md:grid-cols-4 gap-0.5 p-1.5 bg-grad-surface rounded-frame shadow-card border border-white/90"
           data-cards=""
           onKeyDown={(e) => handleGridKeyDown(e, 'button[data-card]')}
         >
             {cards.map((c) => (
               <button
                 key={c.id}
-                className="p-space-sm rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-right flex items-center gap-space-sm shadow-[0_1px_8px_rgba(0,0,0,0.04)] transition-colors"
+                className="px-2.5 py-2 rounded-card hover:bg-surface-container-high text-right flex items-center gap-2.5 min-w-0 transition-colors"
                 data-card={c.id}
                 data-path={'route' in c.target ? ROUTES[c.target.route as RouteKey] : undefined}
                 type="button"
                 onClick={() => onOpenTool?.(c.target, citizenId)}
               >
-                <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                <span className="w-[38px] h-[38px] shrink-0 rounded-ico bg-secondary-fixed text-primary flex items-center justify-center">
                   <span className="material-symbols-outlined text-[22px]">{c.icon}</span>
                 </span>
                 <span className="flex flex-col min-w-0">
@@ -163,14 +156,14 @@ export default function CounterPick({
         const chips = season ? seasonItems(season, offered, items.map((t) => `${t.title} ${t.subtitle ?? ''} ${t.category ?? ''}`)) : [];
         return season && chips.length > 0 ? (
           <div className="flex flex-wrap items-center gap-space-xs px-1" data-season="">
-            <span className="flex items-center gap-1 font-label-md text-label-md text-on-surface font-semibold">
-              <span className="material-symbols-outlined text-[18px] text-secondary">event</span>
+            <span className="flex items-center gap-1 font-label-md text-label-md text-tertiary font-semibold">
+              <span className="material-symbols-outlined text-[18px] text-orange">event</span>
               {season.title}
             </span>
             {chips.map((it) => (
               <button
                 key={it.label}
-                className="h-8 px-3 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+                className="h-7 px-3 rounded-chip border border-tertiary-fixed-dim/60 bg-tertiary-container hover:bg-tertiary-fixed-dim/40 text-tertiary font-label-md text-label-md font-semibold"
                 data-season-item={'card' in it ? 'card' : 'search'}
                 type="button"
                 onClick={() => {
@@ -213,43 +206,15 @@ export default function CounterPick({
           </button>
         </div>
       )}
-      {parked.length > 0 && (
-        <div className="p-space-sm rounded-xl bg-tertiary-fixed/40 flex flex-wrap items-center gap-space-xs" data-parked="">
-          <span className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1">
-            <span className="material-symbols-outlined text-[18px] text-secondary">pending_actions</span>
-            معاملات معلّقة
-          </span>
-          {parked.map((p) => (
-            <span key={p.key} className="flex items-center rounded-lg bg-surface-container-lowest overflow-hidden">
-              <button
-                className="h-9 px-3 font-label-md text-label-md text-on-surface hover:bg-surface-container-high"
-                data-act="resume"
-                type="button"
-                onClick={() => void resume(p.key)}
-              >
-                {p.label} — استأنف
-              </button>
-              <button
-                className="h-9 px-2 text-on-surface-variant hover:text-error"
-                title="ألغِ المعاملة المعلّقة"
-                type="button"
-                onClick={() => dropParked(p)}
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
       {/* الأكثر استخداماً — الوصول السريع */}
       {topFavorites.length > 0 && !query.trim() && !activeCategory && (
-        <div className="p-space-sm rounded-xl bg-surface-container-low flex flex-col gap-space-xs">
-          <div className="flex items-center gap-space-xs font-label-sm text-label-sm text-secondary font-bold px-1">
-            <span className="material-symbols-outlined text-[18px]">star</span>
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <div className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface font-semibold">
+            <span className="material-symbols-outlined text-[18px] text-orange" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
             الأكثر استخداماً في المكتب (وصول سريع)
           </div>
           <div
-            className="grid grid-cols-2 md:grid-cols-4 gap-space-xs"
+            className="flex flex-wrap gap-2"
             data-top-favorites=""
             onKeyDown={(e) => handleGridKeyDown(e, 'button[data-favorite-card]')}
           >
@@ -259,15 +224,15 @@ export default function CounterPick({
                 <button
                   key={f.id}
                   data-favorite-card={f.id}
-                  className={`p-space-sm rounded-lg text-right flex items-center gap-2 transition-all ${
+                  className={`h-[34px] max-w-[260px] ps-2.5 pe-3 rounded-chip text-right flex items-center gap-1.5 transition-all ${
                     on
-                      ? 'bg-primary-container text-on-primary font-bold shadow-sm'
-                      : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
+                      ? 'border-[1.5px] border-cyan bg-grad-sel text-primary font-bold shadow-sel'
+                      : 'border border-outline-variant bg-surface-container-lowest text-on-surface shadow-low hover:bg-surface-container-high'
                   }`}
                   type="button"
                   onClick={() => toggle(f.id)}
                 >
-                  <span className="material-symbols-outlined text-[18px] text-secondary shrink-0">
+                  <span className="material-symbols-outlined text-[18px] text-primary shrink-0" style={on ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                     {on ? 'check_circle' : 'bolt'}
                   </span>
                   <span className="font-label-md text-label-md truncate">{f.title}</span>
@@ -281,7 +246,7 @@ export default function CounterPick({
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
         <SearchField
           inputRef={searchRef}
-          className="w-full h-10 ps-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+          className="w-full h-10 ps-3 rounded-field bg-surface-container-low border border-outline-variant text-on-surface font-label-md text-label-md focus:outline-none focus:bg-surface-container-lowest focus:border-[#8CDCEB] focus:shadow-[0_0_0_4px_rgba(33,200,231,0.10)]"
           data-counter-search=""
           placeholder="ابحث بما يقوله الزبون: تأييد، صور، PDF — وEnter تملأ"
           value={query}
@@ -305,10 +270,10 @@ export default function CounterPick({
         {categories.length > 0 && (
           <div className="flex items-center gap-space-xs overflow-x-auto pb-1 scrollbar-none">
             <button
-              className={`px-3 py-1.5 rounded-lg font-label-sm text-label-sm shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-chip font-label-sm text-label-sm shrink-0 transition-colors ${
                 activeCategory === null
-                  ? 'bg-primary-container text-on-primary font-semibold'
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                  ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_#C6E3F0]'
+                  : 'text-on-surface-variant hover:bg-surface-container-high'
               }`}
               type="button"
               onClick={() => setActiveCategory(null)}
@@ -318,10 +283,10 @@ export default function CounterPick({
             {categories.map((c) => (
               <button
                 key={c.name}
-                className={`px-3 py-1.5 rounded-lg font-label-sm text-label-sm shrink-0 transition-colors ${
+                className={`px-3 py-1.5 rounded-chip font-label-sm text-label-sm shrink-0 transition-colors ${
                   activeCategory === c.name
-                    ? 'bg-primary-container text-on-primary font-semibold'
-                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                    ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_#C6E3F0]'
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
                 }`}
                 type="button"
                 onClick={() => setActiveCategory(c.name)}
@@ -346,32 +311,32 @@ export default function CounterPick({
             return (
               <button
                 key={t.id}
-                className={`relative p-space-md rounded-xl text-right flex flex-col gap-space-sm bg-surface-container-lowest border transition-all ${
+                className={`relative rounded-card text-right flex flex-col gap-space-sm transition-all ${
                   on
-                    ? 'border-secondary ring-2 ring-secondary shadow-md'
-                    : 'border-outline-variant hover:border-outline hover:shadow-md'
+                    ? 'p-[15px] border-2 border-cyan bg-grad-sel shadow-sel -translate-y-[3px]'
+                    : 'p-space-md border border-outline-variant bg-grad-surface shadow-soft hover:border-outline'
                 }`}
                 data-template-card={t.id}
                 type="button"
                 onClick={() => toggle(t.id)}
               >
                 <span
-                  className={`absolute top-3 left-3 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                    on ? 'bg-secondary text-on-secondary' : 'border border-outline-variant'
+                  className={`absolute top-2.5 left-2.5 w-[22px] h-[22px] rounded-[7px] flex items-center justify-center transition-colors ${
+                    on ? 'bg-grad-act text-on-primary shadow-act' : 'border-[1.5px] border-outline bg-surface-container-lowest'
                   }`}
                 >
                   {on && (
-                    <span className="material-symbols-outlined text-[15px]">check</span>
+                    <span className="material-symbols-outlined text-[16px]">check</span>
                   )}
                 </span>
                 {/* وكان رقمه على لوحة المفاتيح (١–٩) — زالت الأرقام مع الاختصارات غير المعروفة (ن١٥). */}
-                <span className="w-11 h-11 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+                <span className="w-11 h-11 rounded-ico bg-secondary-fixed text-primary flex items-center justify-center">
                   <span className="material-symbols-outlined text-[22px]">description</span>
                 </span>
                 <span className="font-headline-sm text-headline-sm text-on-surface leading-snug">
                   {t.title}
                 </span>
-                <span className="mt-auto font-label-sm text-label-sm text-secondary font-semibold">
+                <span className="mt-auto font-label-sm text-label-sm text-primary font-semibold">
                   {t.category ?? 'بلا تصنيف'}
                 </span>
                 <span className="font-label-sm text-label-sm text-on-surface-variant">

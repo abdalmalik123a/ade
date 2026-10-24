@@ -2,7 +2,7 @@
  * سيناريو: مظهر ديوان الواحد (ر067) — «ب٢» منذ ر175 (D156).
  *
  * مساحة العمل فاتحة بنصٍّ بلون الحبر؛ والسكّة لوحٌ أبيض بنصٍّ رماديّ، ورأسها رمز «ديوان» واسمه و«MADA TECH»،
- * والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض؛ و«املأ» بالتدرّج؛ وفي الشبّاك علامةٌ خافتة؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
+ * والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض؛ و«املأ» بالتدرّج؛ ولا علامة مائية في الشبّاك؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
  * وتُلتقط الشاشات إن طُلبت (SHOT_DIR).
  */
 import { join } from 'node:path';
@@ -27,7 +27,7 @@ export default async function scenario(page, { shotsDir }) {
     ((await style('[data-dest][aria-current="page"]', 'backgroundImage')) ?? '').startsWith('linear-gradient') && (await style('[data-dest][aria-current="page"]', 'color')) === 'rgb(255, 255, 255)');
   const fill = await page.eval(`const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim().startsWith('املأ')); return b ? getComputedStyle(b).backgroundImage : null;`);
   ok(`و«املأ» بالتدرّج${fill ? '' : ' (لا يظهر هنا — يُتخطّى)'}`, fill === null || fill.startsWith('linear-gradient'));
-  ok('وفي الشبّاك علامةٌ خافتة', Number(await style('[data-watermark]', 'opacity')) <= 0.1);
+  ok('ولا علامة مائية في الشبّاك (أزالها «ب٢»، D157)', !(await page.eval(`return Boolean(document.querySelector('[data-watermark]'));`)));
   if (shotsDir) await page.shot(join(shotsDir, 'theme-counter.png'));
 
   await page.goto('templates-library-drafts');

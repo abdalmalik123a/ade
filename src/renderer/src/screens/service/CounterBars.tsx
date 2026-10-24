@@ -3,7 +3,6 @@
  * (د٤)، وتقدّم الطباعة (خطة Production، ٢٫٣)، والرسالة العابرة (د١٠). عرضٌ وحده: الحال كلّها في الشاشة.
  */
 import type { Dispatch, SetStateAction } from 'react';
-import { count } from '@shared/arabic';
 import type { Toast } from '../../kit/useToast';
 import type { PrintRun, RepeatOf, Step } from './types';
 
@@ -13,38 +12,40 @@ const STEPS: { key: Step; label: string; hint: string }[] = [
   { key: 'review', label: 'راجع', hint: 'ثم اطبع' }
 ];
 
-/** الخطوات الثلاث، وعدد المختار. */
-export function StepsHeader({ step, picked }: { step: Step; picked: number[] }) {
+/**
+ * الخطوات الثلاث (D157، ر175): لوحٌ أبيض بثلاث خانات، والحالية بخلفيةٍ سماوية باهتة وحدٍّ سماويّ ورقمها بتدرّج الفعل،
+ * وتحتها شريط تقدّمٍ رفيع يملأ ثلثًا لكلّ خطوة من اليمين. وعدد المختار في «سلّة النماذج» لا هنا.
+ */
+export function StepsHeader({ step }: { step: Step }) {
+  const at = STEPS.findIndex((s) => s.key === step);
   return (
-    <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-md">
-      {STEPS.map((s, i) => (
-        <div key={s.key} className="flex items-center gap-space-xs">
-          <span
-            className={`w-7 h-7 rounded-full flex items-center justify-center font-label-md text-label-md font-bold ${
-              step === s.key
-                ? 'bg-primary-container text-on-primary'
-                : 'bg-surface-container text-on-surface-variant'
-            }`}
+    <div className="shrink-0 px-space-lg pt-space-sm">
+      <div className="relative grid grid-cols-3 gap-1.5 p-1.5 pb-2.5 bg-grad-surface rounded-frame shadow-soft border border-white/90 overflow-hidden" data-steps="">
+        {STEPS.map((s, i) => (
+          <div
+            key={s.key}
+            aria-current={step === s.key ? 'step' : undefined}
+            className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-card ${step === s.key ? 'bg-grad-sel shadow-[inset_0_0_0_1.5px_#21C8E7]' : ''}`}
           >
-            {i + 1}
-          </span>
-          <div className="flex flex-col leading-tight">
-            <span className="font-label-lg text-label-lg text-on-surface">{s.label}</span>
-            <span className="font-label-sm text-label-sm text-on-surface-variant">{s.hint}</span>
-          </div>
-          {i < STEPS.length - 1 && (
-            <span className="material-symbols-outlined text-[18px] text-outline-variant mx-space-xs">
-              chevron_left
+            <span
+              className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center font-label-md text-label-md font-bold ${
+                step === s.key
+                  ? 'bg-grad-act text-on-primary shadow-act'
+                  : 'border-[1.5px] border-outline bg-surface-container-lowest text-on-surface-variant'
+              }`}
+            >
+              {i + 1}
             </span>
-          )}
-        </div>
-      ))}
-      <span className="flex-1" />
-      {picked.length > 0 && (
-        <span className="font-label-md text-label-md text-on-surface">
-          المختار: {count(picked.length, 'ورقة')}
+            <div className="flex flex-col leading-tight min-w-0">
+              <span className={`font-label-lg text-label-lg font-semibold ${step === s.key ? 'text-primary' : 'text-on-surface'}`}>{s.label}</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant">{s.hint}</span>
+            </div>
+          </div>
+        ))}
+        <span className="absolute right-3 left-3 bottom-1 h-[3px] rounded-sm bg-outline-variant" data-steps-track="">
+          <i className="block h-full rounded-sm bg-[linear-gradient(270deg,#21C8E7,#0872A3)]" style={{ width: `${((at + 1) * 100) / STEPS.length}%` }} />
         </span>
-      )}
+      </div>
     </div>
   );
 }

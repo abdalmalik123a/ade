@@ -16,7 +16,6 @@ import type { Attachment } from '@shared/api';
 import { papersWord } from '../components/OutputBar';
 import { useToast } from '../kit/useToast';
 import { trapTab } from '../kit/trapTab';
-import mark from '../assets/brand/diwan-mark.png';
 import { CounterToast, PrintRunBar, RepeatOfBar, StepsHeader } from './service/CounterBars';
 import { usePrintRun } from './service/usePrintRun';
 import { useCounterLibrary } from './service/useCounterLibrary';
@@ -25,6 +24,7 @@ import { useNewCitizen } from './service/useNewCitizen';
 import { useParked } from './service/useParked';
 import { useIssue } from './service/useIssue';
 import CounterPick from './service/CounterPick';
+import CounterBasket from './service/CounterBasket';
 import CounterFill from './service/CounterFill';
 import CounterReview from './service/CounterReview';
 import DecisionBar from './service/DecisionBar';
@@ -220,53 +220,46 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
 
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full" data-screen="service">
-      {/* علامة «ديوان» خافتةً في الشبّاك (المرحلة ٦، والشعار الجديد ١٣ ت١) — خلف العمل، لا تُلمس ولا تُطبع. */}
-      <img
-        alt=""
-        aria-hidden
-        className="pointer-events-none select-none absolute bottom-6 left-6 w-64 opacity-[0.035] print:hidden"
-        data-watermark=""
-        src={mark}
-      />
       <div ref={trapRef} className="h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         {/* الخطوات الثلاث */}
-        <StepsHeader step={step} picked={picked} />
+        <StepsHeader step={step} />
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-space-lg">
+        {/* في «اختر» صفٌّ: النماذج تمرّ يمينًا، و«سلّة النماذج» يسارًا لا تمرّ (D157، ر175). */}
+        <div className={`flex-1 min-h-0 p-space-lg ${step === 'pick' ? 'flex gap-3.5' : 'overflow-y-auto'}`}>
           {/* ١ — اختر */}
           {step === 'pick' && (
-            <CounterPick
-              after={after}
-              setAfter={setAfter}
-              reprintAfter={reprintAfter}
-              pdfAfter={pdfAfter}
-              sameCustomer={sameCustomer}
-              settings={settings}
-              query={query}
-              setQuery={setQuery}
-              items={items}
-              categories={categories}
-              activeCategory={activeCategory}
-              setActiveCategory={setActiveCategory}
-              topFavorites={topFavorites}
-              shown={shown}
-              ordered={ordered}
-              picked={picked}
-              toggle={toggle}
-              searchRef={searchRef}
-              citizenId={citizenId}
-              onOpenTool={onOpenTool}
-              onOpenFile={onOpenFile}
-              active={active}
-              step={step}
-              newCitizen={newCitizen}
-              setNewCitizen={setNewCitizen}
-              saveNewCitizen={saveNewCitizen}
-              parked={parked}
-              resume={resume}
-              dropParked={dropParked}
-            />
+            <div className="flex-1 min-w-0 overflow-y-auto px-1 pt-1 pb-space-md">
+              <CounterPick
+                after={after}
+                setAfter={setAfter}
+                reprintAfter={reprintAfter}
+                pdfAfter={pdfAfter}
+                sameCustomer={sameCustomer}
+                settings={settings}
+                query={query}
+                setQuery={setQuery}
+                items={items}
+                categories={categories}
+                activeCategory={activeCategory}
+                setActiveCategory={setActiveCategory}
+                topFavorites={topFavorites}
+                shown={shown}
+                ordered={ordered}
+                picked={picked}
+                toggle={toggle}
+                searchRef={searchRef}
+                citizenId={citizenId}
+                onOpenTool={onOpenTool}
+                onOpenFile={onOpenFile}
+                active={active}
+                step={step}
+                newCitizen={newCitizen}
+                setNewCitizen={setNewCitizen}
+                saveNewCitizen={saveNewCitizen}
+              />
+            </div>
           )}
+          {step === 'pick' && <CounterBasket picked={picked} items={items} toggle={toggle} goFill={goFill} busy={busy} parked={parked} resume={resume} dropParked={dropParked} />}
 
           {/* ٢ — املأ */}
           {step === 'fill' && (
@@ -327,32 +320,32 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
         {/* «نسخة عن …» (د٤): والأصل يبقى كما خرج — إلا أن يُختار إبطاله بسببه. */}
         {repeatOf && step !== 'pick' && !merge && <RepeatOfBar repeatOf={repeatOf} setRepeatOf={setRepeatOf} />}
 
-        {/* شريط القرار */}
-        <DecisionBar
-          step={step}
-          setStep={setStep}
-          busy={busy}
-          picked={picked}
-          goFill={goFill}
-          setAt={setAt}
-          park={park}
-          discardTransaction={discardTransaction}
-          valuesOnly={valuesOnly}
-          setValuesOnly={setValuesOnly}
-          merge={merge}
-          rows={rows}
-          loaded={loaded}
-          missing={missing}
-          genderUnsure={genderUnsure}
-          citizenName={citizenName}
-          setGenderByHand={setGenderByHand}
-          setValues={setValues}
-          settings={settings}
-          copies={copies}
-          setCopies={setCopies}
-          blocked={blocked}
-          issue={issue}
-        />
+        {/* شريط القرار — وفي «اختر» لا شريط: «املأ» في «سلّة النماذج» (D157). */}
+        {step !== 'pick' && (
+          <DecisionBar
+            step={step}
+            setStep={setStep}
+            busy={busy}
+            setAt={setAt}
+            park={park}
+            discardTransaction={discardTransaction}
+            valuesOnly={valuesOnly}
+            setValuesOnly={setValuesOnly}
+            merge={merge}
+            rows={rows}
+            loaded={loaded}
+            missing={missing}
+            genderUnsure={genderUnsure}
+            citizenName={citizenName}
+            setGenderByHand={setGenderByHand}
+            setValues={setValues}
+            settings={settings}
+            copies={copies}
+            setCopies={setCopies}
+            blocked={blocked}
+            issue={issue}
+          />
+        )}
       </div>
 
       <CounterDialogs

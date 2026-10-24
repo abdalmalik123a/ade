@@ -103,9 +103,6 @@ describe('اختصارات التنقل في الشبّاك (D117 — S04)', () 
         newCitizen={null}
         setNewCitizen={() => {}}
         saveNewCitizen={async () => {}}
-        parked={[]}
-        resume={async () => {}}
-        dropParked={() => {}}
       />
     );
     await settle();
@@ -150,9 +147,6 @@ describe('اختصارات التنقل في الشبّاك (D117 — S04)', () 
         newCitizen={null}
         setNewCitizen={() => {}}
         saveNewCitizen={async () => {}}
-        parked={[]}
-        resume={async () => {}}
-        dropParked={() => {}}
       />
     );
     await settle();
@@ -182,7 +176,7 @@ describe('اختصارات التنقل في الشبّاك (D117 — S04)', () 
   /** شريط القرار بلا شيءٍ يُصدر — لا يُضغط فيه إلا Tab. */
   const bar = (step: 'fill' | 'review') => (
     <DecisionBar
-      step={step} setStep={() => {}} busy={false} picked={[1]} goFill={async () => {}} setAt={() => {}} park={() => {}} discardTransaction={() => {}}
+      step={step} setStep={() => {}} busy={false} setAt={() => {}} park={() => {}} discardTransaction={() => {}}
       valuesOnly={false} setValuesOnly={() => {}} merge={false} rows={[]} loaded={[]} missing={[]} genderUnsure={false} citizenName=""
       setGenderByHand={() => {}} setValues={() => {}} settings={null} copies={1} setCopies={() => {}} blocked={false} issue={async () => {}}
     />

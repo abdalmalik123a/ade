@@ -80,7 +80,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   await wait(400);
   ok('اختير أكثر من ورقة', chosen >= 2);
-  ok('وعُدّت المختارات', (await page.text()).includes('المختار: ورقتان'));
+  // «المختار: …» زال من شريط الخطوات — السلّة تعدّها (D157).
+  ok('وعُدّت المختارات في «سلّة النماذج»', (await page.eval(`return document.querySelector('[data-basket-count]')?.innerText.trim() ?? '';`)) === '٢' && (await page.eval(`return document.querySelectorAll('[data-basket] [data-basket-item]').length;`)) === 2);
 
   await page.clickText('املأ (2)');
   await wait(1200);

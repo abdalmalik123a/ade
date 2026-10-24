@@ -7,8 +7,8 @@
   ٢٥٦ بخلفيةٍ شفّافة، وتحت الرمز كلمة «DIWAN» **بيضاء**. والمأخوذ منه **الرمز وحده**: الكلمة البيضاء لا تُرى على الواجهة الفاتحة
   ولا على شريط المهامّ وسطح المكتب، ولا تُقرأ دون ٤٨ نقطة. فالرمز ما فوق الشريط الشفّاف الذي يفصله عن الكلمة (لا أرقام باليد:
   يُحسب من الصورة ويُطبع)، ويُوضع في مربّع. ومنه أيقونة ويندوز (`resources/icon.ico`) بمقاساتها السبعة، كلٌّ مصغّرٌ من الرمز نفسه
-  (الأصل مقاسٌ واحد فلا مقاساتٍ رسمها مصمّم)، و`icon.png` وصورة الواجهة (`diwan-icon.png`) بـ٢٥٦ لا أكبر،
-  و**علامته** للعلامة المائية الخافتة في الشبّاك (`diwan-mark.png`) الرمز نفسه مقصوصًا.
+  (الأصل مقاسٌ واحد فلا مقاساتٍ رسمها مصمّم)، و`icon.png` وصورة الواجهة (`diwan-icon.png`) بـ٢٥٦ لا أكبر.
+  والعلامة المائية الخافتة في الشبّاك (`diwan-mark.png`) لا تُكتب: أزالها «ب٢» (ر175، D157) — وصورتها الأخيرة في `legacy/`.
 - **شعار MADA TECH** (المطوّر): الأصل (resources/brand/source/madatech-logo.jpg) على خلفيّةٍ سوداء؛ فالأسود يصير
   شفّافًا («اللون إلى شفافيّة»: الشفافيّة من أسطع القنوات، واللون يُقسم عليها فلا يبقى هالةٌ رمادية)،
   ويُقصّ على ما فيه. وحروفه البيضاء لا تُرى على ورقٍ فاتح — فيُعرض على بطاقةٍ داكنة.
@@ -76,9 +76,8 @@ def trim(rgba: Image.Image, pad_share: float) -> Image.Image:
 
 def main() -> None:
     UI.mkdir(parents=True, exist_ok=True)
-    mark, box = symbol(0.02)
-    mark.save(UI / 'diwan-mark.png', optimize=True)
-    sq = squared(mark)
+    sym, box = symbol(0.02)
+    sq = squared(sym)
     sizes = [sq.resize((n, n), Image.LANCZOS) for n in ICON_SIZES]
     big = sizes[-1]
     big.save(ROOT / 'resources' / 'icon.png', optimize=True)
@@ -92,7 +91,6 @@ def main() -> None:
 
     print('symbol: x', box[0], '-', box[2] - 1, 'y', box[1], '-', box[3] - 1, 'from', LOGO.name)
     print('icon:', ICON_SIZES, '-> resources/icon.ico; 256 -> resources/icon.png, assets/brand/diwan-icon.png')
-    print('mark:', mark.size, '-> assets/brand/diwan-mark.png')
     print('logo:', lg.size, '-> assets/brand/madatech-logo.png')
 
 
