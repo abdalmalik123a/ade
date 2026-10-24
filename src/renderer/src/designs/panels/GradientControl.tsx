@@ -25,7 +25,7 @@ export default function GradientControl({ value, onChange, act }: { value: Gradi
       <input className={COLOR} data-act={`${act}-from`} title="أوّل التدرّج" type="color" value={toHexColor(first.color)} onChange={(e) => stop(0, e.target.value)} />
       <input className={COLOR} data-act={`${act}-to`} title="آخر التدرّج" type="color" value={toHexColor(last.color)} onChange={(e) => stop(value.stops.length - 1, e.target.value)} />
       <select
-        className="h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+        className="h-8 px-1 rounded-field bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
         data-act={`${act}-type`}
         title="نوع التدرّج"
         value={value.type}

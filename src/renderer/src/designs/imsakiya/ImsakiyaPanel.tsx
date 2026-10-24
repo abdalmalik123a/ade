@@ -10,20 +10,20 @@ import type { DesignEditor } from '../editor/useDesignEditor';
 import ImsakiyaColumns from './ImsakiyaColumns';
 import { useImsakiya } from './useImsakiya';
 
-const BTN = 'flex-1 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 disabled:opacity-50';
-const FIELD = 'h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
+const BTN = 'flex-1 h-9 rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 disabled:opacity-50';
+const FIELD = 'h-8 px-1 rounded-card bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
 export default function ImsakiyaPanel({ ed, table }: { ed: DesignEditor; table: TableElement }) {
   const m = useImsakiya(ed, table);
   const [paste, setPaste] = useState('');
   const { settings, gaps } = m;
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm" data-imsakiya="">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm" data-imsakiya="">
       <div className="flex items-center justify-between gap-space-sm">
         <h2 className="font-body-md text-body-md text-on-surface font-semibold">جدول الإمساكية</h2>
         {gaps && (
           <span
-            className={`px-2 py-0.5 rounded-full font-label-xs text-label-xs tabular ${gaps.empty ? 'bg-error-container/30 text-error' : 'bg-secondary-container text-on-secondary'}`}
+            className={`px-2 py-0.5 rounded-chip font-label-xs text-label-xs tabular ${gaps.empty ? 'bg-error-container/30 text-error' : 'bg-primary-fixed text-primary'}`}
             data-imsakiya-gaps={gaps.empty}
           >
             {gaps.empty === gaps.total ? 'الأوقات فارغة' : gaps.empty ? `خانات فارغة: ${toIndic(gaps.empty)}` : `${count(table.rows.length, 'يوم')} بأوقاتها`}
@@ -45,7 +45,7 @@ export default function ImsakiyaPanel({ ed, table }: { ed: DesignEditor; table: 
       {m.pasting && (
         <div className="space-y-1">
           <textarea
-            className="w-full h-28 p-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+            className="w-full h-28 p-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
             data-imsakiya-text=""
             dir="rtl"
             placeholder="انسخ الجدول من Excel أو Word أو موقع الوقف بعناوينه، والصقه هنا"
@@ -53,7 +53,7 @@ export default function ImsakiyaPanel({ ed, table }: { ed: DesignEditor; table: 
             onChange={(e) => setPaste(e.target.value)}
           />
           <button
-            className="w-full h-8 rounded-lg bg-secondary-container text-on-secondary font-label-md text-label-md disabled:opacity-40"
+            className="w-full h-8 btn-soft font-label-md text-label-md disabled:opacity-40"
             data-act="imsakiya-read"
             disabled={!paste.trim()}
             type="button"

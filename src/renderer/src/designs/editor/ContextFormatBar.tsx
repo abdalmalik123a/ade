@@ -9,16 +9,16 @@ import { toHexColor } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 
 const ICON_BTN =
-  'w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface active:scale-95';
+  'w-8 h-8 rounded-btn flex items-center justify-center transition-colors text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface active:scale-95';
 const SELECT =
-  'h-8 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface';
+  'input-field h-8 px-2 font-label-sm text-label-sm text-on-surface';
 
 export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
   const { single, patchElement, canvas, align } = ed;
   if (!single) return null;
 
   return (
-    <div className="flex items-center gap-1.5 bg-surface-container-low px-2 py-1 rounded-xl border border-outline-variant shrink-0" data-context-bar="">
+    <div className="flex items-center gap-1.5 bg-surface-container-low px-2 py-1 rounded-card border border-outline-variant shrink-0" data-context-bar="">
       {single.kind === 'text' && (
         <>
           {/* اختيار الخط */}
@@ -33,7 +33,7 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
           />
 
           {/* تصغير وتكبير الحجم */}
-          <div className="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden h-8">
+          <div className="flex items-center bg-surface-container-lowest border border-outline-variant rounded-card overflow-hidden h-8">
             <button
               className="w-6 h-full flex items-center justify-center hover:bg-surface-container-high text-on-surface"
               title="تصغير الخط"
@@ -71,7 +71,7 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
 
           {/* غامق / مائل */}
           <button
-            className={`${ICON_BTN} ${single.bold ? 'bg-primary-container text-on-primary font-bold' : ''}`}
+            className={`${ICON_BTN} ${single.bold ? 'bg-primary-fixed text-primary font-bold' : ''}`}
             title="عريض (Bold)"
             type="button"
             onClick={() => patchElement(single.id, { bold: !single.bold })}
@@ -80,9 +80,9 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
           </button>
 
           {/* محاذاة النص */}
-          <div className="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg p-0.5">
+          <div className="flex items-center bg-surface-container-lowest border border-outline-variant rounded-card p-0.5">
             <button
-              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'right' ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant'}`}
+              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'right' ? 'bg-primary-fixed text-primary' : 'text-on-surface-variant'}`}
               title="محاذاة لليمين"
               type="button"
               onClick={() => patchElement(single.id, { align: 'right' })}
@@ -90,7 +90,7 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
               <span className="material-symbols-outlined text-[16px]">format_align_right</span>
             </button>
             <button
-              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'center' ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant'}`}
+              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'center' ? 'bg-primary-fixed text-primary' : 'text-on-surface-variant'}`}
               title="توسيط"
               type="button"
               onClick={() => patchElement(single.id, { align: 'center' })}
@@ -98,7 +98,7 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
               <span className="material-symbols-outlined text-[16px]">format_align_center</span>
             </button>
             <button
-              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'left' ? 'bg-primary-container text-on-primary' : 'text-on-surface-variant'}`}
+              className={`w-7 h-7 rounded flex items-center justify-center ${single.align === 'left' ? 'bg-primary-fixed text-primary' : 'text-on-surface-variant'}`}
               title="محاذاة لليسار"
               type="button"
               onClick={() => patchElement(single.id, { align: 'left' })}
@@ -131,7 +131,7 @@ export default function ContextFormatBar({ ed }: { ed: DesignEditor }) {
 
           {/* الظل (Shadow toggle) */}
           <button
-            className={`${ICON_BTN} ${single.shadow ? 'bg-primary-container text-on-primary' : ''}`}
+            className={`${ICON_BTN} ${single.shadow ? 'bg-primary-fixed text-primary' : ''}`}
             title="تفعيل/تعطيل الظل"
             type="button"
             onClick={() =>

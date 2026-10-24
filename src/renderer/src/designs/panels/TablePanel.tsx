@@ -97,7 +97,7 @@ export default function TablePanel({ canvas, table, patch }: { canvas: Pick<Canv
       </div>
 
       {/* إعدادات المظهر والخط */}
-      <div className="flex items-center gap-space-sm flex-wrap p-2 bg-surface-container-low rounded-lg border border-outline-variant/60">
+      <div className="flex items-center gap-space-sm flex-wrap p-2 bg-surface-container-low rounded-card border border-outline-variant/60">
         <FontSelect
           act="table-font"
           blank="خطّ التصميم"
@@ -166,7 +166,7 @@ export default function TablePanel({ canvas, table, patch }: { canvas: Pick<Canv
       {/* تعديل عناوين الأعمدة */}
       <div className="space-y-1">
         <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">عناوين الأعمدة:</span>
-        <div className="grid gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-surface-container-low rounded-lg border border-outline-variant/60">
+        <div className="grid gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-surface-container-low rounded-card border border-outline-variant/60">
           {table.columns.map((col, idx) => (
             <div key={idx} className="flex items-center gap-1.5">
               <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{idx + 1}</span>
@@ -202,7 +202,7 @@ export default function TablePanel({ canvas, table, patch }: { canvas: Pick<Canv
       {/* تعديل خلايا الصفوف */}
       <div className="space-y-1">
         <span className="font-label-xs text-label-xs text-on-surface-variant font-semibold">محتويات الخلايا (أو وسوم مثل {'{الاسم}'}):</span>
-        <div className="max-h-48 overflow-auto p-1.5 bg-surface-container-low rounded-lg border border-outline-variant/60 space-y-1">
+        <div className="max-h-48 overflow-auto p-1.5 bg-surface-container-low rounded-card border border-outline-variant/60 space-y-1">
           {table.rows.map((row, rIdx) => (
             <div key={rIdx} className="flex items-center gap-1">
               <span className="font-label-xs text-label-xs text-on-surface-variant w-4 text-center">{rIdx + 1}</span>
@@ -246,7 +246,7 @@ function RowStyle({ table, index, patch }: { table: TableElement; index: number;
         onChange={(e) => set({ ...style, bg: e.target.value })}
       />
       <button
-        className={`w-6 h-6 rounded font-bold text-[11px] ${style?.bold ? 'bg-primary-container text-on-primary' : 'bg-surface-container-lowest border border-outline-variant'}`}
+        className={`w-6 h-6 rounded font-bold text-[11px] ${style?.bold ? 'bg-primary-fixed text-primary' : 'bg-surface-container-lowest border border-outline-variant'}`}
         data-row-bold={index}
         title="صفٌّ عريض"
         type="button"

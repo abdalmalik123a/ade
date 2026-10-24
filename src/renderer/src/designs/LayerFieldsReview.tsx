@@ -28,7 +28,7 @@ export default function LayerFieldsReview({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-layer-fields="">
-      <div className="w-full max-w-2xl max-h-[88vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-2xl max-h-[88vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">حقولٌ من أسماء الطبقات</h2>
           <p className="font-label-md text-label-md text-on-surface-variant">
@@ -37,7 +37,7 @@ export default function LayerFieldsReview({
         </div>
         <div className="flex-1 overflow-y-auto p-space-md flex flex-col gap-space-xs">
           {suggestions.map((s) => (
-            <label key={s.elementId} className="flex items-center gap-space-sm p-space-xs rounded-lg bg-surface-container-low" data-layer-suggestion={s.layer}>
+            <label key={s.elementId} className="flex items-center gap-space-sm p-space-xs rounded-card bg-surface-container-low" data-layer-suggestion={s.layer}>
               <input
                 checked={on[s.elementId] ?? false}
                 className="w-4 h-4 accent-secondary"
@@ -63,11 +63,11 @@ export default function LayerFieldsReview({
           ))}
         </div>
         <div className="p-space-md bg-surface-container-low flex justify-between gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             اتركها نصوصًا
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="layer-fields-apply"
             type="button"
             disabled={count === 0}

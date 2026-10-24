@@ -57,7 +57,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" data-clipart-modal="">
-      <div className="relative w-full max-w-3xl bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl p-space-lg flex flex-col gap-space-md text-right">
+      <div className="relative w-full max-w-3xl bg-surface-container-low border border-outline-variant rounded-card shadow-card p-space-lg flex flex-col gap-space-md text-right">
         {/* الرأس */}
         <header className="flex items-center justify-between border-b border-outline-variant pb-space-sm">
           <div className="flex items-center gap-space-xs">
@@ -72,7 +72,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
             </div>
           </div>
           <button
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors"
+            className="w-8 h-8 rounded-btn flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors"
             type="button"
             onClick={onClose}
           >
@@ -87,9 +87,9 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
               <button
                 key={cat}
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-label-sm font-semibold transition-colors shrink-0 ${
+                className={`px-3 py-1.5 rounded-btn text-label-sm font-semibold transition-colors shrink-0 ${
                   activeCategory === cat
-                    ? 'bg-primary-container text-on-primary'
+                    ? 'bg-primary-fixed text-primary'
                     : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
                 }`}
                 data-category={cat}
@@ -106,7 +106,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
             </span>
             <input
               type="text"
-              className="w-full h-9 pr-9 pl-3 rounded-lg bg-surface-container-lowest border border-outline-variant text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
+              className="input-field w-full h-9 pr-9 pl-3 text-body-sm font-body-sm text-on-surface placeholder:text-on-surface-variant"
               data-clipart-search=""
               placeholder="ابحث (قرآن، كارتون، كأس، رمضان، موقع...)"
               value={search}
@@ -121,7 +121,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
             <button
               key={`office-${el.id}`}
               type="button"
-              className="group p-space-sm rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-md transition-all flex flex-col items-center gap-space-xs text-center"
+              className="group p-space-sm rounded-card bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-soft transition-all flex flex-col items-center gap-space-xs text-center"
               data-act="insert-element"
               data-element={el.name}
               onClick={() => {
@@ -138,7 +138,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
             <button
               key={`vec-${v.key}`}
               type="button"
-              className="group p-space-sm rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-md transition-all flex flex-col items-center gap-space-xs text-center"
+              className="group p-space-sm rounded-card bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-soft transition-all flex flex-col items-center gap-space-xs text-center"
               data-act="insert-vector"
               data-vector={v.key}
               onClick={() => {
@@ -146,7 +146,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
                 onClose();
               }}
             >
-              <svg className="w-20 h-20 p-3 rounded-lg bg-surface-container-low group-hover:scale-105 transition-transform text-primary" viewBox="0 0 100 100">
+              <svg className="w-20 h-20 p-3 rounded-card bg-surface-container-low group-hover:scale-105 transition-transform text-primary" viewBox="0 0 100 100">
                 <path d={v.d} fill="currentColor" />
               </svg>
               <span className="font-label-sm text-label-sm font-bold text-on-surface truncate w-full">{v.name}</span>
@@ -166,14 +166,14 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
               <button
                 key={item.id}
                 type="button"
-                className="group p-space-sm rounded-xl bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-md transition-all flex flex-col items-center gap-space-xs text-center"
+                className="group p-space-sm rounded-card bg-surface-container-lowest border border-outline-variant hover:border-primary hover:shadow-soft transition-all flex flex-col items-center gap-space-xs text-center"
                 onClick={() => {
                   onSelect(item);
                   onClose();
                 }}
               >
                 <div
-                  className="w-20 h-20 flex items-center justify-center p-2 rounded-lg bg-surface-container-low group-hover:scale-105 transition-transform"
+                  className="w-20 h-20 flex items-center justify-center p-2 rounded-card bg-surface-container-low group-hover:scale-105 transition-transform"
                   dangerouslySetInnerHTML={{ __html: item.svg }}
                 />
                 <span className="font-label-sm text-label-sm font-bold text-on-surface truncate w-full">
@@ -194,7 +194,7 @@ export default function ClipartModal({ isOpen, onClose, onSelect, onSelectElemen
           </span>
           <button
             type="button"
-            className="h-9 px-4 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container font-label-md text-label-md"
+            className="h-9 px-4 rounded-btn bg-surface-container-high text-on-surface hover:bg-surface-container font-label-md text-label-md"
             onClick={onClose}
           >
             إغلاق

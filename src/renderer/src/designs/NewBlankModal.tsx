@@ -38,7 +38,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl p-space-lg flex flex-col gap-space-md text-right">
+      <div className="relative w-full max-w-2xl bg-surface-container-low border border-outline-variant rounded-card shadow-card p-space-lg flex flex-col gap-space-md text-right">
         {/* الرأس */}
         <header className="flex items-center justify-between border-b border-outline-variant pb-space-sm">
           <div className="flex items-center gap-space-xs">
@@ -53,7 +53,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
             </div>
           </div>
           <button
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors"
+            className="w-8 h-8 rounded-btn flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-colors"
             type="button"
             onClick={onClose}
           >
@@ -69,7 +69,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
             </label>
             <input
               type="text"
-              className="w-full h-10 px-3 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface focus:border-primary outline-none"
+              className="w-full h-10 px-3 rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface focus:border-primary outline-none"
               placeholder="مثال: هوية موظف، كرت شخصي، شهادة شكر..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -90,7 +90,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
                     key={p.key}
                     type="button"
                     onClick={() => handleSelectPreset(p)}
-                    className={`p-2.5 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                    className={`p-2.5 rounded-card border text-right transition-all flex flex-col justify-between ${
                       isSelected
                         ? 'border-primary bg-primary-container/30 text-on-surface shadow-xs'
                         : 'border-outline-variant/60 bg-surface-container-lowest hover:border-outline hover:bg-surface-container'
@@ -113,7 +113,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
               <button
                 type="button"
                 onClick={handleCustomSelect}
-                className={`p-2.5 rounded-xl border text-right transition-all flex flex-col justify-between ${
+                className={`p-2.5 rounded-card border text-right transition-all flex flex-col justify-between ${
                   selectedKey === 'custom'
                     ? 'border-primary bg-primary-container/30 text-on-surface shadow-xs'
                     : 'border-outline-variant/60 bg-surface-container-lowest hover:border-outline hover:bg-surface-container'
@@ -133,7 +133,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
           </div>
 
           {/* مدخلات الأبعاد الدقيقة */}
-          <div className="p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/60 space-y-3">
+          <div className="p-3 bg-surface-container-lowest rounded-card border border-outline-variant/60 space-y-3">
             <div className="flex items-center gap-4 flex-wrap">
               <label className="flex items-center gap-2 font-label-md text-label-md text-on-surface">
                 <span>العرض:</span>
@@ -142,7 +142,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
                   step="0.1"
                   min="10"
                   max="1200"
-                  className="w-24 h-9 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface"
+                  className="w-24 h-9 px-2 rounded-field bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface"
                   value={width}
                   onChange={(e) => {
                     setWidth(Number(e.target.value) || 0);
@@ -159,7 +159,7 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
                   step="0.1"
                   min="10"
                   max="1200"
-                  className="w-24 h-9 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface"
+                  className="w-24 h-9 px-2 rounded-field bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface"
                   value={height}
                   onChange={(e) => {
                     setHeight(Number(e.target.value) || 0);
@@ -185,14 +185,14 @@ export default function NewBlankModal({ isOpen, onClose, onCreate }: NewBlankMod
           <div className="flex items-center justify-end gap-space-sm pt-space-xs border-t border-outline-variant">
             <button
               type="button"
-              className="h-10 px-space-md rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors"
+              className="h-10 px-space-md rounded-btn bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors"
               onClick={onClose}
             >
               إلغاء
             </button>
             <button
               type="submit"
-              className="h-10 px-space-lg rounded-lg bg-primary hover:bg-primary/95 text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+              className="h-10 px-space-lg rounded-btn bg-primary hover:bg-primary/95 text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-low transition-all"
             >
               <span className="material-symbols-outlined text-[18px]">draw</span>
               <span>بدء التصميم على اللوحة البيضاء</span>

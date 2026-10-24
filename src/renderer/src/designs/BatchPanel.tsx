@@ -79,7 +79,7 @@ export default function BatchPanel({
   }
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm" data-batch="">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm" data-batch="">
       <div className="flex items-center justify-between">
         <h2 className="font-body-md text-body-md text-on-surface font-semibold">دفعة — قائمة أسماء</h2>
         {text && (
@@ -101,7 +101,7 @@ export default function BatchPanel({
           {textKeys.length > 4 ? '…' : ''}
         </p>
         <button
-          className="shrink-0 h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+          className="shrink-0 h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
           data-act="open-sheet"
           type="button"
           onClick={() => {
@@ -117,7 +117,7 @@ export default function BatchPanel({
         </button>
         {onFromRegistry && (
           <button
-            className="shrink-0 h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+            className="shrink-0 h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
             data-act="batch-registry"
             title="هويّات الموظفين: بياناتهم من ملفّاتهم في السجل، وصورهم منها أو من الاستوديو"
             type="button"
@@ -134,7 +134,7 @@ export default function BatchPanel({
         </p>
       )}
       <textarea
-        className="w-full h-28 p-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
+        className="w-full h-28 p-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
         data-batch-text=""
         dir="rtl"
         placeholder={`${textKeys.slice(0, 3).join('\t')}\n…`}
@@ -173,7 +173,7 @@ export default function BatchPanel({
             </button>
           )}
           {mapOpen && onMapping && (
-            <div className="flex flex-col gap-1 p-space-xs rounded-lg bg-surface-container-low" data-batch-map="">
+            <div className="flex flex-col gap-1 p-space-xs rounded-card bg-surface-container-low" data-batch-map="">
               {parsed.columns.map((col) => (
                 <label key={col.id} className="flex items-center gap-space-xs font-label-sm text-label-sm">
                   <span className="w-28 truncate text-on-surface" title={col.header}>
@@ -204,7 +204,7 @@ export default function BatchPanel({
       {photoKey && parsed.rows.length > 0 && (
         <div className="space-y-space-xs">
           <button
-            className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="w-full h-9 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5 disabled:opacity-50"
             data-act="photos"
             disabled={busy}
             type="button"
@@ -214,7 +214,7 @@ export default function BatchPanel({
             {busy ? 'تُنسخ الصور…' : 'مجلّد الصور — كلٌّ باسم صاحبه أو رقمه'}
           </button>
           <button
-            className="w-full h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md flex items-center justify-center gap-1.5"
+            className="w-full h-9 btn-soft font-label-md text-label-md flex items-center justify-center gap-1.5"
             data-act="studio"
             type="button"
             onClick={() => setStudio(true)}
@@ -250,7 +250,7 @@ export default function BatchPanel({
 
       {parsed.rows.length > 0 && (
         <button
-          className="w-full h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
+          className="w-full h-9 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
           data-act="sheets"
           type="button"
           onClick={onPreview}

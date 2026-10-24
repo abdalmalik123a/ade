@@ -10,7 +10,7 @@ import { useEscape } from '../../kit/useEscape';
 import ColorEraseBar, { ColorEraseHint } from '../../components/ColorEraseBar';
 
 const CHECKER = 'repeating-conic-gradient(#d4d4d4 0% 25%, #f5f5f5 0% 50%) 50% / 20px 20px';
-const TOOL = 'h-9 px-space-sm rounded-lg flex items-center gap-1 font-label-md text-label-md transition-colors';
+const TOOL = 'h-9 px-space-sm rounded-card flex items-center gap-1 font-label-md text-label-md transition-colors';
 
 export default function CutoutModal({ src, onClose, onDone }: { src: string; onClose: () => void; onDone: (src: string) => void }) {
   useEscape(onClose);
@@ -30,7 +30,7 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-cutout={c.phase}>
-      <div className="w-full max-w-4xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-4xl max-h-[92vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">أزل الخلفية</h2>
           <p className="font-label-md text-label-md text-on-surface-variant" data-cutout-status>
@@ -94,7 +94,7 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
           {(['keep', 'remove'] as const).map((m) => (
             <button
               key={m}
-              className={`${TOOL} ${tool === m ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface'}`}
+              className={`${TOOL} ${tool === m ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-on-surface'}`}
               data-cutout-tool={m}
               disabled={!ready}
               title={m === 'keep' ? 'امسح على ما نقص من الشيء فيعود' : 'امسح على ما بقي من الخلفية'}
@@ -106,7 +106,7 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
             </button>
           ))}
           <button
-            className={`${TOOL} ${tool === 'color' ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface'}`}
+            className={`${TOOL} ${tool === 'color' ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-on-surface'}`}
             data-cutout-tool="color"
             disabled={!ready}
             title="اضغط على لونٍ بقي من الخلفية فيُمسح"
@@ -129,11 +129,11 @@ export default function CutoutModal({ src, onClose, onDone }: { src: string; onC
             أعِد
           </button>
           <div className="flex-1" />
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" data-act="cutout-cancel" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" data-act="cutout-cancel" type="button" onClick={onClose}>
             ألغِ
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="cutout-done"
             disabled={!ready}
             type="button"

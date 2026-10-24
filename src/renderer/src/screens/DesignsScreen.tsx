@@ -74,7 +74,7 @@ export default function DesignsScreen(props: DesignsScreenProps) {
             <div className="flex-1" />
             <SaveImageMenu busy={ed.busy} onSave={(format, transparent) => void ed.saveImage(format, transparent)} />
             <button
-              className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+              className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50"
               data-act="print"
               title="راجع الأوراق ثم اطبع — بلا إصدار"
               type="button"
@@ -92,8 +92,8 @@ export default function DesignsScreen(props: DesignsScreenProps) {
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
+          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${
+            toast.tone === 'ok' ? 'bg-primary-fixed text-primary' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

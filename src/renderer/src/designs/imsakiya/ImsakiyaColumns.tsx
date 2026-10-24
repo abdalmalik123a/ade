@@ -6,7 +6,7 @@ import { isoDate } from '@shared/dates';
 import { TIME_TITLES, type ColumnRole } from '@shared/design/timetable';
 import type { Imsakiya } from './useImsakiya';
 
-const SELECT = 'h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
+const SELECT = 'h-8 px-1 rounded-card bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 const DAY_ROLES: [ColumnRole, string][] = [
   ['skip', 'اتركه'],
   ['weekday', 'يوم الأسبوع'],
@@ -19,7 +19,7 @@ export default function ImsakiyaColumns({ m }: { m: Imsakiya }) {
   if (!p) return null;
   const times = p.table.columns.filter((c) => c.role === 'time').length;
   return (
-    <div className="rounded-lg border border-secondary/40 bg-surface-container-low p-space-sm space-y-space-sm" data-imsakiya-columns="">
+    <div className="rounded-card border border-secondary/40 bg-surface-container-low p-space-sm space-y-space-sm" data-imsakiya-columns="">
       <p className="font-label-sm text-label-sm text-on-surface">
         من «{p.from}»: <b className="tabular">{toIndic(p.table.rows.length)}</b> يومًا و<b className="tabular">{toIndic(times)}</b> أوقات — راجع ما فهمه ديوان من كلّ عمود
       </p>
@@ -63,14 +63,14 @@ export default function ImsakiyaColumns({ m }: { m: Imsakiya }) {
       {m.clash && <p className="font-label-sm text-label-sm text-error">{m.clash}</p>}
       <div className="flex gap-space-sm">
         <button
-          className="flex-1 h-9 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold"
+          className="flex-1 h-9 btn-act font-label-md text-label-md font-semibold"
           data-act="imsakiya-place"
           type="button"
           onClick={m.place}
         >
           ضع الأوقات في الإمساكية
         </button>
-        <button className="h-9 px-space-md rounded-lg bg-surface-container-high font-label-md text-label-md text-on-surface" type="button" onClick={() => m.setPending(null)}>
+        <button className="h-9 px-space-md rounded-btn bg-surface-container-high font-label-md text-label-md text-on-surface" type="button" onClick={() => m.setPending(null)}>
           إلغاء
         </button>
       </div>

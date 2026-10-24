@@ -28,7 +28,7 @@ const LAYERS: [LayerMove, string, string][] = [
 ];
 
 /** سطرٌ في قائمة «تحرير»: أيقونةٌ واسمٌ واختصار. */
-const ROW = 'h-8 px-2 rounded-lg flex items-center gap-2 text-on-surface hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-40 disabled:hover:bg-transparent';
+const ROW = 'h-8 px-2 rounded-card flex items-center gap-2 text-on-surface hover:bg-surface-container-high font-label-md text-label-md disabled:opacity-40 disabled:hover:bg-transparent';
 const CAPTION = 'font-label-sm text-label-sm text-on-surface-variant';
 
 type EditAct = 'selectAll' | 'copy' | 'cut' | 'paste' | 'group' | 'ungroup';
@@ -50,19 +50,19 @@ const EDIT_RUN: Record<EditAct, (ed: DesignEditor) => unknown> = {
   ungroup: (ed) => ed.ungroup()
 };
 
-const SAVE = 'h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
-const SAVE_COPY = 'h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
+const SAVE = 'h-9 px-space-md rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
+const SAVE_COPY = 'h-9 px-space-md rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
 
 export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
   const { activeSide, selection, grid, preview, zoom, copies, designId, busy } = ed;
   const side = (on: boolean) =>
     `px-3 py-1 rounded-md font-label-sm text-label-sm font-semibold flex items-center gap-1.5 transition-colors ${
-      on ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface hover:bg-surface-container-high'
+      on ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface hover:bg-surface-container-high'
     }`;
   return (
     <div className="h-14 px-space-lg flex items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest overflow-x-auto">
       {/* مبدل الوجه والظهر */}
-      <div className="flex items-center bg-surface-container-low p-0.5 rounded-lg border border-outline-variant shrink-0" data-side-tabs="">
+      <div className="flex items-center bg-surface-container-low p-0.5 rounded-card border border-outline-variant shrink-0" data-side-tabs="">
         <button
           type="button"
           className={side(activeSide === 'front')}
@@ -167,11 +167,11 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
 
       <div className="w-px h-6 bg-outline-variant shrink-0" />
 
-      <button className={`${TOOL} ${grid ? 'bg-primary-container text-on-primary' : ''}`} title="شبكة بسنتيمتر" type="button" onClick={() => ed.setGrid((g) => !g)}>
+      <button className={`${TOOL} ${grid ? 'bg-primary-fixed text-primary' : ''}`} title="شبكة بسنتيمتر" type="button" onClick={() => ed.setGrid((g) => !g)}>
         <span className="material-symbols-outlined text-[18px]">grid_4x4</span>
       </button>
       <button
-        className={`${TOOL} ${preview ? 'bg-primary-container text-on-primary' : ''}`}
+        className={`${TOOL} ${preview ? 'bg-primary-fixed text-primary' : ''}`}
         data-preview
         title="معاينة بلا مقابض"
         type="button"

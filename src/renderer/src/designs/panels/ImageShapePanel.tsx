@@ -10,7 +10,7 @@ import { NUM, toHexColor } from '../editor/kit';
 import CutoutModal from '../cutout/CutoutModal';
 import PhotoEditModal from '../photo/PhotoEditModal';
 
-const TILE = 'w-9 h-9 rounded-lg flex items-center justify-center border transition-colors';
+const TILE = 'w-9 h-9 rounded-card flex items-center justify-center border transition-colors';
 
 export default function ImageShapePanel({ image, patch, frameRatio }: { image: ImageElement; patch: (p: Partial<ImageElement>) => void; frameRatio?: number }) {
   const frame = image.frame;
@@ -45,7 +45,7 @@ export default function ImageShapePanel({ image, patch, frameRatio }: { image: I
     <div className="space-y-space-xs" data-panel="image-shape">
       {!image.ref && (
         <button
-          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          className="w-full h-9 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
           data-act="replace-image"
           title="صورةٌ من الجهاز مكانها، بموضعها ومقاسها"
           type="button"
@@ -60,7 +60,7 @@ export default function ImageShapePanel({ image, patch, frameRatio }: { image: I
       )}
       {photo && (
         <button
-          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          className="w-full h-9 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
           data-act="photo-edit"
           title="قصٌّ وتدويرٌ واستقامة، وإضاءةٌ وألوانٌ وتنعيم"
           type="button"
@@ -83,7 +83,7 @@ export default function ImageShapePanel({ image, patch, frameRatio }: { image: I
       )}
       {photo && (
         <button
-          className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+          className="w-full h-9 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
           data-act="cutout"
           title="المنتج أو الشعار على خلفيةٍ شفّافة — على هذا الجهاز"
           type="button"
@@ -110,7 +110,7 @@ export default function ImageShapePanel({ image, patch, frameRatio }: { image: I
       </div>
       <div className="flex items-center gap-space-sm flex-wrap">
         <select
-          className="h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+          className="h-8 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
           data-act="image-frame"
           title="الإطار على حدّ الشكل"
           value={frame ? String(frame.rings ?? 1) : '0'}
@@ -138,7 +138,7 @@ export default function ImageShapePanel({ image, patch, frameRatio }: { image: I
               ملم
             </label>
             <select
-              className="h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+              className="h-8 px-1 rounded-field bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
               data-act="image-frame-dash"
               title="نقش الإطار"
               value={frame.dash ?? 'solid'}

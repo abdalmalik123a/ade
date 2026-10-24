@@ -30,8 +30,8 @@ export default function ToolbarMenu({ act, icon, label, children }: { act: strin
       <button
         ref={btn}
         aria-expanded={at !== null}
-        className={`h-9 px-2.5 rounded-lg flex items-center gap-1 font-label-md text-label-md shrink-0 transition-colors ${
-          at ? 'bg-primary-container text-on-primary' : 'text-on-surface hover:bg-surface-container-high'
+        className={`h-9 px-2.5 rounded-btn flex items-center gap-1 font-label-md text-label-md shrink-0 transition-colors ${
+          at ? 'bg-primary-fixed text-primary' : 'text-on-surface hover:bg-surface-container-high'
         }`}
         data-menu={act}
         type="button"
@@ -43,7 +43,7 @@ export default function ToolbarMenu({ act, icon, label, children }: { act: strin
       </button>
       {at && <div className="fixed inset-0 z-40" onMouseDown={() => setAt(null)} />}
       <div
-        className={`${at ? '' : 'hidden'} fixed z-50 p-space-sm rounded-xl bg-surface-container-lowest shadow-xl border border-outline-variant/60 flex flex-col gap-space-xs`}
+        className={`${at ? '' : 'hidden'} fixed z-50 p-space-sm surface-panel border border-outline-variant/60 flex flex-col gap-space-xs`}
         data-menu-panel={act}
         style={at ?? undefined}
         onClick={(e) => {

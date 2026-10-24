@@ -161,7 +161,7 @@ export default function CameraStudio({
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-studio="">
       <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-lowest">
         <div className="flex items-center gap-space-md">
-          <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" title="إغلاق (Esc)" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn hover:bg-surface-container-high flex items-center justify-center" title="إغلاق (Esc)" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
           <div>
@@ -174,7 +174,7 @@ export default function CameraStudio({
         <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface">
           الكاميرا
           <select
-            className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant"
+            className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant"
             data-act="camera-source"
             value={source}
             onChange={(e) => setSource(e.target.value)}
@@ -210,7 +210,7 @@ export default function CameraStudio({
 
         {/* الإطار: ما فيه هو ما يُطبع */}
         <div className="flex flex-col items-center gap-space-sm">
-          <div className="relative overflow-hidden rounded-lg bg-black shadow-2xl" style={{ width: frameW, height: frameH }}>
+          <div className="relative overflow-hidden rounded-card bg-black shadow-card" style={{ width: frameW, height: frameH }}>
             {source === FOLDER ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-space-sm text-white/80 p-space-md text-center">
                 <span className="material-symbols-outlined text-[48px]">photo_camera</span>
@@ -218,7 +218,7 @@ export default function CameraStudio({
                   <span className="font-label-md text-label-md">يُراقَب: {folder}<br />صوِّر بكاميرتك وتصل اللقطة هنا</span>
                 ) : (
                   <button
-                    className="h-10 px-space-md rounded-lg bg-white/15 hover:bg-white/25 font-label-md text-label-md"
+                    className="h-10 px-space-md rounded-btn bg-white/15 hover:bg-white/25 font-label-md text-label-md"
                     data-act="watch-folder"
                     type="button"
                     onClick={() => void window.diwan.camera.watchFolder().then(setFolder)}
@@ -255,11 +255,11 @@ export default function CameraStudio({
             </label>
           )}
           <div className="flex items-center gap-space-sm">
-            <button className="h-11 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md disabled:opacity-40" disabled={at === 0} type="button" onClick={() => setAt((i) => i - 1)}>
+            <button className="h-11 px-space-md rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md disabled:opacity-40" disabled={at === 0} type="button" onClick={() => setAt((i) => i - 1)}>
               السابق
             </button>
             <button
-              className="h-11 px-space-xl rounded-lg bg-primary text-on-primary font-label-lg text-label-lg font-bold disabled:opacity-40"
+              className="h-11 px-space-xl btn-act font-label-lg text-label-lg font-bold disabled:opacity-40"
               data-act="shoot"
               disabled={!person || source === FOLDER || busy}
               type="button"
@@ -267,7 +267,7 @@ export default function CameraStudio({
             >
               التقط (مسافة)
             </button>
-            <button className="h-11 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md disabled:opacity-40" disabled={!person} type="button" onClick={() => setAt((i) => i + 1)}>
+            <button className="h-11 px-space-md rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md disabled:opacity-40" disabled={!person} type="button" onClick={() => setAt((i) => i + 1)}>
               تخطَّ
             </button>
           </div>

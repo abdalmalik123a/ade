@@ -32,7 +32,7 @@ export default function ShapeLibrary({ ed, onDone }: { ed: DesignEditor; onDone:
     onDone();
   };
   return (
-    <div className="rounded-lg border border-outline-variant bg-surface-container-low p-space-sm space-y-space-xs" data-panel="shape-library">
+    <div className="rounded-card border border-outline-variant bg-surface-container-low p-space-sm space-y-space-xs" data-panel="shape-library">
       {GROUPS.map((g) => (
         <div key={g} className="space-y-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">{g}</span>
@@ -40,7 +40,7 @@ export default function ShapeLibrary({ ed, onDone }: { ed: DesignEditor; onDone:
             {PATH_PRESETS.filter((p) => p.group === g).map((p) => (
               <button
                 key={p.key}
-                className="w-11 h-11 rounded-lg bg-surface-container-lowest border border-outline-variant hover:border-primary flex items-center justify-center"
+                className="w-11 h-11 rounded-btn bg-surface-container-lowest border border-outline-variant hover:border-primary flex items-center justify-center"
                 data-preset={p.key}
                 title={p.label}
                 type="button"

@@ -88,7 +88,7 @@ export function SavedThumb({ id, width, height }: { id: number; width: number; h
   if (!view) return <span className="material-symbols-outlined text-[28px] text-on-surface-variant/50">draw</span>;
   const scale = Math.min(width / view.w, height / view.h);
   return (
-    <div className="shrink-0 overflow-hidden rounded-[3px] shadow-sm" style={{ width: view.w * scale, height: view.h * scale }}>
+    <div className="shrink-0 overflow-hidden rounded-[3px] shadow-low" style={{ width: view.w * scale, height: view.h * scale }}>
       <div
         ref={ref}
         dangerouslySetInnerHTML={{ __html: view.html }}

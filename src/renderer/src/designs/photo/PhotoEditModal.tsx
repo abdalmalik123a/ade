@@ -11,7 +11,7 @@ import { straightFrame, toSource } from './photoCanvas';
 import { usePhotoEdit } from './usePhotoEdit';
 import { useEscape } from '../../kit/useEscape';
 
-const BTN = 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+const BTN = 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
 const RATIOS: [string, number][] = [
   ['مربّع', 1],
   ['٤:٣', 4 / 3],
@@ -70,7 +70,7 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-photo-edit={p.ready ? 'ready' : 'loading'}>
-      <div className="w-full max-w-5xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-5xl max-h-[92vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">حسّن الصورة</h2>
           <p className="font-label-md text-label-md text-on-surface-variant">
@@ -191,11 +191,11 @@ export default function PhotoEditModal({ src, frameRatio, onClose, onDone }: { s
             أعِد الكلّ
           </button>
           <div className="flex-1" />
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" data-act="photo-cancel" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" data-act="photo-cancel" type="button" onClick={onClose}>
             ألغِ
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="photo-done"
             disabled={!p.ready || p.saving || !p.edited}
             type="button"

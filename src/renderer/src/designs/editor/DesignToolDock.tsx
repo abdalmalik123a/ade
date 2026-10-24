@@ -4,7 +4,7 @@ import { inlinesOf } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 
 const DOCK_BTN =
-  'w-8 h-8 rounded-lg flex items-center justify-center transition-colors text-on-surface hover:bg-surface-container-high active:scale-95 border border-outline-variant/60 shadow-2xs';
+  'w-8 h-8 rounded-btn flex items-center justify-center transition-colors text-on-surface hover:bg-surface-container-high active:scale-95 border border-outline-variant/60 shadow-2xs';
 
 export default function DesignToolDock({ ed }: { ed: DesignEditor }) {
   const { add, setSelection } = ed;
@@ -68,9 +68,9 @@ export default function DesignToolDock({ ed }: { ed: DesignEditor }) {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant shrink-0" data-tool-dock="">
+    <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-card border border-outline-variant shrink-0" data-tool-dock="">
       <button
-        className={`${DOCK_BTN} ${ed.selection.length === 0 ? 'bg-primary-container text-on-primary' : 'bg-surface-container-lowest'}`}
+        className={`${DOCK_BTN} ${ed.selection.length === 0 ? 'bg-primary-fixed text-primary' : 'bg-surface-container-lowest'}`}
         title="أداة التحديد والتحريك"
         type="button"
         onClick={() => setSelection([])}

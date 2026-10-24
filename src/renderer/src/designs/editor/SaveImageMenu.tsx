@@ -14,7 +14,7 @@ export default function SaveImageMenu({ busy, onSave }: { busy: boolean; onSave:
   return (
     <div className="relative">
       <button
-        className="h-9 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+        className="h-9 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
         data-act="save-image"
         disabled={busy}
         title="احفظ التصميم صورةً — للواتساب والنشر"
@@ -25,11 +25,11 @@ export default function SaveImageMenu({ busy, onSave }: { busy: boolean; onSave:
         احفظ صورة
       </button>
       {open && (
-        <div className="absolute bottom-11 left-0 z-50 w-64 rounded-xl bg-surface-container-lowest shadow-lg border border-outline-variant p-1" data-image-menu="">
+        <div className="absolute bottom-11 left-0 z-50 w-64 rounded-card bg-surface-container-lowest shadow-soft border border-outline-variant p-1" data-image-menu="">
           {CHOICES.map((c) => (
             <button
               key={c.key}
-              className="w-full text-right rounded-lg px-space-sm py-1.5 hover:bg-surface-container-high flex flex-col"
+              className="w-full text-right rounded-btn px-space-sm py-1.5 hover:bg-surface-container-high flex flex-col"
               data-image-format={c.key}
               type="button"
               onClick={() => {

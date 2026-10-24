@@ -22,7 +22,7 @@ import type { DesignEditor } from './useDesignEditor';
 type SidebarTab = 'properties' | 'layers' | 'page' | 'add';
 
 const TAB_BTN =
-  'flex-1 py-2 px-1 text-center font-label-sm text-label-sm font-semibold rounded-lg transition-all flex flex-col items-center gap-1';
+  'flex-1 py-2 px-1 text-center font-label-sm text-label-sm font-semibold rounded-btn transition-all flex flex-col items-center gap-1';
 
 export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
   const { canvas, designId, doc, selection } = ed;
@@ -43,7 +43,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
         <header className="flex items-center justify-between gap-space-sm">
           <div className="flex items-center gap-1.5">
             <button
-              className="h-8 px-space-sm rounded-lg hover:bg-surface-container-high font-label-md text-label-md text-on-surface-variant flex items-center gap-1"
+              className="h-8 px-space-sm rounded-btn hover:bg-surface-container-high font-label-md text-label-md text-on-surface-variant flex items-center gap-1"
               data-act="gallery"
               type="button"
               onClick={() => ed.setView('gallery')}
@@ -52,7 +52,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
               كل التصاميم
             </button>
             <button
-              className="h-8 px-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high border border-outline-variant font-label-xs text-label-xs text-on-surface flex items-center gap-1"
+              className="h-8 px-2 rounded-btn bg-surface-container-lowest hover:bg-surface-container-high border border-outline-variant font-label-xs text-label-xs text-on-surface flex items-center gap-1"
               title="بدء تصميم فارغ جديد (البدء من الصفر)"
               type="button"
               onClick={() => ed.setNewBlankModalOpen(true)}
@@ -63,7 +63,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
           </div>
           <div className="flex items-center gap-1.5">
             {designId !== null && (
-              <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary font-label-xs text-[11px] font-bold">تعديل محفوظ</span>
+              <span className="px-2 py-0.5 rounded-chip bg-primary-fixed text-primary font-label-xs text-[11px] font-bold">تعديل محفوظ</span>
             )}
             <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-size-chip="">
               {canvas.size.w} × {canvas.size.h} ملم
@@ -72,7 +72,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
         </header>
 
         <input
-          className="w-full h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
+          className="w-full h-8 px-space-sm rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
           data-title
           placeholder="اسم التصميم — مثال: هوية طالب"
           value={ed.title}
@@ -80,9 +80,9 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
         />
 
         {/* أزرار التبويبات الأربعة */}
-        <div className="flex items-center bg-surface-container-lowest p-1 rounded-xl border border-outline-variant" data-sidebar-tabs="">
+        <div className="flex items-center bg-surface-container-lowest p-1 rounded-card border border-outline-variant" data-sidebar-tabs="">
           <button
-            className={`${TAB_BTN} ${activeTab === 'properties' ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+            className={`${TAB_BTN} ${activeTab === 'properties' ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
             type="button"
             onClick={() => setActiveTab('properties')}
           >
@@ -91,7 +91,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
           </button>
 
           <button
-            className={`${TAB_BTN} ${activeTab === 'layers' ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+            className={`${TAB_BTN} ${activeTab === 'layers' ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
             type="button"
             onClick={() => setActiveTab('layers')}
           >
@@ -100,7 +100,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
           </button>
 
           <button
-            className={`${TAB_BTN} ${activeTab === 'page' ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+            className={`${TAB_BTN} ${activeTab === 'page' ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
             type="button"
             onClick={() => setActiveTab('page')}
           >
@@ -109,7 +109,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
           </button>
 
           <button
-            className={`${TAB_BTN} ${activeTab === 'add' ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+            className={`${TAB_BTN} ${activeTab === 'add' ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
             type="button"
             onClick={() => setActiveTab('add')}
           >
@@ -129,7 +129,7 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
             {ed.single ? (
               <ElementPanel ed={ed} />
             ) : (
-              <div className="p-space-lg rounded-xl bg-surface-container-lowest border border-dashed border-outline-variant text-center space-y-2">
+              <div className="p-space-lg rounded-card bg-surface-container-lowest border border-dashed border-outline-variant text-center space-y-2">
                 <span className="material-symbols-outlined text-[32px] text-on-surface-variant/70">touch_app</span>
                 <p className="font-label-md text-label-md text-on-surface-variant font-medium">اختر عنصراً من اللوحة لتعديل خصائصه</p>
                 <p className="font-label-xs text-label-xs text-on-surface-variant/70">أو أضف عنصراً جديداً من شريط الأدوات العلوي</p>

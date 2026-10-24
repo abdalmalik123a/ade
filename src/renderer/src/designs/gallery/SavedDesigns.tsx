@@ -7,7 +7,7 @@ import { toIndic } from '@shared/arabic';
 import { SavedThumb } from './Thumbs';
 import type { DesignPacks } from './useDesignPacks';
 
-const TOOL = 'h-8 px-space-sm rounded-lg font-label-sm text-label-sm font-semibold flex items-center gap-1 disabled:opacity-40';
+const TOOL = 'h-8 px-space-sm rounded-btn font-label-sm text-label-sm font-semibold flex items-center gap-1 disabled:opacity-40';
 
 export default function SavedDesigns({
   saved,
@@ -23,7 +23,7 @@ export default function SavedDesigns({
   if (saved.length === 0) return null;
   const open = (id: number) => (packs.picking ? packs.toggle(id) : onOpenSaved(id));
   return (
-    <section className="rounded-xl bg-surface-container-low p-space-md space-y-space-sm" data-saved-section="">
+    <section className="rounded-card bg-surface-container-low p-space-md space-y-space-sm" data-saved-section="">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-space-xs">
           <span className="material-symbols-outlined text-secondary text-[22px]">folder_special</span>
@@ -34,7 +34,7 @@ export default function SavedDesigns({
         {packs.picking ? (
           <div className="flex items-center gap-space-sm">
             <span className="font-label-sm text-label-sm text-on-surface-variant">اختر التصاميم التي تُحزم</span>
-            <button className={`${TOOL} bg-primary text-on-primary`} data-act="pack-save" disabled={!packs.picked.length || packs.busy} type="button" onClick={() => void packs.save()}>
+            <button className={`${TOOL} btn-act`} data-act="pack-save" disabled={!packs.picked.length || packs.busy} type="button" onClick={() => void packs.save()}>
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
               احفظ الحزمة ({toIndic(packs.picked.length)})
             </button>
@@ -63,7 +63,7 @@ export default function SavedDesigns({
         {saved.map((d) => (
           <div
             key={d.id}
-            className={`group relative p-space-sm rounded-xl bg-surface-container-lowest border hover:shadow-md transition-all flex flex-col justify-between gap-space-xs ${
+            className={`group relative p-space-sm rounded-card bg-surface-container-lowest border hover:shadow-soft transition-all flex flex-col justify-between gap-space-xs ${
               packs.picked.includes(d.id) ? 'border-primary ring-2 ring-primary/40' : 'border-outline-variant/60 hover:border-secondary/50'
             }`}
           >
@@ -78,7 +78,7 @@ export default function SavedDesigns({
               />
             )}
             <button
-              className="h-28 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden"
+              className="h-28 rounded-btn bg-surface-container flex items-center justify-center overflow-hidden"
               data-saved-thumb={d.id}
               title={packs.picking ? 'اختره للحزمة' : 'فتح وتعديل'}
               type="button"
@@ -102,7 +102,7 @@ export default function SavedDesigns({
               </div>
               {onDeleteSaved && (
                 <button
-                  className="w-7 h-7 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="w-7 h-7 rounded-btn text-on-surface-variant hover:text-error hover:bg-error-container/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   title="حذف هذا التصميم"
                   type="button"
                   onClick={(e) => {
@@ -117,7 +117,7 @@ export default function SavedDesigns({
               )}
             </div>
             <button
-              className="w-full h-8 mt-1 rounded-lg bg-surface-container-low hover:bg-primary hover:text-on-primary text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1 transition-colors"
+              className="w-full h-8 mt-1 rounded-btn bg-surface-container-low hover:bg-primary hover:text-on-primary text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1 transition-colors"
               data-saved={d.id}
               type="button"
               onClick={() => open(d.id)}

@@ -5,14 +5,14 @@ import { PALETTES, STYLES, paletteFrom } from '@shared/design/kit';
 import type { GalleryBrand } from './useGalleryBrand';
 
 const chip = (on: boolean) =>
-  `h-9 px-3 rounded-full font-label-md text-label-md flex items-center gap-2 transition-colors ${
-    on ? 'bg-primary-container text-on-primary' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
+  `h-9 px-3 rounded-chip font-label-md text-label-md flex items-center gap-2 transition-colors ${
+    on ? 'bg-primary-fixed text-primary' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'
   }`;
 
 export default function BrandPanel({ b }: { b: GalleryBrand }) {
   const { who, setWho, clients, logos, logo, name, setName, brandColor, paletteKey, setPaletteKey, client, style, setStyle, current } = b;
   return (
-    <section className="rounded-xl bg-surface-container-low p-space-md space-y-space-md" data-brand="">
+    <section className="rounded-card bg-surface-container-low p-space-md space-y-space-md" data-brand="">
       <div className="flex flex-wrap items-center gap-space-sm">
         <span className="font-label-md text-label-md text-on-surface-variant font-semibold w-20 shrink-0">لمن؟</span>
         <button className={chip(who === null)} data-logo="none" type="button" onClick={() => setWho(null)}>
@@ -41,7 +41,7 @@ export default function BrandPanel({ b }: { b: GalleryBrand }) {
           </span>
         )}
         <input
-          className="h-9 min-w-[16rem] flex-1 max-w-md px-3 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
+          className="h-9 min-w-[16rem] flex-1 max-w-md px-3 rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
           data-brand-name=""
           placeholder={logo?.name ?? 'اسم الجهة كما يُطبع — مدرسة، دائرة، شركة'}
           value={name}
@@ -83,12 +83,12 @@ export default function BrandPanel({ b }: { b: GalleryBrand }) {
       <div className="flex flex-wrap items-center gap-space-sm">
         <span className="font-label-md text-label-md text-on-surface-variant font-semibold w-20 shrink-0">النمط</span>
         {/* ثلاثة عشر نمطًا (٣٫١): تلتفّ أسطرًا ولا تخرج عن العرض. */}
-        <div className="flex flex-wrap gap-0.5 p-1 rounded-xl bg-surface-container-lowest">
+        <div className="flex flex-wrap gap-0.5 p-1 rounded-card bg-surface-container-lowest">
           {STYLES.map((s) => (
             <button
               key={s.key}
-              className={`h-9 px-4 rounded-lg font-label-md text-label-md transition-colors ${
-                style === s.key ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
+              className={`h-9 px-4 rounded-btn font-label-md text-label-md transition-colors ${
+                style === s.key ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
               }`}
               data-style={s.key}
               type="button"

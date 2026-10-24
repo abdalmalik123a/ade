@@ -8,7 +8,7 @@ import { NUM, toHexColor } from '../editor/kit';
 import GradientControl, { gradientFrom } from './GradientControl';
 
 const ROW = 'flex items-center gap-space-sm flex-wrap font-label-sm text-label-sm text-on-surface-variant';
-const SELECT = 'h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
+const SELECT = 'h-8 px-1 rounded-card bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 const COLOR = 'w-10 h-8 rounded border border-outline-variant bg-surface-container-low';
 
 type Painted = ShapeElement | PathElement;

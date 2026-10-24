@@ -127,7 +127,7 @@ export default function SheetsPreview({
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-inverse-surface/95" data-sheets="">
       <div className="h-16 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-lowest">
         <div className="flex items-center gap-space-md">
-          <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" title="رجوع (Esc)" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn hover:bg-surface-container-high flex items-center justify-center" title="رجوع (Esc)" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
           <div>
@@ -140,7 +140,7 @@ export default function SheetsPreview({
         </div>
         <div className="flex items-center gap-space-sm">
           <button
-            className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+            className="h-10 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
             data-act="pdf"
             disabled={busy}
             title="للمطبعة أو للإرسال — بمقاس الورقة الحقيقي"
@@ -151,7 +151,7 @@ export default function SheetsPreview({
             حفظ PDF
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50"
             data-act="print-sheets"
             disabled={busy}
             type="button"
@@ -179,7 +179,7 @@ export default function SheetsPreview({
               {all.map((issue, i) => (
                 <li
                   key={i}
-                  className={`px-2 py-1.5 rounded-lg font-label-sm text-label-sm leading-5 ${
+                  className={`px-2 py-1.5 rounded-card font-label-sm text-label-sm leading-5 ${
                     issue.level === 'warn' ? 'bg-error-container text-on-error-container' : 'bg-surface-container text-on-surface'
                   }`}
                   data-issue={issue.level}
@@ -192,7 +192,7 @@ export default function SheetsPreview({
         </section>
         {options && (
           <details
-            className="rounded-xl border border-outline-variant/70 open:pb-space-sm"
+            className="rounded-card border border-outline-variant/70 open:pb-space-sm"
             data-options-box={optionsOpen ? 'open' : 'closed'}
             open={optionsOpen}
             onToggle={(e) => setOptionsOpen((e.currentTarget as HTMLDetailsElement).open)}
@@ -212,7 +212,7 @@ export default function SheetsPreview({
           <span className="material-symbols-outlined">chevron_right</span>
         </button>
         <div
-          className="shrink-0 bg-white shadow-2xl"
+          className="shrink-0 bg-white shadow-card"
           style={{ width: sheet.w * PX_PER_MM * scale, height: sheet.h * PX_PER_MM * scale }}
         >
           <div

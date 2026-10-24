@@ -10,7 +10,7 @@ import { filledWords } from '@shared/design/fillFrom';
 import type { DesignEditor } from '../editor/useDesignEditor';
 import { logoColor } from '../gallery/useGalleryBrand';
 
-const SELECT = 'flex-1 min-w-0 h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
+const SELECT = 'flex-1 min-w-0 h-9 px-space-sm rounded-card bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
 
 export default function BrandKitBar({ ed }: { ed: DesignEditor }) {
   const [clients, setClients] = useState<Client[]>([]);
@@ -50,7 +50,7 @@ export default function BrandKitBar({ ed }: { ed: DesignEditor }) {
         ))}
       </select>
       <button
-        className="h-9 px-space-md rounded-lg bg-secondary-container text-on-secondary font-label-md text-label-md disabled:opacity-40 shrink-0"
+        className="h-9 px-space-md btn-soft font-label-md text-label-md disabled:opacity-40 shrink-0"
         data-act="brand-apply"
         disabled={id === null}
         title="شعارها ولونها وخطّها واسمها على هذا التصميم"

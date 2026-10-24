@@ -15,7 +15,7 @@ export default function LayersPanel({ ed }: { ed: DesignEditor }) {
   const groups = [...new Set(canvas.elements.filter((el) => el.group).map((el) => el.group!))];
 
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-xs">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-xs">
       <div className="flex items-center justify-between">
         <h2 className="font-body-md text-body-md text-on-surface font-semibold">الطبقات ({canvas.elements.length})</h2>
         {selection.length > 0 && (
@@ -64,8 +64,8 @@ export default function LayersPanel({ ed }: { ed: DesignEditor }) {
             return (
               <div
                 key={el.id}
-                className={`flex items-center gap-0.5 rounded-lg border border-transparent transition-colors ${
-                  on ? 'bg-primary-container text-on-primary border-primary/30' : 'text-on-surface hover:bg-surface-container-high'
+                className={`flex items-center gap-0.5 rounded-card border border-transparent transition-colors ${
+                  on ? 'bg-grad-sel text-primary border-cyan shadow-sel' : 'text-on-surface hover:bg-surface-container-high'
                 }`}
               >
                 <button
@@ -76,7 +76,7 @@ export default function LayersPanel({ ed }: { ed: DesignEditor }) {
                 >
                   <span className="truncate">{kindName(el)}</span>
                   {el.group && (
-                    <span className="shrink-0 px-1.5 rounded-full bg-secondary-container text-on-secondary text-[10px]" data-layer-group={el.group}>
+                    <span className="shrink-0 px-1.5 rounded-chip bg-primary-fixed text-primary text-[10px]" data-layer-group={el.group}>
                       مجموعة {groups.indexOf(el.group) + 1}
                     </span>
                   )}

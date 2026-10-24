@@ -74,7 +74,7 @@ export default function Gallery({
           <div className="flex items-center gap-space-sm flex-wrap">
             {onNewBlank && (
               <button
-                className="h-10 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-all"
+                className="h-10 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-1.5 transition-all"
                 data-act="new-blank"
                 type="button"
                 onClick={onNewBlank}
@@ -84,7 +84,7 @@ export default function Gallery({
               </button>
             )}
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+              className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               data-act="background"
               type="button"
               onClick={onOpenImage}
@@ -93,7 +93,7 @@ export default function Gallery({
               تصميمك من صورة
             </button>
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+              className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               data-act="import"
               title="Word · Photoshop · PDF — المقاس والمواضع من الملف"
               type="button"
@@ -103,7 +103,7 @@ export default function Gallery({
               من Word أو Photoshop أو PDF
             </button>
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+              className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
               data-act="pack-import"
               disabled={packs.busy}
               title="حزمة تصاميم من مكتبٍ آخر أو جهازٍ ثانٍ — والموجود منها لا يُكرَّر"
@@ -141,12 +141,12 @@ export default function Gallery({
         <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))' }}>
           {onNewBlank && (
             <button
-              className="group rounded-xl border-2 border-dashed border-outline-variant/80 hover:border-primary/80 bg-surface-container-low/50 hover:bg-surface-container-high/60 transition-all text-center overflow-hidden flex flex-col items-center justify-center p-space-lg min-h-[290px] focus:outline-none focus:ring-2 focus:ring-primary"
+              className="group rounded-card border-2 border-dashed border-outline-variant/80 hover:border-primary/80 bg-surface-container-low/50 hover:bg-surface-container-high/60 transition-all text-center overflow-hidden flex flex-col items-center justify-center p-space-lg min-h-[290px] focus:outline-none focus:ring-2 focus:ring-primary"
               data-act="blank-card"
               type="button"
               onClick={onNewBlank}
             >
-              <div className="w-16 h-16 rounded-2xl bg-primary-container/40 group-hover:bg-primary-container flex items-center justify-center mb-space-sm transition-colors text-primary">
+              <div className="w-16 h-16 rounded-card bg-primary-container/40 group-hover:bg-primary-container flex items-center justify-center mb-space-sm transition-colors text-primary">
                 <span className="material-symbols-outlined text-[36px]">add</span>
               </div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface font-bold mb-1">
@@ -162,7 +162,7 @@ export default function Gallery({
             return (
               <button
                 key={k.key}
-                className="group rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors text-right overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-primary"
+                className="group rounded-card bg-surface-container-low hover:bg-surface-container-high transition-colors text-right overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-primary"
                 data-kind={k.key}
                 type="button"
                 onClick={() => onPick({ kind: k, style, palette, brand, client: b.client })}

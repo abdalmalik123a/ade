@@ -9,7 +9,7 @@ import { CALENDAR_LABEL, dateValueIn, type Calendar } from '@shared/dates';
 import DateTools from '../../components/DateTools';
 import type { DesignEditor } from '../editor/useDesignEditor';
 
-const INPUT = 'h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
+const INPUT = 'h-9 px-space-sm rounded-card bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
 
 /** حقل التاريخ: تقويمه (و«كما كُتب» يتركه)، واليوم أو تاريخٌ من التقويم، وما يُطبع إن خالف ما كُتب. */
 function DateField({ ed, f }: { ed: DesignEditor; f: DocField }) {
@@ -61,7 +61,7 @@ export default function FillPanel({ ed }: { ed: DesignEditor }) {
   const { doc, values, setValues, imageKeys, batchRows } = ed;
   if (doc.fields.length === 0) return null;
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm">
       <h2 className="font-body-md text-body-md text-on-surface font-semibold">
         {batchRows.length ? 'ما يشترك فيه الجميع — والقائمة تغلبه' : `املأ الحقول (${doc.fields.length})`}
       </h2>
@@ -78,7 +78,7 @@ export default function FillPanel({ ed }: { ed: DesignEditor }) {
                 </span>
               )}
               <button
-                className="h-9 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md text-on-surface"
+                className="h-9 px-space-sm rounded-btn bg-surface-container-low hover:bg-surface-container-high font-label-md text-label-md text-on-surface"
                 data-photo={f.key}
                 type="button"
                 onClick={() => void window.diwan.files.pickImage('photos').then((src) => src && setValues((v) => ({ ...v, [f.key]: src })))}

@@ -105,7 +105,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(1800);
   ok('و«صمّم لها» يفتح المعرض عليها', await page.eval(`
     const chip = document.querySelector('[data-client-chip]');
-    return Boolean(chip && chip.className.includes('bg-primary-container'));
+    return Boolean(chip && chip.className.includes('bg-primary-fixed'));
   `));
   ok('ولمحاته باسمها', (await page.eval(`return document.querySelector('[data-kind="student-id"]').innerText;`)).includes('مدرسة الرافدين الابتدائية'));
   ok('وبشعارها', await page.eval(`return [...document.querySelectorAll('[data-kind="student-id"] img')].some((i) => i.src.includes('diwan://store/seals/'));`));

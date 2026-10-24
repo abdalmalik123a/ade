@@ -11,7 +11,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
   const { canvas, apply, activeSide, history, say, askSize, imp, backId, backChoices, backDoc } = ed;
   const sideName = activeSide === 'front' ? 'الوجه' : 'الظهر';
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm">
       <div className="flex items-center justify-between">
         <h2 className="font-body-md text-body-md text-on-surface font-semibold">الخلفية والمقاس ({sideName})</h2>
         {activeSide === 'back' && (
@@ -35,7 +35,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
         )}
       </div>
       <button
-        className="w-full h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
+        className="w-full h-10 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5"
         data-act="background"
         type="button"
         onClick={() => void ed.openBackground()}
@@ -44,7 +44,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
         افتح تصميمًا (صورة {sideName})
       </button>
       <button
-        className="w-full h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+        className="w-full h-9 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
         data-act="import"
         title="Word · Photoshop · PDF — المقاس والمواضع من الملف"
         type="button"
@@ -56,7 +56,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
       {activeSide === 'back' && ed.backHasContent && (
         <button
           type="button"
-          className="w-full h-8 rounded-lg bg-error-container/20 text-error hover:bg-error-container/40 font-label-xs text-label-xs flex items-center justify-center gap-1 transition-colors"
+          className="w-full h-8 rounded-btn bg-error-container/20 text-error hover:bg-error-container/40 font-label-xs text-label-xs flex items-center justify-center gap-1 transition-colors"
           onClick={() => {
             if (window.confirm('هل تريد مسح ظهر التصميم بالكامل والعودة لوجه واحد فقط؟')) {
               ed.setBackHistory(null);
@@ -80,7 +80,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
 
       {/* «غيّر المقاس» (DESIGNS.md ١٫٧): العناصر تتوزّع وحدها — لا تتمطّط — بقيدٍ واحدٍ يُتراجع عنه. */}
       <select
-        className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
+        className="w-full h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface"
         data-preset
         title="غيّر المقاس — تتوزّع العناصر وحدها"
         value=""
@@ -140,7 +140,7 @@ export default function PagePanel({ ed }: { ed: DesignEditor }) {
           <label className="flex flex-col gap-1" data-back="">
             <span className="font-label-sm text-label-sm text-on-surface-variant">الظهر — يُطبع خلف كل بطاقة على الوجه الآخر من الورقة</span>
             <select
-              className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+              className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
               data-back-select=""
               value={backId ?? ''}
               onChange={(e) => ed.setBackId(e.target.value ? Number(e.target.value) : null)}

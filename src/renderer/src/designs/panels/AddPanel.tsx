@@ -8,14 +8,14 @@ import { inlinesOf } from '../editor/kit';
 import type { DesignEditor } from '../editor/useDesignEditor';
 import ShapeLibrary from './ShapeLibrary';
 
-const BTN = 'h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface';
+const BTN = 'h-8 px-space-sm rounded-card bg-surface-container-low hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface';
 const BTN_ICON = `${BTN} flex items-center gap-1 shadow-xs border border-outline-variant/60`;
 
 export default function AddPanel({ ed }: { ed: DesignEditor }) {
   const { add } = ed;
   const [library, setLibrary] = useState(false);
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm">
       <h2 className="font-body-md text-body-md text-on-surface font-semibold">ضع عنصرًا فوق التصميم</h2>
       <p className="font-label-sm text-label-sm text-on-surface-variant">
         اكتبه هكذا: <span className="font-mono">{'{اسم الطالب}'}</span> — والنصّ الثابت يُكتب كما هو. ثم اسحبه إلى مكانه.
@@ -70,7 +70,7 @@ function AddBox({ onAdd }: { onAdd: (label: string) => void }) {
   return (
     <div className="flex items-center gap-space-sm">
       <input
-        className="flex-1 h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+        className="flex-1 h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
         data-add-text
         placeholder="{اسم الطالب}"
         value={text}
@@ -79,7 +79,7 @@ function AddBox({ onAdd }: { onAdd: (label: string) => void }) {
           if (e.key === 'Enter') add();
         }}
       />
-      <button className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md whitespace-nowrap" data-act="add" type="button" onClick={add}>
+      <button className="h-9 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md whitespace-nowrap" data-act="add" type="button" onClick={add}>
         أضف
       </button>
     </div>

@@ -14,13 +14,13 @@ import PaintPanel from './PaintPanel';
 import GradientControl, { gradientFrom } from './GradientControl';
 import TextEffectsPanel from './TextEffectsPanel';
 
-const SELECT = 'h-8 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
+const SELECT = 'h-8 px-space-sm rounded-card bg-surface-container-low border border-outline-variant font-label-sm text-label-sm text-on-surface';
 
 export default function ElementPanel({ ed }: { ed: DesignEditor }) {
   const { single, patchElement, doc, imageKeys } = ed;
   if (!single) return null;
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm">
       <div className="flex items-center justify-between">
         <h2 className="font-body-md text-body-md text-on-surface font-semibold truncate">{kindName(single)}</h2>
         <div className="flex items-center gap-1 shrink-0">
@@ -39,7 +39,7 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
       {single.kind === 'text' && (
         <>
           <input
-            className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+            className="w-full h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
             data-element-text
             value={textOf(single.inlines)}
             onChange={(e) => patchElement(single.id, { inlines: inlinesOf(e.target.value) })}
@@ -96,7 +96,7 @@ export default function ElementPanel({ ed }: { ed: DesignEditor }) {
         <label className="flex flex-col gap-1">
           <span className="font-label-sm text-label-sm text-on-surface-variant">اسم الحقل الذي يملؤه</span>
           <input
-            className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+            className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
             data-element-ref
             value={single.ref ?? ''}
             onChange={(e) => patchElement(single.id, { ref: e.target.value.trim() })}

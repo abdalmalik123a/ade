@@ -25,13 +25,13 @@ export default function DraftStrip({ refreshKey, onResume }: { refreshKey: unkno
 
   if (!rows.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-space-sm mt-space-sm px-space-md py-space-sm rounded-xl bg-tertiary-container/40 border border-tertiary/30" data-panel="design-drafts">
+    <div className="flex flex-wrap items-center gap-space-sm mt-space-sm px-space-md py-space-sm rounded-card bg-tertiary-container/40 border border-tertiary/30" data-panel="design-drafts">
       <span className="material-symbols-outlined text-[18px] text-tertiary">history</span>
       <span className="font-label-md text-label-md text-on-surface font-semibold">لم يُحفظ بعد:</span>
       {rows.slice(0, SHOWN).map((d) => (
         <button
           key={d.id}
-          className="h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface hover:border-primary flex items-center gap-1.5"
+          className="h-8 px-space-sm rounded-btn bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface hover:border-primary flex items-center gap-1.5"
           data-act="resume-design-draft"
           title="أكمل التصميم كما تُرك"
           type="button"

@@ -54,7 +54,7 @@ export default function PrintOptions({
                   slot < startSlot
                     ? 'bg-surface-container-high text-on-surface-variant line-through'
                     : slot === startSlot
-                      ? 'bg-secondary text-on-secondary font-bold'
+                      ? 'bg-primary-fixed text-primary font-bold'
                       : 'bg-surface-container text-on-surface'
                 }`}
                 data-slot={slot}
@@ -80,7 +80,7 @@ export default function PrintOptions({
       <label className="flex flex-col gap-1">
         <span className="font-label-md text-label-md text-on-surface font-semibold">بطاقاتٌ بعينها</span>
         <input
-          className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+          className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
           data-act="pick-cards"
           placeholder="مثل: ١٤ أو ٥، ١٢-١٤"
           value={pickText}
@@ -99,7 +99,7 @@ export default function PrintOptions({
         <label className="flex flex-col gap-1">
           <span className="font-label-md text-label-md text-on-surface font-semibold">ورقةٌ فاصلة بين المجموعات</span>
           <select
-            className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
+            className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface"
             data-act="group-col"
             value={groupCol}
             onChange={(e) => onGroupCol(e.target.value)}
