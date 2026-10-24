@@ -56,7 +56,7 @@ export default async function scenario(page, { profile, shotsDir }) {
         const r = el.getBoundingClientRect();
         const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
         return { inside: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth, top: hit === el || el.contains(hit), h: r.height,
-          bg: getComputedStyle(el).backgroundColor,
+          bg: getComputedStyle(el).backgroundImage !== 'none' ? getComputedStyle(el).backgroundImage : getComputedStyle(el).backgroundColor,
           text: [...el.childNodes].filter((n) => !n.classList?.contains('material-symbols-outlined')).map((n) => n.textContent).join('').trim() };
       };
       return { issue: box(document.querySelector('${ed} [data-act="issue"]')), trial: box(document.querySelector('${ed} [data-act="print-trial"]')) };
