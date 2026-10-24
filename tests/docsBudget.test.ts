@@ -9,8 +9,11 @@ const PLAN = join(ROOT, 'docs', 'PLAN.md');
 const LOG = join(ROOT, 'docs', 'LOG.md');
 const KB = 1024;
 const PLAN_MAX = 25 * KB;
-const LOG_MAX = 100 * KB;
-const ENTRY_MAX = 10;
+// ر176: المهامّ القادمة مترابطةٌ وطويلة والمنفّذ يستمرّ — فالدفتر ٢٠٠ ك.ب والقيد ١٥ سطرًا، ولا يُقرأ منه إلا أوّله (حارس `LOG_LIMIT`).
+const LOG_MAX = 200 * KB;
+const ENTRY_MAX = 15;
+const CHAIN = join(ROOT, 'docs', 'CHAIN.md');
+const CHAIN_MAX = 20 * KB;
 
 describe('ميزانية الوثائق التي تقرؤها كلّ جلسة', () => {
   it('PLAN لوحة حالٍ قصيرة', () => {
@@ -20,10 +23,15 @@ describe('ميزانية الوثائق التي تقرؤها كلّ جلسة', 
 
   it('الدفتر قيود الأوامر الجارية وحدها', () => {
     const size = statSync(LOG).size;
-    expect(size, `docs/LOG.md ${size} بايت فوق ${LOG_MAX}: انقل أقدم قيوده بنصّها — إلا قيود ما لم يُراجَع — إلى docs/legacy/LOG-<التالي>.md`).toBeLessThanOrEqual(LOG_MAX);
+    expect(size, `docs/LOG.md ${size} بايت فوق ${LOG_MAX}: انقل قيود أقدم مرحلةٍ رُوجعت بنصّها كاملةً إلى docs/legacy/LOG-<التالي>.md (ر176)`).toBeLessThanOrEqual(LOG_MAX);
   });
 
-  it('أحدث قيدٍ عنوانه وعشرة أسطرٍ على الأكثر (قاعدة رأس الدفتر)', () => {
+  it('سلسلة التقدّم خريطةٌ قصيرة يقرؤها المنفّذ مرّةً في أوّل محادثته (ر176)', () => {
+    const size = statSync(CHAIN).size;
+    expect(size, `docs/CHAIN.md ${size} بايت فوق ${CHAIN_MAX}: المرحلة المنتهية سطرٌ واحد، وتفصيلها في PLAN وأوامرها`).toBeLessThanOrEqual(CHAIN_MAX);
+  });
+
+  it(`أحدث قيدٍ عنوانه و${ENTRY_MAX} سطرًا على الأكثر (قاعدة رأس الدفتر)`, () => {
     const lines = readFileSync(LOG, 'utf8').split(/\r?\n/);
     const start = lines.findIndex((l) => l.startsWith('## '));
     expect(start, 'لا قيد في الدفتر: كلّ قيدٍ يبدأ بـ«## »').toBeGreaterThan(-1);

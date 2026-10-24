@@ -122,6 +122,49 @@ describe('حرّاس الجلسات — الملفّات', () => {
   });
 });
 
+describe('حارس الاستمرار (ر176) — محادثة /next لا تتوقّف ما بقي أمر', () => {
+  const PLAN = [
+    '| الرقم | الأمر | الحال | الوسم | يعتمد على |',
+    '|---|---|---|---|---|',
+    '| [D154](orders/done/D154.md) | قديم | ✅ 961df33 | 🧭 | — |',
+    '| [D155](orders/D155.md) | الرمز | ⬜ | ⚙️ ص | مراجعة D154 |'
+  ].join('\n');
+  const LOG = '# دفتر\n\n## ٢٠٢٦-١٠-٢٤ — D154 ✅\n- شيء';
+  const user = (content: unknown, extra: object = {}) => JSON.stringify({ type: 'user', message: { role: 'user', content }, ...extra });
+  const NEXT = user('<command-message>next</command-message>\n<command-name>/next</command-name>');
+  function stopCtx(transcript: string, files: Record<string, string> = {}, head = 'h1') {
+    const state = new Map<string, string>();
+    return { ...ctx({ 'rev-parse HEAD': `${head}\n` }, { 'docs/PLAN.md': PLAN, 'docs/LOG.md': LOG, ...files }), transcript: () => transcript, state };
+  }
+  const stop = (c: ReturnType<typeof stopCtx>, active = false): Verdict => decide('stop', { session_id: 's', transcript_path: 't', stop_hook_active: active }, c);
+
+  it('آخر ما كتبه المالك /next وفي PLAN أمرٌ غير 🛑: يُردّ إلى العمل بالتالي', () => {
+    const v = stop(stopCtx([NEXT, user([{ type: 'tool_result', content: 'x' }]), user('ملخّص', { isCompactSummary: true })].join('\n')));
+    expect(v?.decision).toBe('block');
+    expect(v?.reason).toContain('D155');
+  });
+
+  it('و«أكمل» كذلك؛ أمّا رسالةٌ أخرى من المالك فتتوقّف المحادثة', () => {
+    expect(kind(stop(stopCtx(user([{ type: 'text', text: 'أكمل' }]))))).toBe('block');
+    expect(kind(stop(stopCtx([NEXT, user('اشرح لي ما تغيّر')].join('\n'))))).toBe('pass');
+    expect(kind(stop(stopCtx('')))).toBe('pass');
+  });
+
+  it('تتوقّف بقيد «توقّف» في رأس الدفتر، وعند 🛑، وحين لا يبقى شيء', () => {
+    expect(kind(stop(stopCtx(NEXT, { 'docs/LOG.md': '## ٢٠٢٦ — D155 — توقّف: الواقع يخالف الأمر\n' })))).toBe('pass');
+    expect(kind(stop(stopCtx(NEXT, { 'docs/PLAN.md': PLAN.replace('⚙️ ص', '🛑') })))).toBe('pass');
+    expect(kind(stop(stopCtx(NEXT, { 'docs/PLAN.md': PLAN.replace('⬜', '✅ abc') })))).toBe('pass');
+  });
+
+  it('لا حلقة: إن لم يتقدّم HEAD منذ آخر ردٍّ تتوقّف، وإن تقدّم يُردّ ثانية', () => {
+    const c = stopCtx(NEXT);
+    expect(kind(stop(c))).toBe('block');
+    expect(kind(stop(c, true))).toBe('pass');
+    c.git = (args: string[]) => (args.join(' ') === 'rev-parse HEAD' ? 'h2\n' : '');
+    expect(kind(stop(c, true))).toBe('block');
+  });
+});
+
 describe('حرّاس الجلسات — كما يشغّلها Claude Code', () => {
   const run = (mode: string, payload: object) =>
     spawnSync(process.execPath, [join(ROOT, 'tools', 'hooks', 'guard.mjs'), mode], { input: JSON.stringify(payload), encoding: 'utf8' });

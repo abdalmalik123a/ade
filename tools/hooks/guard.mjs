@@ -4,14 +4,17 @@
  * يشغّله `.claude/settings.json`: `node tools/hooks/guard.mjs pre|post` ومدخله JSON الأداة على stdin.
  * - **قبل الأداة:** «deny» يُمنع ويُشرح السبب لـClaude، و«ask» يُسأل المالك (ما يجوز بأمره الصريح وحده).
  * - **بعد Edit وWrite:** بايتات التحكّم ونهايات الأسطر (L56) — «block» يعيد السبب لـClaude فيصلح فورًا.
+ * - **عند التوقّف (`stop`، ر176):** محادثةٌ آخرُ ما كتبه المالك فيها `/next` (أو «أكمل» وأخواتها) لا تتوقّف ما بقي في PLAN أمرٌ غير 🛑 —
+ *   إلا بقيد «توقّف» في رأس الدفتر، أو إن لم يتقدّم HEAD منذ آخر ردٍّ إلى العمل (فلا حلقة بلا نهاية).
  * - `node tools/hooks/guard.mjs fix-eol <ملف>` يعيد نهايات ملفٍّ متتبَّع كما في الفهرس (بديل `sed -i`).
  *
  * تحليل الأوامر تقريبٌ يكفي الحارس، لا مفسّر shell. وعطل الحارس نفسه يمرّر الأداة صامتًا فلا يوقف العمل.
  * والقرارات دوالّ تأخذ `git` و`read` ممرَّرين — فيختبرها `tests/guardHook.test.ts` بلا مستودعٍ حقيقي.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** أقصى ما يُقرأ من الدفتر دفعةً (الأحدث في أعلاه). */
@@ -197,8 +200,58 @@ export function checkAfterEdit(input, ctx) {
   return null;
 }
 
-/** القرار: `pre` قبل الأداة و`post` بعدها — { decision, reason } أو null (يمرّ). */
+// ── حارس الاستمرار (ر176) ─────────────────────────────────────────────
+
+/** آخر ما كتبه المالك في المحادثة (سطور JSONL) — بلا نتائج الأدوات ولا الملحقات ولا ملخّص التلخيص الآليّ. */
+export function lastPrompt(jsonl) {
+  const rows = (jsonl ?? '').split('\n');
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const e = parse(rows[i]);
+    if (e?.type !== 'user' || e.isMeta || e.isCompactSummary) continue;
+    const c = e.message?.content;
+    if (Array.isArray(c) && c.some((p) => p?.type === 'tool_result')) continue;
+    const text = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((p) => p?.type === 'text').map((p) => p.text).join('\n') : '';
+    if (!text.trim() || /^\s*(Stop hook|\[Request interrupted|<local-command|<system-reminder>)/.test(text)) continue;
+    return text;
+  }
+  return '';
+}
+
+/** المحادثة محادثةُ تنفيذ: آخر ما كتبه المالك `/next`، أو «ابدأ» أو «أكمل» أو «تابع» أو «استمرّ». */
+export const isRun = (prompt) => /<command-name>\/next<\/command-name>|^\s*\/next\b|^\s*(ابدأ|أكمل|اكمل|تابع|استمر)/.test(prompt);
+
+/** أوّل سطرٍ في جداول PLAN حاله ⬜ أو 🔄 أو 🔒: رقمه ووسمه — أو null إن لم يبقَ شيء. */
+export function nextRow(plan) {
+  for (const line of (plan ?? '').split('\n')) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').map((c) => c.trim());
+    if (!/^(⬜|🔄|🔒)/.test(cells[3] ?? '')) continue;
+    const id = /\b[DF]\d+\b/.exec(cells[1] ?? '')?.[0] ?? (cells[1] ?? '').replace(/[[\]*]/g, '').slice(0, 40);
+    return { id, tag: cells[4] ?? '' };
+  }
+  return null;
+}
+
+/** عند توقّف المحادثة: «block» يردّها إلى العمل، أو null تتوقّف. `ctx.transcript` و`ctx.state` ممرَّران. */
+export function checkStop(payload, ctx) {
+  if (!isRun(lastPrompt(ctx.transcript(String(payload.transcript_path ?? ''))))) return null;
+  const top = (ctx.read('docs/LOG.md') ?? '').split('\n').find((l) => l.startsWith('## ')) ?? '';
+  if (/توقّف|توقف/.test(top)) return null;
+  const next = nextRow(ctx.read('docs/PLAN.md'));
+  if (!next || /🛑/.test(next.tag)) return null;
+  const head = (ctx.git(['rev-parse', 'HEAD']) ?? '').trim();
+  const key = String(payload.session_id ?? 'x');
+  if (payload.stop_hook_active && ctx.state.get(key) === head) return null;
+  ctx.state.set(key, head);
+  return {
+    decision: 'block',
+    reason: `السلسلة لم تنتهِ (ر176): التالي ${next.id} في PLAN — خذه الآن في هذه المحادثة (احجزه ونفّذه واختمه ثم ما بعده). ولا توقّف إلا بقيدٍ عنوانه «توقّف» في رأس الدفتر لسببٍ من ر176، أو عند سطر 🛑.`
+  };
+}
+
+/** القرار: `pre` قبل الأداة و`post` بعدها و`stop` عند التوقّف — { decision, reason } أو null (يمرّ). */
 export function decide(mode, payload, ctx) {
+  if (mode === 'stop') return checkStop(payload, ctx);
   const tool = String(payload.tool_name ?? '');
   const input = payload.tool_input ?? {};
   if (mode === 'pre') return tool === 'Bash' || tool === 'PowerShell' ? checkCommand(String(input.command ?? ''), ctx) : checkFile(tool, input, ctx);
@@ -226,7 +279,16 @@ function main() {
   }
   const payload = parse(readFileSync(0, 'utf8'));
   if (!payload) return;
-  const ctx = { root, cwd: payload.cwd || process.cwd(), git, read: (rel) => readFileSync(resolve(root, rel), 'utf8'), readBytes: (rel) => readFileSync(resolve(root, rel)) };
+  const stateFile = (key) => join(tmpdir(), `diwan-stop-${key.replace(/[^\w-]/g, '')}.txt`);
+  const ctx = {
+    root,
+    cwd: payload.cwd || process.cwd(),
+    git,
+    read: (rel) => readFileSync(resolve(root, rel), 'utf8'),
+    readBytes: (rel) => readFileSync(resolve(root, rel)),
+    transcript: (path) => (path && existsSync(path) ? readFileSync(path, 'utf8') : ''),
+    state: { get: (key) => (existsSync(stateFile(key)) ? readFileSync(stateFile(key), 'utf8') : null), set: (key, v) => writeFileSync(stateFile(key), v) }
+  };
   const r = decide(mode, payload, ctx);
   if (!r) return;
   const out = mode === 'pre' ? { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: r.decision, permissionDecisionReason: r.reason } } : { decision: 'block', reason: r.reason };
