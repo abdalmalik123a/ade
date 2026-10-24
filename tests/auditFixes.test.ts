@@ -19,7 +19,7 @@ import { barcodeSvg, code128Text, encodes128 } from '../src/shared/barcode';
 import { inlineBarcodes } from '../src/shared/design/imposition';
 import { designPreflight } from '../src/shared/preflight';
 import { barcodeElement, emptyCanvas } from '../src/shared/canvas';
-import { canonicalizeNationalIds, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
+import { canonicalizeNationalIds, deleteCitizen, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
 import { prepareDocuments } from '../src/main/services/documents';
 import { citizenByNationalId } from '../src/main/services/issue';
 import { verifyArchive } from '../src/main/services/archiveVerify';
@@ -98,6 +98,31 @@ describe('٢. الرقم الوطني: لا حرفٌ يمرّ صامتًا، و�
       { n: 'د', nid: `1985${HAMZA}33334444` }
     ]);
     expect(canonicalizeNationalIds(db)).toEqual({ changed: 0, clashes: 1 });
+  });
+
+  it('والمتروك لصدامه يُوحَّد حين يزول الصدام — بحذف صاحب الرقم أو تغيير رقمه — وصدامٌ باقٍ يُترك (D149)', () => {
+    // بعد الترقية: التوحيد لا يجري في الإقلاع، فالمتروك ينتظر زوال صدامه نفسه.
+    const db = freshDb();
+    const put = db.prepare('INSERT INTO citizens (full_name, national_id, name_fold) VALUES (?, ?, ?)');
+    const add = (name: string, nid: string) => Number(put.run(name, nid, name).lastInsertRowid);
+    const a = add('أ', '١٢٣٤٥٦٧٨٩٠١٢'); // هو «ب» بأرقامٍ هندية
+    const b = add('ب', '123456789012');
+    const c = add('ج', '١٩٨٨٢٢٢٢٣٣٣٣'); // هو «د»
+    const d = add('د', '198822223333');
+    const e = add('هـ', '١٩٧٧٤٤٤٤٥٥٥٥'); // هو «و» — وصدامه باقٍ
+    add('و', '197744445555');
+    const nid = (id: number) => (db.prepare('SELECT national_id AS n FROM citizens WHERE id = ?').get(id) as { n: string }).n;
+
+    deleteCitizen(db, b);
+    expect(nid(a)).toBe('123456789012');
+    expect(citizenByNationalId(db, '123456789012')).toBe(a);
+    expect(nid(c)).toBe('١٩٨٨٢٢٢٢٣٣٣٣');
+
+    saveCitizen(db, { ...citizen('د', '198899990000'), id: d });
+    expect(nid(c)).toBe('198822223333');
+    expect(citizenByNationalId(db, '١٩٨٨ ٢٢٢٢ ٣٣٣٣')).toBe(c);
+
+    expect(nid(e)).toBe('١٩٧٧٤٤٤٤٥٥٥٥');
   });
 });
 

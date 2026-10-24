@@ -158,7 +158,7 @@ export function chainLink(prev: string, sha256: string, serial: string): string 
 export function ensureChain(db: Database): void {
   const cols = (db.prepare('PRAGMA table_info(documents)').all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes('chain')) db.exec('ALTER TABLE documents ADD COLUMN chain TEXT');
-  // يُسأل عند كل إصدار (prepareDocuments): فهرسٌ جزئيّ يجعل «أبقي كتابٌ بلا حلقة؟»
+  // يُسأل في الترقية ١ وحدها (prepareDocuments، بعد D148): فهرسٌ جزئيّ يجعل «أبقي كتابٌ بلا حلقة؟»
   // سؤالًا واحدًا لا مسحًا لخمسين ألف كتاب.
   db.exec('CREATE INDEX IF NOT EXISTS ix_docs_unchained ON documents(id) WHERE chain IS NULL');
   if (!db.prepare('SELECT 1 FROM documents WHERE chain IS NULL LIMIT 1').get()) return;

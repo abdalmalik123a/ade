@@ -272,6 +272,8 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
   })();
 
   indexRow(db, 'citizens', id);
+  // رقمٌ تغيّر قد يفكّ صدامًا: ما تُرك لأنّه كان رقم هذا المواطن يُوحَّد الآن (D149).
+  if (current && current.national_id !== nationalId) canonicalizeNationalIds(db);
   return getCitizen(db, id)!;
 }
 
@@ -291,6 +293,8 @@ export function deleteCitizen(db: Database, id: number): string[] {
     (r) => r.id
   );
   db.prepare('DELETE FROM citizens WHERE id = ?').run(id);
+  // والحذف كذلك: ما تُرك لصدامه مع رقم المحذوف يُوحَّد الآن، لا في الإقلاع (D149).
+  canonicalizeNationalIds(db);
   unindexRow(db, 'citizens', id);
   for (const a of attachments) unindexRow(db, 'attachments', a);
   return paths;
