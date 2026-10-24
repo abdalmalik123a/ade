@@ -136,7 +136,7 @@ export default function PaperPhotoDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-paper-photo="">
-      <div className="w-full max-w-6xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-6xl max-h-[92vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex items-start justify-between gap-space-md">
           <div>
             <h2 className="font-headline-sm text-headline-sm text-on-surface">كتابٌ من صورة ورقة</h2>
@@ -144,7 +144,7 @@ export default function PaperPhotoDialog({
               تُقرأ على هذا الجهاز وحده. والتواقيع والأختام لا تُنقل — الكتاب يُكتب ويُوقَّع من جديد.
             </p>
           </div>
-          <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" title="إغلاق" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn hover:bg-surface-container-high flex items-center justify-center" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -158,7 +158,7 @@ export default function PaperPhotoDialog({
             )}
             <div className="flex gap-space-md">
               <button
-                className="h-24 w-56 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex flex-col items-center justify-center gap-1 font-label-md text-label-md font-semibold"
+                className="h-24 w-56 rounded-card bg-secondary-fixed text-on-secondary-fixed flex flex-col items-center justify-center gap-1 font-label-md text-label-md font-semibold"
                 data-act="paper-pick"
                 type="button"
                 onClick={() => void pickFile()}
@@ -167,7 +167,7 @@ export default function PaperPhotoDialog({
                 صورةٌ أو مسحٌ من الجهاز
               </button>
               <button
-                className="h-24 w-56 rounded-xl bg-surface-container-high text-on-surface flex flex-col items-center justify-center gap-1 font-label-md text-label-md font-semibold"
+                className="h-24 w-56 rounded-card bg-surface-container-high text-on-surface flex flex-col items-center justify-center gap-1 font-label-md text-label-md font-semibold"
                 data-act="paper-camera"
                 type="button"
                 onClick={() => setStage('camera')}
@@ -236,7 +236,7 @@ export default function PaperPhotoDialog({
                     const dropped = r.reasons.includes('dropped');
                     const kept = keep[p.id] ?? p.keep;
                     return (
-                      <div key={p.id} className="p-space-xs rounded-lg bg-surface-container-low flex flex-col gap-1" data-paper-item={p.id}>
+                      <div key={p.id} className="p-space-xs rounded-card bg-surface-container-low flex flex-col gap-1" data-paper-item={p.id}>
                         <div className="flex flex-wrap items-center gap-1">
                           {r.reasons.map((why) => (
                             <span
@@ -262,7 +262,7 @@ export default function PaperPhotoDialog({
                           </label>
                         ) : (
                           <input
-                            className="h-9 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md border border-outline-variant focus:outline-none focus:ring-2 focus:ring-secondary"
+                            className="input-field h-9 px-2 text-on-surface font-body-md text-body-md"
                             data-paper-text={p.id}
                             dir="rtl"
                             value={value}
@@ -287,11 +287,11 @@ export default function PaperPhotoDialog({
               </div>
             </div>
             <div className="p-space-md bg-surface-container-low flex items-center justify-between gap-space-sm">
-              <button className="h-10 px-space-md rounded-lg hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => setStage('pick')}>
+              <button className="h-10 px-space-md rounded-btn hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={() => setStage('pick')}>
                 صورةٌ أخرى
               </button>
               <button
-                className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+                className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
                 data-act="paper-open"
                 type="button"
                 onClick={() => onOpen({ doc: paperDoc(read.plan, { texts, keep }), title: read.plan.title, notes: read.plan.notes })}

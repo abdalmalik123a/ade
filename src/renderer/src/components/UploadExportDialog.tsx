@@ -67,7 +67,7 @@ export default function UploadExportDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-upload-export="" onClick={onClose}>
-      <div className="w-[640px] max-h-[82vh] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
+      <div className="w-[640px] max-h-[82vh] surface-panel p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-headline-sm text-headline-sm">المستمسكات للرفع — ملفٌّ لكلّ واحد</h2>
         <p className="font-label-md text-label-md text-on-surface-variant">
           اختر بترتيب خانات الاستمارة: يُحفظ كلٌّ صورةً دون الحدّ، مرقّمةً ومسمّاةً بنوعها — فتُرفع واحدةً واحدة.
@@ -78,14 +78,14 @@ export default function UploadExportDialog({
             return (
               <button
                 key={a.id}
-                className={`relative rounded-lg border-2 p-1 flex flex-col gap-1 text-right ${n >= 0 ? 'border-secondary' : 'border-outline-variant opacity-60'}`}
+                className={`relative rounded-card border-2 p-1 flex flex-col gap-1 text-right ${n >= 0 ? 'border-cyan bg-grad-sel shadow-sel' : 'border-outline-variant opacity-60'}`}
                 data-upload-item={a.id}
                 type="button"
                 onClick={() => toggle(a.id)}
               >
                 <img alt="" className="w-full aspect-[1.6/1] object-cover rounded bg-surface-container-high" src={`diwan://store/${a.filePath}`} />
                 <span className="font-label-sm text-label-sm truncate">{a.docType}</span>
-                {n >= 0 && <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-secondary text-on-secondary text-[12px] flex items-center justify-center">{toIndic(n + 1)}</span>}
+                {n >= 0 && <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-grad-act text-on-primary shadow-act text-[12px] flex items-center justify-center">{toIndic(n + 1)}</span>}
               </button>
             );
           })}
@@ -96,7 +96,7 @@ export default function UploadExportDialog({
         <div className="flex items-center gap-space-sm font-label-md text-label-md">
           <label className="flex items-center gap-1">
             حدّ الخانة
-            <select className="h-9 min-w-[6.5rem] px-1 rounded-lg bg-surface-container-low border border-outline-variant" data-upload-limit="" value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
+            <select className="h-9 min-w-[6.5rem] px-1 rounded-field bg-surface-container-low border border-outline-variant" data-upload-limit="" value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
               {SIZE_LIMITS.map((l) => (
                 <option key={l.bytes} value={l.bytes}>
                   {l.label}
@@ -111,11 +111,11 @@ export default function UploadExportDialog({
         </div>
         {error && <p className="font-label-md text-label-md text-error">{error}</p>}
         <div className="flex justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
             data-act="upload-export-go"
             disabled={!ordered.length || busy !== null}
             type="button"

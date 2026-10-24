@@ -30,7 +30,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
       data-about=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto surface-panel p-space-lg flex flex-col gap-space-md">
         <div className="flex items-center gap-space-md">
           <img alt="ديوان" className="w-20 h-20" src={icon} />
           <div className="flex-1 min-w-0">
@@ -40,7 +40,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
               الإصدار {version ?? '…'}
             </p>
           </div>
-          <button className="self-start w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
+          <button className="self-start w-9 h-9 rounded-btn flex items-center justify-center hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -49,7 +49,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
           <p className={`font-label-md text-label-md ${license.status === 'expired' ? 'text-error' : 'text-secondary'}`}>{licenseLine(license)}</p>
         )}
 
-        <div className="rounded-xl bg-surface-container-low p-space-md flex flex-col gap-1" data-about-developer="">
+        <div className="rounded-card bg-surface-container-low p-space-md flex flex-col gap-1" data-about-developer="">
           <span className="font-label-sm text-label-sm text-on-surface-variant">التطوير</span>
           <span className="font-title-md text-title-md text-on-surface font-semibold">{DEVELOPER.nameAr}</span>
           <span className="font-label-md text-label-md text-on-surface-variant" dir="ltr">
@@ -67,7 +67,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
               {channels().map((c) => (
                 <a
                   key={c.key}
-                  className="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs"
+                  className="h-9 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs"
                   data-channel={c.key}
                   href={c.url}
                   rel="noreferrer"
@@ -82,7 +82,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
         )}
 
         {/* الشعار أبيضٌ وأزرق على شفّاف: يُعرض على داكن. */}
-        <div className="rounded-xl bg-[#0b1020] p-space-md flex items-center justify-center">
+        <div className="rounded-card bg-inverse-surface p-space-md flex items-center justify-center">
           <img alt={DEVELOPER.company} className="h-24 object-contain" src={logo} />
         </div>
 

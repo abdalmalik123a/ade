@@ -51,7 +51,7 @@ export default function ResumePrintDialog() {
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-resume-print="">
-      <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
+      <div className="w-full max-w-md surface-panel p-space-lg flex flex-col gap-space-md">
         <div className="flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-[28px] text-error">print_error</span>
           <span className="font-headline-sm text-headline-sm text-on-surface">طباعةٌ لم تكتمل</span>
@@ -65,7 +65,7 @@ export default function ResumePrintDialog() {
             آخر ورقةٍ خرجت فعلًا (انظر في درج الطابعة — ما كان في ذاكرتها ضاع)
           </span>
           <input
-            className="h-10 w-28 px-3 rounded-lg bg-surface-container-low text-on-surface text-center tabular font-label-md text-label-md"
+            className="h-10 w-28 px-3 rounded-field bg-surface-container-low text-on-surface text-center tabular font-label-md text-label-md"
             data-act="last-out"
             max={job.total}
             min={0}
@@ -77,7 +77,7 @@ export default function ResumePrintDialog() {
         {note && <span className="font-label-md text-label-md text-on-surface-variant">{note}</span>}
         <div className="flex items-center gap-space-sm justify-end">
           <button
-            className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+            className="h-10 px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
             disabled={busy}
             type="button"
             onClick={() => setJobs([])}
@@ -85,7 +85,7 @@ export default function ResumePrintDialog() {
             لاحقًا
           </button>
           <button
-            className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+            className="h-10 px-4 rounded-btn bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
             data-act="discard-job"
             disabled={busy}
             type="button"
@@ -94,7 +94,7 @@ export default function ResumePrintDialog() {
             تجاهلها
           </button>
           <button
-            className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="resume-job"
             disabled={busy || lastOut >= job.total}
             type="button"

@@ -34,7 +34,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
       data-problem-report=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
+      <div className="w-full max-w-lg surface-panel p-space-lg flex flex-col gap-space-md">
         <div className="flex items-start gap-space-sm">
           <span className="material-symbols-outlined text-[28px] text-secondary">support_agent</span>
           <div className="flex-1">
@@ -44,7 +44,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
               المكتب ولا أسماء الزبائن.
             </p>
           </div>
-          <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn flex items-center justify-center hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -55,7 +55,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
               ماذا كنت تفعل حين ظهرت المشكلة؟ (اختياري)
               <textarea
                 autoFocus
-                className="min-h-28 p-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="input-field min-h-28 p-space-sm text-on-surface font-body-md text-body-md"
                 data-field="problem-note"
                 placeholder="مثال: كنت أطبع كتاب تأييد من الشبّاك فظهرت رسالة ولم يُطبع."
                 value={note}
@@ -64,11 +64,11 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
             </label>
             {failed && <p className="font-label-md text-label-md text-error">{failed}</p>}
             <div className="flex justify-end gap-space-sm">
-              <button className="h-10 px-space-md rounded-lg text-on-surface hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+              <button className="h-10 px-space-md rounded-btn text-on-surface hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
                 إلغاء
               </button>
               <button
-                className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-50"
+                className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold disabled:opacity-50"
                 data-act="save-problem-report"
                 disabled={busy}
                 type="button"
@@ -80,7 +80,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
           </>
         ) : (
           <>
-            <p className="p-space-sm rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md" data-problem-saved="">
+            <p className="p-space-sm rounded-card bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md" data-problem-saved="">
               حُفظ التقرير — أرسله إلى المطوّر بواتساب ({DEVELOPER.phoneDisplay}) واكتب معه اسم مكتبك.
               <span className="block font-mono text-[11px] break-all opacity-80" dir="ltr">
                 {saved}
@@ -88,7 +88,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
             </p>
             <div className="flex flex-wrap justify-end gap-space-sm">
               <button
-                className="h-10 px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
+                className="h-10 px-space-md rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
                 data-act="show-problem-report"
                 type="button"
                 onClick={() => void window.diwan.ui.showProblemReport()}
@@ -97,7 +97,7 @@ export default function ProblemReportDialog({ onClose, error }: { onClose: () =>
                 افتح مجلّده
               </button>
               <a
-                className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
+                className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold flex items-center gap-1"
                 data-act="whatsapp-developer"
                 href={DEVELOPER.whatsapp}
                 rel="noreferrer"

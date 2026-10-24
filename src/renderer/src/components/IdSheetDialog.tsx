@@ -114,13 +114,13 @@ export default function IdSheetDialog({
     }
   }
 
-  const field = 'h-8 px-2 rounded-lg bg-surface text-on-surface font-label-sm text-label-sm border border-outline-variant/50';
+  const field = 'h-8 px-2 rounded-field bg-surface text-on-surface font-label-sm text-label-sm border border-outline-variant/50';
   const small =
-    'h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm disabled:opacity-40';
+    'h-8 px-2 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm disabled:opacity-40';
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" data-id-sheet="">
-      <div className="w-full max-w-6xl h-[94vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-6xl h-[94vh] flex flex-col surface-panel overflow-hidden">
         <header className="px-space-lg py-space-sm flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-space-sm">
             <span className="material-symbols-outlined text-secondary text-[26px]">document_scanner</span>
@@ -131,7 +131,7 @@ export default function IdSheetDialog({
               </p>
             </div>
           </div>
-          <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-surface-container-high" data-act="id-sheet-close" title="إغلاق" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn flex items-center justify-center hover:bg-surface-container-high" data-act="id-sheet-close" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </header>
@@ -139,7 +139,7 @@ export default function IdSheetDialog({
         <div className="flex-1 min-h-0 flex">
           <div className="w-[26rem] shrink-0 overflow-y-auto p-space-md flex flex-col gap-space-sm bg-surface-container-low border-l border-outline-variant/40">
             {slots.map((slot, i) => (
-              <div key={slot.id} className="rounded-xl bg-surface-container-lowest p-space-sm flex gap-space-sm" data-sheet-slot={slot.id}>
+              <div key={slot.id} className="rounded-card bg-surface-container-lowest p-space-sm flex gap-space-sm" data-sheet-slot={slot.id}>
                 <div className="w-20 h-14 shrink-0 rounded-md bg-surface-container-high overflow-hidden flex items-center justify-center">
                   {slot.src ? (
                     <img alt="" className="w-full h-full object-cover" src={resolveUrl(slot.src)} />
@@ -151,7 +151,7 @@ export default function IdSheetDialog({
                   <div className="flex gap-1">
                     <input className={`${field} flex-1 min-w-0`} value={slot.label} onChange={(e) => set(i, { label: e.target.value })} />
                     <button
-                      className="w-8 h-8 shrink-0 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container"
+                      className="w-8 h-8 shrink-0 rounded-btn text-on-surface-variant hover:bg-error-container hover:text-on-error-container"
                       title="أزل هذا المستمسك من الورقة"
                       type="button"
                       onClick={() => setSlots((all) => all.filter((_, j) => j !== i))}
@@ -197,7 +197,7 @@ export default function IdSheetDialog({
               </div>
             ))}
             <button
-              className="h-9 rounded-lg border border-dashed border-outline-variant text-secondary font-label-md text-label-md hover:bg-surface-container-high"
+              className="h-9 rounded-btn border border-dashed border-outline-variant text-secondary font-label-md text-label-md hover:bg-surface-container-high"
               data-act="sheet-add"
               type="button"
               onClick={() =>
@@ -207,12 +207,12 @@ export default function IdSheetDialog({
               + مستمسكٌ آخر
             </button>
 
-            <div className="rounded-xl bg-surface-container-lowest p-space-sm flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface">
-              <div className="flex p-0.5 rounded-lg bg-surface-container-low">
+            <div className="rounded-card bg-surface-container-lowest p-space-sm flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface">
+              <div className="flex p-0.5 rounded-card bg-surface-container-low">
                 {FILTERS.map((f) => (
                   <button
                     key={f.key}
-                    className={`flex-1 h-7 rounded-md ${colorFilter === f.key ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'}`}
+                    className={`flex-1 h-7 rounded-md ${colorFilter === f.key ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant'}`}
                     type="button"
                     onClick={() => setColorFilter(f.key)}
                   >
@@ -250,7 +250,7 @@ export default function IdSheetDialog({
                 <div key={i} className="flex flex-col items-center gap-1">
                   <span className="text-white/70 font-label-sm text-label-sm">ورقة {i + 1}</span>
                   {/* المعاينة بالمقاس الحقيقي مصغّرةً: الورقة بالملّم تُصغَّر كلّها لا تُعاد حسابًا. */}
-                  <div className="bg-white shadow-2xl overflow-hidden" style={{ width: '357px', height: '505px' }}>
+                  <div className="bg-white shadow-card overflow-hidden" style={{ width: '357px', height: '505px' }}>
                     <div style={{ transform: 'scale(0.4498)', transformOrigin: 'top right', width: '210mm' }} dangerouslySetInnerHTML={{ __html: html }} />
                   </div>
                 </div>
@@ -265,7 +265,7 @@ export default function IdSheetDialog({
           </span>
           <div className="flex gap-space-sm">
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-md text-label-md disabled:opacity-40"
+              className="h-10 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest font-label-md text-label-md disabled:opacity-40"
               data-act="sheet-pdf"
               disabled={busy || pages.length === 0}
               type="button"
@@ -274,7 +274,7 @@ export default function IdSheetDialog({
               حفظ PDF
             </button>
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
               data-act="sheet-print"
               disabled={busy || pages.length === 0}
               type="button"

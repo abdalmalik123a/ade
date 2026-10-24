@@ -31,8 +31,8 @@ export default function PageHelp({ route, quiet, onOverview }: { route: RouteKey
         aria-expanded={open}
         className={
           quiet
-            ? 'h-10 px-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md flex items-center gap-1'
-            : 'h-10 w-10 rounded-full bg-secondary-fixed text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm font-bold flex items-center justify-center shadow-[0_1px_8px_rgba(0,0,0,0.04)]'
+            ? 'h-10 px-space-sm rounded-btn text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md flex items-center gap-1'
+            : 'h-10 w-10 rounded-full bg-secondary-fixed text-on-surface hover:bg-surface-container-high font-headline-sm text-headline-sm font-bold flex items-center justify-center shadow-low'
         }
         data-act="page-help"
         data-quiet={quiet ? '1' : undefined}
@@ -50,7 +50,7 @@ export default function PageHelp({ route, quiet, onOverview }: { route: RouteKey
         )}
       </button>
       {open && (
-        <div className="absolute top-12 left-0 z-50 w-[340px] rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-xs" data-page-help={route}>
+        <div className="absolute top-12 left-0 z-50 w-[340px] surface-panel p-space-md flex flex-col gap-space-xs" data-page-help={route}>
           <span className="font-label-lg text-label-lg text-on-surface font-semibold">{help.title}</span>
           <p className="font-body-md text-body-md text-on-surface-variant leading-7">{help.body}</p>
           <button

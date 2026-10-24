@@ -299,14 +299,14 @@ export default function App() {
             // سياق المحرّر وحده: الكتاب الجاري، وتبديله من المكتبة.
             route === 'editor' ? (
               <>
-                <span className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+                <span className="flex items-center gap-space-xs px-space-md h-10 rounded-btn border border-outline-variant bg-surface-container-lowest text-on-surface shadow-low">
                   <span className="material-symbols-outlined text-secondary text-[18px]">article</span>
                   <span className="font-label-md text-label-md font-semibold truncate max-w-[220px]">
                     {editorStatus.transaction ?? 'لم يُختر نموذج'}
                   </span>
                 </span>
                 <button
-                  className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+                  className="flex items-center gap-space-xs px-space-md h-10 rounded-btn border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-low"
                   type="button"
                   onClick={() => navigate('templates')}
                 >

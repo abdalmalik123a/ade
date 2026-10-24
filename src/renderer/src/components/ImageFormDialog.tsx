@@ -145,10 +145,10 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-lg" data-image-form="">
-      <div className="w-full max-w-6xl max-h-full overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col">
+      <div className="w-full max-w-6xl max-h-full overflow-hidden surface-panel flex flex-col">
         <div className="h-14 shrink-0 px-space-md flex items-center justify-between border-b border-outline-variant/40">
           <span className="font-headline-sm text-headline-sm text-on-surface">من صورة استمارة</span>
-          <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -160,7 +160,7 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
               وحدها على ورقة الدائرة.
             </p>
             <button
-              className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-bold disabled:opacity-50"
+              className="h-11 px-space-lg btn-act font-label-lg text-label-lg font-bold disabled:opacity-50"
               data-act="form-image-pick"
               disabled={Boolean(step)}
               type="button"
@@ -189,13 +189,13 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
             <div className="w-80 shrink-0 flex flex-col gap-space-sm min-h-0">
               <label className="flex flex-col gap-1 font-label-sm text-label-sm text-on-surface-variant">
                 اسمها في المكتبة
-                <input className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md" data-form-title="" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <input className="h-10 px-3 rounded-field bg-surface-container-low text-on-surface font-label-md text-label-md" data-form-title="" value={title} onChange={(e) => setTitle(e.target.value)} />
               </label>
               <span className="font-label-md text-label-md text-on-surface font-semibold" data-slot-count={kept.length}>
                 {kept.length} خانة كُشفت — صحّح اسمها أو اتركها، وما فات يُرسم في المصمّم
               </span>
               {lowDpi && (
-                <span className="p-space-xs rounded-lg bg-error-container text-on-error-container font-label-sm text-label-sm" data-low-dpi="">
+                <span className="p-space-xs rounded-card bg-error-container text-on-error-container font-label-sm text-label-sm" data-low-dpi="">
                   الصورة ضعيفة الدقّة (نحو {read.dpi} نقطة/إنش) — تُطبع كاملةً ضبابية. اطلب نسخةً أوضح، أو اطبع «القيم وحدها» على
                   ورقة الدائرة.
                 </span>
@@ -204,7 +204,7 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
                 {rows.map((r) => {
                   const isOff = dropped.has(r.id);
                   return (
-                    <div key={r.id} className={`flex items-center gap-1 p-1 rounded-lg ${isOff ? 'opacity-40' : 'bg-surface-container-low'}`} data-slot-row={r.column !== undefined ? 'column' : r.kind}>
+                    <div key={r.id} className={`flex items-center gap-1 p-1 rounded-card ${isOff ? 'opacity-40' : 'bg-surface-container-low'}`} data-slot-row={r.column !== undefined ? 'column' : r.kind}>
                       <span className="shrink-0 w-14 text-center rounded font-label-sm text-label-sm" style={{ background: KIND[r.kind].color }}>
                         {r.column !== undefined ? `عمود ×${r.count}` : KIND[r.kind].label}
                       </span>
@@ -233,7 +233,7 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
               {error && <span className="font-label-sm text-label-sm text-error">{error}</span>}
               <div className="flex flex-col gap-space-xs">
                 <button
-                  className="h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+                  className="h-10 btn-act font-label-md text-label-md font-bold disabled:opacity-50"
                   data-act="form-image-save"
                   disabled={saving || !title.trim()}
                   type="button"
@@ -242,7 +242,7 @@ export default function ImageFormDialog({ onClose, onSaved }: { onClose: () => v
                   احفظها في المكتبة
                 </button>
                 <button
-                  className="h-10 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-50"
+                  className="h-10 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-50"
                   data-act="form-image-edit"
                   disabled={saving || !title.trim()}
                   type="button"

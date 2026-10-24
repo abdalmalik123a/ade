@@ -52,7 +52,7 @@ export default function ErrorBar() {
   const readable = ARABIC.test(last);
   return (
     <div
-      className="fixed bottom-space-md left-1/2 -translate-x-1/2 z-[80] max-w-2xl w-[calc(100%-2rem)] rounded-xl bg-error-container text-on-error-container shadow-2xl p-space-sm flex items-start gap-space-sm"
+      className="fixed bottom-space-md left-1/2 -translate-x-1/2 z-[80] max-w-2xl w-[calc(100%-2rem)] rounded-card bg-error-container text-on-error-container shadow-card p-space-sm flex items-start gap-space-sm"
       data-error-bar=""
       role="alert"
     >
@@ -81,7 +81,7 @@ export default function ErrorBar() {
           أرسل تقرير المشكلة
         </button>
       </div>
-      <button className="w-8 h-8 rounded-lg hover:bg-on-error-container/10 flex items-center justify-center" title="إغلاق" type="button" onClick={() => setErrors([])}>
+      <button className="w-8 h-8 rounded-btn hover:bg-on-error-container/10 flex items-center justify-center" title="إغلاق" type="button" onClick={() => setErrors([])}>
         <span className="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>

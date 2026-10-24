@@ -15,14 +15,14 @@ export default function BackupDialog({ onClose, onDone }: { onClose: () => void;
       data-backup-dialog=""
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-sm">
+      <div className="w-full max-w-md surface-panel p-space-lg flex flex-col gap-space-sm">
         <div className="flex items-center justify-between">
           <h2 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs">
             <span className="material-symbols-outlined text-secondary">backup</span>
             نسخة احتياطية كاملة
           </h2>
           <button
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
+            className="w-8 h-8 rounded-btn flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
             data-act="backup-dialog-close"
             title="إغلاق"
             type="button"

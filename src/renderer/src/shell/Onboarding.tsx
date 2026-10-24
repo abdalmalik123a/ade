@@ -65,15 +65,15 @@ export default function Onboarding({
   });
 
   const input =
-    'w-full h-11 px-space-md rounded-lg bg-surface-container-low border border-outline-variant font-body-md text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary';
+    'input-field w-full h-11 px-space-md font-body-md text-body-md text-on-surface';
   const option = (on: boolean) =>
-    `w-full p-space-md rounded-xl text-right flex items-center gap-space-md transition-colors ${
-      on ? 'bg-secondary-fixed ring-2 ring-secondary' : 'bg-surface-container-low hover:bg-surface-container-high'
+    `w-full p-space-md rounded-card text-right flex items-center gap-space-md transition-colors ${
+      on ? 'border-2 border-cyan bg-grad-sel shadow-sel' : 'border-2 border-transparent bg-surface-container-low hover:bg-surface-container-high'
     }`;
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/40 backdrop-blur-sm p-space-lg" data-onboarding="">
-      <div className="w-full max-w-2xl rounded-2xl bg-surface-container-lowest shadow-2xl overflow-hidden flex flex-col max-h-full">
+      <div className="w-full max-w-2xl surface-panel overflow-hidden flex flex-col max-h-full">
         <div className="px-space-xl pt-space-lg pb-space-md flex items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-sm">
             {/* شاشة البدء: أيقونة ديوان — والشعار كاملًا أسفل المعالج (المرحلة ٦). */}
@@ -98,7 +98,7 @@ export default function Onboarding({
         <ol className="px-space-xl flex items-center gap-space-xs">
           {STEPS.map((s, i) => (
             <li key={s} className="flex-1 flex flex-col gap-1">
-              <span className={`h-1.5 rounded-full ${i <= step ? 'bg-primary-container' : 'bg-surface-container-high'}`} />
+              <span className={`h-1.5 rounded-full ${i <= step ? 'bg-grad-act' : 'bg-surface-container-high'}`} />
               <span className={`font-label-sm text-label-sm ${i === step ? 'text-on-surface font-semibold' : 'text-on-surface-variant'}`}>
                 {s}
               </span>
@@ -166,7 +166,7 @@ export default function Onboarding({
                               {file ? 'تحفظ ملفًّا ولا تطبع على ورق' : p.isDefault ? 'طابعة النظام الافتراضية' : p.description || ' '}
                             </span>
                           </span>
-                          {on && <span className="h-6 px-2 rounded-full bg-secondary text-on-secondary font-label-sm text-label-sm font-bold flex items-center">المختارة</span>}
+                          {on && <span className="h-6 px-2 rounded-chip bg-primary-fixed text-primary font-label-sm text-label-sm font-bold flex items-center">المختارة</span>}
                         </button>
                       );
                     })}
@@ -217,8 +217,8 @@ export default function Onboarding({
                     <button
                       key={c.id}
                       aria-pressed={on}
-                      className={`h-9 px-3 rounded-full flex items-center gap-1 font-label-md text-label-md transition-colors ${
-                        on ? 'bg-secondary-fixed text-on-surface ring-1 ring-secondary' : 'bg-surface-container-low text-on-surface-variant line-through'
+                      className={`h-9 px-3 rounded-chip flex items-center gap-1 font-label-md text-label-md transition-colors ${
+                        on ? 'bg-primary-fixed text-primary' : 'bg-surface-container-low text-on-surface-variant line-through'
                       }`}
                       data-onboarding-card={c.id}
                       type="button"
@@ -232,7 +232,7 @@ export default function Onboarding({
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant pt-space-xs">ثم من أين تبدأ؟ — ولا ترويسة مطلوبةٌ قبل العمل.</p>
               {packPicker ? (
-                <div className="p-space-md rounded-xl bg-surface-container-low border border-outline-variant space-y-space-sm" data-onboarding-pack-picker="">
+                <div className="p-space-md rounded-card bg-surface-container-low border border-outline-variant space-y-space-sm" data-onboarding-pack-picker="">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-label-md text-label-md font-bold text-on-surface">حزم الجهات الجاهزة</h3>
@@ -255,8 +255,8 @@ export default function Onboarding({
                         return (
                           <label
                             key={p.id}
-                            className={`flex items-start gap-space-sm p-space-sm rounded-xl border transition-colors cursor-pointer ${
-                              checked ? 'bg-secondary-fixed/30 border-secondary' : 'bg-surface-container-lowest border-outline-variant hover:bg-surface-container-high'
+                            className={`flex items-start gap-space-sm p-space-sm rounded-card border transition-colors cursor-pointer ${
+                              checked ? 'border-cyan bg-grad-sel shadow-sel' : 'bg-surface-container-lowest border-outline-variant hover:bg-surface-container-high'
                             }`}
                           >
                             <input
@@ -285,7 +285,7 @@ export default function Onboarding({
                   </div>
                   <div className="pt-space-xs flex items-center justify-between gap-space-sm">
                     <button
-                      className="h-10 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                      className="h-10 px-space-md rounded-btn border border-outline-variant shadow-low bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
                       data-act="onboarding-pack-file"
                       type="button"
                       onClick={() => onDone(patch(), 'templates', 'pack')}
@@ -293,7 +293,7 @@ export default function Onboarding({
                       من ملفّ حزمة…
                     </button>
                     <button
-                      className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-50"
+                      className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-50"
                       data-act="onboarding-import-packs"
                       disabled={selectedPacks.length === 0 || importingPacks}
                       type="button"
@@ -335,7 +335,7 @@ export default function Onboarding({
                     }
                   }}
                 >
-                  <span className="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center shrink-0">
+                  <span className="w-10 h-10 rounded-ico bg-surface-container-lowest flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-secondary">{o.icon}</span>
                   </span>
                   <span className="flex flex-col">
@@ -350,7 +350,7 @@ export default function Onboarding({
 
         <div className="px-space-xl py-space-md bg-surface-container-low flex items-center justify-between gap-space-md">
           <button
-            className="h-10 px-space-md rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:opacity-0"
+            className="h-10 px-space-md rounded-btn font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:opacity-0"
             disabled={step === 0}
             type="button"
             onClick={() => setStep((s) => s - 1)}
@@ -358,12 +358,12 @@ export default function Onboarding({
             السابق
           </button>
           {/* الشعار كاملًا — على كحليّ السكّة: حروفه البيضاء لا تُرى على فاتح. */}
-          <span className="h-10 px-3 rounded-lg bg-[#16223F] flex items-center" data-brand-logo="">
+          <span className="h-10 px-3 rounded-btn bg-inverse-surface flex items-center" data-brand-logo="">
             <img alt="MADA TECH" className="h-7 object-contain" src={logo} />
           </span>
           {step < STEPS.length - 1 && (
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
               data-act="onboarding-next"
               type="button"
               onClick={() => setStep((s) => s + 1)}

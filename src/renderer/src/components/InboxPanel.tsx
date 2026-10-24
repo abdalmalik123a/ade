@@ -114,7 +114,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
         <span className="font-label-md text-label-md text-on-surface font-semibold">آخر ما وصل</span>
         <span className="font-label-sm text-label-sm text-on-surface-variant truncate">التنزيلات · سطح المكتب · واتساب · الفلاشة</span>
         <button
-          className={`ms-auto w-8 h-8 rounded-lg hover:bg-surface-container-high ${hidden ? 'text-secondary bg-secondary-fixed' : 'text-on-surface-variant'}`}
+          className={`ms-auto w-8 h-8 rounded-btn hover:bg-surface-container-high ${hidden ? 'text-primary bg-primary-fixed' : 'text-on-surface-variant'}`}
           aria-pressed={hidden}
           data-act="inbox-names"
           title={hidden ? 'أظهر أسماء الملفّات' : 'أخفِ أسماء الملفّات — يراها من يقف أمام الشاشة'}
@@ -127,7 +127,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
           <span className="material-symbols-outlined text-[18px]">{hidden ? 'visibility_off' : 'visibility'}</span>
         </button>
         <button
-          className="w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
+          className="w-8 h-8 rounded-btn text-on-surface-variant hover:bg-surface-container-high"
           data-act="inbox-refresh"
           title="حدّث القائمة"
           type="button"
@@ -138,8 +138,8 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
       </div>
 
       <div
-        className={`rounded-lg border-2 border-dashed px-space-sm py-space-xs text-center font-label-sm text-label-sm transition-colors ${
-          dropping ? 'border-secondary bg-secondary-fixed text-secondary' : 'border-outline-variant text-on-surface-variant'
+        className={`rounded-card border-2 border-dashed px-space-sm py-space-xs text-center font-label-sm text-label-sm transition-colors ${
+          dropping ? 'border-cyan bg-grad-sel text-primary' : 'border-outline-variant text-on-surface-variant'
         }`}
         data-dropzone="counter"
         onDragOver={(e) => {
@@ -164,7 +164,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
       {shown.length > 0 && (
         <div className="grid sm:grid-cols-2 gap-1">
           {shown.map((f) => (
-            <div key={f.id} className="flex items-center gap-space-xs p-1.5 rounded-lg bg-surface-container-lowest" data-inbox-file={f.kind}>
+            <div key={f.id} className="flex items-center gap-space-xs p-1.5 rounded-btn bg-surface-container-lowest border border-outline-variant shadow-low" data-inbox-file={f.kind}>
               <span className="material-symbols-outlined text-[20px] text-secondary shrink-0">{ICON[f.kind]}</span>
               <span className="flex-1 min-w-0 flex flex-col">
                 {hidden ? (
@@ -181,7 +181,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
                 </span>
               </span>
               <button
-                className="h-7 px-2 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-bold shrink-0"
+                className="h-7 px-2 btn-soft font-label-sm text-label-sm shrink-0"
                 data-act="inbox-open"
                 title={f.kind === 'word' ? 'يُفتح نموذجًا في المحرّر كما كُتب' : 'يُفتح في أداة PDF — للتعديل والتجهيز للرفع'}
                 type="button"
@@ -191,7 +191,7 @@ export default function InboxPanel({ active, onOpen: open }: { active: boolean; 
               </button>
               {f.kind === 'image' && (
                 <button
-                  className="h-7 px-2 rounded-lg text-secondary hover:bg-surface-container-high font-label-sm text-label-sm shrink-0"
+                  className="h-7 px-2 rounded-btn text-secondary hover:bg-surface-container-high font-label-sm text-label-sm shrink-0"
                   data-act="inbox-photo"
                   title="صورةٌ شخصية بالمقاس من هذه الصورة"
                   type="button"

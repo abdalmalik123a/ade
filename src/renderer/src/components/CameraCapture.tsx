@@ -95,13 +95,13 @@ export default function CameraCapture({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/60 p-space-md" data-camera-capture="">
-      <div className="w-full max-w-3xl rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-3xl surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-secondary text-[22px]">photo_camera</span>
           <h2 className="flex-1 font-headline-sm text-headline-sm text-on-surface">{title}</h2>
           {devices.length > 1 && !shot && (
             <select
-              className="h-9 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+              className="h-9 px-2 rounded-field bg-surface-container-lowest text-on-surface font-label-md text-label-md"
               value={source}
               onChange={(e) => setSource(e.target.value)}
             >
@@ -129,17 +129,17 @@ export default function CameraCapture({
         </div>
 
         <div className="p-space-md bg-surface-container-low flex items-center justify-between gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
           {shot ? (
             <div className="flex gap-space-xs">
-              <button className="h-10 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md" data-act="camera-retake" type="button" onClick={() => setShot(null)}>
+              <button className="h-10 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md" data-act="camera-retake" type="button" onClick={() => setShot(null)}>
                 أعِد اللقطة
               </button>
               {secondary && (
                 <button
-                  className="h-10 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md"
+                  className="h-10 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md"
                   data-act="camera-secondary"
                   type="button"
                   onClick={() => secondary.onPick(shot)}
@@ -148,7 +148,7 @@ export default function CameraCapture({
                 </button>
               )}
               <button
-                className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
+                className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold"
                 data-act="camera-confirm"
                 type="button"
                 onClick={() => onCapture(shot)}
@@ -158,7 +158,7 @@ export default function CameraCapture({
             </div>
           ) : (
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-space-xs disabled:opacity-40"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold flex items-center gap-space-xs disabled:opacity-40"
               data-act="camera-take"
               type="button"
               disabled={Boolean(error) || !source}

@@ -73,7 +73,7 @@ export default function PrintChooser() {
       data-print-chooser={req.role}
       onClick={(e) => e.target === e.currentTarget && finish(null)}
     >
-      <div className="w-full max-w-md max-h-[85vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-md max-h-[85vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-secondary text-[26px]">print</span>
           <div className="min-w-0">
@@ -92,7 +92,7 @@ export default function PrintChooser() {
             ).map(([key, label, icon, name]) => (
               <button
                 key={key}
-                className="flex items-center gap-space-sm p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container-high text-start"
+                className="flex items-center gap-space-sm p-space-md rounded-card bg-surface-container-low hover:bg-surface-container-high text-start"
                 data-print-choice={key}
                 type="button"
                 onClick={() => finish({ printer: name, system: false })}
@@ -115,10 +115,10 @@ export default function PrintChooser() {
               return (
                 <button
                   key={p.name}
-                  className={`flex items-center gap-space-sm px-space-md py-space-sm rounded-xl text-start ${
+                  className={`flex items-center gap-space-sm px-space-md py-space-sm rounded-card border-2 text-start ${
                     picked === p.name
-                      ? 'bg-secondary-container text-on-secondary-container'
-                      : 'bg-surface-container-low hover:bg-surface-container-high text-on-surface'
+                      ? 'border-cyan bg-grad-sel shadow-sel text-on-surface'
+                      : 'border-transparent bg-surface-container-low hover:bg-surface-container-high text-on-surface'
                   }`}
                   data-print-printer={p.name}
                   type="button"
@@ -142,7 +142,7 @@ export default function PrintChooser() {
         <div className="p-space-md flex items-center gap-space-sm border-t border-outline-variant/30">
           {plan.kind === 'dialog' && (
             <button
-              className="h-10 px-space-lg rounded-lg bg-secondary text-on-secondary font-label-lg text-label-lg font-bold disabled:opacity-40"
+              className="h-10 px-space-lg btn-act font-label-lg text-label-lg font-bold disabled:opacity-40"
               data-act="print-confirm"
               disabled={!picked}
               type="button"
@@ -153,7 +153,7 @@ export default function PrintChooser() {
           )}
           {plan.kind === 'dialog' && req.allowSystem && (
             <button
-              className="h-10 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
+              className="h-10 px-space-md rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
               data-act="print-system"
               disabled={!picked}
               title="تُفتح نافذة ويندوز لضبط الورق والجودة قبل الطبع"
@@ -165,7 +165,7 @@ export default function PrintChooser() {
           )}
           <span className="flex-1" />
           <button
-            className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+            className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
             data-act="print-cancel"
             type="button"
             onClick={() => finish(null)}

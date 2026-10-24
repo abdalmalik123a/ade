@@ -46,7 +46,7 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
     return (
       <div className="flex items-center gap-space-xs" data-tool-header="">
         <button
-          className="h-9 px-2 rounded-lg flex items-center gap-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md"
+          className="h-9 px-2 rounded-btn flex items-center gap-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md"
           data-act="tool-back"
           title="إلى الشبّاك — كما تركته"
           type="button"
@@ -58,10 +58,10 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
         <span className="material-symbols-outlined text-[20px] text-secondary">{icon}</span>
         <h1 className="font-label-lg text-label-lg text-on-surface font-bold whitespace-nowrap">{title}</h1>
         {nav.customer && (
-          <span className="flex items-center gap-1 h-8 ps-2 rounded-lg bg-surface-container-lowest font-label-sm text-label-sm" data-tool-customer={nav.customer.id}>
+          <span className="flex items-center gap-1 h-8 ps-2 rounded-chip bg-surface-container-lowest border border-outline-variant shadow-low font-label-sm text-label-sm" data-tool-customer={nav.customer.id}>
             <span className="material-symbols-outlined text-[16px] text-secondary">person</span>
             <span className="max-w-[10rem] truncate">{nav.customer.name || '…'}</span>
-            <button className="h-8 px-2 rounded-lg text-secondary hover:bg-surface-container-high font-semibold" data-act="tool-same-customer" type="button" onClick={nav.sameCustomer}>
+            <button className="h-8 px-2 rounded-btn text-secondary hover:bg-surface-container-high font-semibold" data-act="tool-same-customer" type="button" onClick={nav.sameCustomer}>
               شيءٌ آخر له
             </button>
           </span>
@@ -73,7 +73,7 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
     <header className="space-y-space-xs" data-tool-header="">
       <div className="flex items-center gap-space-xs">
         <button
-          className="h-8 px-2 -ms-2 rounded-lg flex items-center gap-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md"
+          className="h-8 px-2 -ms-2 rounded-btn flex items-center gap-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-label-md text-label-md"
           data-act="tool-back"
           title="إلى الشبّاك — كما تركته"
           type="button"
@@ -86,7 +86,7 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
         {children}
       </div>
       <div className="flex items-center gap-space-sm">
-        <span className="w-10 h-10 shrink-0 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center">
+        <span className="w-10 h-10 shrink-0 rounded-ico bg-secondary-fixed text-primary flex items-center justify-center">
           <span className="material-symbols-outlined text-[22px]">{icon}</span>
         </span>
         <div className="min-w-0">
@@ -95,13 +95,13 @@ export function ToolHeader({ icon, title, hint, bar, children }: { icon: string;
         </div>
       </div>
       {nav.customer && (
-        <div className="flex items-center gap-space-xs p-space-xs ps-space-sm rounded-lg bg-surface-container-lowest" data-tool-customer={nav.customer.id}>
+        <div className="flex items-center gap-space-xs p-space-xs ps-space-sm rounded-card bg-surface-container-lowest border border-outline-variant shadow-low" data-tool-customer={nav.customer.id}>
           <span className="material-symbols-outlined text-[18px] text-secondary">person</span>
           <span className="flex-1 min-w-0 truncate font-label-md text-label-md text-on-surface">
             للزبون <span className="font-semibold">{nav.customer.name || '…'}</span>
           </span>
           <button
-            className="h-8 px-2 rounded-lg text-secondary hover:bg-surface-container-high font-label-sm text-label-sm font-semibold"
+            className="h-8 px-2 rounded-btn text-secondary hover:bg-surface-container-high font-label-sm text-label-sm font-semibold"
             data-act="tool-same-customer"
             type="button"
             onClick={nav.sameCustomer}

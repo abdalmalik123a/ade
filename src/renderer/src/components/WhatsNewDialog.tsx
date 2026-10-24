@@ -34,7 +34,7 @@ export default function WhatsNewDialog({ from, to, onClose }: { from: string; to
   }, [onClose]);
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[80] flex items-center justify-center bg-scrim/50 p-space-md" data-whats-new="">
-      <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
+      <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto surface-panel p-space-lg flex flex-col gap-space-md">
         <div className="flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-secondary text-[28px]">new_releases</span>
           <div>
@@ -55,7 +55,7 @@ export default function WhatsNewDialog({ from, to, onClose }: { from: string; to
           ))
         )}
         <button
-          className="self-start h-10 px-space-lg rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold"
+          className="self-start h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
           data-act="whats-new-close"
           type="button"
           onClick={onClose}

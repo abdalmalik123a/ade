@@ -25,13 +25,13 @@ export function WordLossList({ scan }: { scan: WordScan }) {
 export default function WordLossPanel({ scan, onClose }: { scan: WordScan; onClose: () => void }) {
   if (!lossesOf(scan).length) return null;
   return (
-    <div className="mb-space-md rounded-xl border border-outline-variant bg-surface-container-low p-space-sm flex gap-space-sm" data-word-loss-panel="">
+    <div className="mb-space-md rounded-card border border-outline-variant bg-surface-container-low p-space-sm flex gap-space-sm" data-word-loss-panel="">
       <span className="material-symbols-outlined text-[20px] text-on-surface-variant">info</span>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <span className="font-label-md text-label-md font-semibold text-on-surface">ما في ملف Word ولم يُنقل إلى الورقة</span>
         <WordLossList scan={scan} />
       </div>
-      <button aria-label="أغلق" className="self-start w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center" type="button" onClick={onClose}>
+      <button aria-label="أغلق" className="self-start w-7 h-7 rounded-btn hover:bg-surface-container-high flex items-center justify-center" type="button" onClick={onClose}>
         <span className="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>

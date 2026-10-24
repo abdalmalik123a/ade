@@ -111,7 +111,7 @@ export default function MultiCardDialog({
   const sourceButtons = (side: 'fronts' | 'backs') => (
     <div className="flex gap-space-xs">
       <button
-        className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+        className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
         data-act={`multi-scan-${side}`}
         type="button"
         disabled={busy !== null}
@@ -120,7 +120,7 @@ export default function MultiCardDialog({
         {busy === side ? 'يمسح…' : side === 'fronts' ? 'امسح الوجوه' : 'اقلبها في أماكنها وامسح الظهور'}
       </button>
       <button
-        className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
+        className="h-9 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
         data-act={`multi-file-${side}`}
         type="button"
         disabled={busy !== null}
@@ -133,7 +133,7 @@ export default function MultiCardDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/60 p-space-md" data-multi-card="">
-      <div className="w-full max-w-4xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-4xl max-h-[92vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">عدّة بطاقاتٍ بمسحةٍ واحدة</h2>
           <p className="font-label-md text-label-md text-on-surface-variant">
@@ -147,7 +147,7 @@ export default function MultiCardDialog({
             <>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-space-sm" data-multi-cards={fronts.rects.length}>
                 {fronts.rects.map((r, i) => (
-                  <div key={i} className={`rounded-lg p-space-xs flex flex-col gap-1 ${keep[i] ? 'bg-surface-container-low' : 'bg-surface-container-low opacity-50'}`}>
+                  <div key={i} className={`rounded-card p-space-xs flex flex-col gap-1 ${keep[i] ? 'bg-surface-container-low' : 'bg-surface-container-low opacity-50'}`}>
                     <div className="flex gap-1">
                       <img alt="" className="flex-1 min-w-0 h-24 object-contain bg-white rounded" src={crop(fronts, r)} />
                       {pairing[i] != null && backs && (
@@ -177,11 +177,11 @@ export default function MultiCardDialog({
         </div>
 
         <div className="p-space-md bg-surface-container-low flex justify-between gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="multi-save"
             type="button"
             disabled={!fronts || !keep.some(Boolean) || busy !== null}

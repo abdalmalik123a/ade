@@ -17,7 +17,7 @@ export default function DateTools({
   size?: string;
 }) {
   const picker = useRef<HTMLInputElement>(null);
-  const btn = `${size} px-2 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant shrink-0 font-label-sm text-label-sm`;
+  const btn = `${size} px-2 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant shrink-0 font-label-sm text-label-sm`;
   return (
     <>
       <button

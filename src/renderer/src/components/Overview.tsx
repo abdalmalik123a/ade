@@ -121,7 +121,7 @@ export default function Overview({
     >
       {rect && (
         <div
-          className="absolute rounded-xl pointer-events-none transition-all duration-200"
+          className="absolute rounded-card pointer-events-none transition-all duration-200"
           data-overview-spot=""
           // الإطار والتعتيم ظلٌّ واحد (حلقة Tailwind ظلٌّ أيضًا فيمحوها هذا): أبيضُ ثم أزرقُ — يُرى على الصفحة الفاتحة
           // وعلى السكّة الداكنة.
@@ -136,7 +136,7 @@ export default function Overview({
       )}
       <div
         ref={card}
-        className="absolute rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-xs"
+        className="absolute surface-panel p-space-md flex flex-col gap-space-xs"
         style={{ width: CARD_W, top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
       >
         <div className="flex items-center justify-between gap-space-sm">
@@ -153,7 +153,7 @@ export default function Overview({
         <p className="font-body-md text-body-md text-on-surface-variant leading-7">{step.body}</p>
         <div className="flex items-center justify-between gap-space-sm pt-space-xs">
           <button
-            className="h-9 px-space-md rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:opacity-0"
+            className="h-9 px-space-md rounded-btn font-label-md text-label-md text-on-surface hover:bg-surface-container-high disabled:opacity-0"
             data-act="overview-prev"
             disabled={i === 0}
             type="button"
@@ -162,7 +162,7 @@ export default function Overview({
             السابق
           </button>
           <button
-            className="h-9 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold"
+            className="h-9 px-space-lg btn-act font-label-md text-label-md font-bold"
             data-act="overview-next"
             type="button"
             onClick={() => (last ? onClose() : setI((n) => n + 1))}

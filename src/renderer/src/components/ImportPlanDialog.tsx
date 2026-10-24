@@ -154,7 +154,7 @@ export default function ImportPlanDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-space-md">
-      <div className="w-full max-w-5xl max-h-[92vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-5xl max-h-[92vh] surface-panel flex flex-col overflow-hidden">
         {/* الحصيلة */}
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-xs shrink-0">
           <div className="flex items-center justify-between">
@@ -171,7 +171,7 @@ export default function ImportPlanDialog({
           </span>
           {/* ما في المجلّد ولم يُقرأ (هـ١): يُقال بعدده وبما يُفعل له قبل الحفظ — لا يُكتشف بعد شهر. */}
           {skipped.length > 0 && (
-            <div className="flex flex-col gap-0.5 p-space-xs rounded-lg bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm" data-import-skipped="">
+            <div className="flex flex-col gap-0.5 p-space-xs rounded-card bg-tertiary-container text-on-tertiary-container font-label-sm text-label-sm" data-import-skipped="">
               <span className="font-semibold">ما في المجلّد ولم يُنقل:</span>
               {skipped.map((line) => (
                 <span key={line}>• {line}</span>
@@ -192,7 +192,7 @@ export default function ImportPlanDialog({
               )}
               <div className="flex items-center gap-space-sm">
                 <button
-                  className="h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm"
+                  className="h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm"
                   data-act="save-census"
                   title="أعدادٌ وأسماء خطوطٍ وحدها — لا اسم ملفٍّ ولا شيء من نصوصه"
                   type="button"
@@ -215,8 +215,8 @@ export default function ImportPlanDialog({
               return (
                 <div
                   key={c.id}
-                  className={`rounded-lg p-space-sm flex flex-col gap-1 cursor-pointer transition-colors ${
-                    open === c.id ? 'bg-primary-container text-on-primary' : 'bg-surface-container-low'
+                  className={`rounded-card p-space-sm flex flex-col gap-1 cursor-pointer transition-colors ${
+                    open === c.id ? 'bg-primary-fixed text-primary' : 'bg-surface-container-low'
                   }`}
                   onClick={() => setOpen(c.id)}
                 >
@@ -249,7 +249,7 @@ export default function ImportPlanDialog({
             })}
 
             {plan.failed.length > 0 && (
-              <div className="mt-space-sm p-space-sm rounded-lg bg-error-container text-on-error-container flex flex-col gap-1">
+              <div className="mt-space-sm p-space-sm rounded-card bg-error-container text-on-error-container flex flex-col gap-1">
                 <span className="font-label-md text-label-md font-semibold">
                   {plan.failed.length} {excel ? 'ورقةً لم تُستورد' : 'ملفًا لم يُقرأ'}
                 </span>
@@ -290,7 +290,7 @@ export default function ImportPlanDialog({
                   )}
 
                   {c.scan && lossesOf(c.scan).length > 0 && (
-                    <div className="rounded-lg bg-surface-container-low p-space-xs text-on-surface-variant" data-file-losses="">
+                    <div className="rounded-card bg-surface-container-low p-space-xs text-on-surface-variant" data-file-losses="">
                       <WordLossList scan={c.scan} />
                     </div>
                   )}
@@ -324,7 +324,7 @@ export default function ImportPlanDialog({
         {/* الترويسة المتكرّرة والتصنيف والتنفيذ */}
         <div className="p-space-md bg-surface-container-low shrink-0 flex flex-col gap-space-sm">
           {shared && !isLayoutEmpty(shared.layout) && (
-            <div className="p-space-sm rounded-lg bg-surface-container-lowest flex items-center gap-space-md">
+            <div className="p-space-sm rounded-card bg-surface-container-lowest flex items-center gap-space-md">
               <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer shrink-0">
                 <input
                   className="w-4 h-4 accent-secondary"
@@ -335,7 +335,7 @@ export default function ImportPlanDialog({
                 ترويسة واحدة تتكرّر في {shared.count} — احفظها مرّة واربطها بالجميع
               </label>
               <input
-                className="w-56 h-8 px-2 rounded bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="input-field w-56 h-8 px-2 text-on-surface font-label-md text-label-md"
                 disabled={!useShared}
                 placeholder="اسم الترويسة"
                 type="text"
@@ -352,7 +352,7 @@ export default function ImportPlanDialog({
             <label className="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
               التصنيف
               <input
-                className="w-40 h-9 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="input-field w-40 h-9 px-3 text-on-surface font-label-md text-label-md"
                 placeholder="مدارس"
                 type="text"
                 value={category}
@@ -374,14 +374,14 @@ export default function ImportPlanDialog({
             )}
             <span className="flex-1" />
             <button
-              className="h-9 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+              className="h-9 px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
               type="button"
               onClick={onCancel}
             >
               إلغاء
             </button>
             <button
-              className="h-9 px-4 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+              className="h-9 px-4 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
               type="button"
               disabled={busy || accept.size === 0}
               onClick={apply}

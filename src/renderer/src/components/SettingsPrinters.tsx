@@ -52,7 +52,7 @@ export function PrintRolesTable({
     </>
   );
   const select =
-    'w-full h-9 px-2 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+    'input-field w-full h-9 px-2 text-on-surface font-label-md text-label-md';
 
   return (
     <div className="flex flex-col gap-space-xs" data-print-roles="">
@@ -111,7 +111,7 @@ export function PrintRolesTable({
       </div>
       {printers.length > 0 && (
         <button
-          className="self-start h-8 px-space-sm rounded-lg text-secondary hover:bg-surface-container-high font-label-sm text-label-sm"
+          className="self-start h-8 px-space-sm rounded-btn text-secondary hover:bg-surface-container-high font-label-sm text-label-sm"
           data-act="roles-like-documents"
           type="button"
           onClick={() => {
@@ -162,7 +162,7 @@ export function PrinterCalibration({
 
   const num = (v: string) => Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace('٫', '.'));
   const box =
-    'w-20 h-9 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
+    'input-field w-20 h-9 px-2 text-center tabular font-label-md text-label-md text-on-surface';
 
   if (!printer)
     return (
@@ -172,11 +172,11 @@ export function PrinterCalibration({
     );
 
   return (
-    <div className="rounded-lg bg-surface-container-low p-space-sm space-y-space-xs" data-calibration="">
+    <div className="rounded-card bg-surface-container-low p-space-sm space-y-space-xs" data-calibration="">
       <div className="flex items-center justify-between gap-space-sm">
         <span className="font-label-md text-label-md text-on-surface font-semibold shrink-0">معايرة الطابعة</span>
         <select
-          className="min-w-0 flex-1 h-8 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"
+          className="min-w-0 flex-1 h-8 px-2 rounded-field bg-surface-container-lowest text-on-surface font-label-sm text-label-sm"
           data-calibration-printer=""
           value={printer}
           onChange={(e) => setChosen(e.target.value)}
@@ -196,7 +196,7 @@ export function PrinterCalibration({
       </p>
       <div className="flex flex-wrap items-center gap-space-sm">
         <button
-          className="h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+          className="h-9 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
           data-act="print-calibration"
           type="button"
           onClick={() =>
@@ -217,7 +217,7 @@ export function PrinterCalibration({
           <input className={box} data-measure-top="" inputMode="decimal" value={fromTop} onChange={(e) => setFromTop(e.target.value)} />
         </label>
         <button
-          className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold"
+          className="h-9 px-space-md btn-act font-label-sm text-label-sm font-semibold"
           data-act="save-calibration"
           type="button"
           onClick={() => {

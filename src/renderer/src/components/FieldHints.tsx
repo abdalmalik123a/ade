@@ -65,7 +65,7 @@ export default function FieldHints({
             <span className="font-label-md text-label-md text-on-surface font-semibold">خاناتٌ مقترحة من الورقة ({shown.length})</span>
             {shown.length > 1 && (
               <button
-                className="h-7 px-2 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm"
+                className="h-7 px-2 btn-act font-label-sm text-label-sm"
                 data-act="hints-all"
                 type="button"
                 onClick={() => accept(shown)}
@@ -75,7 +75,7 @@ export default function FieldHints({
             )}
           </div>
           {shown.map((h) => (
-            <div key={hintId(h)} className="p-space-xs rounded-lg bg-surface-container-low flex items-center gap-space-xs" data-hint={h.kind}>
+            <div key={hintId(h)} className="p-space-xs rounded-card bg-surface-container-low flex items-center gap-space-xs" data-hint={h.kind}>
               <span className="shrink-0 px-1.5 rounded bg-secondary-fixed text-secondary font-label-sm text-label-sm">{KIND_LABEL[h.kind]}</span>
               <span className="flex-1 min-w-0 flex flex-col">
                 <span className="font-label-md text-label-md text-on-surface truncate">{h.label}</span>
@@ -85,7 +85,7 @@ export default function FieldHints({
                 </span>
               </span>
               <button
-                className="h-7 px-2 rounded-lg text-secondary font-label-sm text-label-sm font-bold hover:bg-surface-container-high"
+                className="h-7 px-2 rounded-btn text-secondary font-label-sm text-label-sm font-bold hover:bg-surface-container-high"
                 data-act="hint-apply"
                 title="اجعله خانةً في كلّ مواضعه"
                 type="button"
@@ -94,7 +94,7 @@ export default function FieldHints({
                 خانة
               </button>
               <button
-                className="w-7 h-7 rounded-lg text-on-surface-variant hover:bg-surface-container-high"
+                className="w-7 h-7 rounded-btn text-on-surface-variant hover:bg-surface-container-high"
                 data-act="hint-skip"
                 title="تجاهله"
                 type="button"

@@ -129,10 +129,10 @@ export default function OmrPanel({
     if (path) onSay('حُفظت النتائج — تُفتح في Excel');
   }
 
-  const numInput = 'w-16 h-8 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular';
+  const numInput = 'input-field w-16 h-8 px-2 text-center tabular';
 
   return (
-    <section className="rounded-xl bg-surface-container-lowest p-space-sm flex flex-col gap-space-sm" data-omr="">
+    <section className="rounded-card bg-surface-container-lowest p-space-sm flex flex-col gap-space-sm" data-omr="">
       <span className="font-label-lg text-label-lg text-on-surface font-semibold flex items-center gap-1">
         <span className="material-symbols-outlined text-[20px] text-secondary">checklist</span>
         تصحيح الدوائر (OMR)
@@ -144,7 +144,7 @@ export default function OmrPanel({
         </label>
         <label className="flex items-center gap-1">
           البدائل
-          <select className="h-8 px-1 rounded-lg bg-surface-container-low border border-outline-variant" value={spec.choices} onChange={(e) => set({ choices: Number(e.target.value) })}>
+          <select className="h-8 px-1 rounded-field bg-surface-container-low border border-outline-variant" value={spec.choices} onChange={(e) => set({ choices: Number(e.target.value) })}>
             {[2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>
                 {toIndic(n)} ({CHOICE_LETTERS.slice(0, n).join(' ')})
@@ -160,7 +160,7 @@ export default function OmrPanel({
       <label className="flex flex-col gap-1">
         <span className="font-label-sm text-label-sm text-on-surface-variant">مفتاح الإجابة — حرفٌ لكل سؤال، و«-» لسؤالٍ لا يُصحَّح</span>
         <input
-          className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md"
+          className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md"
           data-omr-key=""
           placeholder="أ ب ج د ب أ …"
           value={keyText}
@@ -179,13 +179,13 @@ export default function OmrPanel({
           نسخ
           <input className={numInput} value={copies} onChange={(e) => setCopies(Number(e.target.value.replace(/\D/g, '')) || 1)} />
         </label>
-        <button className="h-9 px-space-sm rounded-lg bg-primary text-on-primary font-label-md text-label-md disabled:opacity-40" disabled={busy} type="button" onClick={() => void printSheets()}>
+        <button className="h-9 px-space-sm btn-act font-label-md text-label-md disabled:opacity-40" disabled={busy} type="button" onClick={() => void printSheets()}>
           اطبع أوراق الإجابة
         </button>
-        <button className="h-9 px-space-sm rounded-lg bg-surface-container-high font-label-md text-label-md disabled:opacity-40" data-act="omr-scan" disabled={busy || key.length !== spec.questions} type="button" onClick={() => void fromScanner()}>
+        <button className="h-9 px-space-sm rounded-btn bg-surface-container-high font-label-md text-label-md disabled:opacity-40" data-act="omr-scan" disabled={busy || key.length !== spec.questions} type="button" onClick={() => void fromScanner()}>
           صحّح ورقةً من الماسح
         </button>
-        <button className="h-9 px-space-sm rounded-lg bg-surface-container-high font-label-md text-label-md disabled:opacity-40" data-act="omr-folder" disabled={busy || key.length !== spec.questions} type="button" onClick={() => void fromFolder()}>
+        <button className="h-9 px-space-sm rounded-btn bg-surface-container-high font-label-md text-label-md disabled:opacity-40" data-act="omr-folder" disabled={busy || key.length !== spec.questions} type="button" onClick={() => void fromFolder()}>
           صحّح مجلّد صورٍ ممسوحة
         </button>
       </div>
@@ -265,10 +265,10 @@ export default function OmrPanel({
             );
           })()}
           <div className="flex gap-space-xs">
-            <button className="h-8 px-space-sm rounded-lg bg-secondary text-on-secondary font-label-sm text-label-sm" type="button" onClick={() => void exportCsv()}>
+            <button className="h-8 px-space-sm btn-act font-label-sm text-label-sm" type="button" onClick={() => void exportCsv()}>
               احفظ النتائج لـExcel
             </button>
-            <button className="h-8 px-space-sm rounded-lg bg-surface-container font-label-sm text-label-sm" type="button" onClick={() => setResults([])}>
+            <button className="h-8 px-space-sm rounded-btn bg-surface-container font-label-sm text-label-sm" type="button" onClick={() => setResults([])}>
               امسح الجدول
             </button>
           </div>

@@ -9,13 +9,13 @@ import { tabsOf } from '../lib/destinations';
 export function tabBarFor({ route, setSearch, navigate }: { route: RouteKey; setSearch: Dispatch<SetStateAction<string>>; navigate: (key: RouteKey) => void }) {
   const tabs = tabsOf(route);
   const tabBar = tabs ? (
-    <nav className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-tabs="">
+    <nav className="flex items-center gap-1 p-1 rounded-card bg-surface-container-lowest shadow-soft border border-outline-variant" data-tabs="">
       {tabs.map((t) => (
         <a
           key={t.route}
           aria-current={t.route === route ? 'page' : undefined}
-          className={`h-8 px-space-md rounded-lg flex items-center font-label-md text-label-md transition-colors ${
-            t.route === route ? 'bg-primary-container text-on-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+          className={`h-8 px-space-md rounded-btn flex items-center font-label-md text-label-md transition-colors ${
+            t.route === route ? 'bg-primary-fixed text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
           }`}
           data-path={ROUTES[t.route]}
           href="#"

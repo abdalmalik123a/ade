@@ -92,10 +92,10 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
         {licenseLine(status)}
       </p>
       {(status.status === 'unverified' || status.unverified) && (
-        <div className="flex items-center justify-between p-2 rounded-lg bg-error-container/30 text-on-error-container" data-unverified-warning="">
+        <div className="flex items-center justify-between p-2 rounded-card bg-error-container/30 text-on-error-container" data-unverified-warning="">
           <span className="font-label-sm text-label-sm">{status.deviceWarning ?? 'تعذّر قراءة معرّف الجهاز'}</span>
           <button
-            className="h-8 px-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm font-semibold shrink-0"
+            className="h-8 px-3 rounded-btn bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm font-semibold shrink-0"
             data-act="retry-device"
             disabled={busy}
             type="button"
@@ -112,11 +112,11 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
         <>
           <div className="flex items-center gap-space-xs">
             <span className="font-label-sm text-label-sm text-on-surface-variant shrink-0">رمز هذا الجهاز</span>
-            <code className="flex-1 px-2 py-1 rounded-lg bg-surface-container-low font-mono text-[13px] tracking-wide text-on-surface" data-device-code="" dir="ltr">
+            <code className="flex-1 px-2 py-1 rounded-field bg-surface-container-low font-mono text-[13px] tracking-wide text-on-surface" data-device-code="" dir="ltr">
               {status.device}
             </code>
             <button
-              className="h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm"
+              className="h-8 px-2 rounded-btn bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm"
               data-act="copy-device"
               type="button"
               onClick={() => void window.diwan.ui.copyText(status.device).then(() => setNote({ text: 'نُسخ الرمز — أرسله إلى المطوّر بواتساب' }))}
@@ -132,7 +132,7 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
             ، فيصلك مفتاحٌ لهذا الجهاز وحده — الصقه هنا. ولا يحتاج البرنامج إلى الإنترنت.
           </p>
           <textarea
-            className="w-full min-h-[64px] px-3 py-2 rounded-lg bg-surface-container-low text-on-surface font-mono text-[12px] focus:outline-none focus:ring-2 focus:ring-secondary"
+            className="input-field w-full min-h-[64px] px-3 py-2 text-on-surface font-mono text-[12px]"
             data-license-key=""
             dir="ltr"
             placeholder="DIWAN-…"
@@ -140,7 +140,7 @@ export default function LicenseCard({ card, title, onChanged }: { card: string; 
             onChange={(e) => setKey(e.target.value)}
           />
           <button
-            className="h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+            className="h-10 btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
             data-act="license-activate"
             disabled={busy || !key.trim()}
             type="button"

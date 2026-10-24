@@ -46,7 +46,7 @@ export default function ArchiveIntegrity({ card, onOpenSerial }: { card: string;
           </span>
         </div>
         <button
-          className="h-10 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-space-xs disabled:opacity-50"
+          className="h-10 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-space-xs disabled:opacity-50"
           data-act="verify-archive"
           type="button"
           disabled={checking}
@@ -60,7 +60,7 @@ export default function ArchiveIntegrity({ card, onOpenSerial }: { card: string;
       {error && <span className="font-label-sm text-label-sm text-error">{error}</span>}
       {check && (
         <div
-          className={`p-space-sm rounded-lg flex flex-col gap-space-xs font-label-md text-label-md ${
+          className={`p-space-sm rounded-card flex flex-col gap-space-xs font-label-md text-label-md ${
             sound ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-error-container text-on-error-container'
           }`}
           data-check-result={sound ? 'ok' : 'problems'}

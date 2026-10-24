@@ -7,7 +7,7 @@ import { errorText } from '../lib/errors';
 import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 
 const input =
-  'h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+  'input-field h-9 px-3 text-on-surface font-label-md text-label-md';
 
 export type BackupMade = { path: string; bytes: number; encrypted: boolean };
 
@@ -62,7 +62,7 @@ export default function BackupCreate({
         </div>
       )}
       <button
-        className="h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs disabled:opacity-40"
+        className="h-10 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs disabled:opacity-40"
         data-act="backup-create"
         type="button"
         disabled={busy || !canCreate}

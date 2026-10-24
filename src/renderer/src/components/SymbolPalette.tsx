@@ -16,8 +16,8 @@ export default function SymbolPalette({ onPick, compact = false }: { onPick: (sy
         {SYMBOL_GROUPS.map((g, i) => (
           <button
             key={g.name}
-            className={`h-7 px-2 rounded-full font-label-sm text-label-sm ${
-              i === group ? 'bg-secondary text-on-secondary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+            className={`h-7 px-2 rounded-chip font-label-sm text-label-sm ${
+              i === group ? 'bg-primary-fixed text-primary' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
             }`}
             type="button"
             onMouseDown={(e) => e.preventDefault()}

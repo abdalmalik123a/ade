@@ -69,7 +69,7 @@ function MissingFont({ family, more }: { family: string; more: number }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 h-8 px-2 rounded-lg bg-amber-500/15 text-amber-950 border border-amber-500/40 font-label-sm text-label-sm whitespace-nowrap"
+      className="inline-flex items-center gap-1 h-8 px-2 rounded-chip bg-amber-500/15 text-amber-950 border border-amber-500/40 font-label-sm text-label-sm whitespace-nowrap"
       data-missing-font={family}
       title="خطٌّ ليس في خطوط ديوان يُرسم بخطّ هذا الجهاز وحده — وعلى جهازٍ آخر بخطٍّ غيره"
     >

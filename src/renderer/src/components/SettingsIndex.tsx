@@ -38,7 +38,7 @@ export default function SettingsIndex({ ready }: { ready: boolean }) {
       {items.map((name) => (
         <button
           key={name}
-          className="h-8 px-3 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-sm"
+          className="h-8 px-3 rounded-chip bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-low"
           data-settings-go={name}
           type="button"
           onClick={() => go(name)}

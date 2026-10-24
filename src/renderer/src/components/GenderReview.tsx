@@ -27,7 +27,7 @@ export default function GenderReview({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-gender-review="">
-      <div className="w-full max-w-lg max-h-[85vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg max-h-[85vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">قبل الطباعة: ذكرٌ أم أنثى؟</h2>
           <p className="font-label-md text-label-md text-on-surface-variant">
@@ -44,9 +44,9 @@ export default function GenderReview({
                 {(['ذكر', 'أنثى'] as const).map((g) => (
                   <button
                     key={g}
-                    className={`h-8 px-4 rounded-lg font-label-md text-label-md ${
+                    className={`h-8 px-4 rounded-btn font-label-md text-label-md ${
                       picked[name] === g
-                        ? 'bg-secondary text-on-secondary font-bold'
+                        ? 'bg-primary-fixed text-primary font-bold'
                         : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'
                     }`}
                     data-gender-pick={g}
@@ -65,11 +65,11 @@ export default function GenderReview({
         <div className="p-space-md bg-surface-container-low flex items-center justify-between gap-space-sm">
           <span className="font-label-sm text-label-sm text-on-surface-variant">{left ? `بقي ${left}` : 'حُسمت كلّها'}</span>
           <div className="flex gap-space-xs">
-            <button className="h-9 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onCancel}>
+            <button className="h-9 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onCancel}>
               رجوع
             </button>
             <button
-              className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+              className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
               data-act="gender-review-done"
               type="button"
               disabled={left > 0}

@@ -15,7 +15,7 @@ import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
 const input =
-  'h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+  'input-field h-9 px-3 text-on-surface font-label-md text-label-md';
 
 export default function BackupPanel({
   lastBackupAt,
@@ -194,7 +194,7 @@ export default function BackupPanel({
               </span>
               {auto.foreign && (
                 <button
-                  className="h-9 rounded-lg bg-error text-on-error font-label-md text-label-md disabled:opacity-40"
+                  className="h-9 rounded-btn bg-error text-on-error font-label-md text-label-md disabled:opacity-40"
                   data-act="auto-backup-adopt"
                   disabled={busy !== null}
                   type="button"
@@ -205,7 +205,7 @@ export default function BackupPanel({
               )}
               <div className="flex gap-space-xs">
                 <button
-                  className="flex-1 h-9 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
+                  className="flex-1 h-9 rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
                   data-act="auto-backup-run"
                   disabled={busy !== null}
                   type="button"
@@ -213,10 +213,10 @@ export default function BackupPanel({
                 >
                   {busy === 'auto' ? 'تُؤخذ...' : 'خذها الآن'}
                 </button>
-                <button className="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md" type="button" onClick={() => void chooseAutoDir(false)}>
+                <button className="h-9 px-3 rounded-btn bg-surface-container-low text-on-surface font-label-md text-label-md" type="button" onClick={() => void chooseAutoDir(false)}>
                   غيّر المجلّد
                 </button>
-                <button className="h-9 px-3 rounded-lg text-error font-label-md text-label-md hover:bg-error-container" data-act="auto-backup-stop" type="button" onClick={() => void stopAuto()}>
+                <button className="h-9 px-3 rounded-btn text-error font-label-md text-label-md hover:bg-error-container" data-act="auto-backup-stop" type="button" onClick={() => void stopAuto()}>
                   أوقفها
                 </button>
               </div>
@@ -255,7 +255,7 @@ export default function BackupPanel({
                 نسخٍ من القاعدة
               </label>
               <button
-                className="h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs disabled:opacity-40"
+                className="h-9 btn-soft font-label-md text-label-md flex items-center justify-center gap-space-xs disabled:opacity-40"
                 data-act="auto-backup-enable"
                 disabled={!canEnableAuto}
                 type="button"
@@ -272,7 +272,7 @@ export default function BackupPanel({
       {/* استرجع نسخة */}
       <div className="pt-space-sm border-t border-outline-variant/40 flex flex-col gap-space-xs">
         <button
-          className="h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs disabled:opacity-40"
+          className="h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs disabled:opacity-40"
           data-act="backup-pick"
           type="button"
           disabled={busy !== null}
@@ -282,7 +282,7 @@ export default function BackupPanel({
           استرجع نسخة احتياطية…
         </button>
         <button
-          className="h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs disabled:opacity-40"
+          className="h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs disabled:opacity-40"
           data-act="mirror-pick"
           type="button"
           disabled={busy !== null}
@@ -326,7 +326,7 @@ export default function BackupPanel({
               onChange={(e) => setRestorePassword(e.target.value)}
             />
             <button
-              className="h-9 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
+              className="h-9 px-3 rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
               data-act="backup-inspect"
               type="button"
               disabled={!restorePassword || busy !== null}
@@ -338,7 +338,7 @@ export default function BackupPanel({
         )}
         {summary && picked && (
           <div
-            className={`p-space-sm rounded-lg flex flex-col gap-space-xs font-label-md text-label-md ${
+            className={`p-space-sm rounded-card flex flex-col gap-space-xs font-label-md text-label-md ${
               summary.ok ? 'bg-surface-container-low text-on-surface' : 'bg-error-container text-on-error-container'
             }`}
             data-backup-summary=""
@@ -365,7 +365,7 @@ export default function BackupPanel({
                   تحلّ محلّ بيانات هذا الجهاز كلّها. وما عليه الآن يُنقل جانبًا إلى مجلّدٍ في بيانات المكتب — لا يُحذف.
                 </span>
                 <button
-                  className="h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold disabled:opacity-40"
+                  className="h-9 rounded-btn bg-error text-on-error font-label-md text-label-md font-semibold disabled:opacity-40"
                   data-act="backup-restore"
                   type="button"
                   disabled={busy !== null}

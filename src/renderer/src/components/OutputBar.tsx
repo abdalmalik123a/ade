@@ -52,7 +52,7 @@ export function AfterPrint({
   onClose: () => void;
 }) {
   return (
-    <div className="p-space-sm rounded-xl bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-after-print="" role="status">
+    <div className="p-space-sm rounded-card bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-after-print="" role="status">
       <span className="material-symbols-outlined text-[22px] text-secondary">{outcome.printer ? 'task_alt' : 'inventory_2'}</span>
       <span className="flex-1 min-w-0 font-label-md text-label-md text-on-surface">
         {outcome.printer ? (
@@ -65,12 +65,12 @@ export function AfterPrint({
         {outcome.serial && <span className="text-on-surface-variant"> · في السجلّ برقم {outcome.serial}</span>}
       </span>
       {onReprint && (
-        <button className="h-9 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md" data-act="reprint" type="button" onClick={onReprint}>
+        <button className="h-9 px-3 rounded-btn border border-outline-variant shadow-low bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md" data-act="reprint" type="button" onClick={onReprint}>
           {outcome.printer ? 'أعد الطبع' : 'اطبعه الآن'}
         </button>
       )}
       {onPdf && (
-        <button className="h-9 px-3 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1" data-act="after-pdf" type="button" onClick={onPdf}>
+        <button className="h-9 px-3 rounded-btn border border-outline-variant shadow-low bg-surface-container-lowest hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1" data-act="after-pdf" type="button" onClick={onPdf}>
           <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
           PDF
         </button>
@@ -80,7 +80,7 @@ export function AfterPrint({
           شيءٌ آخر لنفس الزبون
         </button>
       )}
-      <button className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high" data-act="after-close" title="زبونٌ جديد" type="button" onClick={onClose}>
+      <button className="w-9 h-9 rounded-btn text-on-surface-variant hover:bg-surface-container-high" data-act="after-close" title="زبونٌ جديد" type="button" onClick={onClose}>
         <span className="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>

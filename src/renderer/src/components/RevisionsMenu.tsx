@@ -50,7 +50,7 @@ export default function RevisionsMenu<K extends RevisionKind>({
   return (
     <span className="relative">
       <button
-        className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+        className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
         data-act="revisions"
         title="النسخ السابقة — العودة إلى ما كان قبل التعديل"
         type="button"
@@ -61,7 +61,7 @@ export default function RevisionsMenu<K extends RevisionKind>({
       </button>
       {open && (
         <div
-          className="absolute left-0 top-11 z-20 w-72 max-h-80 overflow-y-auto rounded-xl bg-surface-container-lowest shadow-xl p-space-sm flex flex-col gap-1"
+          className="absolute left-0 top-11 z-20 w-72 max-h-80 overflow-y-auto surface-panel p-space-sm flex flex-col gap-1"
           data-revisions=""
         >
           <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -77,7 +77,7 @@ export default function RevisionsMenu<K extends RevisionKind>({
             list.map((r) => (
               <button
                 key={r.revision}
-                className="flex items-center justify-between gap-space-sm p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-right"
+                className="flex items-center justify-between gap-space-sm p-space-sm rounded-btn bg-surface-container-low hover:bg-surface-container-high text-right"
                 data-revision={r.revision}
                 type="button"
                 onClick={() => void pick(r.revision)}

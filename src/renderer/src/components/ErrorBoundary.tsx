@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           className={
             full
               ? 'fixed inset-0 flex items-center justify-center p-space-xl bg-surface text-right'
-              : 'flex-1 min-h-[400px] flex items-center justify-center p-space-xl bg-surface-container-lowest m-space-lg rounded-2xl border border-error/30 shadow-lg text-right'
+              : 'flex-1 min-h-[400px] flex items-center justify-center p-space-xl bg-surface-container-lowest m-space-lg rounded-frame border border-error/30 shadow-card text-right'
           }
           data-error-boundary={full ? 'root' : 'screen'}
         >
@@ -71,7 +71,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="flex items-center gap-space-sm">
               <button
                 type="button"
-                className="h-10 px-space-lg rounded-lg bg-primary text-on-primary font-label-md text-label-md font-bold flex items-center gap-1.5 shadow-md hover:opacity-90 transition-opacity"
+                className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold flex items-center gap-1.5"
                 data-act={full ? 'reload-ui' : 'retry'}
                 onClick={full ? () => window.location.reload() : this.handleReset}
               >

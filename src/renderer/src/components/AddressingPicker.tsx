@@ -21,12 +21,12 @@ export default function AddressingPicker({
       <span className="font-label-sm text-label-sm text-on-surface-variant">
         إلى جهةٍ — {value ? `${ADDRESSING_LABEL[value]}: «${ADDRESSING_HINT[value]}» أولًا في الكليشات` : 'تُرتَّب بها الكليشات'}
       </span>
-      <div className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-surface-container-low">
+      <div className="grid grid-cols-3 gap-1 p-0.5 rounded-card bg-surface-container-low">
         {ADDRESSING.map((a) => (
           <button
             key={a}
             className={`h-8 rounded-md font-label-md text-label-md transition-colors ${
-              value === a ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
+              value === a ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
             }`}
             data-addressing-value={a}
             title={`${ADDRESSING_LABEL[a]} — ${ADDRESSING_HINT[a]}`}

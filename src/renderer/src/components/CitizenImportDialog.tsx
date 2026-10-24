@@ -114,7 +114,7 @@ export default function CitizenImportDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-citizen-import="" onClick={onClose}>
-      <div className="w-[760px] max-h-[86vh] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
+      <div className="w-[760px] max-h-[86vh] surface-panel p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-headline-sm text-headline-sm">استيراد الزبائن من Excel</h2>
         {!table ? (
           <div className="flex flex-col items-start gap-space-sm">
@@ -123,7 +123,7 @@ export default function CitizenImportDialog({
               وتُرى الخطّة قبل الاستيراد. ومن له ملفٌّ يُكمل فارغه ولا يتكرّر.
             </p>
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
               data-act="import-pick"
               type="button"
               onClick={() => void pick()}
@@ -139,12 +139,12 @@ export default function CitizenImportDialog({
                 {file}
               </span>
               <span>— الصفوف: {toIndic(table.rows.length)}</span>
-              <button className="ms-auto h-8 px-space-sm rounded-lg hover:bg-surface-container-high" type="button" onClick={() => void pick()}>
+              <button className="ms-auto h-8 px-space-sm rounded-btn hover:bg-surface-container-high" type="button" onClick={() => void pick()}>
                 ملفٌّ آخر
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-outline-variant">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-card border border-outline-variant">
               <table className="w-full text-right font-label-md text-label-md">
                 <thead className="sticky top-0 bg-surface-container-low">
                   <tr>
@@ -161,7 +161,7 @@ export default function CitizenImportDialog({
                       <td className="p-space-xs">
                         <select
                           aria-label={`العمود «${col.header}»`}
-                          className="h-9 w-full px-1 rounded-lg bg-surface-container-low border border-outline-variant"
+                          className="h-9 w-full px-1 rounded-field bg-surface-container-low border border-outline-variant"
                           data-import-target={i}
                           value={col.target ?? ''}
                           onChange={(e) => setTable(withTarget(table, i, (e.target.value || null) as ImportTarget | null))}
@@ -194,7 +194,7 @@ export default function CitizenImportDialog({
               <label className="flex items-center gap-1">
                 تصنيفٌ لهم جميعًا
                 <input
-                  className="h-9 w-48 px-space-xs rounded-lg bg-surface-container-low border border-outline-variant"
+                  className="h-9 w-48 px-space-xs rounded-field bg-surface-container-low border border-outline-variant"
                   data-import-category=""
                   list="citizen-import-categories"
                   placeholder="اختياري — مثل «موظفو التربية»"
@@ -210,7 +210,7 @@ export default function CitizenImportDialog({
             </div>
 
             {plan && (
-              <div className="rounded-lg bg-surface-container-low p-space-sm flex flex-col gap-1 font-label-md text-label-md" data-import-plan="">
+              <div className="rounded-card bg-surface-container-low p-space-sm flex flex-col gap-1 font-label-md text-label-md" data-import-plan="">
                 {planRows
                   .filter(([, n]) => n > 0)
                   .map(([label, n, key]) => (
@@ -244,12 +244,12 @@ export default function CitizenImportDialog({
 
         {error && <p className="font-label-md text-label-md text-error">{error}</p>}
         <div className="flex justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
           {table && (
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
               data-act="import-run"
               disabled={!hasName || !plan || plan.added + plan.completed === 0 || busy !== null}
               type="button"

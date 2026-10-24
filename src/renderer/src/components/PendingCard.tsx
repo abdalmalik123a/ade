@@ -28,7 +28,7 @@ export function PendingCard({
   onDelete?: () => void;
 }) {
   return (
-    <article className="rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)]" data-pending={act}>
+    <article className="rounded-card bg-surface-container-lowest border border-outline-variant p-space-sm space-y-space-xs shadow-soft" data-pending={act}>
       <div className="flex items-center justify-between gap-2 font-label-sm text-label-sm text-on-surface-variant">
         <span className="flex items-center gap-1.5 min-w-0">
           <span className="material-symbols-outlined text-[16px] text-secondary">{icon}</span>
@@ -39,12 +39,12 @@ export function PendingCard({
       <div className="font-body-md text-body-md text-on-surface font-semibold truncate">{title}</div>
       {sub && <div className="font-label-sm text-label-sm text-on-surface-variant truncate">{sub}</div>}
       <div className="flex items-center gap-1">
-        <button className="flex-1 h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
+        <button className="flex-1 h-8 btn-act font-label-md text-label-md font-semibold" data-act={act} type="button" onClick={onRun}>
           {action}
         </button>
         {onDelete && (
           <button
-            className="w-8 h-8 shrink-0 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center"
+            className="w-8 h-8 shrink-0 rounded-btn text-on-surface-variant hover:bg-error-container hover:text-on-error-container flex items-center justify-center"
             data-act="delete-draft"
             title="احذف المسودّة"
             type="button"

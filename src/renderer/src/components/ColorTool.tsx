@@ -29,7 +29,7 @@ export default function ColorTool({ value, onPick }: { value: string | null; onP
   return (
     <span className="relative inline-flex">
       <button
-        className={`h-8 min-w-[2rem] px-1.5 rounded-lg flex flex-col items-center justify-center transition-colors ${open ? 'bg-secondary-fixed text-secondary' : 'text-on-surface hover:bg-surface-container-high'}`}
+        className={`h-8 min-w-[2rem] px-1.5 rounded-btn flex flex-col items-center justify-center transition-colors ${open ? 'bg-secondary-fixed text-secondary' : 'text-on-surface hover:bg-surface-container-high'}`}
         data-act="text-color"
         title="لون النصّ"
         type="button"
@@ -42,7 +42,7 @@ export default function ColorTool({ value, onPick }: { value: string | null; onP
       {open && (
         <>
           <span className="fixed inset-0 z-20" onMouseDown={(e) => (e.preventDefault(), setOpen(false))} />
-          <span className="absolute top-full mt-1 start-0 z-30 p-space-xs rounded-lg bg-surface-container-lowest shadow-lg border border-outline-variant/50 flex flex-col gap-space-xs" data-color-menu="">
+          <span className="absolute top-full mt-1 start-0 z-30 p-space-xs rounded-card bg-surface-container-lowest shadow-soft border border-outline-variant/50 flex flex-col gap-space-xs" data-color-menu="">
             <button
               className="h-7 px-2 rounded font-label-sm text-label-sm text-on-surface hover:bg-surface-container-high flex items-center gap-1.5"
               data-color=""

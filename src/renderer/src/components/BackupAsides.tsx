@@ -57,7 +57,7 @@ export default function BackupAsides() {
 
   return (
     <div
-      className="p-space-sm rounded-lg bg-surface-container-low text-on-surface flex flex-col gap-space-xs font-label-md text-label-md"
+      className="p-space-sm rounded-card bg-surface-container-low text-on-surface flex flex-col gap-space-xs font-label-md text-label-md"
       data-before-restore-list=""
     >
       <div className="flex items-center justify-between">
@@ -84,7 +84,7 @@ export default function BackupAsides() {
               </span>
             </div>
             <button
-              className="h-8 px-3 rounded-lg bg-surface-container-high hover:bg-error-container hover:text-on-error-container text-on-surface font-label-sm text-label-sm disabled:opacity-40"
+              className="h-8 px-3 rounded-btn bg-surface-container-high hover:bg-error-container hover:text-on-error-container text-on-surface font-label-sm text-label-sm disabled:opacity-40"
               data-act="delete-before-restore"
               type="button"
               disabled={busy !== null}

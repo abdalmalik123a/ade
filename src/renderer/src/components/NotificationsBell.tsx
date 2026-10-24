@@ -86,7 +86,7 @@ export default function NotificationsBell({
     <div ref={ref} className="relative">
       <button
         aria-expanded={open}
-        className="relative h-10 w-10 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface flex items-center justify-center shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+        className="relative h-10 w-10 rounded-full bg-surface-container-lowest hover:bg-surface-container-high text-on-surface flex items-center justify-center shadow-low"
         data-act="notifications"
         data-count={count}
         title={dot ? 'التنبيهات — ملخّص الأسبوع الماضي جاهز' : 'التنبيهات — ما ينتظرك'}
@@ -106,7 +106,7 @@ export default function NotificationsBell({
 
       {open && (
         <div
-          className="absolute top-12 left-0 z-50 w-[380px] max-h-[75vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden"
+          className="absolute top-12 left-0 z-50 w-[380px] max-h-[75vh] surface-panel flex flex-col overflow-hidden"
           data-notifications=""
         >
           <div className="px-space-md py-space-sm bg-surface-container-low flex items-center gap-space-xs">
@@ -117,7 +117,7 @@ export default function NotificationsBell({
           <div className="flex-1 overflow-y-auto p-space-md flex flex-col gap-space-md">
             {week && (busy(week.thisWeek) || busy(week.lastWeek)) && (
               <button
-                className="rounded-xl bg-surface-container-low hover:bg-surface-container-high p-space-sm text-right"
+                className="rounded-card bg-surface-container-low hover:bg-surface-container-high p-space-sm text-right"
                 data-week-summary=""
                 title="افتح «السجلّ» على هذا الأسبوع"
                 type="button"

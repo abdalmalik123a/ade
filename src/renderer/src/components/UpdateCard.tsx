@@ -44,7 +44,7 @@ export default function UpdateCard({ card, title, version }: { card: string; tit
         يُثبَّت، ولا يتّصل البرنامج بأحد.
       </p>
       <button
-        className="h-10 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs"
+        className="h-10 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-space-xs"
         data-act="update-pick"
         disabled={busy}
         type="button"
@@ -54,14 +54,14 @@ export default function UpdateCard({ card, title, version }: { card: string; tit
         ثبّت تحديثًا…
       </button>
       {picked && (
-        <div className="rounded-lg bg-surface-container-low p-space-sm flex flex-col gap-space-xs" data-update-picked={picked.version}>
+        <div className="rounded-card bg-surface-container-low p-space-sm flex flex-col gap-space-xs" data-update-picked={picked.version}>
           <span className="font-label-lg text-label-lg font-semibold text-on-surface">
             الإصدار {picked.version} — موقّعٌ من المطوّر ({(picked.size / 1024 / 1024).toFixed(0)} م.ب)
           </span>
           <span className="font-label-sm text-label-sm text-on-surface-variant">ما الجديد:</span>
           <ChangelogBody body={picked.notes} />
           <button
-            className="h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold disabled:opacity-40"
+            className="h-10 btn-act font-label-md text-label-md font-semibold disabled:opacity-40"
             data-act="update-install"
             disabled={busy}
             type="button"

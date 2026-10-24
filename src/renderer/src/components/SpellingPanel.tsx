@@ -27,7 +27,7 @@ export default function SpellingPanel({
 
   if (!issues.length) return null;
   return (
-    <section className="rounded-xl bg-surface-container-low p-space-sm flex flex-col gap-space-xs" data-spelling="">
+    <section className="rounded-card bg-surface-container-low p-space-sm flex flex-col gap-space-xs" data-spelling="">
       <div className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface font-semibold">
         <span className="material-symbols-outlined text-[18px] text-secondary">spellcheck</span>
         {title} ({toIndic(issues.length)})
@@ -63,7 +63,7 @@ export default function SpellingPanel({
       </ul>
       {onFix && (
         <button
-          className="self-start h-8 px-space-sm rounded-lg bg-secondary text-on-secondary font-label-sm text-label-sm font-semibold disabled:opacity-40"
+          className="self-start h-8 px-space-sm btn-act font-label-sm text-label-sm font-semibold disabled:opacity-40"
           data-act="fix-spelling"
           disabled={chosen.size === 0}
           type="button"

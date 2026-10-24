@@ -25,7 +25,7 @@ export default function SearchField({ value, onChange, inputRef, wrapClassName =
       />
       {value && (
         <button
-          className="absolute inset-y-0 end-1 my-auto w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
+          className="absolute inset-y-0 end-1 my-auto w-8 h-8 rounded-btn flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high"
           data-act="search-clear"
           title="امسح البحث (Escape)"
           type="button"

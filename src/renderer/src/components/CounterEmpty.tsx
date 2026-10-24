@@ -13,7 +13,7 @@ export default function CounterEmpty({ empty, onBlank, onImport }: { empty: bool
       </p>
       <div className="flex flex-wrap justify-center gap-space-sm">
         <button
-          className="h-10 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-1.5"
+          className="h-10 px-space-md btn-act font-label-md text-label-md font-bold flex items-center gap-1.5"
           data-act="counter-blank"
           type="button"
           onClick={onBlank}
@@ -22,7 +22,7 @@ export default function CounterEmpty({ empty, onBlank, onImport }: { empty: bool
           اكتبه على ورقة فارغة
         </button>
         <button
-          className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5"
+          className="h-10 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5"
           data-act="counter-import"
           type="button"
           onClick={onImport}

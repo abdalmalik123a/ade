@@ -11,7 +11,7 @@ import { mountHost, type AskOptions, type ChoiceTone } from './ask';
 type Item = { options: AskOptions<string>; resolve: (key: string) => void };
 
 const TONES: Record<ChoiceTone, string> = {
-  primary: 'bg-primary-container text-on-primary font-bold',
+  primary: 'btn-act font-bold',
   danger: 'bg-error text-on-error font-bold',
   neutral: 'bg-surface-container hover:bg-surface-container-high text-on-surface'
 };
@@ -65,7 +65,7 @@ export default function ConfirmHost() {
         if (e.target === e.currentTarget) finish(current, options.fallback);
       }}
     >
-      <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg flex flex-col gap-space-md">
+      <div className="w-full max-w-md surface-panel p-space-lg flex flex-col gap-space-md">
         <span className="font-headline-sm text-headline-sm text-on-surface" data-confirm-title="" id="confirm-title">
           {options.title}
         </span>
@@ -75,7 +75,7 @@ export default function ConfirmHost() {
             <button
               key={c.key}
               ref={c.key === options.fallback ? focusRef : undefined}
-              className={`h-10 px-4 rounded-lg font-label-md text-label-md ${TONES[c.tone ?? 'neutral']}`}
+              className={`h-10 px-4 rounded-btn font-label-md text-label-md ${TONES[c.tone ?? 'neutral']}`}
               data-choice={c.key}
               type="button"
               onClick={() => finish(current, c.key)}

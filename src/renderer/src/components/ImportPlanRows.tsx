@@ -30,7 +30,7 @@ export function FieldRow({
     <div className="flex items-center gap-space-xs">
       <ConfidenceDot value={suggestion?.confidence ?? 0.5} />
       <input
-        className="flex-1 h-8 px-2 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+        className="input-field flex-1 h-8 px-2 text-on-surface font-label-md text-label-md"
         type="text"
         value={label}
         onChange={(e) => onRename(e.target.value)}

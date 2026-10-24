@@ -9,7 +9,7 @@ import type { ColorErase } from '../lib/useColorErase';
 
 const LABEL = 'flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant';
 const chip = (on: boolean) =>
-  `h-7 px-2.5 rounded-full font-label-sm text-label-sm ${on ? 'bg-secondary-container text-on-secondary-container font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`;
+  `h-7 px-2.5 rounded-chip font-label-sm text-label-sm ${on ? 'bg-primary-fixed text-primary font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`;
 
 export default function ColorEraseBar({ erase }: { erase: ColorErase }) {
   const { opts, update } = erase;
@@ -45,11 +45,11 @@ export function ColorEraseHint({ erase, onAccept }: { erase: ColorErase; onAccep
   if (!erase.hint) return null;
   const [r, g, b] = erase.hint;
   return (
-    <div className="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg bg-secondary-container/60 text-on-secondary-container font-label-sm text-label-sm" data-erase-hint="">
+    <div className="flex items-center gap-space-sm px-space-sm py-1.5 rounded-card bg-secondary-fixed text-primary font-label-sm text-label-sm" data-erase-hint="">
       <span className="w-4 h-4 shrink-0 rounded-full border border-outline-variant" style={{ background: `rgb(${r},${g},${b})` }} />
       <span className="flex-1">حوافّ الصورة بقيت بهذا اللون — أهو خلفيةٌ لم تُزل؟</span>
       <button
-        className="h-7 px-2.5 rounded-full bg-primary-container text-on-primary font-semibold"
+        className="h-7 px-2.5 btn-act font-semibold"
         data-act="erase-hint"
         type="button"
         onClick={() => {

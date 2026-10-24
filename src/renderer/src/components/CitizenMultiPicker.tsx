@@ -46,12 +46,12 @@ export default function CitizenMultiPicker({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-citizen-picker="">
-      <div className="w-full max-w-2xl h-[80vh] rounded-2xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-2xl h-[80vh] surface-panel flex flex-col overflow-hidden">
         <div className="p-space-md bg-surface-container-low flex flex-col gap-space-xs">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">{title}</h2>
           <input
             autoFocus
-            className="h-10 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+            className="input-field h-10 px-3 text-on-surface font-label-md text-label-md"
             data-picker-search=""
             placeholder="ابحث بالاسم أو الرقم أو الوظيفة…"
             value={query}
@@ -62,8 +62,8 @@ export default function CitizenMultiPicker({
               {[{ name: null as string | null, count: 0 }, ...categories].map((c) => (
                 <button
                   key={c.name ?? 'all'}
-                  className={`h-7 px-2 rounded-full font-label-sm text-label-sm ${
-                    category === c.name ? 'bg-primary-container text-on-primary' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'
+                  className={`h-7 px-2 rounded-chip font-label-sm text-label-sm ${
+                    category === c.name ? 'bg-primary-fixed text-primary' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                   type="button"
                   onClick={() => setCategory(c.name)}
@@ -92,7 +92,7 @@ export default function CitizenMultiPicker({
         </div>
         <div className="flex-1 overflow-y-auto px-space-md flex flex-col gap-1">
           {list.map((c) => (
-            <label key={c.id} className="flex items-center gap-space-sm p-space-xs rounded-lg hover:bg-surface-container-high cursor-pointer" data-picker-row={c.fullName}>
+            <label key={c.id} className="flex items-center gap-space-sm p-space-xs rounded-card hover:bg-surface-container-high cursor-pointer" data-picker-row={c.fullName}>
               <input checked={picked.includes(c.id)} className="w-4 h-4 accent-secondary" type="checkbox" onChange={() => toggle(c.id)} />
               {c.photoPath ? (
                 <img alt="" className="w-8 h-10 rounded object-cover" src={`diwan://store/${c.photoPath}`} />
@@ -112,11 +112,11 @@ export default function CitizenMultiPicker({
           {list.length === 0 && <p className="py-space-lg text-center font-label-md text-label-md text-on-surface-variant">لا أحد في السجل يطابق</p>}
         </div>
         <div className="p-space-md bg-surface-container-low flex justify-between gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
           <button
-            className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             data-act="picker-confirm"
             type="button"
             disabled={picked.length === 0}
