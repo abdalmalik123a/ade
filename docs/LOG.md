@@ -6,6 +6,17 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٢٠:٢٥ — D169 ✅ بقايا «ب٢» بين الأوامر (من مراجعة م١) · النموذج: Claude Opus 5.5 (المنفّذ)
+- **الإيداعات:** 23b9749 الحجز · 10b423a التنفيذ · وهذا الختام.
+- **ما تغيّر:** الجدول على الملفّات الخمسة: «أكمل» و«احفظه في السجل» `.btn-act` · الرسالة العابرة في الشبّاك `bg-inverse-surface` · شريط الطباعة ونافذة البحث وقائمة «قنواتنا» `rounded-card shadow-card` أو `.surface-panel` ·
+  الأزرار `rounded-btn` وخانة الشريط `.input-field` · وUI.md §٨ سطر «استثناءاتٌ مقصودة».
+- **حُسم بلا سؤال (ر177 §٣، مسارٌ ناقص في «المسموح»):** جرد D158 قرأ `.tsx` وحده، فبقيت ثوابت أصنافٍ في ستّة ملفّات `.ts` (`components/pageViews.ts` و`designs/editor/kit.ts`
+  و`screens/{letterhead,papers,settings,templateDesigner}/shared.ts`) — وخطوة الأمر الثالثة («الجرد على `src/renderer/src` كلّه: الاستثناءات وحدها») لا تتمّ بدونها، فطُبّق الجدول عليها (خاناتٌ `.input-field` وأزرارٌ `rounded-btn`).
+- **الجرد بعده (مُجرَّب، Grep على `.ts` و`.tsx`):** لا زرّ فعلٍ مصمت · ولا `rounded-xl/lg` ولا ظلٌّ قديم إلا الاستثناءات: أربع صورٍ و`pre` وحلقة `ColorTool` (٦ مواضع)، وظلال الورقة والصورة وقناع القصّ بقيمها.
+- **الفحص (مُجرَّب):** `npm run typecheck` ✓ · vitest كاملًا ٢١٠٦ ✓ و١ ✗ بيئة · البناء ✓ · `counterBasket` ١٩ · `service` ٦٣ · `copies` ١٠ · `printResume` ٤ · `theme` ١٠ · `screens` ١٨ ·
+  ولملفّات `.ts`: `letterhead` ٤٠ · `papers` ٣٦ · `settings` ٢٩ · `templates` ٤٠ · `designs` ٧٠ — بلا ✗.
+- **التالي:** D170 مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٤ ٢٠:١٥ — مراجعة المرحلة ١ («ب٢») ✓ بملاحظتين · النموذج: Claude Opus 5.5 (المنفّذ مراجِعًا، ر176)
 - **الإيداعات (مُجرَّب بـgit):** ٣١ إيداعًا bbe1098..587bbed · لا حذف: `diwan-mark.png` و`diwan-logo.ico` القديمان في `legacy/` بملفّي «انتهى» ومطابقان بايتًا (العلامة بنسختها من D155) ·
   خارج `src/renderer` و`docs` و`tools/scenarios` و`tests/ui`: `src/shared/theme.ts` (مسموح D156) و`tailwind.config.cjs` و`make-brand.py` و`resources/` · لا تغيّر في السقوف ولا `tests/snapshots` ولا `package*.json` ولا `src/main` ·
