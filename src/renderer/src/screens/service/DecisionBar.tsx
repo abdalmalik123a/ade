@@ -59,10 +59,10 @@ export default function DecisionBar({
   issue
 }: Props) {
   return (
-    <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-low flex items-center gap-space-sm">
+    <div className="shrink-0 px-space-lg py-space-sm bg-surface-container-lowest border-t border-outline-variant flex items-center gap-space-sm">
       {step !== 'pick' && (
         <button
-          className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+          className="h-10 px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
           type="button"
           onClick={() => setStep(step === 'review' ? 'fill' : 'pick')}
         >
@@ -71,7 +71,7 @@ export default function DecisionBar({
       )}
       {step !== 'pick' && (
         <button
-          className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
+          className="h-10 px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
           data-act="park"
           title="الزبون ذهب ليجلب مستمسكًا؟ علّقها واخدم غيره، ثم استأنفها من حيث تُركت"
           type="button"
@@ -84,7 +84,7 @@ export default function DecisionBar({
       )}
       {step !== 'pick' && (
         <button
-          className="h-10 px-4 rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container font-label-md text-label-md flex items-center gap-1"
+          className="h-10 px-4 rounded-btn text-on-surface-variant hover:bg-error-container hover:text-on-error-container font-label-md text-label-md flex items-center gap-1"
           data-act="discard"
           title="زبونٌ عدل عن طلبه: تُمحى المعاملة ويُفتح الشبّاك نظيفًا — ولا يُقيَّد شيء"
           type="button"
@@ -127,7 +127,7 @@ export default function DecisionBar({
                 {(['ذكر', 'أنثى'] as const).map((g) => (
                   <button
                     key={g}
-                    className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+                    className="h-8 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
                     data-gender-choose={g}
                     type="button"
                     onClick={() => {
@@ -163,7 +163,7 @@ export default function DecisionBar({
           <label className="flex items-center gap-1 font-label-md text-label-md text-on-surface-variant" title="كم نسخةً من كلّ ورقة — تُطبع مجموعاتٍ مرتّبة">
             النسخ
             <input
-              className="w-14 h-10 rounded-lg bg-surface-container-low text-center text-on-surface tabular"
+              className="w-14 h-10 rounded-field bg-surface-container-low text-center text-on-surface tabular"
               data-copies=""
               inputMode="numeric"
               max={99}
@@ -174,7 +174,7 @@ export default function DecisionBar({
             />
           </label>
           <button
-            className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
+            className="h-10 px-4 rounded-btn bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md disabled:opacity-40"
             type="button"
             disabled={busy || blocked}
             onClick={() => void issue(false)}

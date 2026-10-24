@@ -50,7 +50,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
         <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">الأسئلة</h2>
         <div className="flex-1" />
         <select
-          className="h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
+          className="h-8 px-space-sm rounded-field bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
           title="أرقام الترقيم"
           value={numerals}
           onChange={(e) => setNumerals(e.target.value as Numerals)}
@@ -59,7 +59,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
           <option value="indic">١ ٢ ٣</option>
         </select>
         <select
-          className="h-8 px-space-sm rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
+          className="h-8 px-space-sm rounded-field bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface"
           title="اتجاه المتن"
           value={dir}
           onChange={(e) => setDir(e.target.value as Dir)}
@@ -105,7 +105,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
       </div>
 
       <button
-        className="w-full h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5 shadow-md"
+        className="w-full h-11 btn-act font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5"
         type="button"
         onClick={addQuestion}
       >
@@ -113,7 +113,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
         أضف سؤالًا
       </button>
       <button
-        className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+        className="w-full h-10 rounded-card bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
         data-act="bank-open"
         type="button"
         onClick={() => setBankOpen((o) => !o)}
@@ -137,7 +137,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
         />
       )}
       <button
-        className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+        className="w-full h-10 rounded-card bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
         data-act="second-round"
         title="ورقةٌ بالبنية نفسها من أسئلة البنك التي لم تُطبع في هذا الدور"
         type="button"
@@ -147,7 +147,7 @@ export default function PaperBody({ numerals, setNumerals, dir, setDir, pick, se
         ورقة الدور الثاني من البنك
       </button>
       <button
-        className="w-full h-10 rounded-xl bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
+        className="w-full h-10 rounded-card bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1.5"
         data-act="omr-open"
         type="button"
         onClick={() => setOmrOpen((o) => !o)}

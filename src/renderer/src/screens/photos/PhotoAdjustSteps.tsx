@@ -16,7 +16,7 @@ import type { ColorErase } from '../../lib/useColorErase';
 type Props = {
   step: (n: number, title: string, extra?: React.ReactNode, later?: boolean) => JSX.Element;
   cutState: 'none' | 'running' | 'done';
-  small: 'h-8 px-3 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  small: 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
   modelReady: boolean;
   removeBackground: () => Promise<Landmarks | null>;
   customColor: string;
@@ -84,7 +84,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
         ))}
         {bg.kind === 'custom' && (
           <input
-            className="w-9 h-9 rounded-lg border border-outline-variant bg-transparent"
+            className="w-9 h-9 rounded-field border border-outline-variant bg-transparent"
             data-bg-color=""
             type="color"
             value={customColor}
@@ -152,7 +152,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
         {SUIT_CATEGORIES.map((c) => (
           <button
             key={c.key}
-            className={`h-7 px-2.5 rounded-full font-label-sm text-label-sm ${suitTab === c.key ? 'bg-secondary-container text-on-secondary-container font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`}
+            className={`h-7 px-2.5 rounded-chip font-label-sm text-label-sm ${suitTab === c.key ? 'bg-primary-fixed text-primary font-semibold' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high'}`}
             data-suit-tab={c.key}
             type="button"
             onClick={() => setSuitTab(c.key)}
@@ -163,7 +163,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
       </div>
       <div className="grid grid-cols-4 gap-1">
         <button
-          className={`aspect-square rounded-lg border-2 flex items-center justify-center font-label-sm text-label-sm ${!worn ? 'border-secondary' : 'border-transparent bg-surface-container-lowest'}`}
+          className={`aspect-square rounded-btn border-2 flex items-center justify-center font-label-sm text-label-sm ${!worn ? 'border-secondary' : 'border-transparent bg-surface-container-lowest'}`}
           data-suit="none"
           type="button"
           onClick={() => void chooseSuit(null)}
@@ -176,7 +176,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
         ).map((s) => (
           <div key={s.id} className="relative group">
             <button
-              className={`w-full aspect-square rounded-lg border-2 bg-white overflow-hidden ${worn?.suit.key === s.id ? 'border-secondary' : 'border-transparent'}`}
+              className={`w-full aspect-square rounded-btn border-2 bg-white overflow-hidden ${worn?.suit.key === s.id ? 'border-secondary' : 'border-transparent'}`}
               data-suit={s.id}
               disabled={!s.url}
               title={s.name}

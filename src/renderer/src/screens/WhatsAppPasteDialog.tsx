@@ -47,7 +47,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
+      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-card shadow-card border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-2 text-secondary">
@@ -83,7 +83,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
               </button>
             </div>
             <textarea
-              className="w-full h-32 p-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm leading-relaxed resize-none"
+              className="w-full h-32 p-3 input-field text-on-surface font-body-md text-body-md font-mono text-sm leading-relaxed resize-none"
               placeholder={`مثال:\nالسلام عليكم\nالاسم: حيدر كريم جاسم العبيدي\nالرقم الوطني: 199512345678\nالتولد: 1995/07/21\nرقم الهاتف: 07701234567\nالسكن: بغداد - الكرخ محلة 612 زقاق 14 دار 8`}
               value={rawText}
               onChange={(e) => {
@@ -101,7 +101,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
 
           {/* الحقول المستخرجة */}
           {extracted && (
-            <div className="rounded-xl border border-secondary/30 bg-secondary-fixed/10 p-4 space-y-3">
+            <div className="rounded-card border border-secondary/30 bg-secondary-fixed/10 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-title-sm text-title-sm font-bold text-on-surface flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-secondary text-[20px]">
@@ -130,7 +130,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
                 ].map((item) => (
                   <div
                     key={item.key}
-                    className={`flex items-center justify-between p-2 rounded-lg border ${
+                    className={`flex items-center justify-between p-2 rounded-card border ${
                       item.val
                         ? 'border-secondary/30 bg-surface text-on-surface'
                         : 'border-outline-variant/50 bg-surface/40 text-on-surface-variant/50'
@@ -151,7 +151,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
         <footer className="px-6 py-4 border-t border-outline-variant bg-surface-container-low flex items-center justify-between">
           <button
             type="button"
-            className="px-4 h-10 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+            className="px-4 h-10 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             onClick={onClose}
           >
             إلغاء
@@ -159,7 +159,7 @@ export default function WhatsAppPasteDialog({ isOpen, onClose, onApply }: Props)
           <button
             type="button"
             disabled={!extracted || extracted.detectedFieldsCount === 0}
-            className="px-6 h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-md hover:bg-primary/90 transition-all disabled:opacity-40"
+            className="px-6 h-10 btn-act font-label-md text-label-md font-semibold flex items-center gap-2 transition-all disabled:opacity-40"
             onClick={handleApply}
           >
             <span className="material-symbols-outlined text-[18px]">done_all</span>

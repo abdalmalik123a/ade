@@ -41,7 +41,7 @@ export default function PaperOutput({ after, setAfter, lastJob, send, copies, se
         </label>
 
         <button
-          className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
+          className="h-9 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50"
           data-act="save"
           title="احفظ ورقة الأسئلة"
           type="button"
@@ -52,7 +52,7 @@ export default function PaperOutput({ after, setAfter, lastJob, send, copies, se
           حفظ
         </button>
         <button
-          className="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+          className="h-9 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
           data-act="pdf"
           title="احفظ نسخة PDF"
           type="button"
@@ -62,7 +62,7 @@ export default function PaperOutput({ after, setAfter, lastJob, send, copies, se
           PDF
         </button>
         <button
-          className="h-9 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+          className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-1.5 disabled:opacity-50"
           data-act="print"
           title="اطبع الورقة بعدد النسخ — بلا إصدار"
           type="button"

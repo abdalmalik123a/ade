@@ -57,7 +57,7 @@ export default async function scenario(page) {
   await wait(400);
 
   const gender = await page.eval(`
-    const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-secondary'));
+    const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-primary-fixed'));
     return on?.dataset.genderValue ?? '';
   `);
   ok('ظهر خيار الجنس لأنّ في النموذج «{الطالب|الطالبة}»', gender !== '');

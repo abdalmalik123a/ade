@@ -29,10 +29,10 @@ export default function DeskewControls({ previewCanvasRef, aspectKey, setAspectK
         <label className="block text-xs font-bold text-on-surface mb-1.5">
           المعاينة المستوية (١:١):
         </label>
-        <div className="w-full aspect-[1.58/1] bg-surface rounded-xl border border-outline-variant overflow-hidden flex items-center justify-center p-2 shadow-inner">
+        <div className="w-full aspect-[1.58/1] bg-surface rounded-card border border-outline-variant overflow-hidden flex items-center justify-center p-2 shadow-inner">
           <canvas
             ref={previewCanvasRef}
-            className="max-w-full max-h-full object-contain shadow-md rounded"
+            className="max-w-full max-h-full object-contain shadow-soft rounded"
           />
         </div>
       </div>
@@ -47,9 +47,9 @@ export default function DeskewControls({ previewCanvasRef, aspectKey, setAspectK
             <button
               key={asp.key}
               type="button"
-              className={`px-3 py-2 rounded-lg text-right font-medium transition-all ${
+              className={`px-3 py-2 rounded-btn text-right font-medium transition-all ${
                 aspectKey === asp.key
-                  ? 'bg-primary text-on-primary font-bold shadow-sm'
+                  ? 'bg-primary-fixed text-primary font-bold shadow-low'
                   : 'bg-surface hover:bg-surface-container-high text-on-surface'
               }`}
               onClick={() => setAspectKey(asp.key)}
@@ -73,9 +73,9 @@ export default function DeskewControls({ previewCanvasRef, aspectKey, setAspectK
             <button
               key={f.key}
               type="button"
-              className={`py-1.5 rounded-lg text-center font-medium transition-all ${
+              className={`py-1.5 rounded-btn text-center font-medium transition-all ${
                 filterMode === f.key
-                  ? 'bg-secondary text-on-secondary font-bold'
+                  ? 'bg-primary-fixed text-primary font-bold'
                   : 'bg-surface hover:bg-surface-container-high text-on-surface'
               }`}
               onClick={() => setFilterMode(f.key as any)}

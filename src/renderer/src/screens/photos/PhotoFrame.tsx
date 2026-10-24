@@ -54,7 +54,7 @@ export default function PhotoFrame({
       {src && box ? (
         <div className="flex flex-col items-center gap-space-sm max-w-full">
           {/* شريط الأدوات العلوي مع أزرار التراجع والإعادة والتكبير */}
-          <div className="flex flex-wrap items-center justify-between gap-2 w-full max-w-[640px] px-2 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full max-w-[640px] px-2 py-1.5 rounded-card bg-surface-container-low border border-outline-variant shadow-low">
             <div className="flex items-center gap-1" data-tools="">
               {tools.map((t) => (
                 <button
@@ -73,7 +73,7 @@ export default function PhotoFrame({
 
             <div className="flex items-center gap-1 border-r border-outline-variant pe-2">
               <button
-                className="h-8 px-2 rounded-lg hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
+                className="h-8 px-2 rounded-btn hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
                 data-act="history-undo"
                 disabled={!history?.canUndo}
                 title="تراجع (Ctrl+Z)"
@@ -84,7 +84,7 @@ export default function PhotoFrame({
                 تراجع
               </button>
               <button
-                className="h-8 px-2 rounded-lg hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
+                className="h-8 px-2 rounded-btn hover:bg-surface-container-high flex items-center gap-1 text-on-surface text-[12px] font-semibold disabled:opacity-30"
                 data-act="history-redo"
                 disabled={!history?.canRedo}
                 title="إعادة (Ctrl+Y أو Ctrl+Shift+Z)"
@@ -95,7 +95,7 @@ export default function PhotoFrame({
                 إعادة
               </button>
               <button
-                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px] disabled:opacity-30"
+                className="h-8 px-2 rounded-btn hover:bg-surface-container-high text-on-surface-variant text-[12px] disabled:opacity-30"
                 data-act="history-reset"
                 title="إعادة ضبط الصورة للأصل"
                 type="button"
@@ -105,7 +105,7 @@ export default function PhotoFrame({
               </button>
               <div className="h-4 w-px bg-outline-variant mx-1" />
               <button
-                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px]"
+                className="h-8 px-2 rounded-btn hover:bg-surface-container-high text-on-surface-variant text-[12px]"
                 title="التركيز على الوجه والرقبة (Zoom)"
                 type="button"
                 onClick={() => setCrop((c) => ({ ...c, zoom: Math.min(4, c.zoom * 1.3) }))}
@@ -113,7 +113,7 @@ export default function PhotoFrame({
                 <span className="material-symbols-outlined text-[16px]">zoom_in</span>
               </button>
               <button
-                className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant text-[12px]"
+                className="h-8 px-2 rounded-btn hover:bg-surface-container-high text-on-surface-variant text-[12px]"
                 title="إعادة تكبير الصورة 100%"
                 type="button"
                 onClick={() => setCrop((c) => ({ ...c, zoom: 1 }))}
@@ -131,7 +131,7 @@ export default function PhotoFrame({
           {tool === 'color' && <ColorEraseBar erase={erase} />}
           <div
             ref={frameEl}
-            className={`relative overflow-hidden bg-white shadow-2xl select-none ${tool === 'move' || tool === 'suit' ? 'cursor-grab active:cursor-grabbing' : tool === 'color' ? 'cursor-crosshair' : 'cursor-none'}`}
+            className={`relative overflow-hidden bg-white shadow-card select-none ${tool === 'move' || tool === 'suit' ? 'cursor-grab active:cursor-grabbing' : tool === 'color' ? 'cursor-crosshair' : 'cursor-none'}`}
             data-cutout={cutState}
             data-photo-frame=""
             style={{ width: frame.w, height: frame.h }}

@@ -80,7 +80,7 @@ export default function SuitTransformOverlay({ worn, natural, box, active, onHan
   const { cx, cy, w, h, angle } = geom;
 
   const handleStyle =
-    'absolute w-3.5 h-3.5 bg-white border-2 border-primary rounded-sm shadow-md pointer-events-auto hover:scale-125 transition-transform z-20';
+    'absolute w-3.5 h-3.5 bg-white border-2 border-primary rounded-sm shadow-soft pointer-events-auto hover:scale-125 transition-transform z-20';
 
   return (
     <div
@@ -104,7 +104,7 @@ export default function SuitTransformOverlay({ worn, natural, box, active, onHan
       {/* خط وذراع التدوير العلوي */}
       <div className="absolute left-1/2 -top-6 -translate-x-1/2 w-0.5 h-6 bg-primary" />
       <div
-        className="absolute left-1/2 -top-8 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-white shadow-md pointer-events-auto cursor-crosshair hover:scale-125 transition-transform z-20"
+        className="absolute left-1/2 -top-8 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-white shadow-soft pointer-events-auto cursor-crosshair hover:scale-125 transition-transform z-20"
         onMouseDown={(e) => onHandleDown(e, 'rot')}
         title="اسحب لتدوير القاط"
       />

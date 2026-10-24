@@ -31,7 +31,7 @@ export default function PageStage({ stage, setActive, onPointerMove, drag, view,
       onPointerUp={() => (drag.current = null)}
     >
       {view && currentRef && (
-        <div className="relative shadow-lg bg-white" data-pdf-view="" style={{ width: view.w, height: view.h }}>
+        <div className="relative shadow-soft bg-white" data-pdf-view="" style={{ width: view.w, height: view.h }}>
           <img alt="" className="absolute inset-0 w-full h-full select-none" draggable={false} src={view.url} />
           {!crop &&
             pageOverlays.map((o) => (

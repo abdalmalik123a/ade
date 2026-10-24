@@ -22,7 +22,7 @@ export default function BrushToolbar({ brush, setBrush, hardness, setHardness, t
 
   return (
     <div
-      className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-surface-container-high/90 backdrop-blur border border-outline-variant shadow-sm text-on-surface"
+      className="flex items-center gap-3 px-3 py-1.5 rounded-card bg-surface-container-high/90 backdrop-blur border border-outline-variant shadow-low text-on-surface"
       data-brush-toolbar=""
     >
       <div className="flex items-center gap-1.5">

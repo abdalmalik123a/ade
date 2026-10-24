@@ -21,7 +21,7 @@ export default function IdActions({ onClose, toast, printRoles, busy, pagesHtml,
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="px-4 h-10 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+          className="px-4 h-10 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
           onClick={onClose}
         >
           إغلاق
@@ -43,7 +43,7 @@ export default function IdActions({ onClose, toast, printRoles, busy, pagesHtml,
         <button
           type="button"
           disabled={busy || pagesHtml.length === 0}
-          className="px-4 h-10 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-40"
+          className="px-4 h-10 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-40"
           onClick={() => void handleSavePdf()}
         >
           <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
@@ -53,7 +53,7 @@ export default function IdActions({ onClose, toast, printRoles, busy, pagesHtml,
         <button
           type="button"
           disabled={busy || pagesHtml.length === 0}
-          className="px-6 h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-md hover:bg-primary/90 transition-all disabled:opacity-40"
+          className="px-6 h-10 btn-act font-label-md text-label-md font-semibold flex items-center gap-2 transition-all disabled:opacity-40"
           onClick={() => void handlePrint()}
         >
           <span className="material-symbols-outlined text-[18px]">print</span>

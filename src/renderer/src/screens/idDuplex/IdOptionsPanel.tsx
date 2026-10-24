@@ -61,7 +61,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
         </div>
 
         {/* بطاقة الوجه */}
-        <div className="p-3 rounded-xl border border-outline-variant bg-surface space-y-2">
+        <div className="p-3 rounded-card border border-outline-variant bg-surface space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-secondary flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-secondary" />
@@ -80,7 +80,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-20 h-14 rounded-lg bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center shrink-0">
+            <div className="w-20 h-14 rounded-card bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center shrink-0">
               {frontSrc ? (
                 <img
                   alt="Face"
@@ -105,7 +105,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
                 type="button"
                 data-act="scan-front"
                 disabled={busy}
-                className="px-2 py-1 rounded bg-secondary-container hover:opacity-90 text-xs text-on-secondary-container text-center font-medium disabled:opacity-50"
+                className="px-2 py-1 btn-soft text-xs text-center font-medium disabled:opacity-50"
                 onClick={() => void scanSide('front')}
               >
                 امسح بالماسح الضوئي
@@ -133,7 +133,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
         </div>
 
         {/* بطاقة الظهر */}
-        <div className="p-3 rounded-xl border border-outline-variant bg-surface space-y-2">
+        <div className="p-3 rounded-card border border-outline-variant bg-surface space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-secondary flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-secondary" />
@@ -152,7 +152,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-20 h-14 rounded-lg bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center shrink-0">
+            <div className="w-20 h-14 rounded-card bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center shrink-0">
               {backSrc ? (
                 <img
                   alt="ظهر الهوية"
@@ -177,7 +177,7 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
                 type="button"
                 data-act="scan-back"
                 disabled={busy}
-                className="px-2 py-1 rounded bg-secondary-container hover:opacity-90 text-xs text-on-secondary-container text-center font-medium disabled:opacity-50"
+                className="px-2 py-1 btn-soft text-xs text-center font-medium disabled:opacity-50"
                 onClick={() => void scanSide('back')}
               >
                 امسح بالماسح الضوئي
@@ -236,9 +236,9 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
             <button
               key={m.key}
               type="button"
-              className={`px-3 py-2 rounded-lg text-right transition-all flex flex-col ${
+              className={`px-3 py-2 rounded-btn text-right transition-all flex flex-col ${
                 mode === m.key
-                  ? 'bg-primary text-on-primary font-bold shadow-sm'
+                  ? 'bg-primary-fixed text-primary font-bold shadow-low'
                   : 'bg-surface hover:bg-surface-container-high text-on-surface'
               }`}
               onClick={() => setMode(m.key as IdDuplexLayoutMode)}
@@ -258,9 +258,9 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
             <button
               key={s.key}
               type="button"
-              className={`px-3 py-1.5 rounded-lg text-right font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-btn text-right font-medium transition-all ${
                 sizeKey === s.key
-                  ? 'bg-secondary text-on-secondary font-bold'
+                  ? 'bg-primary-fixed text-primary font-bold'
                   : 'bg-surface hover:bg-surface-container-high text-on-surface'
               }`}
               onClick={() => setSizeKey(s.key)}
@@ -283,9 +283,9 @@ export default function IdOptionsPanel({ swapSides, frontSrc, setDeskewTarget, r
             <button
               key={c.key}
               type="button"
-              className={`py-1.5 rounded-lg text-center font-medium transition-all ${
+              className={`py-1.5 rounded-btn text-center font-medium transition-all ${
                 colorFilter === c.key
-                  ? 'bg-secondary-container text-on-secondary-container font-bold border border-secondary'
+                  ? 'bg-grad-sel text-primary font-bold border border-cyan shadow-sel'
                   : 'bg-surface hover:bg-surface-container-high text-on-surface'
               }`}
               onClick={() => setColorFilter(c.key as IdColorFilter)}

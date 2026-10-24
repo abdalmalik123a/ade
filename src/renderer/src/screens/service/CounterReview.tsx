@@ -73,7 +73,7 @@ export default function CounterReview({
       {loaded.length > 1 && (
         <div className="flex items-center gap-space-sm">
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
+            className="w-9 h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
             disabled={at === 0}
             type="button"
             onClick={() => setAt((n) => n - 1)}
@@ -84,7 +84,7 @@ export default function CounterReview({
             ورقة {at + 1} من {loaded.length} — {current?.summary.title}
           </span>
           <button
-            className="w-9 h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
+            className="w-9 h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high disabled:opacity-30"
             disabled={at >= loaded.length - 1}
             type="button"
             onClick={() => setAt((n) => n + 1)}

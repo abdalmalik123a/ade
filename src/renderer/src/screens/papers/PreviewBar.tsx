@@ -38,7 +38,7 @@ export default function PreviewBar({
       <span
         className={`px-space-sm py-0.5 rounded-full font-label-sm text-label-sm font-bold shrink-0 whitespace-nowrap ${
           total === 100
-            ? 'bg-secondary text-on-secondary'
+            ? 'bg-primary-fixed text-primary'
             : 'bg-surface-container-high text-on-surface-variant'
         }`}
         data-total
@@ -74,12 +74,12 @@ export default function PreviewBar({
           نموذجان أ و ب
         </label>
         {versions && (
-          <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-version-view="">
+          <div className="flex p-0.5 rounded-card bg-surface-container-low" data-version-view="">
             {['أ', 'ب'].map((v) => (
               <button
                 key={v}
                 className={`h-7 px-3 rounded-md font-label-md text-label-md ${
-                  (v === 'ب') === showB ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+                  (v === 'ب') === showB ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant'
                 }`}
                 data-version={v}
                 type="button"
@@ -104,12 +104,12 @@ export default function PreviewBar({
           طباعة بوجهين
         </label>
         {pageCount > 1 && (
-          <div className="flex p-0.5 rounded-lg bg-surface-container-low" data-pages-view="">
+          <div className="flex p-0.5 rounded-card bg-surface-container-low" data-pages-view="">
             {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
               <button
                 key={n}
                 className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
-                  pageView === n ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+                  pageView === n ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant'
                 }`}
                 data-page-view={n}
                 type="button"
@@ -120,7 +120,7 @@ export default function PreviewBar({
             ))}
             <button
               className={`h-7 px-2.5 rounded-md font-label-md text-label-md ${
-                pageView === 'all' ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant'
+                pageView === 'all' ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant'
               }`}
               data-page-view="all"
               type="button"

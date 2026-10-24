@@ -18,14 +18,14 @@ export default function PdfEmpty({ open, scan }: Props) {
       </p>
       <div className="flex items-center gap-space-sm">
         <button
-          className="h-11 px-space-lg rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg font-semibold flex items-center gap-2"
+          className="h-11 px-space-lg btn-act font-label-lg text-label-lg font-semibold flex items-center gap-2"
           type="button"
           onClick={() => void open()}
         >
           <span className="material-symbols-outlined">folder_open</span>افتح PDF أو صورًا
         </button>
         <button
-          className="h-11 px-space-lg rounded-xl bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-2"
+          className="h-11 px-space-lg rounded-card bg-surface-container-high text-on-surface font-label-lg text-label-lg font-semibold flex items-center gap-2"
           type="button"
           onClick={() => void scan()}
         >

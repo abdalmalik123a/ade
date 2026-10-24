@@ -65,7 +65,7 @@ export default function PagesRail({ targets, rotate, move, duplicate, remove, pa
         {pages.map((p, i) => (
           <div
             key={p.id}
-            className={`relative rounded-lg p-1 cursor-pointer border-2 ${p.id === current ? 'border-secondary' : 'border-transparent hover:border-outline-variant'}`}
+            className={`relative rounded-card p-1 cursor-pointer border-2 ${p.id === current ? 'border-cyan bg-grad-sel shadow-sel' : 'border-transparent hover:border-outline-variant'}`}
             data-pdf-page={i + 1}
             draggable
             onClick={() => {
@@ -92,7 +92,7 @@ export default function PagesRail({ targets, rotate, move, duplicate, remove, pa
               />
             </div>
             {(p.rotate || p.crop) && (
-              <span className="absolute top-2 left-2 rounded bg-secondary text-on-secondary text-[10px] px-1">
+              <span className="absolute top-2 left-2 rounded-chip bg-grad-orange text-on-surface text-[10px] px-1">
                 {p.rotate ? `${toIndic(p.rotate)}°` : ''} {p.crop ? 'مقصوصة' : ''}
               </span>
             )}

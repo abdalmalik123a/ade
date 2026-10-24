@@ -234,7 +234,7 @@ function PapersScreenInner(
         <section className="w-[clamp(440px,45%,620px)] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-lg">
           <ToolHeader hint="ورقةٌ تُطبع ولا تُقيَّد — لا رقم صادر ولا بصمة" icon="quiz" title="الأسئلة">
             <button
-              className="h-8 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+              className="h-8 px-space-md rounded-btn bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5"
               type="button"
               onClick={() => void fresh()}
             >
@@ -256,7 +256,7 @@ function PapersScreenInner(
           />
 
           {/* ── الرموز ────────────────────────────────────────────── */}
-          <div className="rounded-xl bg-surface-container-lowest p-space-sm">
+          <div className="rounded-card bg-surface-container-lowest p-space-sm">
             <div className="font-label-sm text-label-sm text-on-surface-variant mb-space-xs">
               رموزُ المواد — تُدرج عند المؤشّر
             </div>
@@ -349,8 +349,8 @@ function PapersScreenInner(
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
+          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${
+            toast.tone === 'ok' ? 'bg-primary-fixed text-primary' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

@@ -274,7 +274,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-5xl h-[92vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
+      <div className="w-full max-w-5xl h-[92vh] flex flex-col bg-surface-container-lowest rounded-card shadow-card border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-2 text-secondary">
@@ -322,7 +322,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
             <div className="flex-1 flex items-center justify-center overflow-hidden">
               <canvas
                 ref={canvasRef}
-                className="max-w-full max-h-full object-contain cursor-crosshair rounded shadow-lg touch-none"
+                className="max-w-full max-h-full object-contain cursor-crosshair rounded shadow-soft touch-none"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
@@ -351,7 +351,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
         <footer className="px-6 py-3 border-t border-outline-variant bg-surface-container-low flex items-center justify-between shrink-0">
           <button
             type="button"
-            className="px-4 h-10 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+            className="px-4 h-10 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             onClick={onClose}
           >
             إلغاء
@@ -359,7 +359,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
           <button
             type="button"
             disabled={processing}
-            className="px-6 h-10 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-md hover:bg-primary/90 transition-all disabled:opacity-40"
+            className="px-6 h-10 btn-act font-label-md text-label-md font-semibold flex items-center gap-2 transition-all disabled:opacity-40"
             onClick={handleApply}
           >
             <span className="material-symbols-outlined text-[18px]">verified</span>

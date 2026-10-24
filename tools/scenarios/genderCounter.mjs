@@ -66,7 +66,7 @@ export default async function scenario(page) {
   ok('استُورد اسم المواطنة المسجلة', nameVal.includes('سلوى صباح هادي'));
 
   const genderVal = await page.eval(`
-    const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-secondary'));
+    const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-primary-fixed'));
     return on?.dataset.genderValue ?? '';
   `);
   ok('مُلئ جنس المواطنة المحفوظ مسبقًا (أنثى)', genderVal === 'أنثى');
@@ -95,7 +95,7 @@ export default async function scenario(page) {
     `);
     await wait(900);
     return page.eval(`
-      const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-secondary'));
+      const on = [...document.querySelectorAll('[data-gender-value]')].find((b) => b.className.includes('bg-primary-fixed'));
       return { name: document.querySelector('label input[type="text"]')?.value ?? '', gender: on?.dataset.genderValue ?? '' };
     `);
   };

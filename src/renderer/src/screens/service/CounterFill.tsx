@@ -97,7 +97,7 @@ export default function CounterFill({
           تُكتب مرّة وتملأ {loaded.length} أوراق
         </span>
         <button
-          className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+          className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
           data-act="pick-customer"
           type="button"
           onClick={() => setPicker(true)}
@@ -107,7 +107,7 @@ export default function CounterFill({
         </button>
         {schoolOn && (
           <button
-            className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+            className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
             data-act="pick-school"
             title="اسم المدرسة وجنسها ومحافظتها ومديرها من ملفّها في «الجهات»"
             type="button"
@@ -118,7 +118,7 @@ export default function CounterFill({
           </button>
         )}
         <button
-          className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+          className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
           data-act="whatsapp-paste"
           type="button"
           onClick={() => setPasteOpen(true)}
@@ -128,7 +128,7 @@ export default function CounterFill({
         </button>
         {citizenId !== null && (
           <button
-            className="h-9 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
+            className="h-9 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1"
             data-act="counter-id-sheet"
             title="مستمسكات صاحب العلاقة من ملفّه بمقاسها الحقيقي على ورقة A4 واحدة"
             type="button"
@@ -141,7 +141,7 @@ export default function CounterFill({
       </div>
 
       {nameField && (
-        <div className="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+        <div className="p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs">
           <label className="flex items-center gap-space-xs font-label-md text-label-md text-on-surface cursor-pointer">
             <input
               className="w-4 h-4 accent-secondary"
@@ -154,7 +154,7 @@ export default function CounterFill({
           {merge && (
             <>
               <textarea
-                className="w-full min-h-[112px] p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md leading-7 focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="input-field w-full min-h-[112px] p-space-sm text-on-surface font-label-md text-label-md leading-7"
                 placeholder={'سطرٌ لكل اسم\nأحمد عادل كريم\nسالم محمود جاسم'}
                 value={names}
                 onChange={(e) => setNames(e.target.value)}
@@ -162,7 +162,7 @@ export default function CounterFill({
               {/* استيراد الأسماء من جدول Excel أو CSV أو من السجل */}
               <div className="flex items-center gap-2">
                 <button
-                  className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                  className="self-start h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
                   data-act="merge-sheet"
                   type="button"
                   onClick={async () => {
@@ -185,7 +185,7 @@ export default function CounterFill({
                   من ملف Excel أو CSV
                 </button>
                 <button
-                  className="self-start h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                  className="self-start h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
                   data-act="merge-registry"
                   type="button"
                   onClick={() => setMergePicker(true)}
@@ -215,7 +215,7 @@ export default function CounterFill({
             العدد على الكتاب — كما أعطاه الزبون، أو يُترك فارغًا تكتبه الجهة
           </span>
           <input
-            className="h-10 px-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+            className="h-10 px-space-sm rounded-field bg-surface-container-lowest text-on-surface font-label-md text-label-md"
             value={letterNo}
             onChange={(e) => setLetterNo(e.target.value)}
           />
@@ -236,8 +236,8 @@ export default function CounterFill({
               {(['ذكر', 'أنثى'] as const).map((g) => (
                 <button
                   key={g}
-                  className={`h-9 px-4 rounded-lg font-label-md text-label-md ${
-                    values[GENDER_KEY] === g ? 'bg-secondary text-on-secondary font-bold' : 'bg-surface-container-low text-on-surface'
+                  className={`h-9 px-4 rounded-btn font-label-md text-label-md ${
+                    values[GENDER_KEY] === g ? 'bg-primary-fixed text-primary font-bold' : 'bg-surface-container-low text-on-surface'
                   }`}
                   data-gender-value={g}
                   type="button"
@@ -275,7 +275,7 @@ export default function CounterFill({
                   />
                 ) : (
                 <input
-                  className="flex-1 min-w-0 h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+                  className="input-field flex-1 min-w-0 h-10 px-3 text-on-surface font-label-md text-label-md"
                   type="text"
                   // واسم المدرسة يقترح مدارس «الجهات»: اختيار إحداها يملأ بقيّة ملفّها.
                   list={schoolOn && f.key === schoolNameKey ? 'diwan-schools' : undefined}

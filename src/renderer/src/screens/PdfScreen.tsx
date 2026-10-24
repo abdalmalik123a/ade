@@ -172,7 +172,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const btn = 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+  const btn = 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   const hasDoc = pages.length > 0;
   const pageOverlays = currentRef ? overlaysFor(plan, currentRef.id) : [];
   const pt = currentRef && sources[currentRef.source] ? shownPt(sources[currentRef.source]!, currentRef) : null;
@@ -300,20 +300,20 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
 
       {splitText !== null && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50" data-pdf-split-dialog="" onClick={() => setSplitText(null)}>
-          <div className="w-[480px] rounded-2xl bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
+          <div className="w-[480px] rounded-card bg-surface-container-lowest p-space-md flex flex-col gap-space-sm" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-headline-sm text-headline-sm">قسّم الملف</h2>
             <p className="font-label-md text-label-md text-on-surface-variant">
               اكتب المجموعات مفصولةً بـ«؛» — مثل <b dir="ltr">1-3؛ 4-6؛ 7</b> — فتصير كلٌّ منها ملفًّا. واتركها فارغةً لتصير كلّ صفحةٍ ملفًّا.
             </p>
             <input
               autoFocus
-              className="h-10 px-2 rounded-lg bg-surface-container-low border border-outline-variant"
+              className="h-10 px-2 rounded-field bg-surface-container-low border border-outline-variant"
               data-pdf-split=""
               dir="ltr"
               value={splitText}
               onChange={(e) => setSplitText(e.target.value)}
             />
-            <button className="h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold" data-act="pdf-split-go" type="button" onClick={() => void split(splitText)}>
+            <button className="h-10 btn-act font-label-md text-label-md font-semibold" data-act="pdf-split-go" type="button" onClick={() => void split(splitText)}>
               قسّم واحفظ في مجلّد
             </button>
           </div>
@@ -322,7 +322,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
 
       {busy && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[70] flex items-center justify-center bg-scrim/30" data-pdf-busy="">
-          <div className="rounded-xl bg-surface-container-lowest px-space-lg py-space-md shadow-xl flex items-center gap-2 font-label-md text-label-md">
+          <div className="rounded-card bg-surface-container-lowest px-space-lg py-space-md shadow-card flex items-center gap-2 font-label-md text-label-md">
             <span className="material-symbols-outlined animate-spin">progress_activity</span>
             {busy}
           </div>
@@ -331,7 +331,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
 
       {toast && (
         <div
-          className={`fixed bottom-space-md left-1/2 -translate-x-1/2 z-[75] max-w-2xl rounded-xl px-space-md py-space-sm shadow-xl font-label-md text-label-md ${toast.tone === 'warn' ? 'bg-error-container text-on-error-container' : 'bg-inverse-surface text-inverse-on-surface'}`}
+          className={`fixed bottom-space-md left-1/2 -translate-x-1/2 z-[75] max-w-2xl rounded-card px-space-md py-space-sm shadow-card font-label-md text-label-md ${toast.tone === 'warn' ? 'bg-error-container text-on-error-container' : 'bg-inverse-surface text-inverse-on-surface'}`}
           data-pdf-toast=""
         >
           {toast.text}

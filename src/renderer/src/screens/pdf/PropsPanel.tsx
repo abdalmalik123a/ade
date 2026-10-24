@@ -9,7 +9,7 @@ import { fieldsWord, type Src } from './pdfPages';
 
 type Props = {
   crop: FracBox | null;
-  btn: 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+  btn: 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   applyCrop: (scope: 'page' | 'targets' | 'clear') => void;
   selected: string[];
   currentRef: PageRef | null;
@@ -60,7 +60,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
           {activeOverlay.kind === 'text' && (
             <>
               <textarea
-                className="w-full h-20 p-2 rounded-lg bg-surface-container-low border border-outline-variant font-body-md text-body-md"
+                className="w-full h-20 p-2 rounded-field bg-surface-container-low border border-outline-variant font-body-md text-body-md"
                 data-pdf-overlay-text=""
                 dir="auto"
                 value={activeOverlay.text}
@@ -85,7 +85,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
                   <input className="w-16 h-8 px-1 rounded bg-surface-container-low" data-pdf-size="" min={6} max={200} type="number" value={activeOverlay.size} onChange={(e) => patch(activeOverlay.id, { size: Number(e.target.value) || 12 })} />
                 </label>
                 <input className="w-10 h-8" title="اللون" type="color" value={activeOverlay.color} onChange={(e) => patch(activeOverlay.id, { color: e.target.value })} />
-                <button className={`h-8 w-8 rounded ${activeOverlay.bold ? 'bg-secondary text-on-secondary' : 'bg-surface-container-high'}`} title="عريض" type="button" onClick={() => patch(activeOverlay.id, { bold: !activeOverlay.bold })}>
+                <button className={`h-8 w-8 rounded ${activeOverlay.bold ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high'}`} title="عريض" type="button" onClick={() => patch(activeOverlay.id, { bold: !activeOverlay.bold })}>
                   <span className="material-symbols-outlined text-[18px]">format_bold</span>
                 </button>
               </div>
@@ -93,7 +93,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
                 {(['right', 'center', 'left'] as const).map((a) => (
                   <button
                     key={a}
-                    className={`flex-1 h-8 rounded ${activeOverlay.align === a ? 'bg-secondary text-on-secondary' : 'bg-surface-container-high'}`}
+                    className={`flex-1 h-8 rounded ${activeOverlay.align === a ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high'}`}
                     type="button"
                     onClick={() => patch(activeOverlay.id, { align: a })}
                   >
@@ -129,7 +129,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
             </label>
           </div>
           <button
-            className="w-full h-9 rounded-lg bg-error-container text-on-error-container font-label-md text-label-md"
+            className="w-full h-9 rounded-btn bg-error-container text-on-error-container font-label-md text-label-md"
             data-act="pdf-overlay-delete"
             type="button"
             onClick={() => {
@@ -148,7 +148,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
             if (!src || !src.fields?.length) return null;
             const done = formFilled.includes(src.id);
             return (
-              <div className="rounded-lg bg-secondary-container/40 p-space-sm space-y-space-xs text-on-surface" data-pdf-form={src.fields.length}>
+              <div className="rounded-card bg-secondary-fixed p-space-sm space-y-space-xs text-on-surface" data-pdf-form={src.fields.length}>
                 <p className="font-semibold">
                   استمارةٌ قابلة للتعبئة: {fieldsWord(new Set(src.fields.map((f) => f.name)).size)}، الفارغ منها {toIndic(empty.length)}
                 </p>
@@ -183,7 +183,7 @@ export default function PropsPanel({ crop, btn, applyCrop, selected, currentRef,
                         </button>
                       ))}
                     <button
-                      className="w-full h-9 rounded-lg bg-primary-container text-on-primary font-semibold disabled:opacity-40"
+                      className="w-full h-9 btn-act font-semibold disabled:opacity-40"
                       data-act="form-fill"
                       disabled={!empty.length}
                       type="button"

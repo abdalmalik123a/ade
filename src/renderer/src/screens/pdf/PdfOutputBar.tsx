@@ -14,7 +14,7 @@ type Props = {
   setName: Dispatch<SetStateAction<string>>;
   save: () => Promise<void>;
   nav: ToolNav;
-  btn: 'h-9 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+  btn: 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   toCustomer: () => Promise<void>;
 };
 
@@ -24,7 +24,7 @@ export default function PdfOutputBar({ limit, setLimit, gray, setGray, name, set
           <label className="flex items-center gap-1 font-label-md text-label-md" title="حدّ الحجم كما تطلبه خانة الرفع — للملف ولكلّ صورة">
             الحجم
             <select
-              className="h-9 min-w-[6.5rem] px-1 rounded-lg bg-surface-container-lowest border border-outline-variant"
+              className="h-9 min-w-[6.5rem] px-1 rounded-field bg-surface-container-lowest border border-outline-variant"
               data-pdf-limit=""
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
@@ -41,14 +41,14 @@ export default function PdfOutputBar({ limit, setLimit, gray, setGray, name, set
             أبيض وأسود
           </label>
           <input
-            className="h-9 w-56 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
+            className="h-9 w-56 px-2 rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md"
             data-pdf-name=""
             title="اسم الملف الجديد"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <button
-            className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
+            className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-1"
             data-act="pdf-save"
             type="button"
             onClick={() => void save()}

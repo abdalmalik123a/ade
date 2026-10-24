@@ -33,7 +33,7 @@ export default function PresetsDialog({
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<PhotoPreset>) => setDraft((d) => ({ ...d, ...patch }));
   const num = (v: string) => Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))) || 0;
-  const field = 'h-9 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md';
+  const field = 'h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant font-label-md text-label-md';
 
   async function save() {
     const p = { ...draft, id: draft.id || `preset-${Date.now().toString(36)}`, name: draft.name.trim(), source: draft.source?.trim() || null };
@@ -48,7 +48,7 @@ export default function PresetsDialog({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim/50 p-space-md" data-presets-dialog="">
-      <div className="w-full max-w-xl max-h-[85vh] overflow-auto rounded-2xl bg-surface-container-lowest shadow-2xl p-space-lg space-y-space-md">
+      <div className="w-full max-w-xl max-h-[85vh] overflow-auto surface-panel p-space-lg space-y-space-md">
         <div className="flex items-center justify-between">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">قوالب المكتب</h2>
           <button className="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high" type="button" onClick={onClose}>
@@ -62,7 +62,7 @@ export default function PresetsDialog({
                 <span>
                   {p.name} — {toIndic(p.widthMm)}×{toIndic(p.heightMm)} ملم، {toIndic(p.dpi)} نقطة
                 </span>
-                <button className="h-8 px-2 rounded-lg text-error hover:bg-error-container" type="button" onClick={() => void onDelete(p.id)}>
+                <button className="h-8 px-2 rounded-btn text-error hover:bg-error-container" type="button" onClick={() => void onDelete(p.id)}>
                   احذف
                 </button>
               </div>
@@ -141,10 +141,10 @@ export default function PresetsDialog({
         </div>
         {error && <p className="font-label-md text-label-md text-error">{error}</p>}
         <div className="flex justify-end gap-space-sm">
-          <button className="h-10 px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
+          <button className="h-10 px-space-md rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md" type="button" onClick={onClose}>
             إلغاء
           </button>
-          <button className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" data-act="save-preset" type="button" onClick={() => void save()}>
+          <button className="h-10 px-space-lg btn-act font-label-md text-label-md font-bold" data-act="save-preset" type="button" onClick={() => void save()}>
             احفظ القالب
           </button>
         </div>

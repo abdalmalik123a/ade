@@ -18,14 +18,14 @@ type Props = {
 
 export default function SavedPapers({ papers, openPaper, paperId, setPaperId, loadPapers, onChanged, say }: Props) {
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-xs">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-xs">
       <h2 className="font-title-sm text-title-sm text-on-surface font-semibold">
         أوراقٌ محفوظة ({papers.length})
       </h2>
       {papers.map((p) => (
         <div
           key={p.id}
-          className="flex items-center justify-between rounded-lg px-space-sm py-1.5 hover:bg-surface-container-high"
+          className="flex items-center justify-between rounded-card px-space-sm py-1.5 hover:bg-surface-container-high"
         >
           <button
             className="text-right flex-1 font-body-sm text-body-sm text-on-surface"

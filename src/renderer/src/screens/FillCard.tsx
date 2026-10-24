@@ -39,19 +39,19 @@ export default function FillCard({ citizenId }: { citizenId: number }) {
         </div>
       </header>
       {/* استمارات أور تملأ الاسم والولادة من صاحب الحساب (بحث أيلول ٢٠٢٦) — وحساب المكتب حساب صاحبه. */}
-      <p className="rounded-lg bg-tertiary-container/40 px-space-xs py-1 font-label-sm text-label-sm text-on-surface" data-fill-warning="">
+      <p className="rounded-card bg-tertiary-container/40 px-space-xs py-1 font-label-sm text-label-sm text-on-surface" data-fill-warning="">
         <span className="material-symbols-outlined text-[14px] align-middle text-tertiary">warning</span> إن قدّمتَ من حساب المكتب
         فالاستمارة تملأ اسم صاحبه وتاريخ ميلاده — امحهما والصق ما هنا.
       </p>
       {fillGroups(citizen).map((g) => (
-        <section key={g.title} className="rounded-xl bg-surface-container-lowest p-space-xs flex flex-col gap-0.5 shadow-sm">
+        <section key={g.title} className="rounded-card bg-surface-container-lowest p-space-xs flex flex-col gap-0.5 shadow-low">
           <span className="px-space-xs font-label-sm text-label-sm text-on-surface-variant font-semibold">{g.title}</span>
           {g.lines.map((l) => {
             const key = `${g.title}/${l.label}`;
             return (
               <button
                 key={key}
-                className={`flex items-center gap-space-xs text-right px-space-xs py-1.5 rounded-lg transition-colors ${
+                className={`flex items-center gap-space-xs text-right px-space-xs py-1.5 rounded-btn transition-colors ${
                   copied === key ? 'bg-secondary-fixed' : 'hover:bg-surface-container-high'
                 }`}
                 data-fill-line={l.label}

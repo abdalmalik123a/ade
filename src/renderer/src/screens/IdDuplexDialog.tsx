@@ -173,7 +173,7 @@ export default function IdDuplexDialog({ isOpen, onClose, citizenName, attachmen
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-6xl h-[94vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant overflow-hidden">
+      <div className="w-full max-w-6xl h-[94vh] flex flex-col bg-surface-container-lowest rounded-card shadow-card border border-outline-variant overflow-hidden">
         {/* الترويسة */}
         <header className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
           <div className="flex items-center gap-2 text-secondary">

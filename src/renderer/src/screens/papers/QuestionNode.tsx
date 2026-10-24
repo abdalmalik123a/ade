@@ -37,7 +37,7 @@ export function QuestionNode(props: NodeProps) {
 
   return (
     <div
-      className={`rounded-xl border border-outline-variant bg-surface-container-lowest p-space-sm space-y-space-xs ${
+      className={`rounded-card border border-outline-variant bg-surface-container-lowest p-space-sm space-y-space-xs ${
         depth ? 'mr-space-lg' : ''
       }`}
       data-question={depth === 0 ? 'root' : 'branch'}
@@ -142,7 +142,7 @@ export function QuestionNode(props: NodeProps) {
       </div>
 
       <textarea
-        className="w-full min-h-[44px] px-space-sm py-1.5 rounded-lg bg-surface-container-low border border-outline-variant font-body-md text-body-md text-on-surface resize-y"
+        className="w-full min-h-[44px] px-space-sm py-1.5 rounded-field bg-surface-container-low border border-outline-variant font-body-md text-body-md text-on-surface resize-y"
         dir={dir}
         data-question-text={item.id}
         placeholder={depth === 0 ? 'نصّ السؤال' : 'نصّ الفرع'}
@@ -154,7 +154,7 @@ export function QuestionNode(props: NodeProps) {
 
       {item.image?.path && (
         <div
-          className="flex items-center gap-space-sm p-space-xs rounded-lg bg-surface-container-low border border-outline-variant"
+          className="flex items-center gap-space-sm p-space-xs rounded-card bg-surface-container-low border border-outline-variant"
           data-question-image-preview={item.id}
         >
           <img
@@ -197,7 +197,7 @@ export function QuestionNode(props: NodeProps) {
 
       {answers && (
         <input
-          className="w-full h-9 px-space-sm rounded-lg bg-surface-container-low border border-dashed border-outline-variant font-body-sm text-body-sm text-on-surface"
+          className="w-full h-9 px-space-sm rounded-field bg-surface-container-low border border-dashed border-outline-variant font-body-sm text-body-sm text-on-surface"
           dir={dir}
           data-answer={item.id}
           placeholder="الإجابة النموذجية — تظهر في ورقة المصحّح وحدها"
@@ -220,7 +220,7 @@ export function QuestionNode(props: NodeProps) {
 
       {canBranch && (
         <button
-          className="h-8 px-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors"
+          className="h-8 px-space-sm rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors"
           title="أضف فرعًا"
           type="button"
           onClick={() => props.onBranch(item.id)}

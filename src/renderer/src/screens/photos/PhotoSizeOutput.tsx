@@ -16,13 +16,13 @@ import type { ToolNav } from '../../components/ToolFrame';
 
 type Props = {
   step: (n: number, title: string, extra?: React.ReactNode, later?: boolean) => JSX.Element;
-  small: 'h-8 px-3 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  small: 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
   setPresetsOpen: Dispatch<SetStateAction<boolean>>;
   presets: PhotoPreset[];
   chip: (on: boolean) => string;
   presetId: string;
   choosePreset: (id: string) => void;
-  numInput: 'w-16 h-9 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant text-center tabular';
+  numInput: 'w-16 h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant text-center tabular';
   custom: Size;
   setCustom: Dispatch<SetStateAction<Size>>;
   preset: PhotoPreset;
@@ -123,7 +123,7 @@ export default function PhotoSizeOutput({ step, small, setPresetsOpen, presets, 
       <label className="flex items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
         عدد النسخ
         <input
-          className="w-20 h-9 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant text-center tabular"
+          className="w-20 h-9 px-2 rounded-field bg-surface-container-lowest border border-outline-variant text-center tabular"
           data-photo-count=""
           inputMode="numeric"
           value={copies}
@@ -140,7 +140,7 @@ export default function PhotoSizeOutput({ step, small, setPresetsOpen, presets, 
         onReprint={lastPrint.current ? () => void send(lastPrint.current!) : undefined}
       >
       <button
-        className="w-full h-11 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+        className="w-full h-11 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
         data-act="review-photos"
         disabled={!src || !layout.per || Boolean(busy) || cutState === 'running'}
         type="button"
@@ -166,7 +166,7 @@ export default function PhotoSizeOutput({ step, small, setPresetsOpen, presets, 
       </div>
       <div className="flex items-center gap-space-xs">
         <select
-          className="h-10 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm"
+          className="h-10 px-2 rounded-field bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm"
           data-upload-limit=""
           value={limit}
           onChange={(e) => setLimit(Number(e.target.value))}

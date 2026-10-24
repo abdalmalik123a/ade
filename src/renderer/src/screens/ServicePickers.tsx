@@ -41,11 +41,11 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
   const ref = useDialogKeys(onClose);
   return (
     <div ref={ref} role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
-      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm" data-school-picker="">
+      <div className="w-full max-w-lg surface-panel p-space-md flex flex-col gap-space-sm" data-school-picker="">
         <span className="font-headline-sm text-headline-sm text-on-surface">هات المدرسة</span>
         <input
           autoFocus
-          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+          className="input-field h-10 px-3 text-on-surface font-label-md text-label-md"
           placeholder="اسم المدرسة"
           type="search"
           value={query}
@@ -66,7 +66,7 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
             rows.map((c) => (
               <button
                 key={c.id}
-                className="min-h-10 px-3 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between gap-space-sm"
+                className="min-h-10 px-3 py-1 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between gap-space-sm"
                 data-school-pick={c.id}
                 type="button"
                 onClick={() => onPick(c)}
@@ -80,7 +80,7 @@ export function SchoolPicker({ schools, onClose, onPick }: { schools: Client[]; 
           )}
         </div>
         <button
-          className="h-9 self-end px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+          className="h-9 self-end px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
           type="button"
           onClick={onClose}
         >
@@ -117,13 +117,13 @@ export function CitizenPicker({
 
   return (
     <div ref={ref} role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-scrim/50">
-      <div className="w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-space-md flex flex-col gap-space-sm">
+      <div className="w-full max-w-lg surface-panel p-space-md flex flex-col gap-space-sm">
         <span className="font-headline-sm text-headline-sm text-on-surface">
           هات الزبون
         </span>
         <input
           autoFocus
-          className="h-10 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary"
+          className="input-field h-10 px-3 text-on-surface font-label-md text-label-md"
           placeholder="اسم المواطن أو رقمه"
           type="search"
           value={query}
@@ -144,7 +144,7 @@ export function CitizenPicker({
             rows.map((c) => (
               <button
                 key={c.id}
-                className="h-10 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between"
+                className="h-10 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface text-right font-label-md text-label-md flex items-center justify-between"
                 type="button"
                 onClick={() => onPick(c.id)}
               >
@@ -157,7 +157,7 @@ export function CitizenPicker({
           )}
         </div>
         <button
-          className="h-9 self-end px-4 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+          className="h-9 self-end px-4 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
           type="button"
           onClick={onClose}
         >

@@ -182,9 +182,9 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   // ── الواجهة ───────────────────────────────────────────────────────────
 
   const chip = (on: boolean) =>
-    `h-9 px-3 rounded-full font-label-md text-label-md transition-colors ${on ? 'bg-primary-container text-on-primary font-semibold' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'}`;
-  const small = 'h-8 px-3 rounded-lg hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
-  const numInput = 'w-16 h-9 px-2 rounded-lg bg-surface-container-lowest border border-outline-variant text-center tabular';
+    `h-9 px-3 rounded-full font-label-md text-label-md transition-colors ${on ? 'bg-primary-fixed text-primary font-semibold' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'}`;
+  const small = 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  const numInput = 'w-16 h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant text-center tabular';
   const slider = (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, act: string, shown = pct(value)) => (
     <label className="flex items-center gap-space-sm">
       <span className="w-20 font-label-sm text-label-sm text-on-surface-variant">{label}</span>
@@ -202,7 +202,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
       <span className={`font-label-md text-label-md font-semibold ${later ? 'text-on-surface-variant' : 'text-on-surface'}`}>
         <span
           className={`inline-flex w-5 h-5 me-1 rounded-full items-center justify-center text-[11px] ${
-            later ? 'bg-surface-container-high text-on-surface-variant' : 'bg-secondary-container text-on-secondary-container'
+            later ? 'bg-surface-container-high text-on-surface-variant' : 'bg-grad-act text-on-primary shadow-act'
           }`}
         >
           {toIndic(n)}
@@ -228,7 +228,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
           <ToolHeader hint="تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز" icon="portrait" title="الصور الشخصية" />
 
           {expired && (
-            <div className="rounded-lg bg-rose-50 border border-rose-300 p-space-sm text-rose-900 font-label-md text-label-md space-y-1" data-license-expired-banner="">
+            <div className="rounded-card bg-rose-50 border border-rose-300 p-space-sm text-rose-900 font-label-md text-label-md space-y-1" data-license-expired-banner="">
               <div className="font-semibold flex items-center gap-1">
                 <span className="material-symbols-outlined text-[18px]">lock</span>
                 انتهت المدّة التجريبية
@@ -242,7 +242,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
           {step(1, 'الصورة')}
           <div className="flex gap-space-xs">
             <button
-              className="flex-1 h-11 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              className="flex-1 h-11 btn-act font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
               data-act="open-photo"
               disabled={expired}
               type="button"
@@ -252,7 +252,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
               {src ? 'صورةٌ أخرى' : 'افتح الصورة'}
             </button>
             <button
-              className="h-11 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-high disabled:opacity-40"
+              className="h-11 px-space-md rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container-high disabled:opacity-40"
               data-act="paste-photo"
               disabled={expired}
               title="أو Ctrl+V في الشاشة"
@@ -384,9 +384,9 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
         />
       )}
 
-      {busy && <div className="fixed bottom-6 right-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-surface-container-highest text-on-surface font-label-md text-label-md">{busy}</div>}
+      {busy && <div className="fixed bottom-6 right-6 z-50 px-space-lg py-space-sm rounded-card shadow-soft bg-surface-container-highest text-on-surface font-label-md text-label-md">{busy}</div>}
       {toast && (
-        <div className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${toast.warn ? 'bg-error text-on-error' : 'bg-secondary text-on-secondary'}`}>
+        <div className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${toast.warn ? 'bg-error text-on-error' : 'bg-inverse-surface text-inverse-on-surface'}`}>
           {toast.text}
         </div>
       )}

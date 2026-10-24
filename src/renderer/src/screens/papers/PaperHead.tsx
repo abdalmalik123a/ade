@@ -12,7 +12,7 @@ type Props = {
 
 export default function PaperHead({ setHead, head, focused }: Props) {
   return (
-    <div className="rounded-xl bg-surface-container-lowest p-space-md space-y-space-sm">
+    <div className="rounded-card bg-surface-container-lowest p-space-md space-y-space-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-space-sm">
           <span className="material-symbols-outlined text-secondary text-[20px]">lock</span>
@@ -26,7 +26,7 @@ export default function PaperHead({ setHead, head, focused }: Props) {
         {EXAM_PRESETS.map((preset) => (
           <button
             key={preset.id}
-            className="h-7 px-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors flex items-center gap-1 shadow-sm"
+            className="h-7 px-2.5 rounded-btn bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-label-sm text-label-sm shrink-0 transition-colors flex items-center gap-1 shadow-low"
             type="button"
             title={preset.description}
             onClick={() => {
@@ -55,7 +55,7 @@ export default function PaperHead({ setHead, head, focused }: Props) {
               {input.label}
             </span>
             <input
-              className="h-9 px-space-sm rounded-lg bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
+              className="h-9 px-space-sm rounded-field bg-surface-container-low border border-outline-variant font-body-sm text-body-sm text-on-surface"
               data-head={input.key}
               placeholder={input.hint}
               value={head[input.key] ?? ''}

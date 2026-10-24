@@ -28,7 +28,7 @@ export default function IdPreview({ pagesHtml, mode }: Props) {
                   : `ورقة A4 (${idx + 1})`}
               </span>
               <div
-                className="bg-white shadow-2xl rounded-sm overflow-hidden border border-black/20 origin-center transition-transform"
+                className="bg-white shadow-card rounded-sm overflow-hidden border border-black/20 origin-center transition-transform"
                 style={{
                   width: '297px', // معاينة بنسبة A4 مصغرة
                   height: '420px',
