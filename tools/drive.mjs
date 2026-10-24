@@ -215,6 +215,20 @@ class Page {
     return this.eval(`return document.body.innerText;`);
   }
 
+  /** ينتظر شرطًا في الصفحة حتى يصدق أو تمضي المهلة — بدل مهلةٍ ثابتة تخون الجهاز المثقل (D170). */
+  async until(condition, ms = 10000) {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      try {
+        if (await this.eval(condition)) return true;
+      } catch {
+        // الصفحة لم تُرسم بعد، أو `window.diwan` لم يُعرَّف.
+      }
+      await sleep(150);
+    }
+    return false;
+  }
+
   async shot(path) {
     const res = await this.send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(path, Buffer.from(res.data, 'base64'));
@@ -260,12 +274,16 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
     const page = new Page(ws);
     await page.send('Runtime.enable');
     await page.send('Page.enable');
-    await sleep(1500);
+    // الواجهة مرسومة: معالج البداية ظاهر، أو السكّة والمكتب قد بدأ من قبل — انتظارٌ على شرطٍ لا مهلةٌ ثابتة
+    // (كانت ١٫٥ ث، فبقي المعالج مفتوحًا فوق الشاشات حين تأخّر الرسم على جهازٍ مثقل، D170).
+    await page.until(
+      `return Boolean(document.querySelector('[data-act="onboarding-skip"]')) || (Boolean(document.querySelector('[data-sidebar="rail"]')) && (await window.diwan.settings.get()).onboarded === true);`
+    );
 
     // معالج البداية يظهر على كل ملفٍّ جديد — ويُتخطّى هنا إلا لسيناريو يفحصه هو.
     if (!keepOnboarding) {
       await page.eval(`document.querySelector('[data-act="onboarding-skip"]')?.click(); return true;`);
-      await sleep(500);
+      await page.until(`return !document.querySelector('[data-act="onboarding-skip"]');`, 3000);
     }
 
     // `kill` يقتل البرنامج فورًا من خارج البروتوكول: والعملية الرئيسة مشغولةٌ بقيدٍ
