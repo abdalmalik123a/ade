@@ -1,5 +1,5 @@
-/** توكنات التصميم — هوية «منتصف الليل» (خطّة الترقية، المرحلة ٦).
- *  الألوان تُكتب يدويًّا في src/shared/theme.ts بمظهرين، وهنا أسماء أدوارها وحدها (يطابقها tests/theme.test.ts).
+/** توكنات التصميم — مظهر «ب٢» (ر175؛ وقبله «منتصف الليل»، خطّة الترقية، المرحلة ٦).
+ *  الألوان تُكتب يدويًّا في src/shared/theme.ts، وهنا أسماء أدوارها وحدها (يطابقها tests/theme.test.ts)، والتدرّجات والظلال والزوايا.
  *  وتوليدها من stitch_ توقّف. والمقاسات والخطوط كما كانت. */
 const ROLES = [
   'background',
@@ -59,11 +59,27 @@ module.exports = {
     extend: {
           // الألوان أدوارٌ متغيّراتها في الصفحة (`src/shared/theme.ts`) — فالمظهر الليلي والنهاري بلا إعادة بناء.
           "colors": Object.fromEntries(ROLES.map((r) => [r, `rgb(var(--c-${r}) / <alpha-value>)`])),
+          // زوايا «ورقة شجر» (ر175، «ب٢»): أعلى اليمين وأسفل اليسار أكبر، وبعضها بيضويّ.
           "borderRadius": {
                 "DEFAULT": "0.125rem",
                 "lg": "0.25rem",
                 "xl": "0.5rem",
-                "full": "0.75rem"
+                "full": "0.75rem",
+                "frame": "14px 28px 14px 28px / 14px 24px 14px 24px",
+                "card": "11px 22px 11px 22px / 11px 19px 11px 19px",
+                "field": "9px 16px 9px 16px",
+                "btn": "8px 16px 8px 16px",
+                "ico": "8px 15px 8px 15px",
+                "chip": "7px 14px 7px 14px"
+          },
+          // تدرّجات «ب٢» (ر175): الفعل من السماويّ إلى الأزرق (والنصّ الأبيض يقع على الأزرق)، والبرتقاليّ صبغةً للشارة والعدد،
+          // والمختار والسطح الأبيض، والأرضية: ضوءٌ أبيض أعلى اليمين ولمسةٌ سماوية أسفل اليسار.
+          "backgroundImage": {
+                "grad-act": "linear-gradient(135deg,#21C8E7 0%,#0872A3 32%,#06608B 100%)",
+                "grad-orange": "linear-gradient(145deg,#FFB126,#F89800)",
+                "grad-sel": "linear-gradient(145deg,#FFFFFF,#F0FBFD)",
+                "grad-surface": "linear-gradient(180deg,#FFFFFF,#FBFCFD)",
+                "ground": "radial-gradient(900px 520px at 100% 0%,#FFFFFF 0%,rgba(255,255,255,0) 70%),radial-gradient(760px 460px at 0% 100%,#E9F7FB 0%,rgba(233,247,251,0) 70%)"
           },
           "spacing": {
                 "space-xs": "0.25rem",
@@ -226,8 +242,14 @@ module.exports = {
                 ]
           },
           // `shadow-xs` و`backdrop-blur-xs` من Tailwind 4 — وهنا Tailwind 3: بلا تعريفهما يُهملان صامتين.
+          // وظلال «ب٢»: محايدةٌ بلون الحبر، والفعل والمختار أزرقان خفيفان.
           "boxShadow": {
-                "xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+                "xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+                "card": "0 14px 32px rgba(36,52,61,.10),0 3px 8px rgba(36,52,61,.05)",
+                "soft": "0 8px 22px rgba(36,52,61,.08),inset 0 1px 0 rgba(255,255,255,.9)",
+                "low": "0 2px 6px rgba(36,52,61,.06),inset 0 1px 0 rgba(255,255,255,.9)",
+                "act": "0 10px 22px -8px rgba(8,114,163,.55),inset 0 1px 0 rgba(255,255,255,.28)",
+                "sel": "0 12px 28px rgba(8,104,152,.12),0 2px 6px rgba(8,104,152,.08)"
           },
           "backdropBlur": {
                 "xs": "4px"

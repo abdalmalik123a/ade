@@ -1,8 +1,8 @@
 /**
- * مظهر ديوان — واحدٌ لا يُبدَّل (قرار المالك، ٤ تشرين الأول ٢٠٢٦، بعد تجربة الليليّ والنهاريّ):
- * مساحة عملٍ فاتحةٌ هادئة بأزرق-رماديّ خفيف، وبطاقاتٌ بيضاء، ونصٌّ بلون الحبر، ولونُ فعلٍ واحد
- * (أزرقُ نيليّ)، وذهبيٌّ خافتٌ للتمييز — وسكّةٌ كحليّة تحمل الشعار. الموظف ينظر طوال يومه إلى ورقٍ
- * أبيض، فالخلفية الفاتحة لا تُبهره بالفرق، والسكّة الداكنة تعطي الواجهة طابعها بلا وهجٍ ولا تدرّج.
+ * مظهر ديوان — واحدٌ لا يُبدَّل (ر067)، وهو «ب٢» منذ ر175 (٢٤ تشرين الأول ٢٠٢٦، اعتمده المالك من لوحة «الشبّاك — الوجبة الثانية»):
+ * أسطحٌ بيضاء على أرضيةٍ بيضاء مائلة للرمادي، ونصٌّ بلون الحبر، ولونُ فعلٍ أزرق، والسكّة والرأس لوحان أبيضان عائمان.
+ * وتدرّج السماويّ إلى الأزرق (`bg-grad-act` في `tailwind.config.cjs`) لأفعال الإخراج والوجهة المحدّدة — يقع النصّ الأبيض على أزرقه.
+ * والبرتقاليّ (#F89800، وتدرّجه `bg-grad-orange`) **صبغةٌ لا دور**: للشارة والعدد بنصٍّ بلون الحبر، ولا يُكتب به نصٌّ على الأبيض.
  *
  * التوكنات متغيّراتٌ في `styles.css` (يطابقها `tests/theme.test.ts`)، وTailwind يأخذها
  * `rgb(var(--c-…) / <alpha-value>)` في `tailwind.config.cjs`. وتُكتب هنا يدويًّا.
@@ -63,92 +63,68 @@ export const COLOR_ROLES = [
 export type ColorRole = (typeof COLOR_ROLES)[number];
 export type Palette = Record<ColorRole, string>;
 
-/** مساحة العمل: كلّ ما سوى السكّة. */
+/**
+ * مساحة العمل: كلّ ما سوى السكّة. وعن «ب٢» فرقان مقصودان: `on-surface-variant` و`secondary` أغمق قليلًا،
+ * لأنّهما يُكتبان على أغمق الأسطح (`-highest`) أيضًا فيبقيان فوق ٤٫٥.
+ */
 export const PALETTE: Palette = {
-  background: '#F1F3F7',
-  'on-background': '#18202F',
-  surface: '#F1F3F7',
-  'surface-bright': '#F8F9FB',
-  'surface-dim': '#E6E9EF',
+  background: '#F3F5F7',
+  'on-background': '#24343D',
+  surface: '#F3F5F7',
+  'surface-bright': '#FAFBFC',
+  'surface-dim': '#E8ECEF',
   'surface-container-lowest': '#FFFFFF',
-  'surface-container-low': '#F7F8FB',
-  'surface-container': '#EEF1F6',
-  'surface-container-high': '#E6EAF1',
-  'surface-container-highest': '#DCE1EA',
-  'surface-variant': '#DCE1EA',
-  'on-surface': '#18202F',
-  'on-surface-variant': '#535D70',
-  outline: '#7D879A',
-  'outline-variant': '#DDE2EA',
-  'surface-tint': '#2A55CF',
-  'inverse-surface': '#1E2638',
-  'inverse-on-surface': '#EEF1F6',
-  'inverse-primary': '#A9C1FF',
-  primary: '#2A55CF',
+  'surface-container-low': '#F7F9FA',
+  'surface-container': '#EFF2F4',
+  'surface-container-high': '#E9EDF0',
+  'surface-container-highest': '#E2E7EA',
+  'surface-variant': '#E2E7EA',
+  'on-surface': '#24343D',
+  'on-surface-variant': '#56646E',
+  outline: '#7A8892',
+  'outline-variant': '#E2E7EA',
+  'surface-tint': '#0872A3',
+  'inverse-surface': '#24343D',
+  'inverse-on-surface': '#EFF2F4',
+  'inverse-primary': '#8CDCEB',
+  primary: '#0872A3',
   'on-primary': '#FFFFFF',
-  'primary-container': '#2349B8',
+  'primary-container': '#06608B',
   'on-primary-container': '#FFFFFF',
-  'primary-fixed': '#E5ECFC',
-  'primary-fixed-dim': '#C6D5F8',
-  'on-primary-fixed': '#0E2366',
-  'on-primary-fixed-variant': '#2349B8',
-  secondary: '#2A55CF',
+  'primary-fixed': '#E6F3F9',
+  'primary-fixed-dim': '#C6E3F0',
+  'on-primary-fixed': '#04425F',
+  'on-primary-fixed-variant': '#06608B',
+  secondary: '#066A98',
   'on-secondary': '#FFFFFF',
-  'secondary-container': '#2349B8',
+  'secondary-container': '#0872A3',
   'on-secondary-container': '#FFFFFF',
-  'secondary-fixed': '#E5ECFC',
-  'secondary-fixed-dim': '#C6D5F8',
-  'on-secondary-fixed': '#0E2366',
-  'on-secondary-fixed-variant': '#2349B8',
-  tertiary: '#80570D',
+  'secondary-fixed': '#E7F9FC',
+  'secondary-fixed-dim': '#BDEAF4',
+  'on-secondary-fixed': '#04425F',
+  'on-secondary-fixed-variant': '#06608B',
+  tertiary: '#8A4B00',
   'on-tertiary': '#FFFFFF',
-  'tertiary-container': '#F6EAD2',
-  'on-tertiary-container': '#5E400B',
-  'tertiary-fixed': '#F6EAD2',
-  'tertiary-fixed-dim': '#E6CB91',
-  'on-tertiary-fixed': '#3D2A06',
-  'on-tertiary-fixed-variant': '#5E400B',
+  'tertiary-container': '#FFF3DF',
+  'on-tertiary-container': '#6B3A00',
+  'tertiary-fixed': '#FFF3DF',
+  'tertiary-fixed-dim': '#FFD79A',
+  'on-tertiary-fixed': '#3D2200',
+  'on-tertiary-fixed-variant': '#6B3A00',
   error: '#B8262C',
   'on-error': '#FFFFFF',
   'error-container': '#FCE4E3',
   'on-error-container': '#8A1519',
-  scrim: '#0B1220'
+  scrim: '#14202A'
 };
 
-/** السكّة الكحليّة: أسطحها ونصّها، والمحدَّد فيها بلون الفعل. وما سوى ذلك كمساحة العمل. */
+/** السكّة: لوحٌ أبيض، والمرور فيها سماويٌّ باهت، والمحدَّد بالتدرّج (`Sidebar.tsx`). وما سوى ذلك كمساحة العمل. */
 export const RAIL: Palette = {
   ...PALETTE,
-  background: '#16223F',
-  'on-background': '#F1F4FA',
-  surface: '#16223F',
-  'surface-bright': '#25355C',
-  'surface-dim': '#121C35',
-  'surface-container-lowest': '#16223F',
-  'surface-container-low': '#1A2747',
-  'surface-container': '#1E2C4F',
-  'surface-container-high': '#25355C',
-  'surface-container-highest': '#2D3E68',
-  'surface-variant': '#2D3E68',
-  'on-surface': '#F1F4FA',
-  'on-surface-variant': '#B3BED6',
-  outline: '#7F8DAD',
-  'outline-variant': '#2D3E68',
-  primary: '#3E66DB',
-  'primary-container': '#3E66DB',
-  secondary: '#A9C1FF',
-  'on-secondary': '#0E2366',
-  'primary-fixed': '#25355C',
-  'primary-fixed-dim': '#2D3E68',
-  'on-primary-fixed': '#F1F4FA',
-  'on-primary-fixed-variant': '#A9C1FF',
-  'secondary-fixed': '#25355C',
-  'secondary-fixed-dim': '#2D3E68',
-  'on-secondary-fixed': '#F1F4FA',
-  'on-secondary-fixed-variant': '#A9C1FF',
-  error: '#FF8A8E',
-  'on-error': '#4A0508',
-  'error-container': '#C9353B',
-  'on-error-container': '#FFFFFF'
+  background: '#FFFFFF',
+  surface: '#FFFFFF',
+  'surface-container-lowest': '#FFFFFF',
+  'surface-container-high': '#E7F9FC'
 };
 
 /** السكّة في الصفحة. */

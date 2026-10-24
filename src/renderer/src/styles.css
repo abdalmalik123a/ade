@@ -37,12 +37,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── مظهر ديوان (خطّة الترقية، المرحلة ٦ — مظهرٌ واحد بقرار المالك ٤ تشرين الأول) ──────
+/* ── مظهر ديوان (مظهرٌ واحد، ر067؛ و«ب٢» منذ ر175) ──────
    المتغيّرات من src/shared/theme.ts (themeCss) — يطابقها tests/theme.test.ts. مساحة العمل فاتحة،
-   والسكّة كحليّة بمتغيّراتها. والجذر بها: فنافذة الطباعة والأنماط المحفوظة يوم الإصدار كما هي. */
+   والسكّة لوحٌ أبيض بمتغيّراتها. والجذر بها: فنافذة الطباعة والأنماط المحفوظة يوم الإصدار كما هي. */
 /* theme:start */
-:root{color-scheme:light;--c-background:241 243 247;--c-on-background:24 32 47;--c-surface:241 243 247;--c-surface-bright:248 249 251;--c-surface-dim:230 233 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 248 251;--c-surface-container:238 241 246;--c-surface-container-high:230 234 241;--c-surface-container-highest:220 225 234;--c-surface-variant:220 225 234;--c-on-surface:24 32 47;--c-on-surface-variant:83 93 112;--c-outline:125 135 154;--c-outline-variant:221 226 234;--c-surface-tint:42 85 207;--c-inverse-surface:30 38 56;--c-inverse-on-surface:238 241 246;--c-inverse-primary:169 193 255;--c-primary:42 85 207;--c-on-primary:255 255 255;--c-primary-container:35 73 184;--c-on-primary-container:255 255 255;--c-primary-fixed:229 236 252;--c-primary-fixed-dim:198 213 248;--c-on-primary-fixed:14 35 102;--c-on-primary-fixed-variant:35 73 184;--c-secondary:42 85 207;--c-on-secondary:255 255 255;--c-secondary-container:35 73 184;--c-on-secondary-container:255 255 255;--c-secondary-fixed:229 236 252;--c-secondary-fixed-dim:198 213 248;--c-on-secondary-fixed:14 35 102;--c-on-secondary-fixed-variant:35 73 184;--c-tertiary:128 87 13;--c-on-tertiary:255 255 255;--c-tertiary-container:246 234 210;--c-on-tertiary-container:94 64 11;--c-tertiary-fixed:246 234 210;--c-tertiary-fixed-dim:230 203 145;--c-on-tertiary-fixed:61 42 6;--c-on-tertiary-fixed-variant:94 64 11;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:11 18 32;}
-[data-sidebar="rail"]{--c-background:22 34 63;--c-on-background:241 244 250;--c-surface:22 34 63;--c-surface-bright:37 53 92;--c-surface-dim:18 28 53;--c-surface-container-lowest:22 34 63;--c-surface-container-low:26 39 71;--c-surface-container:30 44 79;--c-surface-container-high:37 53 92;--c-surface-container-highest:45 62 104;--c-surface-variant:45 62 104;--c-on-surface:241 244 250;--c-on-surface-variant:179 190 214;--c-outline:127 141 173;--c-outline-variant:45 62 104;--c-surface-tint:42 85 207;--c-inverse-surface:30 38 56;--c-inverse-on-surface:238 241 246;--c-inverse-primary:169 193 255;--c-primary:62 102 219;--c-on-primary:255 255 255;--c-primary-container:62 102 219;--c-on-primary-container:255 255 255;--c-primary-fixed:37 53 92;--c-primary-fixed-dim:45 62 104;--c-on-primary-fixed:241 244 250;--c-on-primary-fixed-variant:169 193 255;--c-secondary:169 193 255;--c-on-secondary:14 35 102;--c-secondary-container:35 73 184;--c-on-secondary-container:255 255 255;--c-secondary-fixed:37 53 92;--c-secondary-fixed-dim:45 62 104;--c-on-secondary-fixed:241 244 250;--c-on-secondary-fixed-variant:169 193 255;--c-tertiary:128 87 13;--c-on-tertiary:255 255 255;--c-tertiary-container:246 234 210;--c-on-tertiary-container:94 64 11;--c-tertiary-fixed:246 234 210;--c-tertiary-fixed-dim:230 203 145;--c-on-tertiary-fixed:61 42 6;--c-on-tertiary-fixed-variant:94 64 11;--c-error:255 138 142;--c-on-error:74 5 8;--c-error-container:201 53 59;--c-on-error-container:255 255 255;--c-scrim:11 18 32;}
+:root{color-scheme:light;--c-background:243 245 247;--c-on-background:36 52 61;--c-surface:243 245 247;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:233 237 240;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:36 52 61;--c-on-surface-variant:86 100 110;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:8 114 163;--c-inverse-surface:36 52 61;--c-inverse-on-surface:239 242 244;--c-inverse-primary:140 220 235;--c-primary:8 114 163;--c-on-primary:255 255 255;--c-primary-container:6 96 139;--c-on-primary-container:255 255 255;--c-primary-fixed:230 243 249;--c-primary-fixed-dim:198 227 240;--c-on-primary-fixed:4 66 95;--c-on-primary-fixed-variant:6 96 139;--c-secondary:6 106 152;--c-on-secondary:255 255 255;--c-secondary-container:8 114 163;--c-on-secondary-container:255 255 255;--c-secondary-fixed:231 249 252;--c-secondary-fixed-dim:189 234 244;--c-on-secondary-fixed:4 66 95;--c-on-secondary-fixed-variant:6 96 139;--c-tertiary:138 75 0;--c-on-tertiary:255 255 255;--c-tertiary-container:255 243 223;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 243 223;--c-tertiary-fixed-dim:255 215 154;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;}
+[data-sidebar="rail"]{--c-background:255 255 255;--c-on-background:36 52 61;--c-surface:255 255 255;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:231 249 252;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:36 52 61;--c-on-surface-variant:86 100 110;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:8 114 163;--c-inverse-surface:36 52 61;--c-inverse-on-surface:239 242 244;--c-inverse-primary:140 220 235;--c-primary:8 114 163;--c-on-primary:255 255 255;--c-primary-container:6 96 139;--c-on-primary-container:255 255 255;--c-primary-fixed:230 243 249;--c-primary-fixed-dim:198 227 240;--c-on-primary-fixed:4 66 95;--c-on-primary-fixed-variant:6 96 139;--c-secondary:6 106 152;--c-on-secondary:255 255 255;--c-secondary-container:8 114 163;--c-on-secondary-container:255 255 255;--c-secondary-fixed:231 249 252;--c-secondary-fixed-dim:189 234 244;--c-on-secondary-fixed:4 66 95;--c-on-secondary-fixed-variant:6 96 139;--c-tertiary:138 75 0;--c-on-tertiary:255 255 255;--c-tertiary-container:255 243 223;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 243 223;--c-tertiary-fixed-dim:255 215 154;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;}
 /* theme:end */
 
 /* الورقة والصورة بيضاوان. */
@@ -115,6 +115,22 @@ body {
   font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
   background-color: #eef0ec;
   color: #18211d;
+  /* أرضية «ب٢» (ر175) فوق لون السطح (`bg-surface` على body): ضوءٌ أبيض أعلى اليمين ولمسةٌ سماوية أسفل اليسار. */
+  background-image: theme('backgroundImage.ground');
+  background-attachment: fixed;
+}
+
+/* زرّ الإخراج (ر175): «املأ» و«راجع الأوراق» و«اطبع» و«شيءٌ آخر لنفس الزبون» — بتدرّج الفعل، والمرور هادئٌ بلا تغيير مقاس. */
+@layer components {
+  .btn-act {
+    @apply bg-grad-act text-on-primary shadow-act rounded-btn;
+    transition:
+      filter 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .btn-act:hover:not(:disabled) {
+    filter: brightness(1.06);
+  }
 }
 
 /* الأرقام في الجداول وأرقام الصادر والتواريخ: أعمدة مستقيمة إلزاميًا. */
@@ -131,11 +147,6 @@ table th {
     'GRAD' 0,
     'opsz' 24;
   user-select: none;
-}
-
-/* العنصر النشط في الشريط. */
-.active-nav-glow {
-  box-shadow: 0 4px 14px rgba(14, 122, 99, 0.28);
 }
 
 /* ── ورقة A4 الافتراضية ──────────────────────────────────────────────

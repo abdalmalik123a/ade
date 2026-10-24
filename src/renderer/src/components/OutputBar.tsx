@@ -76,7 +76,7 @@ export function AfterPrint({
         </button>
       )}
       {onSameCustomer && (
-        <button className="h-9 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold" data-act="same-customer" type="button" onClick={onSameCustomer}>
+        <button className="h-9 px-3 btn-act font-label-md text-label-md font-bold" data-act="same-customer" type="button" onClick={onSameCustomer}>
           شيءٌ آخر لنفس الزبون
         </button>
       )}

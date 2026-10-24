@@ -1,8 +1,8 @@
 /**
- * سيناريو: مظهر ديوان الواحد (المرحلة ٦ من UPGRADE.md — مظهرٌ واحد بقرار المالك ٤ تشرين الأول).
+ * سيناريو: مظهر ديوان الواحد (ر067) — «ب٢» منذ ر175 (D156).
  *
- * مساحة العمل فاتحة بنصٍّ بلون الحبر؛ والسكّة كحليّة بنصٍّ فاتح، ورأسها علامة MT و«ديوان» و«MADA TECH»،
- * والمحدَّد فيها بلون الفعل؛ وفي الشبّاك علامةٌ خافتة؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
+ * مساحة العمل فاتحة بنصٍّ بلون الحبر؛ والسكّة لوحٌ أبيض بنصٍّ رماديّ، ورأسها رمز «ديوان» واسمه و«MADA TECH»،
+ * والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض؛ و«املأ» بالتدرّج؛ وفي الشبّاك علامةٌ خافتة؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
  * وتُلتقط الشاشات إن طُلبت (SHOT_DIR).
  */
 import { join } from 'node:path';
@@ -15,14 +15,18 @@ export default async function scenario(page, { shotsDir }) {
 
   await page.goto('service-counter');
   await wait(900);
-  ok(`مساحة العمل فاتحة (${await style('body', 'backgroundColor')})`, (await style('body', 'backgroundColor')) === 'rgb(241, 243, 247)');
-  ok(`ونصّها بلون الحبر (${await style('body', 'color')})`, (await style('body', 'color')) === 'rgb(24, 32, 47)');
-  ok(`والسكّة كحليّة (${await style('[data-sidebar="rail"]', 'backgroundColor')})`, (await style('[data-sidebar="rail"]', 'backgroundColor')) === 'rgb(22, 34, 63)');
-  ok('ونصّ السكّة فاتح', ((await style('[data-sidebar="rail"] [data-dest]:not([aria-current]) span:last-child', 'color')) ?? '') === 'rgb(179, 190, 214)');
+  ok(`مساحة العمل فاتحة (${await style('body', 'backgroundColor')})`, (await style('body', 'backgroundColor')) === 'rgb(243, 245, 247)');
+  ok(`ونصّها بلون الحبر (${await style('body', 'color')})`, (await style('body', 'color')) === 'rgb(36, 52, 61)');
+  ok(`والسكّة لوحٌ أبيض (${await style('[data-rail-panel]', 'backgroundImage')})`,
+    ((await style('[data-rail-panel]', 'backgroundImage')) ?? '').includes('rgb(255, 255, 255)'));
+  const muted = await style('[data-sidebar="rail"] [data-dest]:not([aria-current]) span:last-child', 'color');
+  ok(`ونصّ السكّة رماديّ (${muted})`, muted === 'rgb(86, 100, 110)');
   const head = await page.eval(`return document.querySelector('[data-act="sidebar-about"]')?.innerText ?? '';`);
   ok('رأس السكّة: شعار «ديوان» واسمه و«MADA TECH»', head.includes('ديوان') && head.includes('MADA TECH') && (await page.eval(`return Boolean(document.querySelector('[data-brand-mark] img'));`)));
-  ok(`والمحدَّد فيها بلون الفعل بلا تدرّج (${await style('[data-dest][aria-current="page"]', 'backgroundColor')})`,
-    (await style('[data-dest][aria-current="page"]', 'backgroundColor')) === 'rgb(62, 102, 219)' && (await style('[data-dest][aria-current="page"]', 'backgroundImage')) === 'none');
+  ok('والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض',
+    ((await style('[data-dest][aria-current="page"]', 'backgroundImage')) ?? '').startsWith('linear-gradient') && (await style('[data-dest][aria-current="page"]', 'color')) === 'rgb(255, 255, 255)');
+  const fill = await page.eval(`const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim().startsWith('املأ')); return b ? getComputedStyle(b).backgroundImage : null;`);
+  ok(`و«املأ» بالتدرّج${fill ? '' : ' (لا يظهر هنا — يُتخطّى)'}`, fill === null || fill.startsWith('linear-gradient'));
   ok('وفي الشبّاك علامةٌ خافتة', Number(await style('[data-watermark]', 'opacity')) <= 0.1);
   if (shotsDir) await page.shot(join(shotsDir, 'theme-counter.png'));
 

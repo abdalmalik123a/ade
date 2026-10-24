@@ -150,7 +150,7 @@ export default function DecisionBar({
 
       {step === 'pick' && (
         <button
-          className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+          className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
           type="button"
           disabled={picked.length === 0 || busy}
           onClick={() => void goFill()}
@@ -160,7 +160,7 @@ export default function DecisionBar({
       )}
       {step === 'fill' && (
         <button
-          className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+          className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
           type="button"
           disabled={busy}
           onClick={() => {
@@ -196,7 +196,7 @@ export default function DecisionBar({
             احفظ بلا طباعة
           </button>
           <button
-            className="h-10 px-5 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold disabled:opacity-40"
+            className="h-10 px-5 btn-act font-label-md text-label-md font-bold disabled:opacity-40"
             type="button"
             disabled={busy || blocked}
             onClick={() => void issue(true)}

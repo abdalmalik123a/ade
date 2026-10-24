@@ -50,7 +50,7 @@ export default function PrintBar({
         </div>
       )}
       <button
-        className="h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
+        className="h-11 btn-act font-label-lg text-label-lg font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
         data-act="issue"
         disabled={busy}
         type="button"
