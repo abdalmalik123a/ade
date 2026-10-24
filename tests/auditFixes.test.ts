@@ -124,6 +124,26 @@ describe('٢. الرقم الوطني: لا حرفٌ يمرّ صامتًا، و�
 
     expect(nid(e)).toBe('١٩٧٧٤٤٤٤٥٥٥٥');
   });
+
+  it('وملفٌّ بلا رقمٍ يُعطى رقمًا لا يمسح السجلّ — لا صدام يزول به — وتغيير رقمٍ كان للملفّ يمسحه (D150)', () => {
+    // استيراد Excel يُكمل الرقم بـ`saveCitizen` لكلّ ملفّ: مسح السجلّ مع كلٍّ منها أبطأه أضعافًا.
+    const db = freshDb();
+    const put = db.prepare('INSERT INTO citizens (full_name, national_id, name_fold) VALUES (?, ?, ?)');
+    const add = (name: string, nid: string | null) => Number(put.run(name, nid, name).lastInsertRowid);
+    const a = add('أ', '١٢٣٤٥٦٧٨٩٠١٢'); // هو «ب» بأرقامٍ هندية
+    const b = add('ب', '123456789012');
+    const c = add('ج', null);
+    const d = add('د', '198822223333');
+    const nid = (id: number) => (db.prepare('SELECT national_id AS n FROM citizens WHERE id = ?').get(id) as { n: string }).n;
+    db.prepare('DELETE FROM citizens WHERE id = ?').run(b); // زال الصدام بلا توحيد: الحفظ وحده يكشف أيمسح أم لا
+
+    saveCitizen(db, { ...citizen('ج', '197744445555'), id: c });
+    expect(nid(c)).toBe('197744445555');
+    expect(nid(a)).toBe('١٢٣٤٥٦٧٨٩٠١٢');
+
+    saveCitizen(db, { ...citizen('د', '198899990000'), id: d });
+    expect(nid(a)).toBe('123456789012');
+  });
 });
 
 describe('٣. الباركود: الأرقام الهندية تُرمَّز، والحروف تُقال لا تُطبع فراغًا', () => {

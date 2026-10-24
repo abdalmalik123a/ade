@@ -272,8 +272,9 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
   })();
 
   indexRow(db, 'citizens', id);
-  // رقمٌ تغيّر قد يفكّ صدامًا: ما تُرك لأنّه كان رقم هذا المواطن يُوحَّد الآن (D149).
-  if (current && current.national_id !== nationalId) canonicalizeNationalIds(db);
+  // رقمٌ كان للملفّ فتغيّر أو مُحي قد يفكّ صدامًا: ما تُرك لأنّه كان رقم هذا المواطن يُوحَّد الآن (D149).
+  // لا ملفٌّ بلا رقمٍ يُعطاه: لا صدام يزول، ومسح السجلّ مع كلّ ملفٍّ يُكمله استيراد Excel يُبطئه (D150).
+  if (current?.national_id && current.national_id !== nationalId) canonicalizeNationalIds(db);
   return getCitizen(db, id)!;
 }
 
