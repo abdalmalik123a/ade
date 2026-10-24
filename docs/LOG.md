@@ -6,7 +6,7 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
-## ٢٠٢٦-١٠-٢٤ ٢١:٢٠ — D160 🔄 نفاد الرصيد بعد الخطوة ٥ · النموذج: Claude Opus 5.5 (المنفّذ)
+## ٢٠٢٦-١٠-٢٤ ٢١:٢٠ — توقّف لنفاد الرصيد (ر176 §٢) · D160 🔄 بعد الخطوة ٥ · النموذج: Claude Opus 5.5 (المنفّذ)
 - **تمّ (في هذا الإيداع):** `src/shared/suitMatte.ts` (`prepareSuit` نقلٌ لـ`prepare-suits.py`: الشفّاف كما هو، والأبيض المتّصل بالحافّة خلفية، ورفضٌ إن قلّ الأبيض عن ربع الحافّة) ·
   `photos:importSuit` يقبل png/jpg/jpeg/webp/bmp ويعيد `{suit}` أو `{prepare}` · `photos:addSuit` جديد (المصدر وapiTools وpreload وgate وchannels.allow) ·
   `usePhotoSteps.importSuit` يفكّ ويحضّر ثم `addSuit`، ورسالة الرفض · سطر الشرح في `PhotoAdjustSteps.tsx` وتعليق `suits.ts`.
