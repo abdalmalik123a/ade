@@ -19,7 +19,7 @@ import { barcodeSvg, code128Text, encodes128 } from '../src/shared/barcode';
 import { inlineBarcodes } from '../src/shared/design/imposition';
 import { designPreflight } from '../src/shared/preflight';
 import { barcodeElement, emptyCanvas } from '../src/shared/canvas';
-import { canonicalizeNationalIds, deleteCitizen, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
+import { canonicalizeNationalIds, deleteCitizen, ensureSearchColumn, getCitizen, saveCitizen } from '../src/main/services/citizens';
 import { prepareDocuments } from '../src/main/services/documents';
 import { citizenByNationalId } from '../src/main/services/issue';
 import { verifyArchive } from '../src/main/services/archiveVerify';
@@ -143,6 +143,17 @@ describe('٢. الرقم الوطني: لا حرفٌ يمرّ صامتًا، و�
 
     saveCitizen(db, { ...citizen('د', '198899990000'), id: d });
     expect(nid(a)).toBe('123456789012');
+  });
+
+  it('والمتروك لصدامه لا يُقفل: يُحفظ برقمه كما هو (صورةٌ جديدة كما في `photos.ts`) فيبقى بصورته — وكتابة رقم صاحبه فيه تُرفض (D151)', () => {
+    const db = freshDb();
+    const put = db.prepare('INSERT INTO citizens (full_name, national_id, name_fold) VALUES (?, ?, ?)');
+    const a = Number(put.run('أ', '١٢٣٤٥٦٧٨٩٠١٢', 'ا').lastInsertRowid); // هو «ب» بأرقامٍ هندية
+    put.run('ب', '123456789012', 'ب');
+    const { attachments: _attachments, documents: _documents, ...input } = getCitizen(db, a)!;
+
+    expect(saveCitizen(db, { ...input, photoPath: 'photos/a.jpg' })).toMatchObject({ nationalId: '١٢٣٤٥٦٧٨٩٠١٢', photoPath: 'photos/a.jpg' });
+    expect(() => saveCitizen(db, { ...input, nationalId: '123456789012' })).toThrow('مسجَّل لمواطن آخر');
   });
 });
 

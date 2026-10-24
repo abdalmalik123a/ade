@@ -8,6 +8,7 @@ import { ensureSearchColumn, getCitizen, listCitizens, saveCitizen } from '../sr
 import { importCitizens, planCitizenImport, readImportMap, saveImportMap } from '../src/main/services/citizenImport';
 import { IMPORT_MAX_ROWS, autoTarget, cleanMap, cleanRows, importRows, mapOf, readTable, withTarget } from '../src/shared/citizenImport';
 import { auditLabel } from '../src/shared/auditLabels';
+import { normalizeFold } from '../src/shared/arabic';
 import type { CitizenInput } from '../src/shared/api';
 
 const tsv = (rows: string[][]) => rows.map((r) => r.join('\t')).join('\n');
@@ -154,6 +155,23 @@ describe('الاستيراد على السجلّ', () => {
     const report = importCitizens(d, importRows(readTable(LIST)));
     expect(report).toMatchObject({ added: 2, completed: 1 });
     expect(getCitizen(d, ali.id)!.nationalId).toBe('199912345678');
+  });
+
+  it('والمتروك لصدامه (رقمه قبل التوحيد رقمُ ملفٍّ آخر) يُكمل ولا يُسقط الاستيراد كلّه — ورقمه بصورته (D151)', () => {
+    const d = db();
+    const put = d.prepare('INSERT INTO citizens (full_name, national_id, phone, name_fold) VALUES (?, ?, ?, ?)');
+    const add = (name: string, nid: string | null, phone: string | null) => Number(put.run(name, nid, phone, normalizeFold(name)).lastInsertRowid);
+    const zainab = add('زينب علي حسن', '١٢٣٤٥٦٧٨٩٠١٢', '07701234567'); // صورته الموحّدة رقم «سالم حسن»
+    const salem = add('سالم حسن', '123456789012', null);
+    const school = add('مدرسة النور', null, '07809998888');
+    const report = importCitizens(d, [
+      { fullName: 'زينب علي حسن', phone: '07701234567', jobTitle: 'معلّمة' },
+      { fullName: 'مدرسة النور', phone: '07809998888', address: 'بغداد' }
+    ]);
+    expect(report).toMatchObject({ added: 0, completed: 2 });
+    expect(getCitizen(d, zainab)).toMatchObject({ jobTitle: 'معلّمة', nationalId: '١٢٣٤٥٦٧٨٩٠١٢' });
+    expect(getCitizen(d, school)!.address).toBe('بغداد');
+    expect(getCitizen(d, salem)).toMatchObject({ nationalId: '123456789012', jobTitle: null });
   });
 
   it('والاسم نفسه بلا ما يفرّق يُترك ويُسمّى — إلا إن اختار المكتب إضافته', () => {

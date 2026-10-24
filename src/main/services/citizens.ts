@@ -220,16 +220,20 @@ export function saveCitizen(db: Database, input: CitizenInput): CitizenDetail {
   const fullName = input.fullName.trim();
   if (!fullName) throw new Error('اسم المواطن مطلوب');
 
+  const current =
+    input.id === null ? undefined : (db.prepare('SELECT * FROM citizens WHERE id = ?').get(input.id) as Record<string, unknown> | undefined);
   // أرقامٌ لاتينية بلا شوائب — وما فيه حرفٌ يُحفظ كما كُتب (وتنبيهه في الخانة).
-  const nationalId = canonicalNationalId(input.nationalId) ?? (input.nationalId?.trim() || null);
+  let nationalId = canonicalNationalId(input.nationalId) ?? (input.nationalId?.trim() || null);
   if (nationalId && isNationalIdTaken(db, nationalId, input.id)) {
-    throw new Error(`الرقم الوطني «${nationalId}» مسجَّل لمواطن آخر`);
+    // إلا رقم الملفّ نفسه وصل كما حُفظ: متروكٌ لصدامه (`canonicalizeNationalIds`) يبقى بصورته، فلا يُقفل تعديله
+    // ولا صورته ولا إكماله من Excel (D151). وما كُتب غيره — ولو رقم صاحبه بصورته — يُرفض فيُكشف المكرّر.
+    const stored = current?.national_id as string | null | undefined;
+    if (!stored || input.nationalId?.trim() !== stored) throw new Error(`الرقم الوطني «${nationalId}» مسجَّل لمواطن آخر`);
+    nationalId = stored;
   }
 
   // الخانة الغائبة عن الطلب تبقى كما هي، والفارغة تُمحى: فما يحفظ الملف بخاناته القديمة
   // وحدها (من قبل أيلول ٢٠٢٦) لا يمحو ما لا يعرفه.
-  const current =
-    input.id === null ? undefined : (db.prepare('SELECT * FROM citizens WHERE id = ?').get(input.id) as Record<string, unknown> | undefined);
   const text = (f: (typeof CITIZEN_FIELDS)[number]) => {
     const v = input[f.key] as string | null | undefined;
     return v === undefined && current ? (current[f.column] ?? null) : v?.trim() || null;
