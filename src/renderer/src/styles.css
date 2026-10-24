@@ -56,8 +56,8 @@
   filter: grayscale(1) brightness(0.2);
 }
 
-/* الحقل بحدٍّ رفيع حين لا حدّ له — فالحقل الفاتح على البطاقة البيضاء يُرى أين يُكتب. */
-:is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), select, textarea):not([class~='border']):not([class*='border-']) {
+/* الحقل بحدٍّ رفيع حين لا حدّ له — فالحقل الفاتح على البطاقة البيضاء يُرى أين يُكتب. (و`.input-field` بحدّه وهالته، D164.) */
+:is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), select, textarea):not([class~='border']):not([class*='border-']):not(.input-field) {
   box-shadow: inset 0 0 0 1px rgb(var(--c-outline-variant));
 }
 
@@ -130,6 +130,34 @@ body {
   }
   .btn-act:hover:not(:disabled) {
     filter: brightness(1.06);
+  }
+
+  /* أصناف «ب٢» المشتركة (D164) — وجدول ترجمتها في docs/UI.md §٨: */
+  /* اللوح: سطحٌ كبير أو نافذة — أبيض بتدرّجٍ خفيف، وزوايا «ورقة شجر»، وظلٌّ محايد، وحدٌّ أبيض. */
+  .surface-panel {
+    @apply bg-grad-surface rounded-frame shadow-card border border-white/90;
+  }
+  /* الخانة: سطحٌ باهت بحدٍّ فاتح، وبالتركيز بيضاء بحدٍّ وهالةٍ سماويّين — كبحث الرأس والشبّاك. */
+  .input-field {
+    @apply rounded-field bg-surface-container-low border border-outline-variant;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+  }
+  .input-field:focus {
+    @apply bg-surface-container-lowest;
+    outline: none;
+    border-color: #8cdceb;
+    box-shadow: 0 0 0 4px rgba(33, 200, 231, 0.1);
+  }
+  /* الزرّ الثانويّ البارز (كـ.btn-s في «ب٢»): سماويٌّ باهت بنصّ الفعل، ومروره أغمق بنصٍّ أغمق (فالتباين فوق ٤٫٥). */
+  .btn-soft {
+    @apply rounded-btn bg-primary-fixed text-primary font-semibold;
+    transition: background-color 180ms ease;
+  }
+  .btn-soft:hover:not(:disabled) {
+    @apply bg-primary-fixed-dim text-on-primary-fixed;
   }
 }
 

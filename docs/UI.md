@@ -94,6 +94,21 @@
   و`bg-grad-sel` و`bg-grad-surface` و`bg-ground` (أرضية `body`) · الظلال `shadow-card` و`soft` و`low` (محايدة) و`act` و`sel` (زرقاء خفيفة) · زوايا «ورقة شجر»
   `rounded-frame` و`card` و`field` و`btn` و`ico` و`chip` (أعلى اليمين وأسفل اليسار أكبر) · و**زرّ الإخراج** صنفٌ واحد `.btn-act` في `styles.css`
   («املأ» و«راجع الأوراق» و«اطبع» و«شيءٌ آخر لنفس الزبون»)، مروره هادئ بلا تغيير مقاس.
+- **جدول الترجمة** (D164، ويطبّقه D165–D168 حرفًا) — وأصنافه المشتركة في `styles.css`: `.surface-panel` و`.input-field` و`.btn-soft` بجانب `.btn-act`:
+
+  | قبل | بعد |
+  |---|---|
+  | لوحٌ كبير أو نافذة (`rounded-xl/2xl` أبيض وظلّ) | `.surface-panel` |
+  | بطاقة (`rounded-xl/lg` أبيض و`shadow-[0_1px_8px…]` أو `shadow-sm/md`) | `rounded-card shadow-soft border border-outline-variant` |
+  | زرّ الفعل (`bg-primary` أو `bg-primary-container` مع `text-on-primary`) | `.btn-act` بمقاسه وخطّه، بلا `rounded-*` |
+  | زرٌّ ثانويّ أو أيقونة (`rounded-lg`) | `rounded-btn` (والأبيض بحدٍّ: `border border-outline-variant shadow-low`)؛ والبارز `.btn-soft` |
+  | خانة (`input` `select` `textarea` بـ`rounded-lg` و`focus:ring-*`) | `.input-field` بمقاسها |
+  | المختار (`ring-2 ring-secondary`، أو `bg-secondary`/`bg-primary-container` تحديدًا) | بطاقة: `border-2 border-cyan bg-grad-sel shadow-sel` · شريحة أو تبويب: `bg-primary-fixed text-primary` |
+  | عددٌ أو شارة (`bg-secondary text-on-secondary rounded-full`) | `bg-grad-orange text-on-surface` (والتنبيه `bg-error` كما هو) |
+  | شريحة تصفية `rounded-full` | `rounded-chip` |
+  | قائمةٌ منبثقة أو تلميحٌ كبير (`shadow-xl/2xl`) | `rounded-card shadow-card` |
+
+  وما لا يقع في الجدول يُترك؛ والأحمر والبنّيّ، والستائر، والرسائل العابرة (`bg-inverse-surface`)، وخلفيات تحرير الصور الداكنة، وبطاقة شعار MADA TECH الداكنة (حروفه بيضاء) كما هي.
 - **البرتقاليّ `#F89800` صبغةٌ لا دور:** للشارة والعدد بنصٍّ بلون الحبر (٥٫٨٠)، ولا يُكتب به نصٌّ على الأبيض (٢٫٠٦).
 - **التباين ٤٫٥ فأكثر** لكلّ لون نصٍّ على كلّ سطح، في مساحة العمل والسكّة (`contrast` في `theme.ts`؛ يفحصه `tests/theme.test.ts` وسيناريو `theme`).
 - **الخطّ:** «IBM Plex Sans Arabic» أوّلًا للواجهة (ر038، `styles.css`)، ضمن مكتبة خطوط ديوان (ر090).
