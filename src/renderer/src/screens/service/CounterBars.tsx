@@ -74,7 +74,7 @@ export function RepeatOfBar({ repeatOf, setRepeatOf }: { repeatOf: RepeatOf; set
       {repeatOf.voidIt && (
         <input
           aria-label="سبب الإبطال"
-          className="h-8 w-56 px-2 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+          className="input-field h-8 w-56 px-2 text-on-surface font-label-md text-label-md"
           data-void-reason=""
           placeholder="سبب الإبطال"
           value={repeatOf.reason}
@@ -89,7 +89,7 @@ export function RepeatOfBar({ repeatOf, setRepeatOf }: { repeatOf: RepeatOf; set
 export function PrintRunBar({ printRun, resumePrint, dropPrint }: { printRun: PrintRun; resumePrint: () => Promise<void>; dropPrint: () => Promise<void> }) {
   return (
     <div
-      className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-space-sm px-space-md py-space-sm rounded-xl shadow-lg bg-surface-container-highest text-on-surface font-label-md text-label-md"
+      className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-space-sm px-space-md py-space-sm rounded-card shadow-card bg-surface-container-highest text-on-surface font-label-md text-label-md"
       data-print-run={printRun.running ? 'running' : 'stopped'}
       data-print-sent={printRun.sent}
       data-print-total={printRun.total}
@@ -109,7 +109,7 @@ export function PrintRunBar({ printRun, resumePrint, dropPrint }: { printRun: Pr
           </span>
           {printRun.id && (
             <button
-              className="h-8 px-space-md rounded-lg bg-secondary text-on-secondary font-bold"
+              className="h-8 px-space-md btn-act font-bold"
               data-act="print-resume"
               type="button"
               onClick={() => void resumePrint()}
@@ -118,7 +118,7 @@ export function PrintRunBar({ printRun, resumePrint, dropPrint }: { printRun: Pr
             </button>
           )}
           <button
-            className="h-8 px-space-sm rounded-lg hover:bg-surface-container-high"
+            className="h-8 px-space-sm rounded-btn hover:bg-surface-container-high"
             data-act="print-drop"
             type="button"
             onClick={() => void dropPrint()}
@@ -135,10 +135,10 @@ export function PrintRunBar({ printRun, resumePrint, dropPrint }: { printRun: Pr
 export function CounterToast({ toast, dismiss }: { toast: Toast; dismiss: () => void }) {
   return (
     <div
-      className={`fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[min(90vw,48rem)] px-space-md py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 max-w-[min(90vw,48rem)] px-space-md py-space-sm rounded-card shadow-card font-label-md text-label-md ${
         toast.tone === 'warn'
           ? 'bg-error-container text-on-error-container'
-          : 'bg-primary-container text-on-primary'
+          : 'bg-inverse-surface text-inverse-on-surface'
       }`}
     >
       {toast.text}

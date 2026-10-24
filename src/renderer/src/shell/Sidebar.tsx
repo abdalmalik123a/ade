@@ -158,12 +158,12 @@ function ChannelsButton() {
         <span className="text-[11px] leading-4">قنواتنا</span>
       </button>
       {open && (
-        <div className="absolute bottom-0 right-[76px] z-50 w-52 rounded-xl bg-surface-container-lowest shadow-2xl p-space-xs flex flex-col gap-0.5" data-channels-menu="">
+        <div className="absolute bottom-0 right-[76px] z-50 w-52 surface-panel p-space-xs flex flex-col gap-0.5" data-channels-menu="">
           <span className="px-space-sm py-1 font-label-sm text-label-sm text-on-surface-variant">قنواتنا</span>
           {list.map((c) => (
             <a
               key={c.key}
-              className="flex items-center gap-space-sm px-space-sm h-9 rounded-lg hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+              className="flex items-center gap-space-sm px-space-sm h-9 rounded-btn hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
               data-channel={c.key}
               href={c.url}
               rel="noreferrer"

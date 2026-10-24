@@ -10,11 +10,11 @@ import { pathPreset } from '@shared/design/pathPresets';
 
 export const DESIGN_CATEGORY = 'تصاميم';
 export const NUM =
-  'w-20 h-8 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
+  'input-field w-20 h-8 px-2 text-center tabular font-label-md text-label-md text-on-surface';
 export const ICON =
-  'w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center justify-center';
+  'w-8 h-8 rounded-btn text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center justify-center';
 export const TOOL =
-  'w-8 h-8 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors disabled:opacity-40';
+  'w-8 h-8 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors disabled:opacity-40';
 
 /** خطوةُ السهم نسبةً، ومع Shift عشرة أضعافها. */
 export const NUDGE = 0.002;

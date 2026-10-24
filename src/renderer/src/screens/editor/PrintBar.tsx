@@ -35,7 +35,7 @@ export default function PrintBar({
   return (
     <div className="shrink-0 px-space-md pt-space-sm pb-space-md flex flex-col gap-space-xs border-t border-outline-variant/40" data-editor-print="">
       {error && (
-        <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md" data-editor-error="">
+        <div className="flex items-start gap-space-xs p-space-sm rounded-card bg-error-container text-on-error-container font-label-md text-label-md" data-editor-error="">
           <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
           <span className="flex-1">{error}</span>
           <button className="material-symbols-outlined text-[16px]" type="button" onClick={() => setError(null)}>
@@ -44,7 +44,7 @@ export default function PrintBar({
         </div>
       )}
       {toast && (
-        <div className="flex items-start gap-space-xs p-space-sm rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md">
+        <div className="flex items-start gap-space-xs p-space-sm rounded-card bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md">
           <span className="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
           <span className="flex-1 break-all">{toast}</span>
         </div>

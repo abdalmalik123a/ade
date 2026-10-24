@@ -90,7 +90,7 @@ export default function Header({
   const empty = fresh && !fresh.documents.length && !citizens.length && !templates.length && !attachments.length;
 
   const item =
-    'w-full flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-start hover:bg-surface-container-high text-on-surface';
+    'w-full flex items-center gap-space-sm px-space-sm py-1.5 rounded-btn text-start hover:bg-surface-container-high text-on-surface';
   const group = (title: string, children: ReactNode) => (
     <div className="flex flex-col gap-0.5">
       <span className="px-space-sm font-label-sm text-label-sm text-on-surface-variant font-semibold">{title}</span>
@@ -141,7 +141,7 @@ export default function Header({
 
             {open && q && (
               <div
-                className="absolute top-12 inset-x-0 z-50 max-h-[70vh] overflow-y-auto rounded-xl bg-surface-container-lowest shadow-2xl p-space-sm flex flex-col gap-space-sm"
+                className="absolute top-12 inset-x-0 z-50 max-h-[70vh] overflow-y-auto surface-panel p-space-sm flex flex-col gap-space-sm"
                 data-search-results=""
                 // الضغط على نتيجة لا يُسقط التركيز قبل أن تُفتح.
                 onMouseDown={(e) => e.preventDefault()}
@@ -208,7 +208,7 @@ export default function Header({
                     ))
                   )}
                 <button
-                  className="self-start px-space-sm h-8 rounded-lg font-label-md text-label-md text-secondary hover:bg-surface-container-high"
+                  className="self-start px-space-sm h-8 rounded-btn font-label-md text-label-md text-secondary hover:bg-surface-container-high"
                   data-act="search-archive"
                   type="button"
                   onClick={() => done(() => onSearchArchive(q))}

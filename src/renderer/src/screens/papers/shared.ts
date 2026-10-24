@@ -13,10 +13,10 @@ export const SHEET_WIDTH = 794;
 export type Toast = { text: string; tone: 'ok' | 'warn' } | null;
 
 export const NUM_INPUT =
-  'w-16 h-8 px-2 rounded-lg bg-surface-container-low border border-outline-variant text-center tabular font-label-md text-label-md text-on-surface';
+  'input-field w-16 h-8 px-2 text-center tabular font-label-md text-label-md text-on-surface';
 
 export const ICON_BTN =
-  'w-8 h-8 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center justify-center';
+  'w-8 h-8 rounded-btn text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors flex items-center justify-center';
 
 /**
  * «الدور الثاني» من البنك (د٩): الأسئلة نفسها عددًا ودرجاتٍ، من البنك في مادّتها وصفّها،

@@ -183,14 +183,14 @@ export default function CounterPick({
       {/* «الملفّات» (ن٨): ما وصل الآن، ومنطقة الإفلات. */}
       {onOpenFile && !query.trim() && <InboxPanel active={active && step === 'pick'} onOpen={onOpenFile} />}
       {newCitizen && (
-        <div className="p-space-sm rounded-xl bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-new-citizen="">
+        <div className="p-space-sm rounded-card bg-secondary-fixed flex flex-wrap items-center gap-space-sm" data-new-citizen="">
           <span className="material-symbols-outlined text-[20px] text-secondary">person_add</span>
           <span className="flex-1 font-label-md text-label-md text-on-surface">
             «{newCitizen.input.fullName}» ليس في «الزبائن» — أيُحفظ بما كُتب له، فتُجلب بياناته بـ«هات الزبون»
             في المرّة القادمة وتُربط به كتبه؟
           </span>
           <button
-            className="h-9 px-4 rounded-lg bg-secondary text-on-secondary font-label-md text-label-md font-bold"
+            className="h-9 px-4 btn-act font-label-md text-label-md font-bold"
             data-act="save-new-citizen"
             type="button"
             onClick={() => void saveNewCitizen()}
@@ -198,7 +198,7 @@ export default function CounterPick({
             احفظه في السجل
           </button>
           <button
-            className="h-9 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+            className="h-9 px-3 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
             type="button"
             onClick={() => setNewCitizen(null)}
           >

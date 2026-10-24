@@ -85,7 +85,7 @@ export class ImageView implements NodeView {
     this.img.style.maxWidth = '100%';
     const bar = document.createElement('div');
     bar.className =
-      'absolute top-1 right-1 hidden group-hover/img:flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-container-lowest shadow border border-outline-variant/50';
+      'absolute top-1 right-1 hidden group-hover/img:flex items-center gap-0.5 p-0.5 rounded-btn bg-surface-container-lowest shadow-low border border-outline-variant/50';
     bar.contentEditable = 'false';
     const set = (patch: Record<string, unknown>) => {
       const pos = this.getPos();
