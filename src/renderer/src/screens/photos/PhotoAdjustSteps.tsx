@@ -199,7 +199,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
         ))}
       </div>
       {suitTab === 'custom' && !customSuits.length && (
-        <p className="font-label-sm text-label-sm text-on-surface-variant">لا قاط للمكتب بعد — «استيراد بدلة خاصة» يضيف صورة PNG شفّافة الخلفية والعنق</p>
+        <p className="font-label-sm text-label-sm text-on-surface-variant">لا قاط للمكتب بعد — «استيراد بدلة خاصة» يضيف صورة قاطٍ: PNG شفّافة، أو صورةٌ على خلفيةٍ بيضاء تُحضَّر وحدها</p>
       )}
       {suitTab !== 'custom' && !BUILTIN_SUITS.filter((s) => s.category === suitTab).length && (
         <p className="font-label-sm text-label-sm text-on-surface-variant">لا توجد بدلات مدمجة حاليًا — يرجى استخدام «استيراد بدلة خاصة» لإضافة قاط للمكتب</p>

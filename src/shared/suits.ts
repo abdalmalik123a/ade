@@ -5,8 +5,8 @@
  * بيضاء) جُهّز بـ`tools/prepare-suits.py`: شفّاف الخلفية والعنق، ومقصوصٌ إلى الصدر. **والنظاميّ بلا
  * رتبةٍ ولا شارةٍ ولا علمٍ ولا اسم جهة** (قرار المالك) — وما فيه شيءٌ من ذلك تُرك، ولا يُسمّى باسم جهة.
  *
- * والمستورد PNG شفّاف يضيفه صاحب المكتب؛ ومكان العنق في كليهما يُقرأ من شفافيّة الصورة
- * نفسها (`suitAnchor` في `portraitMask.ts`) — فلا يُضبط يدويًّا لكلّ قاط.
+ * والمستورد صورة قاطٍ يضيفها صاحب المكتب: PNG شفّافة، أو صورةٌ على خلفيةٍ بيضاء تُحضَّر وحدها (`suitMatte.ts`، S39)؛
+ * ومكان العنق في كليهما يُقرأ من شفافيّة الصورة نفسها (`suitAnchor` في `portraitMask.ts`) — فلا يُضبط يدويًّا لكلّ قاط.
  */
 
 export type SuitCategory = 'suit' | 'shirt' | 'custom';
@@ -27,6 +27,9 @@ export const BUILTIN_SUITS: BuiltinSuit[] = [];
 
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */
 export type CustomSuit = { id: string; name: string; path: string; createdAt: string };
+
+/** ما يعيده «استورد قاطًا»: PNG شفّافة أُضيفت، أو صورةٌ تُحضَّر في الواجهة ثم تُضاف (`photos:addSuit`). */
+export type SuitImport = { suit: CustomSuit } | { prepare: { name: string; bytes: Uint8Array } };
 
 export function parseCustomSuits(json: string | null | undefined): CustomSuit[] {
   try {

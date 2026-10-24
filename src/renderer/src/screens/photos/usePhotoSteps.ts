@@ -8,6 +8,7 @@ import { type Landmarks, landmarks, autoCrop, fitSuit, rowWidths } from '@shared
 import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
 import { clothesTop, raiseSuit, skinSample } from '@shared/portraitSkin';
 import { withFace } from '@shared/portraitFace';
+import { prepareSuit } from '@shared/suitMatte';
 import { errorText } from '../../lib/errors';
 import { workPixels, loadImage, dataUrlOf, loadSuit, fallbackPlace, type Work, type Suit } from '../../lib/portraitCanvas';
 import { CENTER, type Crop, type Size } from '@shared/photoSheet';
@@ -213,8 +214,26 @@ export function usePhotoSteps(
 
   async function importSuit() {
     try {
-      const s = await window.diwan.photos.importSuit();
-      if (!s) return;
+      const r = await window.diwan.photos.importSuit();
+      if (!r) return;
+      let s: CustomSuit;
+      if ('suit' in r) s = r.suit;
+      else {
+        // ما ليس PNG شفّافة يفكّه Chromium (JPG وWebP وBMP)، ثم يُحضَّر كما تحضّره `prepare-suits.py` (S39).
+        const bmp = await createImageBitmap(new Blob([r.prepare.bytes.slice()]));
+        const c = document.createElement('canvas');
+        c.width = bmp.width;
+        c.height = bmp.height;
+        const ctx = c.getContext('2d', { willReadFrequently: true })!;
+        ctx.drawImage(bmp, 0, 0);
+        bmp.close();
+        const ready = prepareSuit(ctx.getImageData(0, 0, c.width, c.height).data, c.width, c.height);
+        if (!ready) {
+          say('الصورة ليست قاطًا على خلفيةٍ بيضاء أو شفّافة — احفظه PNG شفّافًا أو على أبيضٍ نقيّ', true);
+          return;
+        }
+        s = await window.diwan.photos.addSuit({ name: r.prepare.name, rgba: new Uint8Array(ready.rgba.buffer, ready.rgba.byteOffset, ready.rgba.byteLength), width: ready.width, height: ready.height });
+      }
       setCustomSuits((list) => [...list, s]);
       setSuitTab('custom');
       say(`أُضيف «${s.name}» إلى القاط`);

@@ -61,6 +61,7 @@ export const PRODUCTIVE_CHANNELS = [
   'photos:clipboardImage',
   'photos:pickPhoto',
   'photos:storePasted',
+  'photos:addSuit',
   'photos:storeReview',
   'photos:saveImage',
   'photos:saveUpload',

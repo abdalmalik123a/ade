@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٤ ٢١:٢٠ — D160 🔄 نفاد الرصيد بعد الخطوة ٥ · النموذج: Claude Opus 5.5 (المنفّذ)
+- **تمّ (في هذا الإيداع):** `src/shared/suitMatte.ts` (`prepareSuit` نقلٌ لـ`prepare-suits.py`: الشفّاف كما هو، والأبيض المتّصل بالحافّة خلفية، ورفضٌ إن قلّ الأبيض عن ربع الحافّة) ·
+  `photos:importSuit` يقبل png/jpg/jpeg/webp/bmp ويعيد `{suit}` أو `{prepare}` · `photos:addSuit` جديد (المصدر وapiTools وpreload وgate وchannels.allow) ·
+  `usePhotoSteps.importSuit` يفكّ ويحضّر ثم `addSuit`، ورسالة الرفض · سطر الشرح في `PhotoAdjustSteps.tsx` وتعليق `suits.ts`.
+- **الفحص (مُجرَّب):** `npm run typecheck` ✓ · `suitMatte` ٥ ✓ و`portraitTools` معه ٢٣ ✓ · وبتعطيل `flood` يسقط ٤ من ٥ (ثم أُعيد).
+- **الاستئناف من هنا:** الخطوة ٦ — في `tools/scenarios/portrait.mjs` الخطوة ٧: النصّ المنتظر للرماديّ صار «ليست قاطًا على خلفيةٍ بيضاء» (كان «بلا شفافية»)،
+  ثم قاطٌ JPG على أبيض يُكتب في `PORTRAIT_SUIT_FILE` (يُصنع في الصفحة بـcanvas.toDataURL('image/jpeg') لأنّ مسار الفتح ثابت)، فيُضاف ويُلبس، ثم الشفّاف كما هو ·
+  ثم `docs/sections/photos.md` (PH-4 وS39) و`docs/BACKLOG.md` (S39) · ثم الفحص الختامي: vitest كاملًا والبناء و`portrait` و`autoCollar` · والختام.
+
 ## ٢٠٢٦-١٠-٢٤ ٢١:٠٧ — D159 ✅ قياس القاط اليوم واختيار النموذجين (S45) · النموذج: Claude Opus 5.5 (المنفّذ)
 - **الإيداعات:** b002693 الاستئناف · وهذا الختام (PLAN والدفتر وCHAIN ونقل الأمر) — ولا تغيير في `src` ولا `tests` ولا `tools` ولا `resources`.
 - **«ن من ٢٠» اليوم (مُجرَّب، `reports/قياس-S45/`): ٩ من ٢٠ بالقاطين** — المبسّط والحقيقي الذي أرسله المالك (يُحمَّل كـ`loadSuit` بلا تعديل).

@@ -7,7 +7,7 @@ import type { Doc } from './doc';
 import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
 import type { Face } from './portraitFace';
-import type { CustomSuit } from './suits';
+import type { CustomSuit, SuitImport } from './suits';
 import type { ImportedTemplate, InboxFile } from './apiTemplates';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
@@ -150,10 +150,11 @@ export type ToolApis = {
     deletePreset(id: string): Promise<PhotoPreset[]>;
     suits(): Promise<CustomSuit[]>;
     /** «استورد قاطًا»: PNG شفّافة — ويُقال سبب الرفض. `null` إن أُلغي الاختيار. */
-    importSuit(): Promise<CustomSuit | null>;
+    importSuit(): Promise<SuitImport | null>;
     deleteSuit(id: string): Promise<CustomSuit[]>;
     pickPhoto(): Promise<string | null>;
     storePasted(dataUrl: string): Promise<string>;
+    addSuit(payload: { name: string; rgba: Uint8Array; width: number; height: number }): Promise<CustomSuit>;
     storeReview(dataUrl: string): Promise<string>;
     saveImage(payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }): Promise<string | null>;
     saveUpload(payload: { data: Uint8Array; suggestedName: string; filterName: string; ext: string }): Promise<string | null>;

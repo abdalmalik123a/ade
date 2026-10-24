@@ -152,6 +152,7 @@
   "pdf:saveMany",
   "pdf:scan",
   "pdf:shrinkImages",
+  "photos:addSuit",
   "photos:clipboardImage",
   "photos:cutout",
   "photos:cutoutObject",

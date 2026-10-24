@@ -68,6 +68,7 @@ export const toolsApi: ToolApis = {
     deleteSuit: (id: string) => invoke('photos:deleteSuit', id),
     pickPhoto: () => invoke('photos:pickPhoto'),
     storePasted: (dataUrl: string) => invoke('photos:storePasted', dataUrl),
+    addSuit: (payload: unknown) => invoke('photos:addSuit', payload),
     storeReview: (dataUrl: string) => invoke('photos:storeReview', dataUrl),
     saveImage: (payload: unknown) => invoke('photos:saveImage', payload),
     saveUpload: (payload: unknown) => invoke('photos:saveUpload', payload),

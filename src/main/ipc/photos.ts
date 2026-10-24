@@ -16,7 +16,8 @@ import { unreferenced } from '../services/storeRefs';
 import { importFile, pickOpenPath, pickSavePath } from './files';
 import { getCitizen, saveCitizen, addAttachment } from '../services/citizens';
 import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPresets';
-import { parseCustomSuits, pngTransparency, type CustomSuit } from '@shared/suits';
+import { parseCustomSuits, pngTransparency, type CustomSuit, type SuitImport } from '@shared/suits';
+import { writePng } from '../services/png';
 
 const MODEL = 'modnet-portrait-q8.onnx';
 /** نموذج الأشياء (DESIGNS.md ٢٫٣) — للتصاميم؛ والأشخاص لـMODNet. */
@@ -105,20 +106,36 @@ export function registerPhotoIpc(): void {
 
   ipcMain.handle('photos:suits', (): CustomSuit[] => parseCustomSuits(readSetting('photoSuits')));
 
-  /** «استورد قاطًا»: PNG شفّافة وحدها — والمعتمة يُقال سببها ولا تُستورد. */
-  ipcMain.handle('photos:importSuit', async (e): Promise<CustomSuit | null> => {
-    const win = BrowserWindow.fromWebContents(e.sender);
-    if (!win) return null;
-    const source = await pickOpenPath(win, { title: 'اختر صورة قاطٍ شفّافة', buttonLabel: 'أضف', filterName: 'PNG شفّافة', extensions: ['png'] });
-    if (!source) return null;
-    const kind = pngTransparency(new Uint8Array(await readFile(source)));
-    if (kind === 'not-png') throw new Error('الملف ليس PNG — القاط صورة PNG بخلفيةٍ شفّافة');
-    if (kind === 'opaque') throw new Error('الصورة بلا شفافية: خلفيّتها ستغطّي الصورة كلّها — احفظها PNG شفّافة الخلفية والعنق');
-    const path = await importFile(source, 'suits');
-    const name = source.split(/[\\/]/).pop()!.replace(/\.png$/i, '');
+  const addCustomSuit = (name: string, path: string): CustomSuit => {
     const suit: CustomSuit = { id: `custom-${Date.now().toString(36)}`, name, path, createdAt: new Date().toISOString() };
     writeSetting('photoSuits', [...parseCustomSuits(readSetting('photoSuits')), suit]);
     return suit;
+  };
+
+  /**
+   * «استورد قاطًا» (S39): PNG شفّافة تُضاف كما هي — وغيرها (JPG وWebP وBMP، وPNG معتمة) تعود بايتاتٍ تُحضَّر في الواجهة
+   * (`suitMatte.ts` بعد أن يفكّها Chromium) ثم تُضاف بـ`photos:addSuit`.
+   */
+  ipcMain.handle('photos:importSuit', async (e): Promise<SuitImport | null> => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const source = await pickOpenPath(win, { title: 'اختر صورة قاط', buttonLabel: 'أضف', filterName: 'صور', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] });
+    if (!source) return null;
+    const bytes = new Uint8Array(await readFile(source));
+    const name = source.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, '');
+    if (pngTransparency(bytes) !== 'ok') return { prepare: { name, bytes } };
+    return { suit: addCustomSuit(name, await importFile(source, 'suits')) };
+  });
+
+  /** القاط بعد تحضيره في الواجهة: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`)، ويُضاف إلى قاط المكتب. */
+  ipcMain.handle('photos:addSuit', async (_e, payload: { name: string; rgba: Uint8Array; width: number; height: number }): Promise<CustomSuit> => {
+    const { name, rgba, width, height } = payload ?? ({} as typeof payload);
+    const ok = (v: unknown) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= 4000;
+    if (!ok(width) || !ok(height) || !(rgba instanceof Uint8Array) || rgba.length !== width * height * 4) throw new Error('صورة القاط غير صالحة');
+    const png = writePng(rgba, width, height);
+    const file = `${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
+    await writeFile(join(storeDir('suits'), file), png);
+    return addCustomSuit(String(name ?? '').trim().slice(0, 80) || 'قاط', `suits/${file}`);
   });
 
   ipcMain.handle('photos:deleteSuit', async (_e, id: string): Promise<CustomSuit[]> => {
