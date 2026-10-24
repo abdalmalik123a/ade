@@ -16,7 +16,7 @@ import type { ColorErase } from '../../lib/useColorErase';
 type Props = {
   step: (n: number, title: string, extra?: React.ReactNode, later?: boolean) => JSX.Element;
   cutState: 'none' | 'running' | 'done';
-  small: 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  small: 'h-8 px-3 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
   modelReady: boolean;
   removeBackground: () => Promise<Landmarks | null>;
   customColor: string;

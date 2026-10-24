@@ -183,8 +183,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
 
   const chip = (on: boolean) =>
     `h-9 px-3 rounded-full font-label-md text-label-md transition-colors ${on ? 'bg-primary-fixed text-primary font-semibold' : 'bg-surface-container-lowest text-on-surface hover:bg-surface-container-high'}`;
-  const small = 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
-  const numInput = 'w-16 h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant text-center tabular';
+  const small = 'h-8 px-3 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  const numInput = 'input-field w-16 h-9 px-2 text-center tabular';
   const slider = (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, act: string, shown = pct(value)) => (
     <label className="flex items-center gap-space-sm">
       <span className="w-20 font-label-sm text-label-sm text-on-surface-variant">{label}</span>

@@ -14,7 +14,7 @@ type Props = {
   setName: Dispatch<SetStateAction<string>>;
   save: () => Promise<void>;
   nav: ToolNav;
-  btn: 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+  btn: 'h-9 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   toCustomer: () => Promise<void>;
 };
 

@@ -277,7 +277,7 @@ export default async function scenario(page, { shotsDir }) {
 
   // صفحةٌ من الماسح.
   await click('[data-act="pdf-scan"]');
-  ok('«امسح»: صفحةٌ من الماسح في آخر الملف، وتُعرض', (await waitCount(5)) === 5 && (await page.eval(`return document.querySelector('[data-pdf-page="5"]').className.includes('border-secondary');`)));
+  ok('«امسح»: صفحةٌ من الماسح في آخر الملف، وتُعرض', (await waitCount(5)) === 5 && (await page.eval(`return document.querySelector('[data-pdf-page="5"]').className.includes('border-cyan');`)));
 
   // الترقيم: طبقةٌ واحدة على الكلّ، وكلُّ صفحةٍ برقمها.
   await click('[data-act="pdf-number"]');

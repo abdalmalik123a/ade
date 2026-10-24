@@ -4,7 +4,7 @@
  */
 import FontSelect from './FontSelect';
 
-const SELECT = 'h-10 px-space-sm rounded-card bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface';
+const SELECT = 'input-field h-10 px-space-sm font-label-md text-label-md text-on-surface';
 
 export default function ClientBrandFields({ color, font, onChange }: { color: string; font: string; onChange: (patch: { color?: string; font?: string }) => void }) {
   return (

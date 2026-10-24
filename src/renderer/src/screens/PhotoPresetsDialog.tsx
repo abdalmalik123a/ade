@@ -33,7 +33,7 @@ export default function PresetsDialog({
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<PhotoPreset>) => setDraft((d) => ({ ...d, ...patch }));
   const num = (v: string) => Number(v.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))) || 0;
-  const field = 'h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant font-label-md text-label-md';
+  const field = 'input-field h-9 px-2 font-label-md text-label-md';
 
   async function save() {
     const p = { ...draft, id: draft.id || `preset-${Date.now().toString(36)}`, name: draft.name.trim(), source: draft.source?.trim() || null };

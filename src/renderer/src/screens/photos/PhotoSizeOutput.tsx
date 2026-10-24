@@ -16,13 +16,13 @@ import type { ToolNav } from '../../components/ToolFrame';
 
 type Props = {
   step: (n: number, title: string, extra?: React.ReactNode, later?: boolean) => JSX.Element;
-  small: 'h-8 px-3 rounded-card hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
+  small: 'h-8 px-3 rounded-btn hover:bg-surface-container-high font-label-sm text-label-sm text-on-surface-variant disabled:opacity-40';
   setPresetsOpen: Dispatch<SetStateAction<boolean>>;
   presets: PhotoPreset[];
   chip: (on: boolean) => string;
   presetId: string;
   choosePreset: (id: string) => void;
-  numInput: 'w-16 h-9 px-2 rounded-card bg-surface-container-lowest border border-outline-variant text-center tabular';
+  numInput: 'input-field w-16 h-9 px-2 text-center tabular';
   custom: Size;
   setCustom: Dispatch<SetStateAction<Size>>;
   preset: PhotoPreset;

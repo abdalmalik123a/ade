@@ -172,7 +172,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const btn = 'h-9 px-space-sm rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
+  const btn = 'h-9 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   const hasDoc = pages.length > 0;
   const pageOverlays = currentRef ? overlaysFor(plan, currentRef.id) : [];
   const pt = currentRef && sources[currentRef.source] ? shownPt(sources[currentRef.source]!, currentRef) : null;
