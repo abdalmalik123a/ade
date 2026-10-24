@@ -6,7 +6,7 @@ import type { Client } from '@shared/orders';
 
 type Props = {
   setSelected: Dispatch<SetStateAction<number | 'new' | null>>;
-  input: 'h-10 px-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface w-full';
+  input: 'input-field h-10 px-3 font-label-md text-label-md text-on-surface w-full';
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   clients: Client[];
@@ -20,7 +20,7 @@ export default function ClientsList({ setSelected, input, query, setQuery, clien
         <div className="flex items-center justify-between">
           <h1 className="font-headline-sm text-headline-sm text-on-surface font-bold">الجهات</h1>
           <button
-            className="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1"
+            className="h-9 px-space-md btn-act font-label-md text-label-md font-semibold flex items-center gap-1"
             data-act="new-client"
             type="button"
             onClick={() => setSelected('new')}
@@ -40,12 +40,12 @@ export default function ClientsList({ setSelected, input, query, setQuery, clien
         {clients.map((c) => (
           <button
             key={c.id}
-            className={`w-full p-space-sm rounded-lg text-right flex items-center gap-space-sm ${selected === c.id ? 'bg-primary-container text-on-primary' : 'hover:bg-surface-container-high text-on-surface'}`}
+            className={`w-full p-space-sm rounded-btn text-right flex items-center gap-space-sm ${selected === c.id ? 'bg-primary-fixed text-primary' : 'hover:bg-surface-container-high text-on-surface'}`}
             data-client={c.id}
             type="button"
             onClick={() => setSelected(c.id)}
           >
-            <span className="w-9 h-9 rounded-lg bg-white shrink-0 flex items-center justify-center overflow-hidden" style={c.color ? { boxShadow: `inset 0 -3px 0 ${c.color}` } : undefined}>
+            <span className="w-9 h-9 rounded-chip bg-white shrink-0 flex items-center justify-center overflow-hidden" style={c.color ? { boxShadow: `inset 0 -3px 0 ${c.color}` } : undefined}>
               {c.logo ? (
                 <img alt="" className="w-full h-full object-contain" src={`diwan://store/${c.logo}`} />
               ) : (

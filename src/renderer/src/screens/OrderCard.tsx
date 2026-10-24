@@ -33,7 +33,7 @@ export default function OrderCard({
   const info = statusOf(order.status);
   return (
     <article
-      className={`rounded-lg bg-surface-container-lowest p-space-sm space-y-space-xs shadow-[0_1px_3px_rgba(15,23,42,0.08)] ${due.tone === 'late' ? 'ring-2 ring-error/60' : ''}`}
+      className={`rounded-card bg-surface-container-lowest border border-outline-variant p-space-sm space-y-space-xs shadow-soft ${due.tone === 'late' ? 'ring-2 ring-error/60' : ''}`}
       data-order={order.id}
       data-status={order.status}
     >
@@ -62,7 +62,7 @@ export default function OrderCard({
       <div className="flex items-center gap-1 pt-1">
         {info.next && (
           <button
-            className="flex-1 h-8 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+            className="flex-1 h-8 btn-act font-label-md text-label-md font-semibold"
             data-act="advance"
             type="button"
             onClick={() => onMove(info.next!)}
@@ -72,7 +72,7 @@ export default function OrderCard({
         )}
         {(order.templateId || order.clientId) && (
           <button
-            className="h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+            className="h-8 px-2 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
             data-act="open-design"
             title={`${order.templateId ? `افتح «${order.templateTitle ?? 'التصميم'}»` : `صمّم لـ«${order.customer}» من المعرض`}${order.batchText ? ' وقائمته في الدفعة' : ''} — وملفّ الجهة يملأ حقوله`}
             type="button"
@@ -84,7 +84,7 @@ export default function OrderCard({
         )}
         {order.status === 'ready' && (
           <button
-            className="h-8 px-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-secondary font-label-sm text-label-sm flex items-center gap-1"
+            className="h-8 px-2 rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-secondary font-label-sm text-label-sm flex items-center gap-1"
             data-act="copy-ready"
             title="انسخ رسالةً للزبون: طلبكم جاهز — والصقها في محادثته"
             type="button"
@@ -96,7 +96,7 @@ export default function OrderCard({
         )}
         {onReceipt && (
           <button
-            className="h-8 w-8 rounded-lg hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
+            className="h-8 w-8 rounded-btn hover:bg-surface-container-high text-on-surface-variant flex items-center justify-center"
             data-act="print-receipt"
             title="اطبع وصل الاستلام — نسختان: للزبون وللمكتب"
             type="button"
@@ -108,7 +108,7 @@ export default function OrderCard({
         {order.status !== 'waiting' && order.status !== 'ready' && (
           // فعلٌ لا حال (البند ١٩): كانت ساعةً رملية وحدها فلا يُعرف أتقول «ينتظر» أم تنقله — وكلمتها تقابل «وصل ما ينقص».
           <button
-            className="h-8 px-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 whitespace-nowrap"
+            className="h-8 px-2 rounded-btn hover:bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 whitespace-nowrap"
             data-act="wait"
             title="انقله إلى «ينتظر الزبون» — تنقص صورٌ أو قائمة أو تأكيد"
             type="button"

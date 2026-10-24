@@ -18,7 +18,7 @@ export default function ClientOrders({ orders, today, current }: Props) {
       {orders.length === 0 ? (
         <p className="font-label-md text-label-md text-on-surface-variant">لا طلبات لها بعد — تُسجَّل من شاشة «الطلبات».</p>
       ) : (
-        <ul className="rounded-xl bg-surface-container-low divide-y divide-outline-variant/50">
+        <ul className="rounded-card bg-surface-container-low divide-y divide-outline-variant/50">
           {orders.map((o) => (
             <li key={o.id} className="px-space-md py-space-sm flex items-center justify-between gap-space-sm">
               <span className="font-label-md text-label-md text-on-surface font-semibold">{o.title}</span>

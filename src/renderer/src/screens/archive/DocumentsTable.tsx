@@ -127,7 +127,7 @@ export default function DocumentsTable({ allChecked, rows, setSelected, query, p
                 <td className="p-space-md text-center">
                   <div className="flex items-center justify-center gap-1">
                     <button
-                      className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-all disabled:opacity-30"
+                      className="w-8 h-8 rounded-btn bg-surface-container-high hover:bg-secondary hover:text-on-secondary flex items-center justify-center transition-all disabled:opacity-30"
                       title={row.status === 'void' ? 'مُبطَل — لا يُعاد طبعه' : 'إعادة طباعة طبق الأصل'}
                       type="button"
                       disabled={busy !== null || row.status === 'void'}
@@ -139,7 +139,7 @@ export default function DocumentsTable({ allChecked, rows, setSelected, query, p
                       <span className="material-symbols-outlined text-[18px]">print</span>
                     </button>
                     <button
-                      className="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-all"
+                      className="w-8 h-8 rounded-btn bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center transition-all"
                       title="كرّره — نسخةٌ جديدة من حيث كُتب (الشبّاك أو المحرّر)، والأصل يبقى كما صدر"
                       type="button"
                       onClick={(e) => {

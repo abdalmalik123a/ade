@@ -86,7 +86,7 @@ export function BasmalaSetting({
                 {on ? `تُضاف البسملة إلى ${differ} ترويسة محفوظة` : `تُزال البسملة من ${differ} ترويسة محفوظة`} — تأكيد؟
               </span>
               <button
-                className="h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+                className="h-8 px-3 btn-act font-label-md text-label-md font-semibold"
                 data-act="basmala-apply-confirm"
                 type="button"
                 onClick={() => void applyAll()}
@@ -94,7 +94,7 @@ export function BasmalaSetting({
                 نعم
               </button>
               <button
-                className="h-8 px-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
+                className="h-8 px-3 rounded-btn text-on-surface-variant hover:bg-surface-container-high font-label-md text-label-md"
                 type="button"
                 onClick={() => setConfirm(false)}
               >
@@ -103,7 +103,7 @@ export function BasmalaSetting({
             </>
           ) : (
             <button
-              className="h-8 px-3 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
+              className="h-8 px-3 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md"
               data-act="basmala-apply"
               type="button"
               onClick={() => setConfirm(true)}

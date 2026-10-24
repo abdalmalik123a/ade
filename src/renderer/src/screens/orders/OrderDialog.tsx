@@ -109,16 +109,16 @@ export function OrderDialog({
   }
 
   const input =
-    'h-10 px-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface w-full';
+    'input-field h-10 px-3 font-label-md text-label-md text-on-surface w-full';
   const chip = (on: boolean) =>
-    `h-8 px-3 rounded-full font-label-sm text-label-sm transition-colors ${on ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`;
+    `h-8 px-3 rounded-chip font-label-sm text-label-sm transition-colors ${on ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`;
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px] p-space-lg" data-order-dialog="">
-      <div className="w-full max-w-2xl max-h-full overflow-auto rounded-2xl bg-surface-container-lowest shadow-2xl">
+      <div className="w-full max-w-2xl max-h-full overflow-auto surface-panel">
         <div className="px-space-lg py-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">{order ? 'الطلب' : 'طلب جديد'}</span>
-          <button className="w-9 h-9 rounded-lg hover:bg-surface-container-high flex items-center justify-center" type="button" onClick={onClose}>
+          <button className="w-9 h-9 rounded-btn hover:bg-surface-container-high flex items-center justify-center" type="button" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -170,7 +170,7 @@ export function OrderDialog({
                     <span className="material-symbols-outlined text-[16px] text-secondary">badge</span>
                     مربوطٌ بملفّ <span className="font-semibold text-on-surface">{citizenName || '…'}</span> في الزبائن
                     <button
-                      className="ms-1 h-7 px-2 rounded-lg hover:bg-surface-container-high"
+                      className="ms-1 h-7 px-2 rounded-btn hover:bg-surface-container-high"
                       data-act="order-unlink-citizen"
                       title="فكّ الربط — ويبقى الاسم والهاتف كما كُتبا"
                       type="button"
@@ -181,7 +181,7 @@ export function OrderDialog({
                   </div>
                 ) : (
                   <button
-                    className="h-8 px-3 rounded-lg bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm text-on-surface flex items-center gap-1"
+                    className="h-8 px-3 rounded-btn bg-surface-container-high hover:bg-surface-container-highest font-label-sm text-label-sm text-on-surface flex items-center gap-1"
                     data-act="order-pick-citizen"
                     title="يملأ الاسم والهاتف من ملفّه، ويبقيان قابلين للتعديل"
                     type="button"
@@ -269,7 +269,7 @@ export function OrderDialog({
                 قائمة الأسماء {rows > 0 && <span className="text-on-surface-variant font-normal">— {count(rows, 'سطر')}</span>}
               </span>
               <button
-                className="h-8 px-space-sm rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
+                className="h-8 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-sm text-label-sm flex items-center gap-1"
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
@@ -285,7 +285,7 @@ export function OrderDialog({
               </button>
             </span>
             <textarea
-              className="h-24 p-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
+              className="h-24 p-3 rounded-field bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface resize-y"
               data-order-batch=""
               placeholder="الصقها من Excel كما وصلت — تُفتح بها الدفعة في التصاميم"
               value={batchText}
@@ -319,29 +319,29 @@ export function OrderDialog({
                 <span className="flex items-center gap-1">
                   <span className="font-label-sm text-label-sm text-error">يُحذف نهائيًّا؟</span>
                   <button
-                    className="h-9 px-3 rounded-lg bg-error text-on-error font-label-md text-label-md"
+                    className="h-9 px-3 rounded-btn bg-error text-on-error font-label-md text-label-md"
                     type="button"
                     onClick={() => void window.diwan.orders.delete(order.id).then(onDeleted)}
                   >
                     نعم، احذف
                   </button>
-                  <button className="h-9 px-3 rounded-lg font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(false)}>
+                  <button className="h-9 px-3 rounded-btn font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(false)}>
                     تراجع
                   </button>
                 </span>
               ) : (
-                <button className="h-9 px-3 rounded-lg text-error hover:bg-error-container font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(true)}>
+                <button className="h-9 px-3 rounded-btn text-error hover:bg-error-container font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(true)}>
                   حذف الطلب
                 </button>
               ))}
           </div>
           <div className="flex items-center gap-space-sm">
-            <button className="h-10 px-space-md rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-high" type="button" onClick={onClose}>
+            <button className="h-10 px-space-md rounded-btn font-label-md text-label-md text-on-surface hover:bg-surface-container-high" type="button" onClick={onClose}>
               إلغاء
             </button>
             {receipt && (
               <button
-                className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1"
+                className="h-10 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1"
                 data-act="save-order-receipt"
                 type="button"
                 onClick={() => void save(true)}
@@ -351,7 +351,7 @@ export function OrderDialog({
               </button>
             )}
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
               data-act="save-order"
               type="button"
               onClick={() => void save()}

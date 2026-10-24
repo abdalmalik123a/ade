@@ -48,19 +48,19 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
         </header>
 
         {error && (
-          <div className="p-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md">{error}</div>
+          <div className="p-space-sm rounded-card bg-error-container text-on-error-container font-label-md text-label-md">{error}</div>
         )}
 
         {/* سجلّ التدقيق */}
-        <section className="rounded-xl bg-surface-container-lowest shadow-sm overflow-hidden" data-audit-log="">
+        <section className="surface-panel overflow-hidden" data-audit-log="">
           <div className="p-space-md flex flex-wrap items-center gap-space-sm">
             <h2 className="font-headline-sm text-headline-sm text-on-surface flex-1">سجلّ التدقيق</h2>
-            <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+            <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-card">
               {[{ value: null, label: 'الكل' }, ...AUDIT_ENTITIES].map((o) => (
                 <button
                   key={o.label}
                   className={`h-8 px-space-sm rounded font-label-sm text-label-sm ${
-                    entity === o.value ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
+                    entity === o.value ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                   data-entity={o.value ?? 'all'}
                   type="button"
@@ -71,7 +71,7 @@ export default function AuditScreen({ onOpenSerial }: { onOpenSerial?: (serial: 
               ))}
             </div>
             <input
-              className="w-64 h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+              className="input-field w-64 h-9 px-3 text-on-surface font-label-md text-label-md"
               data-audit-search=""
               placeholder="رقم صادر، أو اسم، أو مشغّل…"
               value={query}

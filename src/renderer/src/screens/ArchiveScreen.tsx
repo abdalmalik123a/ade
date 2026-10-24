@@ -256,7 +256,7 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
 
         {(error || toast) && (
           <div
-            className={`flex items-start gap-space-xs p-space-sm rounded-lg font-label-md text-label-md ${
+            className={`flex items-start gap-space-xs p-space-sm rounded-card font-label-md text-label-md ${
               error ? 'bg-error-container text-on-error-container' : 'bg-secondary-fixed text-on-secondary-fixed'
             }`}
           >
@@ -299,7 +299,7 @@ export default function ArchiveScreen({ query: globalQuery = '', request = null,
         ) : null}
 
         {/* الكتب */}
-        <section className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+        <section className="surface-panel overflow-hidden">
           <div className="p-space-md flex items-center justify-between">
             <h3 className="font-headline-sm text-headline-sm text-on-surface">{query.trim() ? 'نتائج البحث' : 'كلّ الكتب'}</h3>
             <span className="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold">

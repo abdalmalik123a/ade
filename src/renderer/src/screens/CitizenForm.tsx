@@ -14,7 +14,7 @@ import { nationalIdHint, phoneHint } from '@shared/idChecks';
 import { CITIZEN_FIELDS, CITIZEN_GROUPS } from '@shared/citizenSchema';
 
 const inputCls =
-  'w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md focus:outline-none focus:ring-2 focus:ring-secondary';
+  'input-field w-full h-9 px-3 text-on-surface font-label-md text-label-md';
 
 function emptyInput(): CitizenInput {
   return {
@@ -121,10 +121,10 @@ export default function CitizenForm({
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 backdrop-blur-[2px]" data-citizen-form="">
-      <div className="w-[min(980px,94vw)] h-[min(760px,92vh)] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-[min(980px,94vw)] h-[min(760px,92vh)] surface-panel flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-space-sm">
-            <span className="p-1 rounded-lg bg-primary-container text-on-primary">
+            <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
               <span className="material-symbols-outlined text-[18px]">badge</span>
             </span>
             <span className="font-headline-sm text-headline-sm text-on-surface">
@@ -135,14 +135,14 @@ export default function CitizenForm({
           <div className="flex items-center gap-space-sm">
             <button
               type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-semibold hover:bg-secondary-fixed-dim transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-btn bg-secondary-fixed text-on-secondary-fixed font-label-md text-label-md font-semibold hover:bg-secondary-fixed-dim transition-colors shadow-low"
               onClick={() => setWhatsappOpen(true)}
             >
               <span className="material-symbols-outlined text-[18px]">content_paste_go</span>
               <span>لصق ذكي من واتساب</span>
             </button>
             <button
-              className="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
+              className="w-9 h-9 rounded-btn text-on-surface-variant hover:bg-surface-container-high transition-colors flex items-center justify-center"
               title="إغلاق (Esc)"
               type="button"
               onClick={() => void close()}
@@ -190,7 +190,7 @@ export default function CitizenForm({
         <div className="flex-1 overflow-y-auto p-space-lg space-y-space-md">
           <div className="flex items-start gap-space-lg">
             <div className="flex flex-col items-center gap-space-xs shrink-0">
-              <div className="w-24 h-32 rounded-lg bg-surface-container-high overflow-hidden flex items-center justify-center">
+              <div className="w-24 h-32 rounded-card bg-surface-container-high overflow-hidden flex items-center justify-center">
                 {form.photoPath ? (
                   <img
                     alt=""
@@ -296,7 +296,7 @@ export default function CitizenForm({
           <div className="flex flex-col gap-1">
             <label className="font-label-sm text-label-sm text-on-surface-variant">ملاحظات</label>
             <textarea
-              className="w-full p-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:ring-1 focus:ring-secondary resize-none"
+              className="input-field w-full p-space-sm text-on-surface font-body-md text-body-md resize-none"
               rows={3}
               value={form.notes ?? ''}
               onChange={(e) => set('notes', e.target.value || null)}
@@ -327,14 +327,14 @@ export default function CitizenForm({
           </span>
           <div className="flex items-center gap-space-sm">
             <button
-              className="px-space-md h-9 rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+              className="px-space-md h-9 rounded-btn text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
               type="button"
               onClick={() => void close()}
             >
               إلغاء
             </button>
             <button
-              className="px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold flex items-center gap-space-xs disabled:opacity-40"
+              className="px-space-lg h-9 btn-act font-label-md text-label-md font-bold flex items-center gap-space-xs disabled:opacity-40"
               type="button"
               disabled={saving}
               onClick={() => void save()}

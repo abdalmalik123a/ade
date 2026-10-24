@@ -19,7 +19,7 @@ export default function AttachmentPreview({ setPreview, preview }: Props) {
       <div className="mb-space-sm flex items-center gap-space-md text-on-primary">
         <span className="font-headline-sm text-headline-sm">{preview.docType}</span>
         <button
-          className="w-9 h-9 rounded-lg bg-surface-container-lowest text-on-surface flex items-center justify-center"
+          className="w-9 h-9 rounded-btn bg-surface-container-lowest text-on-surface flex items-center justify-center"
           title="إغلاق"
           type="button"
           onClick={() => setPreview(null)}
@@ -29,7 +29,7 @@ export default function AttachmentPreview({ setPreview, preview }: Props) {
       </div>
       <img
         alt={preview.docType}
-        className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl bg-surface-container-lowest"
+        className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-card bg-surface-container-lowest"
         src={storeUrl(preview.filePath)}
         onClick={(e) => e.stopPropagation()}
       />

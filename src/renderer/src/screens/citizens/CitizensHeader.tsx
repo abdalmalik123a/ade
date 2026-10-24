@@ -30,7 +30,7 @@ export default function CitizensHeader({ busy, checkScanner, scanners, setIdDupl
       </div>
       <div className="flex items-center gap-space-sm">
         <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-[0_1px_8px_rgba(0,0,0,0.04)] disabled:opacity-40"
+          className="flex items-center gap-space-xs px-space-md h-10 rounded-btn bg-surface-container-lowest text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md shadow-low disabled:opacity-40"
           type="button"
           disabled={busy === 'scanner'}
           onClick={() => void checkScanner()}
@@ -52,7 +52,7 @@ export default function CitizensHeader({ busy, checkScanner, scanners, setIdDupl
           )}
         </button>
         <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+          className="flex items-center gap-space-xs px-space-md h-10 rounded-btn bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-low"
           type="button"
           title="الهوية والبطاقة بوجهيها بمقاسها الحقيقي على ورقة A4"
           onClick={() => setIdDuplexOpen(true)}
@@ -61,7 +61,7 @@ export default function CitizensHeader({ busy, checkScanner, scanners, setIdDupl
           <span>استنساخ هوية</span>
         </button>
         <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+          className="flex items-center gap-space-xs px-space-md h-10 rounded-btn bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-low"
           data-act="open-id-sheet"
           type="button"
           title="عدّة مستمسكاتٍ بمقاسها الحقيقي على ورقة A4 واحدة — الوطنية والسكن وجهًا وظهرًا"
@@ -71,7 +71,7 @@ export default function CitizensHeader({ busy, checkScanner, scanners, setIdDupl
           <span>ورقة المستمسكات</span>
         </button>
         <button
-          className="flex items-center gap-space-xs px-space-md h-10 rounded-lg bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"
+          className="flex items-center gap-space-xs px-space-md h-10 rounded-btn bg-surface-container-lowest text-secondary hover:bg-surface-container-high transition-colors font-label-md text-label-md font-semibold shadow-low"
           data-act="citizens-import"
           type="button"
           title="قائمة زبائن من ملف Excel أو CSV — من له ملفٌّ يُكمل فارغه ولا يتكرّر"
@@ -81,7 +81,7 @@ export default function CitizensHeader({ busy, checkScanner, scanners, setIdDupl
           <span>استورد من Excel</span>
         </button>
         <button
-          className="flex items-center gap-space-xs px-space-lg h-10 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-bold transition-all"
+          className="flex items-center gap-space-xs px-space-lg h-10 btn-act font-label-md text-label-md font-bold transition-all"
           type="button"
           onClick={() => setForm({ open: true, initial: null })}
         >

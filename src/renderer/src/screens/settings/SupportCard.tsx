@@ -21,7 +21,7 @@ export default function SupportCard({ card, title }: Props) {
       </p>
       <div>
         <button
-          className="h-10 px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
+          className="h-10 px-space-md rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high font-label-md text-label-md flex items-center gap-1"
           data-act="open-problem-report"
           type="button"
           onClick={() => setOpen(true)}

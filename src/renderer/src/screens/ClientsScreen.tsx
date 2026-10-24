@@ -101,7 +101,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
   }
 
   const input =
-    'h-10 px-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface w-full';
+    'input-field h-10 px-3 font-label-md text-label-md text-on-surface w-full';
   const today = localToday();
 
   return (
@@ -128,7 +128,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
             <div className="max-w-3xl space-y-space-lg" data-client-file="">
               <div className="flex items-start gap-space-lg">
                 <button
-                  className="w-28 h-28 shrink-0 rounded-2xl bg-white border-2 border-dashed border-outline-variant hover:border-primary flex flex-col items-center justify-center gap-1 overflow-hidden disabled:opacity-50"
+                  className="w-28 h-28 shrink-0 rounded-card bg-white border-2 border-dashed border-outline-variant hover:border-primary flex flex-col items-center justify-center gap-1 overflow-hidden disabled:opacity-50"
                   data-act="client-logo"
                   disabled={!current}
                   title={current ? 'اختر شعار الجهة' : 'احفظ الجهة أولًا ثم ضع شعارها'}
@@ -146,7 +146,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                 </button>
                 <div className="flex-1 space-y-space-sm">
                   <input
-                    className="w-full h-12 px-3 rounded-lg bg-surface-container-low border border-outline-variant font-headline-sm text-headline-sm text-on-surface"
+                    className="w-full h-12 px-3 rounded-field bg-surface-container-low border border-outline-variant font-headline-sm text-headline-sm text-on-surface"
                     data-client-name=""
                     placeholder="اسم الجهة كما يُطبع — مثال: مدرسة الرافدين الابتدائية"
                     value={draft.name}
@@ -156,7 +156,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                     {KINDS.map((k) => (
                       <button
                         key={k}
-                        className={`h-8 px-3 rounded-full font-label-sm text-label-sm ${draft.kind === k ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
+                        className={`h-8 px-3 rounded-chip font-label-sm text-label-sm ${draft.kind === k ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
                         type="button"
                         onClick={() => setDraft({ ...draft, kind: draft.kind === k ? '' : k })}
                       >
@@ -202,7 +202,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-space-sm">
                   <button
-                    className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+                    className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold"
                     data-act="save-client"
                     type="button"
                     onClick={() => void save()}
@@ -211,7 +211,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                   </button>
                   {current && (
                     <button
-                      className="h-10 px-space-md rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5"
+                      className="h-10 px-space-md rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5"
                       data-act="design-for"
                       type="button"
                       onClick={() => onDesignFor(current)}
@@ -226,7 +226,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                     <span className="flex items-center gap-1">
                       <span className="font-label-sm text-label-sm text-on-surface-variant">تُحذف الجهة وتبقى طلباتها باسمها</span>
                       <button
-                        className="h-9 px-3 rounded-lg bg-error text-on-error font-label-md text-label-md"
+                        className="h-9 px-3 rounded-btn bg-error text-on-error font-label-md text-label-md"
                         type="button"
                         onClick={() =>
                           void window.diwan.clients.delete(current.id).then(async () => {
@@ -238,12 +238,12 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
                       >
                         احذف
                       </button>
-                      <button className="h-9 px-3 rounded-lg font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(false)}>
+                      <button className="h-9 px-3 rounded-btn font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(false)}>
                         تراجع
                       </button>
                     </span>
                   ) : (
-                    <button className="h-9 px-3 rounded-lg text-error hover:bg-error-container font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(true)}>
+                    <button className="h-9 px-3 rounded-btn text-error hover:bg-error-container font-label-md text-label-md" type="button" onClick={() => setConfirmDelete(true)}>
                       حذف الجهة
                     </button>
                   ))}
@@ -262,7 +262,7 @@ export default function ClientsScreen({ onDesignFor, onChanged }: ClientsScreenP
       </div>
 
       {toast && (
-        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-secondary font-label-md text-label-md">
+        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-card bg-inverse-surface text-inverse-on-surface font-label-md text-label-md">
           {toast.text}
         </div>
       )}

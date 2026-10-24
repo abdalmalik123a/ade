@@ -41,7 +41,7 @@ export function CounterCardsSetting({
         {ordered.map((c) => {
           const on = cards.includes(c.id);
           return (
-            <div key={c.id} className={`flex items-center gap-space-xs p-1.5 rounded-lg ${on ? 'bg-surface-container-low' : ''}`} data-card-row={c.id}>
+            <div key={c.id} className={`flex items-center gap-space-xs p-1.5 rounded-card ${on ? 'bg-surface-container-low' : ''}`} data-card-row={c.id}>
               <label className={`flex-1 min-w-0 flex items-center gap-space-xs font-label-md text-label-md cursor-pointer ${on ? 'text-on-surface' : 'text-on-surface-variant'}`}>
                 <input
                   checked={on}

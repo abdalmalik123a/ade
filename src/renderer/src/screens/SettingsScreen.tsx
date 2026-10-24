@@ -67,7 +67,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
     });
   };
 
-  const card = 'rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col gap-space-sm';
+  const card = 'surface-panel p-space-md flex flex-col gap-space-sm';
   // كلّ عنوان قسمٍ مرساةٌ للفهرس (البند ٢٠) — والهامش فوقه لا يدسّه تحت الفهرس الثابت.
   const title = (icon: string, text: string) => (
     <h2 className="font-headline-sm text-headline-sm text-on-surface flex items-center gap-space-xs" data-settings-section={text} style={{ scrollMarginTop: 136 }}>
@@ -93,7 +93,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
               </span>
             )}
             <button
-              className="h-9 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs shadow-sm"
+              className="h-9 px-space-md rounded-btn bg-surface-container-lowest hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs shadow-low"
               data-act="open-about"
               type="button"
               onClick={() => setAbout(true)}
@@ -224,7 +224,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 
             <div className="lg:col-span-2">
               <button
-                className="w-full h-11 rounded-xl bg-primary text-on-primary font-label-lg text-label-lg font-semibold disabled:opacity-40"
+                className="w-full h-11 btn-act font-label-lg text-label-lg font-semibold disabled:opacity-40"
                 data-act="save-settings"
                 disabled={!dirty}
                 type="button"
@@ -257,8 +257,8 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg font-label-md text-label-md ${
-            toast.tone === 'ok' ? 'bg-secondary text-on-secondary' : 'bg-error text-on-error'
+          className={`fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-soft font-label-md text-label-md ${
+            toast.tone === 'ok' ? 'bg-inverse-surface text-inverse-on-surface' : 'bg-error text-on-error'
           }`}
         >
           {toast.text}

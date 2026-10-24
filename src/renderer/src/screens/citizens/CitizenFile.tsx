@@ -42,7 +42,7 @@ type Props = {
 
 export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy, withBusy, say, setConfirmDelete, confirmDelete, removeCitizen, field, importAttachment, setCameraOpen, setMultiOpen, setUploadOpen, setIdDuplexOpen, setIdSheetOpen, scan, setPreview, setDetail, setDeskewAttachment, ocrReady, runOcr, readBack, reloadDetail, reloadList, onRepeatDocument, reprintDocument }: Props) {
   return (
-    <section className="bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-space-md flex flex-col gap-space-md">
+    <section className="surface-panel p-space-md flex flex-col gap-space-md">
       {detail === null ? (
         <div className="py-space-xl flex flex-col items-center gap-space-sm text-on-surface-variant">
           <span className="material-symbols-outlined text-[44px]">badge</span>
@@ -53,7 +53,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
             أضف ملف مواطن أو اختر واحدًا من الدليل
           </span>
           <button
-            className="mt-space-sm px-space-lg h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold"
+            className="mt-space-sm px-space-lg h-9 btn-act font-label-md text-label-md font-semibold"
             type="button"
             onClick={() => setForm({ open: true, initial: null })}
           >
@@ -64,7 +64,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
         <>
           <div className="flex items-start justify-between gap-space-md">
             <div className="flex items-center gap-space-md">
-              <div className="w-16 h-20 rounded-lg bg-surface-container-high overflow-hidden flex items-center justify-center">
+              <div className="w-16 h-20 rounded-card bg-surface-container-high overflow-hidden flex items-center justify-center">
                 {detail.photoPath ? (
                   <img
                     alt=""
@@ -104,7 +104,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
 
             <div className="flex items-center gap-space-xs">
               <button
-                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all"
+                className="flex items-center gap-space-xs px-space-md h-9 btn-act font-label-md text-label-md font-semibold transition-all"
                 type="button"
                 onClick={() => onInsertIntoEditor?.(detail.id)}
               >
@@ -112,7 +112,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
                 <span>إدراج في محرر الكتب</span>
               </button>
               <button
-                className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-colors"
+                className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-colors"
                 data-act="fill-card"
                 title="بطاقة التعبئة: نافذةٌ صغيرة فوق المتصفّح — الاسم مفرَّقًا والأرقام بصيغها، والنقر ينسخ"
                 type="button"
@@ -122,7 +122,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
                 <span>بطاقة التعبئة</span>
               </button>
               <button
-                className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
+                className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors"
                 title="تعديل بيانات المواطن"
                 type="button"
                 onClick={() => setForm({ open: true, initial: detail })}
@@ -130,7 +130,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
                 <span className="material-symbols-outlined text-[18px]">edit</span>
               </button>
               <button
-                className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors disabled:opacity-40"
+                className="w-9 h-9 rounded-btn bg-surface-container-high text-on-surface flex items-center justify-center hover:bg-surface-container-highest transition-colors disabled:opacity-40"
                 title="تصدير السجل كملف Excel"
                 type="button"
                 disabled={busy === 'excel'}
@@ -144,7 +144,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
                 <span className="material-symbols-outlined text-[18px]">table_view</span>
               </button>
               <button
-                className="w-9 h-9 rounded-lg bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
+                className="w-9 h-9 rounded-btn bg-surface-container-high text-error flex items-center justify-center hover:bg-error-container transition-colors"
                 title="حذف ملف المواطن"
                 type="button"
                 onClick={() =>
@@ -160,7 +160,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
           </div>
 
           {confirmDelete && (
-            <div className="rounded-lg bg-error-container p-space-md flex items-center justify-between gap-space-md">
+            <div className="rounded-card bg-error-container p-space-md flex items-center justify-between gap-space-md">
               <span className="font-label-md text-label-md text-on-error-container">
                 {confirmDelete.usage > 0
                   ? `صدر باسم هذا الزبون ${count(confirmDelete.usage, 'كتاب')}. حذف الملف يبقي الكتب في الأرشيف لكن يفكّ ارتباطها. تحذف؟`
@@ -168,14 +168,14 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
               </span>
               <div className="flex items-center gap-space-xs shrink-0">
                 <button
-                  className="px-space-md h-9 rounded-lg bg-error text-on-error font-label-md text-label-md font-semibold"
+                  className="px-space-md h-9 rounded-btn bg-error text-on-error font-label-md text-label-md font-semibold"
                   type="button"
                   onClick={() => void removeCitizen()}
                 >
                   نعم، احذف
                 </button>
                 <button
-                  className="px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+                  className="px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md"
                   type="button"
                   onClick={() => setConfirmDelete(null)}
                 >
@@ -194,7 +194,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
               .map(([label, value]) => (
               <div
                 key={label}
-                className="rounded-lg bg-surface-container-low p-space-sm flex items-start justify-between gap-space-xs group"
+                className="rounded-card bg-surface-container-low p-space-sm flex items-start justify-between gap-space-xs group"
               >
                 <div className="flex flex-col gap-space-xs min-w-0">
                   <span className="font-label-sm text-label-sm text-on-surface-variant">

@@ -21,7 +21,7 @@ type Props = {
 
 export default function DocumentInspect({ detail, busy, savePdf, setVoidOpen, voidOpen, voidReason, setVoidReason, voidDoc, history }: Props) {
   return (
-    <div className="mx-space-md mb-space-sm p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface-variant" data-inspect="">
+    <div className="mx-space-md mb-space-sm p-space-sm rounded-card bg-surface-container-low flex flex-col gap-space-xs font-label-sm text-label-sm text-on-surface-variant" data-inspect="">
       <div className="flex flex-wrap items-center gap-space-md">
         <span className="flex items-center gap-1 text-on-surface font-semibold">
           <span className="material-symbols-outlined text-[16px] text-secondary">fingerprint</span>
@@ -68,7 +68,7 @@ export default function DocumentInspect({ detail, busy, savePdf, setVoidOpen, vo
           <span className="text-on-surface">سبب الإبطال — يبقى الكتاب برقمه ولا يُعاد طبعه:</span>
           <input
             autoFocus
-            className="flex-1 min-w-[16rem] h-8 px-2 rounded bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-1 focus:ring-error"
+            className="input-field flex-1 min-w-[16rem] h-8 px-2 text-on-surface"
             data-void-reason=""
             placeholder="مثال: صدر باسمٍ خاطئ، وأُعيد برقمٍ جديد"
             value={voidReason}

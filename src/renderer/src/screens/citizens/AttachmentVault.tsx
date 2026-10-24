@@ -48,7 +48,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
         </div>
         <div className="flex items-center gap-space-xs">
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
             type="button"
             disabled={busy === 'import'}
             onClick={() => void importAttachment('')}
@@ -57,7 +57,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>افتح ملفًّا</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             data-act="camera-attachment"
             title="صوّر المستمسك بكاميرا الحاسوب — ثم يُسوّى ويُقوَّم كالمسح"
             type="button"
@@ -67,7 +67,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>التقط بالكاميرا</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md"
             data-act="multi-card"
             title="عدّة بطاقاتٍ على الزجاج معًا: تُعرف كلٌّ وتُقصّ، ويُطابَق ظهرها بوجهها"
             type="button"
@@ -77,7 +77,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>عدّة بطاقات بمسحة</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
             type="button"
             disabled={detail.attachments.length === 0 || busy === 'zip'}
             onClick={() =>
@@ -91,7 +91,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>تصدير الكل ZIP</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
+            className="flex items-center gap-space-xs px-space-md h-9 rounded-btn bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md disabled:opacity-40"
             data-act="upload-export"
             title="كلّ مستمسكٍ صورةٌ بحدّ خانة الرفع — مرقّمةٌ بترتيب الاستمارة"
             type="button"
@@ -102,7 +102,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>صدّر للرفع</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
+            className="flex items-center gap-space-xs px-space-md h-9 btn-soft font-label-md text-label-md transition-all shadow-low"
             type="button"
             title="مستمسكات الزبون بوجهيها بمقاسها الحقيقي"
             onClick={() => setIdDuplexOpen(true)}
@@ -111,7 +111,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>استنساخ هوية</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-secondary-container text-on-secondary-container font-label-md text-label-md font-semibold hover:bg-secondary-container/80 transition-all shadow-sm"
+            className="flex items-center gap-space-xs px-space-md h-9 btn-soft font-label-md text-label-md transition-all shadow-low"
             data-act="citizen-id-sheet"
             type="button"
             title="مستمسكات الزبون كلّها بمقاسها الحقيقي على ورقة A4 واحدة"
@@ -121,7 +121,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
             <span>ورقة مستمسكاته</span>
           </button>
           <button
-            className="flex items-center gap-space-xs px-space-md h-9 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold transition-all disabled:opacity-40"
+            className="flex items-center gap-space-xs px-space-md h-9 btn-act font-label-md text-label-md font-semibold transition-all disabled:opacity-40"
             type="button"
             disabled={busy === 'scan'}
             onClick={() => void scan('')}
@@ -135,7 +135,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
       </div>
 
       {detail.attachments.length === 0 ? (
-        <div className="py-space-lg rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
+        <div className="py-space-lg rounded-card border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
           <span className="material-symbols-outlined text-[32px]">cloud_upload</span>
           <span className="font-label-md text-label-md">
             امسح المستمسك ضوئيًا أو استورده من الحاسوب
@@ -149,7 +149,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
           {detail.attachments.map((a) => (
             <div
               key={a.id}
-              className="rounded-lg bg-surface-container-low overflow-hidden flex flex-col"
+              className="rounded-card bg-surface-container-low overflow-hidden flex flex-col"
             >
               <button
                 className="w-full aspect-[1.6/1] bg-surface-container-high overflow-hidden"
@@ -165,7 +165,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
               </button>
               <div className="p-space-sm flex flex-col gap-space-xs">
                 <input
-                  className="w-full h-7 px-1 rounded bg-surface-container-lowest text-on-surface font-label-md text-label-md focus:outline-none focus:ring-1 focus:ring-secondary"
+                  className="input-field w-full h-7 px-1 text-on-surface font-label-md text-label-md"
                   value={a.docType}
                   onChange={(e) => {
                     const v = e.target.value;

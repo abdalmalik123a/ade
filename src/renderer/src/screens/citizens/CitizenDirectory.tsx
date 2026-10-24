@@ -21,7 +21,7 @@ type Props = {
 
 export default function CitizenDirectory({ stats, query, setQuery, active, setActive, categories, items, capNote, selectedId, setSelectedId }: Props) {
   return (
-    <section className="bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] p-space-md flex flex-col gap-space-sm">
+    <section className="surface-panel p-space-md flex flex-col gap-space-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-space-xs">
           <span className="material-symbols-outlined text-secondary text-[20px]">contacts</span>
@@ -39,7 +39,7 @@ export default function CitizenDirectory({ stats, query, setQuery, active, setAc
           search
         </span>
         <input
-          className="w-full h-10 pr-10 pl-3 rounded-lg bg-surface-container-low text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm focus:outline-none focus:ring-1 focus:ring-secondary"
+          className="input-field w-full h-10 pr-10 pl-3 text-on-surface placeholder:text-on-surface-variant text-body-sm font-body-sm"
           placeholder="ابحث بالاسم أو الرقم الوطني..."
           type="text"
           value={query}
@@ -80,14 +80,14 @@ export default function CitizenDirectory({ stats, query, setQuery, active, setAc
               key={c.id}
               className={
                 c.id === selectedId
-                  ? 'text-right rounded-lg p-space-sm bg-surface-container-high border-r-2 border-secondary transition-colors'
-                  : 'text-right rounded-lg p-space-sm hover:bg-surface-container-low transition-colors'
+                  ? 'text-right rounded-btn p-space-sm bg-primary-fixed text-primary border-r-2 border-cyan transition-colors'
+                  : 'text-right rounded-btn p-space-sm hover:bg-surface-container-low transition-colors'
               }
               type="button"
               onClick={() => setSelectedId(c.id)}
             >
               <div className="flex items-center gap-space-sm">
-                <div className="w-10 h-10 rounded-lg bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-card bg-surface-container-high overflow-hidden flex items-center justify-center shrink-0">
                   {c.photoPath ? (
                     <img alt="" className="w-full h-full object-cover" src={storeUrl(c.photoPath)} />
                   ) : (

@@ -16,7 +16,7 @@ export default function CitizenDocuments({ detail, onRepeatDocument, reprintDocu
         سجل المعاملات والكتب الإدارية الصادرة للمواطن
       </h4>
       {detail.documents.length === 0 ? (
-        <div className="py-space-lg rounded-lg border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
+        <div className="py-space-lg rounded-card border border-dashed border-outline-variant flex flex-col items-center gap-space-xs text-on-surface-variant">
           <span className="material-symbols-outlined text-[28px]">history_edu</span>
           <span className="font-label-md text-label-md">
             لم يصدر أي كتاب لهذا المواطن بعد
@@ -49,7 +49,7 @@ export default function CitizenDocuments({ detail, onRepeatDocument, reprintDocu
                     <div className="flex items-center gap-1">
                       {/* الكتاب نفسه بقيمه — لا ورقةٌ فارغة باسم الزبون (د١): كان يمرّر رقم الزبون. */}
                       <button
-                        className="px-space-sm h-8 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+                        className="px-space-sm h-8 rounded-btn bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
                         data-act="repeat-document"
                         type="button"
                         title="كرّره: الكتاب نفسه بقيمه برقم صادر جديد وتأريخ اليوم — والأصل يبقى في السجلّ كما خرج"
@@ -59,7 +59,7 @@ export default function CitizenDocuments({ detail, onRepeatDocument, reprintDocu
                         <span>كرّره</span>
                       </button>
                       <button
-                        className="px-space-sm h-8 rounded-lg text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
+                        className="px-space-sm h-8 rounded-btn text-on-surface hover:bg-surface-container-highest font-label-sm text-label-sm flex items-center gap-1"
                         data-act="reprint-document"
                         type="button"
                         title="أعد طبعه كما صدر — برقمه نفسه، وتُقيَّد الطبعة في السجلّ"

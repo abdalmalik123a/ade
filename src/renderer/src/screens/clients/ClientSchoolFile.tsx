@@ -6,14 +6,14 @@ import { SCHOOL_GENDERS, academicYearText } from '@shared/schoolFile';
 import type { Draft } from './shared';
 
 type Props = {
-  input: 'h-10 px-3 rounded-lg bg-surface-container-low border border-outline-variant font-label-md text-label-md text-on-surface w-full';
+  input: 'input-field h-10 px-3 font-label-md text-label-md text-on-surface w-full';
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
 };
 
 export default function ClientSchoolFile({ input, draft, setDraft }: Props) {
   return (
-    <div className="rounded-xl bg-surface-container-low p-space-md space-y-space-sm" data-school-file="">
+    <div className="rounded-card bg-surface-container-low p-space-md space-y-space-sm" data-school-file="">
       <h2 className="font-body-md text-body-md text-on-surface font-semibold flex items-center gap-1">
         <span className="material-symbols-outlined text-[18px] text-secondary">school</span>
         ملفّ المدرسة — يملأ كتبها في الشبّاك بـ«هات المدرسة»
@@ -31,7 +31,7 @@ export default function ClientSchoolFile({ input, draft, setDraft }: Props) {
             {SCHOOL_GENDERS.map((g) => (
               <button
                 key={g}
-                className={`h-7 px-3 rounded-full font-label-sm text-label-sm ${draft.schoolGender === g ? 'bg-primary-container text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
+                className={`h-7 px-3 rounded-chip font-label-sm text-label-sm ${draft.schoolGender === g ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'}`}
                 data-school-gender-chip={g}
                 type="button"
                 onClick={() => setDraft({ ...draft, schoolGender: g })}

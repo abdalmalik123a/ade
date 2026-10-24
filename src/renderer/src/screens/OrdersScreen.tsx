@@ -185,7 +185,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
             )}
           </div>
           <div className="flex items-center gap-space-sm">
-            <div className="flex p-1 rounded-xl bg-surface-container-low">
+            <div className="flex p-1 rounded-card bg-surface-container-low">
               {(
                 [
                   ['open', 'ما لم يكتمل'],
@@ -194,7 +194,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
               ).map(([key, label]) => (
                 <button
                   key={key}
-                  className={`h-9 px-4 rounded-lg font-label-md text-label-md ${tab === key ? 'bg-primary-container text-on-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                  className={`h-9 px-4 rounded-btn font-label-md text-label-md ${tab === key ? 'bg-primary-fixed text-primary font-semibold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
                   data-tab={key}
                   type="button"
                   onClick={() => setTab(key)}
@@ -204,14 +204,14 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
               ))}
             </div>
             <input
-              className="h-10 w-56 px-3 rounded-lg bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
+              className="h-10 w-56 px-3 rounded-field bg-surface-container-lowest border border-outline-variant font-label-md text-label-md text-on-surface"
               data-orders-search=""
               placeholder="بحث في الطلبات…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button
-              className="h-10 px-space-lg rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5"
+              className="h-10 px-space-lg btn-act font-label-md text-label-md font-semibold flex items-center gap-1.5"
               data-act="new-order"
               type="button"
               onClick={() => {
@@ -231,7 +231,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
               const list = orders.filter((o) => col.statuses.includes(o.status));
               const extra = col.key === 'yours' ? drafts.length : col.key === 'customer' ? parked.length : 0;
               return (
-                <section key={col.key} className="min-h-0 flex flex-col rounded-xl bg-surface-container-low" data-column={col.key}>
+                <section key={col.key} className="min-h-0 flex flex-col surface-panel" data-column={col.key}>
                   <div className="px-space-md pt-space-md pb-space-sm">
                     <div className="flex items-center justify-between">
                       <span className="font-body-md text-body-md text-on-surface font-semibold">{col.label}</span>
@@ -286,7 +286,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
             })}
           </div>
         ) : (
-          <section className="rounded-xl bg-surface-container-lowest overflow-auto">
+          <section className="surface-panel overflow-auto">
             {orders.length === 0 ? (
               <p className="p-space-xl text-center font-body-md text-body-md text-on-surface-variant">لم يُسلَّم شيء بعد</p>
             ) : (
@@ -309,7 +309,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
                       <td className="p-space-sm tabular">{o.deliveredAt ? toIndic(o.deliveredAt.slice(0, 10)) : '—'}</td>
                       <td className="p-space-sm text-left">
                         <button
-                          className="h-8 px-3 rounded-lg hover:bg-surface-container-high text-on-surface-variant"
+                          className="h-8 px-3 rounded-btn hover:bg-surface-container-high text-on-surface-variant"
                           type="button"
                           onClick={() => void move(o, 'ready')}
                         >
@@ -349,7 +349,7 @@ export default function OrdersScreen({ onOpenDesign, onChanged, onOpenDraft, onO
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-xl shadow-lg bg-secondary text-on-secondary font-label-md text-label-md">
+        <div className="fixed bottom-6 left-6 z-50 px-space-lg py-space-sm rounded-card shadow-card bg-inverse-surface text-inverse-on-surface font-label-md text-label-md">
           {toast.text}
         </div>
       )}

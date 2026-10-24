@@ -378,8 +378,8 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
         <div
           className={
             toast.tone === 'ok'
-              ? 'fixed bottom-6 right-80 z-[60] px-space-lg py-space-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md shadow-lg flex items-center gap-space-xs max-w-lg'
-              : 'fixed bottom-6 right-80 z-[60] px-space-lg py-space-sm rounded-lg bg-error-container text-on-error-container font-label-md text-label-md shadow-lg flex items-center gap-space-xs max-w-lg'
+              ? 'fixed bottom-6 right-80 z-[60] px-space-lg py-space-sm rounded-card bg-inverse-surface text-inverse-on-surface font-label-md text-label-md shadow-soft flex items-center gap-space-xs max-w-lg'
+              : 'fixed bottom-6 right-80 z-[60] px-space-lg py-space-sm rounded-card bg-error-container text-on-error-container font-label-md text-label-md shadow-soft flex items-center gap-space-xs max-w-lg'
           }
         >
           <span className="material-symbols-outlined text-[18px]">

@@ -21,7 +21,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
       onClick={() => setOcrPanel(null)}
     >
       <div
-        className="w-[min(760px,92vw)] max-h-[80vh] rounded-xl bg-surface-container-lowest shadow-2xl flex flex-col overflow-hidden"
+        className="w-[min(760px,92vw)] max-h-[80vh] surface-panel flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
@@ -66,7 +66,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
               ) : null;
             const personal = [mrz.optional1, mrz.optional2].map((v) => v.replace(/\D/g, '')).find((v) => v.length === 12) ?? null;
             return (
-              <div className="mb-space-md p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1 font-label-md text-label-md" data-mrz={mrz.valid ? 'valid' : 'invalid'}>
+              <div className="mb-space-md p-space-sm rounded-card bg-surface-container-low flex flex-col gap-1 font-label-md text-label-md" data-mrz={mrz.valid ? 'valid' : 'invalid'}>
                 <span className="font-semibold text-on-surface">
                   ظهر البطاقة (MRZ) — {mrz.valid ? 'قُرئ وتحقّقت أرقامه' : 'قُرئ، وفي بعض أرقامه خطأ قراءة — راجِعه'}
                 </span>
@@ -80,7 +80,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                 {row('النفاذ', mrz.expiryDate, mrz.checks.expiryDate)}
                 {row('الاسم (لاتيني)', [mrz.givenNames, mrz.surname].filter(Boolean).join(' '))}
                 <button
-                  className="self-start mt-1 h-8 px-3 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md disabled:opacity-40"
+                  className="self-start mt-1 h-8 px-3 btn-act font-label-md text-label-md disabled:opacity-40"
                   data-act="mrz-fill"
                   type="button"
                   disabled={!mrz.valid}
@@ -122,7 +122,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
         </div>
         <div className="h-14 px-space-md flex items-center justify-end gap-space-sm bg-surface-container-low">
           <button
-            className="px-space-md h-9 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md"
+            className="px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md"
             type="button"
             onClick={() => {
               void window.diwan.ui.copyText(ocrPanel.text);

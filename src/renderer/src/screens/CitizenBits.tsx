@@ -14,8 +14,8 @@ export function Chip({
     <button
       className={
         active
-          ? 'px-space-sm py-1 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold shrink-0'
-          : 'px-space-sm py-1 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm shrink-0'
+          ? 'px-space-sm py-1 rounded-chip bg-primary-fixed text-primary font-label-sm text-label-sm font-semibold shrink-0'
+          : 'px-space-sm py-1 rounded-btn bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm shrink-0'
       }
       type="button"
       onClick={onClick}

@@ -56,7 +56,7 @@ export default function CitizensStats({ stats, ocrReady }: Props) {
       ].map((card) => (
         <div
           key={card.label}
-          className="bg-surface-container-lowest p-space-md rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between"
+          className="bg-surface-container-lowest p-space-md rounded-card shadow-low flex items-center justify-between"
         >
           <div className="flex flex-col gap-space-xs">
             <span className="font-label-sm text-label-sm text-on-surface-variant font-semibold tracking-wide">
@@ -76,7 +76,7 @@ export default function CitizensStats({ stats, ocrReady }: Props) {
               {card.hint}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary shadow-sm">
+          <div className="w-12 h-12 rounded-card bg-surface-container-high flex items-center justify-center text-secondary shadow-low">
             <span className="material-symbols-outlined text-[24px]">{card.icon}</span>
           </div>
         </div>
