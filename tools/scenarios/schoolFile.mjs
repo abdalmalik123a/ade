@@ -57,7 +57,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     const found = await page.eval(`
       const card = [...document.querySelectorAll('[data-template-card]')].find((c) => c.querySelector('.font-headline-sm')?.textContent?.trim() === ${JSON.stringify(title)});
       if (!card) return false;
-      if (!card.className.includes('ring-secondary')) card.click();
+      if (!card.className.includes('border-cyan')) card.click();
       return true;
     `);
     await wait(400);

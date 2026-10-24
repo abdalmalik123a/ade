@@ -71,7 +71,7 @@ export default async function scenario(page, { profile }) {
   // ── إزاحة الهجري: الميلادي هو الأصل، والهجري يُطابَق يدويًّا (قرار ٦ تشرين الأول) ──────
   const hijriPreview = () => page.eval(`return document.querySelector('[data-hijri-preview]')?.innerText ?? '';`);
   const before = await hijriPreview();
-  ok('إزاحة التاريخ الهجري في الإعدادات، والأصل «كما هو»', before.includes('هـ') && (await page.eval(`return document.querySelector('[data-hijri="0"]')?.className.includes('bg-primary-container') ?? false;`)));
+  ok('إزاحة التاريخ الهجري في الإعدادات، والأصل «كما هو»', before.includes('هـ') && (await page.eval(`return document.querySelector('[data-hijri="0"]')?.className.includes('bg-primary-fixed') ?? false;`)));
   await page.eval(`document.querySelector('[data-hijri="1"]').click(); return true;`);
   await wait(500);
   const after = await hijriPreview();
