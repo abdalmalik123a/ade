@@ -7,11 +7,14 @@
  * ودمجًا وفكًّا — و«نسخة منه إلى» (ولا توقيع ولا ختم في القائمة)، ويضع علامةً
  * مائية، ويحفظ كليشة ثم النموذج — ويفتّش في القاعدة.
  *
- * ثم يستعمل النموذج في الشبّاك: فالتنسيق الذي لا يصل الورقة التي تُصدَر وهمٌ.
+ * ثم يستعمل النموذج في الشبّاك: فالتنسيق الذي لا يصل الورقة التي تُصدَر وهمٌ. ثم الكشيدة (D183) في المحرّر: فقرةٌ مضبوطة
+ * بكشيدةٍ متوسّطة تُحفظ PDF ممدودةً، والمسودّة والبحث بلا تطويل، وWord بمستواها — وبلا كشيدة لا تطويل.
  * (وكان يختبر المحرّر الأوّل حتى حُذف — الموجة ١، المجموعة ج.)
  */
+import { mkdirSync, readdirSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
+import { strFromU8, unzipSync } from 'fflate';
 
 export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
@@ -294,6 +297,82 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('والحجم فيها', (await count('.a4-sheet [data-body] span[style*="font-size:24px"]')) > 0);
   ok('والجدول فيها', (await count('.a4-sheet [data-body] table')) === 1);
   if (shotsDir) await page.shot(join(shotsDir, 'service-review.png'));
+
+  // ── الكشيدة في الضبط (S13، D183): تُطبع ممدودةً، والوثيقة والبحث بلا تطويل ─────
+  await click('[data-act="discard"]');
+  await wait(600);
+  await page.goto('smart-editor-a4-preview');
+  await wait(1200);
+  const saveDir = process.env.DIWAN_TEST_SAVE_DIR;
+  mkdirSync(saveDir, { recursive: true });
+  /** ينتظر ملفًّا جديدًا بامتداده في مجلّد الحفظ. */
+  const savedNew = async (ext, before) => {
+    for (let t = 0; t < 60; t++) {
+      await wait(250);
+      const f = readdirSync(saveDir).find((n) => n.endsWith(ext) && !before.has(n));
+      if (f) return (await wait(400), join(saveDir, f));
+    }
+    return null;
+  };
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const pdfText = async (path) => {
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(path)), verbosity: 0 }).promise;
+    let out = '';
+    for (let i = 1; i <= pdf.numPages; i++) out += (await (await pdf.getPage(i)).getTextContent()).items.map((it) => it.str ?? '').join('');
+    return out;
+  };
+  const tatweels = (s) => (s.match(/ـ/g) ?? []).length;
+  const LONG = 'نرجو التفضّل بالاطّلاع على قائمة التلاميذ أدناه واتّخاذ ما يلزم بشأن توزيعهم على الصفوف للعام الدراسي القادم مع التقدير. ';
+  await caret(0, true);
+  await type(LONG.repeat(3).trim());
+  ok('«الكشيدة» لا تظهر لفقرةٍ غير مضبوطة', (await count('[data-act="kashida"]')) === 0);
+  await click('[data-act="align-justify"]');
+  await wait(400);
+  ok('وتظهر مع «ضبط الطرفين»', (await count('[data-act="kashida"]')) === 1);
+  await choose('[data-act="kashida"]', 'medium');
+  ok('واختيرت «الكشيدة: متوسّطة» للفقرة', (await page.eval(`return document.querySelector('${ED} > p')?.dataset.kashida ?? '';`)) === 'medium');
+
+  let before = new Set(readdirSync(saveDir));
+  await click('[data-act="export-pdf"]');
+  const kashidaPdf = await savedNew('.pdf', before);
+  const withK = kashidaPdf ? tatweels(await pdfText(kashidaPdf)) : 0;
+  ok(`PDF الفقرة المضبوطة بالكشيدة فيه التطويل (${withK} حرف تطويل)`, withK > 0);
+  if (shotsDir) await page.shot(join(shotsDir, 'editor-kashida.png'));
+
+  await click('[data-act="save"]');
+  await wait(1200);
+  const db3 = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+  const draftRow = db3.prepare('SELECT values_json AS v FROM drafts ORDER BY id DESC').get();
+  db3.close();
+  // الوثيقة في المسودّة نصٌّ داخل القيم (`letterValues`: `__doc`).
+  const draftDoc = draftRow ? (JSON.parse(draftRow.v).__doc ?? '') : '';
+  ok(
+    'والوثيقة المحفوظة تحمل المستوى بلا تطويلٍ في نصّها',
+    draftDoc.includes('"kashida":"medium"') && draftDoc.includes('توزيعهم') && !draftDoc.includes('ـ')
+  );
+
+  await click('[data-act="find"]');
+  await wait(400);
+  await page.type('[data-find-input]', 'التلاميذ');
+  await wait(500);
+  ok('والبحث في المحرّر يجد الكلمة', /^[1-9]\d* في الكتاب$/.test(await page.eval(`return document.querySelector('[data-find-count]')?.textContent ?? '';`)));
+  await click('[data-act="find"]');
+  await wait(300);
+
+  before = new Set(readdirSync(saveDir));
+  await click('[data-act="export-word"]');
+  const kashidaDocx = await savedNew('.docx', before);
+  const wordXml = kashidaDocx ? strFromU8(unzipSync(new Uint8Array(readFileSync(kashidaDocx)))['word/document.xml'] ?? new Uint8Array()) : '';
+  ok('وWord المصدَّر فيه «mediumKashida»', wordXml.includes('w:val="mediumKashida"'));
+
+  // الضدّ: الفقرة نفسها مضبوطةً بلا كشيدة — والملفّ الأوّل يُنقل فلا يُكتب فوقه.
+  if (kashidaPdf) renameSync(kashidaPdf, join(saveDir, 'kashida-medium.pdf'));
+  await choose('[data-act="kashida"]', '');
+  before = new Set(readdirSync(saveDir));
+  await click('[data-act="export-pdf"]');
+  const plainPdf = await savedNew('.pdf', before);
+  const plainText = plainPdf ? await pdfText(plainPdf) : '';
+  ok(`وPDF الفقرة المضبوطة بلا كشيدة لا تطويل فيه (${tatweels(plainText)})`, Boolean(plainPdf) && plainText.length > 50 && tatweels(plainText) === 0);
 
   return steps.join('\n');
 }
