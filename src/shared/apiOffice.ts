@@ -83,6 +83,9 @@ export type PrinterInfo = {
   ready: boolean;
 };
 
+/** سطرٌ من «تشخيص الجهاز» (S34، D186): سليم أو انتبه أو لا يعمل، بجملةٍ عربية. */
+export type DiagnoseRow = { key: 'vc' | 'fonts' | 'printers' | 'disk' | 'clock'; level: 'ok' | 'warn' | 'bad'; title: string; text: string };
+
 /** طلبٌ في «التنبيهات» — ما يُعرض ويُنسخ في رسالته. */
 export type AgendaOrder = { id: number; customer: string; title: string; dueDate: string | null; phone: string | null };
 
@@ -207,6 +210,8 @@ export type OfficeApis = {
     problemReport(note: string): Promise<string | null>;
     /** يُري آخر تقريرٍ حُفظ في مجلّده — ليُرسل بواتساب. */
     showProblemReport(): Promise<void>;
+    /** «افحص الجهاز» (S34، D186): مكتبات مايكروسوفت والخطوط والطابعات والمساحة والساعة — وهي نفسها في تقرير المشكلة. */
+    diagnose(): Promise<DiagnoseRow[]>;
     /** خطأٌ في العملية الرئيسة خارج القنوات — يُقال في شريط الأخطاء (المرحلة ٧). */
     onError(listener: (message: string) => void): () => void;
     /**

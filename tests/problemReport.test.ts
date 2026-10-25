@@ -22,6 +22,12 @@ describe('تقرير المشكلة', () => {
     expect(text.replace(/\r\n/g, '')).not.toContain('\n');
   });
 
+  it('وفيه «تشخيص الجهاز» بأسطره (D186) — وتقريرٌ بلا تشخيصٍ يقول «تعذّر»', () => {
+    const text = buildReport({ note: '', info: { ...INFO, diagnostics: ['✓ الطابعات: طابعة واحدة', '✗ المساحة: الفارغ ٠٫٣ غ.ب'] }, log: '', userName: '', now: new Date() });
+    expect(text).toContain('تشخيص الجهاز:\r\n✓ الطابعات: طابعة واحدة\r\n✗ المساحة');
+    expect(buildReport({ note: '', info: INFO, log: '', userName: '', now: new Date() })).toContain('تشخيص الجهاز:\r\n(تعذّر)');
+  });
+
   it('وبلا ملاحظةٍ ولا أخطاء يقول ذلك', () => {
     const text = buildReport({ note: '  ', info: INFO, log: '', userName: '', now: new Date() });
     expect(text).toContain('(لم يُكتب شيء)');

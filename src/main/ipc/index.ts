@@ -28,6 +28,7 @@ import { learnGenders, learnedGenders } from '../services/genderMemory';
 import { openFillCard } from '../fillCard';
 import { archiveStats } from '../services/documentList';
 import { workerHost } from '../services/workerHost';
+import { listPrinters } from '../services/printers';
 import type { WorkerJob } from '@shared/worker';
 import { normalizePrintRoles } from '@shared/printRoles';
 import { normalizeHidden } from '@shared/sections';
@@ -246,20 +247,7 @@ export function registerIpc(): void {
   ipcMain.handle('printers:list', async (e): Promise<PrinterInfo[]> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return [];
-    const printers = await win.webContents.getPrintersAsync();
-    return printers.map((p) => {
-      const options = (p.options ?? {}) as Record<string, unknown>;
-      const flag = (key: string) => String(options[key] ?? '').toLowerCase();
-      // ويندوز يعرض الحالة في printer-state: 3 = مستعدة.
-      const state = flag('printer-state');
-      return {
-        name: p.name,
-        displayName: p.displayName,
-        description: p.description ?? '',
-        isDefault: flag('printer-is-default') === 'true' || flag('is-default') === 'true',
-        ready: state === '' || state === '3'
-      };
-    });
+    return listPrinters(win.webContents);
   });
 
   // وكلّ قناةٍ في قائمة البوّابة سُجّلت فعلًا — اسمٌ خاطئٌ فيها يُقال عند الإقلاع.

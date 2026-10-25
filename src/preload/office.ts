@@ -18,6 +18,7 @@ export const officeApi: OfficeApis = {
     pasteText: () => invoke('app:pasteText'),
     problemReport: (note: string) => invoke('app:problemReport', note),
     showProblemReport: () => invoke('app:showProblemReport'),
+    diagnose: () => invoke('app:diagnose'),
     onError: (listener: (message: string) => void) => {
       const handler = (_e: unknown, message: string) => listener(message);
       ipcRenderer.on('app:error', handler);

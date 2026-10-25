@@ -15,6 +15,8 @@ export type ReportInfo = {
   memoryGb: number;
   freeMemoryGb: number;
   license: LicenseStatus | null;
+  /** أسطر «تشخيص الجهاز» (D186) — وتقريرٌ بلا تشخيصٍ يقول ذلك. */
+  diagnostics?: readonly string[];
 };
 
 /** آخر ما في سجلّ الأخطاء: الأقدم (`.1`) ثم الحاليّ، ومن آخره بقدر `maxChars`. */
@@ -63,6 +65,9 @@ export function buildReport(input: { note: string; info: ReportInfo; log: string
     `الإصدار: ${info.version}`,
     `Windows: ${info.os} (${info.arch}) — الذاكرة ${info.memoryGb} غ.ب، الفارغ منها ${info.freeMemoryGb} غ.ب`,
     `التفعيل: ${licenseLine(info.license)}`,
+    '',
+    'تشخيص الجهاز:',
+    ...(info.diagnostics?.length ? info.diagnostics : ['(تعذّر)']),
     '',
     'ما كتبه الموظف:',
     note.trim() || '(لم يُكتب شيء)',
