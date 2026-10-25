@@ -83,6 +83,8 @@ export type CitizenInput = {
   passportNo?: string | null;
   rationCardNo?: string | null;
   housingIssuer?: string | null;
+  /** الاسم باللاتينية (S29، D179). */
+  latinName?: string | null;
 };
 
 export type CitizenDetail = Omit<CitizenInput, 'verified'> & {

@@ -68,6 +68,12 @@ describe('خانات الاستمارات الحكومية (أيلول ٢٠٢٦)
     expect(getCitizen(d, saved.id)).toMatchObject({ phone: '07811112222', motherName: 'زينب علي حسن', surname: 'الموسوي', governorate: null });
   });
 
+  it('والاسم باللاتينية (S29، D179) يُحفظ ويُقرأ', () => {
+    const d = db();
+    const saved = saveCitizen(d, person({ latinName: '  ZAINAB ALI HASSAN ' }));
+    expect(getCitizen(d, saved.id)!.latinName).toBe('ZAINAB ALI HASSAN');
+  });
+
   it('وقاعدة المكتب القائمة (بلا أعمدتها) تُعطاها عند الإقلاع — وملفّاتها كما هي', () => {
     const d = freshDb();
     for (const col of ['surname', 'mother_name', 'family_number']) d.exec(`ALTER TABLE citizens DROP COLUMN ${col}`);

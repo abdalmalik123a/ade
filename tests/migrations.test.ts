@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { runMigrations } from '../src/main/db/migrations';
+import { runMigrations, schemaLevel } from '../src/main/db/migrations';
+import { getCitizen, listCitizens } from '../src/main/services/citizens';
+import { freshDb } from './helpers';
 import { listTemplates, prepareTemplates, saveTemplate } from '../src/main/services/templates';
 import { listLetterheads, prepareLetterheads } from '../src/main/services/letterheads';
 import { prepareDocuments } from '../src/main/services/documents';
@@ -113,5 +115,20 @@ describe('قاعدة المكتب القائمة لا تسقط بعمودٍ جد
     expect(listTemplates(db)).toEqual([]);
     expect(listLetterheads(db)).toEqual([]);
     expect(listClips(db)).toEqual([]);
+  });
+});
+
+describe('الترقية ١٠: الاسم باللاتينية (S29، D179)', () => {
+  it('قاعدةٌ بلغت ٩ بلا العمود: تُعطاه، وملفّاتها كما هي', () => {
+    const db = freshDb();
+    db.exec('ALTER TABLE citizens DROP COLUMN latin_name');
+    db.pragma('user_version = 9');
+    db.prepare("INSERT INTO citizens (full_name, national_id) VALUES ('زينب علي حسن', '199012345678')").run();
+    expect(db.transaction(() => runMigrations(db))()).toBe(10);
+    expect(schemaLevel(db)).toBe(10);
+    const cols = (db.prepare('PRAGMA table_info(citizens)').all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toContain('latin_name');
+    const [row] = listCitizens(db);
+    expect(getCitizen(db, row!.id)).toMatchObject({ fullName: 'زينب علي حسن', nationalId: '199012345678', latinName: null });
   });
 });

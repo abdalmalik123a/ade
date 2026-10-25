@@ -5,7 +5,7 @@
  * عراقية حقيقية ما يزال قائمًا (قرار المالك).
  */
 import { describe, expect, it } from 'vitest';
-import { checkDigit, findTD1, parseTD1, readMrz } from '../src/shared/mrz';
+import { checkDigit, findTD1, mrzExpired, mrzLatinName, parseTD1, readMrz } from '../src/shared/mrz';
 
 const SAMPLE = ['I<UTOD231458907<<<<<<<<<<<<<<<', '7408122F1204159UTO<<<<<<<<<<<6', 'ERIKSSON<<ANNA<MARIA<<<<<<<<<<'];
 
@@ -64,5 +64,21 @@ describe('من نصّ القارئ الضوئي', () => {
 
   it('ونصٌّ بلا سطور MRZ لا يُخترع له شيء', () => {
     expect(readMrz('جمهورية العراق\nالبطاقة الوطنية')).toBeNull();
+  });
+});
+
+describe('المستمسك منتهٍ، والاسم باللاتينية (S29، D179)', () => {
+  it('أمسِ منتهٍ، واليوم وما بعده لا، والتاريخ الذي لم يُقرأ عدم', () => {
+    const today = new Date(2026, 9, 25);
+    expect(mrzExpired('2026-10-24', today)).toBe(true);
+    expect(mrzExpired('2026-10-25', today)).toBe(false);
+    expect(mrzExpired('2031-02-20', today)).toBe(false);
+    expect(mrzExpired(null, today)).toBeNull();
+    expect(mrzExpired('2026-1-5', today)).toBeNull();
+  });
+
+  it('الأسماء ثمّ اللقب بمسافةٍ واحدة — واللقب الفارغ لا يترك مسافة', () => {
+    expect(mrzLatinName({ givenNames: 'ZAINAB ALI', surname: 'HASSAN' })).toBe('ZAINAB ALI HASSAN');
+    expect(mrzLatinName({ givenNames: 'ZAINAB ALI HASSAN', surname: '' })).toBe('ZAINAB ALI HASSAN');
   });
 });

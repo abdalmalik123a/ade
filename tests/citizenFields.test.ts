@@ -24,6 +24,10 @@ describe('الحقل بمعناه', () => {
     expect(citizenSourceOf('القسم')).toBe('workplace');
     expect(citizenSourceOf('تاريخ الولادة')).toBe('birthDate');
     expect(citizenSourceOf('فصيلة الدم')).toBeNull();
+    // والاسم باللاتينية (S29، D179) قبل «الاسم» العامّ — و«الاسم» و«اللقب» كما هما.
+    for (const q of ['الاسم باللغة الانكليزية', 'الاسم بالانكليزي', 'Name in English', 'Full name (Latin)']) expect(citizenSourceOf(q), q).toBe('latinName');
+    expect(citizenSourceOf('الاسم الرباعي')).toBe('fullName');
+    expect(citizenSourceOf('اللقب')).toBe('surname');
     expect(citizenSourceOf('أيّ شيء', 'phone')).toBe('phone');
   });
 

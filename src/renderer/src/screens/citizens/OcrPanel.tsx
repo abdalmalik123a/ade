@@ -3,7 +3,7 @@
  * كما هو.
  */
 import type { Dispatch, SetStateAction } from 'react';
-import { readMrz, type MrzResult } from '@shared/mrz';
+import { mrzExpired, mrzLatinName, readMrz, type MrzResult } from '@shared/mrz';
 import type { Attachment, CitizenDetail } from '@shared/api';
 
 type Props = {
@@ -78,7 +78,12 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                 {row('الولادة', mrz.birthDate, mrz.checks.birthDate)}
                 {row('الجنس', mrz.sex)}
                 {row('النفاذ', mrz.expiryDate, mrz.checks.expiryDate)}
-                {row('الاسم (لاتيني)', [mrz.givenNames, mrz.surname].filter(Boolean).join(' '))}
+                {mrzExpired(mrz.expiryDate) && (
+                  <span className="text-error font-semibold" data-mrz-expired="">
+                    المستمسك منتهٍ منذ {mrz.expiryDate} — يُجدَّد قبل المعاملة
+                  </span>
+                )}
+                {row('الاسم (لاتيني)', mrzLatinName(mrz))}
                 <button
                   className="self-start mt-1 h-8 px-3 btn-act font-label-md text-label-md disabled:opacity-40"
                   data-act="mrz-fill"
@@ -93,7 +98,8 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                         ...detail,
                         birthDate: detail.birthDate || mrz.birthDate,
                         nationalId: detail.nationalId || personal,
-                        gender: detail.gender || mrz.sex
+                        gender: detail.gender || mrz.sex,
+                        latinName: detail.latinName || mrzLatinName(mrz) || null
                       }
                     });
                   }}

@@ -21,6 +21,8 @@ export type CitizenFieldDef = {
   label: string;
   group: CitizenGroup;
   mono?: boolean;
+  /** يُكتب من اليسار: حروفٌ لاتينية (الاسم كما في الجواز، S29). */
+  ltr?: boolean;
   required?: boolean;
   /** اقتراحاتٌ تُعرض عند الكتابة — لا قائمةٌ مغلقة. */
   options?: readonly string[];
@@ -53,6 +55,8 @@ export const GOVERNORATES = [
 export const CITIZEN_FIELDS: readonly CitizenFieldDef[] = [
   { key: 'fullName', column: 'full_name', label: 'الاسم الرباعي واللقب', group: 'الهوية', required: true },
   { key: 'surname', column: 'surname', label: 'اللقب', group: 'الهوية', placeholder: 'كما يُكتب منفصلًا في الاستمارات' },
+  // الاسم باللاتينية كما في الجواز أو ظهر البطاقة (S29، D179) — يملؤه MRZ المتحقّق، وتسأل عنه استمارات السفر.
+  { key: 'latinName', column: 'latin_name', label: 'الاسم باللاتينية', group: 'الهوية', mono: true, ltr: true, placeholder: 'ZAINAB ALI HASSAN' },
   { key: 'motherName', column: 'mother_name', label: 'اسم الأم الثلاثي', group: 'الهوية' },
   { key: 'gender', column: 'gender', label: 'الجنس', group: 'الهوية', options: ['ذكر', 'أنثى'] },
   { key: 'birthDate', column: 'birth_date', label: 'تاريخ الولادة', group: 'الهوية' },
@@ -112,5 +116,6 @@ export const ADDED_COLUMNS = [
   'civil_page',
   'passport_no',
   'ration_card_no',
-  'housing_issuer'
+  'housing_issuer',
+  'latin_name'
 ] as const;

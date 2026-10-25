@@ -62,6 +62,16 @@ export type MrzResult = {
   valid: boolean;
 };
 
+/** «المستمسك منتهٍ» (S29، D179): تاريخ النفاذ قبل اليوم (بتاريخ الجهاز) — و`null` لتاريخٍ لم يُقرأ. ويوم النفاذ نفسه نافذ. */
+export function mrzExpired(expiryDate: string | null, today = new Date()): boolean | null {
+  if (!expiryDate || !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) return null;
+  const d = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return expiryDate < d;
+}
+
+/** الاسم باللاتينية كما يُكتب: الأسماء ثمّ اللقب (S29). */
+export const mrzLatinName = (m: Pick<MrzResult, 'givenNames' | 'surname'>): string => [m.givenNames, m.surname].filter(Boolean).join(' ');
+
 /** ثلاثة أسطرٍ من ٣٠ حرفًا ← حقولها وتحقّقها. */
 export function parseTD1(lines: string[]): MrzResult | null {
   if (lines.length !== 3 || lines.some((l) => l.length !== 30)) return null;

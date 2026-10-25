@@ -12,7 +12,7 @@
  * ولا معاملة هنا: معاملة النادي تحمله، فإن رمت خطوةٌ تراجع كلّ ما قبلها معها ومنه رقم المستوى.
  */
 import type { Database } from 'better-sqlite3';
-import { ensureSearchColumn } from '../services/citizens';
+import { ensureCitizenColumns, ensureSearchColumn } from '../services/citizens';
 import { prepareClients } from '../services/clients';
 import { prepareClips } from '../services/clips';
 import { prepareDocuments } from '../services/documents';
@@ -23,6 +23,11 @@ import { prepareOrders } from '../services/orders';
 import { prepareTemplates } from '../services/templates';
 
 export type Migration = { n: number; name: string; up: (db: Database) => void };
+
+/** الاسم باللاتينية (S29، D179) لقاعدةٍ بلغت ٩ قبله — وما دونها يأخذه من `ADDED_COLUMNS` في الترقية ٢ (`ensureSearchColumn`). */
+function addLatinName(db: Database): void {
+  ensureCitizenColumns(db);
+}
 
 export const MIGRATIONS: readonly Migration[] = [
   { n: 1, name: 'الكتب: البحث واللقطة والترويسة والمعاملة والإبطال والسلسلة والأنماط', up: prepareDocuments },
@@ -35,7 +40,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { n: 6, name: 'الترويسات: أعمدة المكتبة', up: prepareLetterheads },
   { n: 7, name: 'الكليشات: الجدول واتجاه المخاطبة', up: prepareClips },
   { n: 8, name: 'التعلّم: جدول التصحيحات', up: prepareLearning },
-  { n: 9, name: 'التذكير والتأنيث: ذاكرة الأسماء', up: prepareGenderMemory }
+  { n: 9, name: 'التذكير والتأنيث: ذاكرة الأسماء', up: prepareGenderMemory },
+  { n: 10, name: 'الزبائن: الاسم باللاتينية', up: addLatinName }
 ];
 
 export const NEWER_SCHEMA = 'قاعدة البيانات من إصدارٍ أحدث من هذا البرنامج';

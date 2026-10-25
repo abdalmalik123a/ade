@@ -54,6 +54,7 @@ export default async function scenario(page, { shotsDir }) {
   ok('الرقم الشخصي من الحقل الاختياري', text.includes('199012345678'));
   ok('الولادة والنفاذ', text.includes('1990-01-15') && text.includes('2031-02-20'));
   ok('الاسم اللاتيني', text.includes('SAMIR KHALID'));
+  ok('ولا «المستمسك منتهٍ» — نفاذها ٢٠٣١ (S29)', !(await page.eval(`return Boolean(document.querySelector('[data-mrz-expired]'));`)));
   ok('لا «دقّة» لقراءة ظهر البطاقة — أرقام التحقّق حَكَمُها', !/دقة \d+%/.test(text.slice(text.indexOf('ظهر البطاقة —'))));
   ok('ولا ملاحظة «القارئ العامّ»', !text.includes('من القارئ العامّ'));
   const shown = await page.eval(`const pre = document.querySelector('pre[dir="ltr"]'); return pre ? pre.textContent : null;`);
@@ -67,9 +68,9 @@ export default async function scenario(page, { shotsDir }) {
   const saved = await page.eval(`
     const list = await window.diwan.citizens.list({ query: 'سمير خالد' });
     const c = await window.diwan.citizens.get(list.items?.[0]?.id ?? list[0]?.id);
-    return { nationalId: c.nationalId, birthDate: c.birthDate, gender: c.gender };
+    return { nationalId: c.nationalId, birthDate: c.birthDate, gender: c.gender, latinName: c.latinName };
   `);
-  ok(`حُفظت في ملفّه: ${JSON.stringify(saved)}`, saved.nationalId === '199012345678' && saved.birthDate === '1990-01-15' && saved.gender === 'ذكر');
+  ok(`حُفظت في ملفّه: ${JSON.stringify(saved)}`, saved.nationalId === '199012345678' && saved.birthDate === '1990-01-15' && saved.gender === 'ذكر' && saved.latinName === 'SAMIR KHALID');
 
   return steps.join('\n');
 }

@@ -12,6 +12,8 @@ type Source = keyof Omit<CitizenInput, 'id' | 'verified'>;
 
 /** [أنماط اسم الحقل مطويًّا، خانة الملف] — الأدقّ أولًا: «الرقم الوطني» قبل «الرقم». */
 const VOCAB: [RegExp, Source][] = [
+  // الاسم باللاتينية (S29، D179) — قبل «الاسم» العامّ و«اللقب».
+  [/(الاسم|اسم).*(انكليزي|انجليزي|لاتيني)|(name|full name) in english|english name|latin/, 'latinName'],
   [/الرقم الوطني|البطاقه الوطنيه|الموحده|national/, 'nationalId'],
   [/محل الولاده|مكان الولاده/, 'birthPlace'],
   [/تاريخ الولاده|المواليد|الولاده|birth|dob/, 'birthDate'],

@@ -243,6 +243,7 @@ export default function CitizenForm({
                         <input
                           className={f.mono ? `${inputCls} font-mono` : inputCls}
                           data-citizen-field={f.key}
+                          dir={f.ltr ? 'ltr' : undefined}
                           list={f.options ? `citizen-${f.key}-options` : undefined}
                           placeholder={f.placeholder}
                           type="text"
