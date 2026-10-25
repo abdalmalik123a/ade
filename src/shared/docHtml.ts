@@ -163,7 +163,8 @@ function paragraphHtml(
     .filter(Boolean)
     .join(';');
   const dir = block.dir ? ` dir="${block.dir}"` : '';
-  return `<p${dir} style="${style}">${inner || '&nbsp;'}</p>`;
+  const kashida = block.kashida && block.align === 'justify' ? ` data-kashida="${block.kashida}"` : '';
+  return `<p${dir}${kashida} style="${style}">${inner || '&nbsp;'}</p>`;
 }
 
 function renderBlock(

@@ -9,6 +9,7 @@
  * السليمة تُقرأ كما كانت بايتًا ببايت. ولا يستورد من `doc.ts` إلا الأنواع، فلا حلقة.
  */
 import type { Block, Inline, ListBlock, ListItem, ListStyle, ParagraphBlock } from './doc';
+import { KASHIDA_LEVELS } from './kashida';
 
 type Raw = Record<string, unknown>;
 
@@ -73,7 +74,10 @@ function items(list: unknown[]): ListItem[] {
 function fixBlock(b: Block): Block {
   if (b.kind === 'paragraph') {
     const ins = inlines(b.inlines);
-    return ins === b.inlines ? b : { ...b, inlines: ins };
+    const p = ins === b.inlines ? b : { ...b, inlines: ins };
+    // الكشيدة للمضبوطة وحدها وبمستوًى معروف (D183)، وإلا تسقط فلا يُطبع تطويلٌ لم يُختر.
+    const bad = p.kashida !== undefined && (p.align !== 'justify' || !KASHIDA_LEVELS.includes(p.kashida));
+    return bad ? without(p, 'kashida') : p;
   }
   if (b.kind === 'list') {
     const legacy = b as ListBlock & { style?: ListStyle };

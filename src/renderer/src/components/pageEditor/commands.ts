@@ -78,15 +78,16 @@ export function selectedParagraphs(state: EditorState): { node: PMNode; pos: num
   return out;
 }
 
-/** صفةٌ لكلّ فقرةٍ في التحديد: المحاذاة والتباعد والبادئة وتباعد ما قبل الفقرة وما بعدها. */
+/** صفةٌ لكلّ فقرةٍ في التحديد: المحاذاة والتباعد والبادئة وتباعد ما قبل الفقرة وما بعدها والكشيدة — وغير «ضبط الطرفين» يُسقط الكشيدة (D183). */
 export const setParagraphAttr =
-  (attr: 'align' | 'lineHeight' | 'indent' | 'spaceBefore' | 'spaceAfter', value: unknown): Command =>
+  (attr: 'align' | 'lineHeight' | 'indent' | 'spaceBefore' | 'spaceAfter' | 'kashida', value: unknown): Command =>
   (state, dispatch) => {
     const paras = selectedParagraphs(state);
     if (!paras.length) return false;
     if (dispatch) {
       const tr = state.tr;
-      for (const { node, pos } of paras) tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: value });
+      const drop = attr === 'align' && value !== 'justify' ? { kashida: null } : {};
+      for (const { node, pos } of paras) tr.setNodeMarkup(pos, undefined, { ...node.attrs, [attr]: value, ...drop });
       dispatch(tr.scrollIntoView());
     }
     return true;

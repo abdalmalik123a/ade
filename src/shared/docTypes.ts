@@ -5,6 +5,7 @@
 import type { Calendar } from './dates';
 import type { Canvas } from './canvas';
 import type { Addressing } from './api';
+import type { KashidaLevel } from './kashida';
 
 export type Uuid = string;
 
@@ -107,6 +108,8 @@ export type ParagraphBlock = BlockBase & {
   size?: number;
   /** تباعد الأسطر مضاعفًا لحجم الخطّ — كما يضبطه Word للفقرة. */
   lineHeight?: number;
+  /** الكشيدة في الضبط (S13، D183): للمضبوطة وحدها، والتطويل يُرسم عند الطباعة لا في النصّ (`kashida.ts`). */
+  kashida?: KashidaLevel;
   inlines: Inline[];
 };
 

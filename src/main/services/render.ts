@@ -4,6 +4,7 @@ import { BrowserWindow } from 'electron';
 import { CHUNK_PAGE_SIZE, renderChunkedPdf, splitPagesHtml } from './renderSplit';
 import { pageOfSheetHtml } from '@shared/sheetPage';
 import { fitCanvasText } from '@shared/design/fit';
+import { applyKashida, kashidaPoint, KASHIDA_MAX_PER_WORD, KASHIDA_SHARE, planLine } from '@shared/kashida';
 import type { SheetStyle } from '@shared/api';
 import { getDb } from '../db';
 import { rendererDevUrl } from '../devUrl';
@@ -157,7 +158,7 @@ export async function withRenderWindow<T>(
         }
         // ومعها خطوط ديوان المستوردة (DESIGNS.md ٠٫٧): لا جسر في هذه النافذة تسأل منه، فتُحقن قواعدها هنا.
         const style = document.createElement('style');
-        style.textContent = ${JSON.stringify(`${importedFontCss(getDb())}\n${opts.layer ? layerCss(page) : printCss(page, opts.offset)}`)};
+        style.textContent = ${JSON.stringify(`${importedFontCss(getDb())}\n${opts.layer ? layerCss(page) : printCss(page, opts.offset)}\n.kashida{user-select:none}`)};
         document.head.appendChild(style);
         const root = document.createElement('div');
         root.className = 'print-root';
@@ -172,6 +173,8 @@ export async function withRenderWindow<T>(
           document.fonts.ready,
           new Promise((r) => setTimeout(() => { timedOut = true; r(null); }, ${FONT_WAIT_MS}))
         ]).then(() => {
+          // الكشيدة بخطّ الورقة الحقيقي: التطويل يُرسم هنا وحده، لا في النصّ المحفوظ (D183).
+          (${applyKashida.toString()})(root, ${kashidaPoint.toString()}, ${planLine.toString()}, ${JSON.stringify(KASHIDA_SHARE)}, ${KASHIDA_MAX_PER_WORD});
           (${fitCanvasText.toString()})(root);
           const failed = [...document.fonts].filter((f) => f.status === 'error').map((f) => f.family);
           const waiting = [...document.fonts].filter((f) => f.status === 'loading').map((f) => f.family);

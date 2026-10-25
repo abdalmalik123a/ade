@@ -3,6 +3,7 @@
  */
 import type { Align, ListStyle } from './doc';
 import { cssSizeToPx, marks } from './docPmMarks';
+import { KASHIDA_LEVELS, type KashidaLevel } from './kashida';
 import { type Node as PMNode, type NodeSpec, Schema } from 'prosemirror-model';
 
 /**
@@ -47,6 +48,7 @@ export function paragraphAttrsFromDom(el: DomEl): Record<string, unknown> {
     indent: cssIndentToMm(s.textIndent ?? ''),
     lineHeight: cssLineHeight(s.lineHeight ?? ''),
     size: s.fontSize ? cssSizeToPx(s.fontSize) : null,
+    kashida: align === 'justify' && KASHIDA_LEVELS.includes(el.getAttribute('data-kashida') as KashidaLevel) ? el.getAttribute('data-kashida') : null,
     dir: el.getAttribute('dir') === 'ltr' ? 'ltr' : null
   };
 }
@@ -66,6 +68,7 @@ export function paragraphDomAttrs(node: PMNode): Record<string, string> {
   const out: Record<string, string> = { style };
   if (a.id) out['data-id'] = a.id;
   if (a.dir) out.dir = a.dir;
+  if (a.kashida && a.align === 'justify') out['data-kashida'] = a.kashida;
   return out;
 }
 
@@ -86,10 +89,11 @@ export const nodes: Record<string, NodeSpec> = {
       spaceBefore: { default: null },
       spaceAfter: { default: null },
       size: { default: null },
-      lineHeight: { default: null }
+      lineHeight: { default: null },
+      kashida: { default: null }
     },
     parseDOM: [
-      { tag: 'p', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
+      { tag: 'p',getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h1', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h2', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h3', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) }

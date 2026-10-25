@@ -21,6 +21,7 @@ import { isHexColor } from '@shared/docPmMarks';
 import { defaultAlign, fontFamilyOf, fontStack, visibleSections, type LetterheadBlock, type LetterheadLayout } from '@shared/letterhead';
 import { imageMeta } from './imageSize';
 import { toIndic } from '@shared/arabic';
+import type { KashidaLevel } from '@shared/kashida';
 
 /** بكسل الشاشة (٩٦ في الإنش) إلى وحدات Word. */
 const halfPoints = (px: number) => Math.round(px * 1.5);
@@ -67,11 +68,12 @@ const blankRun = (chars: number, rtl: boolean, size?: number) =>
 
 /**
  * المحاذاة في فقرةٍ من اليمين: قارئ Word في `docxDoc` يقرأ «start» يمينًا و«end» يسارًا —
- * فتُكتب هكذا فيعود الملف بمحاذاته إن استُورد.
+ * فتُكتب هكذا فيعود الملف بمحاذاته إن استُورد. والضبط بالكشيدة بمستواها كما في Word (D183).
  */
-function alignment(align: Align, rtl: boolean) {
+function alignment(align: Align, rtl: boolean, kashida?: KashidaLevel) {
   if (align === 'center') return AlignmentType.CENTER;
-  if (align === 'justify') return AlignmentType.BOTH;
+  if (align === 'justify')
+    return kashida === 'low' ? AlignmentType.LOW_KASHIDA : kashida === 'medium' ? AlignmentType.MEDIUM_KASHIDA : kashida === 'high' ? AlignmentType.HIGH_KASHIDA : AlignmentType.BOTH;
   if (rtl) return align === 'left' ? AlignmentType.END : AlignmentType.START;
   return align === 'left' ? AlignmentType.LEFT : AlignmentType.RIGHT;
 }
@@ -108,7 +110,7 @@ function paragraph(p: ParagraphBlock, ctx: Ctx): Paragraph {
   const rtl = p.dir ? p.dir === 'rtl' : ctx.rtl;
   return new Paragraph({
     bidirectional: rtl,
-    alignment: alignment(p.align, rtl),
+    alignment: alignment(p.align, rtl, p.kashida),
     indent: p.indent ? { firstLine: twipsFromMm(p.indent) } : undefined,
     spacing: {
       before: p.spaceBefore ? twipsFromPx(p.spaceBefore) : undefined,

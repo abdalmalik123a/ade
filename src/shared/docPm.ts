@@ -29,6 +29,7 @@ import {
   type TableBlock
 } from './doc';
 import { docSchema } from './docPmSchema';
+import type { KashidaLevel } from './kashida';
 
 // ── قراءة الأنماط من HTML ملصوق (Word والمتصفّح) ─────────────────────────
 
@@ -83,7 +84,8 @@ function paragraphToPm(b: ParagraphBlock): PMNode {
       spaceBefore: b.spaceBefore ?? null,
       spaceAfter: b.spaceAfter ?? null,
       size: b.size ?? null,
-      lineHeight: b.lineHeight ?? null
+      lineHeight: b.lineHeight ?? null,
+      kashida: b.kashida ?? null
     },
     inlinesToPm(b.inlines)
   );
@@ -170,6 +172,7 @@ function pmParagraph(node: PMNode): ParagraphBlock {
   if (a.spaceAfter != null) b.spaceAfter = a.spaceAfter as number;
   if (a.size != null) b.size = a.size as number;
   if (a.lineHeight != null) b.lineHeight = a.lineHeight as number;
+  if (a.kashida && a.align === 'justify') b.kashida = a.kashida as KashidaLevel;
   return withDir(b, a.dir);
 }
 

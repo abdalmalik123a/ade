@@ -28,7 +28,7 @@ import {
 } from '@shared/doc';
 import { find, kid, kidsOf, num, parseXml, toggle, val, type XNode } from './docxXml';
 import { type Ctx, chain, paraProps, twToMm, type SaveImage, pageSetupFrom, readStyles, readNumbering } from './docxStyles';
-import { mapJc, readPieces, sizePx, round1, type Piece, fixZeros, dominantPx, nextStop, charEm, splitGaps, toInlines } from './docxRuns';
+import { mapJc, jcKashida, readPieces, sizePx, round1, type Piece, fixZeros, dominantPx, nextStop, charEm, splitGaps, toInlines } from './docxRuns';
 
 /** والقارئ يُصدَّر من هنا كما كان. */
 export { parseXml, type XNode } from './docxXml';
@@ -43,6 +43,7 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
   const { pp, styleR, markR } = paraProps(p, ctx);
   const bidi = pp.bidi ?? false;
   const align = mapJc(pp.jc, bidi);
+  const kashida = jcKashida(pp.jc);
   const dir = bidi ? undefined : ('ltr' as const);
   const { pieces, images } = readPieces(p, ctx, styleR, align);
 
@@ -106,7 +107,8 @@ function convertParagraph(p: XNode, ctx: Ctx): Block[] {
       ...(lineHeight ? { lineHeight } : {}),
       // وما قبلها لأوّل الفقرة وحده: ما بعد فاصل الصفحة تكملتُها.
       ...(spaceBefore && gi === 0 ? { spaceBefore } : {}),
-      ...(spaceAfter ? { spaceAfter } : {})
+      ...(spaceAfter ? { spaceAfter } : {}),
+      ...(kashida ? { kashida } : {})
     };
 
     // عمودان أو ثلاثة بالمسافات — بشروطها، وللسطر الذي محاذاته البداية وحده.

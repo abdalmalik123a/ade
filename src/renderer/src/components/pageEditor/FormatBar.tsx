@@ -13,6 +13,7 @@ import { toggleMark, selectAll } from 'prosemirror-commands';
 import ColorTool from '../ColorTool';
 import { toggleList, setListStyle } from '@shared/docPmList';
 import type { ListStyle, Align } from '@shared/doc';
+import { KASHIDA_LEVELS, type KashidaLevel } from '@shared/kashida';
 import { addRowBefore, addRowAfter, deleteRow, splitCell, deleteTable } from 'prosemirror-tables';
 import {
   addColumnKeepWidths,
@@ -60,6 +61,8 @@ function SpacingSelect({ side, cur, onPick }: { side: 'spaceBefore' | 'spaceAfte
   );
 }
 
+const KASHIDA_LABEL: Record<KashidaLevel, string> = { low: 'منخفضة', medium: 'متوسّطة', high: 'مرتفعة' };
+
 type Props = {
   run_: (cmd: Command) => boolean;
   state: EditorState | null;
@@ -87,6 +90,7 @@ type Props = {
 export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh, curIndent, curList, listLabel, setMenu, all, toField, table, viewRef, setNotice }: Props) {
   const curSpaceBefore = state ? (paragraphValue(state, 'spaceBefore') as number | null | undefined) : undefined;
   const curSpaceAfter = state ? (paragraphValue(state, 'spaceAfter') as number | null | undefined) : undefined;
+  const curKashida = state ? (paragraphValue(state, 'kashida') as KashidaLevel | null | undefined) : undefined;
   return (
     <div className="bg-surface-container-lowest px-space-sm py-1 flex items-center gap-0.5 flex-wrap border-b border-outline-variant/30">
       <Tool act="undo" icon="undo" title="تراجع (Ctrl+Z)" onRun={() => run_(undo)} />
@@ -138,6 +142,23 @@ export default function FormatBar({ run_, state, curFont, curPt, curAlign, curLh
       ).map((a) => (
         <Tool key={a.align} act={`align-${a.align}`} icon={a.icon} title={a.title} active={curAlign === a.align} onRun={() => run_(setParagraphAttr('align', a.align))} />
       ))}
+      {curAlign === 'justify' && (
+        <select
+          aria-label="الكشيدة"
+          className="h-8 w-32 rounded-field bg-surface-container-low px-1 font-label-md text-label-md text-on-surface"
+          data-act="kashida"
+          title="الكشيدة في الضبط — تطويل الحروف يملأ السطر عند الطباعة، والنصّ كما كُتب"
+          value={curKashida ?? ''}
+          onChange={(e) => run_(setParagraphAttr('kashida', e.target.value || null))}
+        >
+          <option value="">الكشيدة: بلا</option>
+          {KASHIDA_LEVELS.map((k) => (
+            <option key={k} value={k}>
+              الكشيدة: {KASHIDA_LABEL[k]}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         aria-label="تباعد الأسطر"
         className="h-8 w-16 rounded-field bg-surface-container-low px-1 font-label-md text-label-md text-on-surface tabular"

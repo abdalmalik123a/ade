@@ -5,6 +5,7 @@ import { type Align, type ImageBlock, newUuid, type Inline, type Marks, tokenInl
 import { type RProps, type Ctx, chain, readR } from './docxStyles';
 import { type XNode, kid, find, num, val } from './docxXml';
 import { fixZeroPeriods, APPLY_THRESHOLD } from './blanks';
+import type { KashidaLevel } from '@shared/kashida';
 
 export const round1 = (n: number) => Math.round(n * 10) / 10;
 
@@ -53,6 +54,11 @@ export function mapJc(jc: string | undefined, bidi: boolean): Align {
     default:
       return bidi ? 'right' : 'left';
   }
+}
+
+/** مستوى الكشيدة في الفقرة المضبوطة من `w:jc` (D183) — وما سواها بلا مستوى. */
+export function jcKashida(jc: string | undefined): KashidaLevel | undefined {
+  return jc === 'lowKashida' ? 'low' : jc === 'mediumKashida' ? 'medium' : jc === 'highKashida' ? 'high' : undefined;
 }
 
 // ── الفقرة ───────────────────────────────────────────────────────────

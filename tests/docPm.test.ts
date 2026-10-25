@@ -14,6 +14,7 @@ import { blocksToPm, cssSizeToPx, docSchema, firstFontFamily, pmBlocks } from '.
 import { cssColor } from '../src/shared/docPmMarks';
 import { docToDocx } from '../src/main/services/docDocx';
 import { renderDocHtml } from '../src/shared/docHtml';
+import { normalizeTree } from '../src/shared/docTree';
 import { emptyDoc, fieldRef, paragraph, run, walkBlocks, type Block, type Inline } from '../src/shared/doc';
 import { EditorState } from 'prosemirror-state';
 import { setParagraphAttr, setSpaceAfter, SPACE_AFTERS } from '../src/renderer/src/components/pageEditor/commands';
@@ -376,5 +377,67 @@ describe('تباعد ما قبل الفقرة (S11، D139)', () => {
     expect(paras[0]).toMatchObject({ spaceBefore: 16, spaceAfter: 8 });
     expect((paras[1] as { spaceBefore?: number }).spaceBefore).toBeUndefined();
     expect(notes.join(' ')).not.toContain('المسافة قبل');
+  });
+});
+
+describe('الكشيدة في الضبط (S13، D183)', () => {
+  it('تُحفظ للمضبوطة وتعود من ProseMirror، وHTML الفقرة يحمل data-kashida — ولا تطويل في النصّ', () => {
+    const d = emptyDoc();
+    d.blocks = [paragraph([run('مدرسة النور الابتدائية')], { align: 'justify', kashida: 'medium' }), paragraph([run('فقرة مضبوطة بلا كشيدة')], { align: 'justify' })];
+    const pm = blocksToPm(d.blocks);
+    expect((pm.firstChild!.type.spec.toDOM!(pm.firstChild!) as [string, Record<string, string>, number])[1]['data-kashida']).toBe('medium');
+    const round = pmBlocks(pm);
+    expect(round[0]).toMatchObject({ align: 'justify', kashida: 'medium' });
+    expect((round[1] as { kashida?: string }).kashida).toBeUndefined();
+    const html = renderDocHtml(d, {}, { paragraphs: 'blocks' });
+    expect(html.match(/data-kashida="medium"/g)).toHaveLength(1);
+    expect(JSON.stringify(round)).not.toContain('ـ');
+  });
+
+  it('غير «ضبط الطرفين» يُسقطها: في المحرّر، وفي الوثيقة المحفوظة بمستوًى مجهول أو محاذاةٍ أخرى', () => {
+    let state = EditorState.create({
+      schema: docSchema,
+      doc: docSchema.node('doc', null, [docSchema.node('paragraph', { align: 'justify', kashida: 'high' }, [docSchema.text('سلام على الطالب')])])
+    });
+    setParagraphAttr('align', 'right')(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild!.attrs.kashida).toBeNull();
+
+    const ok = { id: 'p3', kind: 'paragraph', align: 'justify', kashida: 'low', inlines: [] };
+    const blocks = normalizeTree([
+      { id: 'p1', kind: 'paragraph', align: 'right', kashida: 'medium', inlines: [] },
+      { id: 'p2', kind: 'paragraph', align: 'justify', kashida: 'huge', inlines: [] },
+      ok
+    ]);
+    expect(blocks.map((b) => (b as { kashida?: string }).kashida)).toEqual([undefined, undefined, 'low']);
+    expect(blocks[2]).toBe(ok);
+  });
+
+  it('Word: المستوى يذهب ويعود (lowKashida وmediumKashida وhighKashida)، والضبط بلا كشيدة «both»', async () => {
+    const d = emptyDoc();
+    d.blocks = [
+      paragraph([run('فقرة بكشيدة متوسّطة')], { align: 'justify', kashida: 'medium' }),
+      paragraph([run('فقرة بكشيدة مرتفعة')], { align: 'justify', kashida: 'high' }),
+      paragraph([run('فقرة مضبوطة')], { align: 'justify' })
+    ];
+    const files = unzipSync(new Uint8Array(await docToDocx(d, { title: 'كشيدة', blanks: true })));
+    const x = strFromU8(files['word/document.xml']!);
+    expect(x).toContain('w:val="mediumKashida"');
+    expect(x).toContain('w:val="highKashida"');
+    expect(x).toContain('w:val="both"');
+    const paras = walkBlocks(docxToDoc(files).doc.blocks).filter((b) => b.kind === 'paragraph');
+    expect(paras.map((p) => [p.align, (p as { kashida?: string }).kashida])).toEqual([
+      ['justify', 'medium'],
+      ['justify', 'high'],
+      ['justify', undefined]
+    ]);
+
+    const body =
+      '<w:p><w:pPr><w:bidi/><w:jc w:val="lowKashida"/></w:pPr><w:r><w:t>مدرسة النور</w:t></w:r></w:p>' +
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>';
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="w"><w:body>${body}</w:body></w:document>`;
+    const imported = walkBlocks(docxToDoc(unzipSync(zipSync({ 'word/document.xml': strToU8(xml) }))).doc.blocks).filter((b) => b.kind === 'paragraph');
+    expect(imported[0]).toMatchObject({ align: 'justify', kashida: 'low' });
   });
 });
