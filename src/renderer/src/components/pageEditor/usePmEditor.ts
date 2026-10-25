@@ -3,7 +3,7 @@
  * الورقة، وعُقد الحقول، وF4 يصنع خانة، والإدراج، وربط المحرّر بالورقة ومزامنته؛ ثم هندسة الورقة وقياس صفحاتها كما تقسمها الطابعة —
  * وهما معًا: القلب يقرأ عرض المتن من الصفحات.
  */
-import { useRef, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction, type MutableRefObject, type ReactNode } from 'react';
 import { type DocField, type Doc, reconcileFields, newUuid, type Block, pageMm } from '@shared/doc';
 import type { Node as PMNode } from 'prosemirror-model';
 import { pmBlocks, blocksToPm } from '@shared/docPm';
@@ -23,7 +23,7 @@ import { caretAfterPaste, cleanPastedHtml, pasteImages, adoptPastedImages } from
 import { pageFlowPlugin, MM_PX, measurePages, sameBreaks, pageFlowKey } from '../pageFlow';
 import { footerBandMm, type LetterheadFooter } from '@shared/letterhead';
 import { registerEditor } from './flushEditors';
-import type { Dispatch, SetStateAction, MutableRefObject, ReactNode } from 'react';
+import { kashidaPlugin } from './kashidaPlugin';
 
 export function usePmEditor(
   ctx: {
@@ -266,6 +266,7 @@ export function usePmEditor(
           placeholder,
           caretAfterPaste,
           pageFlowPlugin(),
+          kashidaPlugin(),
           new Plugin({ props: { decorations: (state) => markWords(state.doc, wrongRef.current) } })
         ]
       }),

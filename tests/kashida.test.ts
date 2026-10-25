@@ -1,9 +1,13 @@
 /**
  * الكشيدة في الضبط (S13، D183): موضع التطويل في الكلمة بأولويّته، وتوزيع عدده على كلمات السطر — حسابٌ خالص.
- * والمرور على DOM (`applyKashida`) يُختبر في الطباعة الحقيقية (سيناريو `editor`).
+ * والمرور على DOM (`applyKashida`) يُختبر في الطباعة الحقيقية (سيناريو `editor`)، وزخرفة المحرّر: محوها وتعيينها (D184).
  */
 import { describe, expect, it } from 'vitest';
 import { KASHIDA_SHARE, kashidaPoint, planLine } from '../src/shared/kashida';
+import { EditorState } from 'prosemirror-state';
+import { Decoration } from 'prosemirror-view';
+import { docSchema } from '../src/shared/docPm';
+import { kashidaKey, kashidaPlugin } from '../src/renderer/src/components/pageEditor/kashidaPlugin';
 
 describe('موضع التطويل في الكلمة', () => {
   it('بعد السين وأخواتها أوّلًا، ثم قبل ا ط ل ك، ولا موضع في كلمةٍ حروفها لا تتّصل بما بعدها', () => {
@@ -47,5 +51,25 @@ describe('توزيع التطويل على السطر', () => {
     expect(KASHIDA_SHARE.low).toBeLessThan(KASHIDA_SHARE.medium);
     expect(KASHIDA_SHARE.medium).toBeLessThan(KASHIDA_SHARE.high);
     expect(KASHIDA_SHARE.high).toBe(1);
+  });
+});
+
+describe('زخرفة التطويل في المحرّر (D184)', () => {
+  it('ما تغيّر من الفقرات تُمحى زخرفته في المعاملة نفسها، والباقي يتبع النصّ', () => {
+    const para = (text: string) => docSchema.node('paragraph', { align: 'justify', kashida: 'medium' }, [docSchema.text(text)]);
+    let state = EditorState.create({ schema: docSchema, doc: docSchema.node('doc', null, [para('مدرسة النور'), para('سلام على الطالب')]), plugins: [kashidaPlugin()] });
+    const at = () => kashidaKey.getState(state)!.find().map((d) => d.from);
+    const w = (pos: number) => Decoration.widget(pos, () => ({}) as never);
+    // الأولى من ٠ (نصّها من ١، و«مدرس» ٤ أحرف)، والثانية من ١٣ (نصّها من ١٤، و«س» حرف).
+    state = state.apply(state.tr.setMeta(kashidaKey, { add: [w(5), w(15)] }));
+    expect(at()).toEqual([5, 15]);
+    state = state.apply(state.tr.insertText('و', 1));
+    expect(at()).toEqual([16]);
+    state = state.apply(state.tr.setNodeMarkup(14, undefined, { ...state.doc.child(1).attrs, align: 'right', kashida: null }));
+    expect(at()).toEqual([]);
+    state = state.apply(state.tr.setMeta(kashidaKey, { add: [w(5)] }));
+    expect(at()).toEqual([5]);
+    state = state.apply(state.tr.setMeta(kashidaKey, { reset: true }));
+    expect(at()).toEqual([]);
   });
 });

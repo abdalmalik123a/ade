@@ -331,12 +331,18 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وتظهر مع «ضبط الطرفين»', (await count('[data-act="kashida"]')) === 1);
   await choose('[data-act="kashida"]', 'medium');
   ok('واختيرت «الكشيدة: متوسّطة» للفقرة', (await page.eval(`return document.querySelector('${ED} > p')?.dataset.kashida ?? '';`)) === 'medium');
+  // والمحرّر يرسمها بعد سكون الكتابة (D184): زخرفةٌ في الفقرة، والعدد كما في PDF أدناه.
+  const editorTatweel = () => page.eval(`return [...document.querySelectorAll('${ED} > p .kashida')].reduce((n, s) => n + s.textContent.length, 0);`);
+  await wait(900);
+  const inEditor = await editorTatweel();
+  ok(`والمحرّر يرسم التطويل في الفقرة بعد السكون (${inEditor} حرف تطويل)`, inEditor > 0);
 
   let before = new Set(readdirSync(saveDir));
   await click('[data-act="export-pdf"]');
   const kashidaPdf = await savedNew('.pdf', before);
   const withK = kashidaPdf ? tatweels(await pdfText(kashidaPdf)) : 0;
   ok(`PDF الفقرة المضبوطة بالكشيدة فيه التطويل (${withK} حرف تطويل)`, withK > 0);
+  ok(`ويُرى في المحرّر كما يُطبع: عدد التطويل نفسه (${inEditor} و${withK})`, inEditor === withK);
   if (shotsDir) await page.shot(join(shotsDir, 'editor-kashida.png'));
 
   await click('[data-act="save"]');
@@ -364,6 +370,29 @@ export default async function scenario(page, { profile, shotsDir }) {
   const kashidaDocx = await savedNew('.docx', before);
   const wordXml = kashidaDocx ? strFromU8(unzipSync(new Uint8Array(readFileSync(kashidaDocx)))['word/document.xml'] ?? new Uint8Array()) : '';
   ok('وWord المصدَّر فيه «mediumKashida»', wordXml.includes('w:val="mediumKashida"'));
+
+  // النسخ من المحرّر بلا تطويل، والكتابة في الفقرة تمحو زخرفتها ثم تعود بعد السكون (D184).
+  const copied = await page.eval(`
+    const ed = document.querySelector('${ED}');
+    ed.focus();
+    const range = document.createRange();
+    range.selectNodeContents(ed.querySelector(':scope > p'));
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    await new Promise((r) => setTimeout(r, 250));
+    const data = new DataTransfer();
+    ed.dispatchEvent(new ClipboardEvent('copy', { clipboardData: data, bubbles: true, cancelable: true }));
+    return data.getData('text/plain');
+  `);
+  ok(`ونسخ الفقرة من المحرّر بلا تطويل (${copied.length} حرفًا)`, copied.includes('توزيعهم') && !copied.includes('ـ'));
+  await caret(0, true);
+  // فور الحرف لا بعد مهلة `type` (٣٠٠ م.ث كمهلة السكون نفسها).
+  await page.send('Input.insertText', { text: ' والسلام' });
+  const whileTyping = await editorTatweel();
+  const typed = await page.eval(`return document.querySelector('${ED} > p').textContent.includes('والسلام');`);
+  await wait(900);
+  const afterIdle = await editorTatweel();
+  ok(`والكتابة فيها تمحو زخرفتها فورًا (${whileTyping}) ثم تعود بعد السكون (${afterIdle})`, typed && whileTyping === 0 && afterIdle > 0);
 
   // الضدّ: الفقرة نفسها مضبوطةً بلا كشيدة — والملفّ الأوّل يُنقل فلا يُكتب فوقه.
   if (kashidaPdf) renameSync(kashidaPdf, join(saveDir, 'kashida-medium.pdf'));

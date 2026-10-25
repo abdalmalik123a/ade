@@ -4,7 +4,8 @@
  * أ. **الإقلاع البارد**: في `prepare` قبل أن يقلع المِقْود برنامجه — `electron.exe` بملفّ تعريفٍ فارغ على منفذٍ آخر، من `spawn` حتى
  *    ظهور `[data-screen="service"]` (عبر CDP، بلا مهلات `drive`).
  * ب. **وثيقةٌ من نحو ١٣٤ صفحة** (فقراتٌ بالجسر): زمن فتحها في المحرّر حتى يظهر آخرها، ثم حتى يقول عدد صفحاتها؛ ووسيط زمن الحرف لمئة
- *    `Input.insertText` في أوّلها (حتى إطارين — أسوأ الحالات: كلّ حرفٍ يعيد ترقيم ما بعده).
+ *    `Input.insertText` في أوّلها (حتى إطارين — أسوأ الحالات: كلّ حرفٍ يعيد ترقيم ما بعده). ونصف فقراتها مضبوطةٌ بكشيدةٍ متوسّطة (D184)،
+ *    والأولى منها — فالحرف يُكتب في فقرةٍ تُمحى زخرفتها، والمحرّر يحسب ما ظهر بعد السكون.
  * ج. **تصميمٌ بمئتي عنصر** بالجسر: زمن فتحه حتى تُرسم مقابضه المئتان، ووسيط خطوة السحب لعشرين حركة فأرة.
  * د. **الذاكرة** بعد (ب) وبعد (ج).
  * هـ. **«أزل الخلفية»** بنموذج الأشياء الحقيقي (BiRefNet، L21) على صورةٍ ٣٨٤×٣٨٤ كما في `objectCutout.test.ts`: مرّتين، الأولى بتحميل النموذج.
@@ -122,13 +123,14 @@ export default async function experiment(page) {
 
   // ب. وثيقةٌ طويلة: نموذجٌ بالجسر، ويُفتح في المحرّر كما يفتحه الموظف.
   const p = (id, text) => ({ id, kind: 'paragraph', align: 'right', inlines: [{ kind: 'run', text }] });
+  const k = (id, text) => ({ ...p(id, text), align: 'justify', kashida: 'medium' });
   const doc = {
     id: 'وثيقة طويلة',
     schemaVersion: 1,
     kind: 'flow',
     issuing: 'registered',
     pageSetup: { size: 'A4', orientation: 'portrait', margins: { top: 20, right: 20, bottom: 20, left: 20 }, letterheadMode: 'print', pageNumbers: true, numerals: 'arabic' },
-    blocks: Array.from({ length: PARAGRAPHS }, (_, i) => p(`p${i}`, `${i + 1}. ${FILLER} ${FILLER} ${FILLER}`)),
+    blocks: Array.from({ length: PARAGRAPHS }, (_, i) => (i % 2 ? p : k)(`p${i}`, `${i + 1}. ${FILLER} ${FILLER} ${FILLER}`)),
     fields: [],
     meta: {}
   };
