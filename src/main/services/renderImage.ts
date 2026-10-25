@@ -6,7 +6,7 @@
  * ورقٍ أبيض (`layerCss`) وخلفيةُ النافذة نفسها شفّافة.
  */
 import { withRenderWindow, type PageMm } from './render';
-import { withDensity } from './pngDensity';
+import { withDensity, withJpegDensity } from './pngDensity';
 
 export type ImageFormat = 'png' | 'jpg';
 
@@ -31,7 +31,7 @@ export async function renderImage(sheetHtml: string, o: { page: PageMm; dpi: num
           clip: { x: 0, y: 0, width, height, scale }
         })) as { data: string };
         const bytes = Buffer.from(result.data, 'base64');
-        return o.format === 'png' ? withDensity(bytes, o.dpi) : bytes;
+        return o.format === 'png' ? withDensity(bytes, o.dpi) : withJpegDensity(bytes, o.dpi);
       } finally {
         dbg.detach();
       }

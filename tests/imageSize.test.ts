@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { imageMeta } from '../src/main/services/imageSize';
+import { withJpegDensity } from '../src/main/services/pngDensity';
 
 // ── صورٌ تُبنى بايتًا بايتًا، فما يُقاس هو القراءة لا مكتبةٌ أخرى ──────
 
@@ -162,5 +163,37 @@ describe('المقاس يأتي من الملف لا من تخميننا', () =>
     expect(imageMeta(Buffer.from('ليست صورة', 'utf8'))).toBeNull();
     expect(imageMeta(Buffer.alloc(0))).toBeNull();
     expect(imageMeta(Buffer.from([0x89, 0x50, 0x4e, 0x47]))).toBeNull();
+  });
+});
+
+describe('JPEG التصميم يحمل دقّته في ملفّه (S42، L03)', () => {
+  /** ما بعد مقطع APP0 — الصورة نفسها. */
+  const afterApp0 = (b: Buffer) => (b[2] === 0xff && b[3] === 0xe0 ? b.subarray(4 + b.readUInt16BE(4)) : b.subarray(2));
+
+  it('JPEG بلا APP0: يُدرج مقطع JFIF معياريّ بعد FFD8 فيُقرأ ٣٠٠ وA4', () => {
+    const before = Buffer.from(jpeg(2480, 3508));
+    expect(imageMeta(before)!.dpi).toBeNull();
+    const after = withJpegDensity(before, 300);
+    expect(after.subarray(2, 4)).toEqual(Buffer.from([0xff, 0xe0]));
+    expect(after.readUInt16BE(4)).toBe(16);
+    const meta = imageMeta(after)!;
+    expect(meta.dpi).toBe(300);
+    expect(meta.mm!.w).toBeCloseTo(210, 0);
+    expect(meta.mm!.h).toBeCloseTo(297, 0);
+    expect(afterApp0(after)).toEqual(afterApp0(before));
+  });
+
+  it('وJPEG بكثافة ١:١ بلا وحدة (كما يخرج من Chromium): تُكتب الوحدة والكثافتان وطول المقطع كما هو', () => {
+    const before = Buffer.from(jpeg(2480, 3508, { x: 1, units: 0 }));
+    expect(imageMeta(before)!.dpi).toBeNull();
+    const after = withJpegDensity(before, 300);
+    expect(after.length).toBe(before.length);
+    expect(imageMeta(after)!.dpi).toBe(300);
+    expect(afterApp0(after)).toEqual(afterApp0(before));
+  });
+
+  it('وما ليس JPEG يعود كما هو', () => {
+    const notJpeg = Buffer.from(png(10, 10));
+    expect(withJpegDensity(notJpeg, 300)).toBe(notJpeg);
   });
 });

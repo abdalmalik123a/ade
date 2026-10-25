@@ -38,12 +38,14 @@ function png(buf) {
 const complete = (buf) =>
   buf.length > 12 && (buf.toString('latin1', buf.length - 8, buf.length - 4) === 'IEND' || (buf[buf.length - 2] === 0xff && buf[buf.length - 1] === 0xd9));
 
-/** أبعاد JPG من مقطع SOF. */
+/** أبعاد JPG من مقطع SOF، ودقّته من مقطع APP0/JFIF (S42): بالإنش وحدها، وإلا `null`. */
 function jpg(buf) {
+  let dpi = null;
   for (let at = 2; at < buf.length; ) {
     const marker = buf[at + 1];
     const len = buf.readUInt16BE(at + 2);
-    if (marker >= 0xc0 && marker <= 0xc2) return { h: buf.readUInt16BE(at + 5), w: buf.readUInt16BE(at + 7) };
+    if (marker === 0xe0 && buf.toString('latin1', at + 4, at + 9) === 'JFIF\0' && buf[at + 11] === 1) dpi = buf.readUInt16BE(at + 12);
+    if (marker >= 0xc0 && marker <= 0xc2) return { h: buf.readUInt16BE(at + 5), w: buf.readUInt16BE(at + 7), dpi };
     at += 2 + len;
   }
   return null;
@@ -98,5 +100,7 @@ export default async function scenario(page) {
   const c = await save('jpg');
   const pc = c ? jpg(c) : null;
   ok(`وبمقاسها المطبوع JPG بـ٣٠٠ نقطة (${pc?.w} × ${pc?.h})`, c?.[0] === 0xff && c?.[1] === 0xd8 && pc?.w === 3508 && pc?.h === 2480);
+  // والدقّة في الملفّ نفسه (S42): فيُطبع من أيّ برنامجٍ بمقاسه لا أكبر من A4 (L03).
+  ok(`ودقّته ٣٠٠ مكتوبةٌ فيه (JFIF: ${pc?.dpi ?? 'بلا وحدة'})`, pc?.dpi === 300);
   return steps.join('\n');
 }
