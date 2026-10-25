@@ -163,6 +163,8 @@ export default async function experiment(page) {
     getSelection().addRange(range);
     return true;`);
   await wait(500);
+  // والزخرفة حاضرةٌ فيما يُرى قبل الحروف (D185): وإلا قاس الحرفُ محرّرًا بلا كشيدة.
+  out.kashidaSpans = await poll(`const n = document.querySelectorAll('[data-screen="editor"] [data-page-editor] .kashida').length; return n > 0 ? n : null;`, 5000) ?? 0;
   const keys = [];
   for (let i = 0; i < 100; i++) {
     const k0 = performance.now();
@@ -174,7 +176,7 @@ export default async function experiment(page) {
   out.keyMaxMs = Math.round(Math.max(...keys));
   await wait(1500);
   out.memoryAfterDoc = memoryMb();
-  lines.push(`   الحرف: الوسيط ${out.keyMedianMs} م.ث، وأبطؤه ${out.keyMaxMs} م.ث (مئة حرف) · الذاكرة بعدها ${out.memoryAfterDoc.total} م.ب في ${out.memoryAfterDoc.processes} عمليات (أكبرها ${out.memoryAfterDoc.largest})`);
+  lines.push(`   الحرف: الوسيط ${out.keyMedianMs} م.ث، وأبطؤه ${out.keyMaxMs} م.ث (مئة حرف، و${out.kashidaSpans} عنصر تطويلٍ ظاهرٌ قبلها) · الذاكرة بعدها ${out.memoryAfterDoc.total} م.ب في ${out.memoryAfterDoc.processes} عمليات (أكبرها ${out.memoryAfterDoc.largest})`);
 
   // ج. تصميمٌ بمئتي عنصر: نصوصٌ في شبكةٍ على A4، يُفتح من «تصاميمي».
   const elements = Array.from({ length: ELEMENTS }, (_, i) => ({
