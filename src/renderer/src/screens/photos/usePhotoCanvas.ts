@@ -1,12 +1,14 @@
 /**
  * رسم الصورة الشخصية (تقسيم الشاشة بعد ١٫٧٫٠) — منقولٌ من `PhotosScreen` كما هو: الشخص بلونه المحسّن وشفافيّته، والمشهد في
- * الإطار بخلفيّته وقاطه وقصّه، وحصر المركز في الحالة. وتحت الذقن في فتحة القاط الجلد وحده (البند ٣٩، `@shared/portraitSkin`).
+ * الإطار بخلفيّته وقاطه وقصّه، وحصر المركز في الحالة. وتحت الذقن في فتحة القاط الجلد وحده (البند ٣٩، `@shared/portraitSkin`)،
+ * وما قُصّ ولم يغطّه القاط يُكمَل: الرقبة جلدًا وباطن الياقة ظلَّ قماش (S45، D175، `@shared/neckFill`).
  */
 import { useCallback, useRef, useEffect } from 'react';
 import { keepAbove, neckLine, type Landmarks } from '@shared/portraitMask';
 import { neckSkin, skinAt, skinSample, type SkinMask } from '@shared/portraitSkin';
 import { faceFloor } from '@shared/portraitFace';
-import { type Scene, drawScene, type Work } from '../../lib/portraitCanvas';
+import { neckFill, type NeckFill } from '@shared/neckFill';
+import { type Scene, drawScene, suitPixels, type Work } from '../../lib/portraitCanvas';
 import { applyEnhance, type Enhance } from '@shared/portraitEnhance';
 import type { Size, Crop } from '@shared/photoSheet';
 import type { Cut, Worn } from './photoShared';
@@ -43,6 +45,14 @@ export function usePhotoCanvas(
 
   /** قناع الجلد تحت الذقن (يُضرب في الشفافية والقاط ملبوس) — يُحسب مرّةً لكلّ قناعٍ ومعالم، لا مع كلّ سحبةٍ للقاط. */
   const skin = useRef<{ key: string; mask: SkinMask | null }>({ key: '', mask: null });
+  /**
+   * إكمال الرقبة: طبقةٌ لصورة العمل التي حُسبت لها، تُكتب في الشخص حيث قُصّ (شفافيّته دون النصف) — فتدخل الحفظ والطباعة كما
+   * تُرى. وتُعاد بعد أن يستقرّ القاط أو القصّ أو اللون (`refill`)، والسابقة تبقى إلى حينها: لا وميض خلفيةٍ في الرقبة أثناء السحب.
+   */
+  const fill = useRef<{ work: Work; layer: NeckFill } | null>(null);
+  const fillTimer = useRef(0);
+  const fillFor = useRef<{ worn: Worn | null; lm: Landmarks | null }>({ worn: null, lm: null });
+  fillFor.current = { worn, lm };
 
   /** الشخص بلونه المحسّن وشفافيّته في لوحة العمل — كلّها أو مستطيلٌ منها (أثر الفرشاة). */
   const rebuildSubject = useCallback((rect?: { x: number; y: number; w: number; h: number }) => {
@@ -67,9 +77,11 @@ export function usePhotoCanvas(
     const a = maskOn.current && cut.current ? cut.current.alpha : null;
     const under = a ? line.current : null;
     const neck = under ? skin.current.mask : null;
+    const fl = under && fill.current?.work === w ? fill.current.layer : null;
     const f = feather.current;
     for (let y = y0; y < y1; y++) {
       const plain = !under || y < under.lo - f;
+      const fy = fl && y >= fl.y && y < fl.y + fl.h ? (y - fl.y) * fl.w - fl.x : -1;
       for (let x = x0; x < x1; x++) {
         const i = y * w.width + x;
         const o = ((y - y0) * rw + (x - x0)) * 4;
@@ -77,6 +89,14 @@ export function usePhotoCanvas(
         d[o + 1] = t[i * 4 + 1]!;
         d[o + 2] = t[i * 4 + 2]!;
         d[o + 3] = a ? (plain ? a[i]! : a[i]! * keepAbove(under!.line, x, y, f) * skinAt(neck, x, y)) : 255;
+        // إكمال الرقبة: ما قُصّ هنا (وما أعادته الفرشاة يبقى كما هو) يُملأ من الطبقة.
+        if (fy >= 0 && d[o + 3]! < 128 && x >= fl!.x && x < fl!.x + fl!.w && fl!.data[(fy + x) * 4 + 3]) {
+          const k = (fy + x) * 4;
+          d[o] = fl!.data[k]!;
+          d[o + 1] = fl!.data[k + 1]!;
+          d[o + 2] = fl!.data[k + 2]!;
+          d[o + 3] = 255;
+        }
       }
     }
     c.getContext('2d')!.putImageData(img, x0, y0);
@@ -107,6 +127,34 @@ export function usePhotoCanvas(
 
   useEffect(draw, [draw, natural, crop, bgColor, worn, frame.w, frame.h]);
 
+  /** يعيد طبقة الإكمال بعد أن يستقرّ ما تغيّر (٢٠٠ م.ث بلا تغيير) — مرّةً لا مع كلّ سحبةٍ أو منزلق — ثم يرسم مستطيلَي القديمة والجديدة. */
+  const refill = useCallback(() => {
+    window.clearTimeout(fillTimer.current);
+    fillTimer.current = window.setTimeout(() => {
+      const w = work.current;
+      const t = toned.current;
+      const c = cut.current;
+      const l = line.current;
+      const { worn: wr, lm: L } = fillFor.current;
+      const model = w && t && c && l && wr && L && maskOn.current ? skinSample(t, c.alpha, w.width, w.height, L, c.face) : null;
+      const layer =
+        model &&
+        neckFill(
+          {
+            width: w!.width, height: w!.height, pixels: t!, alpha: c!.alpha, line: l!.line, feather: feather.current, mask: skin.current.mask,
+            lm: L!, face: c!.face, skin: model, at: wr!.at, anchor: wr!.suit.anchor, neck: { x: L!.neckCenterX, half: L!.neckWidth * 0.5 + 1 }
+          },
+          (r) => suitPixels(wr!.suit, wr!.at, r)
+        );
+      const old = fill.current;
+      fill.current = layer ? { work: w!, layer } : null;
+      if (old) rebuildSubject(old.layer);
+      if (layer) rebuildSubject(layer);
+      if (old || layer) draw();
+    }, 200);
+  }, [rebuildSubject, draw]);
+  useEffect(() => () => window.clearTimeout(fillTimer.current), []);
+
   // التحسين يُعاد من الأصل كلّما تغيّر (بعد توقّف المنزلق قليلًا) — والأصل لا يُمسّ.
   useEffect(() => {
     const w = work.current;
@@ -115,9 +163,10 @@ export function usePhotoCanvas(
       toned.current = applyEnhance(cut.current?.pixels ?? w.pixels, w.width, w.height, enhance);
       rebuildSubject();
       draw();
+      refill(); // الرقبة تُكمَل من الجلد بلونه الجديد
     }, 80);
     return () => window.clearTimeout(t);
-  }, [enhance, cutVersion, rebuildSubject, draw]);
+  }, [enhance, cutVersion, rebuildSubject, draw, refill]);
 
   // الشفافية: القناع إن أُزيلت الخلفية، وقصٌّ على حدّ القاط إن لُبس — وما تغيّر من الصفوف وحده يُعاد.
   useEffect(() => {
@@ -158,7 +207,8 @@ export function usePhotoCanvas(
       rebuildSubject({ x: 0, y: top, w: w.width, h: bottom - top });
     }
     draw();
-  }, [useMask, worn, lm, cutVersion, neckDepth, rebuildSubject, draw]);
+    refill();
+  }, [useMask, worn, lm, cutVersion, neckDepth, rebuildSubject, draw, refill]);
 
   // حصر المركز يثبت في الحالة لا في الرسم وحده — وإلا بقي السحب «يدفع» حافّةً لا تتحرّك.
   useEffect(() => {

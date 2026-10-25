@@ -97,6 +97,17 @@ export function drawScene(ctx: CanvasRenderingContext2D, frame: Size, s: Scene):
   ctx.restore();
 }
 
+/** القاط بموضعه في مستطيلٍ من الصورة العاملة (RGBA بمقاسه) — بتحويل `drawScene` نفسه، لإكمال الرقبة (`@shared/neckFill`). */
+export function suitPixels(suit: Suit, at: SuitTransform, r: { x: number; y: number; w: number; h: number }): Uint8ClampedArray {
+  const ctx = canvasOf(r.w, r.h).getContext('2d', { willReadFrequently: true })!;
+  const sx = (at.scaleX ?? 1) * at.scale;
+  const sy = (at.scaleY ?? 1) * at.scale;
+  ctx.translate(at.x - r.x, at.y - r.y);
+  ctx.rotate((at.angle * Math.PI) / 180);
+  ctx.drawImage(suit.img, -suit.anchor.cx * sx, -suit.anchor.cy * sy, suit.img.naturalWidth * sx, suit.img.naturalHeight * sy);
+  return ctx.getImageData(0, 0, r.w, r.h).data;
+}
+
 /** الصورة النهائية JPEG ببكسلات مقاسها ودقّته — والدقّة مكتوبةٌ في رأسها صادقة. */
 export async function renderJpeg(scene: Scene, px: Size, dpi: number, quality = 0.95): Promise<Blob> {
   const c = canvasOf(px.w, px.h);
