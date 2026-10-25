@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareVersions } from '../src/shared/version';
 import { changesBetween, parseChangelog } from '../src/shared/changelog';
@@ -20,5 +22,12 @@ describe('«ما الجديد» من سجلّ التغييرات', () => {
     expect(all[0]).toEqual({ version: '1.2.0', title: '1.2.0 — كانون', body: '- ثالث' });
     expect(changesBetween(all, '1.0.0', '1.2.0').map((e) => e.version)).toEqual(['1.2.0', '1.1.0']);
     expect(changesBetween(all, '1.1.0', '1.1.0')).toEqual([]);
+  });
+
+  it('وCHANGELOG.md الحقيقيّ: أعلاه قسم الإصدار القادم بعد ١٫٨٫٠ ببنوده، فيُعرض «ما الجديد» عند الترقية (D189)', () => {
+    const all = parseChangelog(readFileSync(join(__dirname, '..', 'CHANGELOG.md'), 'utf8'));
+    expect(compareVersions(all[0]!.version, '1.8.0')).toBe(1);
+    expect(all[0]!.body.split('\n').filter((l) => l.startsWith('- ')).length).toBeGreaterThanOrEqual(10);
+    expect(changesBetween(all, '1.8.0', all[0]!.version).map((e) => e.version)).toEqual([all[0]!.version]);
   });
 });
