@@ -75,7 +75,7 @@ export function usePhotoSteps(
       const res = await window.diwan.photos.cutout({ pixels: new Uint8Array(w.pixels.buffer, w.pixels.byteOffset, w.pixels.byteLength), width: w.width, height: w.height });
       if (work.current !== w) return null; // فُتحت صورةٌ أخرى في أثنائه
       const alpha = Uint8Array.from(res.alpha);
-      cut.current = { alpha, model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength), face: res.face };
+      cut.current = { alpha, model: Uint8Array.from(res.alpha), pixels: new Uint8ClampedArray(res.pixels.buffer, res.pixels.byteOffset, res.pixels.byteLength), face: res.face, shoulders: res.shoulders ?? null };
       // الذقن من الوجه إن وُجد (إصلاح البند ٣٩): تقدير القناع يقع على الشفة في صورٍ حقيقية.
       const l = withFace(landmarks(alpha, w.width, w.height), res.face);
       const p = presetRef.current;

@@ -6,6 +6,7 @@
  */
 
 import type { Face } from './portraitFace';
+import type { Shoulders } from './portraitPose';
 import type { ImportedTemplate } from './apiTemplates';
 
 /** صورةٌ بكسلاتها RGBA ومقاسها — كما تصل من الواجهة. */
@@ -19,8 +20,14 @@ export type WorkerJobs = {
   ping: { input: null; output: { pid: number; at: number; psd?: string | null; psdError?: string | null } };
   /** للاختبار وحده (أبواب الاختبار): يخرج العامل بـ`process.exit(1)` — فيُرى السقوط وما بعده. */
   crash: { input: null; output: never };
-  /** «أزل الخلفية» للأشخاص (D54): MODNet، ووجهه بـYuNet إن وُجد نموذجه (`facePath`) — وتعذّر الوجه لا يُفشل الفصل. */
-  cutout: { input: Pixels & { modelPath: string; facePath: string | null }; output: CutoutOutput & { face: Face | null } };
+  /**
+   * «أزل الخلفية» للأشخاص (D54): MODNet، ووجهه بـYuNet إن وُجد نموذجه (`facePath`)، وكتفاه بـRTMPose-t بعد الفصل (`posePath`، D173) —
+   * وتعذّر الوجه أو الكتفين لا يُفشل الفصل.
+   */
+  cutout: {
+    input: Pixels & { modelPath: string; facePath: string | null; posePath?: string | null };
+    output: CutoutOutput & { face: Face | null; shoulders: Shoulders | null };
+  };
   /** «أزل الخلفية» للأشياء في التصاميم (D54): BiRefNet. */
   cutoutObject: { input: Pixels & { modelPath: string }; output: CutoutOutput };
   /**

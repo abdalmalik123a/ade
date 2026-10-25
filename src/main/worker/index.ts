@@ -7,7 +7,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import type { WorkerInput, WorkerJob, WorkerOutput, WorkerReply, WorkerRequest } from '@shared/worker';
-import { cutout, detectFace } from '../services/portrait';
+import { cutout, detectFace, detectShoulders } from '../services/portrait';
 import { objectCutout } from '../services/objectCutout';
 import { assertPixels, designKind } from '../services/importGuard';
 import { readDesign } from '../services/designImport';
@@ -43,7 +43,7 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
     if (__DIWAN_TEST_DOORS__) process.exit(1);
     throw new Error('عملٌ غير متاح');
   },
-  cutout: async ({ modelPath, facePath, pixels, width, height }) => {
+  cutout: async ({ modelPath, facePath, posePath, pixels, width, height }) => {
     const [cut, face] = await Promise.all([
       cutout(modelPath, pixels, width, height),
       facePath
@@ -53,7 +53,14 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
           })
         : null
     ]);
-    return { ...cut, face };
+    // والكتفان بعد الفصل: صندوقهما من القناع (D173).
+    const shoulders = posePath
+      ? await detectShoulders(posePath, pixels, cut.alpha, width, height).catch((e: unknown) => {
+          console.error('[photos] تعذّر كشف الكتفين', e);
+          return null;
+        })
+      : null;
+    return { ...cut, face, shoulders };
   },
   cutoutObject: ({ modelPath, pixels, width, height }) => objectCutout(modelPath, pixels, width, height),
   readDesign: async ({ path, name, fonts }) => {

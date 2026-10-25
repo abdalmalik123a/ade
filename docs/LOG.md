@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٥ ٠٦:٣٠ — D173 ✅ نقطتا الكتفين بـRTMPose-t في العامل (S45 ١/٤) · النموذج: Claude Opus 5.5 (المنفّذ)
+- **الإيداعات:** حجزٌ (PLAN) · وهذا الختام.
+- **تمّ:** `resources/models/rtmpose-t-body7-256x192.onnx` (١٣٬٣٥٠٬٣٦٤ بايت، sha256 `a6c2f6a3…510a70f` مطابقٌ للنتيجة) وقسمه في `NOTICE.md` (بنهاياته CRLF كما كانت) ·
+  `shared/portraitPose.ts` (`poseBox` و`poseInput` و`decodeShoulders` نقلٌ لـ`pose` في أداة D159) · `detectShoulders` في `portrait.ts` · و`cutout` في العامل يجريه بعد الفصل
+  (وإخفاقه سطرٌ في السجلّ لا إخفاق) · `photos:cutout` يمرّر `posePath` · و`Cut.shoulders` في الواجهة بلا استعمال بعد · وسطر تطبيقٍ في DECISIONS تحت ر177 §٢ · وسطرٌ في photos.md.
+- **الفحص (مُجرَّب):** `npm run typecheck` ✓ · `portraitPose.test` ٤ ✓ — منها النموذج الحقيقي على الصورة المولَّدة: الكتفان تحت الذقن وعلى جانبي الوجه بثقة >٠٫٣ —
+  ويسقط ٢ بنسبة SimCC = ١ (ثم أُعيدت) · `structure` و`workerJobs` ✓ · vitest كاملًا ٢١٢٩ ✓ و١ ✗ بيئة (`nativePsdCompare` §٥) · البناء ✓ · `portrait` ١٧ · `autoCollar` ٤ · `faceChin` ٤ — بلا تغيّر.
+- **الحزمة:** `extraResources` يأخذ `resources/models` كلّه (package.json) فيدخل النموذج المثبّت؛ والمثبّت أكبر بـ~١٣ م.ب (تقدير).
+- **التالي:** D174 مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٥ ٠٦:٢١ — 🧭 م٣ ✅ أوامر «القاط بضغطة»: D173–D176 · النموذج: Claude Opus 5.5 (المنفّذ)
 - **من:** CHAIN §م٣ و`reports/قياس-S45/النتيجة.md` (محلّي) ونموذج D159 الأوّلي في `reports/diag/suitMeasure.diag.ts` — ولا تغيير في الكود.
 - **الأوامر:** D173 ك نقطتا الكتفين بـRTMPose-t في العامل (النموذج ١٣٫٤ م في `resources/models/` بقسمه في NOTICE، وسطر تطبيقٍ تحت ر177 §٢) ·

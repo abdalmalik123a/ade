@@ -11,6 +11,7 @@ import { availableParallelism } from 'node:os';
 import type { InferenceSession } from 'onnxruntime-node';
 import { decontaminate, modelInput, modelSize, sharpenAlpha, upsampleAlpha } from '@shared/portraitMask';
 import { decodeFaces, FACE_SIZE, faceChin, faceInput, type Face } from '@shared/portraitFace';
+import { decodeShoulders, POSE_H, POSE_W, poseBox, poseInput, type Shoulders } from '@shared/portraitPose';
 
 type Ort = typeof import('onnxruntime-node');
 
@@ -92,6 +93,21 @@ export async function detectFace(modelPath: string, pixels: Uint8Array | Uint8Cl
   const raw = Object.fromEntries(s.outputNames.map((k) => [k, out[k]!.data as Float32Array]));
   const best = decodeFaces(raw, scale)[0];
   return best ? { ...best, chin: faceChin(best, pixels, width, height) } : null;
+}
+
+/**
+ * نقطتا الكتفين بنموذج RTMPose-t (S45، D173؛ `@shared/portraitPose`) — بعد الفصل لأنّ صندوقه من القناع، أو `null` إن خلا القناع.
+ * والتركيب بهما في الواجهة (D174).
+ */
+export async function detectShoulders(modelPath: string, pixels: Uint8Array | Uint8ClampedArray, alpha: Uint8Array, width: number, height: number): Promise<Shoulders | null> {
+  const box = poseBox(alpha, width, height);
+  if (!box) return null;
+  const s = await modelSession(modelPath);
+  const { Tensor } = await loadOrt();
+  const out = await s.run({ [s.inputNames[0]!]: new Tensor('float32', poseInput(pixels, width, height, box), [1, 3, POSE_H, POSE_W]) });
+  const x = out['simcc_x']!;
+  const y = out['simcc_y']!;
+  return decodeShoulders(x.data as Float32Array, y.data as Float32Array, x.dims[2]!, y.dims[2]!, box);
 }
 
 /** يُطلق النماذج عند الإغلاق. */

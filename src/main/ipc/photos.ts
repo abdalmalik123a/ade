@@ -41,6 +41,8 @@ const MODEL = 'modnet-portrait-q8.onnx';
 const OBJECT_MODEL = 'birefnet-lite-matting-q8.onnx';
 /** نموذج الوجه (YuNet): الذقن الحقيقيّ للياقة و«رمّم» ودليل الرأس (إصلاح البند ٣٩). */
 const FACE_MODEL = 'face_detection_yunet_2023mar.onnx';
+/** نموذج الكتفين (RTMPose-t، S45 D173): نقطتاهما يُلبس بهما القاط بعرضهما وزاويتهما (D174). */
+const POSE_MODEL = 'rtmpose-t-body7-256x192.onnx';
 
 function modelPath(file: string): string {
   const candidates = [
@@ -77,8 +79,16 @@ export function registerPhotoIpc(): void {
     if (!existsSync(path)) throw new Error('نموذج إزالة الخلفية غير مثبّت مع البرنامج');
     if (input.pixels.length !== input.width * input.height * 4) throw new Error('صورةٌ ناقصة');
     const facePath = modelPath(FACE_MODEL);
+    const posePath = modelPath(POSE_MODEL);
     // في العامل المستقلّ وحده (A03، D54، A18) فلا تتجمّد الرئيسة ولا تُفتح فيها النماذج.
-    const job = { modelPath: path, facePath: existsSync(facePath) ? facePath : null, pixels: input.pixels, width: input.width, height: input.height };
+    const job = {
+      modelPath: path,
+      facePath: existsSync(facePath) ? facePath : null,
+      posePath: existsSync(posePath) ? posePath : null,
+      pixels: input.pixels,
+      width: input.width,
+      height: input.height
+    };
     return workerHost().run('cutout', job);
   });
 
