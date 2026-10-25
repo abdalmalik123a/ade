@@ -140,21 +140,8 @@ export function usePhotoCanvas(
       const c = cut.current;
       const l = line.current;
       const { worn: wr, lm: L } = fillFor.current;
-      const model = w && t && c && l && wr && L && maskOn.current ? skinSample(t, c.alpha, w.width, w.height, L, c.face) : null;
-      const layer =
-        model &&
-        neckFill(
-          {
-            width: w!.width, height: w!.height, pixels: t!, alpha: c!.alpha, line: l!.line, feather: feather.current, mask: skin.current.mask,
-            lm: L!, face: c!.face, skin: model, at: wr!.at, anchor: wr!.suit.anchor, neck: { x: L!.neckCenterX, half: L!.neckWidth * 0.5 + 1 }
-          },
-          (r) => suitPixels(wr!.suit, wr!.at, r)
-        );
-      const old = fill.current;
-      fill.current = layer ? { work: w!, layer } : null;
-      if (old) rebuildSubject(old.layer);
-      if (layer) rebuildSubject(layer);
-      // لون القاط على قدر الصورة (D176): يُقاس من الشخص كما يُرسم مرّةً لكلّ لون، ويُعدَّل القاط مرّةً لكلّ (صورةٍ وقاطٍ ولونٍ ومقياس).
+      // لون القاط على قدر الصورة (D176) أوّلًا — فباطن الياقة يُقرأ من القاط بلونه (D177): يُقاس من الشخص كما يُرسم مرّةً لكلّ لون، ويُعدَّل القاط
+      // مرّةً لكلّ (صورةٍ وقاطٍ ولونٍ ومقياس).
       let looked = false;
       const nat = fillFor.current.natural;
       if (wr && w && t && c && nat) {
@@ -168,6 +155,20 @@ export function usePhotoCanvas(
           looked = true;
         }
       }
+      const model = w && t && c && l && wr && L && maskOn.current ? skinSample(t, c.alpha, w.width, w.height, L, c.face) : null;
+      const layer =
+        model &&
+        neckFill(
+          {
+            width: w!.width, height: w!.height, pixels: t!, alpha: c!.alpha, line: l!.line, feather: feather.current, mask: skin.current.mask,
+            lm: L!, face: c!.face, skin: model, at: wr!.at, anchor: wr!.suit.anchor, neck: { x: L!.neckCenterX, half: L!.neckWidth * 0.5 + 1 }
+          },
+          (r) => suitPixels(wr!.suit, wr!.at, r, nat ?? undefined)
+        );
+      const old = fill.current;
+      fill.current = layer ? { work: w!, layer } : null;
+      if (old) rebuildSubject(old.layer);
+      if (layer) rebuildSubject(layer);
       if (old || layer || looked) draw();
     }, 200);
   }, [rebuildSubject, draw]);

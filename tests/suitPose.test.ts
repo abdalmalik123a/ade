@@ -68,6 +68,16 @@ describe('القاط بنقطتي الكتفين', () => {
     expect(Math.abs((at.scale * 180) / 400 - 1)).toBeLessThan(0.03);
   });
 
+  it('قالب قميصٍ وربطة يتّسع ذراعاه حتى أسفله: صفّ الكتف عند زاوية الكتف لا على الذراعين (D177)', () => {
+    // أطراف الياقة ٦٠ حتى الصفّ ٢٠، ثم الكتف المنحدر يتّسع ٦ في الصفّ حتى زاويته (الصفّ ٦٠، ٣٠٠)، ثم الذراعان ٠٫٦ حتى أسفله (٤٤٣).
+    const arms = Float32Array.from({ length: 300 }, (_, y) => (y < 20 ? 60 : y <= 60 ? 60 + (y - 20) * 6 : 300 + (y - 60) * 0.6));
+    const row = shoulderRow(arms);
+    expect(Math.abs(row - 60)).toBeLessThanOrEqual(15);
+    // و«٩٠٪ من الأعرض» كان يقع على الذراعين (الصفّ ٢٢٥): فيُلبس القاط بعرض الكتفين لا أصغر.
+    const at = fitSuitByShoulders(anchor, arms, body(0), W, H, lm, shoulders(0))!;
+    expect(Math.abs((at.scale * arms[row]!) / 402 - 1)).toBeLessThan(0.03);
+  });
+
   it('وكلاهما مقطوع، أو ثقةٌ ضعيفة، أو بلا نقطتين ← `null` (تركيب اليوم)', () => {
     const wide = body(0, 300, 340);
     expect(fitSuitByShoulders(anchor, suitRows, wide, W, H, lm, shoulders(0, 300, 340))).toBeNull();
