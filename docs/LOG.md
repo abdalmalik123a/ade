@@ -6,6 +6,19 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٥ ١٥:٤٠ — توقّف بطلب المالك · D183 🔄 (الخطوة ١ تمّت) · النموذج: Claude Opus 5.5 (المنفّذ)
+- **قال المالك:** «استانف العمل وجهز لمحادثة جديدة» — فأُودعت الخطوة ١ بفحصها وتوقّفت؛ والشجرة نظيفة. ولا شيء ينتظر المالك.
+- **تمّ (مُجرَّب):** `src/shared/kashida.ts` — `kashidaPoint` و`planLine` (خالصان) و`applyKashida(root, point, plan, shares, cap)` بأنواعٍ بنيويّة (الإعداد الرئيسيّ بلا DOM)،
+  مكتفيةٌ بمعاملاتها للحقن بـ`toString` (البناء لا يغيّر الأسماء ولا يُدخل `__name` — مُجرَّب على `out/main`) · و`KASHIDA_LEVELS` و`KASHIDA_SHARE` و`KASHIDA_MAX_PER_WORD` (٥) ·
+  `tests/kashida.test.ts` ٧ ✓ (المواضع: مدرسـة، سـلام، عـلى، الطـالب، ولا في إدارة ولا لا ولا كلمةٍ فيها تطويل، والحركات تُتخطّى؛ والتوزيع والسقف) — ويسقط ١ بإزالة قاعدة لام ألف ثم أُعيدت · typecheck ✓.
+  ولم يُجرَّب `applyKashida` في البرنامج بعد (نموذجها الأوّليّ جُرّب في الدراسة: ١٣٣ صفحة في ٣ ث).
+- **الاستئناف (محادثةٌ جديدة بـ`/next`) — D183 من الخطوة ٢:** (٢) `kashida` في `ParagraphBlock` (`docTypes.ts`) وخاصّية الفقرة في `docPmSchema.ts` (`attrs` و`paragraphDomAttrs`
+  و`paragraphAttrsFromDom` بـ`data-kashida`) و`docPm.ts` (`paragraphToPm` و`pmParagraph`) و`docTree.fixBlock` (يُسقطها لغير المضبوطة أو لمستوًى مجهول) و`docHtml.paragraphHtml`
+  (`data-kashida` — **الملفّ ٣٩٥ سطرًا وسقفه ٤٠٠**) · (٣) `render.ts` بعد الخطوط وقبل `fitCanvasText`: `(${applyKashida.toString()})(root, ${kashidaPoint.toString()}, ${planLine.toString()}, ${JSON.stringify(KASHIDA_SHARE)}, ${KASHIDA_MAX_PER_WORD})`
+  مع `.kashida{user-select:none}` · (٤) `FormatBar` (اختيار المستوى حين تكون الفقرة مضبوطة، و`commands.ts` لتغيير الخاصّية) · (٥) `docDocx.alignment` ← `AlignmentType.*_KASHIDA`، و`docxRuns.mapJc` ومن يناديه
+  يحمل المستوى · (٦) اختبارات Word والوثيقة · (٧) `editor.mjs` (PDF فيه U+0640 والوثيقة بلا، والبحث، وWord فيه `mediumKashida`) · ثم الفحص الختامي (`pdfCompare` مراجعه كما هي) · ثم D184 ثم 🔍 م٥.
+  **ولا يُمسّ `usePmEditor.ts` (٣٩٩/٤٠٠).**
+
 ## ٢٠٢٦-١٠-٢٥ ١٥:١٠ — 🧭 م٥ ✅ دراسة الكشيدة وأمراها: D183 وD184 · النموذج: Claude Opus 5.5 (المنفّذ)
 - **الدراسة (مُجرَّبة، محلّية في المسودّة؛ ونتيجتها في editor.md §٥):** Chromium 152 لا يدعم `text-justify: kashida` والضبط يمدّ المسافات وحدها بالعلَم التجريبي وبدونه ·
   التطويل في عنصرٍ منفصلٍ يُبقي الوصل (العرض ١٢٠٫٦ في الثلاث) و`inline-block` يقطعه · `user-select:none` يُخرجه من النسخ · نصّ PDF العربيّ من Chromium أشكالٌ مقطّعة أصلًا ·
