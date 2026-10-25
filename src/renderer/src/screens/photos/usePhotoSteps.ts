@@ -5,6 +5,7 @@
  */
 import { useRef, useEffect } from 'react';
 import { type Landmarks, landmarks, autoCrop, fitSuit, rowWidths } from '@shared/portraitMask';
+import { fitSuitByShoulders } from '@shared/suitPose';
 import { autoEnhance, NEUTRAL, type Enhance } from '@shared/portraitEnhance';
 import { clothesTop, raiseSuit, skinSample } from '@shared/portraitSkin';
 import { withFace } from '@shared/portraitFace';
@@ -198,7 +199,9 @@ export function usePhotoSteps(
         suitCache.current.set(key, s);
       }
       const c = cut.current;
-      const fitted = l && c ? fitSuit(s.anchor, s.rows, rowWidths(c.alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height });
+      // بكتفي الشخص من RTMPose-t إن ظهر أحدهما في الصورة (S45، D174)، وإلا المطابقة صفًّا صفًّا كاليوم.
+      const byShoulders = l && c ? fitSuitByShoulders(s.anchor, s.rows, c.alpha, w.width, w.height, l, c.shoulders) : null;
+      const fitted = byShoulders ?? (l && c ? fitSuit(s.anchor, s.rows, rowWidths(c.alpha, w.width, w.height), l, s.tops) : fallbackPlace(s, { w: w.width, h: w.height }));
       // ياقة الزبون أو كنزته ظاهرةٌ بين ذقنه والقاط: يرتفع القاط حتى يغطّيها، والذقن حدّه.
       const skin = l && c ? skinSample(c.pixels, c.alpha, w.width, w.height, l, c.face) : null;
       const base = l && c && skin ? raiseSuit(fitted, clothesTop(c.pixels, c.alpha, w.width, l, skin, fitted.y, c.face), l.chin) : fitted;

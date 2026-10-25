@@ -256,6 +256,8 @@ export default async function scenario(page, { shotsDir }) {
   // مسار الفتح ثابت تحت المِقْود، فيُكتب فيه كلّ مرّةٍ ما يُستورد (الباب يميّز بالمحتوى لا بالامتداد).
   const wornLast = (n) =>
     until(`(() => { const b = [...document.querySelectorAll('[data-suit^="custom-"]')]; return b.length === ${n} && b[${n - 1}].className.includes('border-secondary'); })()`, 8000);
+  // الوجه قبل أيّ قاطٍ مستورد — ويُقارن بعده (ر023: الوجه لا يُمسّ).
+  const faceBare = await settled(() => color(0.4, 0.3, 0.6, 0.4));
   await click('[data-act="import-suit"]');
   await wait(1200);
   ok('والقاط المعتم يُرفض ويُقال لماذا', (await page.text()).includes('ليست قاطًا على خلفيةٍ بيضاء'));
@@ -287,6 +289,12 @@ export default async function scenario(page, { shotsDir }) {
   await wait(3800);
   await click('[data-act="import-suit"]');
   ok('والشفّاف يُضاف إلى القاط ويُلبَس', await wornLast(2));
+  // ويُلبس بميل كتفي الشخص من RTMPose-t (S45، D174): على المولَّدة ٠٫٥٣° (قياس D174) فيقرؤه المنزلق ٠٫٥ بخطوته —
+  // وتركيب اليوم (`fitSuit`) زاويته صفرٌ دائمًا.
+  const angle = Number(await page.eval(`return document.querySelector('input[data-act="suit-angle"]')?.value ?? 'NaN';`));
+  ok(`ومَيله من الكتفين لا صفرٌ مفروض (${angle}°)`, angle !== 0 && Math.abs(angle) < 5);
+  const faceWorn = await settled(() => color(0.4, 0.3, 0.6, 0.4));
+  ok(`والوجه لا يتغيّر بالقاط المستورد (${faceBare.map((v) => v.toFixed(1))} ← ${faceWorn.map((v) => v.toFixed(1))})`, near(faceWorn, faceBare, 1));
   if (shotsDir) await page.shot(join(shotsDir, 'portrait-custom-suit.png'));
 
   // ٨. قالبٌ للمكتب: يُحفظ ويُختار، والإطار بنسبته.
