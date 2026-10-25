@@ -173,12 +173,16 @@ export async function buildPdf(plan: PdfPlan, sources: Map<string, PdfSource>, r
   const total = plan.pages.length;
 
   for (const [position, ref] of plan.pages.entries()) {
-    const src = sources.get(ref.source);
-    if (!src) throw new Error('مصدر صفحةٍ غير موجود — أعد فتح الملف');
+    const src = ref.blank ? null : sources.get(ref.source);
+    if (!ref.blank && !src) throw new Error('مصدر صفحةٍ غير موجود — أعد فتح الملف');
 
     let page: PDFPage;
     let base: number;
-    if (src.kind === 'pdf') {
+    if (!src) {
+      // صفحةٌ فارغة بمقاسها (S28): بيضاء بلا محتوى.
+      page = out.addPage([ref.blank!.w, ref.blank!.h]);
+      base = 0;
+    } else if (src.kind === 'pdf') {
       let doc = loaded.get(ref.source);
       if (!doc) {
         doc = await loadPdf(src.bytes);

@@ -22,7 +22,10 @@ import {
 } from '@shared/pdfEdit';
 import { useLeaveGuard } from '../kit/useLeaveGuard';
 import { rememberLimit, savedLimit } from '../lib/fitImage';
-import { shownPt, type Src, type Drag, type PdfIncoming } from './pdf/pdfPages';
+import { pagesWord, refShownPt, type Src, type Drag, type PdfIncoming } from './pdf/pdfPages';
+import { count } from '@shared/arabic';
+import SheetPreview from './pdf/SheetPreview';
+import { sheetsCount } from '@shared/pdfSheets';
 import PdfToolbar from './pdf/PdfToolbar';
 import PdfEmpty from './pdf/PdfEmpty';
 import PagesRail from './pdf/PagesRail';
@@ -58,6 +61,8 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   const [splitText, setSplitText] = useState<string | null>(null);
   const [limit, setLimitState] = useState(() => savedLimit());
   const [gray, setGray] = useState(false);
+  /** صفحاتٌ في ورقة عند الحفظ (S27، D178) — لا يُحفظ بين الجلسات. */
+  const [perSheet, setPerSheet] = useState(1);
   const toastTimer = useRef<number | undefined>(undefined);
   const drag = useRef<Drag | null>(null);
   const stage = useRef<HTMLDivElement | null>(null);
@@ -83,7 +88,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
     rememberLimit(bytes);
   }
 
-  const plan = useMemo<PdfPlan>(() => ({ pages, overlays }), [pages, overlays]);
+  const plan = useMemo<PdfPlan>(() => ({ pages, overlays, perSheet }), [pages, overlays, perSheet]);
   const currentRef = pages.find((p) => p.id === current) ?? null;
   const currentIndex = pages.findIndex((p) => p.id === current);
   const targets = selected.length ? selected : current ? [current] : [];
@@ -107,8 +112,8 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
 
   // ── عمليات الصفحات ──────────────────────────────────────────────────
   // ── عمليات الصفحات: التدوير والحذف والترتيب والسحب والتكرار — `pdf/usePdfPageOps.ts` ──
-  const { rotate, move, duplicate, remove, dragPage, dropPage } = usePdfPageOps({
-    setPages, targets, pages, setOverlays, setSelected, setCurrent, say
+  const { rotate, move, duplicate, remove, dragPage, dropPage, blank } = usePdfPageOps({
+    setPages, targets, pages, setOverlays, setSelected, setCurrent, say, sources
   });
 
   // ── الإضافة: نصّ، وشعار، وعلامة مائية ──────────────────────────────
@@ -175,7 +180,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   const btn = 'h-9 px-space-sm rounded-btn bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1 disabled:opacity-40';
   const hasDoc = pages.length > 0;
   const pageOverlays = currentRef ? overlaysFor(plan, currentRef.id) : [];
-  const pt = currentRef && sources[currentRef.source] ? shownPt(sources[currentRef.source]!, currentRef) : null;
+  const pt = currentRef ? refShownPt(sources, currentRef) : null;
   const pxPerPt = view && pt ? view.w / pt.w : 1;
 
   return (
@@ -217,6 +222,7 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
               rotate={rotate}
               move={move}
               duplicate={duplicate}
+              blank={blank}
               remove={remove}
               pages={pages}
               selected={selected}
@@ -284,6 +290,10 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
             nav={nav}
             btn={btn}
             toCustomer={toCustomer}
+            perSheet={perSheet}
+            setPerSheet={setPerSheet}
+            sheets={perSheet > 1 ? `${pagesWord(pages.length)} ← ${count(sheetsCount(pages.length, perSheet), 'ورقة')}` : ''}
+            preview={<SheetPreview first={pages[0] ? refShownPt(sources, pages[0]) : null} n={perSheet} pages={pages} thumbKey={thumbKey} thumbs={thumbs} />}
           />
         )}
       </div>

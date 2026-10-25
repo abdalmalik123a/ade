@@ -315,6 +315,24 @@ describe('البناء كما يُرى', () => {
     expect(pages.map((p) => p.items.find((i) => i.text.startsWith('TL'))?.text)).toEqual(['TLB1', 'TLA3', 'TLA1']);
   });
 
+  it('الصفحة الفارغة (S28، D178): بيضاء بمقاسها — ومقاسُ جارةٍ مُدارة كما تُرى عريض', async () => {
+    const sources = new Map<string, PdfSource>([['a', { kind: 'pdf', name: 'a.pdf', bytes: await samplePdf(['1']) }]]);
+    const plan: PdfPlan = {
+      pages: [
+        { id: 'r', source: 'a', index: 0, rotate: 90 },
+        { id: 'b', source: '', index: 0, rotate: 0, blank: { w: A4.height, h: A4.width } }
+      ],
+      overlays: []
+    };
+    const pages = await shownTexts(await buildPdf(plan, sources, null));
+    expect(pages).toHaveLength(2);
+    expect(pages[1]!.w).toBeCloseTo(pages[0]!.w, 0);
+    expect(pages[1]!.h).toBeCloseTo(pages[0]!.h, 0);
+    expect(pages[1]!.items).toEqual([]);
+    // ومصدرٌ غائب بلا «فارغة» يُقال كما كان.
+    await expect(buildPdf({ pages: [{ id: 'x', source: 'z', index: 0, rotate: 0 }], overlays: [] }, sources, null)).rejects.toThrow('مصدر صفحةٍ غير موجود');
+  });
+
   it('القصّ: ما خارج القصّ لا يُرى، والصفحة بمقاسه', async () => {
     const sources = new Map<string, PdfSource>([['a', { kind: 'pdf', name: 'a.pdf', bytes: await samplePdf(['1']) }]]);
     const plan: PdfPlan = {

@@ -1,9 +1,9 @@
 /**
  * عمليات الصفحات في محرّر PDF (تقسيم الشاشة بعد ١٫٧٫٠) — منقولةٌ من `PdfScreen` كما هي: التدوير والحذف والترتيب بالسهمين وبالسحب،
- * وتكرار الصفحة بعدها.
+ * وتكرار الصفحة بعدها، وصفحةٌ فارغة قبلها أو بعدها (S28، D178).
  */
 import { totalRotation, type PageRef, type Overlay } from '@shared/pdfEdit';
-import { pagesWord, newId } from './pdfPages';
+import { pagesWord, newId, refShownPt, type Src } from './pdfPages';
 import { useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -16,9 +16,10 @@ export function usePdfPageOps(
     setSelected: Dispatch<SetStateAction<string[]>>;
     setCurrent: Dispatch<SetStateAction<string | null>>;
     say: (text: string, tone?: 'ok' | 'warn') => void;
+    sources: Record<string, Src>;
   }
 ) {
-  const { setPages, targets, pages, setOverlays, setSelected, setCurrent, say } = ctx;
+  const { setPages, targets, pages, setOverlays, setSelected, setCurrent, say, sources } = ctx;
 
   function rotate(by: 90 | 270) {
     setPages((ps) => ps.map((p) => (targets.includes(p.id) ? { ...p, rotate: totalRotation(p.rotate, by) } : p)));
@@ -76,5 +77,23 @@ export function usePdfPageOps(
     say(`كُرّرت ${pagesWord(copies.size)}`);
   }
 
-  return { rotate, move, duplicate, remove, dragPage, dropPage };
+  /** صفحةٌ فارغة قبل كلّ محدَّدةٍ أو بعدها، بمقاسها كما تُرى — والإضافات على «كلّ الصفحات» تشملها كغيرها. */
+  function blank(where: 'before' | 'after') {
+    if (!targets.length) return;
+    const list: PageRef[] = [];
+    let added = 0;
+    for (const p of pages) {
+      const size = targets.includes(p.id) ? refShownPt(sources, p) : null;
+      const page: PageRef | null = size ? { id: newId('p'), source: '', index: 0, rotate: 0, blank: { w: size.w, h: size.h } } : null;
+      if (page && where === 'before') list.push(page);
+      list.push(p);
+      if (page && where === 'after') list.push(page);
+      if (page) added++;
+    }
+    if (!added) return;
+    setPages(list);
+    say(added === 1 ? 'أُضيفت صفحةٌ فارغة' : `أُضيفت صفحاتٌ فارغة: ${pagesWord(added)}`);
+  }
+
+  return { rotate, move, duplicate, remove, dragPage, dropPage, blank };
 }

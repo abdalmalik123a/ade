@@ -80,6 +80,28 @@ export function cropCanvas(c: HTMLCanvasElement, crop?: FracBox): HTMLCanvasElem
   return out;
 }
 
+/** الصفحة الفارغة (S28، D178) كما تُرى: لوحٌ أبيض بنسبتها بعرضٍ معلوم. */
+export function blankCanvas(ref: PageRef, width: number): HTMLCanvasElement {
+  const s = shownSize({ width: ref.blank!.w, height: ref.blank!.h }, ref.rotate);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(width));
+  c.height = Math.max(1, Math.round((width * s.h) / s.w));
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+
+/** مقاس الصفحة كما تُرى بالنقاط لأيّ صفحة — والفارغة بمقاسها — أو `null` لمصدرٍ لم يُحمَّل. */
+export function refShownPt(sources: Record<string, Src>, ref: PageRef): { w: number; h: number } | null {
+  if (ref.blank) {
+    const s = shownSize({ width: ref.blank.w, height: ref.blank.h }, ref.rotate);
+    return ref.crop ? { w: s.w * ref.crop.w, h: s.h * ref.crop.h } : s;
+  }
+  const src = sources[ref.source];
+  return src ? shownPt(src, ref) : null;
+}
+
 /** مقاس الصفحة كما تُرى بالنقاط — بعد دورانها وقصّها — لتُقاس به الخطوط في المعاينة. */
 export function shownPt(src: Src, ref: PageRef): { w: number; h: number } {
   const info = src.pages[ref.index]!;

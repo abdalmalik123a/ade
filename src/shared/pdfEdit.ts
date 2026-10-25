@@ -26,6 +26,8 @@ export type PageRef = {
   rotate: Rotation;
   /** القصّ نسبيًّا من الصفحة كما تُرى قبله. */
   crop?: FracBox;
+  /** صفحةٌ فارغة (S28، D178) بمقاسها بالنقاط — بلا مصدرٍ في الملفّات المفتوحة. */
+  blank?: { w: number; h: number };
 };
 
 type OverlayBase = {
@@ -58,7 +60,8 @@ export type ImageOverlay = OverlayBase & {
 
 export type Overlay = TextOverlay | ImageOverlay;
 
-export type PdfPlan = { pages: PageRef[]; overlays: Overlay[] };
+/** و`perSheet`: صفحاتٌ في ورقة عند البناء للحفظ (S27، D178) — ١ أو غيابه: كلّ صفحةٍ ورقة. */
+export type PdfPlan = { pages: PageRef[]; overlays: Overlay[]; perSheet?: number };
 
 /** الخطوط التي تُعرض — من خطوط ويندوز؛ وما غاب عن جهازٍ يُبدَّل بما يقاربه. */
 export const PDF_FONTS = ['Arial', 'Tahoma', 'Simplified Arabic', 'Traditional Arabic', 'Sakkal Majalla', 'Arabic Typesetting'] as const;

@@ -4,7 +4,7 @@
  */
 import { type PageRef, shownSize, totalRotation, type FracBox } from '@shared/pdfEdit';
 import { useEffect } from 'react';
-import { cropCanvas, drawShown, type Src } from './pdfPages';
+import { blankCanvas, cropCanvas, drawShown, type Src } from './pdfPages';
 import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
 
 export function usePdfThumbs(
@@ -22,14 +22,15 @@ export function usePdfThumbs(
 ) {
   const { pages, thumbs, sources, setThumbs, currentRef, setView, crop, stage, current } = ctx;
 
-  const thumbKey = (r: PageRef) => `${r.source}:${r.index}:${r.rotate}:${JSON.stringify(r.crop ?? null)}`;
+  const thumbKey = (r: PageRef) => `${r.blank ? `blank:${r.blank.w}x${r.blank.h}` : r.source}:${r.index}:${r.rotate}:${JSON.stringify(r.crop ?? null)}`;
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       for (const r of pages) {
         const key = thumbKey(r);
-        if (cancelled || thumbs[key] || !sources[r.source]) continue;
-        const c = cropCanvas(await drawShown(sources[r.source]!, r.index, r.rotate, r.crop ? 110 / r.crop.w : 110), r.crop);
+        if (cancelled || thumbs[key] || (!r.blank && !sources[r.source])) continue;
+        const width = r.crop ? 110 / r.crop.w : 110;
+        const c = cropCanvas(r.blank ? blankCanvas(r, width) : await drawShown(sources[r.source]!, r.index, r.rotate, width), r.crop);
         if (cancelled) return;
         setThumbs((t) => ({ ...t, [key]: c.toDataURL('image/jpeg', 0.8) }));
       }
@@ -43,23 +44,24 @@ export function usePdfThumbs(
 
   useEffect(() => {
     let cancelled = false;
-    if (!currentRef || !sources[currentRef.source]) {
+    if (!currentRef || (!currentRef.blank && !sources[currentRef.source])) {
       setView(null);
       return;
     }
     void (async () => {
-      const src = sources[currentRef.source]!;
+      const src = sources[currentRef.source];
       // في القصّ تُرى الصفحة كاملةً وعليها صندوقه؛ وبعده تُرى مقصوصة.
       const shownCrop = crop ? undefined : currentRef.crop;
       const box = stage.current?.getBoundingClientRect();
       const maxW = Math.max(320, (box?.width ?? 640) - 32);
       const maxH = Math.max(320, (box?.height ?? 800) - 32);
-      const info = src.pages[currentRef.index]!;
+      const info = currentRef.blank ? { width: currentRef.blank.w, height: currentRef.blank.h, rotation: 0 } : src!.pages[currentRef.index]!;
       const s = shownSize(info, totalRotation(info.rotation, currentRef.rotate));
       const aspect = (s.h * (shownCrop?.h ?? 1)) / (s.w * (shownCrop?.w ?? 1));
       const w = Math.min(maxW, maxH / aspect);
       const dpr = window.devicePixelRatio || 1;
-      const full = await drawShown(src, currentRef.index, currentRef.rotate, (w * dpr) / (shownCrop?.w ?? 1));
+      const width = (w * dpr) / (shownCrop?.w ?? 1);
+      const full = currentRef.blank ? blankCanvas(currentRef, width) : await drawShown(src!, currentRef.index, currentRef.rotate, width);
       if (cancelled) return;
       setView({ url: cropCanvas(full, shownCrop).toDataURL('image/png'), w, h: w * aspect });
     })();

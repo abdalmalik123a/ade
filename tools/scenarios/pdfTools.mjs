@@ -15,6 +15,7 @@ import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'n
 import { join } from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { pdfToImages } from '../pdfImage.mjs';
 
 const ROOT = join(process.env.TEMP ?? '.', `diwan-pdftools-${Date.now()}`);
 const OUT = join(ROOT, 'out');
@@ -347,5 +348,54 @@ export default async function scenario(page, { shotsDir }) {
   const imgSizes = limited.map((f) => statSync(join(OUT, f)).size);
   ok(`«صفحاتٌ صورًا» بحدّ ١٠٠ ك.ب: خمس صور كلٌّ دونه (${imgSizes.join('، ')})`, limited.length === 5 && imgSizes.every((s) => s <= 100_000 && s > 1000));
   await choose('[data-pdf-limit]', 0);
+  if (await page.eval(`return document.querySelector('[data-pdf-gray]').checked;`)) await click('[data-pdf-gray]');
+
+  // ── صفحةٌ فارغة (S28) وصفحاتٌ في ورقة (S27، D178) ─────────────────────
+  // فارغةٌ بعد الثانية (الاستمارة المدارة): ست صفحات، والفارغة بمقاس جارتها كما تُرى.
+  await clearSel();
+  await check(2);
+  await click('[data-act="pdf-blank-after"]');
+  ok('«فارغةٌ بعدها»: صفحةٌ سادسة بعد المحدَّدة', (await waitCount(6)) === 6);
+  await clearSel();
+  await choose('[data-pdf-per-sheet]', 4);
+  await wait(500);
+  const note = await page.eval(`return document.querySelector('[data-pdf-sheets]')?.innerText ?? '';`);
+  const previewImgs = await page.eval(`return document.querySelectorAll('[data-sheet-preview] img').length;`);
+  ok(`و«٤ في ورقة» يقول عدد الأوراق ويعاين الأولى («${note}»، ${previewImgs} مصغّرات)`, note.includes('٦ صفحات ← ورقتان') && previewImgs === 4);
+  if (shotsDir) await page.shot(join(shotsDir, 'pdf-sheets.png'));
+  const sheetsFile = await saveNamed('أوراق');
+  if (sheetsFile) {
+    const out = await inspect(sheetsFile);
+    ok(`فيُحفظ ورقتي A4 (${out.map((p) => `${p.w}×${p.h}`).join('، ')})`, out.length === 2 && out.every((p) => Math.abs(p.w - 595) <= 2 && Math.abs(p.h - 842) <= 2));
+    // مواضع الصفحات بأرقامها (P{n}/6) كما تُرى: الأولى أعلى اليمين، ثم يسارها، ثم تحتهما.
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(sheetsFile)), verbosity: 0 }).promise;
+    const first = await doc.getPage(1);
+    const vp = first.getViewport({ scale: 1 });
+    const where = {};
+    for (const it of (await first.getTextContent()).items) {
+      const m = /P(\d)\/6/.exec(it.str ?? '');
+      if (!m) continue;
+      const [x, y] = vp.convertToViewportPoint(it.transform[4], it.transform[5]);
+      where[m[1]] = `${x / vp.width > 0.5 ? 'يمين' : 'يسار'}-${y / vp.height < 0.5 ? 'أعلى' : 'أسفل'}`;
+    }
+    ok(`والترتيب من اليمين ثمّ إلى أسفل (${JSON.stringify(where)})`, where['1'] === 'يمين-أعلى' && where['2'] === 'يسار-أعلى' && where['3'] === 'يمين-أسفل' && where['4'] === 'يسار-أسفل' && !where['5']);
+    // وPDF بصوره: الهوية (صورةٌ داكنة، الرابعة) أسفل اليسار أكثرها حبرًا، والكتاب أعلى اليمين أكثر حبرًا من الفارغة تحته (عليها الرقم والعلامة وحدهما).
+    const [img] = await pdfToImages(sheetsFile, { dpi: 50 });
+    if (shotsDir && img) writeFileSync(join(shotsDir, 'pdf-sheets-1.png'), img.png);
+    const ink = img
+      ? await page.eval(`
+      const bytes = Uint8Array.from(atob(${JSON.stringify(img.png.toString('base64'))}), (c) => c.charCodeAt(0));
+      const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const c = document.createElement('canvas');
+      c.width = bmp.width;
+      c.height = bmp.height;
+      const x = c.getContext('2d');
+      x.drawImage(bmp, 0, 0);
+      const q = (l, t) => { const d = x.getImageData(l * c.width / 2, t * c.height / 2, c.width / 2, c.height / 2).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += 255 - d[i]; return Math.round(s / (d.length / 4) * 10) / 10; };
+      return { tr: q(1, 0), tl: q(0, 0), br: q(1, 1), bl: q(0, 1) };`)
+      : null;
+    ok(`والورقة صورةً: الهوية أسفل اليسار، والكتاب فوق الفارغة (${JSON.stringify(ink)})`, Boolean(ink) && ink.bl > 5 * Math.max(ink.tr, ink.tl, ink.br) && ink.tr > 3 * ink.br);
+  } else ok('حُفظ ملفّ الأوراق', false);
+  await choose('[data-pdf-per-sheet]', 1);
   return steps.join('\n');
 }

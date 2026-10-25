@@ -11,6 +11,7 @@ type Props = {
   rotate: (by: 90 | 270) => void;
   move: (delta: -1 | 1) => void;
   duplicate: () => void;
+  blank: (where: 'before' | 'after') => void;
   remove: () => void;
   pages: PageRef[];
   selected: string[];
@@ -24,7 +25,7 @@ type Props = {
   thumbKey: (r: PageRef) => string;
 };
 
-export default function PagesRail({ targets, rotate, move, duplicate, remove, pages, selected, setSelected, current, setCurrent, setCrop, dragPage, dropPage, thumbs, thumbKey }: Props) {
+export default function PagesRail({ targets, rotate, move, duplicate, blank, remove, pages, selected, setSelected, current, setCurrent, setCrop, dragPage, dropPage, thumbs, thumbKey }: Props) {
   return (
     <aside className="w-52 shrink-0 border-l border-outline-variant bg-surface-container-low flex flex-col">
       <div className="flex items-center justify-between gap-0.5 p-space-xs border-b border-outline-variant">
@@ -45,6 +46,15 @@ export default function PagesRail({ targets, rotate, move, duplicate, remove, pa
         </button>
         <button className="h-8 w-8 rounded hover:bg-error-container text-error" data-act="pdf-delete" disabled={!targets.length} title="احذف من الملف الجديد" type="button" onClick={remove}>
           <span className="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      </div>
+      {/* صفحةٌ فارغة قبل المحدَّدة أو بعدها (S28، D178) — بمقاسها كما تُرى. */}
+      <div className="flex items-center gap-1 px-space-xs py-1 border-b border-outline-variant font-label-sm text-label-sm">
+        <button className="flex-1 h-7 rounded hover:bg-surface-container-high disabled:opacity-40" data-act="pdf-blank-before" disabled={!targets.length} title="صفحةٌ فارغة قبل المحدَّدة بمقاسها" type="button" onClick={() => blank('before')}>
+          فارغةٌ قبلها
+        </button>
+        <button className="flex-1 h-7 rounded hover:bg-surface-container-high disabled:opacity-40" data-act="pdf-blank-after" disabled={!targets.length} title="صفحةٌ فارغة بعد المحدَّدة بمقاسها" type="button" onClick={() => blank('after')}>
+          فارغةٌ بعدها
         </button>
       </div>
       <div className="px-space-xs py-1 flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">

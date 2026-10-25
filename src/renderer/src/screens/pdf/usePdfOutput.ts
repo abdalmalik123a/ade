@@ -153,7 +153,8 @@ export function usePdfOutput(
   async function toImages() {
     // المحدَّد وحده إن حُدِّد شيء، وإلا فالملف كلّه — لا الصفحة المعروضة وحدها.
     const ids = selected.length ? selected : pages.map((p) => p.id);
-    const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays };
+    // و«صفحاتٌ في ورقة» (S27): كلّ ورقةٍ صورة.
+    const sub: PdfPlan = { pages: pages.filter((p) => ids.includes(p.id)), overlays, perSheet: plan.perSheet };
     const out = await run('تُرسم الصفحات صورًا…', async () => {
       const shots = await shootPages(await window.diwan.pdf.build(sub));
       const images: { name: string; bytes: Uint8Array }[] = [];

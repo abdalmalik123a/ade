@@ -12,6 +12,7 @@ import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
 import { buildPdf, formFields, imagesToPdf, inspectPdf, loadPdf, shrinkPdfImages, type JpegShrink, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
+import { toSheets } from '../services/pdfSheets';
 import { removeStoreFile, scanPage } from '../services/scanner';
 import { imagePage, type PdfPlan } from '@shared/pdfEdit';
 import { importFile, pickOpenPath, pickOpenPaths, pickSavePath, pickSaveFolder } from './files';
@@ -129,7 +130,8 @@ export function registerPdfIpc(): void {
 
   ipcMain.handle('pdf:scan', () => openScan());
 
-  ipcMain.handle('pdf:build', (_e, plan: PdfPlan) => buildPdf(plan, sources, renderLayer));
+  // وصفحاتٌ في ورقة (S27) على الملفّ المبنيّ نفسه.
+  ipcMain.handle('pdf:build', async (_e, plan: PdfPlan) => toSheets(await buildPdf(plan, sources, renderLayer), plan.perSheet ?? 1));
 
   ipcMain.handle('pdf:assemble', (_e, pages: { jpeg: Uint8Array; width: number; height: number }[]) => imagesToPdf(pages));
 
