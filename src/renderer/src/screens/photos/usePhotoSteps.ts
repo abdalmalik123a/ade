@@ -220,6 +220,9 @@ export function usePhotoSteps(
       if ('suit' in r) s = r.suit;
       else {
         // ما ليس PNG شفّافة يفكّه Chromium (JPG وWebP وBMP)، ثم يُحضَّر كما تحضّره `prepare-suits.py` (S39).
+        // والتحضير في خيط الواجهة (~١٫٧ ث لصورة هاتف ١٢ ميغابكسل): يُقال قبله، ويُفسح إطارٌ ليُرسم القول (D171).
+        setBusy('يُحضَّر القاط…');
+        await new Promise((done) => requestAnimationFrame(() => setTimeout(done, 0)));
         const bmp = await createImageBitmap(new Blob([r.prepare.bytes.slice()]));
         const c = document.createElement('canvas');
         c.width = bmp.width;
@@ -240,6 +243,8 @@ export function usePhotoSteps(
       await chooseSuit(s.id, `diwan://store/${s.path}`);
     } catch (e) {
       say(errorText(e, 'تعذّر استيراد القاط'), true);
+    } finally {
+      setBusy(null);
     }
   }
 

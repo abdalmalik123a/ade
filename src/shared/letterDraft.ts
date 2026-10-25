@@ -137,7 +137,8 @@ export function nameFieldOf(doc: Doc): DocField | null {
 export function sampleValues(fields: DocField[], values: Record<string, string>, today = new Date()): Record<string, string> {
   const out = { ...values };
   for (const f of fields) {
-    if (out[f.key]?.trim() || isChoiceKey(f.key)) continue;
+    // وحقل الصورة (S38) قيمته مسار: نصٌّ تجريبيّ فيه صورةٌ مكسورة — فيبقى فارغًا ويُرسم إطاره (D171).
+    if (out[f.key]?.trim() || isChoiceKey(f.key) || f.type === 'image') continue;
     const label = `${f.label} ${f.key}`;
     out[f.key] =
       f.role === 'name' || f.source === 'fullName'

@@ -68,7 +68,8 @@ const opaquePng = () => png(200, 150, () => [40, 40, 40], false);
 export function prepare() {
   const dir = join(process.env.TEMP ?? '.', `diwan-portrait-${Date.now()}`);
   mkdirSync(dir, { recursive: true });
-  const suit = join(dir, 'قاط المكتب.png');
+  // اسمٌ من أكثر من مئتي حرف (D171): كان حارس `photos:addSuit` يرفض ما جاوز ٢٠٠ فيسقط استيراد القاط المحضَّر.
+  const suit = join(dir, `${'قاط المكتب الرسمي للمعاملات '.repeat(8).trim()}.png`);
   writeFileSync(suit, opaquePng());
   process.env.DIWAN_TEST_SAVE_DIR = dir;
   process.env.PORTRAIT_SUIT_FILE = suit;
@@ -271,8 +272,16 @@ export default async function scenario(page, { shotsDir }) {
   `);
   writeFileSync(process.env.PORTRAIT_SUIT_FILE, Buffer.from(jpg, 'base64'));
   await wait(3800);
+  // «يُحضَّر القاط…» يُقال قبل التحضير (D171) — يُرصد ظهوره ولو لحظةً، لا وقته.
+  await page.eval(`
+    window.__sawPrepare = false;
+    new MutationObserver((_, o) => { if (document.body.innerText.includes('يُحضَّر القاط')) { window.__sawPrepare = true; o.disconnect(); } })
+      .observe(document.body, { childList: true, subtree: true, characterData: true });
+    return true;
+  `);
   await click('[data-act="import-suit"]');
-  ok('والقاط JPG على أبيض يُحضَّر ويُضاف ويُلبَس', await wornLast(1));
+  ok('والقاط JPG على أبيض — باسمه الطويل — يُحضَّر ويُضاف ويُلبَس', await wornLast(1));
+  ok('و«يُحضَّر القاط…» قيل وهو يُحضَّر', await page.eval(`return window.__sawPrepare === true;`));
   if (shotsDir) await page.shot(join(shotsDir, 'portrait-jpg-suit.png'));
   writeFileSync(process.env.PORTRAIT_SUIT_FILE, suitPng());
   await wait(3800);

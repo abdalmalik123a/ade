@@ -9,6 +9,7 @@ import { blocksToPm, pmBlocks } from '../src/shared/docPm';
 import { renderDocHtml } from '../src/shared/docHtml';
 import { fillDoc } from '../src/shared/docFill';
 import { normalizeDoc } from '../src/shared/docNormalize';
+import { sampleValues } from '../src/shared/letterDraft';
 import { emptyDoc, makeField, paragraph, run, usedKeys, type Doc, type ImageBlock } from '../src/shared/doc';
 import { saveDraft } from '../src/main/services/templates';
 import { unreferenced } from '../src/main/services/storeRefs';
@@ -49,6 +50,13 @@ describe('حقل الصورة', () => {
     expect(empty).not.toContain('<img');
     expect(empty).toContain('data-image-field="الصورة"');
     expect(empty).toMatch(/width:132px;height:170px;[^"]*border:1px solid currentColor/);
+  });
+
+  it('و«جرّبها» لا يضع نصًّا تجريبيًّا في حقل الصورة: يبقى إطاره لا صورةٌ مكسورة (D171)', () => {
+    const doc = letter();
+    const html = renderDocHtml(doc, sampleValues(doc.fields, {}), { missing: 'blank' });
+    expect(html).not.toContain('<img');
+    expect(html).toContain('data-image-field="الصورة"');
   });
 
   it('والصورة الثابتة بلا حقلٍ تُرسم كما كانت حرفًا بحرف', () => {

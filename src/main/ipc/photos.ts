@@ -22,12 +22,15 @@ import { writePng } from '../services/png';
 import { handleChecked } from './checked';
 
 type PreparedSuit = { name: string; rgba: Uint8Array; width: number; height: number };
-/** القاط المحضَّر في الواجهة (S39): اسمٌ وبكسلاتٌ بطول العرض×الطول×٤، والبعدان ٤٠٠٠ على الأكثر. */
+/**
+ * القاط المحضَّر في الواجهة (S39): اسمٌ وبكسلاتٌ بطول العرض×الطول×٤، والبعدان ٤٠٠٠ على الأكثر.
+ * والاسم من اسم الملفّ بلا قصّ — فيُقبل أيًّا كان طوله ويقصّه المعالج (D171: كان اسمٌ أطول من ٢٠٠ حرف يُسقط الاستيراد).
+ */
 const preparedSuit: Guard<PreparedSuit> = (value, name) => {
   const s = value as Partial<PreparedSuit> | null;
   const side = (v: unknown) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= 4000;
   const shaped =
-    typeof value === 'object' && s !== null && typeof s.name === 'string' && s.name.length <= 200 && side(s.width) && side(s.height) &&
+    typeof value === 'object' && s !== null && typeof s.name === 'string' && side(s.width) && side(s.height) &&
     s.rgba instanceof Uint8Array && s.rgba.length === s.width! * s.height! * 4;
   if (!shaped) throw new Error(`المعامل «${name}» صورة قاطٍ محضَّرة`);
   return value as PreparedSuit;
