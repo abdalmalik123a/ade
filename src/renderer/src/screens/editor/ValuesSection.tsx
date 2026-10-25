@@ -10,6 +10,7 @@ import { wordsForField } from '@shared/tafqeet';
 import { GENDER_KEY, isChoiceKey } from '@shared/gender';
 import type { nameFieldOf } from '@shared/letterDraft';
 import DateTools from '../../components/DateTools';
+import ImageFieldInput from '../../components/ImageFieldInput';
 import type { EditorApi } from '../../components/editorKit';
 import { inputCls } from '../EditorDialogs';
 import { section, title } from './panelUi';
@@ -119,6 +120,16 @@ export default function ValuesSection({
         doc.fields
           .filter((f) => !isChoiceKey(f.key))
           .map((f) => {
+            // حقل الصورة (S38): مصغّرةٌ و«اختر صورة» و«أزل» بدل خانة النصّ، وفي `div` فلا يفتح عنوانُه الاختيار.
+            if (f.type === 'image')
+              return (
+                <div key={f.key} className="flex flex-col gap-1" data-value-of={f.key}>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    {f.label} {f.required && <span className="text-error">*</span>}
+                  </span>
+                  <ImageFieldInput fieldKey={f.key} value={values[f.key] ?? ''} onChange={(path) => setValue(f.key, path)} />
+                </div>
+              );
             const words = wordsForField(named.find((n) => n.id === f.key)!, named);
             return (
               <label key={f.key} className="flex flex-col gap-1" data-value-of={f.key}>

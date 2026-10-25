@@ -33,7 +33,9 @@ export type FieldType =
   | 'choice'
   | 'bool'
   | 'citizen'
-  | 'authority';
+  | 'authority'
+  /** حقل صورة (S38): قيمته مسارٌ في المخزن تملؤه كتلة صورةٍ بـ`field` — من صورة الزبون في ملفّه أو من الجهاز. */
+  | 'image';
 
 /** `hand` يطبع فراغًا يملؤه صاحب العلاقة بقلمه — وكثير من الاستمارات كذلك. */
 export type FillMode = 'printed' | 'hand';
@@ -168,8 +170,10 @@ export type TableBlock = BlockBase & {
 
 export type ImageBlock = BlockBase & {
   kind: 'image';
-  /** مسار داخل مخزن التطبيق. */
+  /** مسار داخل مخزن التطبيق — وفارغٌ مقبولٌ مع `field`. */
   src: string;
+  /** حقل صورة (S38): مفتاح حقلٍ تملأ قيمتُه الكتلةَ عند كلّ ورقة، والفارغ يُطبع إطارًا بمقاسه. */
+  field?: string;
   width: number;
   /**
    * ارتفاعٌ صريح إن كان للصورة مقاسٌ لا تحدّده نسبتها — كالخطّ الأفقي في

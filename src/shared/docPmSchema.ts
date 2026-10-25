@@ -206,13 +206,16 @@ export const nodes: Record<string, NodeSpec> = {
     group: 'block',
     atom: true,
     draggable: true,
-    attrs: { ...blockAttrs, src: {}, width: { default: 140 }, height: { default: null }, align: { default: 'center' } },
+    attrs: { ...blockAttrs, src: {}, field: { default: null }, width: { default: 140 }, height: { default: null }, align: { default: 'center' } },
     parseDOM: [
       {
         tag: 'img[data-src]',
         getAttrs: (el) => ({
           src: dom(el).getAttribute('data-src'),
-          width: Number(dom(el).getAttribute('width')) || 140
+          // حقل الصورة (S38) يُنسخ ويُلصق بحقله ومقاسه.
+          field: dom(el).getAttribute('data-field') || null,
+          width: Number(dom(el).getAttribute('width')) || 140,
+          height: Number(dom(el).getAttribute('data-height')) || null
         })
       },
       {
@@ -227,7 +230,14 @@ export const nodes: Record<string, NodeSpec> = {
         }
       }
     ],
-    toDOM: (node) => ['img', { 'data-src': node.attrs.src, width: String(node.attrs.width) }]
+    toDOM: (node) => [
+      'img',
+      {
+        'data-src': node.attrs.src,
+        width: String(node.attrs.width),
+        ...(node.attrs.field ? { 'data-field': node.attrs.field, ...(node.attrs.height ? { 'data-height': String(node.attrs.height) } : {}) } : {})
+      }
+    ]
   },
 
   spacer: {

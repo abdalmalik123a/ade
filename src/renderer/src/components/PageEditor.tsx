@@ -26,6 +26,7 @@ import {
 import { listStyleAt } from '@shared/docPmList';
 import { pmBlocks } from '@shared/docPm';
 import {
+  makeField,
   marginPreset,
   newUuid,
   paragraph,
@@ -199,6 +200,15 @@ export default function PageEditor({ doc, onChange, clips = [], header, footer, 
         })
     };
 
+  /** حقل صورة (S38): إطارٌ ٣٥×٤٥ ملم (١٣٢×١٧٠ بـ٩٦) بحقلٍ مصدره صورة الزبون في ملفّه — «الصورة»، أو «الصورة ٢» إن وُجد. */
+  function insertImageField() {
+    const taken = new Set([...docRef.current.fields, ...pendingFields.current].map((f) => f.key));
+    let key = 'الصورة';
+    for (let n = 2; taken.has(key); n++) key = `الصورة ${toIndic(n)}`;
+    pendingFields.current.push(makeField({ key, label: key, type: 'image', source: 'photoPath' }));
+    insertBlocks([{ id: newUuid(), kind: 'image', src: '', field: key, width: 132, height: 170, align: 'center' }]);
+  }
+
   function insertClip(clip: MenuClip) {
     insertBlocks(clip.body.split('\n').map((line) => paragraph(line ? [run(line)] : [])));
     void window.diwan.clips.touch(clip.id);
@@ -350,6 +360,7 @@ export default function PageEditor({ doc, onChange, clips = [], header, footer, 
           onClip={insertClip}
           onTable={(rows, cols) => insertBlocks([makeTable(rows, cols)])}
           onImage={(src, align) => insertBlocks([{ id: newUuid(), kind: 'image', src, width: 140, align }])}
+          onImageField={insertImageField}
           onPick={(what) => {
             if (what === 'copies')
               insertBlocks([paragraph([run('نسخة منه إلى :-', { bold: true, underline: true })]), paragraph([run('- ')]), paragraph([run('- ')])]);

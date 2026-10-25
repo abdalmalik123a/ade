@@ -112,14 +112,17 @@ export function FieldRow({
           />
         </label>
         <span className="flex-1" />
-        <button
-          className="w-6 h-6 rounded text-secondary hover:bg-surface-container-high"
-          title="أدرجه حيث وقف المؤشّر في الورقة"
-          type="button"
-          onClick={() => onInsert(field.key)}
-        >
-          <span className="material-symbols-outlined text-[14px]">add</span>
-        </button>
+        {/* وحقل الصورة (S38) كتلةٌ لا تُدرج في السطر — وإلا طُبع مساره نصًّا. */}
+        {field.type !== 'image' && (
+          <button
+            className="w-6 h-6 rounded text-secondary hover:bg-surface-container-high"
+            title="أدرجه حيث وقف المؤشّر في الورقة"
+            type="button"
+            onClick={() => onInsert(field.key)}
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+          </button>
+        )}
         <button
           className="w-6 h-6 rounded text-error hover:bg-error-container"
           title="ليس حقلًا — أعِده نقاطًا"

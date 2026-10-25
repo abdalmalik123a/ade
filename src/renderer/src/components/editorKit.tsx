@@ -106,6 +106,7 @@ export function InsertMenu({
   onPick,
   onTable,
   onImage,
+  onImageField,
   onClip,
   onClose
 }: {
@@ -114,6 +115,8 @@ export function InsertMenu({
   onPick: (what: Preset) => void;
   onTable: (rows: number, cols: number) => void;
   onImage: (src: string, align: Align) => void;
+  /** حقل صورة (S38): إطارٌ بمقاس صورة المعاملة يُملأ عند كلّ ورقة. */
+  onImageField: () => void;
   onClip: (clip: MenuClip) => void;
   onClose: () => void;
 }) {
@@ -278,6 +281,16 @@ export function InsertMenu({
             >
               <span className="material-symbols-outlined text-[18px] text-secondary">image</span>
               صورة من الجهاز…
+            </button>
+            <button
+              className="h-9 rounded-btn bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-center gap-1"
+              data-act="ins-image-field"
+              title="إطارٌ ٣٥×٤٥ ملم يُملأ بصورة الزبون من ملفّه أو من الجهاز عند كلّ ورقة"
+              type="button"
+              onClick={onImageField}
+            >
+              <span className="material-symbols-outlined text-[18px] text-secondary">portrait</span>
+              حقل صورة — تُملأ لكلّ زبون
             </button>
           </>
         )}

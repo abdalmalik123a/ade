@@ -184,6 +184,7 @@ export function usedKeys(doc: Doc): string[] {
   for (const b of walkBlocks(doc.blocks)) {
     for (const i of blockInlines(b)) if (i.kind === 'field') seen.add(i.ref);
     if (b.kind === 'group' && b.on) seen.add(b.on);
+    if (b.kind === 'image' && b.field) seen.add(b.field);
   }
   const canvases = [doc.canvas, doc.backCanvas].filter(Boolean) as Canvas[];
   for (const c of canvases) {

@@ -72,6 +72,7 @@ function button(icon: string, title: string, onClick: () => void, danger = false
 export class ImageView implements NodeView {
   dom: HTMLElement;
   private img: HTMLImageElement;
+  private frame: HTMLElement | null = null;
   constructor(
     private node: PMNode,
     private view: EditorView,
@@ -122,6 +123,21 @@ export class ImageView implements NodeView {
     this.img.src = a.src ? `diwan://store/${a.src as string}` : '';
     this.img.style.width = `${a.width as number}px`;
     this.img.style.height = a.height ? `${a.height as number}px` : '';
+    // حقل الصورة (S38): إطارٌ بمقاسه وفيه اسم الحقل — يُملأ عند كلّ ورقة.
+    this.img.style.display = a.field && !a.src ? 'none' : 'inline-block';
+    this.frame?.remove();
+    this.frame = null;
+    if (a.field && !a.src) {
+      const f = document.createElement('span');
+      f.dataset.imageField = a.field as string;
+      f.className = 'inline-flex items-center justify-center border border-dashed border-outline text-on-surface-variant font-label-md text-label-md align-top';
+      f.style.width = `${a.width as number}px`;
+      f.style.height = `${(a.height as number | null) ?? (a.width as number)}px`;
+      f.style.maxWidth = '100%';
+      f.textContent = a.field as string;
+      this.dom.prepend(f);
+      this.frame = f;
+    }
   }
   update(node: PMNode) {
     if (node.type !== this.node.type) return false;

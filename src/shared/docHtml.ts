@@ -21,6 +21,7 @@ import {
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
 import { toIndic } from './arabic';
 import { escapeHtml } from './html';
+import { imageBlockHtml } from './docHtmlImage';
 import { marksHtml } from './docPmMarks';
 import { footerBandMm, type LetterheadFooter } from './letterhead';
 
@@ -203,14 +204,9 @@ function renderBlock(
       return `<table${dir} style="width:100%;border-collapse:collapse;break-inside:avoid;page-break-inside:avoid"><colgroup>${cols}</colgroup>${head}<tbody>${body}</tbody></table>`;
     }
 
-    case 'image': {
-      // محاذاةٌ فيزيائية لا منطقية: `flex-start` ينقلب في الورقة العربية فيقع
-      // الختمُ المقصود يسارًا في اليمين. و`text-align:left` يسارٌ في كل اتجاه.
-      const align = block.align === 'justify' ? 'center' : block.align;
-      const src = block.src ? `diwan://store/${escapeHtml(block.src)}` : '';
-      const height = block.height ? `height:${block.height}px;` : '';
-      return `<div style="text-align:${align};break-inside:avoid"><img alt="" src="${src}" style="display:inline-block;width:${block.width}px;${height}max-width:100%"/></div>`;
-    }
+    case 'image':
+      // والصورة الثابتة وحقل الصورة (S38) في `docHtmlImage.ts`.
+      return imageBlockHtml(block, values);
 
     case 'spacer':
       // مساحة الإجابة: سطورٌ منقّطة يكتب عليها الطالب.

@@ -8,6 +8,7 @@
  * - **وخيار الجنس** («{الطالب|الطالبة}» نصًّا أو حقلًا) يُحلّ بجنس صاحب الكتاب.
  * - **والمجموعة المشروطة** تسقط إن فرغ حقلها، ولا تبقى سطرًا فارغًا.
  * - **وما لم يُملأ يبقى حقلًا**: يرسمه Word فراغًا منقّطًا بطوله كما تطبعه الورقة.
+ * - **وحقل الصورة المملوء** صورةٌ بمسار قيمته (S38).
  */
 import { run, type Block, type Doc, type Inline, type ListItem, type ParagraphBlock } from './doc';
 import { GENDER_KEY, isChoiceKey, pickChoice, resolveChoices } from './gender';
@@ -40,6 +41,11 @@ export function fillDoc(doc: Doc, values: Record<string, string>): Doc {
           return [{ ...b, rows: b.rows.map((r) => ({ ...r, cells: r.cells.map((c) => ({ ...c, blocks: c.blocks.map(paragraph) })) })) }];
         case 'columns':
           return [{ ...b, columns: b.columns.map(blocks) }];
+        case 'image': {
+          // حقل الصورة المملوء (S38): مسار قيمته في الكتلة، فيأخذها Word كأيّ صورة؛ والفارغ يبقى بلا مسارٍ فقرةً فارغة.
+          const value = b.field ? values[b.field]?.trim() : '';
+          return [value ? { ...b, src: value } : b];
+        }
         case 'group': {
           // كما في الورقة: المشروطة تظهر بحقلها، و`repeat` يكرّر كتله لكلّ سطرٍ غير فارغ.
           if (b.mode === 'repeat') {

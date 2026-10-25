@@ -131,6 +131,7 @@ function blockToPm(b: Block): PMNode {
         id: b.id,
         dir: b.dir ?? null,
         src: b.src,
+        field: b.field ?? null,
         width: b.width,
         height: b.height ?? null,
         align: b.align
@@ -223,6 +224,7 @@ function pmBlock(node: PMNode): Block | null {
     }
     case 'image': {
       const b: ImageBlock = { id, kind: 'image', src: a.src as string, width: a.width as number, align: a.align as Align };
+      if (a.field) b.field = a.field as string;
       if (a.height != null) b.height = a.height as number;
       return withDir(b, a.dir);
     }

@@ -12,6 +12,7 @@ import { nationalIdHint, phoneHint } from '@shared/idChecks';
 import { isAmbiguousAmount, isAmountField } from '@shared/tafqeet';
 import type { Client } from '@shared/orders';
 import DateTools from '../../components/DateTools';
+import ImageFieldInput from '../../components/ImageFieldInput';
 import LetterSheet from '../../components/LetterSheet';
 import { errorText } from '../../lib/errors';
 import { namesFromSheet } from './sheetNames';
@@ -257,15 +258,20 @@ export default function CounterFill({
           {fields
             .filter((f) => !isChoiceKey(f.key))
             .filter((f) => !(merge && f.key === nameField?.key))
-            .map((f) => (
-            <label key={f.key} className="flex flex-col gap-1">
+            .map((f) => {
+            // حقل الصورة (S38) في `div` لا `label`: النقر على عنوانه لا يفتح «اختر صورة».
+            const Wrap = f.type === 'image' ? 'div' : 'label';
+            return (
+            <Wrap key={f.key} className="flex flex-col gap-1">
               <span className="font-label-sm text-label-sm text-on-surface-variant">
                 {f.label}
                 {f.required && <span className="text-error"> *</span>}
               </span>
               <span className="flex items-center gap-1">
                 {/* مربّع الاختيار في الاستمارة المصوّرة: يُعلَّم فيُطبع ✓ (المرحلة ٤). */}
-                {f.type === 'bool' ? (
+                {f.type === 'image' ? (
+                  <ImageFieldInput fieldKey={f.key} value={values[f.key] ?? ''} onChange={(path) => setValues((prev) => ({ ...prev, [f.key]: path }))} />
+                ) : f.type === 'bool' ? (
                   <input
                     checked={Boolean(effective[f.key])}
                     className="w-5 h-5 accent-secondary"
@@ -315,8 +321,9 @@ export default function CounterFill({
                   </span>
                 ) : null;
               })()}
-            </label>
-          ))}
+            </Wrap>
+            );
+          })}
         </div>
       )}
       </div>
