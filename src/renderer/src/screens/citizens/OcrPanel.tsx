@@ -26,7 +26,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
       >
         <div className="h-12 px-space-md flex items-center justify-between bg-surface-container-low">
           <span className="font-headline-sm text-headline-sm text-on-surface">
-            {ocrPanel.mrz ? 'ظهر البطاقة' : 'النصّ المستخرَج'} — {ocrPanel.attachment.docType}
+            {ocrPanel.mrz ? (ocrPanel.mrz.format === 'TD3' ? 'جواز السفر' : 'ظهر البطاقة') : 'النصّ المستخرَج'} — {ocrPanel.attachment.docType}
           </span>
           <div className="flex items-center gap-space-sm">
             {ocrPanel.confidence !== null && (
@@ -50,7 +50,7 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
           </div>
         </div>
         <div className="p-space-md overflow-y-auto">
-          {/* ظهر البطاقة (هـ٧): سطور MRZ تُقرأ حقولًا — ولكلٍّ رقم تحقّقه */}
+          {/* ظهر البطاقة (هـ٧) أو صفحة الجواز (S41، D181): سطور MRZ تُقرأ حقولًا — ولكلٍّ رقم تحقّقه */}
           {(() => {
             const mrz = ocrPanel.mrz ?? readMrz(ocrPanel.text);
             if (!mrz || !detail) return null;
@@ -64,17 +64,20 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                   )}
                 </div>
               ) : null;
-            const personal = [mrz.optional1, mrz.optional2].map((v) => v.replace(/\D/g, '')).find((v) => v.length === 12) ?? null;
+            const passport = mrz.format === 'TD3';
+            // الرقم الوطني من البطاقة وحدها؛ والرقم الشخصيّ في الجواز يُعرض كما قُرئ.
+            const personal = passport ? null : ([mrz.optional1, mrz.optional2].map((v) => v.replace(/\D/g, '')).find((v) => v.length === 12) ?? null);
             return (
               <div className="mb-space-md p-space-sm rounded-card bg-surface-container-low flex flex-col gap-1 font-label-md text-label-md" data-mrz={mrz.valid ? 'valid' : 'invalid'}>
                 <span className="font-semibold text-on-surface">
-                  ظهر البطاقة (MRZ) — {mrz.valid ? 'قُرئ وتحقّقت أرقامه' : 'قُرئ، وفي بعض أرقامه خطأ قراءة — راجِعه'}
+                  {passport ? 'جواز السفر' : 'ظهر البطاقة'} (MRZ) — {mrz.valid ? 'قُرئ وتحقّقت أرقامه' : 'قُرئ، وفي بعض أرقامه خطأ قراءة — راجِعه'}
                 </span>
                 {!ocrPanel.mrz && (
-                  <span className="font-label-sm text-label-sm text-tertiary">من القارئ العامّ — والأدقّ زرّ «اقرأ ظهر البطاقة» على المستمسك.</span>
+                  <span className="font-label-sm text-label-sm text-tertiary">من القارئ العامّ — والأدقّ زرّ «اقرأ ظهر البطاقة أو صفحة الجواز» على المستمسك.</span>
                 )}
-                {row('رقم الوثيقة', mrz.documentNumber, mrz.checks.documentNumber)}
-                {row('الرقم الشخصي', personal)}
+                {row(passport ? 'رقم الجواز' : 'رقم الوثيقة', mrz.documentNumber, mrz.checks.documentNumber)}
+                {passport && row('الجنسية', mrz.nationality)}
+                {passport ? row('الرقم الشخصي', mrz.optional1 || null, mrz.optional1 ? mrz.checks.personal : undefined) : row('الرقم الشخصي', personal)}
                 {row('الولادة', mrz.birthDate, mrz.checks.birthDate)}
                 {row('الجنس', mrz.sex)}
                 {row('النفاذ', mrz.expiryDate, mrz.checks.expiryDate)}
@@ -99,7 +102,9 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                         birthDate: detail.birthDate || mrz.birthDate,
                         nationalId: detail.nationalId || personal,
                         gender: detail.gender || mrz.sex,
-                        latinName: detail.latinName || mrzLatinName(mrz) || null
+                        latinName: detail.latinName || mrzLatinName(mrz) || null,
+                        // والجواز (S41): رقمه في خانته.
+                        passportNo: detail.passportNo || (passport ? mrz.documentNumber : null)
                       }
                     });
                   }}

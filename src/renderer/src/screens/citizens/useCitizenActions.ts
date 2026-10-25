@@ -104,11 +104,13 @@ export function useCitizenActions(
     const read = await withBusy(`mrz-${a.id}`, () => window.diwan.attachments.readMrz(a.id));
     if (!read) return;
     if (!read.result) {
-      say('لم تُوجد سطور ظهر البطاقة في الصورة — امسح الظهر وفيه السطور الثلاثة', 'warn');
+      say('لم تُوجد سطور MRZ في الصورة — امسح ظهر البطاقة (ثلاثة أسطر) أو صفحة الجواز (سطران)', 'warn');
       return;
     }
     setOcrPanel({ attachment: a, text: read.lines.join('\n'), confidence: null, mrz: read.result });
-    say(read.result.valid ? 'قُرئ ظهر البطاقة وتحقّقت أرقامه' : 'قُرئ ظهر البطاقة، وفي بعض أرقامه خطأ قراءة', read.result.valid ? 'ok' : 'warn');
+    // والجواز (S41، D181) يُقال باسمه.
+    const what = read.result.format === 'TD3' ? ['قُرئت صفحة الجواز وتحقّقت أرقامها', 'قُرئت صفحة الجواز، وفي بعض أرقامها خطأ قراءة'] : ['قُرئ ظهر البطاقة وتحقّقت أرقامه', 'قُرئ ظهر البطاقة، وفي بعض أرقامه خطأ قراءة'];
+    say(read.result.valid ? what[0]! : what[1]!, read.result.valid ? 'ok' : 'warn');
   }
 
   return { checkScanner, withBusy, removeCitizen, importAttachment, scan, runOcr, readBack, afterCitizenChange };

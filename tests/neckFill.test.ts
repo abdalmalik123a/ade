@@ -168,9 +168,10 @@ describe('إكمال الرقبة بلا نموذج', () => {
     const before = t.px.slice();
     const a = neckFill(t.sc, t.paint)!;
     const b = neckFill(t.sc, t.paint)!;
-    expect(b.data).toEqual(a.data);
+    // مقارنةٌ بايتيّة: `toEqual` على مصفوفة الصورة كلّها (٨٠٠ ألف) بطيءٌ يتجاوز المهلة تحت حمل الحزمة (D181).
+    expect(Buffer.from(b.data).equals(Buffer.from(a.data))).toBe(true);
     expect([b.x, b.y, b.w, b.h]).toEqual([a.x, a.y, a.w, a.h]);
-    expect(t.px).toEqual(before);
+    expect(Buffer.from(t.px).equals(Buffer.from(before))).toBe(true);
   });
 
   it('لمسة الواقعية (D176): ظلّ الذقن على أعلى الرقبة المملوءة، والحدّ بين الرقبة وباطن الياقة ليّن', () => {

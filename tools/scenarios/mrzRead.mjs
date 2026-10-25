@@ -2,12 +2,20 @@
  * سيناريو: قراءة ظهر البطاقة بقارئه الخاصّ (تعميق الموجود ٨) — على التطبيق الحقيقي.
  *
  * الماسح يُعطي `tests/fixtures/card-back-fake.png` (بياناتٌ مخترعة بظواهر نسخةٍ مصوّرة
- * حقيقية)، ثم زرّ «اقرأ ظهر البطاقة» على المستمسك، ثم «املأ ملفّه بها» والحفظ.
+ * حقيقية)، ثم زرّ «اقرأ ظهر البطاقة» على المستمسك، ثم «املأ ملفّه بها» والحفظ. ثم مسحٌ ثانٍ صورته
+ * `tests/fixtures/passport-fake.png` (S41، D181): صفحة الجواز تُقرأ ويملأ رقمها ملفّه، وما في الملفّ لا يُكتب فوقه.
  */
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+/** مسار المسح ثابتٌ تحت المِقْود: يُكتب فيه ما «يمسحه» الماسح قبل كلّ مسح. */
 export async function prepare() {
-  return { DIWAN_TEST_SCAN_FILE: resolve('tests/fixtures/card-back-fake.png') };
+  const dir = join(process.env.TEMP ?? '.', `diwan-mrz-${Date.now()}`);
+  mkdirSync(dir, { recursive: true });
+  const scan = join(dir, 'scan.png');
+  copyFileSync(resolve('tests/fixtures/card-back-fake.png'), scan);
+  process.env.MRZ_SCAN_FILE = scan;
+  return { DIWAN_TEST_SCAN_FILE: scan };
 }
 
 export default async function scenario(page, { shotsDir }) {
@@ -71,6 +79,34 @@ export default async function scenario(page, { shotsDir }) {
     return { nationalId: c.nationalId, birthDate: c.birthDate, gender: c.gender, latinName: c.latinName };
   `);
   ok(`حُفظت في ملفّه: ${JSON.stringify(saved)}`, saved.nationalId === '199012345678' && saved.birthDate === '1990-01-15' && saved.gender === 'ذكر' && saved.latinName === 'SAMIR KHALID');
+
+  // ── صفحة الجواز (S41، D181): مسحٌ ثانٍ، ثم القراءة والملء ──
+  copyFileSync(resolve('tests/fixtures/passport-fake.png'), process.env.MRZ_SCAN_FILE);
+  const readButtons = () => page.eval(`return document.querySelectorAll('button[title^="اقرأ ظهر البطاقة"]').length;`);
+  const before = await readButtons();
+  await page.clickText('مسح ضوئي فوري');
+  ok('ومُسحت صفحة الجواز مستمسكًا ثانيًا', await until(async () => (await readButtons()) > before));
+  // أيّ الزرّين للمستمسك الجديد: يُجرَّب حتى تقول اللوحة «جواز السفر».
+  let passportRead = false;
+  for (let k = 0; k < (await readButtons()) && !passportRead; k++) {
+    await page.eval(`document.querySelectorAll('button[title^="اقرأ ظهر البطاقة"]')[${k}].click(); return true;`);
+    passportRead = await until(async () => (await page.text()).includes('جواز السفر (MRZ) — قُرئ وتحقّقت أرقامه'), 60000);
+    if (!passportRead) await page.key('Escape');
+  }
+  ok('«اقرأ ظهر البطاقة أو صفحة الجواز»: «جواز السفر (MRZ)» وتحقّقت أرقامه', passportRead);
+  const ptext = await page.text();
+  ok('رقم الجواز والجنسية والاسم اللاتيني والنفاذ', ptext.includes('رقم الجواز') && ptext.includes('A12345678') && ptext.includes('IRQ') && ptext.includes('ZAINAB ALI HASSAN') && ptext.includes('2031-02-20'));
+  if (shotsDir) await page.shot(join(shotsDir, 'mrz-passport.png'));
+  await page.eval(`document.querySelector('[data-act="mrz-fill"]').click(); return true;`);
+  await wait(600);
+  await page.clickText('حفظ الملف');
+  await wait(900);
+  const after = await page.eval(`
+    const list = await window.diwan.citizens.list({ query: 'سمير خالد' });
+    const c = await window.diwan.citizens.get(list.items?.[0]?.id ?? list[0]?.id);
+    return { passportNo: c.passportNo, latinName: c.latinName, gender: c.gender, nationalId: c.nationalId };
+  `);
+  ok(`ويملأ رقم الجواز، وما في الملفّ لا يُكتب فوقه: ${JSON.stringify(after)}`, after.passportNo === 'A12345678' && after.latinName === 'SAMIR KHALID' && after.gender === 'ذكر' && after.nationalId === '199012345678');
 
   return steps.join('\n');
 }

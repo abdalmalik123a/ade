@@ -218,7 +218,7 @@ export default function AttachmentVault({ detail, busy, importAttachment, setCam
                   />
                   <IconBtn
                     icon={busy === `mrz-${a.id}` ? 'hourglass_top' : 'id_card'}
-                    title={ocrReady ? 'اقرأ ظهر البطاقة (السطور الثلاثة)' : 'بيانات التعرّف غير مثبّتة'}
+                    title={ocrReady ? 'اقرأ ظهر البطاقة أو صفحة الجواز (MRZ: ثلاثة أسطرٍ أو سطران)' : 'بيانات التعرّف غير مثبّتة'}
                     disabled={!ocrReady || busy === `mrz-${a.id}`}
                     onClick={() => void readBack(a)}
                   />
