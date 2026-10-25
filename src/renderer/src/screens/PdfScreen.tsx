@@ -148,6 +148,8 @@ export default function PdfScreen({ incoming = null }: { incoming?: PdfIncoming 
   async function startOver() {
     if (!(await leave())) return;
     reset();
+    // و«صفحاتٌ في ورقة» تعود ١: الملفّ التالي لا يُحفظ أوراقًا إلا باختيار (D182).
+    setPerSheet(1);
   }
 
   // ── لوحة المفاتيح: Delete يحذف العنصر المحدَّد، وCtrl+Z يتراجع ─────

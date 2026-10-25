@@ -396,6 +396,13 @@ export default async function scenario(page, { shotsDir }) {
       : null;
     ok(`والورقة صورةً: الهوية أسفل اليسار، والكتاب فوق الفارغة (${JSON.stringify(ink)})`, Boolean(ink) && ink.bl > 5 * Math.max(ink.tr, ink.tl, ink.br) && ink.tr > 3 * ink.br);
   } else ok('حُفظ ملفّ الأوراق', false);
-  await choose('[data-pdf-per-sheet]', 1);
+  // «ابدأ من جديد» يعيد «صفحاتٌ في ورقة» إلى ١ (D182): الملفّ التالي لا يُحفظ أوراقًا إلا باختيار.
+  // (حُفظ ملفّ الأوراق للتوّ: لا «ما لم يُحفظ» يُسأل عنه.)
+  await click('[data-act="pdf-reset"]');
+  await wait(800);
+  await click('[data-act="pdf-open"]');
+  for (let i = 0; i < 40 && !(await page.eval(`return Boolean(document.querySelector('[data-pdf-per-sheet]'));`)); i++) await wait(300);
+  const perSheetAfter = await page.eval(`return document.querySelector('[data-pdf-per-sheet]')?.value ?? null;`);
+  ok(`و«ابدأ من جديد» يعيد «صفحاتٌ في ورقة» إلى ١ (${perSheetAfter})`, perSheetAfter === '1');
   return steps.join('\n');
 }

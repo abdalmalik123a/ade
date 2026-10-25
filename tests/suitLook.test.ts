@@ -96,9 +96,11 @@ describe('لون القاط على قدر الصورة', () => {
     const p = person([120, 92, 78], [110, 110, 108], 5);
     const look = photoLook(p.px, p.alpha, W, H);
     const s = suit();
-    expect(applyLook(s.rgba, s.sw, s.sh, look)).toEqual(applyLook(s.rgba, s.sw, s.sh, look));
-    expect(applyLook(s.rgba, s.sw, s.sh, look, 1, 2)).not.toEqual(applyLook(s.rgba, s.sw, s.sh, look));
-    expect(applyLook(s.rgba, s.sw, s.sh, NO_LOOK)).toEqual(s.rgba);
+    // مقارنةٌ بايتيّة: `toEqual` على صورة القاط كلّها بطيءٌ قد يتجاوز المهلة تحت حمل الحزمة (D182، كـneckFill في D181).
+    const same = (a: Uint8ClampedArray, b: Uint8ClampedArray) => Buffer.from(a).equals(Buffer.from(b));
+    expect(same(applyLook(s.rgba, s.sw, s.sh, look), applyLook(s.rgba, s.sw, s.sh, look))).toBe(true);
+    expect(same(applyLook(s.rgba, s.sw, s.sh, look, 1, 2), applyLook(s.rgba, s.sw, s.sh, look))).toBe(false);
+    expect(same(applyLook(s.rgba, s.sw, s.sh, NO_LOOK), s.rgba)).toBe(true);
     // وقناعٌ فارغ: لا مقياس.
     expect(photoLook(p.px, new Uint8Array(W * H), W, H)).toEqual(NO_LOOK);
   });

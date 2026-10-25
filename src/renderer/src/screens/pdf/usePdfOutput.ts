@@ -165,7 +165,8 @@ export function usePdfOutput(
           if ('smallest' in fit) throw new Error(`الصفحة ${toIndic(k + 1)} لم تبلغ ${sizeText(limit)} — أصغر ما بلغته ${sizeText(fit.smallest)}`);
           blob = fit.blob;
         }
-        images.push({ name: `${name || 'ملف'} — صفحة ${k + 1}`, bytes: new Uint8Array(await blob.arrayBuffer()) });
+        // ومع «صفحاتٌ في ورقة» كلّ صورةٍ ورقة (D182).
+        images.push({ name: `${name || 'ملف'} — ${(plan.perSheet ?? 1) > 1 ? 'ورقة' : 'صفحة'} ${k + 1}`, bytes: new Uint8Array(await blob.arrayBuffer()) });
       }
       return window.diwan.pdf.saveImages(images);
     });
