@@ -139,8 +139,17 @@ export function applyKashida(
       for (let m = re.exec(t.data); m; m = re.exec(t.data)) {
         range.setStart(t, m.index);
         range.setEnd(t, m.index + m[0].length);
-        const rect = range.getClientRects()[0];
-        if (rect) words.push({ node: t, start: m.index, text: m[0], rect, tw: widths.get(t.parentNode!) ?? 0 });
+        // الكلمة المختلطة الاتّجاه («1.») لها أكثر من مستطيل: تُقاس بها كلّها على سطر أوّلها — وبالأوّل وحده كان السطر أقصر ففاض بالتطويل (D185).
+        const rects = range.getClientRects();
+        const first = rects[0];
+        if (!first) continue;
+        let left = first.left;
+        let right = first.right;
+        for (let k = 1; k < rects.length; k++) {
+          const r = rects[k]!;
+          if (Math.abs(r.top - first.top) < 3) [left, right] = [Math.min(left, r.left), Math.max(right, r.right)];
+        }
+        words.push({ node: t, start: m.index, text: m[0], rect: { left, right, top: first.top, height: first.height }, tw: widths.get(t.parentNode!) ?? 0 });
       }
     }
     const lines: (typeof words)[] = [];

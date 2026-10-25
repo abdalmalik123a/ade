@@ -93,7 +93,7 @@ export const nodes: Record<string, NodeSpec> = {
       kashida: { default: null }
     },
     parseDOM: [
-      { tag: 'p',getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
+      { tag: 'p', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h1', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h2', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) },
       { tag: 'h3', getAttrs: (el) => paragraphAttrsFromDom(dom(el)) }
