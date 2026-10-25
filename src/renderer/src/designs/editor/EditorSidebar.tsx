@@ -66,7 +66,8 @@ export default function EditorSidebar({ ed }: { ed: DesignEditor }) {
               <span className="px-2 py-0.5 rounded-chip bg-primary-fixed text-primary font-label-xs text-[11px] font-bold">تعديل محفوظ</span>
             )}
             <span className="font-label-sm text-label-sm text-on-surface-variant tabular" data-size-chip="">
-              {canvas.size.w} × {canvas.size.h} ملم
+              {/* بمنزلةٍ واحدة كما يقوله التنبيه بعد الاستيراد — Word وPDF يعطيان كسورًا طويلة (D172). */}
+              {canvas.size.w.toFixed(1)} × {canvas.size.h.toFixed(1)} ملم
             </span>
           </div>
         </header>

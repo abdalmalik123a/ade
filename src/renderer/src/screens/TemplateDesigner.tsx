@@ -29,6 +29,7 @@ import WatermarkSection from './templateDesigner/WatermarkSection';
 import PagesSection from './templateDesigner/PagesSection';
 import DesignerFooter from './templateDesigner/DesignerFooter';
 import { useSheetHead } from './templateDesigner/useSheetHead';
+import { useLiveDoc } from './templateDesigner/useLiveDoc';
 
 export type DesignerProps = {
   initial: TemplateDetail | null;
@@ -81,9 +82,8 @@ export default function TemplateDesigner({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [usage, setUsage] = useState(0);
   /** البنية الداخلية كتلٌ لحفظ التنسيق، أمّا واجهة المكتب فهي ورقةٌ واحدة. */
-  const [doc, setDoc] = useState<Doc>(
-    () => initialDoc ?? docFromLegacy(initial?.bodyHtml ?? '', legacyFieldMeta)
-  );
+  // والحفظ يقرأ آخر ما في المحرّر (`latestDoc`، D172).
+  const { doc, setDoc, latestDoc } = useLiveDoc(() => initialDoc ?? docFromLegacy(initial?.bodyHtml ?? '', legacyFieldMeta));
   const [clips, setClips] = useState<Clip[]>([]);
   /** التدقيق الإملائي: اقتراحاتٌ على نصّ النموذج تُختار ثم تُصلح. */
   const [spellOpen, setSpellOpen] = useState(false);
@@ -215,6 +215,7 @@ export default function TemplateDesigner({
       setError('عنوان النموذج مطلوب');
       return false;
     }
+    const doc = latestDoc();
     const text = docText(doc);
     if (!text.trim()) {
       setError('متن النموذج فارغ');

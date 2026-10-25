@@ -105,6 +105,9 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('قُرئ مقاس صفحة Word', size.includes('297.0') && size.includes('210.0'));
 
   let text = await page.text();
+  // ومقاس التصميم في رأسه بمنزلةٍ واحدة لا «297.00361111111107» (D172).
+  const chip = await page.eval(`return document.querySelector('[data-size-chip]')?.innerText.trim() ?? '';`);
+  ok(`ومقاسه في رأس التصميم بمنزلةٍ واحدة (${chip})`, chip === '297.0 × 210.0 ملم');
   // والخطّ الذي ليس في البرنامج يُقال بنصّه (S44) — لا بديلٌ صامت.
   ok('والخطّ الغائب يُقال: «خطوطٌ في الملفّ ليست في البرنامج: Tahoma — أضفها من الخطوط»', text.includes('خطوطٌ في الملفّ ليست في البرنامج: Tahoma — أضفها من الخطوط'));
   // قيمةُ خانةٍ ليست في `innerText` — فتُقرأ من الخانة نفسها.

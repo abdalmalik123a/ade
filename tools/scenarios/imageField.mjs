@@ -154,6 +154,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     'وفي الورقة إطارٌ ١٣٢×١٧٠ وفيه «الصورة»',
     await until(`(() => { const f = document.querySelector('${ED} [data-image-field="الصورة"]'); return f && f.textContent === 'الصورة' && f.offsetWidth === 132 && f.offsetHeight === 170; })()`)
   );
+  if (shotsDir) await page.shot(join(shotsDir, 'image-field-editor.png'));
   // ثم حقل الاسم بـF4 — بعد حقل الصورة عمدًا: كان أوّلُ حقلٍ مملوءٍ يُؤخذ اسمَ صاحب العلاقة، فيصير المسار اسمًا في السجلّ.
   await wait(400);
   const from = line.indexOf('أحمد عادل');
@@ -170,10 +171,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   `);
   await wait(250);
   await page.key('F4');
-  await wait(400);
-  if (shotsDir) await page.shot(join(shotsDir, 'image-field-editor.png'));
-  // المحرّر يرسل الوثيقة بعد ربع ثانيةٍ من آخر تعديل، وحفظ المصمّم يأخذ آخر ما أُرسل.
-  await wait(600);
+  // ونقرةٌ برمجيّة فور F4 — بلا ترك التركيز ولا انتظار: الحفظ يستعجل المحرّر ويأخذ آخر ما فيه (D172؛ كان المحرّر يرسل بعد ربع ثانية).
   await page.clickText('حفظ النموذج');
   let row = null;
   for (let t = 0; t < 40 && !row; t++) {
