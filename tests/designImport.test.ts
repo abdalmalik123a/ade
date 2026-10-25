@@ -17,8 +17,8 @@ withNativePsd();
 
 // ── ملفاتٌ تُبنى بايتًا بايتًا، فما يُقاس هو القراءة ─────────────────
 
-/** A4 أفقي: ١٦٨٣٨ × ١١٩٠٦ twip. */
-function docx(body: string, pgSz = '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>'): Uint8Array {
+/** A4 أفقي: ١٦٨٣٨ × ١١٩٠٦ twip. و`styles`: أنماط المستند (`word/styles.xml`) إن أُعطيت. */
+function docx(body: string, pgSz = '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>', styles?: string): Uint8Array {
   const document = `<?xml version="1.0"?>
 <w:document xmlns:w="w" xmlns:wp="wp" xmlns:a="a" xmlns:r="r">
   <w:body>${body}<w:sectPr>${pgSz}</w:sectPr></w:body>
@@ -28,17 +28,18 @@ function docx(body: string, pgSz = '<w:pgSz w:w="16838" w:h="11906" w:orient="la
   return zipSync({
     'word/document.xml': strToU8(document),
     'word/_rels/document.xml.rels': strToU8(rels),
-    'word/media/crest.png': new Uint8Array([1, 2, 3, 4])
+    'word/media/crest.png': new Uint8Array([1, 2, 3, 4]),
+    ...(styles ? { 'word/styles.xml': strToU8(`<?xml version="1.0"?><w:styles xmlns:w="w">${styles}</w:styles>`) } : {})
   });
 }
 
-/** مربّعُ نصٍّ مثبّتٌ بموضعه — وهذا ما تُبنى به الشهادات في Word. */
-const anchoredText = (xEmu: number, yEmu: number, cx: number, cy: number, text: string) => `
+/** مربّعُ نصٍّ مثبّتٌ بموضعه — وهذا ما تُبنى به الشهادات في Word. و`paragraph`: فقرته كاملةً بتنسيقها إن أُعطيت. */
+const anchoredText = (xEmu: number, yEmu: number, cx: number, cy: number, text: string, paragraph = `<w:p><w:r><w:t>${text}</w:t></w:r></w:p>`) => `
 <w:drawing><wp:anchor>
   <wp:positionH relativeFrom="page"><wp:posOffset>${xEmu}</wp:posOffset></wp:positionH>
   <wp:positionV relativeFrom="page"><wp:posOffset>${yEmu}</wp:posOffset></wp:positionV>
   <wp:extent cx="${cx}" cy="${cy}"/>
-  <w:txbxContent><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:txbxContent>
+  <w:txbxContent>${paragraph}</w:txbxContent>
 </wp:anchor></w:drawing>`;
 
 const anchoredImage = (xEmu: number, yEmu: number, cx: number, cy: number) => `
@@ -184,6 +185,66 @@ describe('Word: المقاس بالـtwip والمواضع بالـEMU', () => {
 
   it('ووحدةُ EMU هي ٩١٤٤٠٠ للإنش', () => {
     expect(914400 * EMU_MM).toBeCloseTo(25.4, 6);
+  });
+});
+
+/**
+ * شهادةٌ بثلاثة مربّعات (S44): عريضٌ أحمر في الوسط بخطّ Amiri وحجم ٢٨ مكتوبًا عليه · مربّعٌ يرث من نمطٍ عريضٍ خطّه Tahoma (ليس في البرنامج) ·
+ * ومربّعٌ بلا تنسيقٍ يأخذ افتراض المستند (Cairo ١٤ من اليمين). ومثلها في سيناريو `designImport` على البرنامج نفسه.
+ */
+const STYLED_STYLES = `
+<w:docDefaults>
+  <w:rPrDefault><w:rPr><w:rFonts w:ascii="Cairo" w:cs="Cairo"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:rPrDefault>
+  <w:pPrDefault><w:pPr><w:bidi/></w:pPr></w:pPrDefault>
+</w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+<w:style w:type="paragraph" w:styleId="Name"><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="end"/></w:pPr><w:rPr><w:rFonts w:ascii="Tahoma" w:cs="Tahoma"/><w:b/><w:bCs/><w:szCs w:val="36"/></w:rPr></w:style>`;
+
+function styledDocx(): Uint8Array {
+  const cm = 360000;
+  const title =
+    '<w:p><w:pPr><w:bidi/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Amiri" w:cs="Amiri"/><w:b/><w:bCs/><w:color w:val="C00000"/>' +
+    '<w:sz w:val="56"/><w:szCs w:val="56"/><w:rtl/></w:rPr><w:t>شهادة تقدير</w:t></w:r></w:p>';
+  const name = '<w:p><w:pPr><w:pStyle w:val="Name"/></w:pPr><w:r><w:t>زينب علي حسن</w:t></w:r></w:p>';
+  return docx(
+    anchoredText(8 * cm, 2 * cm, 14 * cm, 3 * cm, 'شهادة تقدير', title) +
+      anchoredText(8 * cm, 7 * cm, 14 * cm, 2 * cm, 'زينب علي حسن', name) +
+      anchoredText(8 * cm, 12 * cm, 14 * cm, 2 * cm, 'مدرسة النور'),
+    undefined,
+    STYLED_STYLES
+  );
+}
+
+describe('Word: كلّ مربّعٍ بخطّه ولونه وعريضه ومحاذاته وحجمه (S44)', () => {
+  const out = wordDesign(styledDocx(), 'شهادة.docx');
+  const [title, name, school] = out.elements;
+
+  it('ما كُتب على المقطع: Amiri عريضٌ أحمر في الوسط بحجم ٢٨ من `w:sz` لا بالتقدير', () => {
+    expect(title).toMatchObject({ font: "'Amiri', serif", color: '#c00000', bold: true, align: 'center', size: 28 });
+  });
+
+  it('والموروث من نمط الفقرة: عريضٌ و١٨ من `w:szCs`، و«نهاية السطر» في الفقرة العربية يسارٌ (`mapJc`) — وخطّه الغائب يُقال ولا يُبدَّل صامتًا', () => {
+    expect(name).toMatchObject({ bold: true, size: 18, align: 'left' });
+    expect(name!.font).toBeUndefined();
+    expect(name!.color).toBeUndefined();
+    expect(out.warnings).toContain('خطوطٌ في الملفّ ليست في البرنامج: Tahoma — أضفها من الخطوط');
+  });
+
+  it('وبلا تنسيقٍ: افتراض المستند — Cairo و١٤ ومن اليمين، ولا عريض ولا لون', () => {
+    expect(school).toMatchObject({ font: "'Cairo', sans-serif", size: 14, align: 'right' });
+    expect(school!.bold).toBeUndefined();
+    expect(school!.color).toBeUndefined();
+  });
+
+  it('والخطّ الذي أضافه المكتب يُطابَق (`fonts` من «خطوط ديوان» كما لـPhotoshop)', () => {
+    const withTahoma = readDesign(styledDocx(), 'شهادة.docx', ['Amiri', 'Cairo', 'Tahoma']);
+    expect(withTahoma.elements[1]!.font).toBe("'Tahoma', serif");
+    expect(withTahoma.warnings.join(' ')).not.toContain('ليست في البرنامج');
+  });
+
+  it('وتصل اللوحة كما قُرئت', () => {
+    const canvas = canvasFromImport(out, [])!;
+    expect(canvas.elements[0]).toMatchObject({ kind: 'text', font: "'Amiri', serif", color: '#c00000', bold: true, align: 'center', size: 28 });
   });
 });
 

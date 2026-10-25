@@ -21,6 +21,19 @@ const anchored = (x, y, cx, cy, inner) => `
   ${inner}
 </wp:anchor></w:drawing>`;
 
+/**
+ * أنماط المستند (S44): الافتراض Cairo ١٤ من اليمين، ونمطٌ عريضٌ خطّه Tahoma (ليس في البرنامج) يرثه السطر الثاني.
+ */
+const STYLES = `<?xml version="1.0"?>
+<w:styles xmlns:w="w">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr><w:rFonts w:ascii="Cairo" w:cs="Cairo"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:rPrDefault>
+    <w:pPrDefault><w:pPr><w:bidi/></w:pPr></w:pPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+  <w:style w:type="paragraph" w:styleId="Grant"><w:basedOn w:val="Normal"/><w:rPr><w:rFonts w:ascii="Tahoma" w:cs="Tahoma"/><w:b/><w:bCs/></w:rPr></w:style>
+</w:styles>`;
+
 function certificateDocx() {
   const body =
     anchored(
@@ -28,14 +41,16 @@ function certificateDocx() {
       5 * CM,
       18 * CM,
       2 * CM,
-      '<w:txbxContent><w:p><w:r><w:t>شهادة شكر وتقدير</w:t></w:r></w:p></w:txbxContent>'
+      // العنوان بتنسيقه على المقطع (S44): Amiri عريضٌ أحمر في الوسط بحجم ٢٨.
+      '<w:txbxContent><w:p><w:pPr><w:bidi/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Amiri" w:cs="Amiri"/><w:b/><w:bCs/>' +
+        '<w:color w:val="C00000"/><w:sz w:val="56"/><w:szCs w:val="56"/></w:rPr><w:t>شهادة شكر وتقدير</w:t></w:r></w:p></w:txbxContent>'
     ) +
     anchored(
       9 * CM,
       9 * CM,
       12 * CM,
       1.5 * CM,
-      '<w:txbxContent><w:p><w:r><w:t>تُمنح هذه الشهادة إلى {اسم الطالب}</w:t></w:r></w:p></w:txbxContent>'
+      '<w:txbxContent><w:p><w:pPr><w:pStyle w:val="Grant"/></w:pPr><w:r><w:t>تُمنح هذه الشهادة إلى {اسم الطالب}</w:t></w:r></w:p></w:txbxContent>'
     ) +
     anchored(1 * CM, 1 * CM, 3 * CM, 3 * CM, '<a:blip r:embed="rId5"/>');
 
@@ -57,6 +72,7 @@ function certificateDocx() {
 
   return zipSync({
     'word/document.xml': strToU8(document),
+    'word/styles.xml': strToU8(STYLES),
     'word/_rels/document.xml.rels': strToU8(rels),
     'word/media/crest.png': crest
   });
@@ -89,6 +105,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('قُرئ مقاس صفحة Word', size.includes('297.0') && size.includes('210.0'));
 
   let text = await page.text();
+  // والخطّ الذي ليس في البرنامج يُقال بنصّه (S44) — لا بديلٌ صامت.
+  ok('والخطّ الغائب يُقال: «خطوطٌ في الملفّ ليست في البرنامج: Tahoma — أضفها من الخطوط»', text.includes('خطوطٌ في الملفّ ليست في البرنامج: Tahoma — أضفها من الخطوط'));
   // قيمةُ خانةٍ ليست في `innerText` — فتُقرأ من الخانة نفسها.
   const named = await page.eval(`return document.querySelector('input[data-title]')?.value ?? '';`);
   ok('واسمُ الملف صار اسم التصميم', named === 'شهادة-شكر');
@@ -117,6 +135,26 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('وعرضُ العنوان ١٨ سم كما في الملف', Boolean(title));
   ok('وموضعُه من اليمين ٥٧ ملم', title && Math.abs(title.right - 57 * mmPx) < 4);
   ok('وارتفاعُه ٥ سم من الأعلى', title && Math.abs(title.top - 50 * mmPx) < 4);
+
+  // ── شكل العنوان كما في Word (S44): لوحة التنسيق للمربّع الأوّل ──────
+  await page.eval(`[...document.querySelectorAll('[data-layer]')].find((b) => b.textContent.includes('شهادة شكر'))?.click(); return true;`);
+  await wait(500);
+  const look = await page.eval(`
+    const bar = document.querySelector('[data-context-bar]');
+    if (!bar) return null;
+    const on = (b) => Boolean(b) && b.className.includes('bg-primary-fixed');
+    return {
+      font: bar.querySelector('select[data-act="quick-font"]')?.value ?? '',
+      size: bar.querySelector('input[title="حجم الخط بالنقاط"]')?.value ?? '',
+      bold: on(bar.querySelector('button[title^="عريض"]')),
+      center: on([...bar.querySelectorAll('button')].find((b) => b.textContent.trim() === 'format_align_center'))
+    };
+  `);
+  ok(`ولوحة التنسيق للعنوان: Amiri و٢٨ وعريض ووسط (${JSON.stringify(look)})`, look?.font === 'Amiri' && look.size === '28' && look.bold && look.center);
+  ok(
+    'ولونه الأحمر من الملف على اللوحة',
+    await page.eval(`return [...document.querySelectorAll('[data-design] *')].some((e) => e.textContent.trim() === 'شهادة شكر وتقدير' && getComputedStyle(e).color === 'rgb(192, 0, 0)');`)
+  );
 
   if (shotsDir) await page.shot(join(shotsDir, 'design-import.png'));
 
