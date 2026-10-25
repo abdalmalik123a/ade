@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٦ ٠٢:٢٥ — D187 ✅ R04: الإشعارات القانونية من ملفّ القفل كلّه، ونصوص الرخص مع البرنامج · النموذج: Claude Opus 5.5 (المنفّذ)
+- **تمّ:** `tools/make-notices.mjs`: حزم التشغيل في ملفّ القفل (١٤٥، بلا `dev` ولا `devOptional`) + ما تبنيه الواجهة وما تجرّه بحلّ Node (`dependencies` لا الاختياريّة) +
+  Electron وحده (ما يجرّه أدوات تنزيل) + النماذج ومنها **RTMPose-t** ← `notices.json` **١٦٨ إشعارًا بدل ٤٠** (لم يسقط اسمٌ قديم) · و`resources/THIRD-PARTY-NOTICES.txt`
+  (٣٤٩ ك.ب، ١٦٢ حزمة بنصوص LICENSE/NOTICE/COPYING، و`NOTICE.md` النماذج) يحمله `extraResources` إلى `resources` · وسطرٌ في «عن البرنامج» يقول أين.
+- **بلا ملفّ رخصة (يُكتب رخصتها من الحزمة):** binary وbuffers (لا رخصة مذكورة أصلًا — «انظر مستودعها») وchainsaw وhash.js وisarray وonnxruntime-common وonnxruntime-node وsaxes وtr46.
+- **الفحص (مُجرَّب):** `npm run notices` مرّتين ← الملفّان نفسهما بايتًا ببايت · typecheck ✓ · `notices.test` ٤ ✓ · vitest كاملًا ٢١٨٤ ✓ و١ ✗ بيئة · البناء ✓ ·
+  `harden` ١٨ ✓ (الإشعارات ١٦٩ سطرًا بسطر الملفّ) · `settings` ٢٩ ✓ — والمثبّت (`npm run pack`) لم يُبنَ: `extraResources` يُرى في محطّة الإصدار (D190).
+- **الإسقاط (مُجرَّب):** الأداة القديمة ← `notices.test` ٣ ✗ (حزم التشغيل وما تبنيه الواجهة والنماذج) ثم أُعيدت فـ٤ ✓.
+- **التالي:** D188 مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٦ ٠٢:٠٥ — D186 ✅ S34: «تشخيص الجهاز» في الإعدادات وفي تقرير المشكلة · النموذج: Claude Opus 5.5 (المنفّذ)
 - **تمّ:** `services/diagnostics.ts` (حكمٌ خالص بخمسة أسطر وثوابت مسمّاة) · `ipc/support.ts` يجمع ويحكم، وقناة `app:diagnose` بـ`handleChecked`، والتقرير يكتب الأسطر تحت
   «تشخيص الجهاز» · `services/printers.ts` (قائمة الطابعات نُقلت من `ipc/index.ts` كما هي، يستعملها الاثنان) · «افحص الجهاز» في `SupportCard.tsx` بعلامةٍ وتوكنات «ب٢» ·

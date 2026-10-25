@@ -68,6 +68,10 @@
       {
         "from": "resources/packs",
         "to": "packs"
+      },
+      {
+        "from": "resources/THIRD-PARTY-NOTICES.txt",
+        "to": "THIRD-PARTY-NOTICES.txt"
       }
     ],
     "electronFuses": {

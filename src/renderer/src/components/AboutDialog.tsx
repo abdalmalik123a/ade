@@ -110,6 +110,10 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
                   </span>
                 </li>
               ))}
+              {/* والنصوص كاملةً في ملفٍّ يحمله المثبّت (R04، D187) — MIT وأخواتها تشترطها. */}
+              <li className="mt-space-xs text-on-surface-variant" data-about-notices-file="">
+                النصوص الكاملة للرخص في مجلّد البرنامج: resources ← THIRD-PARTY-NOTICES.txt
+              </li>
             </ul>
           )}
         </div>
