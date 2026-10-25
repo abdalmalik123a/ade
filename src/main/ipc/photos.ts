@@ -17,7 +17,21 @@ import { importFile, pickOpenPath, pickSavePath } from './files';
 import { getCitizen, saveCitizen, addAttachment } from '../services/citizens';
 import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPresets';
 import { parseCustomSuits, pngTransparency, type CustomSuit, type SuitImport } from '@shared/suits';
+import type { Guard } from '@shared/bridgeGuards';
 import { writePng } from '../services/png';
+import { handleChecked } from './checked';
+
+type PreparedSuit = { name: string; rgba: Uint8Array; width: number; height: number };
+/** القاط المحضَّر في الواجهة (S39): اسمٌ وبكسلاتٌ بطول العرض×الطول×٤، والبعدان ٤٠٠٠ على الأكثر. */
+const preparedSuit: Guard<PreparedSuit> = (value, name) => {
+  const s = value as Partial<PreparedSuit> | null;
+  const side = (v: unknown) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= 4000;
+  const shaped =
+    typeof value === 'object' && s !== null && typeof s.name === 'string' && s.name.length <= 200 && side(s.width) && side(s.height) &&
+    s.rgba instanceof Uint8Array && s.rgba.length === s.width! * s.height! * 4;
+  if (!shaped) throw new Error(`المعامل «${name}» صورة قاطٍ محضَّرة`);
+  return value as PreparedSuit;
+};
 
 const MODEL = 'modnet-portrait-q8.onnx';
 /** نموذج الأشياء (DESIGNS.md ٢٫٣) — للتصاميم؛ والأشخاص لـMODNet. */
@@ -128,14 +142,11 @@ export function registerPhotoIpc(): void {
   });
 
   /** القاط بعد تحضيره في الواجهة: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`)، ويُضاف إلى قاط المكتب. */
-  ipcMain.handle('photos:addSuit', async (_e, payload: { name: string; rgba: Uint8Array; width: number; height: number }): Promise<CustomSuit> => {
-    const { name, rgba, width, height } = payload ?? ({} as typeof payload);
-    const ok = (v: unknown) => Number.isInteger(v) && (v as number) > 0 && (v as number) <= 4000;
-    if (!ok(width) || !ok(height) || !(rgba instanceof Uint8Array) || rgba.length !== width * height * 4) throw new Error('صورة القاط غير صالحة');
-    const png = writePng(rgba, width, height);
+  handleChecked('photos:addSuit', { suit: preparedSuit }, async ({ suit }): Promise<CustomSuit> => {
+    const png = writePng(suit.rgba, suit.width, suit.height);
     const file = `${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
     await writeFile(join(storeDir('suits'), file), png);
-    return addCustomSuit(String(name ?? '').trim().slice(0, 80) || 'قاط', `suits/${file}`);
+    return addCustomSuit(suit.name.trim().slice(0, 80) || 'قاط', `suits/${file}`);
   });
 
   ipcMain.handle('photos:deleteSuit', async (_e, id: string): Promise<CustomSuit[]> => {

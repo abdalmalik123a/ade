@@ -1,6 +1,6 @@
 /**
  * سيناريو: صورة المعاملة — لصقٌ، فإزالة خلفيةٍ بالنموذج على الجهاز، فقاط، فمقاس، فحفظٌ ورفعٌ
- * وملف مواطن، واستيراد قاطٍ شفّاف (والمعتم يُرفض بسببه).
+ * وملف مواطن، واستيراد قاطٍ: JPG على أبيض يُحضَّر، وPNG شفّاف كما هو (والرماديّ المعتم يُرفض بسببه).
  *
  * الصورة مولَّدة لا لشخصٍ حقيقي (`tests/fixtures/portrait-generated.png`) — تُلصق كما يلصق
  * الموظف صورةً من واتساب الحاسوب. والقاط المستورد صورةٌ تُبنى هنا: سترةٌ داكنة بفتحة عنق.
@@ -55,18 +55,13 @@ function png(w, h, px, rgba) {
 }
 
 /** قاطٌ مبسّط: كتفان داكنان منحدران، وفتحة عنقٍ على شكل V شفّافة، وما حولهما شفّاف. */
-const suitPng = () =>
-  png(
-    400,
-    300,
-    (x, y) => {
-      const dx = Math.abs(x - 200);
-      const shoulder = y > 40 + Math.max(0, dx - 60) * 0.35 && dx < 195;
-      const gap = y < 130 && dx < 38 * (1 - (y - 40) / 90);
-      return shoulder && !gap ? [30, 32, 40, 255] : [0, 0, 0, 0];
-    },
-    true
-  );
+function suitPx(x, y) {
+  const dx = Math.abs(x - 200);
+  const shoulder = y > 40 + Math.max(0, dx - 60) * 0.35 && dx < 195;
+  const gap = y < 130 && dx < 38 * (1 - (y - 40) / 90);
+  return shoulder && !gap ? [30, 32, 40, 255] : [0, 0, 0, 0];
+}
+const suitPng = () => png(400, 300, suitPx, true);
 
 const opaquePng = () => png(200, 150, () => [40, 40, 40], false);
 
@@ -256,14 +251,33 @@ export default async function scenario(page, { shotsDir }) {
   const citizen = await page.eval(`const c = await window.diwan.citizens.get(${citizenId}); return { photo: c.photoPath, n: c.attachments.length };`);
   ok('وتُحفظ صورةً في ملف المواطن ومستمسكًا فيه', /^photos\//.test(citizen.photo ?? '') && citizen.n === 1);
 
-  // ٧. استيراد قاط: المعتم يُرفض بسببه، والشفّاف يُضاف ويُلبَس.
+  // ٧. استيراد قاط (S39): الرماديّ المعتم يُرفض بسببه، والقاط نفسه JPG على أبيض يُحضَّر ويُلبَس، والشفّاف يُضاف كما هو.
+  // مسار الفتح ثابت تحت المِقْود، فيُكتب فيه كلّ مرّةٍ ما يُستورد (الباب يميّز بالمحتوى لا بالامتداد).
+  const wornLast = (n) =>
+    until(`(() => { const b = [...document.querySelectorAll('[data-suit^="custom-"]')]; return b.length === ${n} && b[${n - 1}].className.includes('border-secondary'); })()`, 8000);
   await click('[data-act="import-suit"]');
   await wait(1200);
-  ok('والقاط المعتم يُرفض ويُقال لماذا', (await page.text()).includes('بلا شفافية'));
+  ok('والقاط المعتم يُرفض ويُقال لماذا', (await page.text()).includes('ليست قاطًا على خلفيةٍ بيضاء'));
+  // JPEG يصنعه Chromium من القاط نفسه على أبيضٍ نقيّ (لا مُرمِّز JPEG في node).
+  const onWhite = png(400, 300, (x, y) => { const p = suitPx(x, y); return p[3] ? p : [255, 255, 255, 255]; }, false).toString('base64');
+  const jpg = await page.eval(`
+    const bytes = Uint8Array.from(atob(${JSON.stringify(onWhite)}), (ch) => ch.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    c.getContext('2d').drawImage(bmp, 0, 0);
+    return c.toDataURL('image/jpeg', 0.9).split(',')[1];
+  `);
+  writeFileSync(process.env.PORTRAIT_SUIT_FILE, Buffer.from(jpg, 'base64'));
+  await wait(3800);
+  await click('[data-act="import-suit"]');
+  ok('والقاط JPG على أبيض يُحضَّر ويُضاف ويُلبَس', await wornLast(1));
+  if (shotsDir) await page.shot(join(shotsDir, 'portrait-jpg-suit.png'));
   writeFileSync(process.env.PORTRAIT_SUIT_FILE, suitPng());
   await wait(3800);
   await click('[data-act="import-suit"]');
-  ok('والشفّاف يُضاف إلى القاط ويُلبَس', await until(`[...document.querySelectorAll('[data-suit^="custom-"]')].some((b) => b.className.includes('border-secondary'))`, 8000));
+  ok('والشفّاف يُضاف إلى القاط ويُلبَس', await wornLast(2));
   if (shotsDir) await page.shot(join(shotsDir, 'portrait-custom-suit.png'));
 
   // ٨. قالبٌ للمكتب: يُحفظ ويُختار، والإطار بنسبته.
