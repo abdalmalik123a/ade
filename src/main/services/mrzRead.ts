@@ -5,7 +5,7 @@
  * العربيّ على الصفحة كلّها يخلطها بحروفه، والإنكليزيّ يرى «<» C أو L أو K. وتقسيمه للصفحة لم
  * يرَ فيها نصًّا أصلًا. فهنا طريقٌ خاصّ:
  * ١. **تُوجد السطور من الصورة** (`@shared/mrzLocate`): ثلاثة أسطرٍ من رموزٍ منفصلة متساوية
- *    بخطوةٍ ثابتة — بلا قارئ.
+ *    بخطوةٍ ثابتة — بلا قارئ (وصفحة جواز السفر سطران من ٤٤، S41، D180).
  * ٢. **تُقصّ من الأصل** وتُنعَّم قليلًا (تخطيط النسخة يقطع الحروف)، وتُصغَّر أو تُكبَّر حتى
  *    يصير الرمز نحو ثلاثين بكسلًا، وتصير أبيض وأسود بعتبةٍ لكلّ رمز (فالطرف الباهت لا يُمحى).
  * ٣. **تُقرأ بحروف MRZ وحدها**، وكلّ رمزٍ في خانته من موضعه على سطره، و«<» من شكله،
@@ -13,7 +13,7 @@
  *
  * والصورة والقارئ يُمرَّران من الخارج (محرّك الصور وtesseract في التطبيق) — فيُختبر بلا Electron.
  */
-import { parseTD1, settleTD1, slotLine, type MrzResult, type MrzSymbol } from '@shared/mrz';
+import { parseMrzLines, settleTD1, settleTD3, slotLine, type MrzResult, type MrzSymbol } from '@shared/mrz';
 import { binarizeLocal, blurGray, chevronShape, cropGray, leftInk, looksLikeChevron, otsu, resizeGray, rotate180, toRgba, type Box } from '@shared/mrzImage';
 import { components, glyphLines, pickMrz, type GlyphLine } from '@shared/mrzLocate';
 import { writePng } from './png';
@@ -41,7 +41,7 @@ function flipLine(l: MrzLine, width: number, height: number): MrzLine {
   return { box: box(l.box), glyphs: l.glyphs.map(box).reverse(), height: l.height, a: height - l.a - l.b * width, b: l.b };
 }
 
-/** أين السطور الثلاثة في الصورة — بإحداثيّاتها الأصلية. */
+/** أين السطور في الصورة — ثلاثةٌ للبطاقة أو اثنان للجواز (S41) — بإحداثيّاتها الأصلية. */
 export function locateMrz(img: { gray: Uint8Array; width: number; height: number }): MrzLine[] | null {
   // صورةٌ مصغَّرة أسرع، والبصمة تُرى فيها.
   const k = Math.min(1, 1300 / img.width);
@@ -111,10 +111,10 @@ export async function readCardBack(img: { gray: Uint8Array; width: number; heigh
     if (r.result?.valid) return r;
     tries.push(r);
   }
-  const whole = tries.filter((t) => t.result && t.lines.length === 3);
+  const whole = tries.filter((t) => t.result && t.lines.length === lines.length);
   if (whole.length === 3) {
     const voted = voteLines(whole.map((t) => t.lines));
-    const result = parseTD1(voted);
+    const result = parseMrzLines(voted);
     if (result?.valid) return { result, lines: voted };
   }
   return tries.reduce((best, t) => (score(t) > score(best) ? t : best));
@@ -143,7 +143,9 @@ async function readLines(gray: Uint8Array, width: number, height: number, lines:
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) bin[y * width + x] = gray[y * width + x]! <= t ? 1 : 0;
     }
   }
-  const whole = lines.map((l) => l.glyphs.length === 30);
+  // خانات السطر: ٣٠ للبطاقة (ثلاثة أسطر) و٤٤ للجواز (سطران، S41).
+  const n = lines.length === 2 ? 44 : 30;
+  const whole = lines.map((l) => l.glyphs.length === n);
   const isChevron = lines.map((l, i) => l.glyphs.map((g) => whole[i]! && chevronShape(bin, width, g)));
   const page = Uint8Array.from(bin);
   lines.forEach((l, i) =>
@@ -166,7 +168,7 @@ async function readLines(gray: Uint8Array, width: number, height: number, lines:
   }
   const raw = lines.map((l, i) => {
     if (whole[i]) {
-      const texts: (string | undefined)[] = Array(30).fill(undefined);
+      const texts: (string | undefined)[] = Array(n).fill(undefined);
       const open = l.glyphs.map((_, k) => k).filter((k) => !isChevron[i]![k]);
       for (const sym of found[i]!) {
         const cx = (sym.box.x0 + sym.box.x1) / 2;
@@ -175,7 +177,7 @@ async function readLines(gray: Uint8Array, width: number, height: number, lines:
       }
       return {
         left: l.glyphs[0]!.x0,
-        right: l.glyphs[29]!.x1,
+        right: l.glyphs[n - 1]!.x1,
         symbols: l.glyphs.map((g, k): MrzSymbol => ({ text: texts[k] ?? '<', x0: g.x0, x1: g.x1, chevron: isChevron[i]![k] }))
       };
     }
@@ -187,6 +189,6 @@ async function readLines(gray: Uint8Array, width: number, height: number, lines:
       )
     };
   });
-  const settled = settleTD1(raw);
-  return { result: settled ? parseTD1(settled) : null, lines: settled ?? raw.map((r) => slotLine(r.symbols, r.left, r.right)) };
+  const settled = n === 44 ? settleTD3(raw) : settleTD1(raw);
+  return { result: settled ? parseMrzLines(settled) : null, lines: settled ?? raw.map((r) => slotLine(r.symbols, r.left, r.right, n)) };
 }

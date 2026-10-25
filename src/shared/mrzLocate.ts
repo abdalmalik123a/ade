@@ -158,7 +158,9 @@ export function glyphLines(blobs: Blob[], minGlyphs = 20): GlyphLine[] {
   return out;
 }
 
-/** ثلاثة أسطرٍ متتالية متوازية بخطوةٍ واحدة وعرضٍ واحد — سطور MRZ — وصندوقها. */
+/**
+ * ثلاثة أسطرٍ متتالية متوازية بخطوةٍ واحدة وعرضٍ واحد — سطور البطاقة — وصندوقها؛ وإلا سطران كذلك بنحو ٤٤ رمزًا (جواز السفر، S41، D180).
+ */
 export function pickMrz(lines: GlyphLine[]): { box: Box; lines: GlyphLine[] } | null {
   const mid = (l: GlyphLine) => (l.box.x0 + l.box.x1) / 2;
   const sorted = [...lines].sort((p, q) => p.a + p.b * mid(p) - (q.a + q.b * mid(q)));
@@ -174,6 +176,23 @@ export function pickMrz(lines: GlyphLine[]): { box: Box; lines: GlyphLine[] } | 
     const spaced = [cy[1]! - cy[0]!, cy[2]! - cy[1]!].every((d) => d > h * 1.1 && d < h * 3);
     const parallel = Math.max(...trio.map((l) => l.b)) - Math.min(...trio.map((l) => l.b)) < 0.02;
     if (samePitch && sameWidth && spaced && parallel) return { box: around(trio.map((l) => l.box)), lines: trio };
+  }
+  // والجواز: سطران متتاليان بالشروط نفسها، وفي كلٍّ منهما أكثر من ٣٦ رمزًا (البطاقة ٣٠، والجواز ٤٤).
+  for (let i = 0; i + 1 < sorted.length; i++) {
+    const duo = sorted.slice(i, i + 2);
+    const pitch = duo.map((l) => l.pitch);
+    const width = duo.map((l) => l.box.x1 - l.box.x0);
+    const x = mid(duo[0]!);
+    const d = duo[1]!.a + duo[1]!.b * x - (duo[0]!.a + duo[0]!.b * x);
+    const h = duo[0]!.height;
+    const ok =
+      duo.every((l) => l.glyphs.length > 36) &&
+      Math.max(...pitch) / Math.min(...pitch) < 1.25 &&
+      Math.max(...width) / Math.min(...width) < 1.3 &&
+      d > h * 1.1 &&
+      d < h * 3 &&
+      Math.abs(duo[0]!.b - duo[1]!.b) < 0.02;
+    if (ok) return { box: around(duo.map((l) => l.box)), lines: duo };
   }
   return null;
 }

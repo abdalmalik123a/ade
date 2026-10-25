@@ -7,6 +7,8 @@
  *
  * **ويُتحقَّق ببطاقةٍ حقيقية قبل أن يُعتمد** (قرار المالك): المعيار معروف، أمّا أين
  * يضع العراق الرقم الوطني في الحقول الاختيارية فيُرى على بطاقة.
+ *
+ * وصفحة جواز السفر سطران من ٤٤ حرفًا (TD3، S41، D180) — في آخر الملفّ.
  */
 
 const VALUE = (c: string): number => {
@@ -44,7 +46,8 @@ function mrzDate(s: string, future: boolean): string | null {
 const clean = (s: string) => s.replace(/</g, ' ').trim().replace(/\s+/g, ' ');
 
 export type MrzResult = {
-  format: 'TD1';
+  /** البطاقة: ثلاثة أسطرٍ من ٣٠ · والجواز: سطران من ٤٤ (S41، D180). */
+  format: 'TD1' | 'TD3';
   documentCode: string;
   issuer: string;
   documentNumber: string;
@@ -57,7 +60,8 @@ export type MrzResult = {
   optional2: string;
   surname: string;
   givenNames: string;
-  checks: { documentNumber: boolean; birthDate: boolean; expiryDate: boolean; composite: boolean };
+  /** و`personal` للجواز وحده: تحقّق الرقم الشخصي. */
+  checks: { documentNumber: boolean; birthDate: boolean; expiryDate: boolean; composite: boolean; personal?: boolean };
   /** كلّ أرقام التحقّق صحيحة — فالقراءة موثوقة. */
   valid: boolean;
 };
@@ -130,8 +134,10 @@ export function findTD1(text: string): string[] | null {
 const toDigit = (c: string) => ({ O: '0', Q: '0', D: '0', I: '1', L: '1', Z: '2', S: '5', B: '8', G: '6' })[c] ?? c;
 const toLetter = (c: string) => ({ '0': 'O', '1': 'I', '2': 'Z', '5': 'S', '6': 'G', '8': 'B' })[c] ?? c;
 
-/** من نصّ القارئ إلى الحقول — أو عدم إن لم تُوجد سطورٌ ثلاث. */
+/** من نصّ القارئ إلى الحقول: سطرا الجواز (S41) ثمّ أسطر البطاقة الثلاثة — أو عدم. */
 export function readMrz(text: string): MrzResult | null {
+  const passport = findTD3(text);
+  if (passport) return parseTD3(passport);
   const lines = findTD1(text);
   return lines ? parseTD1(lines) : null;
 }
@@ -203,3 +209,80 @@ export function settleTD1(raw: { symbols: MrzSymbol[]; left: number; right: numb
   lines[2] = [...lines[2]!].map(toLetter).join('');
   return solveTD1(lines);
 }
+
+// ── جواز السفر: سطران من ٤٤ حرفًا (TD3 — S41، D180) ─────────────────────
+//
+// صفحة بيانات الجواز (ICAO 9303 الجزء ٤): السطر الأوّل «P» ونوعه والدولة المُصدِرة والاسم (اللقب «<<» الأسماء)، والثاني رقم
+// الجواز وتحقّقه والجنسية والولادة وتحقّقها والجنس والنفاذ وتحقّقه والرقم الشخصي (١٤) وتحقّقه والتحقّق الجامع. ولا حسمَ لرقم الجواز
+// بشكلٍ مفترض كالبطاقة (`solveTD1`): لم يُقرأ جوازٌ عراقيّ حقيقيّ بعد (L25) — فما خالف تحقّقه يبقى كما قُرئ ولا يملأ الملفّ (ط05).
+
+/** خانات الأرقام في السطر الثاني: تحقّق الرقم، والولادة وتحقّقها، والنفاذ وتحقّقه، والتحقّق الجامع. */
+const TD3_DIGITS = [9, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 43];
+/** وخانات الحروف فيه: الجنسية والجنس. */
+const TD3_LETTERS = [10, 11, 12, 20];
+
+/** سطران من ٤٤ حرفًا ← حقولهما وتحقّقهما. والرقم الشخصي الخالي («<» كلّه) تحقّقه «<» أو صفر. */
+export function parseTD3(lines: string[]): MrzResult | null {
+  if (lines.length !== 2 || lines.some((l) => l.length !== 44)) return null;
+  const [l1, l2] = lines as [string, string];
+  const [surname, given = ''] = l1.slice(5).split('<<');
+  const personal = l2.slice(28, 42);
+  const checks = {
+    documentNumber: ok(l2.slice(0, 9), l2[9]!),
+    birthDate: ok(l2.slice(13, 19), l2[19]!),
+    expiryDate: ok(l2.slice(21, 27), l2[27]!),
+    personal: /^<+$/.test(personal) ? l2[42] === '<' || l2[42] === '0' : ok(personal, l2[42]!),
+    composite: ok(l2.slice(0, 10) + l2.slice(13, 20) + l2.slice(21, 43), l2[43]!)
+  };
+  return {
+    format: 'TD3',
+    documentCode: clean(l1.slice(0, 2)),
+    issuer: clean(l1.slice(2, 5)),
+    documentNumber: clean(l2.slice(0, 9)),
+    optional1: clean(personal),
+    birthDate: mrzDate(l2.slice(13, 19), false),
+    sex: l2[20] === 'M' ? 'ذكر' : l2[20] === 'F' ? 'أنثى' : null,
+    expiryDate: mrzDate(l2.slice(21, 27), true),
+    nationality: clean(l2.slice(10, 13)),
+    optional2: '',
+    surname: clean(surname ?? ''),
+    givenNames: clean(given),
+    checks,
+    valid: Object.values(checks).every(Boolean)
+  };
+}
+
+/** سطرا الجواز من نصّ القارئ: سطران من ٤٠–٤٨ حرفًا أوّلهما يبدأ بـP، ويُصحَّح ما في خانات الأرقام. */
+export function findTD3(text: string): string[] | null {
+  const candidates = text
+    .toUpperCase()
+    .split(/\r?\n/)
+    .map((l) => l.replace(/[«‹]/g, '<').replace(/\s+/g, '').replace(/[^A-Z0-9<]/g, ''))
+    .filter((l) => l.length >= 40 && l.length <= 48 && (l.match(/</g) ?? []).length >= 2);
+  for (let i = 0; i + 1 < candidates.length; i++) {
+    const lines = candidates.slice(i, i + 2).map((l) => (l.length >= 44 ? l.slice(0, 44) : l.padEnd(44, '<')));
+    if (!/^P[A-Z<]/.test(lines[0]!)) continue;
+    const l2 = lines[1]!.split('');
+    for (const p of TD3_DIGITS) l2[p] = toDigit(l2[p]!);
+    lines[1] = l2.join('');
+    return lines;
+  }
+  return null;
+}
+
+/** سطران من رموز القارئ ← السطران بخاناتهما الأربع والأربعين، والأرقام والحروف في مواضعها كـ`settleTD1`. */
+export function settleTD3(raw: { symbols: MrzSymbol[]; left: number; right: number }[]): string[] | null {
+  if (raw.length < 2) return null;
+  const lines = raw.slice(0, 2).map((r) => slotLine(r.symbols, r.left, r.right, 44));
+  // السطر الأوّل حروفٌ كلّه: النوع والدولة والاسم.
+  lines[0] = [...lines[0]!].map(toLetter).join('');
+  if (!/^P[A-Z<]/.test(lines[0]!)) return null;
+  const l2 = lines[1]!.split('');
+  for (const p of TD3_DIGITS) l2[p] = toDigit(l2[p]!);
+  for (const p of TD3_LETTERS) l2[p] = toLetter(l2[p]!);
+  lines[1] = l2.join('');
+  return lines;
+}
+
+/** بعدد السطور: سطران جوازٌ وثلاثةٌ بطاقة. */
+export const parseMrzLines = (lines: string[]): MrzResult | null => (lines.length === 2 ? parseTD3(lines) : parseTD1(lines));

@@ -5,7 +5,7 @@
  * عراقية حقيقية ما يزال قائمًا (قرار المالك).
  */
 import { describe, expect, it } from 'vitest';
-import { checkDigit, findTD1, mrzExpired, mrzLatinName, parseTD1, readMrz } from '../src/shared/mrz';
+import { checkDigit, findTD1, findTD3, mrzExpired, mrzLatinName, parseTD1, parseTD3, readMrz } from '../src/shared/mrz';
 
 const SAMPLE = ['I<UTOD231458907<<<<<<<<<<<<<<<', '7408122F1204159UTO<<<<<<<<<<<6', 'ERIKSSON<<ANNA<MARIA<<<<<<<<<<'];
 
@@ -80,5 +80,50 @@ describe('المستمسك منتهٍ، والاسم باللاتينية (S29،
   it('الأسماء ثمّ اللقب بمسافةٍ واحدة — واللقب الفارغ لا يترك مسافة', () => {
     expect(mrzLatinName({ givenNames: 'ZAINAB ALI', surname: 'HASSAN' })).toBe('ZAINAB ALI HASSAN');
     expect(mrzLatinName({ givenNames: 'ZAINAB ALI HASSAN', surname: '' })).toBe('ZAINAB ALI HASSAN');
+  });
+});
+
+describe('جواز السفر: سطران من ٤٤ (TD3، S41، D180)', () => {
+  // عيّنة ICAO 9303 الجزء ٤ المعروفة (دولةٌ متخيَّلة «UTO»).
+  const L1 = 'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<';
+  const L2 = 'L898902C36UTO7408122F1204159ZE184226B<<<<<10';
+
+  it('عيّنة ICAO تُقرأ حقولها وتتحقّق أرقامها كلّها', () => {
+    expect(parseTD3([L1, L2])).toMatchObject({
+      format: 'TD3',
+      documentCode: 'P',
+      issuer: 'UTO',
+      documentNumber: 'L898902C3',
+      nationality: 'UTO',
+      birthDate: '1974-08-12',
+      sex: 'أنثى',
+      expiryDate: '2012-04-15',
+      surname: 'ERIKSSON',
+      givenNames: 'ANNA MARIA',
+      optional1: 'ZE184226B',
+      checks: { documentNumber: true, birthDate: true, expiryDate: true, personal: true, composite: true },
+      valid: true
+    });
+    expect(parseTD3([L1, L2.slice(0, 43)])).toBeNull();
+    expect(parseTD3([L1])).toBeNull();
+  });
+
+  it('رقمٌ واحدٌ أخطأه القارئ يُسقط تحقّقه — ولا تُقبل القراءة', () => {
+    const wrong = parseTD3([L1, L2.replace('7408122', '7408132')])!;
+    expect(wrong.checks.birthDate).toBe(false);
+    expect(wrong.valid).toBe(false);
+  });
+
+  it('والرقم الشخصي الخالي («<» كلّه) تحقّقه «<» مقبول', () => {
+    const head = 'L898902C36UTO7408122F1204159';
+    const body = head + '<'.repeat(14) + '<';
+    const composite = String(checkDigit(body.slice(0, 10) + body.slice(13, 20) + body.slice(21, 43)));
+    expect(parseTD3([L1, body + composite])).toMatchObject({ optional1: '', checks: { personal: true }, valid: true });
+  });
+
+  it('من نصّ القارئ: «‹» والمسافات، والحرف O في خانة رقمٍ صفر — وreadMrz يجرّبه قبل البطاقة', () => {
+    const text = ['PASSPORT', 'P‹UTOERIKSSON‹‹ANNA‹MARIA‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹', 'L898902C36UTO 74O8122F12O4159ZE184226B<<<<<1O', ''].join('\n');
+    expect(findTD3(text)).toEqual([L1, L2]);
+    expect(readMrz(text)).toMatchObject({ format: 'TD3', valid: true });
   });
 });

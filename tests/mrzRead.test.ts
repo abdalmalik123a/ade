@@ -17,6 +17,9 @@ import { readGrayPng } from './helpers';
 const card = readGrayPng(readFileSync(join(__dirname, 'fixtures', 'card-back-fake.png')));
 // ما رسمه `tools/mrz-fixture.mjs`.
 const MRZ = ['IDIRQZ123456789199012345678<<<', '9001158M3102204IRQ<<<<<<<<<<<1', '<<SAMIR<KHALID<<<<<<<<<<<<<<<<'];
+// وصفحة الجواز المولَّدة (S41، D180) — ببياناتٍ مختلَقة.
+const passport = readGrayPng(readFileSync(join(__dirname, 'fixtures', 'passport-fake.png')));
+const PASSPORT = ['P<IRQHASSAN<<ZAINAB<ALI<<<<<<<<<<<<<<<<<<<<<', 'A123456784IRQ9001158F3102204199012345678<<76'];
 
 describe('إيجاد السطور من الصورة', () => {
   it('ثلاثة أسطرٍ من ثلاثين رمزًا — بين كلامٍ عربيّ وغبارٍ وتخطيطٍ وميل', () => {
@@ -28,6 +31,13 @@ describe('إيجاد السطور من الصورة', () => {
     // الميل درجةٌ واحدة: ينزل السطر نحو نصف بكسلٍ كلّ ثلاثين.
     expect(lines[0]!.b).toBeGreaterThan(0.01);
     expect(lines[0]!.b).toBeLessThan(0.03);
+  });
+
+  it('وصفحة الجواز: سطران من ٤٤ رمزًا (S41)', () => {
+    const lines = locateMrz(passport)!;
+    expect(lines).toHaveLength(2);
+    expect(lines.map((l) => l.glyphs.length)).toEqual([44, 44]);
+    expect(lines[0]!.box.y0).toBeLessThan(lines[1]!.box.y0);
   });
 
   it('والمقلوبة كذلك — والصورة بلا سطورٍ لا يُخترع لها شيء', () => {
@@ -187,6 +197,12 @@ describe('القراءة كلّها بالقارئ المحلي (tesseract، ا�
     const r = await readCardBack(card, once);
     expect(calls).toBeGreaterThan(1);
     expect(r.result).toMatchObject({ documentNumber: 'Z12345678', valid: true });
+  }, 60_000);
+
+  it('وصفحة الجواز (TD3، S41): السطران كما رُسما، وأرقام تحقّقها الخمسة', async () => {
+    const r = await readCardBack(passport, ocr);
+    expect(r.lines).toEqual(PASSPORT);
+    expect(r.result).toMatchObject({ format: 'TD3', documentNumber: 'A12345678', nationality: 'IRQ', birthDate: '1990-01-15', sex: 'أنثى', expiryDate: '2031-02-20', surname: 'HASSAN', givenNames: 'ZAINAB ALI', optional1: '199012345678', valid: true });
   }, 60_000);
 
   it('والبطاقة ممسوحةً مقلوبة تُقرأ', async () => {
