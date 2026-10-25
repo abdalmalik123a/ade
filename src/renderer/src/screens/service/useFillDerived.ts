@@ -33,8 +33,8 @@ export function useFillDerived(
   };
 
   /** اسم صاحب العلاقة: من حقلٍ بدوره، وإلا من أول حقل مملوء. */
-  // وخانةُ «{الطالب|الطالبة}» ليست حقلًا يُملأ، فلا تُعدّ أوّلَ الحقول.
-  const firstField = fields.find((f) => f.source === 'fullName') ?? fields.find((f) => !isChoiceKey(f.key));
+  // وخانةُ «{الطالب|الطالبة}» ليست حقلًا يُملأ، فلا تُعدّ أوّلَ الحقول — ولا حقل الصورة (S38): قيمته مسارٌ لا اسم.
+  const firstField = fields.find((f) => f.source === 'fullName') ?? fields.find((f) => !isChoiceKey(f.key) && f.type !== 'image');
   const citizenName =
     byRole('name') || values[firstField?.key ?? '']?.trim() || '';
 
