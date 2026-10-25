@@ -123,7 +123,8 @@ function score(t: ReturnType<typeof scene>, f: NonNullable<ReturnType<typeof nec
           seam += (Math.abs(c[0]! - t.px[i]!) + Math.abs(c[1]! - t.px[i + 1]!) + Math.abs(c[2]! - t.px[i + 2]!)) / 3;
           sn++;
         }
-      } else {
+      } else if (Math.abs(Math.abs(x - t.sc.neck.x) - t.sc.neck.half) > Math.ceil(t.sc.feather / 2)) {
+        // باطن الياقة خارج الانتقال المليّن بينه وبين الرقبة (D176).
         coll += lum;
         nc++;
       }
@@ -170,6 +171,40 @@ describe('إكمال الرقبة بلا نموذج', () => {
     expect(b.data).toEqual(a.data);
     expect([b.x, b.y, b.w, b.h]).toEqual([a.x, a.y, a.w, a.h]);
     expect(t.px).toEqual(before);
+  });
+
+  it('لمسة الواقعية (D176): ظلّ الذقن على أعلى الرقبة المملوءة، والحدّ بين الرقبة وباطن الياقة ليّن', () => {
+    const L = (c: ArrayLike<number>) => 0.299 * c[0]! + 0.587 * c[1]! + 0.114 * c[2]!;
+    // الياقة تحت الفكّ: المملوء يبدأ عند أسفل الوجه، وجلده من الوجه — فبلا ظلٍّ أعلاه كأسفله.
+    const t = scene(236);
+    const f = neckFill(t.sc, t.paint)!;
+    const floor = Math.ceil(faceFloor(t.face!, t.lm.chin, 200));
+    const band = (y: number) => {
+      let s = 0;
+      for (let x = 195; x <= 205; x++) s += at(f, x, y)?.[3] ? L(at(f, x, y)!) : NaN;
+      return s / 11;
+    };
+    // أوّل صفٍّ مملوءٍ كلّه تحت أسفل الوجه (تدرّج القصّ القائم يُبقي صفوفًا قبله) — وفي ربع عمق الظلّ.
+    const depth = Math.ceil(t.lm.neckWidth * 0.4);
+    let first = floor;
+    while (Number.isNaN(band(first)) && first < floor + depth) first++;
+    expect(first - floor).toBeLessThan(depth / 2);
+    expect(band(first)).toBeLessThan(band(floor + depth + 3) * 0.92);
+    // الحدّ العموديّ عند يمين عمود الرقبة: الفرق بين الجلد وباطن الياقة كبير، وكلّ خطوةٍ بين بكسلين متجاورين صغيرة.
+    const u = scene(256);
+    const g = neckFill(u.sc, u.paint)!;
+    const edge = Math.round(u.sc.neck.x + u.sc.neck.half);
+    let rows = 0;
+    let step = 0;
+    for (let y = g.y; y < g.y + g.h; y++) {
+      const a = at(g, edge - 3, y);
+      const b = at(g, edge + 3, y);
+      if (!a?.[3] || !b?.[3] || u.suitAt(edge + 3, y) || L(a) - L(b) < 60) continue;
+      rows++;
+      for (let x = edge - 3; x < edge + 3; x++) step = Math.max(step, Math.abs(L(at(g, x, y)!) - L(at(g, x + 1, y)!)));
+    }
+    expect(rows).toBeGreaterThan(5);
+    expect(step).toBeLessThan(50);
   });
 
   it('الرقبة الظاهرة فوق الياقة تبقى كما هي: لا يُملأ فوقها شيء', () => {

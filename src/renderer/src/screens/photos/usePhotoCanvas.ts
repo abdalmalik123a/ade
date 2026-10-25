@@ -8,7 +8,8 @@ import { keepAbove, neckLine, type Landmarks } from '@shared/portraitMask';
 import { neckSkin, skinAt, skinSample, type SkinMask } from '@shared/portraitSkin';
 import { faceFloor } from '@shared/portraitFace';
 import { neckFill, type NeckFill } from '@shared/neckFill';
-import { type Scene, drawScene, suitPixels, type Work } from '../../lib/portraitCanvas';
+import { photoLook, type Look } from '@shared/suitLook';
+import { type Scene, drawScene, setSuitLook, suitPixels, suitWithLook, type Work } from '../../lib/portraitCanvas';
 import { applyEnhance, type Enhance } from '@shared/portraitEnhance';
 import type { Size, Crop } from '@shared/photoSheet';
 import type { Cut, Worn } from './photoShared';
@@ -51,8 +52,11 @@ export function usePhotoCanvas(
    */
   const fill = useRef<{ work: Work; layer: NeckFill } | null>(null);
   const fillTimer = useRef(0);
-  const fillFor = useRef<{ worn: Worn | null; lm: Landmarks | null }>({ worn: null, lm: null });
-  fillFor.current = { worn, lm };
+  const fillFor = useRef<{ worn: Worn | null; lm: Landmarks | null; natural: Size | null }>({ worn: null, lm: null, natural: null });
+  fillFor.current = { worn, lm, natural };
+  /** مقياس الصورة للقاط (`@shared/suitLook`) لكلّ لونٍ للشخص، وآخر قاطٍ عُدّل به — فلا يُعاد ما لم يتغيّر. */
+  const look = useRef<{ toned: Uint8ClampedArray<ArrayBufferLike>; look: Look } | null>(null);
+  const suitLooked = useRef<{ key: string; of: Size | null; suit: Worn['suit'] | null }>({ key: '', of: null, suit: null });
 
   /** الشخص بلونه المحسّن وشفافيّته في لوحة العمل — كلّها أو مستطيلٌ منها (أثر الفرشاة). */
   const rebuildSubject = useCallback((rect?: { x: number; y: number; w: number; h: number }) => {
@@ -150,7 +154,21 @@ export function usePhotoCanvas(
       fill.current = layer ? { work: w!, layer } : null;
       if (old) rebuildSubject(old.layer);
       if (layer) rebuildSubject(layer);
-      if (old || layer) draw();
+      // لون القاط على قدر الصورة (D176): يُقاس من الشخص كما يُرسم مرّةً لكلّ لون، ويُعدَّل القاط مرّةً لكلّ (صورةٍ وقاطٍ ولونٍ ومقياس).
+      let looked = false;
+      const nat = fillFor.current.natural;
+      if (wr && w && t && c && nat) {
+        if (look.current?.toned !== t) look.current = { toned: t, look: photoLook(t, c.alpha, w.width, w.height) };
+        const lk = look.current.look;
+        const scale = Math.min(wr.at.scaleX ?? 1, wr.at.scaleY ?? 1) * wr.at.scale;
+        const key = `${wr.suit.key}|${lk.gains.map((g) => g.toFixed(3)).join(',')}|${lk.grain.toFixed(2)}|${scale.toFixed(1)}`;
+        if (suitLooked.current.key !== key || suitLooked.current.of !== nat || suitLooked.current.suit !== wr.suit) {
+          suitLooked.current = { key, of: nat, suit: wr.suit };
+          setSuitLook(wr.suit, nat, suitWithLook(wr.suit, lk, scale));
+          looked = true;
+        }
+      }
+      if (old || layer || looked) draw();
     }, 200);
   }, [rebuildSubject, draw]);
   useEffect(() => () => window.clearTimeout(fillTimer.current), []);

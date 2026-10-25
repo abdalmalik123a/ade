@@ -52,6 +52,14 @@ const NEAR = 4;
 /** ظلّ باطن الياقة من إضاءة القماش، وحدّ نسيج الجلد (انحراف الإضاءة عن جيرانها). */
 const SHADE = 0.55;
 const GRAIN = 6;
+/**
+ * «لمسة الواقعية» (D176): ظلّ الذقن يعتّم أعلى الرقبة المملوءة حتى ربعها (٢٥٪ عند الذقن ويتلاشى في ٠٫٤ من عرض الرقبة)، وظلّ باطن
+ * الياقة يزيده ٣٠٪ عند أعلى الفتحة ويتلاشى في ٠٫٣ منه — تقديرٌ بالعين على لوحة الرقبة، لا قياس.
+ */
+const CHIN_SHADE = 0.25;
+const CHIN_DEPTH = 0.4;
+const COLLAR_SHADE = 0.3;
+const COLLAR_DEPTH = 0.3;
 
 /**
  * طبقة الإكمال، و`null` إن لم يُقصّ شيءٌ ظاهر أو قلّ الجلد المعروف حوله (أقلّ من ٣٠ بكسلًا) أو كبر المستطيل.
@@ -169,7 +177,46 @@ export function neckFill(s: NeckScene, paintSuit: (r: Rect) => Px, rounds = ROUN
     }
   }
 
-  // ٤ نسيج الجلد: انحراف الإضاءة عن متوسّط جيرانها في المعروف — وتشويشٌ به ببذرةٍ ثابتة (نصفه في باطن الياقة).
+  // ٤ «لمسة الواقعية» (D176): ظلّ الذقن على أعلى الرقبة المملوءة، وظلٌّ أعمق في باطن الياقة عند أعلى الفتحة — ثم تليين الحدّ
+  // العموديّ بينهما بعرض الريشة (متوسّطٌ أفقيّ للمملوء في الصفّ). وما يُظلَّل المملوء وحده: الجلد الظاهر والوجه لا يُمسّان.
+  const chinDepth = Math.max(2, lm.neckWidth * CHIN_DEPTH);
+  const collarDepth = Math.max(2, lm.neckWidth * COLLAR_DEPTH);
+  for (const li of neckIdx) {
+    const x = (li % rw) + rx;
+    const d = ((li / rw) | 0) + ry - floor(x);
+    if (d >= chinDepth) continue;
+    const k = 1 - CHIN_SHADE * (1 - d / chinDepth) ** 2;
+    for (let ch = 0; ch < 3; ch++) col[li * 3 + ch] = col[li * 3 + ch]! * k;
+  }
+  for (const li of collIdx) {
+    const x = (li % rw) + rx;
+    const d = ((li / rw) | 0) + ry - (at.y + (x - at.x) * tan);
+    if (d >= collarDepth) continue;
+    const k = 1 - COLLAR_SHADE * (1 - Math.max(0, d) / collarDepth) ** 2;
+    for (let ch = 0; ch < 3; ch++) col[li * 3 + ch] = col[li * 3 + ch]! * k;
+  }
+  if (collIdx.length && neckIdx.length) {
+    // انتقالٌ بعرض الريشة: نصفها على كلّ جانبٍ من حدّ عمود الرقبة.
+    const r = Math.max(1, Math.ceil(feather / 2));
+    const soft = new Float32Array(col);
+    for (const li of [...neckIdx, ...collIdx]) {
+      const x = (li % rw) + rx;
+      const edge = Math.min(Math.abs(x - (neck.x - neck.half)), Math.abs(x - (neck.x + neck.half)));
+      if (edge > r) continue;
+      const row = li - (li % rw);
+      let c = 0;
+      const acc = [0, 0, 0];
+      for (let j = Math.max(0, (li % rw) - r); j <= Math.min(rw - 1, (li % rw) + r); j++) {
+        if (!kind[row + j]) continue;
+        c++;
+        for (let ch = 0; ch < 3; ch++) acc[ch] += col[(row + j) * 3 + ch]!;
+      }
+      for (let ch = 0; ch < 3; ch++) soft[li * 3 + ch] = acc[ch]! / c;
+    }
+    col.set(soft);
+  }
+
+  // ٥ نسيج الجلد: انحراف الإضاءة عن متوسّط جيرانها في المعروف — وتشويشٌ به ببذرةٍ ثابتة (نصفه في باطن الياقة).
   const L = (li: number) => {
     const i = ((((li / rw) | 0) + ry) * W + (li % rw) + rx) * 4;
     return 0.299 * s.pixels[i]! + 0.587 * s.pixels[i + 1]! + 0.114 * s.pixels[i + 2]!;
@@ -183,7 +230,7 @@ export function neckFill(s: NeckScene, paintSuit: (r: Rect) => Px, rounds = ROUN
     sn++;
   }
   const sigma = Math.min(GRAIN, sn ? Math.sqrt(ss / sn) : 0);
-  const gauss = noise(1);
+  const gauss = gaussNoise(1);
   const out = { x: hx0, y: hy0, w: hx1 - hx0 + 1, h: hy1 - hy0 + 1 };
   const data = new Uint8ClampedArray(out.w * out.h * 4);
   for (const li of [...neckIdx, ...collIdx]) {
@@ -243,8 +290,8 @@ function diffuse(w: number, col: Float32Array, idx: Int32Array, inSet: Uint8Arra
   }
 }
 
-/** تشويشٌ غاوسيّ من مولّدٍ ببذرة (mulberry32) — كالنموذج الأوّلي. */
-function noise(seed: number): () => number {
+/** تشويشٌ غاوسيّ من مولّدٍ ببذرة (mulberry32) — كالنموذج الأوّلي؛ ويأخذه لون القاط (`suitLook`). */
+export function gaussNoise(seed: number): () => number {
   let s = seed;
   const rand = () => {
     s = (s + 0x6d2b79f5) | 0;

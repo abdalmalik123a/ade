@@ -8,6 +8,7 @@
 import { cropBox, type Crop, type Size } from '@shared/photoSheet';
 import { setJpegDpi } from '@shared/photoPresets';
 import { rowWidths, suitAnchor, suitTops, type SuitAnchor, type SuitTransform } from '@shared/portraitMask';
+import { applyLook, type Look } from '@shared/suitLook';
 import { toJpeg } from './fitImage';
 
 /**
@@ -67,6 +68,26 @@ export function fallbackPlace(suit: Suit, natural: Size): SuitTransform {
   return { x: natural.w / 2, y: natural.h * 0.62, scale: (natural.w * 0.9) / suit.anchor.shoulderWidth, angle: 0 };
 }
 
+/**
+ * القاط بلون الصورة المفتوحة وتشويشها («لمسة الواقعية»، D176، `@shared/suitLook`): يضعه رسم الصور (`usePhotoCanvas`) بعد أن
+ * يستقرّ، لصورةٍ بعينها (`of`: مقاسها في الحالة، جديدٌ لكلّ صورة) — فيرسمه المشهد بدل صورة القاط في المعاينة والحفظ والطباعة.
+ */
+const looks = new WeakMap<Suit, { of: Size; img: CanvasImageSource }>();
+export function setSuitLook(suit: Suit, of: Size, img: CanvasImageSource): void {
+  looks.set(suit, { of, img });
+}
+
+/** صورة القاط بمقاسها وقد عُدّل لونها وتشويشها (`applyLook`) — بمقياسه في الصورة، فيبقى تشويشه بعد التصغير. */
+export function suitWithLook(suit: Suit, look: Look, scale: number): HTMLCanvasElement {
+  const c = canvasOf(suit.img.naturalWidth, suit.img.naturalHeight);
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(suit.img, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  img.data.set(applyLook(img.data, c.width, c.height, look, scale));
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
 export type Scene = {
   /** الشخص بلونه المحسّن وشفافيّته — بمقاس الصورة العاملة. */
   subject: CanvasImageSource;
@@ -90,9 +111,10 @@ export function drawScene(ctx: CanvasRenderingContext2D, frame: Size, s: Scene):
     const { suit, at } = s.suit;
     const sx = (at.scaleX ?? 1) * at.scale * k;
     const sy = (at.scaleY ?? 1) * at.scale * k;
+    const look = looks.get(suit);
     ctx.translate(box.left + at.x * k, box.top + at.y * k);
     ctx.rotate((at.angle * Math.PI) / 180);
-    ctx.drawImage(suit.img, -suit.anchor.cx * sx, -suit.anchor.cy * sy, suit.img.naturalWidth * sx, suit.img.naturalHeight * sy);
+    ctx.drawImage(look?.of === s.natural ? look.img : suit.img, -suit.anchor.cx * sx, -suit.anchor.cy * sy, suit.img.naturalWidth * sx, suit.img.naturalHeight * sy);
   }
   ctx.restore();
 }
