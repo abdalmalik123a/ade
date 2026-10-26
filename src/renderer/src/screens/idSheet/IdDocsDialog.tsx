@@ -24,6 +24,8 @@ import DocPanel from './DocPanel';
 import SheetOptions, { type SheetLookState, type WatermarkState } from './SheetOptions';
 import { AddMenu, SourcePicker } from './AddDoc';
 import RectCropModal from './RectCropModal';
+import MultiCardDialog from '../../components/MultiCardDialog';
+import { facesToSave, saveDocToFile } from './fileSave';
 import { rotateRight } from './imageOps';
 
 export const resolveUrl = (src: string) =>
@@ -35,11 +37,13 @@ type Props = {
   /** «استنساخ هوية» يبدأ بالوطنية في نصفي الورقة، و«المستمسكات على ورقة» بالوطنية والسكن. */
   start: 'id-copy' | 'id-sheet';
   onClose: () => void;
+  /** الشخص الذي فُتحت له الورقة: «احفظ في ملفّه» يظهر به وحده. */
+  citizenId?: number | null;
   citizenName?: string;
   attachments?: Attachment[];
 };
 
-export default function IdDocsDialog({ start, onClose, citizenName, attachments = [] }: Props) {
+export default function IdDocsDialog({ start, onClose, citizenId = null, citizenName, attachments = [] }: Props) {
   useEscape(onClose);
   const scanTransient = useTransientScans();
   const { printRoles } = useToolNav();
@@ -63,6 +67,10 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
   const [camera, setCamera] = useState<Target | null>(null);
   /** «قصٌّ مستطيل» لوجهٍ له صورة (D199) — و«الأركان الأربعة» التسوية نفسها (`deskew`). */
   const [rectCrop, setRectCrop] = useState<Target | null>(null);
+  /** «عدّة بطاقاتٍ بمسحةٍ واحدة» بنوع الدفعة. */
+  const [multi, setMulti] = useState<string | null>(null);
+  /** صورٌ في ملفّه: ما جاء منه، وما حُفظ فيه الآن — فلا يُحفظ مرّتين. */
+  const [inFile, setInFile] = useState(() => new Set(attachments.map((a) => a.filePath)));
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; warn?: boolean } | null>(null);
 
@@ -126,6 +134,20 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
     }
   }
 
+  async function saveToFile(doc: SheetDoc) {
+    if (citizenId == null) return;
+    setBusy(true);
+    try {
+      const done = await saveDocToFile(citizenId, doc, inFile);
+      setInFile((s) => new Set([...s, ...done]));
+      setNote({ text: `حُفظ ${count(done.length, 'مستمسك')} في ملفّ ${citizenName ?? 'الشخص'} — ويُقرأ ظهره من ملفّه` });
+    } catch (e) {
+      setNote({ text: errorText(e, 'تعذّر الحفظ في ملفّه'), warn: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function add(typeKey: string, faces: 1 | 2) {
     const doc = newDoc(typeKey, { faces });
     setDocs((all) => [...all, doc]);
@@ -177,7 +199,6 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
   const deskewSrc = srcOf(deskew);
   const rectDoc = rectCrop ? docOf(rectCrop.docId) : null;
   const rectSrc = srcOf(rectCrop);
-  const tool = 'flex-1 h-8 rounded-btn border border-outline-variant hover:bg-surface-container-high font-label-sm text-label-sm disabled:opacity-40';
   const filledCount = docs.filter((d) => d.front || d.back).length;
 
   return (
@@ -211,19 +232,15 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
               }}
               onDone={() => setSelected(null)}
               onPick={(face) => setPicking({ docId: current.id, face, chain: false })}
-              faceTools={(face) => (
-                <div className="flex gap-1">
-                  <button className={tool} data-act={`face-corners-${face}`} title="اسحب الأركان الأربعة فتُقوَّم الصورة المائلة" type="button" onClick={() => setDeskew({ docId: current.id, face, chain: false })}>
-                    الأركان الأربعة
-                  </button>
-                  <button className={tool} data-act={`face-rect-${face}`} title="مستطيلٌ بمقابض يُسحب" type="button" onClick={() => setRectCrop({ docId: current.id, face, chain: false })}>
-                    قصٌّ مستطيل
-                  </button>
-                  <button className={tool} data-act={`face-rotate-${face}`} disabled={busy} type="button" onClick={() => void rotate({ docId: current.id, face, chain: false })}>
-                    دوّر ٩٠°
-                  </button>
-                </div>
-              )}
+              busy={busy}
+              toSave={citizenId != null ? facesToSave(current, inFile).length : null}
+              onSave={() => void saveToFile(current)}
+              onTool={(tool, face) => {
+                const at = { docId: current.id, face, chain: false };
+                if (tool === 'corners') setDeskew(at);
+                else if (tool === 'rect') setRectCrop(at);
+                else void rotate(at);
+              }}
             />
           ) : (
             <SheetOptions look={look} setLook={setLook} setWm={setWm} wm={wm} />
@@ -271,7 +288,27 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
         </footer>
       </div>
 
-      {adding && <AddMenu onAdd={add} onClose={() => setAdding(false)} />}
+      {adding && (
+        <AddMenu
+          onAdd={add}
+          onClose={() => setAdding(false)}
+          onMulti={(typeKey) => {
+            setAdding(false);
+            setMulti(typeKey);
+          }}
+        />
+      )}
+
+      {multi && (
+        <MultiCardDialog
+          onClose={() => setMulti(null)}
+          onPick={(cards) => {
+            setDocs((all) => [...all, ...cards.map((c) => newDoc(multi, { faces: c.back ? 2 : 1, front: c.front, back: c.back }))]);
+            setMulti(null);
+            setNote({ text: `أُضيف ${count(cards.length, 'مستمسك')} إلى الورقة` });
+          }}
+        />
+      )}
 
       {picking && pickDoc && (
         <SourcePicker

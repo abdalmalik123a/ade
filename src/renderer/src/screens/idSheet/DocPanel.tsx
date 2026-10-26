@@ -2,7 +2,6 @@
  * لوحة المستمسك المحدَّد في «ورقة المستمسكات» (S47): النوع بمقاسه (والمقاس باليد بعد المسطرة)، ووجهٌ واحد أو وجهٌ وظهر،
  * وترتيبهما (جنبًا، أو فوق، أو نصفا الورقة)، وتبديلهما، واستبدال كلّ وجه، وعدد النسخ، والحذف — وما صُغِّر ليسع الورقة يُقال.
  */
-import type { ReactNode } from 'react';
 import { docType, docTypes, faceLabel, type Arrange, type Face, type SheetDoc } from '@shared/idDocSheet';
 import { toIndic } from '@shared/arabic';
 
@@ -15,9 +14,19 @@ type Props = {
   onPick: (face: Face) => void;
   onDelete: () => void;
   onDone: () => void;
-  /** أدواتٌ تحت كلّ وجهٍ له صورة (التحديد والتدوير). */
-  faceTools?: (face: Face) => ReactNode;
+  busy: boolean;
+  /** تحت كلّ وجهٍ له صورة: «الأركان الأربعة» و«قصٌّ مستطيل» (ر182) و«دوّر ٩٠°». */
+  onTool: (tool: 'corners' | 'rect' | 'rotate', face: Face) => void;
+  /** «احفظ في ملفّه»: عدد الوجوه التي لم تُحفظ فيه بعد — و`null` بلا شخص فلا يظهر. */
+  toSave: number | null;
+  onSave: () => void;
 };
+
+const TOOLS: { key: 'corners' | 'rect' | 'rotate'; label: string; title: string }[] = [
+  { key: 'corners', label: 'الأركان الأربعة', title: 'اسحب الأركان الأربعة فتُقوَّم الصورة المائلة' },
+  { key: 'rect', label: 'قصٌّ مستطيل', title: 'مستطيلٌ بمقابض يُسحب' },
+  { key: 'rotate', label: 'دوّر ٩٠°', title: 'الصورة الممسوحة على جنبها — والخانة بمقاسها' }
+];
 
 const ARRANGE: { key: Arrange; label: string }[] = [
   { key: 'side', label: 'جنبًا' },
@@ -28,7 +37,7 @@ const ARRANGE: { key: Arrange; label: string }[] = [
 const chip = (on: boolean) =>
   `flex-1 h-8 rounded-btn font-label-sm text-label-sm ${on ? 'bg-primary-fixed text-primary font-semibold' : 'border border-outline-variant hover:bg-surface-container-high'}`;
 
-export default function DocPanel({ doc, scale, resolveUrl, onChange, onPick, onDelete, onDone, faceTools }: Props) {
+export default function DocPanel({ doc, scale, resolveUrl, onChange, onPick, onDelete, onDone, busy, onTool, toSave, onSave }: Props) {
   const type = docType(doc.typeKey);
   const num = (v: string, fallback: number) => {
     const n = Number(v.replace('٫', '.').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))));
@@ -123,7 +132,23 @@ export default function DocPanel({ doc, scale, resolveUrl, onChange, onPick, onD
                 {src ? 'استبدل' : 'املأ'}
               </button>
             </div>
-            {src && faceTools?.(face)}
+            {src && (
+              <div className="flex gap-1">
+                {TOOLS.map((t) => (
+                  <button
+                    key={t.key}
+                    className="flex-1 h-8 rounded-btn border border-outline-variant hover:bg-surface-container-high font-label-sm text-label-sm disabled:opacity-40"
+                    data-act={`face-${t.key}-${face}`}
+                    disabled={busy}
+                    title={t.title}
+                    type="button"
+                    onClick={() => onTool(t.key, face)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
@@ -146,6 +171,19 @@ export default function DocPanel({ doc, scale, resolveUrl, onChange, onPick, onD
           onChange={(e) => onChange({ copies: Math.min(20, Math.max(1, Math.round(Number(e.target.value) || 1))) })}
         />
       </label>
+
+      {toSave !== null && (
+        <button
+          className="h-9 rounded-btn border border-outline-variant hover:bg-surface-container-high font-label-md text-label-md flex items-center justify-center gap-1 disabled:opacity-50"
+          data-act="doc-save-file"
+          disabled={busy || toSave === 0}
+          type="button"
+          onClick={onSave}
+        >
+          <span className="material-symbols-outlined text-[18px]">{toSave ? 'save' : 'check'}</span>
+          {toSave ? 'احفظ في ملفّه' : 'في ملفّه'}
+        </button>
+      )}
 
       <button className="mt-auto h-9 rounded-btn text-error hover:bg-error-container font-label-md text-label-md flex items-center justify-center gap-1" data-act="doc-delete" type="button" onClick={onDelete}>
         <span className="material-symbols-outlined text-[18px]">delete</span>

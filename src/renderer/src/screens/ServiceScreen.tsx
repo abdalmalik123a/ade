@@ -148,11 +148,11 @@ export default function ServiceScreen({ onIssued, active = true, repeat = null, 
   const papersWithCopies = (papers: number, n: number) => (n > 1 ? `${papersWord(papers)} × ${count(n, 'نسخة')}` : papersWord(papers));
 
   /** ورقة مستمسكات صاحب العلاقة (خطة Production، المرحلة ٥) — من ملفّه في السجل والزبون واقف. */
-  const [idSheet, setIdSheet] = useState<{ name: string; attachments: Attachment[] } | null>(null);
+  const [idSheet, setIdSheet] = useState<{ id: number; name: string; attachments: Attachment[] } | null>(null);
   async function openIdSheet() {
     if (citizenId === null) return;
     const detail = await window.diwan.citizens.get(citizenId);
-    if (detail) setIdSheet({ name: detail.fullName, attachments: detail.attachments });
+    if (detail) setIdSheet({ id: detail.id, name: detail.fullName, attachments: detail.attachments });
   }
 
   // ── ما خرج الآن: «أعد الطبع» وPDF و«شيءٌ آخر لنفس الزبون» — `service/useAfterIssue.ts` ──

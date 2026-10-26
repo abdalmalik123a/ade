@@ -295,6 +295,7 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
       {(idSheetOpen || idDuplexOpen) && (
         <IdDocsDialog
           attachments={detail?.attachments ?? []}
+          citizenId={detail?.id ?? null}
           citizenName={detail?.fullName}
           start={idSheetOpen ? 'id-sheet' : 'id-copy'}
           onClose={() => {

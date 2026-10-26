@@ -45,3 +45,15 @@ export async function rotateRight(url: string): Promise<string> {
   ctx.drawImage(img, 0, 0);
   return c.toDataURL('image/jpeg', 0.92);
 }
+
+/** صورةٌ من المخزن (أو dataURL كما هي) dataURL بصيغتها وبايتاتها — لتُحفظ في ملفّ الشخص. */
+export async function storeDataUrl(src: string): Promise<string> {
+  if (src.startsWith('data:')) return src;
+  const blob = await (await fetch(`diwan://store/${src.split('/').map(encodeURIComponent).join('/')}`)).blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('تعذّرت قراءة الصورة'));
+    reader.readAsDataURL(blob);
+  });
+}

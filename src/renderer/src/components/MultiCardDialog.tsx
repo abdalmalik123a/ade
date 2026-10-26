@@ -4,6 +4,8 @@
  * البطاقات على الزجاج معًا: مسحةٌ للوجوه تُعرف فيها كلّ بطاقةٍ وتُقصّ، ثم تُقلب
  * البطاقات **في أماكنها** ومسحةٌ للظهور يُطابَق فيها كلّ ظهرٍ بوجهه من موضعه. ويُرى
  * كلّ مقصوصٍ قبل الحفظ، ويُسمّى، ويُترك ما لا يُراد.
+ *
+ * ومن «ورقة المستمسكات» (S47، D200) يُعطى `onPick`: فتُعاد المقصوصات إليها بدل الحفظ في الملفّ.
  */
 import { useState } from 'react';
 import { useTransientScans } from '../lib/transientScans';
@@ -42,10 +44,13 @@ function crop(page: Page, r: Rect): string {
 export default function MultiCardDialog({
   citizenId,
   onSaved,
+  onPick,
   onClose
 }: {
-  citizenId: number;
-  onSaved: (count: number) => void;
+  citizenId?: number;
+  onSaved?: (count: number) => void;
+  /** يُعيد البطاقات (وجهًا وظهرًا إن طوبق) ولا يكتب في الملفّ. */
+  onPick?: (cards: { name: string; front: string; back: string | null }[]) => void;
   onClose: () => void;
 }) {
   useEscape(onClose);
@@ -87,6 +92,17 @@ export default function MultiCardDialog({
 
   async function save() {
     if (!fronts) return;
+    if (onPick) {
+      onPick(
+        fronts.rects.flatMap((r, i) => {
+          if (!keep[i]) return [];
+          const back = pairing[i];
+          return [{ name: names[i]?.trim() || `بطاقة ${i + 1}`, front: crop(fronts, r), back: back != null && backs ? crop(backs, backs.rects[back]!) : null }];
+        })
+      );
+      return;
+    }
+    if (citizenId == null) return;
     setBusy('save');
     let n = 0;
     try {
@@ -101,7 +117,7 @@ export default function MultiCardDialog({
           n++;
         }
       }
-      onSaved(n);
+      onSaved?.(n);
     } catch (e) {
       setNote(e instanceof Error ? e.message : 'تعذّر الحفظ');
       setBusy(null);
@@ -187,7 +203,7 @@ export default function MultiCardDialog({
             disabled={!fronts || !keep.some(Boolean) || busy !== null}
             onClick={() => void save()}
           >
-            احفظها في مستمسكاته
+            {onPick ? 'أضفها إلى الورقة' : 'احفظها في مستمسكاته'}
           </button>
         </div>
       </div>

@@ -8,10 +8,13 @@
  * و`DIWAN_TEST_OPEN_FILE` مسارٌ واحد: تُكتب فيه صورةٌ مصنوعةٌ داكنة بنسبة المستمسك قبل كلّ «افتح الصورة».
  * (D199) والتحديد بالخيارين: زجاجٌ مصنوعٌ عليه بطاقةٌ في ركنه للجواز ← «قصٌّ مستطيل» يبدأ حولها ← نسبة الجواز؛ والوطنية ←
  * «الأركان الأربعة» بنوعها ← نسبة الوطنية؛ و«دوّر ٩٠°» يقلب الصورة — والخانات بمقاساتها لا تتغيّر.
+ * (D200) وقوّة ديوان: «عدّة بطاقاتٍ بمسحةٍ واحدة» تدخل الورقة ولا تكتب في القاعدة؛ ومن ملفّ شخصٍ مصنوع «احفظ في ملفّه» مرّةً واحدة
+ * (وما جاء من ملفّه «في ملفّه» أصلًا)، وبلا شخصٍ لا يظهر؛ والمسح العابر لا أثر له في `store/tmp` بعد الإغلاق.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { crc32, deflateSync } from 'node:zlib';
+import Database from 'better-sqlite3';
 import { pdfToImages } from '../pdfImage.mjs';
 
 const DIR = join(process.env.TEMP ?? '.', `diwan-iddocs-${Date.now()}`);
@@ -41,12 +44,12 @@ function png(w, h, color) {
 const nextImage = (w, h, color) => writeFileSync(OPEN, png(Math.round(w * 4), Math.round(h * 4), color));
 /** زجاج ماسحٍ أبيض ٨٥٠×١١٠٠ عليه بطاقةٌ في ركنه بإطارٍ وكتابةٍ وصورة (كـ`idTools`). */
 const CARD = { x: 60, y: 80, w: 340, h: 214 };
-const glassImage = () =>
+const glassImage = (cards = [CARD]) =>
   writeFileSync(
     OPEN,
     png(850, 1100, (x, y) => {
-      const c = CARD;
-      if (x < c.x || y < c.y || x >= c.x + c.w || y >= c.y + c.h) return [250, 250, 248];
+      const c = cards.find((k) => x >= k.x && y >= k.y && x < k.x + k.w && y < k.y + k.h);
+      if (!c) return [250, 250, 248];
       if (x - c.x < 4 || c.x + c.w - x <= 4 || y - c.y < 4 || c.y + c.h - y <= 4) return [120, 120, 125];
       const ly = y - c.y - 30;
       if (x - c.x > 20 && x - c.x < c.w * 0.55 && ly >= 0 && ly < 120 && ly % 30 < 4) return [40, 40, 50];
@@ -59,15 +62,23 @@ export async function prepare() {
   rmSync(DIR, { recursive: true, force: true });
   mkdirSync(DIR, { recursive: true });
   nextImage(85.6, 53.98, [120, 20, 20]);
-  return { DIWAN_TEST_SAVE_DIR: DIR, DIWAN_TEST_PRINT_LOG: LOG, DIWAN_TEST_OPEN_FILE: OPEN };
+  // والماسح الوهميّ يعيد الصورة نفسها (كـ`transientScans`).
+  return { DIWAN_TEST_SAVE_DIR: DIR, DIWAN_TEST_PRINT_LOG: LOG, DIWAN_TEST_OPEN_FILE: OPEN, DIWAN_TEST_SCAN_FILE: OPEN };
 }
 
-export default async function scenario(page, { shotsDir }) {
+export default async function scenario(page, { profile, shotsDir }) {
   const steps = [];
   const ok = (label, value) => steps.push(`${value ? '✓' : '✗'} ${label}`);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const click = (sel) => page.eval(`const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.click(); return true;`);
   /** مواضع الخانات في الورقة بالملّم: { doc, face, page, x, y, w, h, empty }. */
+  const rows = (sql, ...args) => {
+    const d = new Database(join(profile, 'data', 'diwan.db'), { readonly: true });
+    const out = d.prepare(sql).all(...args);
+    d.close();
+    return out;
+  };
+  const tmpFiles = () => (existsSync(join(profile, 'data', 'store', 'tmp')) ? readdirSync(join(profile, 'data', 'store', 'tmp')) : []);
   const cards = () =>
     page.eval(`return [...document.querySelectorAll('[data-id-sheet] [data-sheet-page] [data-doc]')].map((b) => ({
       doc: b.dataset.doc, face: b.dataset.face, page: Number(b.closest('[data-sheet-page]').dataset.sheetPage), empty: b.hasAttribute('data-sheet-empty'),
@@ -218,9 +229,84 @@ export default async function scenario(page, { shotsDir }) {
   ok('ونسختان من الجواز تُرصفان', (await cards()).filter((x) => x.doc === pass).length === 2);
   ok(`و«اطبع» يقول عدد الأوراق (${await page.eval(`return document.querySelector('[data-act="sheet-print"]').innerText;`)})`, /اطبع ٤ أوراق/.test(await page.eval(`return document.querySelector('[data-act="sheet-print"]').innerText;`)));
 
+  ok('وبلا شخصٍ لا «احفظ في ملفّه»', await page.eval(`return Boolean(document.querySelector('[data-doc-panel]')) && !document.querySelector('[data-act="doc-save-file"]');`));
+
+  // ── (D200 أ) «عدّة بطاقاتٍ بمسحةٍ واحدة» تدخل الورقة ولا تكتب في القاعدة ──
+  const docsBefore = new Set((await cards()).map((x) => x.doc)).size;
+  glassImage([CARD, { x: 450, y: 420, w: 340, h: 214 }]);
+  await click('[data-act="sheet-add"]');
+  await wait(300);
+  await click('[data-act="add-multi"]');
+  await page.until(`return Boolean(document.querySelector('[data-multi-card]'));`, 4000);
+  await click('[data-act="multi-file-fronts"]');
+  await page.until(`return Number(document.querySelector('[data-multi-cards]')?.dataset.multiCards) === 2;`, 6000);
+  await click('[data-act="multi-file-backs"]');
+  await page.until(`return (document.querySelector('[data-multi-pairs]')?.innerText ?? '').includes('طوبق 2');`, 6000);
+  const saveLabel = await page.eval(`return document.querySelector('[data-act="multi-save"]').innerText;`);
+  ok(`وزرّها «أضفها إلى الورقة» (${saveLabel})`, saveLabel.includes('أضفها إلى الورقة'));
+  await click('[data-act="multi-save"]');
+  await wait(800);
+  c = await cards();
+  const added = [...new Set(c.map((x) => x.doc))].slice(docsBefore);
+  ok(`«عدّة بطاقاتٍ بمسحةٍ واحدة»: بطاقتان بوجهيهما تدخلان الورقة بمقاس الوطنية (${added.length})`,
+    added.length === 2 && added.every((d) => c.filter((x) => x.doc === d && !x.empty && x.w === 85.6).length === 2));
+  ok('ولا يُكتب في القاعدة شيء', rows('SELECT COUNT(*) AS n FROM attachments')[0].n === 0);
+
   await click('[data-act="id-sheet-close"]');
   await wait(300);
   ok('و✕ يغلقها', !(await page.eval(`return Boolean(document.querySelector('[data-id-sheet]'));`)));
+
+  // ── (D200 ب ج) من ملفّ شخص: «احفظ في ملفّه» مرّةً واحدة، والمسح العابر يُحذف بالإغلاق ──
+  const cid = await page.eval(`
+    const shot = (color) => { const c = document.createElement('canvas'); c.width = 342; c.height = 216;
+      const g = c.getContext('2d'); g.fillStyle = color; g.fillRect(0, 0, 342, 216); return c.toDataURL('image/png'); };
+    const c = await window.diwan.citizens.save({ id: null, fullName: 'زينب علي حسن', verified: false });
+    await window.diwan.attachments.addFromDataUrl(c.id, 'البطاقة الوطنية الموحدة — الوجه', shot('#733'));
+    await window.diwan.attachments.addFromDataUrl(c.id, 'البطاقة الوطنية الموحدة — الظهر', shot('#373'));
+    return c.id;`);
+  await page.goto('citizens-identity-records');
+  await wait(600);
+  await page.eval(`document.querySelector('[data-global-search]').focus(); return true;`);
+  await page.type('[data-global-search]', 'زينب علي');
+  await wait(900);
+  await click('[data-search-results] [data-search-citizen]');
+  await wait(1200);
+  await click('[data-act="citizen-id-sheet"]');
+  await page.until(`return Boolean(document.querySelector('[data-id-sheet]'));`);
+  c = await cards();
+  const zNat = c.find((x) => x.w === 85.6 && !x.empty).doc;
+  await click(`[data-doc="${zNat}"]`);
+  await wait(300);
+  ok('ما جاء من ملفّه «في ملفّه» أصلًا فلا يُحفظ ثانيةً', await page.eval(`const b = document.querySelector('[data-act="doc-save-file"]'); return Boolean(b) && b.disabled && b.innerText.includes('في ملفّه');`));
+  nextImage(125, 88, [20, 30, 120]);
+  await click('[data-act="sheet-add"]');
+  await wait(300);
+  await click('[data-add-type="passport"] [data-faces="1"]');
+  await pickFile('front');
+  const zPass = (await cards()).find((x) => x.w === 125).doc;
+  await click(`[data-doc="${zPass}"]`);
+  await wait(300);
+  await click('[data-act="doc-save-file"]');
+  await page.until(`const b = document.querySelector('[data-act="doc-save-file"]'); return Boolean(b) && b.disabled && !b.innerText.includes('احفظ');`, 8000);
+  const saved = rows('SELECT doc_type AS t FROM attachments WHERE citizen_id = ? ORDER BY id', cid).map((r) => r.t);
+  ok(`و«احفظ في ملفّه» يحفظ الجواز باسم نوعه (${saved.join('، ')})`, saved.length === 3 && saved[2] === 'جواز السفر');
+  await click('[data-act="doc-save-file"]');
+  await wait(600);
+  ok('والنقر ثانيةً لا يزيد', rows('SELECT COUNT(*) AS n FROM attachments WHERE citizen_id = ?', cid)[0].n === 3);
+
+  // المسح العابر: خانة السكن الفارغة تُمسح ثم تُغلق الورقة.
+  await click('[data-id-sheet] [data-sheet-empty][data-face="front"]');
+  await wait(300);
+  await click('[data-act="scan-front"]');
+  await page.until(`return Boolean(document.querySelector('[data-aspect="doc"]'));`, 6000);
+  const during = tmpFiles().length;
+  await page.key('Escape');
+  await wait(400);
+  await click('[data-source-picker] button[title="إغلاق"]');
+  await wait(200);
+  await click('[data-act="id-sheet-close"]');
+  await wait(900);
+  ok(`والمسح عابرٌ: في store/tmp ما دامت مفتوحة (${during})، ولا أثر له بعد إغلاقها`, during === 1 && tmpFiles().length === 0);
   rmSync(DIR, { recursive: true, force: true });
   return steps.join('\n');
 }

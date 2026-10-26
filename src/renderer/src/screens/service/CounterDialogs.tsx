@@ -40,8 +40,8 @@ type Props = {
   fields: DocField[];
   values: Record<string, string>;
   setValues: Dispatch<SetStateAction<Record<string, string>>>;
-  idSheet: { name: string; attachments: Attachment[]; } | null;
-  setIdSheet: Dispatch<SetStateAction<{ name: string; attachments: Attachment[]; } | null>>;
+  idSheet: { id: number; name: string; attachments: Attachment[]; } | null;
+  setIdSheet: Dispatch<SetStateAction<{ id: number; name: string; attachments: Attachment[]; } | null>>;
 };
 
 export default function CounterDialogs({ picker, setPicker, applyCitizen, schoolPicker, schools, setSchoolPicker, fillFromSchool, schoolOn, mergePicker, setMergePicker, rows, setNames, say, genderReview, learned, setGenderReview, remember, issueMerged, pasteOpen, setPasteOpen, fields, values, setValues, idSheet, setIdSheet }: Props) {
@@ -100,7 +100,7 @@ export default function CounterDialogs({ picker, setPicker, applyCitizen, school
         }}
       />
 
-      {idSheet && <IdDocsDialog attachments={idSheet.attachments} citizenName={idSheet.name} start="id-sheet" onClose={() => setIdSheet(null)} />}
+      {idSheet && <IdDocsDialog attachments={idSheet.attachments} citizenId={idSheet.id} citizenName={idSheet.name} start="id-sheet" onClose={() => setIdSheet(null)} />}
     </>
   );
 }

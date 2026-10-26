@@ -2,6 +2,7 @@
  * الإضافة المباشرة في «ورقة المستمسكات» (S47): «＋» ثم النوع بمقاسه و«وجهٌ واحد» أو «وجهٌ وظهر» — ثم المصدر لكلّ وجه:
  * الماسح، أو الكاميرا، أو صورةٌ من الحاسوب، أو مستمسكٌ في ملفّ الشخص. والظهر يُطلب بعد الوجه وحده، و«بلا ظهر» يجعله وجهًا واحدًا.
  */
+import { useState } from 'react';
 import type { Attachment } from '@shared/api';
 import { docTypes, type Face } from '@shared/idDocSheet';
 import { toIndic } from '@shared/arabic';
@@ -10,8 +11,18 @@ import { useEscape } from '../../kit/useEscape';
 const size = (w: number, h: number) => `${toIndic(String(w).replace('.', '٫'))} × ${toIndic(String(h).replace('.', '٫'))} ملم`;
 
 /** قائمة الأنواع: لكلٍّ مقاسه، وزرّاه «وجهٌ واحد» و«وجهٌ وظهر» (الافتراض من النوع بارز). */
-export function AddMenu({ onAdd, onClose }: { onAdd: (typeKey: string, faces: 1 | 2) => void; onClose: () => void }) {
+export function AddMenu({
+  onAdd,
+  onMulti,
+  onClose
+}: {
+  onAdd: (typeKey: string, faces: 1 | 2) => void;
+  /** «عدّة بطاقاتٍ بمسحةٍ واحدة»: كلّها من نوعٍ يُختار مرّةً للدفعة. */
+  onMulti: (typeKey: string) => void;
+  onClose: () => void;
+}) {
   useEscape(onClose);
+  const [multiType, setMultiType] = useState('national');
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
@@ -23,6 +34,20 @@ export function AddMenu({ onAdd, onClose }: { onAdd: (typeKey: string, faces: 1 
           <h3 className="font-title-md text-title-md text-on-surface">أيّ مستمسك؟</h3>
           <button className="w-8 h-8 rounded-btn hover:bg-surface-container-high" title="إغلاق" type="button" onClick={onClose}>
             <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-space-sm rounded-card bg-primary-fixed/40 border border-outline-variant p-space-xs" data-add-multi="">
+          <span className="material-symbols-outlined text-secondary">view_module</span>
+          <div className="flex-1 min-w-0 font-label-md text-label-md text-on-surface">عدّة بطاقاتٍ بمسحةٍ واحدة</div>
+          <select className="input-field h-8 px-1 font-label-sm text-label-sm" value={multiType} onChange={(e) => setMultiType(e.target.value)}>
+            {docTypes().map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <button className="h-8 px-2 rounded-btn btn-soft font-label-sm text-label-sm" data-act="add-multi" type="button" onClick={() => onMulti(multiType)}>
+            ابدأ
           </button>
         </div>
         {docTypes().map((t) => (
