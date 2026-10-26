@@ -6,6 +6,18 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٦ ١٣:١٢ — D191 ✅ فحص السلسلة الختامي على 409bd98 · النموذج: Claude Opus 5.5 (المنفّذ)
+- **حُسم (ر177 §٣):** قائمة الأمر **٦٧ اسمًا** لا ٦٢+١ (عدّها نصّ الأمر خطأً؛ لا مكرّر فيها) — فشُغّلت كلّها كما سُمّيت.
+- **الفحص (مُجرَّب، مرّةً):** typecheck ✓ · vitest كاملًا **٢١٨٥ ✓ و١ ✗ و٤ متخطّى** — الساقط `nativePsdCompare` §٥ «قوالب المالك الحقيقية (0 ملفًّا)»: بيئةٌ معروفة (ر177 §٣، وفي قيود D182–D189) ·
+  `npx electron-vite build` ✓ · **٦٧ سيناريو بالتتابع: ✓١٢٨٥ ✗٠ في ١٦٤١ ث، ولا إعادة** (والمسودّة المحلّية `results.txt` بسطرٍ لكلٍّ وسجلّه).
+- **الأعداد:** audit 8 · autoCollar 8 · autoSave 19 · backup 25 · bookEditor 37 · citizenImport 14 · citizens 36 · copies 10 · counterBasket 19 · counterMerge 11 · counterNav 11 ·
+  deleteGuards 33 · designBatchCheck 3 · designCutout 6 · designDock 8 · designImage 5 · designImport 19 · designImsakiya 14 · designLayers 8 · designPhotoEdit 6 · designTable 5 ·
+  designUx 23 · designs 70 · editor 52 · editorDraft 3 · elements 13 · examPages 17 · faceChin 4 · firstDay 23 · fonts 23 · genderCounter 9 · idSheet 7 · idTools 21 · imageField 15 ·
+  imageForm 9 · import 33 · letterhead 40 · letterheadFooter 22 · license 37 · mrzRead 17 · onboarding 21 · orderLateClock 6 · orders 27 · packs 27 · pageEditor 63 · papers 36 ·
+  pdfChunks 6 · pdfCompare 17 · pdfTools 33 · photoSteps 5 · photos 8 · portrait 19 · printResume 4 · printRoles 20 · problemReport 16 · receipt 16 · schoolFile 14 · screens 18 ·
+  service 63 · settings 29 · storeRefs 4 · studio 8 · templates 40 · theme 10 · work 11 · workSettings 11 · diagnostics 10.
+- **فشرط نهاية م٦ في CHAIN متحقّق** على آخر إيداع (إلا ✗ البيئة المعروفة، وهي تقف بها بوّابة `release` — قيد D190). **التالي:** 🔍 م٦ مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٦ ١٢:٤٠ — D190 ✅ OWNER-GUIDE: محطّة الإصدار خطوةً خطوة · النموذج: Claude Opus 5.5 (المنفّذ)
 - **الاستئناف:** بعد قيد التوقّف بطلب المالك أدناه (زال سببه: محادثةٌ جديدة بـ`/next`)؛ حُجز D190 ١٢:٣٣.
 - **تمّ:** §٦ «الإصدار وما بعده» صار «محطّة الإصدار (م٧) — خطوةً خطوة»: ثماني خطوات، لكلٍّ ما يقوله المالك والأمر وما يراه إن نجح وما يُفعل إن لم ينجح —
