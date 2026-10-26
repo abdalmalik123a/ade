@@ -82,6 +82,19 @@ export default async function scenario(page, { shotsDir }) {
   await click('[data-act="open-photo"]');
   await wait(1200);
   ok('فُتحت الصورة في إطارها', await page.eval(`return Boolean(document.querySelector('[data-photo-frame] canvas'));`));
+  // الفتح يبدأ «أزل الخلفية» وحده، و«راجع الورقة» معطّلٌ حتى ينتهي (D194): يُنتظر بالشرط لا بمهلةٍ تسابقه.
+  const until = async (check, ms) => {
+    const end = Date.now() + ms;
+    for (;;) {
+      if (await page.eval(check)) return true;
+      if (Date.now() > end) return false;
+      await wait(200);
+    }
+  };
+  ok(
+    'وانتهى «أزل الخلفية» التلقائي فصار «راجع الورقة» متاحًا',
+    await until(`const b = document.querySelector('[data-act="review-photos"]'); return document.querySelector('[data-cutout]')?.dataset.cutout !== 'running' && b && !b.disabled;`, 30_000)
+  );
 
   await click('[data-size-key="35x45"]');
   await click('[data-paper="photo"]');
@@ -107,10 +120,10 @@ export default async function scenario(page, { shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'photos-crop.png'));
 
   await click('[data-act="review-photos"]');
-  await wait(1200);
+  await until(`return Boolean(document.querySelector('[data-sheets] [data-sheets-summary]')) && document.querySelectorAll('[data-sheets] .print-page img').length >= 6;`, 10_000);
   ok('وتُراجع الورقة: ستّ صورٍ على ورقةٍ واحدة', await page.eval(`
     const o = document.querySelector('[data-sheets]');
-    return o.querySelector('[data-sheets-summary]').innerText.includes('٦ صور على ورقة واحدة') && o.querySelectorAll('.print-page img').length === 6;
+    return Boolean(o?.querySelector('[data-sheets-summary]')?.innerText.includes('٦ صور على ورقة واحدة')) && o.querySelectorAll('.print-page img').length === 6;
   `));
   if (shotsDir) await page.shot(join(shotsDir, 'photos-sheet.png'));
   await click('[data-sheets] [data-act="pdf"]');
