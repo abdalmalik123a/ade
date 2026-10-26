@@ -9,17 +9,21 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
-import { getDb, storeDir } from '../db';
+import { dataDir, getDb, storeDir } from '../db';
 import { workerHost } from '../services/workerHost';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
 import { importFile, pickOpenPath, pickSavePath } from './files';
 import { getCitizen, saveCitizen, addAttachment } from '../services/citizens';
 import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPresets';
-import { parseCustomSuits, pngTransparency, type CustomSuit, type SuitImport } from '@shared/suits';
+import { parseCustomSuits, pngTransparency, type CustomSuit, type SealedSuitsImport, type SuitImport } from '@shared/suits';
 import type { Guard } from '@shared/bridgeGuards';
 import { writePng } from '../services/png';
 import { suitsFromPsd } from '../services/suitsPsd';
+import { openSealedPack } from '../services/sealedPack';
+import { logAudit } from '../services/documents';
+import { ownerPublicKeys, requirePaid } from './license';
+import { SEAL_EXT, SEAL_KIND_LABEL } from '@shared/sealedPack';
 import { handleChecked } from './checked';
 
 type PreparedSuit = { name: string; rgba: Uint8Array; width: number; height: number };
@@ -136,8 +140,8 @@ export function registerPhotoIpc(): void {
 
   // معرّفٌ بعدّاد: قاطاتٌ تُضاف دفعةً في الجزء نفسه من الثانية (طبقات PSD) لا تتشارك معرّفًا.
   let suitSeq = 0;
-  const addCustomSuit = (name: string, path: string): CustomSuit => {
-    const suit: CustomSuit = { id: `custom-${Date.now().toString(36)}-${(++suitSeq).toString(36)}`, name, path, createdAt: new Date().toISOString() };
+  const addCustomSuit = (name: string, path: string, pack?: string): CustomSuit => {
+    const suit: CustomSuit = { id: `custom-${Date.now().toString(36)}-${(++suitSeq).toString(36)}`, name, path, createdAt: new Date().toISOString(), ...(pack && { pack }) };
     writeSetting('photoSuits', [...parseCustomSuits(readSetting('photoSuits')), suit]);
     return suit;
   };
@@ -172,6 +176,52 @@ export function registerPhotoIpc(): void {
 
   /** القاط بعد تحضيره في الواجهة: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`)، ويُضاف إلى قاط المكتب. */
   handleChecked('photos:addSuit', { suit: preparedSuit }, ({ suit }): Promise<CustomSuit> => storeSuit(suit.name, suit.rgba, suit.width, suit.height));
+
+  /**
+   * «استورد حزمة قاط» (S48، ر182، D205): الحزمة المختومة تُفتح وتُتحقّق في هذه العملية وحدها (D203) — «حزمةٌ أولى» في التجربة والمفعّل،
+   * و«حزمة المشتري» في المفعّل وحده (ولا يُكتب شيءٌ قبل ذلك) — فتدخل قطعها قاطَ المكتب باسم الحزمة: PNG بشفافيتها كما هي، وPSD
+   * بطبقاته المفرّغة (D204)؛ وما في القاط بالبصمة نفسها يُتخطّى ويُعدّ.
+   */
+  handleChecked('photos:importSealed', {}, async (_args, e): Promise<SealedSuitsImport | null> => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win) return null;
+    const source = await pickOpenPath(win, { title: 'حزمة قاطٍ مختومة', buttonLabel: 'استوردها', filterName: 'حزمة مختومة', extensions: [SEAL_EXT] });
+    if (!source) return null;
+    const opened = await openSealedPack(source, ownerPublicKeys('update'), join(dataDir(), 'seal-work'));
+    try {
+      const { head } = opened;
+      if (head.content !== 'suits') throw new Error(`هذه حزمة ${head.content} لا قاط`);
+      if (head.kind === 'buyer') requirePaid();
+      const added: CustomSuit[] = [];
+      let skipped = 0;
+      const have = () => new Set(parseCustomSuits(readSetting('photoSuits')).map((s) => s.path));
+      for (const item of opened.items) {
+        const bytes = new Uint8Array(await readFile(item.path));
+        if (item.ext === 'psd') {
+          for (const s of suitsFromPsd(bytes, item.name)) {
+            const png = writePng(s.rgba, s.width, s.height);
+            const path = `suits/${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
+            if (have().has(path)) skipped++;
+            else {
+              await writeFile(join(storeDir('suits'), path.slice(6)), png);
+              added.push(addCustomSuit(s.name.slice(0, 80) || item.name, path, head.title));
+            }
+          }
+        } else if (pngTransparency(bytes) === 'ok') {
+          const path = `suits/${createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.png`;
+          if (have().has(path)) skipped++;
+          else {
+            await writeFile(join(storeDir('suits'), path.slice(6)), bytes);
+            added.push(addCustomSuit(item.name, path, head.title));
+          }
+        } else skipped++;
+      }
+      logAudit(getDb(), 'photos', 'import', `${SEAL_KIND_LABEL[head.kind]} «${head.title}»: أُضيف ${added.length} قاط وتُخطّي ${skipped}`);
+      return { title: head.title, kind: head.kind, added, skipped };
+    } finally {
+      opened.cleanup();
+    }
+  });
 
   ipcMain.handle('photos:deleteSuit', async (_e, id: string): Promise<CustomSuit[]> => {
     const list = parseCustomSuits(readSetting('photoSuits'));

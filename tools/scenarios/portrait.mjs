@@ -5,6 +5,8 @@
  * الصورة مولَّدة لا لشخصٍ حقيقي (`tests/fixtures/portrait-generated.png`) — تُلصق كما يلصق
  * الموظف صورةً من واتساب الحاسوب. والقاط المستورد صورةٌ تُبنى هنا: سترةٌ داكنة بفتحة عنق.
  */
+import { execFileSync } from 'node:child_process';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +78,12 @@ export function prepare() {
   writeFileSync(suit, opaquePng());
   process.env.DIWAN_TEST_SAVE_DIR = dir;
   process.env.PORTRAIT_SUIT_FILE = suit;
+  // حزمةٌ مختومة بمفتاحٍ ليس مفتاح صاحب ديوان (D205): زرّ «استورد حزمة قاط» يرفضها برسالتها في الشاشة.
+  mkdirSync(join(dir, 'pieces'), { recursive: true });
+  writeFileSync(join(dir, 'pieces', 'قاط.png'), suitPng());
+  writeFileSync(join(dir, 'stranger.pem'), generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }));
+  execFileSync(process.execPath, [join(ROOT, 'tools', 'license', 'keygen.mjs'), 'seal', join(dir, 'pieces'), '--kind', 'first', '--title', 'غريبة', '--key', join(dir, 'stranger.pem'), '--out', join(dir, 'stranger.diwanseal')]);
+  process.env.PORTRAIT_SEALED_FILE = join(dir, 'stranger.diwanseal');
   return { DIWAN_TEST_OPEN_FILE: suit, DIWAN_TEST_SAVE_DIR: dir };
 }
 
@@ -288,6 +296,13 @@ export default async function scenario(page, { shotsDir }) {
   ok('والقاط JPG على أبيض — باسمه الطويل — يُحضَّر ويُضاف ويُلبَس', await wornLast(1));
   ok('و«يُحضَّر القاط…» قيل وهو يُحضَّر', await page.eval(`return window.__sawPrepare === true;`));
   if (shotsDir) await page.shot(join(shotsDir, 'portrait-jpg-suit.png'));
+  // «استورد حزمة قاط» (D205): المختومة بغير مفتاح صاحب ديوان تُرفض برسالتها في الشاشة — نظيفةً بلا «Error invoking».
+  writeFileSync(process.env.PORTRAIT_SUIT_FILE, readFileSync(process.env.PORTRAIT_SEALED_FILE));
+  await wait(800);
+  await click('[data-act="import-sealed"]');
+  await wait(1500);
+  const sealedSay = await page.text();
+  ok('و«استورد حزمة قاط» يرفض المختومة بمفتاحٍ غريب برسالتها في الشاشة', sealedSay.includes('الحزمة ليست مختومةً من صاحب ديوان') && !sealedSay.includes('invoking'));
   writeFileSync(process.env.PORTRAIT_SUIT_FILE, suitPng());
   await wait(3800);
   await click('[data-act="import-suit"]');

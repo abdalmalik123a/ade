@@ -8,7 +8,7 @@ import type { FormFieldInfo, PdfPlan, Rotation } from './pdfEdit';
 import type { PhotoPreset } from './photoPresets';
 import type { Face } from './portraitFace';
 import type { Shoulders } from './portraitPose';
-import type { CustomSuit, SuitImport } from './suits';
+import type { CustomSuit, SealedSuitsImport, SuitImport } from './suits';
 import type { ImportedTemplate, InboxFile } from './apiTemplates';
 
 /** ملفٌّ فُتح في محرّر PDF: صفحاته بمقاسها ودورانها، وبايتاته لترسمها الواجهة. */
@@ -152,6 +152,8 @@ export type ToolApis = {
     suits(): Promise<CustomSuit[]>;
     /** «استورد قاطًا»: PNG شفّافة — ويُقال سبب الرفض. `null` إن أُلغي الاختيار. */
     importSuit(): Promise<SuitImport | null>;
+    /** «استورد حزمة قاط» المختومة (S48، D205). */
+    importSealed(): Promise<SealedSuitsImport | null>;
     deleteSuit(id: string): Promise<CustomSuit[]>;
     pickPhoto(): Promise<string | null>;
     storePasted(dataUrl: string): Promise<string>;

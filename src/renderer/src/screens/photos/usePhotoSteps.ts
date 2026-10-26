@@ -216,8 +216,19 @@ export function usePhotoSteps(
     }
   }
 
-  async function importSuit() {
+  async function importSuit(sealed = false) {
     try {
+      if (sealed) {
+        // الحزمة المختومة (D205): تُفتح في العملية الرئيسة، والكلمة بما أُضيف وما تُخطّي — أو برسالة رفضها.
+        const p = await window.diwan.photos.importSealed();
+        if (!p) return;
+        setCustomSuits(await window.diwan.photos.suits());
+        setSuitTab('custom');
+        say(`أُضيف ${toIndic(p.added.length)} قاط من «${p.title}»${p.skipped ? ` — وتُخطّي ${toIndic(p.skipped)} كان في القاط` : ''}`);
+        const [first] = p.added;
+        if (first) await chooseSuit(first.id, `diwan://store/${first.path}`);
+        return;
+      }
       const r = await window.diwan.photos.importSuit();
       if (!r) return;
       let s: CustomSuit;

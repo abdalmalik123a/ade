@@ -273,6 +273,13 @@ export function requireProductive(): void {
   );
 }
 
+/** حزمة المشتري (S48، ر182، D205) تُستورد في ديوانٍ مفعّل وحده — بالتفعيل الدائم أو باشتراكٍ قائم — ولا يُكتب شيءٌ قبله. */
+export function requirePaid(): void {
+  const s = licenseStatus(true).status;
+  if (s === 'activated' || s === 'subscribed') return;
+  throw new Error('حزمة المشتري تُستورد في ديوانٍ مفعّل — فعّله من «الإعدادات ← التفعيل» ثم استوردها');
+}
+
 export function registerLicenseIpc(): void {
   // أوّل تشغيلٍ يُكتب عند الإقلاع — لا حين تُسأل الواجهة.
   licenseStatus(true);

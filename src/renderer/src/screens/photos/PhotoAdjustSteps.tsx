@@ -33,7 +33,7 @@ type Props = {
   slider: (label: string, value: number, set: (v: number) => void, min: number, max: number, step: number, act: string, shown?: string) => JSX.Element;
   enhance: Enhance;
   light: (patch: Partial<Enhance>) => void;
-  importSuit: () => Promise<void>;
+  importSuit: (sealed?: boolean) => Promise<void>;
   suitTab: SuitCategory;
   setSuitTab: Dispatch<SetStateAction<SuitCategory>>;
   customSuits: CustomSuit[];
@@ -144,9 +144,14 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
       {step(
         4,
         'القاط',
-        <button className={small} data-act="import-suit" type="button" onClick={() => void importSuit()}>
-          استيراد بدلة خاصة
-        </button>
+        <span className="flex gap-1">
+          <button className={small} data-act="import-suit" type="button" onClick={() => void importSuit()}>
+            استيراد بدلة خاصة
+          </button>
+          <button className={small} data-act="import-sealed" title="ملفّ .diwanseal من صاحب ديوان" type="button" onClick={() => void importSuit(true)}>
+            استورد حزمة قاط
+          </button>
+        </span>
       )}
       <div className="flex flex-wrap gap-1" data-suit-tabs="">
         {SUIT_CATEGORIES.map((c) => (
@@ -171,7 +176,7 @@ export default function PhotoAdjustSteps({ step, cutState, small, modelReady, re
           بلا قاط
         </button>
         {(suitTab === 'custom'
-          ? customSuits.map((s) => ({ id: s.id, name: s.name, url: `diwan://store/${s.path}` as string | undefined, custom: true }))
+          ? customSuits.map((s) => ({ id: s.id, name: s.pack ? `${s.name} — ${s.pack}` : s.name, url: `diwan://store/${s.path}` as string | undefined, custom: true }))
           : BUILTIN_SUITS.filter((s) => s.category === suitTab).map((s) => ({ id: s.id, name: s.name, url: thumbs[s.id], custom: false }))
         ).map((s) => (
           <div key={s.id} className="relative group">

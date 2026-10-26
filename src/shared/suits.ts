@@ -26,7 +26,11 @@ export type BuiltinSuit = { id: string; name: string; category: Exclude<SuitCate
 export const BUILTIN_SUITS: BuiltinSuit[] = [];
 
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */
-export type CustomSuit = { id: string; name: string; path: string; createdAt: string };
+/** `pack`: عنوان الحزمة المختومة التي جاء منها (S48، D205). */
+export type CustomSuit = { id: string; name: string; path: string; createdAt: string; pack?: string };
+
+/** ما يعيده «استورد حزمة قاط» (D205): عنوانها ونوعها، وما أُضيف، وما كان في القاط قبلُ فتُخطّي. */
+export type SealedSuitsImport = { title: string; kind: 'first' | 'buyer'; added: CustomSuit[]; skipped: number };
 
 /** ما يعيده «استورد قاطًا»: PNG شفّافة أُضيفت، أو صورةٌ تُحضَّر في الواجهة ثم تُضاف (`photos:addSuit`)، أو قاط ملفّ Photoshop كلّها (D204). */
 export type SuitImport = { suit: CustomSuit } | { suits: CustomSuit[] } | { prepare: { name: string; bytes: Uint8Array } };

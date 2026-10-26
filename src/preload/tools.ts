@@ -65,6 +65,7 @@ export const toolsApi: ToolApis = {
     deletePreset: (id: string) => invoke('photos:deletePreset', id),
     suits: () => invoke('photos:suits'),
     importSuit: () => invoke('photos:importSuit'),
+    importSealed: () => invoke('photos:importSealed'),
     deleteSuit: (id: string) => invoke('photos:deleteSuit', id),
     pickPhoto: () => invoke('photos:pickPhoto'),
     storePasted: (dataUrl: string) => invoke('photos:storePasted', dataUrl),
