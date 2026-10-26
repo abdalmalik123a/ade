@@ -10,9 +10,11 @@
  * - **ملفّ التحديث «أ+»** أرشيفٌ يقرؤه البرنامج: `update.json` الموقّع، والمثبّت كما هو.
  * - **مفتاح التحديث** (البند ٣٣): مفتاحٌ ثانٍ يصنعه المالك مرّةً بالأداة، مشفّرًا بكلمته نفسها — به تُوقَّع ملفّات التحديث،
  *   فلا يصلح مفتاح التراخيص لتحديثٍ ولا مفتاح التحديث لترخيص في الإصدارات التي تعرفه.
+ * - **الحزمة المختومة** (S48، D203): قطعٌ تُختم بمفتاح التحديث وتُشفَّر فلا يقبل ديوان غيرها ولا تُفتح في غيره —
+ *   والصيغة في `src/shared/sealedPack.ts` (والقارئ `src/main/services/sealedPack.ts`) بالقواعد نفسها نصًّا.
  */
-import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, scryptSync, sign } from 'node:crypto';
-import { appendFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync, writeSync, closeSync } from 'node:fs';
+import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, generateKeyPairSync, hkdfSync, randomBytes, scryptSync, sign } from 'node:crypto';
+import { appendFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, writeSync, closeSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { crc32 } from 'node:zlib';
 
@@ -500,6 +502,99 @@ export async function writeUpdateFile({ exe, version, notes, privateKey, updateK
   if (existsSync(out)) rmSync(out);
   renameSync(`${out}.part`, out);
   return { out, manifest };
+}
+
+// ── الحزمة المختومة (S48، D203) ─────────────────────────────────────────
+
+const SEAL_MAGIC = 'DIWANSEAL1\n';
+const SEAL_CONTEXT = 'diwan-seal\n';
+const SEAL_ITEM = 200 * 1024 ** 2;
+const SEAL_ITEMS = 2000;
+export const SEAL_KINDS = { first: 'حزمةٌ أولى', buyer: 'حزمة المشتري' };
+
+/** معرّف المفتاح ومفتاح التشفير من العامّ — كـ`sealKeys` في البرنامج. */
+export function sealKeys(publicKey) {
+  const der = publicKey.export({ type: 'spki', format: 'der' });
+  return {
+    keyId: createHash('sha256').update(der).digest('hex').slice(0, 16),
+    content: Buffer.from(hkdfSync('sha256', der, Buffer.from('diwan-seal-v1'), Buffer.from('content'), 32))
+  };
+}
+
+/** قطع مجلّدٍ للحزمة: PNG وPSD بأسمائها مرتّبةً، بلا ما سواها. */
+export function sealItemsFrom(dir) {
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new KeyToolError('اختر مجلّد القطع');
+  const items = readdirSync(dir)
+    .filter((f) => /\.(png|psd)$/i.test(f))
+    .sort((a, b) => a.localeCompare(b, 'ar'))
+    .map((f) => ({ name: f.replace(/\.[^.]+$/, ''), path: join(dir, f) }));
+  if (!items.length) throw new KeyToolError('لا قطعة في المجلّد — PNG مفرّغة أو PSD');
+  return items;
+}
+
+/**
+ * يكتب حزمةً مختومة: `items` [{ name, path }] (PNG أو PSD)، و`content` (`suits`)، و`kind` (`first` أو `buyer`)، والعنوان —
+ * بمفتاح التحديث الخاصّ. الحمولة تُشفَّر تدفّقًا إلى ملفٍّ مؤقّت وتُحسب بصمتها، ثم الرأس والختم والحمولة.
+ */
+export async function writeSealedPack({ items, content = 'suits', kind, title, privateKey, out }) {
+  if (kind !== 'first' && kind !== 'buyer') throw new KeyToolError('اختر نوع الحزمة: أولى أو للمشتري');
+  const name = String(title ?? '').trim().slice(0, 80);
+  if (!name) throw new KeyToolError('اكتب عنوان الحزمة');
+  if (!items?.length || items.length > SEAL_ITEMS) throw new KeyToolError('القطع من واحدةٍ إلى ألفين');
+  const list = [];
+  for (const it of items) {
+    const ext = /\.psd$/i.test(it.path) ? 'psd' : /\.png$/i.test(it.path) ? 'png' : null;
+    if (!ext) throw new KeyToolError(`«${it.name}» ليست PNG ولا PSD`);
+    const size = statSync(it.path).size;
+    if (!size || size > SEAL_ITEM) throw new KeyToolError(`«${it.name}» فارغةٌ أو أكبر من ٢٠٠ م.ب`);
+    const { sha256 } = await hashAndCrc(it.path);
+    list.push({ name: String(it.name).replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'قطعة', ext, size, sha256 });
+  }
+  const { keyId, content: key } = sealKeys(createPublicKey(privateKey));
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const body = `${out}.body.part`;
+  const fd = openSync(body, 'w');
+  const hash = createHash('sha256');
+  let size = 0;
+  const put = (buf) => {
+    if (!buf.length) return;
+    writeSync(fd, buf);
+    hash.update(buf);
+    size += buf.length;
+  };
+  try {
+    const listJson = Buffer.from(JSON.stringify({ items: list }), 'utf8');
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(listJson.length, 0);
+    put(cipher.update(Buffer.concat([len, listJson])));
+    for (const it of items) for await (const chunk of createReadStream(it.path, { highWaterMark: 1 << 20 })) put(cipher.update(chunk));
+    put(cipher.final());
+    put(cipher.getAuthTag());
+  } finally {
+    closeSync(fd);
+  }
+  const head = Buffer.from(
+    JSON.stringify({ v: 1, app: 'diwan', content, kind, title: name, issued: today(), keyId, iv: iv.toString('base64url'), size, sha256: hash.digest('hex') }),
+    'utf8'
+  );
+  const signature = sign(null, Buffer.concat([Buffer.from(SEAL_CONTEXT, 'utf8'), head]), privateKey);
+  const u32 = (n) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32BE(n, 0);
+    return b;
+  };
+  const ofd = openSync(`${out}.part`, 'w');
+  try {
+    writeSync(ofd, Buffer.concat([Buffer.from(SEAL_MAGIC, 'utf8'), u32(head.length), head, u32(signature.length), signature]));
+    for await (const chunk of createReadStream(body, { highWaterMark: 1 << 20 })) writeSync(ofd, chunk);
+  } finally {
+    closeSync(ofd);
+    rmSync(body, { force: true });
+  }
+  if (existsSync(out)) rmSync(out);
+  renameSync(`${out}.part`, out);
+  return { out, kind, title: name, items: list.length, size: statSync(out).size };
 }
 
 /** «ما الجديد» من قسم الإصدار في CHANGELOG.md — إن كان الملف معروفًا. */

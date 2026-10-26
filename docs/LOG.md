@@ -6,6 +6,16 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٧ ٠٠:٣٠ — D203 ✅: «الحزمة المختومة» `.diwanseal` — الكاتب والقارئ · النموذج: Claude Opus 5.5 (المنفّذ)
+- **جديد:** `src/shared/sealedPack.ts` (الصيغة والحدود والرسائل و`validHead` و`validItems` و`cleanName`) · `src/main/services/sealedPack.ts` (`openSealedPack` و`sealKeys`) · `tests/sealedPack.test.ts` ·
+  وفي `tools/keytool/core.mjs` `writeSealedPack` و`sealItemsFrom` و`sealKeys` · و`keygen.mjs seal <مجلّد> --kind --title [--key] [--out]` (بمفتاح التحديث من مجلّد المالك، أو `--key` في الاختبار).
+- **الترتيب في القارئ:** الرأس وحدوده ← الختم (Ed25519 على `diwan-seal\n`+الرأس) بأيّ مفتاح ← طول الملفّ ← بصمة الحمولة تدفّقًا ← الفكّ (AES-256-GCM بمفتاحٍ من HKDF على عامّ المفتاح) إلى مؤقّت ←
+  القائمة ومجموعها ← كلّ قطعةٍ ببصمتها · و`cleanup` يحذف المؤقّت.
+- **الفحص (مُجرَّب):** `typecheck` ✓ · `sealedPack` ٧ ✓ و`license` و`keytool` و`structure` (٦٥ ✓) · `keygen seal` من سطر الأوامر: ملفٌّ يبدأ `DIWANSEAL1`، ونوعٌ غريب ← «اختر نوع الحزمة».
+- **الإسقاط (مُجرَّب):** قبول توقيعٍ بلا بادئة ← ✗١ · **وطبقات السلامة الثلاث (البصمة، ووسم GCM، وبصمة القطعة) كلٌّ منها وحده يكشف العبث:** إزالتها معًا لم تُسقط الاختبار أوّلًا لأنّ البايت المقلوب
+  وقع في القائمة — فأُضيف قلبُ بايتٍ في القطعة نفسها، فسقط ✗١ بإزالتها، ثم أُعيد الملفّ (`cmp`).
+- **التالي:** D204 مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٧ ٠٠:٢٣ — 🧭 م٩ ✅: الصيغة الخاصّة وحزم القاط (S48) أربعة أوامر D203–D206 · النموذج: Claude Opus 5.5 (المنفّذ)
 - **قرأتُ (من الكود):** ملفّ التحديث (`services/update.ts`: Ed25519 بـ`verify(null…)` على JSON، وبأيّ مفتاح) · `OWNER_KEYS` بدورين محروسين ببصمة · وباب الاختبار `DIWAN_TEST_LICENSE_PUBKEY` ·
   وأداة المفاتيح (`core.mjs` و`keygen.mjs init|issue|update`) · والقاط في الإعداد `photoSuits` وصوره في `store/suits` (`photos:importSuit` PNG وJPG وWebP وBMP) · وطبقات PSD في `psdLayers.ts` ·
