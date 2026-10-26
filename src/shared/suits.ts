@@ -28,8 +28,8 @@ export const BUILTIN_SUITS: BuiltinSuit[] = [];
 /** قاطٌ استورده المكتب — في المخزن (`suits/`)، وقائمته في الإعدادات. */
 export type CustomSuit = { id: string; name: string; path: string; createdAt: string };
 
-/** ما يعيده «استورد قاطًا»: PNG شفّافة أُضيفت، أو صورةٌ تُحضَّر في الواجهة ثم تُضاف (`photos:addSuit`). */
-export type SuitImport = { suit: CustomSuit } | { prepare: { name: string; bytes: Uint8Array } };
+/** ما يعيده «استورد قاطًا»: PNG شفّافة أُضيفت، أو صورةٌ تُحضَّر في الواجهة ثم تُضاف (`photos:addSuit`)، أو قاط ملفّ Photoshop كلّها (D204). */
+export type SuitImport = { suit: CustomSuit } | { suits: CustomSuit[] } | { prepare: { name: string; bytes: Uint8Array } };
 
 export function parseCustomSuits(json: string | null | undefined): CustomSuit[] {
   try {

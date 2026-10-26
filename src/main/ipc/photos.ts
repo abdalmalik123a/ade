@@ -19,6 +19,7 @@ import { parsePresets, validatePreset, type PhotoPreset } from '@shared/photoPre
 import { parseCustomSuits, pngTransparency, type CustomSuit, type SuitImport } from '@shared/suits';
 import type { Guard } from '@shared/bridgeGuards';
 import { writePng } from '../services/png';
+import { suitsFromPsd } from '../services/suitsPsd';
 import { handleChecked } from './checked';
 
 type PreparedSuit = { name: string; rgba: Uint8Array; width: number; height: number };
@@ -133,34 +134,44 @@ export function registerPhotoIpc(): void {
 
   ipcMain.handle('photos:suits', (): CustomSuit[] => parseCustomSuits(readSetting('photoSuits')));
 
+  // معرّفٌ بعدّاد: قاطاتٌ تُضاف دفعةً في الجزء نفسه من الثانية (طبقات PSD) لا تتشارك معرّفًا.
+  let suitSeq = 0;
   const addCustomSuit = (name: string, path: string): CustomSuit => {
-    const suit: CustomSuit = { id: `custom-${Date.now().toString(36)}`, name, path, createdAt: new Date().toISOString() };
+    const suit: CustomSuit = { id: `custom-${Date.now().toString(36)}-${(++suitSeq).toString(36)}`, name, path, createdAt: new Date().toISOString() };
     writeSetting('photoSuits', [...parseCustomSuits(readSetting('photoSuits')), suit]);
     return suit;
+  };
+  /** قاطٌ RGBA: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`) ثم يُضاف إلى قاط المكتب. */
+  const storeSuit = async (name: string, rgba: Uint8Array, width: number, height: number): Promise<CustomSuit> => {
+    const png = writePng(rgba, width, height);
+    const file = `${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
+    await writeFile(join(storeDir('suits'), file), png);
+    return addCustomSuit(name.trim().slice(0, 80) || 'قاط', `suits/${file}`);
   };
 
   /**
    * «استورد قاطًا» (S39): PNG شفّافة تُضاف كما هي — وغيرها (JPG وWebP وBMP، وPNG معتمة) تعود بايتاتٍ تُحضَّر في الواجهة
-   * (`suitMatte.ts` بعد أن يفكّها Chromium) ثم تُضاف بـ`photos:addSuit`.
+   * (`suitMatte.ts` بعد أن يفكّها Chromium) ثم تُضاف بـ`photos:addSuit`. وPhotoshop (D204): كلّ طبقةٍ مفرّغةٍ قاطٌ دفعةً (`suitsFromPsd`).
    */
   ipcMain.handle('photos:importSuit', async (e): Promise<SuitImport | null> => {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (!win) return null;
-    const source = await pickOpenPath(win, { title: 'اختر صورة قاط', buttonLabel: 'أضف', filterName: 'صور', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] });
+    const source = await pickOpenPath(win, { title: 'اختر صورة قاط', buttonLabel: 'أضف', filterName: 'صور', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'psd'] });
     if (!source) return null;
     const bytes = new Uint8Array(await readFile(source));
     const name = source.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, '');
+    // Photoshop بمحتواه (8BPS) لا بامتداده — كما يميّز الباب الصور.
+    if (Buffer.from(bytes.subarray(0, 4)).toString('latin1') === '8BPS') {
+      const suits: CustomSuit[] = [];
+      for (const s of suitsFromPsd(bytes, name)) suits.push(await storeSuit(s.name, s.rgba, s.width, s.height));
+      return { suits };
+    }
     if (pngTransparency(bytes) !== 'ok') return { prepare: { name, bytes } };
     return { suit: addCustomSuit(name, await importFile(source, 'suits')) };
   });
 
   /** القاط بعد تحضيره في الواجهة: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`)، ويُضاف إلى قاط المكتب. */
-  handleChecked('photos:addSuit', { suit: preparedSuit }, async ({ suit }): Promise<CustomSuit> => {
-    const png = writePng(suit.rgba, suit.width, suit.height);
-    const file = `${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
-    await writeFile(join(storeDir('suits'), file), png);
-    return addCustomSuit(suit.name.trim().slice(0, 80) || 'قاط', `suits/${file}`);
-  });
+  handleChecked('photos:addSuit', { suit: preparedSuit }, ({ suit }): Promise<CustomSuit> => storeSuit(suit.name, suit.rgba, suit.width, suit.height));
 
   ipcMain.handle('photos:deleteSuit', async (_e, id: string): Promise<CustomSuit[]> => {
     const list = parseCustomSuits(readSetting('photoSuits'));

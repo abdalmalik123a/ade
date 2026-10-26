@@ -11,6 +11,7 @@ import { clothesTop, raiseSuit, skinSample } from '@shared/portraitSkin';
 import { withFace } from '@shared/portraitFace';
 import { prepareSuit } from '@shared/suitMatte';
 import { errorText } from '../../lib/errors';
+import { toIndic } from '@shared/arabic';
 import { workPixels, loadImage, dataUrlOf, loadSuit, fallbackPlace, type Work, type Suit } from '../../lib/portraitCanvas';
 import { CENTER, type Crop, type Size } from '@shared/photoSheet';
 import { CUSTOM_ID, type Cut, type Worn, type Tool, type PhotoIncoming, type Bg } from './photoShared';
@@ -220,6 +221,15 @@ export function usePhotoSteps(
       const r = await window.diwan.photos.importSuit();
       if (!r) return;
       let s: CustomSuit;
+      if ('suits' in r) {
+        // ملفّ Photoshop: كلّ طبقةٍ مفرّغةٍ قاطٌ — تُضاف كلّها ويُلبس أوّلها (D204).
+        const [first] = r.suits;
+        setCustomSuits((list) => [...list, ...r.suits]);
+        setSuitTab('custom');
+        say(r.suits.length === 1 ? `أُضيف «${first!.name}» إلى القاط` : `أُضيف ${toIndic(r.suits.length)} قاط من الملفّ`);
+        await chooseSuit(first!.id, `diwan://store/${first!.path}`);
+        return;
+      }
       if ('suit' in r) s = r.suit;
       else {
         // ما ليس PNG شفّافة يفكّه Chromium (JPG وWebP وBMP)، ثم يُحضَّر كما تحضّره `prepare-suits.py` (S39).

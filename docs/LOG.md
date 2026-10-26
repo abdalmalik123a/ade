@@ -6,6 +6,15 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## ٢٠٢٦-١٠-٢٧ ٠٠:٣٧ — D204 ✅: القاط من Photoshop — كلّ طبقةٍ مفرّغةٍ قاطٌ دفعةً · النموذج: Claude Opus 5.5 (المنفّذ)
+- **جديد:** `src/main/services/suitsPsd.ts` (`suitsFromPsd`: الطبقات الراسمة بـ`layerPixels` و`toRgb`، مفرّغةً بشفّافٍ ١٪ ومرسومٍ ١٪ ومقصوصةً على حدّها، وإلا المسطّحة بـ`readPsd`، وإلا الرسالة) ·
+  `tests/suitsPsd.test.ts` · المثال المختلَق `tests/fixtures/suits-layers.psd` (٥٨٧ ك.ب، مولّده `tests/makeSuitsPsd.test.ts`، وشكله في `tests/suitsPsdShapes.ts` — ملفٌّ لم يذكره الأمر، كي لا يُستورد المولّد في الاختبار).
+- **`photos:importSuit`:** يقبل `psd` ويميّزه **بمحتواه** (`8BPS`) — فالباب في الاختبار مسارٌ ثابت بامتداد png، والتمييز بالامتداد كان سيخطئ · ويعيد `{ suits }` · و`storeSuit` المشترك مع `photos:addSuit` ·
+  ومعرّف القاط بعدّاد (`custom-<الوقت>-<عدّ>`): قاطاتٌ تُضاف دفعةً في الجزء نفسه من الثانية لا تتشارك معرّفًا · والواجهة «أُضيف ٢ قاط من الملفّ» ويُلبس أوّلها.
+- **الفحص (مُجرَّب):** `typecheck` ✓ · `suitsPsd` ٤ ✓ (والمولّد يعيد المثال نفسه بايتًا ببايت) · `vitest` ٢٢١٩ ✓ · البناء ✓ · `portrait` ٢٠ ✓ (+١: «قاط أسود» و«قاط كحلي» دفعةً ويُلبس أوّلهما) · `autoCollar` ٨ ✓ ·
+  **والإسقاط:** بلا شرط الشفافية تُعدّ الخلفية المعتمة قاطًا ← ✗٣ ثم أُعيد (`cmp`).
+- **التالي:** D205 مباشرةً.
+
 ## ٢٠٢٦-١٠-٢٧ ٠٠:٣٠ — D203 ✅: «الحزمة المختومة» `.diwanseal` — الكاتب والقارئ · النموذج: Claude Opus 5.5 (المنفّذ)
 - **جديد:** `src/shared/sealedPack.ts` (الصيغة والحدود والرسائل و`validHead` و`validItems` و`cleanName`) · `src/main/services/sealedPack.ts` (`openSealedPack` و`sealKeys`) · `tests/sealedPack.test.ts` ·
   وفي `tools/keytool/core.mjs` `writeSealedPack` و`sealItemsFrom` و`sealKeys` · و`keygen.mjs seal <مجلّد> --kind --title [--key] [--out]` (بمفتاح التحديث من مجلّد المالك، أو `--key` في الاختبار).

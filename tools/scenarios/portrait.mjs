@@ -6,8 +6,11 @@
  * الموظف صورةً من واتساب الحاسوب. والقاط المستورد صورةٌ تُبنى هنا: سترةٌ داكنة بفتحة عنق.
  */
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const CRC = (() => {
   const table = new Int32Array(256);
@@ -289,6 +292,14 @@ export default async function scenario(page, { shotsDir }) {
   await wait(3800);
   await click('[data-act="import-suit"]');
   ok('والشفّاف يُضاف إلى القاط ويُلبَس', await wornLast(2));
+  // ومن Photoshop (S48، D204): ملفٌّ بطبقاتٍ كلّ طبقةٍ مفرّغةٍ قاطٌ باسمها دفعةً، ويُلبس أوّلها — لا الخلفية ولا النصّ ولا المخفيّة.
+  writeFileSync(process.env.PORTRAIT_SUIT_FILE, readFileSync(join(ROOT, 'tests', 'fixtures', 'suits-layers.psd')));
+  await wait(800);
+  await click('[data-act="import-suit"]');
+  const psdWorn = await until(`(() => { const b = [...document.querySelectorAll('[data-suit^="custom-"]')]; return b.length === 4 && b[2].className.includes('border-secondary'); })()`, 8000);
+  const psdNames = (await page.eval(`return (await window.diwan.photos.suits()).map((s) => s.name);`)).slice(2);
+  ok(`وملفّ Photoshop بطبقتين مفرّغتين قاطان باسميهما دفعةً، ويُلبس أوّلهما (${psdNames.join('، ')})`, psdWorn && psdNames.join('،') === 'قاط أسود،قاط كحلي');
+  writeFileSync(process.env.PORTRAIT_SUIT_FILE, suitPng());
   // ويُلبس بميل كتفي الشخص من RTMPose-t (S45، D174): على المولَّدة ٠٫٥٣° (قياس D174) فيقرؤه المنزلق ٠٫٥ بخطوته —
   // وتركيب اليوم (`fitSuit`) زاويته صفرٌ دائمًا.
   const angle = Number(await page.eval(`return document.querySelector('input[data-act="suit-angle"]')?.value ?? 'NaN';`));
