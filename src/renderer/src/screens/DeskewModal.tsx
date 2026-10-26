@@ -14,13 +14,18 @@ import DeskewControls from './deskew/DeskewControls';
 type Props = {
   isOpen: boolean;
   imageSrc: string;
+  /** مقاس المستمسك الذي تُسوّى له الصورة (ورقة المستمسكات) — يصير الاختيار الأوّل باسمه. */
+  aspect?: { w: number; h: number; label: string };
   onClose: () => void;
   onApply: (resultDataUrl: string) => void;
 };
 
-export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Props) {
+export default function DeskewModal({ isOpen, imageSrc, aspect: docAspect, onClose, onApply }: Props) {
   useEscape(onClose, isOpen);
-  const [aspectKey, setAspectKey] = useState('id1');
+  const aspects = docAspect
+    ? [{ key: 'doc', label: `${docAspect.label} (${docAspect.w} × ${docAspect.h} ملم)`, aspect: docAspect.w / docAspect.h }, ...DESKEW_ASPECTS]
+    : DESKEW_ASPECTS;
+  const [aspectKey, setAspectKey] = useState(docAspect ? 'doc' : 'id1');
   const [quad, setQuad] = useState<Quad | null>(null);
   const [filterMode, setFilterMode] = useState<'color' | 'photocopy' | 'grayscale' | 'scan'>('color');
   /** أكُشفت الأركان آليًّا — أم بقيت على الإطار الافتراضي ينتظر يد الموظف؟ */
@@ -58,7 +63,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
     const previewCanvas = previewCanvasRef.current;
     if (!img || !previewCanvas || !quad) return;
 
-    const preset = DESKEW_ASPECTS.find((p) => p.key === aspectKey);
+    const preset = aspects.find((p) => p.key === aspectKey);
     const aspect = preset ? preset.aspect : (img.naturalWidth / img.naturalHeight);
 
     // أبعاد المعاينة المستوية (بدقة مناسبة للمعاينة السريعة)
@@ -226,7 +231,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
 
     setProcessing(true);
     try {
-      const preset = DESKEW_ASPECTS.find((p) => p.key === aspectKey);
+      const preset = aspects.find((p) => p.key === aspectKey);
       const aspect = preset ? preset.aspect : (img.naturalWidth / img.naturalHeight);
 
       // دقة إنتاجية عالية (High Res: مثلاً 1200 بكسل عرض)
@@ -333,6 +338,7 @@ export default function DeskewModal({ isOpen, imageSrc, onClose, onApply }: Prop
           {/* الجانب الأيسر: المعاينة المستوية وأدوات التحكم */}
           <DeskewControls
             previewCanvasRef={previewCanvasRef}
+            aspects={aspects}
             aspectKey={aspectKey}
             setAspectKey={setAspectKey}
             filterMode={filterMode}

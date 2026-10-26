@@ -3,11 +3,13 @@
  * الألوان، والتنظيف وأثره، والسطوع والتباين.
  */
 import type { Dispatch, SetStateAction, MutableRefObject } from 'react';
-import { DESKEW_ASPECTS } from '@shared/deskew';
+import type { AspectPreset } from '@shared/deskew';
 import type { Cleaning, Finished } from '../deskewSteps';
 
 type Props = {
   previewCanvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  /** المقاسات: `DESKEW_ASPECTS`، وقبلها مقاس المستمسك حين تُفتح من ورقة المستمسكات. */
+  aspects: AspectPreset[];
   aspectKey: string;
   setAspectKey: Dispatch<SetStateAction<string>>;
   filterMode: 'color' | 'photocopy' | 'grayscale' | 'scan';
@@ -21,7 +23,7 @@ type Props = {
   setContrast: Dispatch<SetStateAction<number>>;
 };
 
-export default function DeskewControls({ previewCanvasRef, aspectKey, setAspectKey, filterMode, setFilterMode, cleaning, setCleaning, effect, brightness, setBrightness, contrast, setContrast }: Props) {
+export default function DeskewControls({ previewCanvasRef, aspects, aspectKey, setAspectKey, filterMode, setFilterMode, cleaning, setCleaning, effect, brightness, setBrightness, contrast, setContrast }: Props) {
   return (
     <div className="w-full md:w-80 border-t md:border-t-0 md:border-r border-outline-variant bg-surface-container-low p-4 flex flex-col gap-4 overflow-y-auto shrink-0">
       {/* المعاينة الحية */}
@@ -43,9 +45,10 @@ export default function DeskewControls({ previewCanvasRef, aspectKey, setAspectK
           نوع المستمسك ومقاسه:
         </label>
         <div className="flex flex-col gap-1 text-xs">
-          {DESKEW_ASPECTS.map((asp) => (
+          {aspects.map((asp) => (
             <button
               key={asp.key}
+              data-aspect={asp.key}
               type="button"
               className={`px-3 py-2 rounded-btn text-right font-medium transition-all ${
                 aspectKey === asp.key

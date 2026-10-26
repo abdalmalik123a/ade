@@ -6,6 +6,8 @@
  * يغيّر المواضع؛ ثم «اطبع» على دور «استنساخ المستمسكات» (`DIWAN_TEST_PRINT_LOG`) و«حفظ PDF» صفحةً A4 **ومقاساتهما في PDF نفسه**
  * (مجسّاتٌ داخل كلّ خانةٍ بملّيمتر داكنة وخارجها بيضاء)؛ والسكن ١٤٨×٢١٠ بوجهيه لا يُقصّ، والنسخ تُرصف.
  * و`DIWAN_TEST_OPEN_FILE` مسارٌ واحد: تُكتب فيه صورةٌ مصنوعةٌ داكنة بنسبة المستمسك قبل كلّ «افتح الصورة».
+ * (D199) والتحديد بالخيارين: زجاجٌ مصنوعٌ عليه بطاقةٌ في ركنه للجواز ← «قصٌّ مستطيل» يبدأ حولها ← نسبة الجواز؛ والوطنية ←
+ * «الأركان الأربعة» بنوعها ← نسبة الوطنية؛ و«دوّر ٩٠°» يقلب الصورة — والخانات بمقاساتها لا تتغيّر.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,10 +18,10 @@ const DIR = join(process.env.TEMP ?? '.', `diwan-iddocs-${Date.now()}`);
 const LOG = join(DIR, 'print.jsonl');
 const OPEN = join(DIR, 'open.png');
 
-/** PNG بلا مكتبة، بلونٍ واحد (كـ`idTools`). */
-function png(w, h, [r, g, b]) {
+/** PNG بلا مكتبة (كـ`idTools`): لونٌ واحد، أو دالّةٌ لكلّ بكسل. */
+function png(w, h, color) {
   const raw = Buffer.alloc((w * 3 + 1) * h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw.set([r, g, b], y * (w * 3 + 1) + 1 + x * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) raw.set(typeof color === 'function' ? color(x, y) : color, y * (w * 3 + 1) + 1 + x * 3);
   const chunk = (type, data) => {
     const len = Buffer.alloc(4);
     len.writeUInt32BE(data.length);
@@ -37,6 +39,21 @@ function png(w, h, [r, g, b]) {
 }
 /** الصورة التالية لـ«افتح الصورة»: بنسبة المستمسك (عرضه وطوله بالملّم × ٤). */
 const nextImage = (w, h, color) => writeFileSync(OPEN, png(Math.round(w * 4), Math.round(h * 4), color));
+/** زجاج ماسحٍ أبيض ٨٥٠×١١٠٠ عليه بطاقةٌ في ركنه بإطارٍ وكتابةٍ وصورة (كـ`idTools`). */
+const CARD = { x: 60, y: 80, w: 340, h: 214 };
+const glassImage = () =>
+  writeFileSync(
+    OPEN,
+    png(850, 1100, (x, y) => {
+      const c = CARD;
+      if (x < c.x || y < c.y || x >= c.x + c.w || y >= c.y + c.h) return [250, 250, 248];
+      if (x - c.x < 4 || c.x + c.w - x <= 4 || y - c.y < 4 || c.y + c.h - y <= 4) return [120, 120, 125];
+      const ly = y - c.y - 30;
+      if (x - c.x > 20 && x - c.x < c.w * 0.55 && ly >= 0 && ly < 120 && ly % 30 < 4) return [40, 40, 50];
+      if (x > c.x + c.w - 90 && x < c.x + c.w - 25 && y > c.y + 25 && y < c.y + c.h - 25) return [150, 110, 90];
+      return [236, 240, 250];
+    })
+  );
 
 export async function prepare() {
   rmSync(DIR, { recursive: true, force: true });
@@ -140,6 +157,46 @@ export default async function scenario(page, { shotsDir }) {
   const values = pdfPath ? (await pdfToImages(pdfPath, { dpi: 100, probe }))[0]?.probe ?? [] : [];
   const fits = c.every((_, i) => values[4 * i] < 140 && values[4 * i + 1] < 140 && values[4 * i + 2] > 220 && values[4 * i + 3] > 220);
   ok(`وفي PDF كلّ خانةٍ بمقاسها: داخلها بملّيمتر داكن وخارجها أبيض (${values.join(' ')})`, values.length === probe.length && fits);
+
+  // ── (D199) التحديد بالخيارين، والتدوير — والخانات بمقاساتها كما هي ───────
+  const before = JSON.stringify((await cards()).map((x) => [x.w, x.h, x.page]));
+  const natural = (doc, face) => page.eval(`const i = document.querySelector('[data-doc="${doc}"][data-face="${face}"] img');
+    return i && i.complete ? [i.naturalWidth, i.naturalHeight] : null;`);
+  const passId = c.find((x) => x.w === 125).doc;
+  glassImage();
+  await click(`[data-doc="${passId}"]`);
+  await wait(300);
+  await click('[data-act="doc-replace-front"]');
+  await pickFile('front');
+  await click('[data-act="face-rect-front"]');
+  await page.until(`return Boolean(document.querySelector('[data-rect-crop] [data-rect]'));`, 5000);
+  const [rx, ry, rw, rh] = (await page.eval(`return document.querySelector('[data-rect-crop] [data-rect]').dataset.rect;`)).split(',').map(Number);
+  ok(`«قصٌّ مستطيل» يبدأ حول البطاقة في ركن الزجاج بنسبة الجواز (${rx},${ry} ${rw}×${rh})`,
+    rx >= CARD.x - 15 && ry >= CARD.y - 15 && rx + rw <= CARD.x + CARD.w + 15 && ry + rh <= CARD.y + CARD.h + 15 && rw * rh > 0.7 * CARD.w * CARD.h && Math.abs(rw / rh - 125 / 88) < 0.02);
+  await click('[data-act="rect-apply"]');
+  await wait(800);
+  let n = await natural(passId, 'front');
+  ok(`و«اعتمد» يقصّها: صورة الجواز بنسبته ١٢٥:٨٨ (${n?.join('×')})`, n && Math.abs(n[0] / n[1] - 125 / 88) < 0.02 && n[0] < 400);
+
+  await click(`[data-doc="${nat}"]`);
+  await wait(300);
+  await click('[data-act="face-corners-front"]');
+  await page.until(`return Boolean(document.querySelector('[data-aspect="doc"]'));`, 5000);
+  const chosen = await page.eval(`const b = document.querySelector('[data-aspect="doc"]'); return b.className.includes('bg-primary-fixed') ? b.innerText : '';`);
+  ok(`و«الأركان الأربعة» تفتح التسوية بنوع المستمسك مختارًا (${chosen})`, chosen.includes('البطاقة الوطنية'));
+  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('حفظ وتطبيق'))?.click(); return true;`);
+  // ناتج التسوية بعرض ١٢٠٠ (`DeskewModal`) — لا الصورة الأولى (٣٤٢) التي بنسبة الوطنية أصلًا.
+  await page.until(`const i = document.querySelector('[data-doc="${nat}"][data-face="front"] img'); return i && i.complete && i.naturalWidth === 1200;`, 5000);
+  n = await natural(nat, 'front');
+  ok(`و«اعتمد» يقوّمها بنسبة الوطنية ٨٥٫٦:٥٣٫٩٨ (${n?.join('×')})`, n && n[0] === 1200 && Math.abs(n[0] / n[1] - 85.6 / 53.98) < 0.01);
+  const back0 = await natural(nat, 'back');
+  await click('[data-act="face-rotate-back"]');
+  await page.until(`const i = document.querySelector('[data-doc="${nat}"][data-face="back"] img'); return i && i.complete && i.naturalWidth === ${back0?.[1] ?? -1};`, 4000);
+  const back1 = await natural(nat, 'back');
+  ok(`و«دوّر ٩٠°» يقلب عرض الصورة وطولها (${back0?.join('×')} ← ${back1?.join('×')})`, back0 && back1 && back1[0] === back0[1] && back1[1] === back0[0]);
+  ok('والخانات بمقاساتها ومواضعها لم تتغيّر بالتحديد والتدوير', JSON.stringify((await cards()).map((x) => [x.w, x.h, x.page])) === before);
+  await click('[data-act="doc-done"]');
+  await wait(200);
 
   // ── السكن ١٤٨×٢١٠ بوجهيه لا يُقصّ، والنسخ تُرصف ─────────────────────────
   nextImage(148, 210, [90, 60, 20]);

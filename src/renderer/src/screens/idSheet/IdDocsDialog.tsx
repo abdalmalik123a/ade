@@ -23,6 +23,8 @@ import SheetPages from './SheetPages';
 import DocPanel from './DocPanel';
 import SheetOptions, { type SheetLookState, type WatermarkState } from './SheetOptions';
 import { AddMenu, SourcePicker } from './AddDoc';
+import RectCropModal from './RectCropModal';
+import { rotateRight } from './imageOps';
 
 export const resolveUrl = (src: string) =>
   src.startsWith('data:') || src.startsWith('blob:') ? src : `diwan://store/${src.split('/').map(encodeURIComponent).join('/')}`;
@@ -59,6 +61,8 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
   const [picking, setPicking] = useState<Target | null>(null);
   const [deskew, setDeskew] = useState<Target | null>(null);
   const [camera, setCamera] = useState<Target | null>(null);
+  /** «قصٌّ مستطيل» لوجهٍ له صورة (D199) — و«الأركان الأربعة» التسوية نفسها (`deskew`). */
+  const [rectCrop, setRectCrop] = useState<Target | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; warn?: boolean } | null>(null);
 
@@ -66,17 +70,26 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
   const setWm = (patch: Partial<WatermarkState>) => setWmState((w) => ({ ...w, ...patch }));
   const setDoc = (id: string, patch: Partial<SheetDoc>) => setDocs((all) => all.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   const docOf = (id: string) => docs.find((d) => d.id === id) ?? null;
+  const srcOf = (t: Target | null) => {
+    const d = t ? docOf(t.docId) : null;
+    return d ? (t!.face === 'front' ? d.front : d.back) : null;
+  };
+  const setFace = (t: Target, src: string) => setDoc(t.docId, t.face === 'front' ? { front: src } : { back: src });
 
   const placements = useMemo(() => layoutDocs(docs, { duplex: look.duplex }), [docs, look.duplex]);
   const pages = pageCount(docs, placements, look.duplex);
   const watermark = useMemo(() => (wm.on ? { text: wm.text, opacity: wm.opacity, sizeMm: 3.4 } : null), [wm]);
   const html = useMemo(() => docSheetHtml(docs, { resolveUrl, ...look, watermark }), [docs, look, watermark]);
 
-  /** وجهٌ امتلأ: إن كان أوّلَ مستمسكٍ يُضاف بوجهين طُلب ظهره وحده. */
-  function filled(t: Target, src: string) {
-    setDoc(t.docId, t.face === 'front' ? { front: src } : { back: src });
+  /** بعد وجه مستمسكٍ يُضاف بوجهين يُطلب ظهره وحده. */
+  function chainNext(t: Target) {
     const doc = docOf(t.docId);
     if (t.chain && t.face === 'front' && doc?.faces === 2 && !doc.back) setPicking({ docId: t.docId, face: 'back', chain: false });
+  }
+
+  function filled(t: Target, src: string) {
+    setFace(t, src);
+    chainNext(t);
   }
 
   async function scan(t: Target) {
@@ -84,7 +97,7 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
     setBusy(true);
     try {
       const src = await scanTransient(300);
-      setDoc(t.docId, t.face === 'front' ? { front: src } : { back: src });
+      setFace(t, src);
       setDeskew(t);
     } catch (e) {
       setNote({ text: errorText(e, 'تعذّر المسح'), warn: true });
@@ -97,6 +110,20 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
     setPicking(null);
     const picked = await window.diwan.files.pickImage('photos');
     if (picked) filled(t, picked);
+  }
+
+  /** «دوّر ٩٠°»: الصورة الممسوحة على جنبها تُصحَّح، والخانة بمقاسها كما هي. */
+  async function rotate(t: Target) {
+    const src = srcOf(t);
+    if (!src) return;
+    setBusy(true);
+    try {
+      setFace(t, await rotateRight(resolveUrl(src)));
+    } catch (e) {
+      setNote({ text: errorText(e, 'تعذّر التدوير'), warn: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   function add(typeKey: string, faces: 1 | 2) {
@@ -147,7 +174,10 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
   const current = selected ? docOf(selected) : null;
   const pickDoc = picking ? docOf(picking.docId) : null;
   const deskewDoc = deskew ? docOf(deskew.docId) : null;
-  const deskewSrc = deskewDoc ? (deskew!.face === 'front' ? deskewDoc.front : deskewDoc.back) : null;
+  const deskewSrc = srcOf(deskew);
+  const rectDoc = rectCrop ? docOf(rectCrop.docId) : null;
+  const rectSrc = srcOf(rectCrop);
+  const tool = 'flex-1 h-8 rounded-btn border border-outline-variant hover:bg-surface-container-high font-label-sm text-label-sm disabled:opacity-40';
   const filledCount = docs.filter((d) => d.front || d.back).length;
 
   return (
@@ -181,6 +211,19 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
               }}
               onDone={() => setSelected(null)}
               onPick={(face) => setPicking({ docId: current.id, face, chain: false })}
+              faceTools={(face) => (
+                <div className="flex gap-1">
+                  <button className={tool} data-act={`face-corners-${face}`} title="اسحب الأركان الأربعة فتُقوَّم الصورة المائلة" type="button" onClick={() => setDeskew({ docId: current.id, face, chain: false })}>
+                    الأركان الأربعة
+                  </button>
+                  <button className={tool} data-act={`face-rect-${face}`} title="مستطيلٌ بمقابض يُسحب" type="button" onClick={() => setRectCrop({ docId: current.id, face, chain: false })}>
+                    قصٌّ مستطيل
+                  </button>
+                  <button className={tool} data-act={`face-rotate-${face}`} disabled={busy} type="button" onClick={() => void rotate({ docId: current.id, face, chain: false })}>
+                    دوّر ٩٠°
+                  </button>
+                </div>
+              )}
             />
           ) : (
             <SheetOptions look={look} setLook={setLook} setWm={setWm} wm={wm} />
@@ -260,7 +303,7 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
           confirmLabel="سوِّها وقوِّمها"
           title={faceLabel(docOf(camera.docId) ?? newDoc('other'), camera.face)}
           onCapture={(dataUrl) => {
-            setDoc(camera.docId, camera.face === 'front' ? { front: dataUrl } : { back: dataUrl });
+            setFace(camera, dataUrl);
             setDeskew(camera);
             setCamera(null);
           }}
@@ -270,16 +313,30 @@ export default function IdDocsDialog({ start, onClose, citizenName, attachments 
 
       {deskew && deskewSrc && (
         <DeskewModal
+          aspect={deskewDoc ? { w: deskewDoc.w, h: deskewDoc.h, label: deskewDoc.label } : undefined}
           isOpen={true}
           imageSrc={resolveUrl(deskewSrc)}
           onApply={(flat) => {
             setDeskew(null);
             filled(deskew, flat);
           }}
+          // التسوية تنادي الإغلاق بعد الاعتماد أيضًا: فلا يُعاد هنا الأصل فوق المقوَّم — يُمضى إلى الظهر وحده.
           onClose={() => {
             setDeskew(null);
-            filled(deskew, deskewSrc);
+            chainNext(deskew);
           }}
+        />
+      )}
+
+      {rectCrop && rectDoc && rectSrc && (
+        <RectCropModal
+          aspect={{ w: rectDoc.w, h: rectDoc.h, label: faceLabel(rectDoc, rectCrop.face) }}
+          imageSrc={resolveUrl(rectSrc)}
+          onApply={(url) => {
+            setFace(rectCrop, url);
+            setRectCrop(null);
+          }}
+          onClose={() => setRectCrop(null)}
         />
       )}
     </div>
