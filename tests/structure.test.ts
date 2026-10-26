@@ -86,7 +86,7 @@ describe('اختبار الهيكل (ز١)', () => {
         if ((resolved(s, spec) ?? '').startsWith('src/main/ipc')) bad.push(`${s.path}: خدمةٌ تستورد قناةً «${spec}» — القنوات تنادي الخدمات لا العكس`);
       }
     }
-    const SPAWNERS = ['src/main/ipc/license.ts', 'src/main/ipc/update.ts', 'src/main/services/inbox.ts', 'src/main/services/scanner.ts'];
+    const SPAWNERS = ['src/main/ipc/license.ts', 'src/main/ipc/update.ts', 'src/main/services/inbox.ts', 'src/main/services/scanner.ts', 'src/main/services/printers.ts'];
     for (const s of SOURCES) {
       if (importsOf(s.text).some((spec) => spec === 'child_process' || spec === 'node:child_process') && !SPAWNERS.includes(s.path)) {
         bad.push(`${s.path}: يشغّل برامج (child_process) خارج الملفّات المعروفة — أضفه إلى القائمة عمدًا إن لزم`);
