@@ -5,9 +5,10 @@
  * أوّل فتح: كلمة سرٍّ تُنشأ فيُشفَّر المفتاح ويُمحى غير المشفّر. ثم «مفتاح جديد»: رمز الجهاز والخطّة و«ولّد»،
  * والمفتاح يتحقّق بالمفتاح العامّ؛ وأوّل عشرة مدى الحياة يُعدّون؛ والشهري إلى يومه؛ والسجلّ يُبحث فيه؛ وملفّ
  * التحديث يُصنع موقّعًا؛ وكلمة السرّ تتغيّر؛ والقفل يدويًّا وبعد الخمول؛ والمحاولات الخاطئة تُبطئ.
+ * و«حزمة قاط» (S48، D206): بلا مفتاح تحديثٍ تُرفض، وبعده تُصنع مختومةً به (`buyer` وعنوانها) فيتحقّق ختمها بعامّه.
  */
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const appDir = 'tools/keytool';
@@ -24,6 +25,10 @@ export async function prepare() {
   mkdirSync(DIR, { recursive: true });
   writeFileSync(join(DIR, 'diwan-owner-private.pem'), privateKey.export({ type: 'pkcs8', format: 'pem' }));
   writeFileSync(join(DIR, 'setup.exe'), Buffer.alloc(300_000, 7));
+  // قطعٌ مصنوعة لحزمة القاط: PNG (بايتاتٌ بامتدادها — الأداة لا تفكّ الصور) ومثال PSD.
+  mkdirSync(join(DIR, 'قطع'), { recursive: true });
+  writeFileSync(join(DIR, 'قطع', 'قاط رمادي.png'), Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(2000, 9)]));
+  copyFileSync(join('tests', 'fixtures', 'suits-layers.psd'), join(DIR, 'قطع', 'قاطان.psd'));
   return { DIWAN_OWNER_DIR: DIR, DIWAN_KEYTOOL_IDLE_MS: String(IDLE_MS) };
 }
 
@@ -202,6 +207,13 @@ export default async function scenario(page, { shotsDir }) {
   const badUpd = await page.eval(`return await window.keytool.makeUpdate({ exe: ${JSON.stringify(join(DIR, 'setup.exe'))}, version: '1.1', notes: 'x' });`);
   ok('ورقم إصدارٍ ناقص يُرفض', !badUpd.ok && badUpd.error.includes('1.1.0'));
 
+  // ── حزمة قاط قبل مفتاح التحديث (D206) ─────────────────────────────
+  await page.eval(`document.querySelector('[data-tab="seal"]').click(); return true;`);
+  await wait(200);
+  ok('لسان «حزمة قاط» ظاهرٌ بخياريه', (await page.eval(`return !document.querySelector('[data-pane="seal"]').classList.contains('hidden') && document.querySelectorAll('input[name=sealKind]').length === 2;`)));
+  const noUk = await page.eval(`return await window.keytool.makeSeal({ dir: ${JSON.stringify(join(DIR, 'قطع'))}, kind: 'first', title: 'تجربة' });`);
+  ok(`وبلا مفتاح تحديثٍ لا تُختم (${noUk.error})`, !noUk.ok && noUk.error.includes('مفتاح التحديث'));
+
   // ── مفتاح التحديث (البند ٣٣) ─────────────────────────────────────
   await page.eval(`document.querySelector('[data-tab="update"]').click(); return true;`);
   ok('لسان «ملفّ تحديث» يقول: بمفتاح التراخيص — واصنع مفتاح التحديث', (await text('[data-update-keys]')).includes('واصنع «مفتاح التحديث»'));
@@ -242,6 +254,22 @@ export default async function scenario(page, { shotsDir }) {
       verify(null, canon, ukPub, Buffer.from(json.signatures?.[0] ?? '', 'base64url'));
   }
   ok('وملفّ التحديث بعده بتوقيعين: مفتاح التراخيص للقديم ومفتاح التحديث للجديد', dualOk);
+
+  // ── حزمة قاط بعد مفتاح التحديث (D206) ─────────────────────────────
+  const sealed = await page.eval(`return await window.keytool.makeSeal({ dir: ${JSON.stringify(join(DIR, 'قطع'))}, kind: 'buyer', title: 'قاط المشتري' });`);
+  let sealOk = false;
+  if (sealed.ok && existsSync(sealed.value.out)) {
+    const f = readFileSync(sealed.value.out);
+    const magic = 'DIWANSEAL1\n'.length;
+    const headLen = f.readUInt32BE(magic);
+    const head = f.subarray(magic + 4, magic + 4 + headLen);
+    const sigLen = f.readUInt32BE(magic + 4 + headLen);
+    const sig = f.subarray(magic + 8 + headLen, magic + 8 + headLen + sigLen);
+    const h = JSON.parse(head.toString('utf8'));
+    sealOk = f.subarray(0, magic).toString() === 'DIWANSEAL1\n' && h.kind === 'buyer' && h.title === 'قاط المشتري' && sealed.value.items === 2 &&
+      verify(null, Buffer.concat([Buffer.from('diwan-seal\n'), head]), ukPub, sig) && !verify(null, Buffer.concat([Buffer.from('diwan-seal\n'), head]), publicKey, sig);
+  }
+  ok(`و«حزمة قاط» تُصنع بجانب المجلّد مختومةً بمفتاح التحديث لا بمفتاح التراخيص (${sealed.ok ? sealed.value.items + ' قطعة' : sealed.error})`, sealOk);
   await shot('3b-update-key');
 
   // ── كلمة السرّ ────────────────────────────────────────────────────

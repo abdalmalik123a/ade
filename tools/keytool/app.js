@@ -387,7 +387,38 @@ $('makeUpd').onclick = () =>
     msg.appendChild(b);
   });
 
-for (const el of [$('createMsg'), $('loginMsg'), $('issueMsg'), $('updMsg'), $('changeMsg'), $('ukMsg')]) el.dataset.baseClass = el.className;
+// ── الحزمة المختومة (S48، D206) ─────────────────────────────────────────
+
+let pieces = null;
+
+$('pickPieces').onclick = () =>
+  run($('pickPieces'), $('sealMsg'), async () => {
+    const r = await call('pickPieces');
+    if (!r) return;
+    pieces = r.dir;
+    $('piecesPath').textContent = r.dir;
+    $('piecesCount').textContent = `— ${r.count} قطعة`;
+    if (!$('sealTitle').value) $('sealTitle').value = r.dir.split(/[\\/]/).pop();
+  });
+
+$('makeSeal').onclick = () =>
+  run($('makeSeal'), $('sealMsg'), async () => {
+    if (!pieces) throw new Error('اختر مجلّد القطع أوّلًا');
+    $('makeSeal').textContent = 'تُختم…';
+    const kind = document.querySelector('input[name=sealKind]:checked')?.value;
+    const r = await call('makeSeal', { dir: pieces, kind, title: $('sealTitle').value });
+    const msg = $('sealMsg');
+    msg.textContent = `✓ ${r.out} — ${r.items} قطعة — ${(r.size / 1024 / 1024).toFixed(1)} م.ب — ${r.kind === 'buyer' ? 'حزمة المشتري' : 'حزمةٌ أولى'} `;
+    msg.classList.add('ok');
+    const b = document.createElement('button');
+    b.textContent = 'اعرضه في مجلّده';
+    b.onclick = () => {
+      void call('showFile', r.out);
+    };
+    msg.appendChild(b);
+  });
+
+for (const el of [$('createMsg'), $('loginMsg'), $('issueMsg'), $('updMsg'), $('changeMsg'), $('ukMsg'), $('sealMsg')]) el.dataset.baseClass = el.className;
 
 start().catch((e) => {
   document.body.textContent = e.message;

@@ -164,6 +164,25 @@ handle('make-update', async ({ exe, version, notes }) => {
   return { out: r.out, size: r.manifest.size, sha256: r.manifest.sha256, withUpdateKey: Boolean(updateKey) };
 });
 
+// ── الحزمة المختومة (S48، D206): مجلّد القطع ← أولى أو للمشتري ← العنوان ← ملفٌّ بجانب المجلّد، بمفتاح التحديث وحده ──
+handle('pick-pieces', async () => {
+  needKey();
+  const r = await dialog.showOpenDialog(win, { title: 'مجلّد القطع (PNG مفرّغة أو PSD)', properties: ['openDirectory'] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  const dir = r.filePaths[0];
+  return { dir, count: core.sealItemsFrom(dir).length };
+});
+
+handle('make-seal', async ({ dir, kind, title }) => {
+  needKey();
+  if (!updateKey) throw new core.KeyToolError('اصنع «مفتاح التحديث» أوّلًا — به تُختم الحزمة');
+  const items = core.sealItemsFrom(String(dir ?? ''));
+  const name = String(title ?? '').trim();
+  const r = await core.writeSealedPack({ items, kind, title: name, privateKey: updateKey, out: join(dirname(String(dir)), `${name || 'حزمة'}.diwanseal`) });
+  touch(); // حزمةٌ بمئات القطع تُكتب دقائق: العمل من آخره.
+  return r;
+});
+
 handle('show-file', (path) => shell.showItemInFolder(path));
 
 handle('change-password', (oldPassword, newPassword, confirm) => {
