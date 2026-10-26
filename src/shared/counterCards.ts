@@ -26,7 +26,7 @@ export const COUNTER_CARDS: readonly CounterCard[] = [
   { id: 'id-copy', label: 'استنساخ هوية', hint: 'الوجه والظهر بمقاسه الحقيقي', icon: 'contact_page', words: ['هوية', 'بطاقة', 'استنساخ', 'نسخ', 'وطنية', 'سكن'], target: { dialog: 'id-copy' } },
   { id: 'pdf', label: 'ملفات PDF', hint: 'تعديلٌ وتجهيزٌ للرفع', icon: 'picture_as_pdf', words: ['pdf', 'بي دي اف', 'رفع', 'ضغط', 'دمج', 'تقسيم', 'ملف'], target: { route: 'pdf' } },
   { id: 'blank', label: 'كتابٌ على ورقة فارغة', hint: 'اكتب كما في Word', icon: 'edit_document', words: ['كتاب', 'ورقة', 'فارغة', 'وورد', 'word', 'طباعة'], target: { route: 'editor' } },
-  { id: 'id-sheet', label: 'المستمسكات على ورقة', hint: 'الوطنية والسكن معًا على A4', icon: 'document_scanner', words: ['مستمسكات', 'هويات', 'بطاقات', 'سكن', 'وطنية'], target: { dialog: 'id-sheet' } },
+  { id: 'id-sheet', label: 'المستمسكات على ورقة', hint: 'الوطنية والسكن، كلٌّ بمقاسه', icon: 'document_scanner', words: ['مستمسكات', 'هويات', 'بطاقات', 'سكن', 'وطنية'], target: { dialog: 'id-sheet' } },
   { id: 'papers', label: 'ورقة أسئلة', hint: 'امتحانٌ بنموذجين', icon: 'quiz', words: ['أسئلة', 'اسئلة', 'امتحان', 'شهري', 'نموذج'], target: { route: 'papers' } },
   { id: 'designs', label: 'شهادات وتصاميم', hint: 'تقدير، هوية طالب، بطاقة', icon: 'workspace_premium', words: ['شهادة', 'شهادات', 'تصميم', 'تقدير', 'هوية طالب', 'بطاقة'], target: { route: 'designs' } },
   { id: 'order', label: 'طلبٌ يُسلَّم لاحقًا', hint: 'يُكتب في قيد العمل بموعده', icon: 'schedule', words: ['طلب', 'لاحقا', 'لاحقًا', 'موعد', 'تسليم'], target: { route: 'orders' } }

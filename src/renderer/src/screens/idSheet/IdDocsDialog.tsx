@@ -281,7 +281,7 @@ export default function IdDocsDialog({ start, onClose, citizenId = null, citizen
               type="button"
               onClick={() => void print()}
             >
-              اطبع {countIn(Math.max(1, html.length), 'ورقة')}
+              {html.length ? `اطبع ${countIn(html.length, 'ورقة')}` : 'اطبع'}
             </button>
           </div>
         </footer>

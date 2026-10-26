@@ -54,6 +54,18 @@ export default function DocPanel({ doc, scale, resolveUrl, onChange, onPick, onD
       </div>
 
       <label className="flex flex-col gap-1 font-label-sm text-label-sm text-on-surface-variant">
+        الاسم — تحت المستمسك وفي ملفّه
+        <input
+          key={`label${doc.id}${doc.typeKey}`}
+          className="input-field h-9 px-2 text-on-surface"
+          data-doc-label=""
+          defaultValue={doc.label}
+          onBlur={(e) => onChange({ label: e.target.value.trim() || type.label })}
+          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        />
+      </label>
+
+      <label className="flex flex-col gap-1 font-label-sm text-label-sm text-on-surface-variant">
         النوع
         <select
           className="input-field h-9 px-2 text-on-surface"

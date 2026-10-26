@@ -10,6 +10,7 @@
  * «الأركان الأربعة» بنوعها ← نسبة الوطنية؛ و«دوّر ٩٠°» يقلب الصورة — والخانات بمقاساتها لا تتغيّر.
  * (D200) وقوّة ديوان: «عدّة بطاقاتٍ بمسحةٍ واحدة» تدخل الورقة ولا تكتب في القاعدة؛ ومن ملفّ شخصٍ مصنوع «احفظ في ملفّه» مرّةً واحدة
  * (وما جاء من ملفّه «في ملفّه» أصلًا)، وبلا شخصٍ لا يظهر؛ والمسح العابر لا أثر له في `store/tmp` بعد الإغلاق.
+ * (D202) و«اطبع» بلا صورةٍ «اطبع» وحده، و«مستمسكٌ آخر» يُسمّى بضغطاتٍ حقيقية فيُرى اسمه في لوحته وتحته.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -97,6 +98,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await page.until(`return Boolean(document.querySelector('[data-id-sheet]'));`);
   let c = await cards();
   ok(`تُفتح الورقة والخانات الفارغة ظاهرةٌ تُنقر (${c.filter((x) => x.empty).length})`, c.length === 4 && c.every((x) => x.empty));
+  const idle = await page.eval(`const b = document.querySelector('[data-act="sheet-print"]'); return b.disabled + ' ' + b.innerText.trim();`);
+  ok(`و«اطبع» بلا صورةٍ معطّلٌ ويقول «اطبع» وحده (${idle})`, idle === 'true اطبع');
 
   // السكن يُحذف من لوحته: النقر على خانته يحدّده (ويعرض المصدر فيُغلق).
   const res = c[2].doc;
@@ -230,6 +233,26 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok(`و«اطبع» يقول عدد الأوراق (${await page.eval(`return document.querySelector('[data-act="sheet-print"]').innerText;`)})`, /اطبع ٤ أوراق/.test(await page.eval(`return document.querySelector('[data-act="sheet-print"]').innerText;`)));
 
   ok('وبلا شخصٍ لا «احفظ في ملفّه»', await page.eval(`return Boolean(document.querySelector('[data-doc-panel]')) && !document.querySelector('[data-act="doc-save-file"]');`));
+
+  // ── (D202) «مستمسكٌ آخر» يُسمّى: اسمه في لوحته وتحته ──────────────────────
+  nextImage(85.6, 53.98, [60, 60, 60]);
+  await click('[data-act="sheet-add"]');
+  await wait(300);
+  await click('[data-add-type="other"] [data-faces="1"]');
+  await pickFile('front');
+  await page.eval(`const el = document.querySelector('[data-doc-label]'); el.focus(); el.select(); return true;`);
+  await page.typeKeys('[data-doc-label]', 'شهادة المدرسة');
+  await page.eval(`document.activeElement.blur(); return true;`);
+  await wait(300);
+  const titled = await page.eval(`return document.querySelector('[data-doc-panel] h3')?.innerText ?? '';`);
+  await click('[data-act="doc-done"]');
+  await wait(200);
+  await click('[data-look="labels"]');
+  await wait(300);
+  const under = await page.eval(`return [...document.querySelectorAll('[data-id-sheet] [data-sheet-page] span')].some((s) => s.innerText === 'شهادة المدرسة');`);
+  ok(`و«مستمسكٌ آخر» يُسمّى: «${titled}» في لوحته وتحته`, titled === 'شهادة المدرسة' && under);
+  await click('[data-look="labels"]');
+  await wait(200);
 
   // ── (D200 أ) «عدّة بطاقاتٍ بمسحةٍ واحدة» تدخل الورقة ولا تكتب في القاعدة ──
   const docsBefore = new Set((await cards()).map((x) => x.doc)).size;
