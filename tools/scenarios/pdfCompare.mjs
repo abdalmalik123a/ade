@@ -142,7 +142,7 @@ export default async function scenario(page) {
   await wait(1200);
   await click('[data-act="citizen-id-sheet"]');
   await wait(1200);
-  ok('نسخ الهوية: الخانات الأربع ممتلئة', await page.eval(`return [...document.querySelectorAll('[data-id-sheet] [data-sheet-slot]')].filter((s) => s.querySelector('img')).length === 4;`));
+  ok('نسخ الهوية: الخانات الأربع ممتلئة', await page.eval(`return [...document.querySelectorAll('[data-id-sheet] [data-doc]')].filter((s) => s.querySelector('img')).length === 4;`));
   since = Date.now();
   await click('[data-act="sheet-pdf"]');
   files.idsheet = await savedPdf(since, 'idsheet');

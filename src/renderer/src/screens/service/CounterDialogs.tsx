@@ -9,7 +9,7 @@ import { count } from '@shared/arabic';
 import GenderReview from '../../components/GenderReview';
 import WhatsAppPasteDialog from '../WhatsAppPasteDialog';
 import { valuesFromMessage } from '@shared/whatsappParser';
-import IdSheetDialog from '../../components/IdSheetDialog';
+import IdDocsDialog from '../idSheet/IdDocsDialog';
 import type { Attachment } from '@shared/api';
 import type { Client } from '@shared/orders';
 import type { Toast, ToastAction } from '../../kit/useToast';
@@ -100,7 +100,7 @@ export default function CounterDialogs({ picker, setPicker, applyCitizen, school
         }}
       />
 
-      {idSheet && <IdSheetDialog citizenName={idSheet.name} attachments={idSheet.attachments} onClose={() => setIdSheet(null)} />}
+      {idSheet && <IdDocsDialog attachments={idSheet.attachments} citizenName={idSheet.name} start="id-sheet" onClose={() => setIdSheet(null)} />}
     </>
   );
 }

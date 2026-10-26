@@ -29,6 +29,21 @@ describe('ورقة المستمسكات (S47)', () => {
     expect(ob!.y).toBeCloseTo(of!.y + 53.98 + 6, 6);
   });
 
+  it('«نصفا الورقة» كالنمط الرسمي القديم: الوجه في وسط النصف الأعلى والظهر في وسط الأسفل، وخطّ الطيّ في المنتصف', () => {
+    const [f, b] = layoutDocs([filled('national', { arrange: 'halves' })]);
+    expect([f!.x, f!.y]).toEqual([(A4.w - 85.6) / 2, A4.h / 4 - 53.98 / 2]);
+    expect([b!.x, b!.y]).toEqual([(A4.w - 85.6) / 2, (3 * A4.h) / 4 - 53.98 / 2]);
+    expect(f!.fold && b!.fold).toBe(true);
+    const [html] = docSheetHtml([filled('national', { arrange: 'halves' })], { resolveUrl: (s) => s });
+    expect(html).toContain('data-fold');
+    expect(docSheetHtml([filled('national', { arrange: 'halves' })], { resolveUrl: (s) => s, fold: false })[0]).not.toContain('data-fold');
+    expect(docSheetHtml([filled('national')], { resolveUrl: (s) => s })[0]).not.toContain('data-fold');
+    // وما بعده يبدأ ورقةً تالية؛ والسكن لا يسعه نصف ورقة فيُرصف بغيره.
+    const two = layoutDocs([filled('national', { arrange: 'halves' }), filled('passport')]);
+    expect(two.at(-1)!.page).toBe(1);
+    expect(layoutDocs([filled('residence', { arrange: 'halves' })]).some((p) => p.fold)).toBe(false);
+  });
+
   it('مستمسكان بنوعين على ورقةٍ واحدة بمقاسيهما، داخل الهامش ولا يتداخلان', () => {
     const pl = layoutDocs([filled('passport'), filled('national')]);
     expect(pl.every((p) => p.page === 0 && p.scale === 1 && inside(p))).toBe(true);
@@ -111,7 +126,7 @@ describe('ورقة المستمسكات (S47)', () => {
   });
 
   it('البداية: «استنساخ هوية» بالوطنية، و«المستمسكات على ورقة» بالوطنية والسكن — ومستمسكات الشخص تملؤها', () => {
-    expect(startDocs('id-copy').map((d) => d.typeKey)).toEqual(['national']);
+    expect(startDocs('id-copy').map((d) => [d.typeKey, d.arrange])).toEqual([['national', 'halves']]);
     const docs = [...startDocs('id-sheet'), newDoc('passport')];
     expect(docs.map((d) => d.typeKey)).toEqual(['national', 'residence', 'passport']);
     const out = fillDocs(docs, [

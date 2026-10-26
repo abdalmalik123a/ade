@@ -2,8 +2,8 @@
  * سيناريو: ورقة المستمسكات المجمّعة (خطة Production، المرحلة ٥).
  *
  * مواطنٌ في ملفّه الوطنية والسكن وجهًا وظهرًا: تُفتح ورقته من ملفّه فتمتلئ الخانات الأربع بمستمسكاته
- * وحدها، وتُصفّ على ورقة A4 واحدة كلٌّ بمقاسه، وتُحفظ PDF صفحةً واحدة، وتُطبع على طابعة دور
- * «استنساخ المستمسكات» (بلا ورق: `DIWAN_TEST_PRINT_LOG`). وفي لوحة الأوامر بابها، وفي الشبّاك لصاحب العلاقة.
+ * وحدها، وتُصفّ على A4 كلٌّ بمقاسه — ومنذ «ورقة المستمسكات» (S47، D198) بجدول المالك: السكن ١٤٨×٢١٠ فظهره ورقةٌ ثانية —
+ * وتُحفظ PDF، وتُطبع على طابعة دور «استنساخ المستمسكات» (بلا ورق: `DIWAN_TEST_PRINT_LOG`). وفي الشبّاك بطاقتها.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,14 +46,14 @@ export default async function scenario(page, { shotsDir }) {
 
   const sheet = await page.eval(`
     const d = document.querySelector('[data-id-sheet]');
-    const slots = [...d.querySelectorAll('[data-sheet-slot]')].map((s) => Boolean(s.querySelector('img')));
-    const cards = [...d.querySelectorAll('[data-sheet-card]')].map((c) => c.style.width + 'x' + c.style.height);
-    return { slots, cards, pages: d.querySelectorAll('.print-page').length };
+    const slots = [...d.querySelectorAll('[data-doc]')].map((s) => Boolean(s.querySelector('img')));
+    const cards = [...d.querySelectorAll('[data-sheet-card]')].map((c) => c.style.width + 'x' + c.style.height + '@' + c.closest('[data-sheet-page]').dataset.sheetPage);
+    return { slots, cards, pages: d.querySelectorAll('[data-sheet-page]').length };
   `);
   if (shotsDir) await page.shot(join(shotsDir, 'id-sheet.png'));
   ok('تُفتح من ملفّ المواطن والخانات الأربع ممتلئةٌ بمستمسكاته', sheet.slots.length === 4 && sheet.slots.every(Boolean));
-  ok('على ورقة A4 واحدة', sheet.pages === 1);
-  ok('كلٌّ بمقاسه الحقيقي: الوطنية ٨٥٫٦×٥٤ والسكن ١٠٥×٧٤ ملم', JSON.stringify(sheet.cards) === JSON.stringify(['85.6mmx54mm', '85.6mmx54mm', '105mmx74mm', '105mmx74mm']));
+  ok(`كلٌّ بمقاسه بجدول المالك: الوطنية ٨٥٫٦×٥٣٫٩٨ ووجه السكن ١٤٨×٢١٠ على الأولى، وظهره على الثانية (${sheet.cards.join(' ')})`,
+    sheet.pages === 2 && JSON.stringify(sheet.cards) === JSON.stringify(['85.6mmx53.98mm@0', '85.6mmx53.98mm@0', '148mmx210mm@0', '148mmx210mm@1']));
 
   await page.eval(`document.querySelector('[data-act="sheet-pdf"]').click(); return true;`);
   await wait(3000);
@@ -61,7 +61,7 @@ export default async function scenario(page, { shotsDir }) {
   const pdf = pdfs.length ? readFileSync(join(DIR, pdfs[0])).toString('latin1') : '';
   const pageCount = (pdf.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   const box = /\/MediaBox\s*\[([^\]]*)\]/.exec(pdf)?.[1]?.trim() ?? '—';
-  ok(`وتُحفظ PDF صفحةً واحدة A4 (${pdfs.length} ملف، ${pageCount} صفحة، ${box})`, pdfs.length === 1 && pageCount === 1 && /^0 0 59[45]/.test(box));
+  ok(`وتُحفظ PDF بصفحتيها A4 (${pdfs.length} ملف، ${pageCount} صفحة، ${box})`, pdfs.length === 1 && pageCount === 2 && /^0 0 59[45]/.test(box));
 
   await page.eval(`return window.diwan.settings.set({ printRoles: { copies: { normal: 'ملوّنة الاستنساخ', color: null, dialog: false } } }).then(() => true);`);
   await page.eval(`document.querySelector('[data-act="sheet-print"]').click(); return true;`);
@@ -69,10 +69,12 @@ export default async function scenario(page, { shotsDir }) {
   const lines = existsSync(LOG) ? readFileSync(LOG, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
   ok('وتُطبع على طابعة دور «استنساخ المستمسكات» مباشرةً', lines.length === 1 && lines[0].printer === 'ملوّنة الاستنساخ' && lines[0].silent);
 
-  // خانةٌ تُزال، وأخرى تُضاف — والورقة تتبع.
-  await page.eval(`document.querySelector('[data-sheet-slot="res-back"] button[title^="أزل"]').click(); return true;`);
+  // السكن وجهًا واحدًا من لوحته — والورقة تتبع: ثلاث خاناتٍ على ورقةٍ واحدة.
+  await page.eval(`document.querySelectorAll('[data-id-sheet] [data-sheet-card]')[2].click(); return true;`);
+  await wait(300);
+  await page.eval(`document.querySelector('[data-act="doc-faces-1"]').click(); return true;`);
   await wait(400);
-  ok('وإزالة خانةٍ تُزيل بطاقتها من الورقة', (await page.eval(`return document.querySelectorAll('[data-id-sheet] [data-sheet-card]').length;`)) === 3);
+  ok('و«وجهٌ واحد» يُزيل ظهره من الورقة', (await page.eval(`const d = document.querySelector('[data-id-sheet]'); return d.querySelectorAll('[data-sheet-card]').length + '/' + d.querySelectorAll('[data-sheet-page]').length;`)) === '3/1');
   await page.eval(`document.querySelector('[data-act="id-sheet-close"]').click(); return true;`);
   await wait(300);
 

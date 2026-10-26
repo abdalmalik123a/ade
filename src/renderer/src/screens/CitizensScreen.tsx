@@ -10,8 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Attachment, CitizenDetail, CitizenStats, CitizenSummary, ScannerDevice } from '@shared/api';
 import CitizenForm from './CitizenForm';
-import IdDuplexDialog from './IdDuplexDialog';
-import IdSheetDialog from '../components/IdSheetDialog';
+import IdDocsDialog from './idSheet/IdDocsDialog';
 import DeskewModal from './DeskewModal';
 import CameraCapture from '../components/CameraCapture';
 import MultiCardDialog from '../components/MultiCardDialog';
@@ -292,20 +291,16 @@ export default function CitizensScreen({ onInsertIntoEditor, onRepeatDocument, o
         />
       )}
 
-      {idSheetOpen && (
-        <IdSheetDialog
-          citizenName={detail?.fullName}
+      {/* «ورقة المستمسكات» (S47) بمستمسكات الشخص — من «ورقة المستمسكات» و«استنساخ هوية». */}
+      {(idSheetOpen || idDuplexOpen) && (
+        <IdDocsDialog
           attachments={detail?.attachments ?? []}
-          onClose={() => setIdSheetOpen(false)}
-        />
-      )}
-
-      {idDuplexOpen && (
-        <IdDuplexDialog
-          isOpen={true}
-          onClose={() => setIdDuplexOpen(false)}
           citizenName={detail?.fullName}
-          attachments={detail?.attachments ?? []}
+          start={idSheetOpen ? 'id-sheet' : 'id-copy'}
+          onClose={() => {
+            setIdSheetOpen(false);
+            setIdDuplexOpen(false);
+          }}
         />
       )}
 

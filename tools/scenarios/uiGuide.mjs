@@ -45,7 +45,7 @@ export default async function scenario(page) {
   await page.key('Escape');
   ok('وEscape يغلقها', !(await has('[data-backup-dialog]')));
 
-  // ── الزبائن: «الأشخاص»، ونافذة «استنساخ هوية» بلا إنكليزية ─────────────
+  // ── الزبائن: «الأشخاص»، و«استنساخ هوية» يفتح «ورقة المستمسكات» (S47) بلا إنكليزية ─────────────
   await page.goto('citizens-identity-records');
   await wait(800);
   t = await text();
@@ -53,12 +53,19 @@ export default async function scenario(page) {
   await page.clickText('استنساخ هوية');
   await wait(700);
   t = await text();
-  ok('فُتحت «استنساخ هوية — الوجه والظهر»', t.includes('استنساخ هوية — الوجه والظهر'));
+  ok('فُتحت «ورقة المستمسكات»', t.includes('ورقة المستمسكات') && (await has('[data-id-sheet]')));
   ok('بلا إنكليزية: لا Front ولا Back ولا Duplex ولا 1:1', !/Front|Back|Duplex|1:1|صانع هويات/.test(t));
+  // الخانة الفارغة تُنقر فيُسأل من أين — و«افتح الصورة» فيه.
+  await page.eval(`document.querySelector('[data-id-sheet] [data-sheet-empty]').click(); return true;`);
+  await wait(400);
+  t = await text();
   ok('و«افتح الصورة» لا «استعراض من الحاسوب»', t.includes('افتح الصورة') && !t.includes('استعراض من الحاسوب'));
   await page.key('Escape');
   await wait(300);
-  ok('وEscape يغلقها — وقد كان لا يغلقها', !(await text()).includes('استنساخ هوية — الوجه والظهر'));
+  ok('وEscape يغلق العليا وحدها: سؤال المصدر، والورقة باقية', !(await has('[data-source-picker]')) && (await has('[data-id-sheet]')));
+  await page.key('Escape');
+  await wait(300);
+  ok('وEscape ثانيةً يغلق الورقة', !(await has('[data-id-sheet]')));
   ok('والشاشة تحتها باقية', (await text()).includes('أرشيف محلي مؤمّن'));
 
   // ── بحث الشبّاك يُمسح بـ✕ ظاهر ───────────────────────────────────────

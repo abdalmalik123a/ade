@@ -29,14 +29,17 @@ export default async function scenario(page, { profile }) {
   await wait(900);
   await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.includes('استنساخ هوية'))?.click(); return true;`);
   await wait(1200);
-  ok('انفتح حوار استنساخ الهوية', await page.eval(`return Boolean(document.querySelector('[data-act="scan-front"]'));`));
+  // «استنساخ هوية» يفتح ورقة المستمسكات (S47): الخانة الفارغة تُنقر فيُسأل من أين — والماسح أوّلًا.
+  ok('انفتحت ورقة المستمسكات من «استنساخ هوية»', await page.eval(`return Boolean(document.querySelector('[data-id-sheet] [data-sheet-empty][data-face="front"]'));`));
+  await click('[data-id-sheet] [data-sheet-empty][data-face="front"]');
+  await wait(400);
   await click('[data-act="scan-front"]');
   await wait(2200);
   const scanned = list('tmp');
   ok(`المسح عابر: في tmp لا في attachments (${scanned.join('، ')})`, scanned.length === 1 && !list('attachments').some((f) => f.startsWith('scan-')));
   // والصورة تُعرض من المخزن ما دام الحوار مفتوحًا
   ok('والحوار يعرضها ما دام مفتوحًا', await page.eval(`return [...document.querySelectorAll('img')].some((i) => i.src.includes('/tmp/scan-'));`));
-  await page.eval(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'إغلاق')?.click(); return true;`);
+  await click('[data-act="id-sheet-close"]');
   await wait(800);
   ok('وحين يُغلق الحوار يُحذف المسح من المخزن', list('tmp').length === 0);
 

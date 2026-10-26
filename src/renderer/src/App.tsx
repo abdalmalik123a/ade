@@ -5,11 +5,10 @@ import Sidebar from './shell/Sidebar';
 import Header from './shell/Header';
 import Onboarding, { type StartAction } from './shell/Onboarding';
 import ServiceScreen, { type RepeatRequest } from './screens/ServiceScreen';
-import IdDuplexDialog from './screens/IdDuplexDialog';
 import { NO_TARGET, renderScreen, type DesignRequest, type EditorHandle, type EditorStatus, type EditorTarget, type PapersHandle, type PdfIncoming, type PhotoIncoming, type WordIncoming } from './shell/routeScreens';
 import { openCounterTool, openInboxFile } from './shell/counterTools';
 import { tabBarFor } from './shell/TabBar';
-import IdSheetDialog from './components/IdSheetDialog';
+import IdDocsDialog from './screens/idSheet/IdDocsDialog';
 import AboutDialog from './components/AboutDialog';
 import WhatsNewDialog from './components/WhatsNewDialog';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -355,15 +354,18 @@ export default function App() {
       {/* الإغلاق يُفرغ ما لم يُحفظ أوّلًا، ويقول إنّه يأخذ النسخة التلقائية. */}
       <ClosingOverlay />
 
-      {idSheetOpen && <IdSheetDialog onClose={() => setIdSheetOpen(false)} />}
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
       {whatsNew && <WhatsNewDialog from={whatsNew.from} to={whatsNew.to} onClose={() => setWhatsNew(null)} />}
 
-      {idDuplexOpen && (
+      {/* «ورقة المستمسكات» (S47) من بطاقتي الشبّاك: «المستمسكات على ورقة» و«استنساخ هوية». */}
+      {(idSheetOpen || idDuplexOpen) && (
         <ToolNavProvider value={toolNav}>
-          <IdDuplexDialog
-            isOpen={true}
-            onClose={() => setIdDuplexOpen(false)}
+          <IdDocsDialog
+            start={idSheetOpen ? 'id-sheet' : 'id-copy'}
+            onClose={() => {
+              setIdSheetOpen(false);
+              setIdDuplexOpen(false);
+            }}
           />
         </ToolNavProvider>
       )}

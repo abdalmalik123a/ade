@@ -20,7 +20,8 @@ const GAP = 6;
 
 export type IdDocType = { key: string; label: string; w: number; h: number; faces: 1 | 2; words: string[]; note: string };
 export type Face = 'front' | 'back';
-export type Arrange = 'side' | 'over';
+/** جنبًا، أو فوق، أو «نصفا الورقة»: النمط الرسمي في «استنساخ هوية» — الوجه في وسط النصف الأعلى والظهر في وسط الأسفل وخطّ طيٍّ بينهما. */
+export type Arrange = 'side' | 'over' | 'halves';
 
 export type SheetDoc = {
   id: string;
@@ -32,13 +33,13 @@ export type SheetDoc = {
   faces: 1 | 2;
   front: string | null;
   back: string | null;
-  /** الظهر بجانب الوجه أم تحته. */
+  /** الظهر بجانب الوجه، أم تحته، أم في النصف الآخر من الورقة. */
   arrange: Arrange;
   copies: number;
 };
 
-/** موضع وجهٍ على ورقة: `doc` رقم المستمسك في القائمة، و`scale` < ١ لما صُغِّر ليسع الورقة. */
-export type DocPlacement = { doc: number; face: Face; copy: number; page: number; x: number; y: number; w: number; h: number; scale: number };
+/** موضع وجهٍ على ورقة: `doc` رقم المستمسك في القائمة، و`scale` < ١ لما صُغِّر ليسع الورقة، و`fold` لوجهٍ في نصف ورقةٍ يُطوى منتصفها. */
+export type DocPlacement = { doc: number; face: Face; copy: number; page: number; x: number; y: number; w: number; h: number; scale: number; fold?: true };
 
 export function docTypes(): IdDocType[] {
   return TYPES as IdDocType[];
@@ -68,9 +69,9 @@ export function newDoc(typeKey: string, patch: Partial<SheetDoc> = {}): SheetDoc
   };
 }
 
-/** «استنساخ هوية» يبدأ بالوطنية وحدها، و«المستمسكات على ورقة» بالوطنية والسكن (كافتراض الورقة القديمة). */
+/** «استنساخ هوية» يبدأ بالوطنية وحدها في نصفي الورقة (كافتراضه القديم)، و«المستمسكات على ورقة» بالوطنية والسكن (كافتراض الورقة القديمة). */
 export function startDocs(start: 'id-copy' | 'id-sheet'): SheetDoc[] {
-  return start === 'id-copy' ? [newDoc('national')] : [newDoc('national'), newDoc('residence')];
+  return start === 'id-copy' ? [newDoc('national', { arrange: 'halves' })] : [newDoc('national'), newDoc('residence')];
 }
 
 const has = (s: string, word: string) => normalizeFold(s).includes(normalizeFold(word));
@@ -101,7 +102,7 @@ export function fillDocs(docs: SheetDoc[], attachments: { docType: string; fileP
 }
 
 type Item = { face: Face; dx: number; dy: number; w: number; h: number; scale: number };
-type Unit = { doc: number; copy: number; w: number; h: number; items: Item[] };
+type Unit = { doc: number; copy: number; w: number; h: number; items: Item[]; fold?: true };
 
 const usable = (margin: number) => ({ w: A4.w - 2 * margin, h: A4.h - 2 * margin });
 
@@ -111,11 +112,29 @@ function single(doc: number, copy: number, face: Face, w: number, h: number, roo
   return { doc, copy, w: w * k, h: h * k, items: [{ face, dx: 0, dy: 0, w: w * k, h: h * k, scale: k }] };
 }
 
-/** وحدات المستمسك: بوجهيه بترتيبه، أو بالآخر، أو وجهان منفصلان. */
-function unitsOf(d: SheetDoc, doc: number, copy: number, duplex: boolean, gap: number, room: { w: number; h: number }): Unit[] {
+/** وحدات المستمسك: بوجهيه بترتيبه، أو بغيره، أو وجهان منفصلان. */
+function unitsOf(d: SheetDoc, doc: number, copy: number, duplex: boolean, gap: number, margin: number, room: { w: number; h: number }): Unit[] {
   if (d.faces === 1 || duplex) return [single(doc, copy, 'front', d.w, d.h, room)];
+  // نصفا الورقة: وحدةٌ بالورقة كلّها، والوجهان في وسطي نصفيها — ما لم يجاوز الوجه نصفها بهامشيه.
+  if (d.arrange === 'halves' && d.w <= room.w && d.h <= A4.h / 2 - 2 * margin) {
+    const dx = (room.w - d.w) / 2;
+    return [
+      {
+        doc,
+        copy,
+        w: room.w,
+        h: room.h,
+        fold: true,
+        items: [
+          { face: 'front', dx, dy: A4.h / 4 - d.h / 2 - margin, w: d.w, h: d.h, scale: 1 },
+          { face: 'back', dx, dy: (3 * A4.h) / 4 - d.h / 2 - margin, w: d.w, h: d.h, scale: 1 }
+        ]
+      }
+    ];
+  }
   const fits = (a: Arrange) => (a === 'side' ? 2 * d.w + gap <= room.w && d.h <= room.h : d.w <= room.w && 2 * d.h + gap <= room.h);
-  const arrange = fits(d.arrange) ? d.arrange : fits(d.arrange === 'side' ? 'over' : 'side') ? (d.arrange === 'side' ? 'over' : 'side') : null;
+  const order: Arrange[] = d.arrange === 'side' ? ['side', 'over'] : ['over', 'side'];
+  const arrange = order.find(fits) ?? null;
   if (!arrange) return [single(doc, copy, 'front', d.w, d.h, room), single(doc, copy, 'back', d.w, d.h, room)];
   // جنبًا: الوجه يمينًا كالقراءة، والظهر يساره.
   if (arrange === 'side')
@@ -161,7 +180,7 @@ export function layoutDocs(docs: SheetDoc[], opts: { duplex?: boolean; margin?: 
 
   docs.forEach((d, doc) => {
     for (let copy = 0; copy < Math.max(1, Math.floor(d.copies)); copy++) {
-      for (const unit of unitsOf(d, doc, copy, duplex, gap, room)) {
+      for (const unit of unitsOf(d, doc, copy, duplex, gap, margin, room)) {
         const page = pages[pages.length - 1]!;
         const row = page.at(-1);
         // في السطر القائم إن اتّسع عرضه، ولم يُطِل الصفحة فوق طاقتها.
@@ -189,7 +208,7 @@ export function layoutDocs(docs: SheetDoc[], opts: { duplex?: boolean; margin?: 
         const left = right - unit.w;
         const top = y + (row.height - unit.h) / 2;
         for (const it of unit.items) {
-          const at = { doc: unit.doc, copy: unit.copy, x: left + it.dx, y: top + it.dy, w: it.w, h: it.h, scale: it.scale };
+          const at = { doc: unit.doc, copy: unit.copy, x: left + it.dx, y: top + it.dy, w: it.w, h: it.h, scale: it.scale, ...(unit.fold ? { fold: true as const } : {}) };
           out.push({ ...at, face: it.face, page: front });
           if (twoSided && docs[unit.doc]!.faces === 2) out.push({ ...at, face: 'back', page: front + 1, x: A4.w - at.x - at.w });
         }
@@ -215,6 +234,8 @@ export type DocSheetOptions = {
   cutMarks?: boolean;
   labels?: boolean;
   watermark?: WatermarkOptions | null;
+  /** خطّ الطيّ في منتصف ورقةٍ فيها «نصفا الورقة» (مفعّلٌ كما كان في «استنساخ هوية»). */
+  fold?: boolean;
   /** حوافّ مدوّرة وظلّ: اختياريّان مطفآن (CHAIN م٨). */
   rounded?: boolean;
   shadow?: boolean;
@@ -235,7 +256,10 @@ export function docSheetHtml(docs: SheetDoc[], opts: DocSheetOptions): string[] 
   const filter = cardFilterCss(opts.colorFilter ?? 'color', opts.brightness ?? 1, opts.contrast ?? 1);
   const html: string[] = [];
   for (let p = 0; p < pageCount(docs, placements, opts.duplex); p++) {
-    let body = '';
+    let body =
+      opts.fold !== false && placements.some((pl) => pl.page === p && pl.fold)
+        ? `<div data-fold="" style="position:absolute;left:10mm;right:10mm;top:${mm(A4.h / 2)};height:0;border-top:0.2mm dashed #ccc"></div>`
+        : '';
     placements.forEach((pl, i) => {
       if (pl.page !== p) return;
       const d = docs[pl.doc]!;
