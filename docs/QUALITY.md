@@ -32,7 +32,7 @@
 `paper-letter.json` (`paperDoc`) · `psd-styles.psd` (`designPsdStyles`).
 **ومولّداتها:** `makeReleaseDb` و`makeDesignFixtures` و`makePsdFixture` في `tests/`، و`tools/mrz-fixture.mjs` و`tools/psd-layers.mjs` و`tools/aged-db/`،
 وتحويل النماذج في `tools/models/`؛ أمّا `tools/prepare-suits.py` فبلا غايةٍ منذ فُرّغ القاط المدمج ([`SUITS-NOTICE.md`](SUITS-NOTICE.md)).
-**والترحيل يُختبر بقاعدةٍ مُسنّة:** `migrations` يحذف الأعمدة الجديدة ويسأل أتقوم الشاشات. **ويُتخطّى `realPsd`** إن غاب ملفّ PSD الحقيقيّ عن الجهاز
+**والترحيل يُختبر بقاعدةٍ مُسنّة:** `migrations` يحذف الأعمدة الجديدة ويسأل أتقوم الشاشات. **ويُتخطّى `realPsd` والقسم ٥ من `nativePsdCompare`** (ر178) إن غاب ملفّ PSD الحقيقيّ عن الجهاز
 (مجلّده `DIWAN_REAL_PSD` وإلا «التنزيلات») — ملفّات المالك لا تدخل المستودع.
 
 ## ٣. أبواب الاختبار `DIWAN_TEST_*`

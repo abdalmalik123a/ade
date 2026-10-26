@@ -330,8 +330,9 @@ describe('محرّك Rust على المرجع الثابت (A20 A21، D104 D147)
     });
   });
 
-  describe('٥ — قوالب المالك الحقيقية (realPsd / GyanTech)', () => {
-    const realDir = process.env.DIWAN_REAL_PSD ?? join(homedir(), 'Downloads', 'Employee Photo Identity Card PSD Template By GyanTech');
+  // ملفّات المالك لا تدخل المستودع: يُتخطّى القسم صراحةً حيث يغيب مجلّدها، كـ`realPsd` (ر178، D196) — ومجلّدٌ بلا PSD يسقط كما كان.
+  const realDir = process.env.DIWAN_REAL_PSD ?? join(homedir(), 'Downloads', 'Employee Photo Identity Card PSD Template By GyanTech');
+  describe.skipIf(!existsSync(realDir))('٥ — قوالب المالك الحقيقية (realPsd / GyanTech)', () => {
     const files = existsSync(realDir) ? psdFiles(realDir) : [];
 
     it(`Rust يقرأ ملفّات المالك الحقيقية (${files.length} ملفًّا)`, () => {
