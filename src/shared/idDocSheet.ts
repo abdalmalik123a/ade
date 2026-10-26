@@ -9,7 +9,6 @@
  * والصورة **تُحتوى** في خانتها (`contain`) فلا يُقصّ طرفها بصمت — كان القديم يقصّ (`cover`).
  */
 import TYPES from './idDocTypes.json';
-import { cardFilterCss, type IdColorFilter } from './idCardDuplex';
 import { normalizeFold } from './arabic';
 import { escapeHtml } from './html';
 import { tiledWatermark, type WatermarkOptions } from './watermark';
@@ -17,6 +16,15 @@ import { tiledWatermark, type WatermarkOptions } from './watermark';
 export const A4 = { w: 210, h: 297 };
 const MARGIN = 10;
 const GAP = 6;
+
+export type IdColorFilter = 'color' | 'photocopy' | 'grayscale';
+
+/** مرشّح الصورة: ملوّنة، أو «نسخة تصوير» عالية التباين، أو رمادية (نُقل من `idCardDuplex.ts` بنصّه، D201). */
+export function cardFilterCss(colorFilter: IdColorFilter, brightness = 1, contrast = 1): string {
+  if (colorFilter === 'photocopy') return `grayscale(100%) contrast(150%) brightness(${Math.max(0.9, brightness * 1.05)})`;
+  if (colorFilter === 'grayscale') return `grayscale(100%) brightness(${brightness}) contrast(${contrast})`;
+  return `brightness(${brightness}) contrast(${contrast})`;
+}
 
 export type IdDocType = { key: string; label: string; w: number; h: number; faces: 1 | 2; words: string[]; note: string };
 export type Face = 'front' | 'back';

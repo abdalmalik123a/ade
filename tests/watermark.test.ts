@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { purposeWatermark, tiledWatermark, WATERMARK_PRESETS } from '../src/shared/watermark';
-import { generateIdDuplexHtml, type IdCardConfig } from '../src/shared/idCardDuplex';
+import { docSheetHtml, newDoc } from '../src/shared/idDocSheet';
 
 describe('العلامة المكرَّرة', () => {
   it('نصٌّ مائلٌ يتكرّر فوق عنصره كلّه', () => {
@@ -37,24 +37,17 @@ describe('العلامة المكرَّرة', () => {
 });
 
 describe('فوق نسخة الهوية', () => {
-  const config = (watermark: IdCardConfig['watermark']): IdCardConfig => ({
-    cardSize: { w: 85.6, h: 54 },
-    mode: 'stacked',
-    frontSrc: 'scans/front.png',
-    backSrc: 'scans/back.png',
-    colorFilter: 'color',
-    brightness: 1,
-    contrast: 1,
-    watermark
-  });
+  // ورقة المستمسكات (S47، D201): الوطنية بوجهيها في نصفي الورقة — كـ«استنساخ هوية» القديم.
+  const docs = [newDoc('national', { arrange: 'halves', front: 'scans/front.png', back: 'scans/back.png' })];
+  const sheet = (watermark: { text: string } | null) => docSheetHtml(docs, { resolveUrl: (s) => s, watermark });
 
   it('على الوجه والظهر معًا، وبعد الصورة لا قبلها — فوقها', () => {
-    const html = generateIdDuplexHtml(config({ text: 'نسخة لغرض مصرف الرشيد فقط' }), (s) => s).join('');
+    const html = sheet({ text: 'نسخة لغرض مصرف الرشيد فقط' }).join('');
     expect(html.match(/data-watermark-tiled/g)).toHaveLength(2);
     expect(html.indexOf('data-watermark-tiled')).toBeGreaterThan(html.indexOf('scans/front.png'));
   });
 
   it('وبلا علامةٍ لا شيء', () => {
-    expect(generateIdDuplexHtml(config(null), (s) => s).join('')).not.toContain('data-watermark-tiled');
+    expect(sheet(null).join('')).not.toContain('data-watermark-tiled');
   });
 });

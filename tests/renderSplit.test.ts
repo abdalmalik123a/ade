@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { splitPagesHtml } from '../src/main/services/renderSplit';
 import { impose, planSheets, renderPlan } from '../src/shared/design/imposition';
-import { idSheetHtml } from '../src/shared/idSheet';
-import { generateIdDuplexHtml } from '../src/shared/idCardDuplex';
 import { docSheetHtml, newDoc } from '../src/shared/idDocSheet';
 import { photoSheetsHtml } from '../src/shared/photoSheet';
 import { omrSheetHtml, type OmrSpec } from '../src/shared/omr';
@@ -21,14 +19,10 @@ describe('تجزئة علامات الطباعة بالأوراق — renderSpli
     expect(units.join('')).toBe(html);
   });
 
-  it('٢ — المولّد الثاني (idSheet): عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
-    const slots = Array.from({ length: 12 }, (_, i) => ({
-      id: `slot-${i}`,
-      label: `مستمسك ${i + 1}`,
-      sizeKey: 'id1',
-      src: 'test.png'
-    }));
-    const pages = idSheetHtml(slots, { resolveUrl: (s) => s });
+  it('٢ — المولّد الثاني (ورقة المستمسكات، idDocSheet): عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
+    // اثنتا عشرة بطاقةً بوجهٍ واحد (كان `idSheet` بخاناتها، ونُقل إلى legacy في D201).
+    const docs = Array.from({ length: 12 }, () => newDoc('national', { faces: 1, front: 'test.png' }));
+    const pages = docSheetHtml(docs, { resolveUrl: (s) => s });
     expect(pages.length).toBeGreaterThan(1);
 
     const html = pages.join('');
@@ -37,28 +31,7 @@ describe('تجزئة علامات الطباعة بالأوراق — renderSpli
     expect(units.join('')).toBe(html);
   });
 
-  it('٣ — المولّد الثالث (idCardDuplex): عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
-    const pages = generateIdDuplexHtml(
-      {
-        cardSize: { w: 85.6, h: 54 },
-        mode: 'duplex',
-        frontSrc: 'f1.png',
-        backSrc: 'b1.png',
-        colorFilter: 'color',
-        brightness: 1,
-        contrast: 1
-      },
-      (s) => s
-    );
-    expect(pages).toHaveLength(2);
-
-    const html = pages.join('');
-    const units = splitPagesHtml(html);
-    expect(units).toHaveLength(2);
-    expect(units.join('')).toBe(html);
-  });
-
-  it('٣ب — ورقة المستمسكات (idDocSheet) وعلى وجهي الورقة: عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
+  it('٣ — المولّد الثالث (ورقة المستمسكات «على وجهي الورقة»، كان idCardDuplex): عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
     const docs = [newDoc('national', { front: 'f.png', back: 'b.png', copies: 6 }), newDoc('passport', { front: 'p.png' })];
     for (const duplex of [false, true]) {
       const pages = docSheetHtml(docs, { resolveUrl: (s) => s, duplex });

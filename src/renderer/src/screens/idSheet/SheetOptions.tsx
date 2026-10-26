@@ -3,7 +3,7 @@
  * والحوافّ المدوّرة والظلّ (مطفآن)، و«على وجهي الورقة» (كان «طباعة على وجهي الورقة» في استنساخ الهوية)، والعلامة المائية.
  */
 import type { Dispatch, SetStateAction } from 'react';
-import type { IdColorFilter } from '@shared/idCardDuplex';
+import type { IdColorFilter } from '@shared/idDocSheet';
 import { toIndic } from '@shared/arabic';
 import IdWatermark from '../idDuplex/IdWatermark';
 

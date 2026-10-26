@@ -1,5 +1,5 @@
 /**
- * العلامة المائية فوق نسخة الهوية — فالنسخة المعطاة لجهةٍ لا تصلح لغيرها (تقسيم النافذة بعد ١٫٧٫٠) — منقولةٌ من `IdDuplexDialog` كما هي.
+ * العلامة المائية فوق نسخة الهوية — فالنسخة المعطاة لجهةٍ لا تصلح لغيرها (تقسيم النافذة بعد ١٫٧٫٠) — منقولةٌ من «استنساخ هوية» القديم كما هي، وتعمل اليوم في «ورقة المستمسكات» (S47، `screens/idSheet/SheetOptions.tsx`).
  */
 import type { Dispatch, SetStateAction } from 'react';
 import { purposeWatermark } from '@shared/watermark';

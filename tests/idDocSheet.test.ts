@@ -104,6 +104,20 @@ describe('ورقة المستمسكات (S47)', () => {
     expect(round).toContain('البطاقة الوطنية الموحّدة — الظهر');
   });
 
+  it('الأوراق بمقاس A4 الحقيقي، بمرشّح «نسخة تصوير» ومصادر الصور (من اختبار «استنساخ هوية» القديم)', () => {
+    const [html] = docSheetHtml([filled('national', { front: 'front.jpg', back: 'back.jpg' })], {
+      resolveUrl: (src) => `diwan://store/${src}`,
+      colorFilter: 'photocopy',
+      brightness: 1.1,
+      contrast: 1.2
+    });
+    expect(html).toContain('width:210mm');
+    expect(html).toContain('height:297mm');
+    expect(html).toContain('grayscale(100%)');
+    expect(html).toContain('diwan://store/front.jpg');
+    expect(html).toContain('diwan://store/back.jpg');
+  });
+
   it('«على وجهي الورقة»: الوجوه في ورقة، وكلّ ظهرٍ في التالية في موضعه معكوسًا أفقيًّا', () => {
     // نسختان من الوطنية في سطرٍ واحد (لا في وسط الورقة، فالعكس يُرى) والجواز تحتهما.
     const docs = [filled('national', { copies: 2 }), filled('passport')];

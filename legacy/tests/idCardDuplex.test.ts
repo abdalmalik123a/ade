@@ -1,3 +1,4 @@
+// انتهى — البديل: screens/idSheet/IdDocsDialog.tsx و@shared/idDocSheet («ورقة المستمسكات»، S47) — الأمر D197–D201 — ٢٦ ت١ ٢٠٢٦
 import { describe, expect, it } from 'vitest';
 import { generateIdDuplexHtml, layoutIdCards, STANDARD_CARD_SIZES } from '../src/shared/idCardDuplex';
 

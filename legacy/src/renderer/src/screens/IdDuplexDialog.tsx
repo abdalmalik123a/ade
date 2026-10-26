@@ -1,3 +1,4 @@
+// انتهى — البديل: screens/idSheet/IdDocsDialog.tsx و@shared/idDocSheet («ورقة المستمسكات»، S47) — الأمر D197–D201 — ٢٦ ت١ ٢٠٢٦
 /**
  * صانع هويات الوجه والظهر (ID Duplex 1:1 Dialog).
  *

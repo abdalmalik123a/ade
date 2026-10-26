@@ -7,8 +7,7 @@
  */
 import { useMemo, useState } from 'react';
 import type { Attachment } from '@shared/api';
-import { docSheetHtml, faceLabel, fillDocs, layoutDocs, newDoc, pageCount, startDocs, type Face, type SheetDoc } from '@shared/idDocSheet';
-import { cardFilterCss } from '@shared/idCardDuplex';
+import { cardFilterCss, docSheetHtml, faceLabel, fillDocs, layoutDocs, newDoc, pageCount, startDocs, type Face, type SheetDoc } from '@shared/idDocSheet';
 import { WATERMARK_PRESETS } from '@shared/watermark';
 import { count, countIn } from '@shared/arabic';
 import { useTransientScans } from '../../lib/transientScans';
