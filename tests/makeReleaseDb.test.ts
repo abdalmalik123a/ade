@@ -11,20 +11,20 @@ import { readFileSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { it } from 'vitest';
 import Database from 'better-sqlite3';
-import { addAttachment, ensureSearchColumn, saveCitizen } from '../src/main/services/citizens';
-import { prepareLetterheads, saveLetterhead } from '../src/main/services/letterheads';
-import { prepareTemplates, saveDraft, saveTemplate } from '../src/main/services/templates';
-import { prepareDocuments, voidDocument } from '../src/main/services/documents';
+import { addAttachment, saveCitizen } from '../src/main/services/citizens';
+import { saveLetterhead } from '../src/main/services/letterheads';
+import { saveDraft, saveTemplate } from '../src/main/services/templates';
+import { voidDocument } from '../src/main/services/documents';
 import { issueBatch, issueDocument, issueTransaction } from '../src/main/services/issue';
 import { addPrintedCopy, recordPrint } from '../src/main/services/printRecords';
 import { saveOrder, setOrderStatus } from '../src/main/services/orders';
 import { recordWork } from '../src/main/services/workLog';
-import { prepareClips, saveClip } from '../src/main/services/clips';
-import { prepareClients, saveClient } from '../src/main/services/clients';
-import { prepareLearning } from '../src/main/services/learning';
+import { saveClip } from '../src/main/services/clips';
+import { saveClient } from '../src/main/services/clients';
 import { prepareSearch } from '../src/main/services/searchIndex';
 import { saveQuestion } from '../src/main/services/questionBank';
 import { stampDataVersion } from '../src/main/services/dataVersion';
+import { runMigrations } from '../src/main/db/migrations';
 import { normalizeLayout } from '../src/shared/letterhead';
 import { docFromLegacy, run } from '../src/shared/doc';
 import { normalizePrintRoles } from '../src/shared/printRoles';
@@ -47,13 +47,8 @@ it.runIf(process.env['RELEASE_OUT'])('قاعدة الإصدار المبيع', (
   db.pragma('journal_mode = DELETE');
   db.pragma('foreign_keys = ON');
   for (const f of ['schema.sql', 'search.sql']) db.exec(readFileSync(join(process.cwd(), 'src', 'main', 'db', f), 'utf8'));
-  ensureSearchColumn(db);
-  prepareDocuments(db);
-  prepareLetterheads(db);
-  prepareTemplates(db);
-  prepareClips(db);
-  prepareClients(db);
-  prepareLearning(db);
+  // كما يقلع البرنامج (D195): الترقيات المرقّمة كلّها ثم فهرس البحث — لا نداءاتٌ بيدٍ تتخلّف عن المشغّل (A17).
+  runMigrations(db);
   prepareSearch(db);
 
   const citizen = (patch: Partial<CitizenInput>): CitizenInput => ({

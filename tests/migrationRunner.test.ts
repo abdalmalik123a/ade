@@ -13,6 +13,7 @@ import { MIGRATIONS, NEWER_SCHEMA, runMigrations, schemaLevel } from '../src/mai
 import { configureConnection } from '../src/main/db/pragmas';
 import { readDataVersion, runBootSequence } from '../src/main/services/dataVersion';
 import { prepareSearch } from '../src/main/services/searchIndex';
+import { compareVersions } from '../src/shared/version';
 
 const LAST = MIGRATIONS.at(-1)!.n;
 const FIXTURES = join(__dirname, 'fixtures');
@@ -107,7 +108,11 @@ describe.each(OLD)('قاعدة %s', (name) => {
     const fresh = columnsOf(boot(join(mkdtempSync(join(tmpdir(), 'diwan-migrate-')), 'diwan.db')));
     const file = copyOf(name);
     const pre = new Database(file, { readonly: true });
-    expect(pre.pragma('user_version', { simple: true })).toBe(0);
+    // ما قبل المشغّل (حتى ١٫٨٫٠ والمعمَّرة) بمستوى صفر، وما كتبه إصدارٌ بالمشغّل (١٫٩٫٠ فما بعد) بمستواه يومها — لا صفر ولا فوق آخر خطوة (D195).
+    const level = pre.pragma('user_version', { simple: true }) as number;
+    const sold = /^release-(.+)\.db$/.exec(name)?.[1];
+    if (sold && compareVersions(sold, '1.9.0') >= 0) expect([name, level > 0 && level <= LAST]).toEqual([name, true]);
+    else expect([name, level]).toEqual([name, 0]);
     const rows = countsOf(pre);
     pre.close();
 
