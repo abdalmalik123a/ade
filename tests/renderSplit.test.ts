@@ -3,6 +3,7 @@ import { splitPagesHtml } from '../src/main/services/renderSplit';
 import { impose, planSheets, renderPlan } from '../src/shared/design/imposition';
 import { idSheetHtml } from '../src/shared/idSheet';
 import { generateIdDuplexHtml } from '../src/shared/idCardDuplex';
+import { docSheetHtml, newDoc } from '../src/shared/idDocSheet';
 import { photoSheetsHtml } from '../src/shared/photoSheet';
 import { omrSheetHtml, type OmrSpec } from '../src/shared/omr';
 import { tiledWatermark, WATERMARK_PRESETS } from '../src/shared/watermark';
@@ -55,6 +56,18 @@ describe('تجزئة علامات الطباعة بالأوراق — renderSpli
     const units = splitPagesHtml(html);
     expect(units).toHaveLength(2);
     expect(units.join('')).toBe(html);
+  });
+
+  it('٣ب — ورقة المستمسكات (idDocSheet) وعلى وجهي الورقة: عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
+    const docs = [newDoc('national', { front: 'f.png', back: 'b.png', copies: 6 }), newDoc('passport', { front: 'p.png' })];
+    for (const duplex of [false, true]) {
+      const pages = docSheetHtml(docs, { resolveUrl: (s) => s, duplex });
+      expect(pages.length).toBeGreaterThan(1);
+      const html = pages.join('');
+      const units = splitPagesHtml(html);
+      expect(units).toHaveLength(pages.length);
+      expect(units.join('')).toBe(html);
+    }
   });
 
   it('٤ — المولّد الرابع (photoSheet): عدد الوحدات يساوي عدد الأوراق وجمعها يساوي الأصل', () => {
