@@ -91,7 +91,7 @@
 - `sheetPage` — المقاس يرافق العلامات. · `sheetStyle` — الأنماط مع الكتاب. · `imposition` — الترتيب على الورق والدفعة والرمز في علامات الطباعة.
 - `imageSize` — المقاس من الملفّ (و`pHYs`). · `receipt` — الوصل. · `photoSheet` — ورق الصور.
 
-**ويشترك في حراسته:** `designs` (`designImage` للصورة، و`batches`) · `records` (`documents` والطبعة حين تتمّ) · `editor` (`issue`) · `scan` (`idSheet` و`idCardDuplex`) ·
+**ويشترك في حراسته:** `designs` (`designImage` للصورة، و`batches`) · `records` (`documents` والطبعة حين تتمّ) · `editor` (`issue`) · `scan` (`idDocSheet`) ·
 `counter` (`receipt` و`orders`) · ولقطات الرسّام (`rendererSnapshots`، QUALITY §٢).
 
 ## ٨. دروسه الميدانية
