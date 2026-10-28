@@ -139,6 +139,28 @@ describe('الحزمة المختومة', () => {
     expect(body.includes(PNG.subarray(8, 60))).toBe(false);
   });
 
+  it.each(['templates', 'clips', 'letterheads'] as const)('قسم %s يحمل ملف محتوى واحدًا والختم كما كان', async (content) => {
+    const path = join(DIR, `${content}.diwanpack`);
+    writeFileSync(path, 'حمولة محتوى اختبار — لا تُفكّ هنا');
+    const out = join(DIR, `${content}.diwanseal`);
+    await core.writeSealedPack({ items: [{ name: 'قسم تجريبي', path }], content, kind: 'first', title: 'قسم', privateKey: owner.privateKey, out });
+    const opened = await open(out);
+    expect(opened.head.content).toBe(content);
+    expect(opened.items.map((i) => i.ext)).toEqual(['diwanpack']);
+    expect(readFileSync(opened.items[0]!.path).equals(readFileSync(path))).toBe(true);
+    opened.cleanup();
+  });
+
+  it('قائمة القطع توافق نوع الرأس: لا PNG تحت رأس قسم، ولا ملفا محتوى، ولا محتوى في القاط', async () => {
+    const png = { name: 'قاط', ext: 'png', size: 10, sha256: 'a'.repeat(64) };
+    const pack = { ...png, ext: 'diwanpack' };
+    expect(validItems({ items: [png] }, 10, 'templates')).toBeNull();
+    expect(validItems({ items: [pack, pack] }, 20, 'clips')).toBeNull();
+    expect(validItems({ items: [pack] }, 10)).toBeNull();
+    await expect(core.writeSealedPack({ items: [{ name: 'قاط', path: join(DIR, 'قاط أسود.png') }], content: 'templates', kind: 'first', title: 'قسم', privateKey: owner.privateKey, out: join(DIR, 'bad.diwanseal') })).rejects.toThrow('ملف القسم');
+    expect(validItems({ items: [pack] }, 10, 'letterheads')).toHaveLength(1);
+  });
+
   it('والحدود: قطعةٌ فوق الحدّ، وقائمةٌ لا يطابق مجموعها ما بقي ← تُرفض', () => {
     const it1 = { name: 'قاط', ext: 'png', size: 10, sha256: 'a'.repeat(64) };
     expect(validItems({ items: [it1] }, 10)).toHaveLength(1);

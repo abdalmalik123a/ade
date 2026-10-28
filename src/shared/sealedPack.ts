@@ -18,7 +18,8 @@ export const SEAL_EXT = 'diwanseal';
 export const SEAL_HKDF = { salt: 'diwan-seal-v1', info: 'content' } as const;
 
 /** ما في الحزمة: القاط اليوم، والمعاملات والترويسات والكليشات في م١٠. */
-export type SealContent = 'suits';
+export type ContentSection = 'templates' | 'clips' | 'letterheads';
+export type SealContent = 'suits' | ContentSection;
 /** «حزمةٌ أولى» تعمل في التجربة، و«حزمة المشتري» في ديوانٍ مفعّل وحده (ر182). */
 export type SealKind = 'first' | 'buyer';
 export type SealHead = {
@@ -35,11 +36,13 @@ export type SealHead = {
   size: number;
   sha256: string;
 };
-export type SealItemExt = 'png' | 'psd';
+export type SealItemExt = 'png' | 'psd' | 'diwanpack';
 export type SealItem = { name: string; ext: SealItemExt; size: number; sha256: string };
 
-export const SEAL_CONTENTS: readonly SealContent[] = ['suits'];
-export const SEAL_EXTS: readonly SealItemExt[] = ['png', 'psd'];
+export const CONTENT_SECTIONS: readonly ContentSection[] = ['templates', 'clips', 'letterheads'];
+export const SEAL_CONTENTS: readonly SealContent[] = ['suits', ...CONTENT_SECTIONS];
+export const SECTION_LABEL: Record<ContentSection, string> = { templates: 'المعاملات', clips: 'الكليشات', letterheads: 'الترويسات' };
+export const SEAL_EXTS: readonly SealItemExt[] = ['png', 'psd', 'diwanpack'];
 export const SEAL_LIMITS = { pack: 2 * 1024 ** 3, items: 2000, item: 200 * 1024 ** 2, name: 80, head: 64 * 1024, list: 4 * 1024 ** 2, signature: 1024 } as const;
 
 export const SEAL_ERRORS = {
@@ -74,14 +77,16 @@ export function validHead(x: unknown): SealHead | null {
 }
 
 /** قائمة القطع بعد الفكّ — والمجموع يطابق ما بقي من الحمولة. */
-export function validItems(x: unknown, bytesLeft: number): SealItem[] | null {
+export function validItems(x: unknown, bytesLeft: number, content: SealContent = 'suits'): SealItem[] | null {
   const items = (x as { items?: unknown } | null)?.items;
   if (!Array.isArray(items) || items.length === 0 || items.length > SEAL_LIMITS.items) return null;
+  if (content !== 'suits' && items.length !== 1) return null;
   let total = 0;
   const out: SealItem[] = [];
   for (const it of items as Partial<SealItem>[]) {
     const name = cleanName(it?.name);
     if (!name || !SEAL_EXTS.includes(it?.ext as SealItemExt)) return null;
+    if (content === 'suits' ? it.ext === 'diwanpack' : it.ext !== 'diwanpack') return null;
     if (!Number.isSafeInteger(it?.size) || it!.size! <= 0 || it!.size! > SEAL_LIMITS.item) return null;
     if (typeof it?.sha256 !== 'string' || it.sha256.length !== 64 || !HEX.test(it.sha256)) return null;
     total += it.size!;

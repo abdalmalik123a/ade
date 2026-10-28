@@ -133,7 +133,7 @@ export async function openSealedPack(path: string, publicKeys: readonly string[]
     } finally {
       closeSync(pfd);
     }
-    const items = validItems(list, plainSize - 4 - listLen!) ?? fail(SEAL_ERRORS.tampered);
+    const items = validItems(list, plainSize - 4 - listLen!, head.content) ?? fail(SEAL_ERRORS.tampered);
     const out: OpenedSeal['items'] = [];
     let at = 4 + listLen!;
     for (const [i, it] of items.entries()) {

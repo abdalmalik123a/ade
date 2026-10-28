@@ -163,7 +163,8 @@ export async function importContent(
   path: string,
   db: Database,
   storeRoot: string,
-  workDir: string
+  workDir: string,
+  check?: (pkg: ContentPackage) => void
 ): Promise<Omit<ContentImportResult, 'path'> & { addedIds: number[] }> {
   let entries;
   try {
@@ -194,6 +195,9 @@ export async function importContent(
   if (typeof pkg.format !== 'number' || pkg.format > FORMAT || newerDoc) {
     throw new Error(`الحزمة من إصدارٍ أحدث (${String(pkg.appVersion)}) — حدّث البرنامج ثم استوردها`);
   }
+
+  // D208: القسم المختوم يُفحص كاملًا قبل أن تُكتب صورة أو صف؛ القديم بلا فحص إضافي.
+  check?.(pkg);
 
   // الصور أوّلًا: باسم بصمتها، فما وُجد منها هو هو ولا يُكتب فوقه.
   let files = 0;

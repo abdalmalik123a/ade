@@ -510,6 +510,7 @@ const SEAL_MAGIC = 'DIWANSEAL1\n';
 const SEAL_CONTEXT = 'diwan-seal\n';
 const SEAL_ITEM = 200 * 1024 ** 2;
 const SEAL_ITEMS = 2000;
+const SEAL_CONTENT_EXTS = { suits: ['png', 'psd'], templates: ['diwanpack'], clips: ['diwanpack'], letterheads: ['diwanpack'] };
 export const SEAL_KINDS = { first: 'حزمةٌ أولى', buyer: 'حزمة المشتري' };
 
 /** اسم ملفّ الحزمة من عنوانها (D207): بلا فواصل المسار ومحارف Windows الخاصة. */
@@ -543,14 +544,16 @@ export function sealItemsFrom(dir) {
  * بمفتاح التحديث الخاصّ. الحمولة تُشفَّر تدفّقًا إلى ملفٍّ مؤقّت وتُحسب بصمتها، ثم الرأس والختم والحمولة.
  */
 export async function writeSealedPack({ items, content = 'suits', kind, title, privateKey, out }) {
+  if (!Object.hasOwn(SEAL_CONTENT_EXTS, content)) throw new KeyToolError('اختر محتوى الحزمة');
+  if (content !== 'suits' && items?.length !== 1) throw new KeyToolError('حزمة القسم ملف محتوى واحد');
   if (kind !== 'first' && kind !== 'buyer') throw new KeyToolError('اختر نوع الحزمة: أولى أو للمشتري');
   const name = String(title ?? '').trim().slice(0, 80);
   if (!name) throw new KeyToolError('اكتب عنوان الحزمة');
   if (!items?.length || items.length > SEAL_ITEMS) throw new KeyToolError('القطع من واحدةٍ إلى ألفين');
   const list = [];
   for (const it of items) {
-    const ext = /\.psd$/i.test(it.path) ? 'psd' : /\.png$/i.test(it.path) ? 'png' : null;
-    if (!ext) throw new KeyToolError(`«${it.name}» ليست PNG ولا PSD`);
+    const ext = /\.diwanpack$/i.test(it.path) ? 'diwanpack' : /\.psd$/i.test(it.path) ? 'psd' : /\.png$/i.test(it.path) ? 'png' : null;
+    if (!SEAL_CONTENT_EXTS[content].includes(ext)) throw new KeyToolError(content === 'suits' ? `«${it.name}» ليست PNG ولا PSD` : 'اختر ملف القسم الذي صدّره ديوان (diwanpack)');
     const size = statSync(it.path).size;
     if (!size || size > SEAL_ITEM) throw new KeyToolError(`«${it.name}» فارغةٌ أو أكبر من ٢٠٠ م.ب`);
     const { sha256 } = await hashAndCrc(it.path);
