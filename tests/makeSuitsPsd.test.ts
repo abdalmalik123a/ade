@@ -7,7 +7,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { it } from 'vitest';
-import { layeredPsd, tyshFull, type Layer, type Rect } from './psdBuilder';
+import { layeredPsd, tyshFull, u16, u32, type Layer, type Rect } from './psdBuilder';
 import { BLACK, NAVY, SUITS_H, SUITS_W, suitShape } from './suitsPsdShapes';
 
 it.runIf(process.env['PSD_FIXTURE_OUT'])('suits-layers.psd', () => {
@@ -28,4 +28,23 @@ it.runIf(process.env['PSD_FIXTURE_OUT'])('suits-layers.psd', () => {
     layers
   });
   writeFileSync(process.env['PSD_FIXTURE_OUT']!, file);
+});
+
+/** مثال D207: بلا طبقات، وRGB مع قناة شفافية رابعة في المسطّحة — مصنوعٌ بالكامل. */
+it.runIf(process.env['PSD_FLAT_OUT'])('suits-flat.psd', () => {
+  const w = 100, h = 80;
+  const head = Buffer.alloc(26);
+  head.write('8BPS', 0, 'ascii');
+  head.writeUInt16BE(1, 4);
+  head.writeUInt16BE(4, 12);
+  head.writeUInt32BE(h, 14);
+  head.writeUInt32BE(w, 18);
+  head.writeUInt16BE(8, 22);
+  head.writeUInt16BE(3, 24);
+  const planes = Array.from({ length: 4 }, (_, c) => {
+    const plane = Buffer.alloc(w * h, 40);
+    if (c === 3) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) plane[y * w + x] = y > 30 && x > 20 && x < 80 && (x !== 50 || y !== 40) ? 255 : 0;
+    return plane;
+  });
+  writeFileSync(process.env['PSD_FLAT_OUT']!, Buffer.concat([head, u32(0), u32(0), u32(0), u16(0), ...planes]));
 });

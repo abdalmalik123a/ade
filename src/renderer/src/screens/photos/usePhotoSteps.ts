@@ -224,7 +224,10 @@ export function usePhotoSteps(
         if (!p) return;
         setCustomSuits(await window.diwan.photos.suits());
         setSuitTab('custom');
-        say(`أُضيف ${toIndic(p.added.length)} قاط من «${p.title}»${p.skipped ? ` — وتُخطّي ${toIndic(p.skipped)} كان في القاط` : ''}`);
+        say(
+          `أُضيف ${toIndic(p.added.length)} قاط من «${p.title}»${p.skipped ? ` — وتُخطّي ${toIndic(p.skipped)} كان في القاط` : ''}${p.failed ? ` — وتعذّر ${toIndic(p.failed)}: ${p.reason ?? ''}` : ''}`,
+          p.failed > 0 && p.added.length === 0
+        );
         const [first] = p.added;
         if (first) await chooseSuit(first.id, `diwan://store/${first.path}`);
         return;

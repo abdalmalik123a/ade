@@ -2,6 +2,7 @@
  * الحزمة المختومة (S48، D203): كاتب أداة المالك (`tools/keytool/core.mjs`) وقارئ ديوان (`services/sealedPack.ts`) معًا —
  * ذهابٌ وإياب، ورفضُ ما لم يختمه المالك وما عُبث به وما ليس حزمة، ولا يصلح توقيع تحديثٍ ختمًا، والحمولة لا تُقرأ بلا المفتاح.
  */
+import { execFileSync } from 'node:child_process';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -48,6 +49,27 @@ function parts(buf: Buffer) {
 }
 
 describe('الحزمة المختومة', () => {
+  it('اسم الملفّ من العنوان: محارف Windows والحدود والفارغ، والعنوان نفسه يبقى كما هو', () => {
+    expect(core.sealFileName('قاط/٢٠٢٦: الأوّل')).toBe('قاط ٢٠٢٦ الأوّل.diwanseal');
+    expect(core.sealFileName(' .. قاط\\*?"<>|\u0000\u001f\u007f . ')).toBe('قاط.diwanseal');
+    expect(core.sealFileName(' .. /: . ')).toBe('حزمة.diwanseal');
+    expect(core.sealFileName('قاط المكتب')).toBe('قاط المكتب.diwanseal');
+  });
+
+  it('keygen seal بلا --out: عنوان فيه فواصل مسار يُصنع باسم نظيف ويحتفظ بعنوانه', async () => {
+    const key = join(DIR, 'test-key.pem');
+    writeFileSync(key, owner.privateKey.export({ type: 'pkcs8', format: 'pem' }));
+    const title = 'قاط/٢٠٢٦: الأوّل';
+    const pieces = mkdtempSync(join(DIR, 'cli-'));
+    writeFileSync(join(pieces, 'قاط.png'), PNG);
+    execFileSync(process.execPath, [join(__dirname, '../tools/license/keygen.mjs'), 'seal', pieces, '--kind', 'first', '--title', title, '--key', key]);
+    const out = join(DIR, core.sealFileName(title));
+    const opened = await open(out);
+    expect(opened.head.title).toBe(title);
+    opened.cleanup();
+    rmSync(out);
+  });
+
   it('ذهابٌ وإياب: الرأس كما كُتب، والقطعتان بأسمائهما وبايتاتهما، والمؤقّت يُحذف', async () => {
     const opened = await open(await seal({ kind: 'buyer', title: 'قاط المشتري' }));
     expect([opened.head.content, opened.head.kind, opened.head.title, opened.head.app]).toEqual(['suits', 'buyer', 'قاط المشتري', 'diwan']);

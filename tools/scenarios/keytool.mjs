@@ -8,7 +8,7 @@
  * و«حزمة قاط» (S48، D206): بلا مفتاح تحديثٍ تُرفض، وبعده تُصنع مختومةً به (`buyer` وعنوانها) فيتحقّق ختمها بعامّه.
  */
 import { generateKeyPairSync, verify } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const appDir = 'tools/keytool';
@@ -256,7 +256,7 @@ export default async function scenario(page, { shotsDir }) {
   ok('وملفّ التحديث بعده بتوقيعين: مفتاح التراخيص للقديم ومفتاح التحديث للجديد', dualOk);
 
   // ── حزمة قاط بعد مفتاح التحديث (D206) ─────────────────────────────
-  const sealed = await page.eval(`return await window.keytool.makeSeal({ dir: ${JSON.stringify(join(DIR, 'قطع'))}, kind: 'buyer', title: 'قاط المشتري' });`);
+  const sealed = await page.eval(`return await window.keytool.makeSeal({ dir: ${JSON.stringify(join(DIR, 'قطع'))}, kind: 'buyer', title: 'قاط/٢٠٢٦: الأوّل' });`);
   let sealOk = false;
   if (sealed.ok && existsSync(sealed.value.out)) {
     const f = readFileSync(sealed.value.out);
@@ -266,10 +266,13 @@ export default async function scenario(page, { shotsDir }) {
     const sigLen = f.readUInt32BE(magic + 4 + headLen);
     const sig = f.subarray(magic + 8 + headLen, magic + 8 + headLen + sigLen);
     const h = JSON.parse(head.toString('utf8'));
-    sealOk = f.subarray(0, magic).toString() === 'DIWANSEAL1\n' && h.kind === 'buyer' && h.title === 'قاط المشتري' && sealed.value.items === 2 &&
+    sealOk = f.subarray(0, magic).toString() === 'DIWANSEAL1\n' && h.kind === 'buyer' && h.title === 'قاط/٢٠٢٦: الأوّل' && sealed.value.items === 2 &&
       verify(null, Buffer.concat([Buffer.from('diwan-seal\n'), head]), ukPub, sig) && !verify(null, Buffer.concat([Buffer.from('diwan-seal\n'), head]), publicKey, sig);
   }
   ok(`و«حزمة قاط» تُصنع بجانب المجلّد مختومةً بمفتاح التحديث لا بمفتاح التراخيص (${sealed.ok ? sealed.value.items + ' قطعة' : sealed.error})`, sealOk);
+  ok('وعنوان «قاط/٢٠٢٦: الأوّل» يُنتج اسم ملفّ نظيفًا بلا ملفّ شاذّ بجانبه',
+    sealed.ok && sealed.value.out === join(DIR, 'قاط ٢٠٢٦ الأوّل.diwanseal') &&
+    readdirSync(DIR).filter((f) => f.startsWith('قاط')).join(',') === 'قاط ٢٠٢٦ الأوّل.diwanseal');
   await shot('3b-update-key');
 
   // ── كلمة السرّ ────────────────────────────────────────────────────

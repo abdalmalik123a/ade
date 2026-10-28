@@ -16,6 +16,7 @@ import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
 import { setNativePsdReader } from '../services/psd';
 import { createNativePsdReader, loadNativePsd } from './nativePsd';
+import { suitsFromPsd } from '../services/suitsPsd';
 
 const { addon: initialAddon } = loadNativePsd();
 if (initialAddon) {
@@ -81,7 +82,9 @@ export const JOBS: { [J in WorkerJob]: Job<J> } = {
       return name;
     });
     return { template, images: [...images].map(([name, bytes]) => ({ path: name, bytes })) };
-  }
+  },
+  // قاط Photoshop هنا حيث المحرّك (D207): كان يُنادى في الرئيسة فلا تُقرأ المسطّحة («تحتاج محرّك ديوان»).
+  suitsFromPsd: async ({ path, name }) => ({ suits: suitsFromPsd(new Uint8Array(await readFile(path)), name) })
 };
 
 /** باب اختبار (D55): م.ث يتأخّرها العامل قبل كلّ عملٍ غير «أنا هنا» — فتُرى المهلة والإلغاء بلا صورةٍ ضخمة. */

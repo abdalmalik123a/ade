@@ -314,6 +314,21 @@ export default async function scenario(page, { shotsDir }) {
   const psdWorn = await until(`(() => { const b = [...document.querySelectorAll('[data-suit^="custom-"]')]; return b.length === 4 && b[2].className.includes('border-secondary'); })()`, 8000);
   const psdNames = (await page.eval(`return (await window.diwan.photos.suits()).map((s) => s.name);`)).slice(2);
   ok(`وملفّ Photoshop بطبقتين مفرّغتين قاطان باسميهما دفعةً، ويُلبس أوّلهما (${psdNames.join('، ')})`, psdWorn && psdNames.join('،') === 'قاط أسود،قاط كحلي');
+  // D207: المسطّحة RGBA بلا طبقات تُقرأ بالمحرّك في العامل، وتُضاف باسم الملفّ مع شفافيّتها.
+  writeFileSync(process.env.PORTRAIT_SUIT_FILE, readFileSync(join(ROOT, 'tests', 'fixtures', 'suits-flat.psd')));
+  await wait(800);
+  await click('[data-act="import-suit"]');
+  const flatWorn = await wornLast(5);
+  const flatSuit = await page.eval(`return (await window.diwan.photos.suits()).at(-1);`);
+  const flatPixels = flatSuit ? await page.eval(`
+    const image = await createImageBitmap(await (await fetch('diwan://store/' + ${JSON.stringify(flatSuit.path)})).blob());
+    const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+    c.getContext('2d').drawImage(image, 0, 0);
+    return [c.width, c.height, ...c.getContext('2d').getImageData(1, 1, 1, 1).data, c.getContext('2d').getImageData(29, 9, 1, 1).data[3]];
+  `) : [];
+  ok(`والمسطّحة المفرّغة بلا طبقات قاطٌ باسم الملفّ وشفافيّتها محفوظة (${flatPixels.join('، ')})`,
+    flatWorn && flatSuit.name === process.env.PORTRAIT_SUIT_FILE.split(/[\\/]/).at(-1).replace(/\.[^.]+$/, '').slice(0, 80) &&
+    flatPixels.join(',') === '59,49,40,40,40,255,0');
   writeFileSync(process.env.PORTRAIT_SUIT_FILE, suitPng());
   // ويُلبس بميل كتفي الشخص من RTMPose-t (S45، D174): على المولَّدة ٠٫٥٣° (قياس D174) فيقرؤه المنزلق ٠٫٥ بخطوته —
   // وتركيب اليوم (`fitSuit`) زاويته صفرٌ دائمًا.

@@ -109,7 +109,8 @@ describe('اختبار الهيكل (ز١)', () => {
       for (const spec of importsOf(s.text)) {
         if (/^src\/main\/services\/(portrait|objectCutout)$/.test(resolved(s, spec) ?? '')) bad.push(`${s.path}: يستورد «${spec}» — أزل الخلفية في العامل وحده (A18)`);
       }
-      if (s.path === 'src/main/ipc/photos.ts' && s.text.includes('runOr(')) bad.push(`${s.path}: يذكر runOr( — أزل الخلفية في العامل وحده (A18)`);
+      // D207: قراءة PSD لها بديلٌ، والمنع لإزالة الخلفية وحدها (A18).
+      if (s.path === 'src/main/ipc/photos.ts' && /runOr\s*\(\s*['"](?:cutout|cutoutObject)['"]/.test(s.text)) bad.push(`${s.path}: يذكر runOr( — أزل الخلفية في العامل وحده (A18)`);
     }
     expect(bad).toEqual([]);
   });

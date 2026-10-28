@@ -33,6 +33,7 @@ import {
   loadPrivateKeyFile,
   loadUpdateKey,
   normalizeDevice,
+  sealFileName,
   sealItemsFrom,
   writeSealedPack,
   writeUpdateFile
@@ -91,7 +92,7 @@ async function main() {
     // الحزمة المختومة (S48، D203): `seal <مجلّد القطع> --kind first|buyer --title … [--out] [--key pem]` — بمفتاح التحديث، وفي الاختبار بـ--key.
     const dir = args[1];
     const key = flag('key') ? loadPrivateKeyFile(flag('key')) : loadUpdateKey(OWNER_DIR, process.env.DIWAN_OWNER_PASSWORD);
-    const out = flag('out') ?? join(dirname(dir ?? '.'), `${flag('title') ?? 'حزمة'}.diwanseal`);
+    const out = flag('out') ?? join(dirname(dir ?? '.'), sealFileName(flag('title')));
     const r = await writeSealedPack({ items: sealItemsFrom(dir), kind: flag('kind'), title: flag('title'), privateKey: key, out });
     console.log(`✓ ${r.out}\n  ${r.items} قطعة — ${(r.size / 1024 / 1024).toFixed(1)} م.ب — ${r.kind}`);
   } else if (cmd === 'status') {

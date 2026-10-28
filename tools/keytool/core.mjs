@@ -512,6 +512,12 @@ const SEAL_ITEM = 200 * 1024 ** 2;
 const SEAL_ITEMS = 2000;
 export const SEAL_KINDS = { first: 'حزمةٌ أولى', buyer: 'حزمة المشتري' };
 
+/** اسم ملفّ الحزمة من عنوانها (D207): بلا فواصل المسار ومحارف Windows الخاصة. */
+export function sealFileName(title) {
+  const name = String(title ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').replace(/^[. ]+|[. ]+$/g, '');
+  return `${name || 'حزمة'}.diwanseal`;
+}
+
 /** معرّف المفتاح ومفتاح التشفير من العامّ — كـ`sealKeys` في البرنامج. */
 export function sealKeys(publicKey) {
   const der = publicKey.export({ type: 'spki', format: 'der' });

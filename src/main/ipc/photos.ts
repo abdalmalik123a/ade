@@ -145,6 +145,9 @@ export function registerPhotoIpc(): void {
     writeSetting('photoSuits', [...parseCustomSuits(readSetting('photoSuits')), suit]);
     return suit;
   };
+  /** قاط ملفّ Photoshop في العامل حيث المحرّك (D207) — والطريق القديم هنا بديلٌ بعد سقوطين (كـ`readDesign`). */
+  const psdSuits = async (path: string, name: string) =>
+    (await workerHost().runOr('suitsFromPsd', { path, name }, async () => ({ suits: suitsFromPsd(new Uint8Array(await readFile(path)), name) }))).suits;
   /** قاطٌ RGBA: PNG شفّاف في المخزن باسم بصمته (كـ`storePasted`) ثم يُضاف إلى قاط المكتب. */
   const storeSuit = async (name: string, rgba: Uint8Array, width: number, height: number): Promise<CustomSuit> => {
     const png = writePng(rgba, width, height);
@@ -167,7 +170,7 @@ export function registerPhotoIpc(): void {
     // Photoshop بمحتواه (8BPS) لا بامتداده — كما يميّز الباب الصور.
     if (Buffer.from(bytes.subarray(0, 4)).toString('latin1') === '8BPS') {
       const suits: CustomSuit[] = [];
-      for (const s of suitsFromPsd(bytes, name)) suits.push(await storeSuit(s.name, s.rgba, s.width, s.height));
+      for (const s of await psdSuits(source, name)) suits.push(await storeSuit(s.name, s.rgba, s.width, s.height));
       return { suits };
     }
     if (pngTransparency(bytes) !== 'ok') return { prepare: { name, bytes } };
@@ -194,30 +197,36 @@ export function registerPhotoIpc(): void {
       if (head.kind === 'buyer') requirePaid();
       const added: CustomSuit[] = [];
       let skipped = 0;
+      let failed = 0;
+      let reason: string | undefined;
       const have = () => new Set(parseCustomSuits(readSetting('photoSuits')).map((s) => s.path));
-      for (const item of opened.items) {
-        const bytes = new Uint8Array(await readFile(item.path));
+      /** قطعةٌ واحدة إلى القاط: PSD بطبقاته المفرّغة (في العامل)، وPNG مفرّغة كما هي — وما كان بالبصمة نفسها يُتخطّى. */
+      const take = async (item: (typeof opened.items)[number]) => {
+        const put = async (png: Uint8Array, name: string) => {
+          const path = `suits/${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
+          if (have().has(path)) return void skipped++;
+          await writeFile(join(storeDir('suits'), path.slice(6)), png);
+          added.push(addCustomSuit(name, path, head.title));
+        };
         if (item.ext === 'psd') {
-          for (const s of suitsFromPsd(bytes, item.name)) {
-            const png = writePng(s.rgba, s.width, s.height);
-            const path = `suits/${createHash('sha256').update(png).digest('hex').slice(0, 32)}.png`;
-            if (have().has(path)) skipped++;
-            else {
-              await writeFile(join(storeDir('suits'), path.slice(6)), png);
-              added.push(addCustomSuit(s.name.slice(0, 80) || item.name, path, head.title));
-            }
-          }
-        } else if (pngTransparency(bytes) === 'ok') {
-          const path = `suits/${createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.png`;
-          if (have().has(path)) skipped++;
-          else {
-            await writeFile(join(storeDir('suits'), path.slice(6)), bytes);
-            added.push(addCustomSuit(item.name, path, head.title));
-          }
-        } else skipped++;
+          for (const s of await psdSuits(item.path, item.name)) await put(writePng(s.rgba, s.width, s.height), s.name.slice(0, 80) || item.name);
+          return;
+        }
+        const bytes = new Uint8Array(await readFile(item.path));
+        if (pngTransparency(bytes) !== 'ok') throw new Error('ليست PNG مفرّغة');
+        await put(bytes, item.name);
+      };
+      // قطعةٌ تتعذّر تُعدّ ويُمضى (D207): كانت توقف الاستيراد في منتصفه وما قبلها أُضيف.
+      for (const item of opened.items) {
+        try {
+          await take(item);
+        } catch (e) {
+          failed++;
+          reason ??= `«${item.name}»: ${e instanceof Error ? e.message : String(e)}`;
+        }
       }
-      logAudit(getDb(), 'photos', 'import', `${SEAL_KIND_LABEL[head.kind]} «${head.title}»: أُضيف ${added.length} قاط وتُخطّي ${skipped}`);
-      return { title: head.title, kind: head.kind, added, skipped };
+      logAudit(getDb(), 'photos', 'import', `${SEAL_KIND_LABEL[head.kind]} «${head.title}»: أُضيف ${added.length} قاط وتُخطّي ${skipped} وتعذّر ${failed}`);
+      return { title: head.title, kind: head.kind, added, skipped, failed, ...(reason && { reason }) };
     } finally {
       opened.cleanup();
     }

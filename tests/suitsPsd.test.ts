@@ -10,6 +10,7 @@ import { setNativePsdReader } from '../src/main/services/psd';
 import { layeredPsd } from './psdBuilder';
 import { BLACK, suitShape } from './suitsPsdShapes';
 
+const FLAT = new Uint8Array(readFileSync(join(__dirname, 'fixtures', 'suits-flat.psd')));
 const FIXTURE = new Uint8Array(readFileSync(join(__dirname, 'fixtures', 'suits-layers.psd')));
 const flat = (w: number, h: number, alpha: (x: number, y: number) => number) => {
   const rgba = new Uint8Array(w * h * 4);
@@ -44,8 +45,8 @@ describe('القاط من Photoshop', () => {
 
   it('بلا طبقاتٍ صالحة: المسطّحة المفرّغة قاطٌ باسم الملفّ، والمعتمة ← الرسالة', () => {
     const opaqueOnly = new Uint8Array(layeredPsd({ w: 100, h: 80, composite: () => [255, 255, 255], layers: [{ name: 'خلفية', rect: { top: 0, left: 0, bottom: 80, right: 100 }, color: () => [255, 255, 255] }] }));
-    setNativePsdReader(() => ({ width: 100, height: 80, dpi: null, warnings: [], rgba: flat(100, 80, (x, y) => (y > 30 && x > 20 && x < 80 ? 255 : 0)) }));
-    expect(suitsFromPsd(opaqueOnly, 'قاط الملف').map((s) => [s.name, s.width, s.height])).toEqual([['قاط الملف', 59, 49]]);
+    setNativePsdReader(() => ({ width: 100, height: 80, dpi: null, warnings: [], rgba: flat(100, 80, (x, y) => (y > 30 && x > 20 && x < 80 && (x !== 50 || y !== 40) ? 255 : 0)) }));
+    expect(suitsFromPsd(FLAT, 'قاط الملف').map((s) => [s.name, s.width, s.height])).toEqual([['قاط الملف', 59, 49]]);
     setNativePsdReader(() => ({ width: 100, height: 80, dpi: null, warnings: [], rgba: flat(100, 80, () => 255) }));
     expect(() => suitsFromPsd(opaqueOnly, 'x')).toThrow(NO_PSD_CUTOUT);
     expect(() => suitsFromPsd(new Uint8Array(Buffer.from('ليس PSD')), 'x')).toThrow('الملف ليس ملفّ Photoshop');

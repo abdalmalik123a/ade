@@ -178,7 +178,7 @@ handle('make-seal', async ({ dir, kind, title }) => {
   if (!updateKey) throw new core.KeyToolError('اصنع «مفتاح التحديث» أوّلًا — به تُختم الحزمة');
   const items = core.sealItemsFrom(String(dir ?? ''));
   const name = String(title ?? '').trim();
-  const r = await core.writeSealedPack({ items, kind, title: name, privateKey: updateKey, out: join(dirname(String(dir)), `${name || 'حزمة'}.diwanseal`) });
+  const r = await core.writeSealedPack({ items, kind, title: name, privateKey: updateKey, out: join(dirname(String(dir)), core.sealFileName(name)) });
   touch(); // حزمةٌ بمئات القطع تُكتب دقائق: العمل من آخره.
   return r;
 });

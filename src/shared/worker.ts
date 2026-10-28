@@ -40,6 +40,11 @@ export type WorkerJobs = {
    * (`letterheads/…`، مرّةً لكلّ اسم)، والرئيسة تكتبها (`readTemplateFile` في `ipc/templates.ts`).
    */
   readTemplate: { input: { path: string }; output: { template: ImportedTemplate; images: { path: string; bytes: Uint8Array }[] } };
+  /**
+   * قاط ملفّ Photoshop (S48، D204، D207): `suitsFromPsd` حيث محرّك PSD (العامل وحده يحمّله، A21) — كلّ طبقةٍ مفرّغةٍ قاطٌ باسمها،
+   * وإلا الصورة المسطّحة المفرّغة باسم الملفّ.
+   */
+  suitsFromPsd: { input: { path: string; name: string }; output: { suits: { name: string; rgba: Uint8Array; width: number; height: number }[] } };
 };
 
 export type WorkerJob = keyof WorkerJobs;
@@ -73,5 +78,7 @@ export const WORKER_TIMEOUT_MS: { [J in WorkerJob]: number } = {
   // أبطأ ما قيس ٤٫١ ث (Photoshop عند حدّه، D52).
   readDesign: 60_000,
   // أبطأ ما قيس ٣٫٧ ث (Word بعشرين ألف فقرة، D52).
-  readTemplate: 60_000
+  readTemplate: 60_000,
+  // ملفّ Photoshop بمئتي طبقة على الأكثر — كـ`readDesign`.
+  suitsFromPsd: 60_000
 };
