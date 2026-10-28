@@ -3,6 +3,7 @@
  * والتنبيهات والبحث الشامل، والنسخ الاحتياطي والتحديث والتفعيل وحزمة المحتوى — أنواعها وقنواتها.
  * ويُستورد كلّه من `@shared/api` كما كان.
  */
+import type { ContentSection, SealKind } from './sealedPack';
 import type { Client, ClientInput, Order, OrderCounts, OrderInput, OrderStatus } from './orders';
 import type { PrintRoles } from './printRoles';
 import type { CounterCardId } from './counterCards';
@@ -166,7 +167,7 @@ export type LicenseStatus = (
 
 export type ContentCounts = { templates: number; letterheads: number; clips: number; files: number };
 /** ما أُضيف، وما كان موجودًا بمعرّفه فتُرك كما هو. */
-export type ContentImportResult = { path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'>; missing?: { fonts: string[]; images: number } };
+export type ContentImportResult = { sealed?: { title: string; content: ContentSection; kind: SealKind }; path: string; added: ContentCounts; existing: Omit<ContentCounts, 'files'>; missing?: { fonts: string[]; images: number } };
 
 /** حزمة مشحونة مع البرنامج في resources/packs ومعروضة للاختيار. */
 export type BundledPackInfo = {
@@ -316,6 +317,7 @@ export type OfficeApis = {
    * تُصدَّر ملفًّا وتُستورد في مكتبٍ آخر. والمكرّر يُعرف بمعرّفه فلا يُضاف ثانيةً.
    */
   content: {
+    exportSection(section: ContentSection): Promise<(ContentCounts & { path: string }) | null>;
     export(designs?: number[]): Promise<(ContentCounts & { path: string; leftOut?: { fonts: string[]; elements: string[] } }) | null>;
     import(): Promise<ContentImportResult | null>;
     bundled(): Promise<BundledPackInfo[]>;

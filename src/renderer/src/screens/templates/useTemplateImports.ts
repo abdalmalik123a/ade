@@ -6,6 +6,7 @@ import { isLayoutEmpty, type Letterhead } from '@shared/letterhead';
 import { errorText } from '../../lib/errors';
 import { skippedLines } from '@shared/importSkipped';
 import type { ImportPlan, ImportChoices, ImportedTemplate, BundledPackInfo } from '@shared/api';
+import { SECTION_LABEL, type ContentSection } from '@shared/sealedPack';
 import { count } from '@shared/arabic';
 import { nf } from './shared';
 import type { Dispatch, SetStateAction } from 'react';
@@ -186,11 +187,11 @@ export function useTemplateImports(
    * حزمة المحتوى (خطة Production، ٤٫٣): النماذج والترويسات والكليشات وصورها — بلا بيانات الناس —
    * لمكتبٍ آخر أو لجهازٍ جديد. والمكرّر يُعرف بمعرّفه فلا يُضاف ثانيةً.
    */
-  async function exportContent() {
+  async function exportContent(section?: ContentSection) {
     setBusy(true);
     try {
-      const r = await window.diwan.content.export();
-      if (r) say(`صُدّرت حزمة المحتوى: ${count(r.templates, 'نموذج')}، ${count(r.letterheads, 'ترويسة')}، ${count(r.clips, 'كليشة')} — ${r.path}`);
+      const r = section ? await window.diwan.content.exportSection(section) : await window.diwan.content.export();
+      if (r) say(`${section ? `صُدّر قسم «${SECTION_LABEL[section]}»` : 'صُدّرت حزمة المحتوى'}: ${count(r.templates, 'نموذج')}، ${count(r.letterheads, 'ترويسة')}، ${count(r.clips, 'كليشة')} — ${r.path}`);
     } catch (e) {
       say(errorText(e, 'تعذّر التصدير'), 'warn');
     } finally {
@@ -208,7 +209,7 @@ export function useTemplateImports(
       const a = r.added;
       const had = r.existing.templates + r.existing.letterheads + r.existing.clips;
       say(
-        `أُضيف: ${count(a.templates, 'نموذج')}، ${count(a.letterheads, 'ترويسة')}، ${count(a.clips, 'كليشة')}` +
+        (r.sealed ? `«${r.sealed.title}» — ` : '') + `أُضيف: ${count(a.templates, 'نموذج')}، ${count(a.letterheads, 'ترويسة')}، ${count(a.clips, 'كليشة')}` +
           (had ? ` — و${nf.format(had)} موجودٌ في المكتب فتُرك كما هو` : '')
       );
     } catch (e) {

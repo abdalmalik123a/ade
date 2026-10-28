@@ -127,7 +127,7 @@ export function PacksModal({
             <div>
               <h3 className="font-label-md text-label-md font-bold text-on-surface">استيراد حزمة من ملف خارجي</h3>
               <p className="font-label-sm text-label-sm text-on-surface-variant">
-                ملفّ حزمة ديوان صُدّر من حاسوب آخر أو أُرسل إليك
+                ملفّ مختوم من صاحب ديوان، أو حزمة محتوى صُدّرت من حاسوب آخر
               </p>
             </div>
             <button

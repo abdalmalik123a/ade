@@ -6,7 +6,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { dataDir, getDb } from '../db';
-import { exportContent, importContent } from '../services/contentPack';
+import { exportContent, importContent, type ContentPackage } from '../services/contentPack';
+import { checkSection, exportSection, isSealedContent } from '../services/contentSection';
+import { openSealedPack, type OpenedSeal } from '../services/sealedPack';
+import { ownerPublicKeys, requirePaid } from './license';
+import { handleChecked } from './checked';
+import { oneOf } from '@shared/bridgeGuards';
+import { CONTENT_SECTIONS, SEAL_EXT, SECTION_LABEL } from '@shared/sealedPack';
 import { exportDesigns, missingAfterImport } from '../services/design/designPack';
 import { logAudit } from '../services/documents';
 import { isoDate } from '@shared/dates';
@@ -55,6 +61,19 @@ export function registerContentIpc(): void {
     return { ...counts, path };
   });
 
+  handleChecked('content:exportSection', { section: oneOf(CONTENT_SECTIONS) }, async ({ section }, e) => {
+    const w = win(e);
+    if (!w) return null;
+    const path = await pickSavePath(w, {
+      title: `تصدير قسم «${SECTION_LABEL[section]}»`, defaultName: `diwan-${section}-${isoDate(new Date())}.diwanpack`,
+      filterName: 'حزمة محتوى ديوان', ext: 'diwanpack'
+    });
+    if (!path) return null;
+    const counts = await exportSection(path, getDb(), storeRoot(), app.getVersion(), section);
+    logAudit(getDb(), 'content', 'export', `قسم «${SECTION_LABEL[section]}»: ${counts.templates} نموذجًا، ${counts.letterheads} ترويسة، ${counts.clips} كليشة`);
+    return { ...counts, path };
+  });
+
   ipcMain.handle('content:import', async (e): Promise<ContentImportResult | null> => {
     const w = win(e);
     if (!w) return null;
@@ -62,14 +81,30 @@ export function registerContentIpc(): void {
       title: 'استيراد حزمة محتوى',
       buttonLabel: 'استوردها',
       filterName: 'حزمة محتوى ديوان',
-      extensions: ['diwanpack']
+      extensions: ['diwanpack', SEAL_EXT]
     });
     if (!path) return null;
-    const { addedIds, ...result } = await importContent(path, getDb(), storeRoot(), join(dataDir(), 'restore-work'));
-    const a = result.added;
-    logAudit(getDb(), 'content', 'import', `أُضيف ${a.templates} نموذجًا، ${a.letterheads} ترويسة، ${a.clips} كليشة`);
-    // وما غاب في التصاميم المضافة (٣٫٦): خطٌّ ليس في هذا الجهاز، وصورةٌ لم تأتِ.
-    return { ...result, path, ...(addedIds.length && { missing: missingAfterImport(getDb(), storeRoot(), addedIds) }) };
+    let opened: OpenedSeal | null = null;
+    try {
+      let file = path;
+      let sealed: ContentImportResult['sealed'];
+      let check: ((pkg: ContentPackage) => void) | undefined;
+      if (isSealedContent(path)) {
+        opened = await openSealedPack(path, ownerPublicKeys('update'), join(dataDir(), 'seal-work'));
+        const { head } = opened;
+        if (head.content === 'suits') throw new Error('هذه حزمة قاط — استوردها من الصور الشخصية');
+        if (head.kind === 'buyer') requirePaid();
+        const section = head.content;
+        sealed = { title: head.title, content: section, kind: head.kind };
+        check = (pkg) => checkSection(pkg, section);
+        file = opened.items[0]!.path;
+      }
+      const { addedIds, ...result } = await importContent(file, getDb(), storeRoot(), join(dataDir(), 'restore-work'), check);
+      const a = result.added;
+      logAudit(getDb(), 'content', 'import', `${sealed ? `«${sealed.title}»: ` : ''}أُضيف ${a.templates} نموذجًا، ${a.letterheads} ترويسة، ${a.clips} كليشة`);
+      // وما غاب في التصاميم المضافة (٣٫٦): خطٌّ ليس في هذا الجهاز، وصورةٌ لم تأتِ.
+      return { ...result, path, ...(sealed && { sealed }), ...(addedIds.length && { missing: missingAfterImport(getDb(), storeRoot(), addedIds) }) };
+    } finally { opened?.cleanup(); }
   });
 
   ipcMain.handle('content:bundled', async (): Promise<BundledPackInfo[]> => {

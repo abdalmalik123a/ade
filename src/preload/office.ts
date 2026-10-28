@@ -98,6 +98,7 @@ export const officeApi: OfficeApis = {
     activate: (key) => invoke('license:activate', key)
   },
   content: {
+    exportSection: (section) => invoke('content:exportSection', section),
     export: (designs?: number[]) => invoke('content:export', designs),
     import: () => invoke('content:import'),
     bundled: () => invoke('content:bundled'),

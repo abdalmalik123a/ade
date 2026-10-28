@@ -1,9 +1,20 @@
 /** ملفات أقسام المحتوى (S49، D208): حزمة المحتوى القائمة، مصفّاة إلى قسم واحد، بلا بيانات الناس. */
+import { closeSync, openSync, readSync } from 'node:fs';
 import type { Database } from 'better-sqlite3';
 import type { ContentCounts } from '@shared/api';
 import { designPackLevel } from '@shared/canvas';
-import { SECTION_LABEL, type ContentSection } from '@shared/sealedPack';
+import { SEAL_MAGIC, SECTION_LABEL, type ContentSection } from '@shared/sealedPack';
 import { collectContent, writePack, type ContentPackage } from './contentPack';
+
+/** يميّز المختوم بمحتواه، حتى لو غُيّر امتداده؛ لا يقرأ الملف الكبير كاملًا. */
+export function isSealedContent(path: string): boolean {
+  const fd = openSync(path, 'r');
+  try {
+    const magic = Buffer.from(SEAL_MAGIC);
+    const head = Buffer.alloc(magic.length);
+    return readSync(fd, head, 0, head.length, 0) === head.length && head.equals(magic);
+  } finally { closeSync(fd); }
+}
 
 const canvas = (doc: unknown): boolean => Boolean(doc && typeof doc === 'object' && (doc as { kind?: unknown }).kind === 'canvas');
 
