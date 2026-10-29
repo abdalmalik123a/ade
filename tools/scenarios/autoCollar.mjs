@@ -92,6 +92,7 @@ export default async function scenario(page, { shotsDir }) {
     const done = await until(`document.querySelector('[data-photo-frame]')?.dataset.cutout === 'done'`, 30000);
     await wait(500);
     await click('[data-bg="lightBlue"]');
+    await page.eval(`const guide=document.querySelector('[data-photo-size-guide]');if(guide)guide.open=true;return true;`);
     await page.eval(`const el = document.querySelector('input[data-act="zoom"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '1.5'); el.dispatchEvent(new Event('input', { bubbles: true })); return true;`);
     await wait(500);
     return done;

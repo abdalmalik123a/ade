@@ -170,7 +170,9 @@ export default async function scenario(page, { shotsDir }) {
   await wait(400);
   await page.eval(`[...document.querySelectorAll('button[type="submit"]')].find((b) => b.textContent.includes('اللوحة البيضاء'))?.click(); return true;`);
   await wait(800);
+  await click('[data-design-panel="fill"]');
   await click('[data-add="local-image"]');
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   await wait(1200);
   await click('[data-act="cutout"]');
   const ready = await until(`document.querySelector('[data-cutout]')?.getAttribute('data-cutout') === 'ready'`, 60000);

@@ -103,6 +103,7 @@ export default async function scenario(page, { shotsDir }) {
   const ratio = await page.eval(`const f = document.querySelector('[data-photo-frame]'); return f.offsetWidth / f.offsetHeight;`);
   ok('والإطار بنسبة المقاس', Math.abs(ratio - 35 / 45) < 0.01);
 
+  await page.eval(`document.querySelector('[data-photo-size-guide]').open=true;return true;`);
   await page.eval(`
     const s = document.querySelector('input[data-act="zoom"]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(s, '2');

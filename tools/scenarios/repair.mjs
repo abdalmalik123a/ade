@@ -100,7 +100,9 @@ export default async function scenario(page, { shotsDir }) {
   await wait(400);
   await page.eval(`[...document.querySelectorAll('button[type="submit"]')].find((b) => b.textContent.includes('اللوحة البيضاء'))?.click(); return true;`);
   await wait(800);
+  await click('[data-design-panel="fill"]');
   await click('[data-add="local-image"]');
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   await wait(1200);
   await click('[data-act="photo-edit"]');
   await until(`document.querySelector('[data-photo-edit]')?.dataset.photoEdit === 'ready' && document.querySelector('[data-photo-preview]')`, 10000);
@@ -191,6 +193,7 @@ export default async function scenario(page, { shotsDir }) {
     return true;`);
   await until(`document.querySelector('[data-photo-frame]')?.dataset.cutout === 'done'`, 30000);
   await wait(500);
+  await page.eval(`const guide=document.querySelector('[data-photo-size-guide]');if(guide)guide.open=true;return true;`);
   await page.eval(`const el = document.querySelector('input[data-act="zoom"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '1.5'); el.dispatchEvent(new Event('input', { bubbles: true })); return true;`);
   await wait(400);
   await click('[data-tool="repair"]');

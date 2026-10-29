@@ -30,8 +30,13 @@ import { toIndic } from '@shared/arabic';
 import PresetsDialog from './PhotoPresetsDialog';
 import { CUSTOM_ID, frameFor, pct, type Bg, type Cut, type PhotoIncoming, type Tool, type Worn } from './photos/photoShared';
 import PhotoAdjustSteps from './photos/PhotoAdjustSteps';
-import PhotoSizeOutput from './photos/PhotoSizeOutput';
+import PhotoSizeOutput, { type PhotoSizeOutputProps } from './photos/PhotoSizeOutput';
 import PhotoFrame from './photos/PhotoFrame';
+import PhotoToolDock from './photos/PhotoToolDock';
+import PhotoOptions from './photos/PhotoOptions';
+import PhotoWorkspace from './photos/PhotoWorkspace';
+import PhotoOutputActions from './photos/PhotoOutputActions';
+import { usePhotoViewport } from './photos/usePhotoViewport';
 import { usePhotoCanvas } from './photos/usePhotoCanvas';
 import { usePhotoSteps } from './photos/usePhotoSteps';
 import { usePhotoBrush } from './photos/usePhotoBrush';
@@ -106,7 +111,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
   const paper = PAPERS.find((p) => p.key === paperKey)!.size;
   const layout = photoLayout(paper, photo);
   const copies = Math.max(1, count ?? preset.copies);
-  const frame = frameFor(photo);
+  const { viewportRef, frame } = usePhotoViewport(frameFor(photo));
   const box = natural ? cropBox(frame, natural, crop) : null;
   const useMask = cutState === 'done' && bg.kind !== 'original';
   const bgColor = bg.kind === 'original' ? '#ffffff' : backgroundColor(bg);
@@ -221,11 +226,22 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
     { key: 'repair', label: 'رمّم', icon: 'healing', on: cutState === 'done' && Boolean(lm) }
   ];
 
+  const sizeOutputProps: PhotoSizeOutputProps = {
+    step, small, setPresetsOpen, presets, chip, presetId, choosePreset,
+    numInput, custom, setCustom, preset, src, slider, crop,
+    setCrop, plausible, natural, lm, photo, head, headOk,
+    effDpi, paperKey, setPaperKey, copies, setCount, layout, after,
+    setAfter, lastPrint, send, busy, cutState, openReview, saveImage,
+    nav, linkCitizen, setPicking, limit, setLimit, saveUpload,
+  };
+  const photoTools = { src, tools, chip, tool, setTool, brush, setBrush, hardness, setHardness, history, crop, setCrop, erase };
+
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
-      <div className="flex h-[calc(100vh-4rem)]">
-        <section className="w-[400px] shrink-0 overflow-auto border-l border-outline-variant bg-surface-container-low p-space-lg space-y-space-md flex flex-col">
-          <ToolHeader hint="تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز" icon="portrait" title="الصور الشخصية" />
+      <PhotoWorkspace viewportRef={viewportRef} tools={<PhotoToolDock {...photoTools} />} options={<PhotoOptions {...photoTools} />}
+        header={<ToolHeader hint="تُقصّ على الوجه بمقاسها وتُطبع نسخًا — وخلفيّتها وقاطها على الجهاز" icon="portrait" title="الصور الشخصية" />}
+        size={<PhotoSizeOutput {...sizeOutputProps} />} output={<PhotoOutputActions {...sizeOutputProps} />}
+        steps={<>
 
           {expired && (
             <div className="rounded-card bg-rose-50 border border-rose-300 p-space-sm text-rose-900 font-label-md text-label-md space-y-1" data-license-expired-banner="">
@@ -311,51 +327,8 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
             />
           )}
 
-          <PhotoSizeOutput
-            step={step}
-            small={small}
-            setPresetsOpen={setPresetsOpen}
-            presets={presets}
-            chip={chip}
-            presetId={presetId}
-            choosePreset={choosePreset}
-            numInput={numInput}
-            custom={custom}
-            setCustom={setCustom}
-            preset={preset}
-            src={src}
-            slider={slider}
-            crop={crop}
-            setCrop={setCrop}
-            plausible={plausible}
-            natural={natural}
-            lm={lm}
-            photo={photo}
-            head={head}
-            headOk={headOk}
-            effDpi={effDpi}
-            paperKey={paperKey}
-            setPaperKey={setPaperKey}
-            copies={copies}
-            setCount={setCount}
-            layout={layout}
-            after={after}
-            setAfter={setAfter}
-            lastPrint={lastPrint}
-            send={send}
-            busy={busy}
-            cutState={cutState}
-            openReview={openReview}
-            saveImage={saveImage}
-            nav={nav}
-            linkCitizen={linkCitizen}
-            setPicking={setPicking}
-            limit={limit}
-            setLimit={setLimit}
-            saveUpload={saveUpload}
-          />
-        </section>
 
+        </>} >
         <PhotoFrame
           onUp={onUp} setCursor={setCursor} onMove={onMove} src={src} box={box} tools={tools}
           chip={chip} tool={tool} setTool={setTool} brush={brush} setBrush={setBrush}
@@ -365,7 +338,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
           preset={preset} cursor={cursor} erase={erase} repair={repair}
           history={history} crop={crop} setCrop={setCrop}
         />
-      </div>
+      </PhotoWorkspace>
 
       {review && (
         <SheetsPreview
