@@ -8,6 +8,7 @@ import { count } from '@shared/arabic';
 import { CITIZEN_FIELDS } from '@shared/citizenSchema';
 import AttachmentVault from './AttachmentVault';
 import CitizenDocuments from './CitizenDocuments';
+import CitizenOrders from './CitizenOrders';
 import type { CitizenDetail, Attachment, CitizenSummary } from '@shared/api';
 
 type Props = {
@@ -250,6 +251,7 @@ export default function CitizenFile({ detail, setForm, onInsertIntoEditor, busy,
             onRepeatDocument={onRepeatDocument}
             reprintDocument={reprintDocument}
           />
+          <CitizenOrders key={detail.id} citizenId={detail.id} />
         </>
       )}
     </section>

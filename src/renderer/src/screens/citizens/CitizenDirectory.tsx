@@ -78,6 +78,7 @@ export default function CitizenDirectory({ stats, query, setQuery, active, setAc
           {items.map((c) => (
             <button
               key={c.id}
+              data-citizen-id={c.id}
               className={
                 c.id === selectedId
                   ? 'text-right rounded-btn p-space-sm bg-primary-fixed text-primary border-r-2 border-cyan transition-colors'

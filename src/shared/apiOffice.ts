@@ -240,7 +240,7 @@ export type OfficeApis = {
     delete(id: number): Promise<void>;
   };
   orders: {
-    list(filter?: { status?: 'open' | OrderStatus; clientId?: number; query?: string }): Promise<Order[]>;
+    list(filter?: { status?: 'open' | OrderStatus; clientId?: number; citizenId?: number; query?: string }): Promise<Order[]>;
     get(id: number): Promise<Order | null>;
     save(input: OrderInput): Promise<Order>;
     setStatus(id: number, status: OrderStatus): Promise<Order>;
