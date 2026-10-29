@@ -28,7 +28,11 @@ export default async function scenario(page,{shotsDir}={}){
  const p=await page.eval(`const r=document.querySelector('[data-photo-frame]').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};`);
  for(const[type,x]of[['mousePressed',p.x],['mouseMoved',p.x+14],['mouseReleased',p.x+14]])await page.send('Input.dispatchMouseEvent',{type,x,y:p.y,button:'left',clickCount:1});await wait(180);const moved=await box();
  ok('السحب يحرّك الصورة في الإطار',Math.abs(moved.left-before.left)>2);
- // التاريخ القائم يدفع لقطة قبل الفرشاة والقاط؛ السحب المباشر للصورة لا يدفع لقطة في الكود السابق أيضًا.
+ await click('[data-act="history-undo"]');const undone=await box();
+ ok('تراجع واحد يعيد موضع الصورة قبل السحب',Math.abs(undone.left-before.left)<.2&&Math.abs(undone.top-before.top)<.2);
+ await click('[data-act="history-redo"]');const redone=await box();
+ ok('إعادة واحدة ترجع موضع السحب',Math.abs(redone.left-moved.left)<.2&&Math.abs(redone.top-moved.top)<.2);
+ // التراجع عن الفرشاة يُختبر أيضًا بعد السحب والإعادة.
  await click('[data-tool="remove"]');await wait(350);
  const digest=()=>page.eval(`const c=document.querySelector('[data-photo-canvas]');const a=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let h=2166136261;for(const v of a)h=Math.imul(h^v,16777619);return h>>>0;`);const original=await digest();
  const stroke=await page.eval(`const r=document.querySelector('[data-photo-frame]').getBoundingClientRect();return{x:r.x+r.width*.5,y:r.y+r.height*.2};`);

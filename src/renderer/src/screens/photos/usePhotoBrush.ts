@@ -141,6 +141,7 @@ export function usePhotoBrush(
     if (tool === 'keep' || tool === 'remove') {
       onPushHistory?.(tool === 'keep' ? 'إبقاء' : 'مسح');
     }
+    if (tool === 'move') onPushHistory?.('تحريك الصورة');
     if (tool === 'suit') {
       onPushHistory?.('تحريك القاط');
     }
