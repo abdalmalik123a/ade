@@ -16,6 +16,8 @@ better-sqlite3 ^13 · ProseMirror (prosemirror-view ^1.42 وprosemirror-tables ^
 onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
 وElectron 33 كان يحمل Node 20 فأسقط better-sqlite3@13 العملية؛ و44 يعمل بلا إعادة بناءٍ أصلية.
 
+**واجهة م١٣ الثابتة (D220–D224، ر186):** تركيب العرض في `designs/editor/` يفصل المستند واللوحات الثابتة ونوافذ الصفحة والتعبئة عن `Stage` والرسام؛ `useDesignTools` لأوضاع الإدراج و`InlineTextEditor` لمسودة النص و`Rulers` لمساطر العرض. وفي `screens/photos/`: `PhotoWorkspace` و`PhotoToolDock` و`PhotoOptions` و`PhotoOutputActions` و`usePhotoViewport` لتوزيع الشاشة ومعاينتها؛ خطافات المعالجة والإخراج القائمة كما هي. لا تغيير صيغة Canvas أو قاعدة المكتب، ويحرس `designWorkspaceCompat` فتح البنية السابقة وحفظها بوجهين وجدول وصورة وربط أعمدة.
+
 ### العمليات والمجلّدات العليا
 | المجلّد | ما فيه | أهمّ ملفّاته |
 |---|---|---|

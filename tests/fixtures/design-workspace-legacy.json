@@ -1,0 +1,291 @@
+{
+  "id": "64094eb1-51e4-4b4f-a862-80ae697ff2f8",
+  "schemaVersion": 1,
+  "kind": "canvas",
+  "issuing": "print-only",
+  "pageSetup": {
+    "size": "A4",
+    "orientation": "portrait",
+    "margins": {
+      "top": 20,
+      "right": 20,
+      "bottom": 20,
+      "left": 20
+    },
+    "letterheadMode": "print",
+    "repeatLetterhead": false,
+    "pageNumbers": false,
+    "numerals": "arabic"
+  },
+  "blocks": [],
+  "fields": [
+    {
+      "id": "05389294-352f-4e4f-b374-c5336ca7b666",
+      "label": "الاسم",
+      "type": "text",
+      "required": false,
+      "width": 14,
+      "fillMode": "printed",
+      "role": null,
+      "source": null,
+      "key": "الاسم"
+    }
+  ],
+  "meta": {
+    "title": "هوية محفوظة قبل الواجهة",
+    "category": "تصاميم",
+    "batchMap": {
+      "اسم التلميذ": "الاسم"
+    }
+  },
+  "canvas": {
+    "v": 1,
+    "size": {
+      "w": 90,
+      "h": 55
+    },
+    "bleed": 2,
+    "cropMarks": true,
+    "background": {
+      "kind": "none"
+    },
+    "elements": [
+      {
+        "id": "legacy-name",
+        "kind": "text",
+        "inlines": [
+          {
+            "kind": "run",
+            "text": "بطاقة الطالب "
+          },
+          {
+            "kind": "field",
+            "id": "c71d1aa7-3257-4f6f-8057-8a38ebc55d00",
+            "ref": "الاسم"
+          }
+        ],
+        "align": "center",
+        "vAlign": "middle",
+        "size": 12,
+        "color": "#111111",
+        "z": 3,
+        "dir": "rtl",
+        "box": {
+          "x": 0.05,
+          "y": 0.05,
+          "w": 0.85,
+          "h": 0.15
+        },
+        "font": "'Cairo', sans-serif"
+      },
+      {
+        "id": "legacy-image",
+        "kind": "image",
+        "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+        "fit": "contain",
+        "z": 1,
+        "box": {
+          "x": 0.05,
+          "y": 0.26,
+          "w": 0.22,
+          "h": 0.5
+        }
+      },
+      {
+        "id": "legacy-table",
+        "kind": "table",
+        "z": 2,
+        "dir": "rtl",
+        "columns": [
+          {
+            "title": "ت",
+            "widthPercent": 12,
+            "align": "center"
+          },
+          {
+            "title": "البيان",
+            "widthPercent": 58,
+            "align": "right"
+          },
+          {
+            "title": "ملاحظات",
+            "widthPercent": 30,
+            "align": "center"
+          }
+        ],
+        "rows": [
+          [
+            {
+              "text": "1"
+            },
+            {
+              "text": "رياضيات"
+            },
+            {
+              "text": "10"
+            }
+          ],
+          [
+            {
+              "text": "2"
+            },
+            {
+              "text": "علوم"
+            },
+            {
+              "text": "10"
+            }
+          ],
+          [
+            {
+              "text": "3"
+            },
+            {
+              "text": "عربي"
+            },
+            {
+              "text": "10"
+            }
+          ]
+        ],
+        "headerBg": "#f1f5f9",
+        "headerColor": "#0f172a",
+        "borderColor": "#cbd5e1",
+        "borderWidth": 1,
+        "fontSize": 10,
+        "headerFontSize": 11,
+        "stripe": false,
+        "box": {
+          "x": 0.3,
+          "y": 0.26,
+          "w": 0.65,
+          "h": 0.6
+        },
+        "rowHeights": [
+          18,
+          27,
+          35
+        ],
+        "headerHeight": 20
+      }
+    ]
+  },
+  "backCanvas": {
+    "v": 1,
+    "size": {
+      "w": 90,
+      "h": 55
+    },
+    "bleed": 2,
+    "cropMarks": true,
+    "background": {
+      "kind": "none"
+    },
+    "elements": [
+      {
+        "id": "legacy-back",
+        "kind": "text",
+        "inlines": [
+          {
+            "kind": "run",
+            "text": "ظهر البطاقة "
+          },
+          {
+            "kind": "field",
+            "id": "e6836ea8-c992-4ceb-8adc-ce4f7a29027f",
+            "ref": "الاسم"
+          }
+        ],
+        "align": "center",
+        "vAlign": "middle",
+        "size": 12,
+        "color": "#111111",
+        "z": 1,
+        "dir": "rtl",
+        "box": {
+          "x": 0.1,
+          "y": 0.1,
+          "w": 0.8,
+          "h": 0.2
+        }
+      },
+      {
+        "id": "legacy-back-table",
+        "kind": "table",
+        "z": 2,
+        "dir": "rtl",
+        "columns": [
+          {
+            "title": "ت",
+            "widthPercent": 12,
+            "align": "center"
+          },
+          {
+            "title": "البيان",
+            "widthPercent": 58,
+            "align": "right"
+          },
+          {
+            "title": "ملاحظات",
+            "widthPercent": 30,
+            "align": "center"
+          }
+        ],
+        "rows": [
+          [
+            {
+              "text": "١"
+            },
+            {
+              "text": ""
+            },
+            {
+              "text": ""
+            }
+          ],
+          [
+            {
+              "text": "٢"
+            },
+            {
+              "text": ""
+            },
+            {
+              "text": ""
+            }
+          ],
+          [
+            {
+              "text": "٣"
+            },
+            {
+              "text": ""
+            },
+            {
+              "text": ""
+            }
+          ]
+        ],
+        "headerBg": "#f1f5f9",
+        "headerColor": "#0f172a",
+        "borderColor": "#cbd5e1",
+        "borderWidth": 1,
+        "fontSize": 10,
+        "headerFontSize": 11,
+        "stripe": false,
+        "box": {
+          "x": 0.1,
+          "y": 0.4,
+          "w": 0.8,
+          "h": 0.4
+        },
+        "rowHeights": [
+          40,
+          30,
+          20
+        ],
+        "headerHeight": 10
+      }
+    ]
+  }
+}

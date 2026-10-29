@@ -35,10 +35,12 @@ export default async function scenario(page) {
   const has = (sel) => page.eval(`return Boolean(document.querySelector(${JSON.stringify(sel)}));`);
   const field = (key) => has(`input[data-value="${key}"]`);
   const addField = async (key) => {
+    await click('[data-design-panel="fill"]');
     await page.type('input[data-add-text]', `{${key}}`);
     await wait(150);
     await click('button[data-act="add"]');
     await wait(300);
+    await click('[data-editor-panel="fill"] [data-close-panel]');
   };
 
   // ── تعديلٌ ثم انتقالٌ فوري ─────────────────────────────────────────

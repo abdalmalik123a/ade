@@ -122,7 +122,10 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('فيها عنوانُ الشهادة', layers.some((l) => l.includes('شهادة شكر')));
   ok('وصورةُ الشعار', layers.some((l) => l.includes('صورة')));
 
+  await click('[data-design-panel="fill"]');
+  text = await page.text();
   ok('و`{اسم الطالب}` صار حقلًا', text.includes('املأ الحقول (1)'));
+  await click('[data-editor-panel="fill"] [data-close-panel]');
 
   // موضعُ العنوان: ٦ سم من اليسار بعرض ١٨ سم على ورقةٍ ٢٩٧ ملم،
   // فمن اليمين ٢٩٧ − (٦٠ + ١٨٠) = ٥٧ ملم — أي نسبةُ ٠٫١٩٢.
@@ -162,6 +165,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   if (shotsDir) await page.shot(join(shotsDir, 'design-import.png'));
 
   // ── يُملأ ويُحفظ ───────────────────────────────────────────────────
+  await click('[data-design-panel="fill"]');
   await page.type('input[data-value="اسم الطالب"]', 'مريم عادل حسن');
   await wait(400);
   ok(
@@ -171,6 +175,7 @@ export default async function scenario(page, { profile, shotsDir }) {
     )
   );
 
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   await click('button[data-act="save"]');
   await wait(1500);
 

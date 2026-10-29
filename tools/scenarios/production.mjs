@@ -51,6 +51,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(500);
   await click('button[data-kind="student-id"]');
   await wait(900);
+  await click('[data-design-panel="fill"]');
   ok('وللوجه ظهرٌ يُختار بمقاسه', await select('select[data-back-select]', 1));
   await wait(800);
 

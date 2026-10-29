@@ -57,6 +57,7 @@ export default async function scenario(page) {
   const chip = () => page.eval(`return document.querySelector('[data-imsakiya-gaps]')?.textContent ?? '';`);
   // «اطبع» يفتح مراجعة الأوراق — وفيها الفحص قبل الطباعة.
   const issues = async () => {
+    await click('[data-editor-panel="fill"] [data-close-panel]');
     await click('button[data-act="print"]');
     let out = [];
     for (let i = 0; i < 25 && !out.length; i++) {
@@ -66,6 +67,7 @@ export default async function scenario(page) {
     await page.eval(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return true;`);
     await click('[data-sheets] [data-act="close"]');
     await wait(400);
+    await click('[data-design-panel="fill"]');
     return out;
   };
 
@@ -76,6 +78,7 @@ export default async function scenario(page) {
   await wait(300);
   await click('button[data-kind="imsakiya"]');
   await wait(1500);
+  await click('[data-design-panel="fill"]');
   let t = await table();
   const start = await page.eval(`return document.querySelector('[data-imsakiya-start]')?.value ?? '';`);
   const weekday = await page.eval(`return ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][new Date(${JSON.stringify(start)} + 'T12:00').getDay()];`);
@@ -139,12 +142,14 @@ export default async function scenario(page) {
   ok(`والجمعة مميّزة بلونها (${fridays.length}: ${[...new Set(fridays)].join('،')})`, fridays.length === 4 && fridays.every((d) => d === 'الجمعة'));
 
   // ── التاريخ بتقويمه في شهادة ودفعة ─────────────────────────────────
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   await click('[data-act="gallery"]');
   await wait(600);
   await click('[data-style="official"]');
   await wait(300);
   await click('button[data-kind="thanks"]');
   await wait(1200);
+  await click('[data-design-panel="fill"]');
   await page.type('input[data-value="التاريخ"]', '2026/10/11');
   await choose('[data-calendar-of="التاريخ"]', 'hijri');
   await wait(400);
