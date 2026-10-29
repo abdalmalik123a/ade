@@ -23,7 +23,7 @@ import { suitsFromPsd } from '../services/suitsPsd';
 import { openSealedPack } from '../services/sealedPack';
 import { logAudit } from '../services/documents';
 import { ownerPublicKeys, requirePaid } from './license';
-import { SEAL_EXT, SEAL_KIND_LABEL } from '@shared/sealedPack';
+import { SEAL_EXT, SEAL_KIND_LABEL, SECTION_LABEL } from '@shared/sealedPack';
 import { handleChecked } from './checked';
 
 type PreparedSuit = { name: string; rgba: Uint8Array; width: number; height: number };
@@ -193,7 +193,7 @@ export function registerPhotoIpc(): void {
     const opened = await openSealedPack(source, ownerPublicKeys('update'), join(dataDir(), 'seal-work'));
     try {
       const { head } = opened;
-      if (head.content !== 'suits') throw new Error(`هذه حزمة ${head.content} لا قاط`);
+      if (head.content !== 'suits') throw new Error(`هذه حزمة ${SECTION_LABEL[head.content]} — استوردها من مكتبة النماذج`);
       if (head.kind === 'buyer') requirePaid();
       const added: CustomSuit[] = [];
       let skipped = 0;

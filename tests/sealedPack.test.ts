@@ -70,6 +70,21 @@ describe('الحزمة المختومة', () => {
     rmSync(out);
   });
 
+  it('عنوان طويل في keygen seal بلا --out يكتب ملفًا ويُقرأ بعنوانه المقصوص كما كان', async () => {
+    const title = 'س'.repeat(300);
+    const pieces = mkdtempSync(join(DIR, 'long-'));
+    writeFileSync(join(pieces, 'قاط.png'), PNG);
+    const key = join(DIR, 'long-owner.pem');
+    writeFileSync(key, owner.privateKey.export({ type: 'pkcs8', format: 'pem' }));
+    execFileSync(process.execPath, [join(__dirname, '../tools/license/keygen.mjs'), 'seal', pieces, '--kind', 'first', '--title', title, '--key', key]);
+    const name = `${'س'.repeat(80)}.diwanseal`;
+    expect(core.sealFileName(title)).toBe(name);
+    expect(core.sealFileName(`${'س'.repeat(79)}. نهاية`)).toBe(`${'س'.repeat(79)}.diwanseal`);
+    const opened = await open(join(DIR, name));
+    expect(opened.head.title).toBe(title.slice(0, 80));
+    opened.cleanup();
+  });
+
   it('ذهابٌ وإياب: الرأس كما كُتب، والقطعتان بأسمائهما وبايتاتهما، والمؤقّت يُحذف', async () => {
     const opened = await open(await seal({ kind: 'buyer', title: 'قاط المشتري' }));
     expect([opened.head.content, opened.head.kind, opened.head.title, opened.head.app]).toEqual(['suits', 'buyer', 'قاط المشتري', 'diwan']);

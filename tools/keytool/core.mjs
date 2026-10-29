@@ -515,7 +515,7 @@ export const SEAL_KINDS = { first: 'حزمةٌ أولى', buyer: 'حزمة ال�
 
 /** اسم ملفّ الحزمة من عنوانها (D207): بلا فواصل المسار ومحارف Windows الخاصة. */
 export function sealFileName(title) {
-  const name = String(title ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').replace(/^[. ]+|[. ]+$/g, '');
+  const name = String(title ?? '').replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').replace(/^[. ]+|[. ]+$/g, '').slice(0, 80).replace(/[. ]+$/g, '');
   return `${name || 'حزمة'}.diwanseal`;
 }
 

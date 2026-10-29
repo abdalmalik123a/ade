@@ -95,6 +95,8 @@ export default async function scenario(page, { profile }) {
     sealed[section] = await seal(section);
     const r = await importPack(sealed[section]);
     ok(`وقسم ${sections[section]} الأول يُستورد في التجربة`, !r.error && r.sealed?.content === section && r.sealed.kind === 'first');
+    const photoError = await page.eval(`try { await window.diwan.photos.importSealed(); return ''; } catch(e) { return String(e.message); }`);
+    ok(`وباب القاط يرفض ${sections[section]} باسمه العربي ويرشد إلى المكتبة`, photoError.includes(sections[section]) && photoError.includes('مكتبة النماذج') && !photoError.includes(section) && await page.eval(`return (await window.diwan.photos.suits()).length === 0;`));
   }
   const restored = db((d) => d.prepare('SELECT id,uuid,letterhead_id AS lh FROM templates').get());
   ok('والمعاملة بمعرّفها وترويستها وصورتها كما صدّرت', counts() === '1,1,1' && restored.uuid === templateUuid && restored.lh > 0 && existsSync(storedLogo) && readFileSync(storedLogo).equals(image));
