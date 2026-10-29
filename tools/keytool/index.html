@@ -72,7 +72,7 @@
       <button class="on" data-tab="issue">مفتاح جديد</button>
       <button data-tab="ledger">السجلّ</button>
       <button data-tab="update">ملفّ تحديث</button>
-      <button data-tab="seal">حزمة قاط</button>
+      <button data-tab="seal">حزمة مختومة</button>
       <button data-tab="updkey">مفتاح التحديث</button>
       <button data-tab="password">كلمة السرّ</button>
     </div>
@@ -137,9 +137,12 @@
     </div>
 
     <div class="card hidden" data-pane="seal">
-      <h2>حزمة قاطٍ مختومة</h2>
-      <p class="muted">مجلّدٌ فيه القطع (PNG مفرّغة، أو PSD كلّ طبقةٍ مفرّغةٍ فيه قاط) — فيُصنع بجانبه ملفّ <span class="ltr">.diwanseal</span> يُرسل إلى المكاتب، يُستورد من «الصور الشخصية ← القاط ← استورد حزمة قاط». يُختم بمفتاح التحديث فلا يقبل ديوان غيره، ولا يُفتح في غيره.</p>
-      <p><button id="pickPieces" data-act="pick-pieces">اختر مجلّد القطع…</button> <span class="ltr" id="piecesPath"></span> <span class="muted" id="piecesCount" data-pieces-count></span></p>
+      <h2>حزمة مختومة</h2>
+      <label>المحتوى</label>
+      <select id="sealContent" data-field="seal-content"><option value="suits">القاط</option><option value="templates">المعاملات</option><option value="clips">الكليشات</option><option value="letterheads">الترويسات</option></select>
+      <p id="sealSectionHint" class="muted hidden">صدّر القسم من «ديوان ← مكتبة النماذج ← صدّر القسم»، ثم اختر ملفّه هنا. يُختم بمفتاح التحديث ويُستورد من مكتبة النماذج.</p>
+      <p id="sealSuitHint" class="muted">مجلّدٌ فيه القطع (PNG مفرّغة، أو PSD كلّ طبقةٍ مفرّغةٍ فيه قاط) — فيُصنع بجانبه ملفّ <span class="ltr">.diwanseal</span> يُرسل إلى المكاتب، يُستورد من «الصور الشخصية ← القاط ← استورد حزمة قاط». يُختم بمفتاح التحديث فلا يقبل ديوان غيره، ولا يُفتح في غيره.</p>
+      <p><button id="pickPieces" data-act="pick-pieces">اختر مجلّد القطع…</button> <button id="pickContent" class="hidden" data-act="pick-content">اختر ملف القسم…</button> <span class="ltr" id="piecesPath"></span> <span class="muted" id="piecesCount" data-pieces-count></span></p>
       <p>
         <label><input type="radio" name="sealKind" value="first" checked /> حزمةٌ أولى — تعمل في التجربة (٣–٤ قطع)</label><br />
         <label><input type="radio" name="sealKind" value="buyer" /> حزمة المشتري — تُستورد في ديوانٍ مفعّل وحده</label>

@@ -390,6 +390,28 @@ $('makeUpd').onclick = () =>
 // ── الحزمة المختومة (S48، D206) ─────────────────────────────────────────
 
 let pieces = null;
+let sectionFile = null;
+
+$('sealContent').onchange = () => {
+  pieces = null; sectionFile = null;
+  $('sealTitle').value = '';
+  $('piecesPath').textContent = ''; $('piecesCount').textContent = ''; $('sealMsg').textContent = '';
+  const suits = $('sealContent').value === 'suits';
+  $('pickPieces').classList.toggle('hidden', !suits);
+  $('pickContent').classList.toggle('hidden', suits);
+  $('sealSuitHint').classList.toggle('hidden', !suits);
+  $('sealSectionHint').classList.toggle('hidden', suits);
+};
+
+$('pickContent').onclick = () =>
+  run($('pickContent'), $('sealMsg'), async () => {
+    const r = await call('pickContent');
+    if (!r) return;
+    sectionFile = r.file;
+    $('piecesPath').textContent = r.file;
+    $('piecesCount').textContent = '— ملف واحد';
+    if (!$('sealTitle').value) $('sealTitle').value = r.file.split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
+  });
 
 $('pickPieces').onclick = () =>
   run($('pickPieces'), $('sealMsg'), async () => {
@@ -403,12 +425,13 @@ $('pickPieces').onclick = () =>
 
 $('makeSeal').onclick = () =>
   run($('makeSeal'), $('sealMsg'), async () => {
-    if (!pieces) throw new Error('اختر مجلّد القطع أوّلًا');
+    const content = $('sealContent').value;
+    if (content === 'suits' ? !pieces : !sectionFile) throw new Error(content === 'suits' ? 'اختر مجلّد القطع أوّلًا' : 'اختر ملف القسم أوّلًا');
     $('makeSeal').textContent = 'تُختم…';
     const kind = document.querySelector('input[name=sealKind]:checked')?.value;
-    const r = await call('makeSeal', { dir: pieces, kind, title: $('sealTitle').value });
+    const r = await call('makeSeal', { dir: pieces, file: sectionFile, content, kind, title: $('sealTitle').value });
     const msg = $('sealMsg');
-    msg.textContent = `✓ ${r.out} — ${r.items} قطعة — ${(r.size / 1024 / 1024).toFixed(1)} م.ب — ${r.kind === 'buyer' ? 'حزمة المشتري' : 'حزمةٌ أولى'} `;
+    msg.textContent = `✓ ${r.out} — ${r.items} ${content === 'suits' ? 'قطعة' : 'ملف'} — ${(r.size / 1024 / 1024).toFixed(1)} م.ب — ${r.kind === 'buyer' ? 'حزمة المشتري' : 'حزمةٌ أولى'} `;
     msg.classList.add('ok');
     const b = document.createElement('button');
     b.textContent = 'اعرضه في مجلّده';

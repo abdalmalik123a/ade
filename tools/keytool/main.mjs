@@ -173,12 +173,20 @@ handle('pick-pieces', async () => {
   return { dir, count: core.sealItemsFrom(dir).length };
 });
 
-handle('make-seal', async ({ dir, kind, title }) => {
+handle('pick-content', async () => {
+  needKey();
+  const r = await dialog.showOpenDialog(win, { title: 'ملف القسم الذي صدّره ديوان', filters: [{ name: 'حزمة محتوى ديوان', extensions: ['diwanpack'] }], properties: ['openFile'] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  return { file: r.filePaths[0] };
+});
+
+handle('make-seal', async ({ dir, file, kind, title, content = 'suits' }) => {
   needKey();
   if (!updateKey) throw new core.KeyToolError('اصنع «مفتاح التحديث» أوّلًا — به تُختم الحزمة');
-  const items = core.sealItemsFrom(String(dir ?? ''));
+  const source = content === 'suits' ? dir : file;
+  const items = core.sealItemsFrom(source, content);
   const name = String(title ?? '').trim();
-  const r = await core.writeSealedPack({ items, kind, title: name, privateKey: updateKey, out: join(dirname(String(dir)), core.sealFileName(name)) });
+  const r = await core.writeSealedPack({ items, content, kind, title: name, privateKey: updateKey, out: join(dirname(source), core.sealFileName(name)) });
   touch(); // حزمةٌ بمئات القطع تُكتب دقائق: العمل من آخره.
   return r;
 });

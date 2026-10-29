@@ -15,7 +15,7 @@
  */
 import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, generateKeyPairSync, hkdfSync, randomBytes, scryptSync, sign } from 'node:crypto';
 import { appendFileSync, createReadStream, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync, writeSync, closeSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { crc32 } from 'node:zlib';
 
 export const KEY_FILE = 'diwan-owner-private.key';
@@ -528,8 +528,13 @@ export function sealKeys(publicKey) {
   };
 }
 
-/** قطع مجلّدٍ للحزمة: PNG وPSD بأسمائها مرتّبةً، بلا ما سواها. */
-export function sealItemsFrom(dir) {
+/** مصدر القاط مجلّد PNG/PSD بأسمائها مرتّبة، ومصدر القسم ملف diwanpack واحد (D210). */
+export function sealItemsFrom(dir, content = 'suits') {
+  if (!Object.hasOwn(SEAL_CONTENT_EXTS, content)) throw new KeyToolError('اختر محتوى الحزمة');
+  if (content !== 'suits') {
+    if (typeof dir !== 'string' || !/\.diwanpack$/i.test(dir) || !existsSync(dir) || !statSync(dir).isFile()) throw new KeyToolError('اختر ملف القسم الذي صدّره ديوان (diwanpack)');
+    return [{ name: basename(dir).replace(/\.[^.]+$/, ''), path: dir }];
+  }
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new KeyToolError('اختر مجلّد القطع');
   const items = readdirSync(dir)
     .filter((f) => /\.(png|psd)$/i.test(f))

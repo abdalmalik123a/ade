@@ -151,6 +151,25 @@ describe('الحزمة المختومة', () => {
     opened.cleanup();
   });
 
+  it.each(['templates', 'clips', 'letterheads'] as const)('keygen seal --content %s يختم ملف القسم الواحد', async (content) => {
+    const path = join(DIR, `${content}-cli.diwanpack`);
+    writeFileSync(path, 'حمولة قسم اختبار');
+    const key = join(DIR, 'cli-owner.pem');
+    writeFileSync(key, owner.privateKey.export({ type: 'pkcs8', format: 'pem' }));
+    const out = join(DIR, `${content}-cli.diwanseal`);
+    execFileSync(process.execPath, [join(__dirname, '../tools/license/keygen.mjs'), 'seal', path, '--content', content, '--kind', 'buyer', '--title', 'قسم', '--key', key, '--out', out]);
+    const opened = await open(out);
+    expect([opened.head.content, opened.head.kind, opened.items[0]?.ext]).toEqual([content, 'buyer', 'diwanpack']);
+    opened.cleanup();
+    expect(core.sealItemsFrom(path, content)).toEqual([{ name: `${content}-cli`, path }]);
+  });
+
+  it('اختيار ملف القسم يرفض المجلّد أو امتدادًا آخر أو نوعًا غير معروف', () => {
+    expect(() => core.sealItemsFrom(DIR, 'templates')).toThrow('اختر ملف القسم');
+    expect(() => core.sealItemsFrom(join(DIR, 'قاط أسود.png'), 'clips')).toThrow('اختر ملف القسم');
+    expect(() => core.sealItemsFrom(DIR, 'unknown')).toThrow('اختر محتوى الحزمة');
+  });
+
   it('قائمة القطع توافق نوع الرأس: لا PNG تحت رأس قسم، ولا ملفا محتوى، ولا محتوى في القاط', async () => {
     const png = { name: 'قاط', ext: 'png', size: 10, sha256: 'a'.repeat(64) };
     const pack = { ...png, ext: 'diwanpack' };

@@ -91,9 +91,10 @@ async function main() {
   } else if (cmd === 'seal') {
     // الحزمة المختومة (S48، D203): `seal <مجلّد القطع> --kind first|buyer --title … [--out] [--key pem]` — بمفتاح التحديث، وفي الاختبار بـ--key.
     const dir = args[1];
+    const content = flag('content') ?? 'suits';
     const key = flag('key') ? loadPrivateKeyFile(flag('key')) : loadUpdateKey(OWNER_DIR, process.env.DIWAN_OWNER_PASSWORD);
     const out = flag('out') ?? join(dirname(dir ?? '.'), sealFileName(flag('title')));
-    const r = await writeSealedPack({ items: sealItemsFrom(dir), kind: flag('kind'), title: flag('title'), privateKey: key, out });
+    const r = await writeSealedPack({ items: sealItemsFrom(dir, content), content, kind: flag('kind'), title: flag('title'), privateKey: key, out });
     console.log(`✓ ${r.out}\n  ${r.items} قطعة — ${(r.size / 1024 / 1024).toFixed(1)} م.ب — ${r.kind}`);
   } else if (cmd === 'status') {
     const s = keyState(OWNER_DIR);
