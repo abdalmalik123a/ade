@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SCREEN_DPI, mmToPx } from '@shared/canvas';
 import { useCanvasPaint } from './useCanvasPaint';
 import ElementHandles from './ElementHandles';
+import Rulers from './Rulers';
 import InlineTextEditor from './InlineTextEditor';
 import type { DesignEditor } from './useDesignEditor';
 
@@ -46,8 +47,9 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
   }, [ed.zoomBy]);
 
   return (
-    <div ref={deskRef} dir="rtl" className="flex-1 min-w-0 min-h-0 overflow-auto flex items-start justify-center p-space-lg" data-desk="" onMouseLeave={() => { ed.endDrag(); ed.cancelPlacement(); }} onMouseMove={(e) => { ed.movePlacement(e); ed.onMove(e); }} onMouseUp={(e) => { ed.finishPlacement(e); ed.endDrag(); }}>
-      <div className="shrink-0" style={{ width: page.w * zoom, height: page.h * zoom }}>
+    <div ref={deskRef} dir="rtl" className="flex-1 min-w-0 min-h-0 overflow-auto flex items-start justify-center p-space-lg" style={{ padding: ed.rulers ? 28 : undefined }} data-desk="" onMouseLeave={() => { ed.endDrag(); ed.cancelPlacement(); }} onMouseMove={(e) => { ed.movePlacement(e); ed.onMove(e); }} onMouseUp={(e) => { ed.finishPlacement(e); ed.endDrag(); }}>
+      <div className="shrink-0 relative" style={{ width: page.w * zoom, height: page.h * zoom }}>
+        {ed.rulers && <Rulers canvas={canvas} zoom={zoom} />}
         <div
           ref={ed.sheetRef}
           className="shadow-[0_1px_3px_rgba(15,23,42,0.06),0_16px_32px_-4px_rgba(15,23,42,0.08)]"

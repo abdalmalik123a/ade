@@ -46,6 +46,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   /** المعرض أولًا: يبدأ المكتب من «لمن التصميم؟» لا من لوحةٍ فارغة. */
   const [view, setView] = useState<'gallery' | 'editor'>('gallery');
   const [preview, setPreview] = useState(false);
+  const [rulers, setRulers] = useState(true);
   const [grid, setGrid] = useState(false);
   const [zoom, setZoom] = useState(0.5);
   /** «ملء الشاشة»: يزيد فيعيد المكتبُ (Stage) قياسَ التكبير. */
@@ -128,7 +129,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   }, [request?.key]);
 
   return {
-    request, onChanged, toast, say, busy, view, setView, preview, setPreview, grid, setGrid, zoom, setZoom, title, setTitle, values, setValues,
+    request, onChanged, toast, say, busy, view, setView, preview, setPreview, grid, setGrid, rulers, setRulers, zoom, setZoom, title, setTitle, values, setValues,
     copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry, designId, setDesignId,
     fitKey, zoomFit: () => setFitKey((k) => k + 1), zoomBy,
     draftSavedAt: draft.draftSavedAt,

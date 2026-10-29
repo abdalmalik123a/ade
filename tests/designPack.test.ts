@@ -13,7 +13,7 @@ import { designUses, exportDesigns, missingAfterImport } from '../src/main/servi
 import { prepareTemplates, saveTemplate } from '../src/main/services/templates';
 import { readZipIndex } from '../src/main/services/zip';
 import { buildDoc, PALETTES } from '../src/shared/design/kit';
-import { imageElement, textElement } from '../src/shared/canvas';
+import { imageElement, textElement, tableElement } from '../src/shared/canvas';
 import { tokenInlines, type Doc } from '../src/shared/doc';
 
 // خطوط Windows من مجلّدٍ فارغ — فلا يتعلّق الاختبار بما ثُبّت على الجهاز.
@@ -85,6 +85,21 @@ describe('حزم التصاميم', () => {
     expect(again.added.templates).toBe(0);
     expect(again.existing.templates).toBe(2);
     expect(again.addedIds).toEqual([]);
+  });
+
+  it('ارتفاع الصفوف ووزن العناوين يخرجان ويعودان بوجهي التصميم', async () => {
+    const o = office(), doc = buildDoc({ kind: 'thanks', style: 'official', palette: PALETTES[0]! });
+    const table = tableElement({ box: { x: .1, y: .2, w: .8, h: .4 }, rowHeights: [18, 27, 35], headerHeight: 20 });
+    doc.canvas!.elements.push(table);
+    doc.backCanvas = { ...structuredClone(doc.canvas!), elements: [tableElement({ box: table.box, rowHeights: [40, 30, 20], headerHeight: 10 })] };
+    const saved = save(o.db, 'جدول المدرسة بوجهين', doc);
+    const target = join(o.dir, 'جدول.diwanpack');
+    await exportDesigns(target, o.db, o.store, '1.9.0', [saved.id]);
+    const other = office(), out = await importContent(target, other.db, other.store, join(other.dir, 'work'));
+    const row = other.db.prepare('SELECT doc_json AS doc FROM templates WHERE id=?').get(out.addedIds[0]!) as { doc: string };
+    const loaded = JSON.parse(row.doc) as Doc;
+    expect(loaded.canvas?.elements.find(e=>e.kind==='table')).toMatchObject({ rowHeights: [18,27,35], headerHeight: 20 });
+    expect(loaded.backCanvas?.elements.find(e=>e.kind==='table')).toMatchObject({ rowHeights: [40,30,20], headerHeight: 10 });
   });
 
   it('وحزمة المحتوى العامّة لا تحمل ملفّ عنصرٍ مستورد كذلك', async () => {

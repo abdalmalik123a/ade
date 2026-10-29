@@ -23,7 +23,9 @@ export default async function scenario(page) {
   await wait(400);
   await page.eval(`[...document.querySelectorAll('button[type="submit"]')].find((b) => b.textContent.includes('اللوحة البيضاء'))?.click(); return true;`);
   await wait(800);
-  await click('[data-add="table"]');
+  await click('[data-design-tool="table"]');
+  await page.eval(`const s=document.querySelector('[data-design]');const r=s.getBoundingClientRect();const o={bubbles:true,clientX:r.right-r.width*.08,clientY:r.top+r.height*.35};s.dispatchEvent(new MouseEvent('mousedown',o));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',o));return true;`);
+  await click('[data-design-tool="select"]');
   await wait(500);
   ok('الجدول يُضاف بحدوده الكاملة', (await drawn()).includes('<td style="border:1px solid'));
 
@@ -49,5 +51,18 @@ export default async function scenario(page) {
     const table = t ? (await window.diwan.templates.doc(t.id)).canvas.elements.find((e) => e.kind === 'table') : null;
     return table ? { borders: table.borders, hideHeader: table.hideHeader, row: table.rowStyles?.[1] } : null;`);
   ok(`ويُحفظ ذلك (${JSON.stringify(saved)})`, saved?.borders === 'rows' && saved?.hideHeader === true && saved?.row?.bg === '#fde68a' && saved?.row?.bold === true);
+  // S20: المقابض الموجودة تقاسم الجارين، ولا تظهر للمقفل أو المخفي أو المدوّر.
+  const count = () => page.eval(`return document.querySelectorAll('[data-table-grip]').length;`);
+  ok('الجدول المستقيم له مقابض حدود',await count()>0);
+  const widths = () => page.eval(`return [0,1,2].map(i=>Number(document.querySelector('[data-act="table-col-width-'+i+'"]').value));`);
+  const before=await widths();
+  await page.eval(`const g=document.querySelector('[data-table-grip="col-1"]');const r=g.getBoundingClientRect();g.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:r.x,clientY:r.y}));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:r.x-10,clientY:r.y}));return true;`);await wait(120);
+  await page.eval(`document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));return true;`);await wait(150);
+  const after=await widths();ok('سحب العمود يقاسم جاره ويحفظ الثالث',after[0]>before[0]&&after[1]<before[1]&&Math.abs(after[2]-before[2])<.2&&Math.abs(after[0]+after[1]-before[0]-before[1])<.3);
+  await click('[data-layer-lock]');await wait(120);ok('المقفل بلا مقابض جدول',await count()===0);await click('[data-layer-lock]');await wait(120);
+  await click('[data-layer-hide]');await wait(120);ok('المخفي بلا مقابض جدول',await count()===0);await click('[data-layer-hide]');await wait(120);
+  await page.eval(`const g=document.querySelector('[data-grip="rotate"]');const r=g.getBoundingClientRect();const b=g.parentElement.getBoundingClientRect();g.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:r.x+r.width/2,clientY:r.y+r.height/2}));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:b.x+b.width+30,clientY:b.y+b.height/2}));return true;`);await wait(120);
+  await page.eval(`document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));return true;`);await wait(120);
+  ok('المدوّر بلا مقابض على محاور خاطئة',await count()===0);await click('[data-undo]');await wait(120);ok('التراجع عن التدوير يعيد المقابض',await count()>0);
   return steps.join('\n');
 }

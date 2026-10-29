@@ -158,6 +158,9 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
 
       <div className="w-px h-6 bg-outline-variant shrink-0" />
 
+      <button className={`${TOOL} ${ed.rulers ? 'bg-primary-fixed text-primary' : ''}`} data-rulers aria-pressed={ed.rulers} title="مسطرة بالملّيمتر" type="button" onClick={() => ed.setRulers((r) => !r)}>
+        <span className="material-symbols-outlined text-[18px]">straighten</span>
+      </button>
       <button className={`${TOOL} ${grid ? 'bg-primary-fixed text-primary' : ''}`} title="شبكة بسنتيمتر" type="button" onClick={() => ed.setGrid((g) => !g)}>
         <span className="material-symbols-outlined text-[18px]">grid_4x4</span>
       </button>
