@@ -1,9 +1,9 @@
 /**
  * سيناريو: شريط الأدوات السريعة في التصاميم وتبويبات العمود.
  *
- * - أزرار الشريط تضيف نصًّا وحقلًا وشكلًا بضغطةٍ واحدة، وبلا اختصاراتٍ بحرفٍ مفرد
+ * - أزرار الشريط تختار النص والحقل والشكل، والنقر على الورقة يضيف، وبلا اختصاراتٍ بحرفٍ مفرد
  *   (ضغط U أو F لا يضيف شيئًا).
- * - العمود أربعة تبويبات، وتبديلها لا يمحو ما كُتب في خانة الدفعة.
+ * - الخصائص والطبقات ثابتتان، وإغلاق التعبئة وإعادة فتحها لا يمحو الدفعة.
  */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -14,6 +14,7 @@ export default async function scenario(page) {
   const layers = () => page.eval(`return document.querySelectorAll('[data-layer]').length;`);
   const dock = (title) =>
     page.eval(`const b = [...document.querySelectorAll('[data-tool-dock] button')].find((x) => (x.title || '').includes(${JSON.stringify(title)})); if (!b) return false; b.click(); return true;`);
+  const place = async () => { await page.eval(`const s=document.querySelector('[data-design]');const r=s.getBoundingClientRect();const o={bubbles:true,clientX:r.right-r.width*.2,clientY:r.top+r.height*.2};s.dispatchEvent(new MouseEvent('mousedown',o));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',o));return true;`); };
   const tab = (name) =>
     page.eval(`const b = document.querySelector(${JSON.stringify(name === 'الطبقات' ? '[data-editor-panel="fill"] [data-close-panel]' : '[data-design-panel="fill"]')}); if (!b) return false; b.click(); return true;`);
 
@@ -26,12 +27,15 @@ export default async function scenario(page) {
   ok('الشريط السريع ظاهر بسبعة أزرار', (await page.eval(`return document.querySelectorAll('[data-tool-dock] button').length;`)) === 7);
 
   await dock('إضافة نص');
+  await place();
   await wait(250);
   ok('زرّ النصّ يضيف طبقة', (await layers()) === base + 1);
   await dock('حقل متغير');
+  await place();
   await wait(250);
   ok('وزرّ الحقل يضيف طبقة', (await layers()) === base + 2);
   await dock('مستطيل');
+  await place();
   await wait(250);
   ok('وزرّ الشكل يضيف طبقة', (await layers()) === base + 3);
 

@@ -75,6 +75,7 @@ export default async function scenario(page, { shotsDir }) {
   await click('[data-undo]');
   await wait(300);
 
+  await click('[data-design-panel="fill"]');
   // ── ١٢: «هويّة طالب» بلا تحذير قصّ ────────────────────────────────────
   await page.type('textarea[data-batch-text]', ['الاسم\tالصف\tالرقم', 'زينب علي حسن\tالخامس\t2026001', 'سالم حسن\tالخامس\t2026002', 'مريم كريم\tالسادس\t2026003'].join('\n'));
   await wait(700);
@@ -100,6 +101,7 @@ export default async function scenario(page, { shotsDir }) {
   await page.eval(`document.querySelector('[data-sheets] button[title="رجوع (Esc)"]')?.click(); return true;`);
   await wait(500);
 
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   // ── ٢: جدولٌ على لوحةٍ بيضاء ──────────────────────────────────────────
   await click('[data-act="gallery"]');
   await wait(600);
@@ -107,7 +109,9 @@ export default async function scenario(page, { shotsDir }) {
   await wait(400);
   await page.eval(`[...document.querySelectorAll('button[type="submit"]')].find((b) => b.textContent.includes('اللوحة البيضاء'))?.click(); return true;`);
   await wait(900);
-  await click('[data-add="table"]');
+  await click('[data-design-tool="table"]');
+  await page.eval(`const s=document.querySelector('[data-design]');const r=s.getBoundingClientRect();const o={bubbles:true,clientX:r.right-r.width*.08,clientY:r.top+r.height*.35};s.dispatchEvent(new MouseEvent('mousedown',o));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',o));return true;`);
+  await click('[data-design-tool="select"]');
   await wait(600);
   const widths = () => Promise.all([0, 1, 2].map((i) => mm(`[data-act="table-col-width-${i}"]`)));
   const before = await widths();

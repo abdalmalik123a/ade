@@ -2,17 +2,20 @@
  * اللوحة: الورقة مرسومةً بمقاسها وتكبيرها، والشبكة، وخطوط الإرشاد، ومقابض التحديد فوق الرسم — لا داخله، فالمطبوع
  * لا يحملها.
  */
-import { useEffect, useRef } from 'react';
-import { SCREEN_DPI, mmToPx, textElement } from '@shared/canvas';
-import { EDGES } from './kit';
+import { useEffect, useRef, useState } from 'react';
+import { SCREEN_DPI, mmToPx } from '@shared/canvas';
 import { useCanvasPaint } from './useCanvasPaint';
-import TableGrips from './TableGrips';
+import ElementHandles from './ElementHandles';
+import InlineTextEditor from './InlineTextEditor';
 import type { DesignEditor } from './useDesignEditor';
 
 export default function Stage({ ed }: { ed: DesignEditor }) {
-  const { canvas, selection, single, preview, grid, zoom, setZoom, view, guides, html, marquee } = ed;
+  const { canvas, preview, grid, zoom, setZoom, view, guides, html, marquee } = ed;
   const { page, pxW, pxH, offset } = ed.geometry;
   const deskRef = useRef<HTMLDivElement>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const editingEl = canvas.elements.find((el) => el.id === editing);
+  useEffect(() => { setEditing(null); }, [ed.activeSide, view]);
   const paintRef = useCanvasPaint(html, preview);
 
   useEffect(() => {
@@ -43,7 +46,7 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
   }, [ed.zoomBy]);
 
   return (
-    <div ref={deskRef} dir="rtl" className="flex-1 min-w-0 min-h-0 overflow-auto flex items-start justify-center p-space-lg" data-desk="" onMouseLeave={ed.endDrag} onMouseMove={ed.onMove} onMouseUp={ed.endDrag}>
+    <div ref={deskRef} dir="rtl" className="flex-1 min-w-0 min-h-0 overflow-auto flex items-start justify-center p-space-lg" data-desk="" onMouseLeave={() => { ed.endDrag(); ed.cancelPlacement(); }} onMouseMove={(e) => { ed.movePlacement(e); ed.onMove(e); }} onMouseUp={(e) => { ed.finishPlacement(e); ed.endDrag(); }}>
       <div className="shrink-0" style={{ width: page.w * zoom, height: page.h * zoom }}>
         <div
           ref={ed.sheetRef}
@@ -56,25 +59,12 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
             transformOrigin: 'top right',
             position: 'relative'
           }}
+          onMouseDownCapture={(e) => { if (!preview && !(e.target as HTMLElement).closest('[data-inline-editor]')) ed.startPlacement(e); }}
           onMouseDown={(e) => {
             // الضغط خارج العناصر يبدأ مستطيل التحديد (١٫٦).
             if (!(e.target as HTMLElement).closest('[data-handle]')) ed.startMarquee(e);
           }}
-          onDoubleClick={(e) => {
-            // نقر مزدوج على منطقة فارغة يضيف نصاً في موضع النقر
-            if ((e.target as HTMLElement).closest('[data-handle]')) return;
-            const rect = ed.sheetRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            const x = Math.max(0.05, Math.min(0.8, (rect.right - e.clientX - offset * zoom) / (pxW * zoom)));
-            const y = Math.max(0.05, Math.min(0.85, (e.clientY - rect.top - offset * zoom) / (pxH * zoom)));
-            ed.add(
-              textElement({
-                box: { x, y, w: 0.35, h: 0.08 },
-                inlines: [{ kind: 'run', text: 'نص جديد' }],
-                size: 16
-              })
-            );
-          }}
+
         >
           <div ref={paintRef} dangerouslySetInnerHTML={{ __html: html }} />
 
@@ -113,66 +103,11 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
             />
           )}
 
-          {/* مقابضُ التحديد فوق الرسم — لا داخله، فالمطبوع لا يحملها. والمخفيّ بلا مقبض. */}
-          {!preview &&
-            canvas.elements.filter((el) => !el.hidden).map((el) => {
-              const on = selection.includes(el.id);
-              return (
-                <div
-                  key={el.id}
-                  className={`absolute ${el.locked ? 'cursor-not-allowed' : 'cursor-move'} ${
-                    on ? 'outline outline-2 outline-primary' : 'hover:outline hover:outline-1 hover:outline-outline-variant'
-                  }`}
-                  data-handle={el.id}
-                  style={{
-                    right: offset + el.box.x * pxW,
-                    top: offset + el.box.y * pxH,
-                    width: el.box.w * pxW,
-                    height: el.box.h * pxH,
-                    zIndex: 5000 + el.z,
-                    // يدور مع عنصره — فالمقابض على حدوده لا على صندوقه قبل التدوير.
-                    ...(el.rotate ? { transform: `rotate(${-el.rotate}deg)` } : {})
-                  }}
-                  onMouseDown={(e) => ed.startMove(e, el)}
-                  // نقرتان على العنصر: يحدده مباشرة ويركز على تحرير نصه إن كان نصاً
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    ed.setSelection([el.id]);
-                    if (el.kind === 'text') {
-                      const input = document.querySelector<HTMLInputElement>('[data-element-text]');
-                      input?.focus();
-                      input?.select();
-                    }
-                  }}
-                >
-                  {on &&
-                    !el.locked &&
-                    single?.id === el.id &&
-                    EDGES.map(({ edge, style, cursor }) => (
-                      <div
-                        key={edge}
-                        className="absolute w-2 h-2 bg-surface border border-primary"
-                        data-grip={edge}
-                        style={{ ...style, cursor }}
-                        onMouseDown={(e) => ed.startResize(e, el, edge)}
-                      />
-                    ))}
-                  {/* حدود الجدول تُسحب (البند ٢) — للجدول المحدَّد وحده، وغير المدار: المقابض على محاورها. */}
-                  {on && !el.locked && single?.id === el.id && el.kind === 'table' && !el.rotate && (
-                    <TableGrips el={el} html={html} onStart={(e, axis, border, start, size, sign) => ed.startTableDrag(e, el.id, axis, border, start, size, sign)} />
-                  )}
-                  {on && !el.locked && single?.id === el.id && (
-                    <div
-                      className="absolute w-3 h-3 rounded-full bg-surface border-2 border-primary cursor-grab"
-                      data-grip="rotate"
-                      style={{ top: -20, right: '50%', transform: 'translateX(50%)' }}
-                      title="أدِره — ومع Shift بخطوة ١٥°"
-                      onMouseDown={(e) => ed.startRotate(e, el, e.currentTarget)}
-                    />
-                  )}
-                </div>
-              );
-            })}
+          <ElementHandles ed={ed} onEdit={setEditing} />
+          {ed.placement && !preview && <div className="absolute border-2 border-primary bg-primary/10 pointer-events-none" data-tool-placement
+            style={{ right: offset + ed.placement.x * pxW, top: offset + ed.placement.y * pxH, width: ed.placement.w * pxW, height: ed.placement.h * pxH, zIndex: 11000 }} />}
+          {editingEl?.kind === 'text' && !editingEl.locked && !editingEl.hidden && !preview && <InlineTextEditor key={`${ed.activeSide}:${editingEl.id}`} el={editingEl} ed={ed} close={() => setEditing(null)} />}
+
         </div>
       </div>
     </div>

@@ -10,6 +10,8 @@ export default async function scenario(page, { shotsDir } = {}) {
   await click('button[data-kind="student-id"]');
   if (!await page.until(`return document.querySelector('[data-design-workspace]')?.checkVisibility();`, 10000)) throw new Error('لا مساحة عمل');
   await click('[data-tool-dock] button[title="إضافة نص مباشر"]');
+  await page.eval(`const s=document.querySelector('[data-design]');const r=s.getBoundingClientRect();const o={bubbles:true,clientX:r.right-r.width*.2,clientY:r.top+r.height*.2};s.dispatchEvent(new MouseEvent('mousedown',o));document.querySelector('[data-desk]').dispatchEvent(new MouseEvent('mouseup',o));return true;`);
+  await click('[data-design-tool="select"]');
   if (!await page.until(`return document.querySelector('[data-element-text]')?.checkVisibility();`, 5000)) throw new Error('لا خصائص نص');
   for (const [width, height] of [[1366, 768], [1280, 720]]) {
     await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });

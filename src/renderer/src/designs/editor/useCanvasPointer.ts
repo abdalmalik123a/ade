@@ -8,6 +8,7 @@ import { dragShare } from '@shared/shares';
 import { minShare, withRowWeights } from '@shared/design/tableSizes';
 import { expandToGroups, idsInRect, rectFrom, resizeBox, rotationFrom, snapBox, type Edge, type Guide } from '@shared/canvasEdit';
 import type { Drag } from './kit';
+import { designPoint } from '@shared/design/toolPlacement';
 
 type Inputs = {
   canvas: Canvas;
@@ -33,10 +34,7 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
   const pointAt = useCallback(
     (e: { clientX: number; clientY: number }) => {
       const rect = sheetRef.current!.getBoundingClientRect();
-      return {
-        x: (rect.right - e.clientX - offset * zoom) / (pxW * zoom),
-        y: (e.clientY - rect.top - offset * zoom) / (pxH * zoom)
-      };
+      return designPoint(e, rect, { pxW, pxH, offset }, zoom);
     },
     [offset, pxW, pxH, zoom]
   );
@@ -120,8 +118,8 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     if (ending.kind === 'marquee') return;
     const before = beforeDrag.current;
     beforeDrag.current = null;
-    if (before) pushPast(before);
-  }, [pushPast]);
+    if (before && JSON.stringify(before) !== JSON.stringify(canvas)) pushPast(before);
+  }, [pushPast, canvas]);
 
   /** ضغطٌ على عنصر: يُحدَّد (ومع Ctrl يُضاف إلى المحدَّد) ويبدأ سحبه — إلا أن يكون مقفلًا. */
   const startMove = (e: React.MouseEvent, el: CanvasElement) => {
@@ -172,5 +170,5 @@ export function useCanvasPointer({ canvas, apply, patchElement, selection, setSe
     dragRef.current = { kind: 'marquee', from: pointAt(e), add };
   };
 
-  return { sheetRef, guides, marquee, onMove, endDrag, startMove, startResize, startRotate, startMarquee, startTableDrag };
+  return { sheetRef, pointAt, guides, marquee, onMove, endDrag, startMove, startResize, startRotate, startMarquee, startTableDrag };
 }

@@ -9,6 +9,7 @@ import { NUM, TOOL } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 import ToolbarMenu from './ToolbarMenu';
 import ContextFormatBar from './ContextFormatBar';
+import DesignToolOptions from './DesignToolOptions';
 
 const ALIGNS: [AlignMode, string, string][] = [
   ['right', 'align_horizontal_right', 'حاذِ يمينًا'],
@@ -201,7 +202,7 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
       </div>
     </div>
     <div className="min-h-11 shrink-0 px-space-sm py-space-xs bg-surface-container-lowest border-b border-outline-variant overflow-x-auto" data-design-options>
-      {selection.length > 0 ? <ContextFormatBar ed={ed} /> : <span className="font-label-sm text-label-sm text-on-surface-variant">اختر أداة أو عنصرًا لتظهر خياراته.</span>}
+      {ed.tool !== 'select' ? <DesignToolOptions ed={ed} /> : selection.length > 0 ? <ContextFormatBar ed={ed} /> : <span className="font-label-sm text-label-sm text-on-surface-variant">اختر أداة أو عنصرًا لتظهر خياراته.</span>}
     </div>
     </>
   );

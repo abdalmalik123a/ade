@@ -30,8 +30,8 @@ export function useDesignKeys(k: Inputs): void {
   const { canvas, selection, setSelection, apply, undo, redo, duplicateSelected, removeSelected } = k;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (e.defaultPrevented || target?.closest('[role="dialog"]') || (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (e.defaultPrevented || target?.isContentEditable || target?.closest('[role="dialog"]') || (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
 
       if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
         e.preventDefault();

@@ -8,6 +8,7 @@ import { screenGeometry } from './kit';
 import { useCanvasSides } from './useCanvasSides';
 import { useCanvasElements } from './useCanvasElements';
 import { useCanvasPointer } from './useCanvasPointer';
+import { useDesignTools } from './useDesignTools';
 import { useDesignKeys } from './useDesignKeys';
 import { useBackDesign, useDesignDoc } from './useDesignDoc';
 import { useDesignLibrary } from './useDesignLibrary';
@@ -69,6 +70,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
   });
   const geometry = screenGeometry(canvas);
   const pointer = useCanvasPointer({ canvas, apply, patchElement: els.patchElement, selection: els.selection, setSelection: els.setSelection, pushPast: sides.pushPast, zoom, geometry });
+  const tools = useDesignTools({ add: els.add, pointAt: pointer.pointAt, zoom, geometry, activeSide: sides.activeSide, view });
   useDesignKeys({
     canvas, selection: els.selection, setSelection: els.setSelection, apply, undo: sides.undo, redo: sides.redo,
     duplicateSelected: els.duplicateSelected, removeSelected: els.removeSelected, selectAll: els.selectAll, copy: els.copy, cut: els.cut,
@@ -130,7 +132,7 @@ export function useDesignEditor({ request, onChanged }: DesignsScreenProps) {
     copies, setCopies, clipartModalOpen, setClipartModalOpen, newBlankModalOpen, setNewBlankModalOpen, geometry, designId, setDesignId,
     fitKey, zoomFit: () => setFitKey((k) => k + 1), zoomBy,
     draftSavedAt: draft.draftSavedAt,
-    ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...library, ...sources, ...cards, ...output,
+    ...sides, ...els, ...batch, ...back, ...docs, ...pointer, ...tools, ...library, ...sources, ...cards, ...output,
     pickFromGallery: order.pickFromGallery, fillFromClient: order.fillNow,
     // تصميمٌ محفوظ يُفتح من المعرض ليس من الطلب: نسخه لا تبقى كمّية الطلب.
     openDesign: (id: number) => {
