@@ -76,7 +76,7 @@ export default async function scenario(page) {
   await wait(1000);
 
   // التبويب «إضافة وتعبئة»
-  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  await page.eval(`document.querySelector('[data-design-panel="fill"]')?.click(); return true;`);
   await wait(300);
 
   // ١٨٠ اسمًا = ٢٠ ورقة (٩ بطاقات في الورقة)

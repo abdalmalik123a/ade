@@ -4,7 +4,7 @@ import { inlinesOf } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 
 const DOCK_BTN =
-  'w-8 h-8 rounded-btn flex items-center justify-center transition-colors text-on-surface hover:bg-surface-container-high active:scale-95 border border-outline-variant/60 shadow-2xs';
+  'w-11 h-10 rounded-btn flex items-center justify-center transition-colors text-on-surface hover:bg-surface-container-high active:scale-95 border border-outline-variant/60 shadow-2xs';
 
 export default function DesignToolDock({ ed }: { ed: DesignEditor }) {
   const { add, setSelection } = ed;
@@ -68,7 +68,7 @@ export default function DesignToolDock({ ed }: { ed: DesignEditor }) {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-card border border-outline-variant shrink-0" data-tool-dock="">
+    <div className="flex flex-col items-center gap-1 bg-surface-container-lowest p-1 border-r border-outline-variant shrink-0 w-14 overflow-y-auto" data-tool-dock="">
       <button
         className={`${DOCK_BTN} ${ed.selection.length === 0 ? 'bg-primary-fixed text-primary' : 'bg-surface-container-lowest'}`}
         title="أداة التحديد والتحريك"
@@ -78,7 +78,7 @@ export default function DesignToolDock({ ed }: { ed: DesignEditor }) {
         <span className="material-symbols-outlined text-[18px]">near_me</span>
       </button>
 
-      <div className="w-px h-5 bg-outline-variant shrink-0" />
+      <div className="w-7 h-px bg-outline-variant shrink-0" />
 
       <button className={`${DOCK_BTN} bg-surface-container-lowest`} title="إضافة نص مباشر" type="button" onClick={addText}>
         <span className="material-symbols-outlined text-[18px] text-primary">title</span>

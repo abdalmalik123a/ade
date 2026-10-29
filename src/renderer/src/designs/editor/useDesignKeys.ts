@@ -31,7 +31,7 @@ export function useDesignKeys(k: Inputs): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (e.defaultPrevented || target?.closest('[role="dialog"]') || (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
 
       if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
         e.preventDefault();

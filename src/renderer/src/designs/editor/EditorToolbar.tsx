@@ -8,7 +8,6 @@ import { startCanvasHistory, type AlignMode, type LayerMove } from '@shared/canv
 import { NUM, TOOL } from './kit';
 import type { DesignEditor } from './useDesignEditor';
 import ToolbarMenu from './ToolbarMenu';
-import DesignToolDock from './DesignToolDock';
 import ContextFormatBar from './ContextFormatBar';
 
 const ALIGNS: [AlignMode, string, string][] = [
@@ -50,17 +49,16 @@ const EDIT_RUN: Record<EditAct, (ed: DesignEditor) => unknown> = {
   ungroup: (ed) => ed.ungroup()
 };
 
-const SAVE = 'h-9 px-space-md rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
-const SAVE_COPY = 'h-9 px-space-md rounded-card bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 disabled:opacity-50';
 
 export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
-  const { activeSide, selection, grid, preview, zoom, copies, designId, busy } = ed;
+  const { activeSide, selection, grid, preview, zoom, copies } = ed;
   const side = (on: boolean) =>
     `px-3 py-1 rounded-md font-label-sm text-label-sm font-semibold flex items-center gap-1.5 transition-colors ${
       on ? 'bg-primary-fixed text-primary shadow-xs' : 'text-on-surface hover:bg-surface-container-high'
     }`;
   return (
-    <div className="h-14 px-space-lg flex items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest overflow-x-auto">
+    <>
+    <div className="h-12 shrink-0 px-space-lg flex items-center gap-space-sm border-b border-outline-variant bg-surface-container-lowest overflow-x-auto">
       {/* مبدل الوجه والظهر */}
       <div className="flex items-center bg-surface-container-low p-0.5 rounded-card border border-outline-variant shrink-0" data-side-tabs="">
         <button
@@ -101,14 +99,6 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
           <span className="material-symbols-outlined text-[18px]">redo</span>
         </button>
       </div>
-
-      <div className="w-px h-6 bg-outline-variant shrink-0" />
-
-      {/* شريط الأدوات السريع (Dock) */}
-      <DesignToolDock ed={ed} />
-
-      {/* شريط التنسيق السياقي عند وجود عنصر محدد */}
-      {selection.length > 0 && <ContextFormatBar ed={ed} />}
 
       <div className="w-px h-6 bg-outline-variant shrink-0" />
 
@@ -207,41 +197,12 @@ export default function EditorToolbar({ ed }: { ed: DesignEditor }) {
             onChange={(e) => ed.setCopies(Number(e.target.value.replace(/[^\d]/g, '')) || 1)}
           />
         </label>
-        {ed.draftSavedAt && (
-          <span
-            className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant whitespace-nowrap"
-            data-status="design-draft"
-            title="ما لم يُحفظ يُحفظ مسودّةً وحده — ويُكمَل من «قيد العمل» ورأس المعرض"
-          >
-            <span className="material-symbols-outlined text-[16px]">cloud_done</span>
-            مسودّة {ed.draftSavedAt.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        )}
-        {designId !== null ? (
-          <>
-            <button className={SAVE} data-act="save" title="احفظ التعديلات على نفس التصميم" type="button" disabled={busy} onClick={() => void ed.save(false)}>
-              <span className="material-symbols-outlined text-[18px]">save</span>
-              حفظ التعديلات
-            </button>
-            <button
-              className={SAVE_COPY}
-              data-act="save-copy"
-              title="احفظ كنسخة جديدة منفصلة"
-              type="button"
-              disabled={busy}
-              onClick={() => void ed.save(true)}
-            >
-              <span className="material-symbols-outlined text-[18px]">content_copy</span>
-              حفظ كنسخة
-            </button>
-          </>
-        ) : (
-          <button className={SAVE} data-act="save" title="احفظ التصميم" type="button" disabled={busy} onClick={() => void ed.save(false)}>
-            <span className="material-symbols-outlined text-[18px]">save</span>
-            حفظ التصميم
-          </button>
-        )}
+
       </div>
     </div>
+    <div className="min-h-11 shrink-0 px-space-sm py-space-xs bg-surface-container-lowest border-b border-outline-variant overflow-x-auto" data-design-options>
+      {selection.length > 0 ? <ContextFormatBar ed={ed} /> : <span className="font-label-sm text-label-sm text-on-surface-variant">اختر أداة أو عنصرًا لتظهر خياراته.</span>}
+    </div>
+    </>
   );
 }

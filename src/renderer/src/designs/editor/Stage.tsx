@@ -22,8 +22,10 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
       if (desk && desk.clientWidth) setZoom(Math.min(3, Math.max(0.15, Math.min((desk.clientWidth - 64) / page.w, (desk.clientHeight - 64) / page.h))));
     };
     fit();
+    const observer = new ResizeObserver(fit);
+    if (deskRef.current) observer.observe(deskRef.current, { box: 'border-box' });
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    return () => { observer.disconnect(); window.removeEventListener('resize', fit); };
     // والعودة من المعرض تعيد القياس: المحرّر المخفيّ عرضه صفر. و«ملء الشاشة» من الشريط يعيده (`fitKey`).
   }, [page.w, page.h, view, setZoom, ed.fitKey]);
 
@@ -41,7 +43,7 @@ export default function Stage({ ed }: { ed: DesignEditor }) {
   }, [ed.zoomBy]);
 
   return (
-    <div ref={deskRef} className="flex-1 overflow-auto flex items-start justify-center p-space-xl" data-desk="" onMouseLeave={ed.endDrag} onMouseMove={ed.onMove} onMouseUp={ed.endDrag}>
+    <div ref={deskRef} dir="rtl" className="flex-1 min-w-0 min-h-0 overflow-auto flex items-start justify-center p-space-lg" data-desk="" onMouseLeave={ed.endDrag} onMouseMove={ed.onMove} onMouseUp={ed.endDrag}>
       <div className="shrink-0" style={{ width: page.w * zoom, height: page.h * zoom }}>
         <div
           ref={ed.sheetRef}

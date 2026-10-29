@@ -154,7 +154,7 @@ export default async function scenario(page) {
   await wait(1500);
   await click('button[data-kind="student-id"]');
   await wait(900);
-  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  await page.eval(`document.querySelector('[data-design-panel="fill"]')?.click(); return true;`);
   await wait(200);
   await page.type('textarea[data-batch-text]', ['الاسم\tالصف\tالرقم', ...NAMES.map((n, i) => `${n}\tالخامس\t2026-${String(i + 1).padStart(4, '0')}`)].join('\n'));
   await wait(600);

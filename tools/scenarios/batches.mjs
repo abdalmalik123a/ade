@@ -75,7 +75,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await click('button[data-act="save"]');
   await wait(1500);
   // الدفعة تحت تبويب «إضافة وتعبئة» (8606e9e): التبويبات كلّها مركّبة والمخفيّ منها لا يُقرأ نصّه — فيُفتح كما يفتحه الموظف (D43).
-  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  await page.eval(`document.querySelector('[data-design-panel="fill"]')?.click(); return true;`);
   await wait(300);
   const list = ['المنتسب\tالرقم', 'زينب علي حسن\t501', 'أحمد كريم جاسم\t502', 'سالم محمود جاسم\t503'].join('\n');
   await page.type('textarea[data-batch-text]', list);

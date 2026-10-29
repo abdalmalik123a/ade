@@ -135,6 +135,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(900);
   const picked = await page.eval(`return document.querySelector('[data-size]')?.innerText ?? '';`);
   ok('واختيارُ الهوية يفتحها بمقاسها', picked.includes('85.6') && picked.includes('54.0'));
+  await click('[data-design-panel="fill"]');
+  await wait(200);
   ok('وبحقولها', (await page.text()).includes('املأ الحقول'));
   const inputs = await page.eval(`return [...document.querySelectorAll('input[data-value]')].map((e) => e.dataset.value).join(',');`);
   ok('واسم الجهة فيها نصًّا لا حقلًا يُملأ', !inputs.includes('المدرسة'));
@@ -150,8 +152,8 @@ export default async function scenario(page, { profile, shotsDir }) {
     ...Array.from({ length: 11 }, (_, i) => `طالب ${i + 1}\tالخامس\t2026-${String(i + 1).padStart(4, '0')}\t0770`),
     'عبد الرحمن محمد عبد الكريم حسين الجبوري\tالسادس\t2026-0099\t0780'
   ].join('\n');
-  // اللوحات في تبويباتٍ: الدفعة تحت «إضافة وتعبئة» (وتبقى مركّبة وإن خُفيت).
-  await page.eval(`[...document.querySelectorAll('[data-sidebar-tabs] button')].find((b) => b.textContent.includes('إضافة وتعبئة'))?.click(); return true;`);
+  // نافذة التعبئة والدفعة تبقى مركّبة عند إغلاقها.
+  await page.eval(`document.querySelector('[data-design-panel="fill"]')?.click(); return true;`);
   await wait(200);
   await page.type('textarea[data-batch-text]', list);
   await wait(600);
@@ -245,6 +247,8 @@ export default async function scenario(page, { profile, shotsDir }) {
   ok('ورُسمت الخلفية', (await design()).includes('diwan://store/designs/'));
 
   // ── حقلٌ فوق التصميم ───────────────────────────────────────────────
+  await click('[data-design-panel="fill"]');
+  await wait(200);
   await page.type('input[data-add-text]', '{اسم الطالب}');
   await wait(200);
   await click('button[data-act="add"]');
@@ -258,6 +262,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(500);
   ok('والقيمة تُرسم فوق التصميم', (await design()).includes('مريم عادل حسن'));
 
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   // ── الاسم والحفظ ───────────────────────────────────────────────────
   await page.type('input[data-title]', 'هوية طالب');
   await wait(200);
@@ -303,6 +308,8 @@ export default async function scenario(page, { profile, shotsDir }) {
       };
     `);
 
+  await click('[data-design-panel="fill"]');
+  await wait(200);
   await click('button[data-add="barcode"]');
   await wait(500);
   ok('أُضيف باركود', (await page.text()).includes('باركود'));
@@ -326,6 +333,7 @@ export default async function scenario(page, { profile, shotsDir }) {
   await wait(300);
   ok('وتُغلق', !(await page.text()).includes('مكتبة الرسومات'));
 
+  await click('[data-editor-panel="fill"] [data-close-panel]');
   // المقابض تظهر على المحدَّد وحده
   const grips = await page.eval(`return document.querySelectorAll('[data-grip]:not([data-grip="rotate"])').length;`);
   ok('وللمحدَّد ثمانيةُ مقابض', grips === 8);

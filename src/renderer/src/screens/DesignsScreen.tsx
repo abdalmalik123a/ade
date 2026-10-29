@@ -10,6 +10,10 @@
  * والشاشة تركيبٌ فقط (DESIGNS.md ٠٫٣): الحال والعمل في خطّافات `designs/editor/*`، واللوحات في `designs/panels/*`، والحساب
  * الهندسي في `shared/canvasEdit.ts` — قواعدُ تُختبر بالأرقام.
  */
+import { useState } from 'react';
+import EditorDocumentBar from '../designs/editor/EditorDocumentBar';
+import EditorAuxPanels from '../designs/editor/EditorAuxPanels';
+import DesignToolDock from '../designs/editor/DesignToolDock';
 import Gallery from '../designs/Gallery';
 import DraftStrip from '../designs/DraftStrip';
 import ClipartModal from '../designs/ClipartModal';
@@ -26,6 +30,7 @@ export type { DesignRequest, DesignsScreenProps } from '../designs/editor/useDes
 
 export default function DesignsScreen(props: DesignsScreenProps) {
   const ed = useDesignEditor(props);
+  const [panel, setPanel] = useState<'page' | 'fill' | null>(null);
   const { request, view, toast } = ed;
   return (
     <main className="relative pt-16 bg-surface min-h-screen w-full">
@@ -57,13 +62,16 @@ export default function DesignsScreen(props: DesignsScreenProps) {
         <ClipartModal isOpen={ed.clipartModalOpen} onClose={() => ed.setClipartModalOpen(false)} onSelect={ed.handleSelectClipart} onSelectElement={ed.handleSelectElement} onSelectVector={ed.handleSelectVector} />
       )}
 
-      <div className={view === 'editor' ? 'flex h-[calc(100vh-4rem)]' : 'hidden'}>
-        <EditorSidebar ed={ed} />
+      <div className={view === 'editor' ? 'flex h-[calc(100vh-4rem)]' : 'hidden'} dir="ltr" data-design-workspace>
 
         {/* ── اللوحة ───────────────────────────────────────────────── */}
-        <section className="flex-1 flex flex-col min-w-0">
+        <section className="flex-1 flex flex-col min-w-0 min-h-0" dir="rtl">
+          <EditorDocumentBar ed={ed} openPanel={setPanel} />
           <EditorToolbar ed={ed} />
-          <Stage ed={ed} />
+          <div className="flex flex-1 min-h-0 min-w-0" dir="ltr">
+            <DesignToolDock ed={ed} />
+            <Stage ed={ed} />
+          </div>
           <ToolOutput
             bar
             after={ed.after}
@@ -86,8 +94,10 @@ export default function DesignsScreen(props: DesignsScreenProps) {
             </button>
           </ToolOutput>
         </section>
+        <EditorSidebar ed={ed} />
       </div>
 
+      <EditorAuxPanels ed={ed} panel={view === 'editor' ? panel : null} close={() => setPanel(null)} />
       <DesignModals ed={ed} />
 
       {toast && (
