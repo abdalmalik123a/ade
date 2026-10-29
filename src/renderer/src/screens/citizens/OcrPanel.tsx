@@ -2,7 +2,8 @@
  * النصّ المستخرَج من مستمسك — أو ظهر البطاقة حقولًا بأرقام تحقّقها (تقسيم شاشة الزبائن بعد ١٫٧٫٠) — منقولٌ من `CitizensScreen`
  * كما هو.
  */
-import type { Dispatch, SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
+import { cleanIdOcrText } from '@shared/idOcrText';
 import { mrzExpired, mrzLatinName, readMrz, type MrzResult } from '@shared/mrz';
 import type { Attachment, CitizenDetail } from '@shared/api';
 
@@ -15,8 +16,13 @@ type Props = {
 };
 
 export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }: Props) {
+  const [showOriginal, setShowOriginal] = useState(false);
+  const mrz = ocrPanel.mrz ?? readMrz(ocrPanel.text);
+  const cleaned = mrz ? ocrPanel.text : cleanIdOcrText(ocrPanel.text);
+  const changed = cleaned !== ocrPanel.text;
+  const displayed = showOriginal ? ocrPanel.text : cleaned;
   return (
-    <div
+    <div data-ocr-panel=""
       role="dialog" aria-modal="true" className="fixed inset-0 z-50 bg-scrim/40 backdrop-blur-[2px] flex items-center justify-center"
       onClick={() => setOcrPanel(null)}
     >
@@ -52,7 +58,6 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
         <div className="p-space-md overflow-y-auto">
           {/* ظهر البطاقة (هـ٧) أو صفحة الجواز (S41، D181): سطور MRZ تُقرأ حقولًا — ولكلٍّ رقم تحقّقه */}
           {(() => {
-            const mrz = ocrPanel.mrz ?? readMrz(ocrPanel.text);
             if (!mrz || !detail) return null;
             const row = (label: string, value: string | null, good?: boolean) =>
               value ? (
@@ -119,8 +124,18 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
               الدقة دون 90% — راجع النصّ قبل اعتماده في كتاب رسمي.
             </p>
           )}
+          {changed && (
+            <div className="mb-space-sm flex flex-wrap items-center gap-space-sm font-label-sm text-label-sm text-on-surface-variant">
+              <span>نُقّيت عناوين كردية معروفة. قد تبقى كلمات ملتبسة وأخطاء قراءة — راجع النصّ؛ الأصل محفوظ.</span>
+              <button type="button" data-act="ocr-original" aria-pressed={showOriginal}
+                className="h-8 px-space-sm rounded-btn bg-surface-container-high text-on-surface"
+                onClick={() => setShowOriginal((v) => !v)}>
+                {showOriginal ? 'اعرض النصّ المنقّى' : 'اعرض النصّ الأصلي'}
+              </button>
+            </div>
+          )}
           {/* سطور ظهر البطاقة لاتينيةٌ من اليسار — ومن اليمين تنقلب «<» إلى «>» ويتقدّم آخرها. */}
-          <pre
+          <pre data-ocr-text={showOriginal ? 'original' : 'cleaned'}
             dir={ocrPanel.mrz ? 'ltr' : undefined}
             className={
               ocrPanel.mrz
@@ -128,19 +143,20 @@ export default function OcrPanel({ setOcrPanel, ocrPanel, detail, setForm, say }
                 : 'font-body-md text-body-md text-on-surface whitespace-pre-wrap leading-loose'
             }
           >
-            {ocrPanel.text || 'لم يُستخرج نصّ من هذه الصورة'}
+            {displayed || 'لم يُستخرج نصّ من هذه الصورة'}
           </pre>
         </div>
         <div className="h-14 px-space-md flex items-center justify-end gap-space-sm bg-surface-container-low">
           <button
             className="px-space-md h-9 rounded-btn bg-surface-container-lowest text-on-surface font-label-md text-label-md"
             type="button"
+            data-act="ocr-copy"
             onClick={() => {
-              void window.diwan.ui.copyText(ocrPanel.text);
-              say('نُسخ النصّ');
+              void window.diwan.ui.copyText(displayed);
+              say(showOriginal ? 'نُسخ النصّ الأصلي' : 'نُسخ النصّ');
             }}
           >
-            نسخ النصّ
+            {showOriginal ? 'نسخ النصّ الأصلي' : 'نسخ النصّ'}
           </button>
         </div>
       </div>
