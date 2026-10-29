@@ -39,6 +39,22 @@ export default async function scenario(page,{shotsDir}={}){
  for(const[type,x]of[['mousePressed',stroke.x],['mouseMoved',stroke.x+8],['mouseReleased',stroke.x+8]])await page.send('Input.dispatchMouseEvent',{type,x,y:stroke.y,button:'left',clickCount:1});await wait(250);
  ok('الفرشاة تغير المعاينة فعليًا',await digest()!==original);await click('[data-act="history-undo"]');await wait(250);ok('التراجع يعيد بكسلات المعاينة',await digest()===original);
  ok('قيم الفرشاة تبقى بعد التراجع',await page.eval(`return document.querySelector('[data-act="brush-size"]').value==='23'&&document.querySelector('[data-act="brush-softness"]').value==='0.4';`));
+ // D226: قوالب المكتب الكثيرة تبقى كلها قابلة للاختيار داخل قائمة تتمرر وحدها.
+ await page.eval(`for(let i=1;i<=24;i++)await window.diwan.photos.savePreset({id:'layout-'+i,name:'مقاس فحص طويل '+i,widthMm:35,heightMm:45,dpi:600,background:{kind:'white'},head:null,copies:6,notes:'',source:null,builtin:false});return true;`);
+ await page.goto('orders-board');await page.goto('passport-photos');
+ if(!await page.until(`return document.querySelectorAll('[data-size-key]').length>=30;`,8000))throw new Error('لم تحمل قوالب المكتب');
+ for(const[width,height]of[[1280,720],[1366,768]]){
+  await page.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await wait(250);verify(await measure(),width,height,`مع ٢٤ قالبًا ${width}`);
+  const g=await page.eval(`const list=document.querySelector('[data-size-key]').parentElement,steps=document.querySelector('[data-photo-adjustments]').getBoundingClientRect(),open=document.querySelector('[data-act="open-photo"]').getBoundingClientRect();return{h:list.clientHeight,scroll:list.scrollHeight,count:list.querySelectorAll('[data-size-key]').length,steps:steps.height,open:open.y>=steps.y&&open.bottom<=steps.bottom};`);
+  ok(`كل المقاسات في تمرير داخلي محدود ${width}`,g.count===30&&g.h<=88&&g.scroll>g.h);
+  ok(`فتح الصورة يبقى داخل منطقة الخطوات ${width}`,g.steps>=80&&g.open);
+ }
+ const last=await page.eval(`const b=[...document.querySelectorAll('[data-size-key]')].find(b=>b.textContent==='مقاس فحص طويل 24');b.scrollIntoView({block:'nearest'});const r=b.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};`);
+ for(const type of ['mousePressed','mouseReleased'])await page.send('Input.dispatchMouseEvent',{type,x:last.x,y:last.y,button:'left',clickCount:1});await wait(150);
+ ok('آخر قالب يُختار فعلًا دون فقد القوالب أو تمرير الصفحة',await page.eval(`const b=[...document.querySelectorAll('[data-size-key]')].find(b=>b.textContent==='مقاس فحص طويل 24');return b.className.includes('bg-primary-fixed')&&document.querySelectorAll('[data-size-key]').length===30&&document.documentElement.scrollHeight<=innerHeight+1;`));
+ await click('[data-photo-size-guide] summary');verify(await measure(),1366,768,'مع القوالب ودليل المقاس');await click('[data-photo-size-guide] summary');
+ await click('[data-act="open-photo"]');if(!await page.until(`return document.querySelector('[data-photo-frame]')?.dataset.cutout==='done'&&!document.querySelector('[data-act="review-photos"]').disabled;`,45000))throw new Error('الصورة الثانية لم تجهز');
+ await page.send('Emulation.setDeviceMetricsOverride',{width:1280,height:720,deviceScaleFactor:1,mobile:false});await wait(250);verify(await measure(),1280,720,'مع القوالب وبعد الصورة');
  if(shotsDir)await page.shot(join(shotsDir,'photo-workspace.png'));
  return steps.join('\n');
 }

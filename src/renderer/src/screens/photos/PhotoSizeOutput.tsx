@@ -60,7 +60,7 @@ export default function PhotoSizeOutput({ step, small, setPresetsOpen, presets, 
   return (
     <>
       {step(5, 'المقاس', <button className={small} data-act="presets" type="button" onClick={() => setPresetsOpen(true)}>قوالب المكتب</button>)}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto" role="group" aria-label="قوالب مقاسات الصور" data-photo-preset-list>
         {presets.map((p) => (
           <button key={p.id} className={chip(presetId === p.id)} data-size-key={p.id} title={p.name} type="button" onClick={() => choosePreset(p.id)}>
             {p.builtin ? `${toIndic(p.widthMm / 10)} × ${toIndic(p.heightMm / 10)} سم`.replace(/\./g, '٫') : p.name}
