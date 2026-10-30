@@ -1,6 +1,7 @@
 /**
  * «التحديث» في الإعدادات (خطة Production، ٧٫١): ملفّ تحديثٍ يوقّعه المطوّر يُختار، فيُرى إصداره و«ما
  * الجديد» قبل أن يُثبَّت. ولا تحديث من الإنترنت. والبيانات تُنسخ قبل أن يُرحّلها الإصدار الجديد.
+ * ونسخة متجر مايكروسوفت (D242) تتحدّث من المتجر وحده: تقول ذلك بلا زرّ «ثبّت تحديثًا».
  */
 import { useState, type ReactNode } from 'react';
 import { errorText } from '../lib/errors';
@@ -8,7 +9,17 @@ import { ChangelogBody } from './WhatsNewDialog';
 
 type Picked = { path: string; version: string; notes: string; size: number; issued: string; current: string };
 
-export default function UpdateCard({ card, title, version }: { card: string; title: ReactNode; version: string | null }) {
+export default function UpdateCard({
+  card,
+  title,
+  version,
+  store = false
+}: {
+  card: string;
+  title: ReactNode;
+  version: string | null;
+  store?: boolean;
+}) {
   const [picked, setPicked] = useState<Picked | null>(null);
   const [note, setNote] = useState<{ text: string; warn?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +46,16 @@ export default function UpdateCard({ card, title, version }: { card: string; tit
       setBusy(false);
     }
   }
+
+  if (store)
+    return (
+      <section className={card} data-update-card="store">
+        {title}
+        <p className="font-label-md text-label-md text-on-surface-variant">
+          الإصدار المثبّت {version ?? '…'}. هذه نسخة متجر مايكروسوفت: التحديث يصل من المتجر وحده، وبيانات المكتب تبقى في مجلّدها كما هي.
+        </p>
+      </section>
+    );
 
   return (
     <section className={card} data-update-card="">

@@ -25,8 +25,16 @@ export function rememberStartup(guard: DataGuard): void {
 
 const workDir = () => join(dataDir(), 'restore-work');
 
+/**
+ * نسخة متجر مايكروسوفت (حزمة MSIX، D242) تتحدّث من المتجر وحده — سياسته لا تقبل برنامجًا يثبّت نفسه من غيره، ومثبّت exe
+ * فيها يضع نسخةً ثانيةً بجانبها. فلا يُفحص ملفّ تحديث ولا يُشغَّل مثبّت.
+ */
+export const fromStore = (): boolean => process.windowsStore === true;
+const storeOnly = () => new Error('نسخة متجر مايكروسوفت تأخذ تحديثها من المتجر وحده — لا من ملفّ تحديث');
+
 export function registerUpdateIpc(): void {
   ipcMain.handle('update:pick', async (e) => {
+    if (fromStore()) throw storeOnly();
     const w = BrowserWindow.fromWebContents(e.sender);
     if (!w) return null;
     const path = await pickOpenPath(w, { title: 'تحديث ديوان', buttonLabel: 'افحصه', filterName: 'تحديث ديوان', extensions: ['diwanupdate'] });
@@ -36,6 +44,7 @@ export function registerUpdateIpc(): void {
   });
 
   ipcMain.handle('update:install', async (_e, path: string) => {
+    if (fromStore()) throw storeOnly();
     // الملفّ الذي فحصه «افحصه» وحده — قبل أن تُؤخذ نسخةٌ كاملة أو يُقرأ شيء (A04، D69).
     if (!wasHandedOut(path)) throw pickAgain('الملفّ');
     // النسخ الاحتياطي الكامل من قاعدة البيانات ومخزن الملفات قبل تشغيل المثبّت

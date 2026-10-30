@@ -1,6 +1,6 @@
 {
   "name": "diwan",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "ديوان — منظومة الكتب والتحارير",
   "main": "./out/main/index.js",
   "author": "MADA TECH",
@@ -18,6 +18,7 @@
     "pack": "npm run build && electron-builder --win --dir -c.directories.output=release/test",
     "dist": "node tools/distGuard.mjs && npm run build:native && npm run typecheck && npm run notices && electron-vite build --mode release && electron-builder --win",
     "release": "npm run dist && node tools/release.mjs",
+    "store": "node tools/distGuard.mjs && npm run build:native && npm run typecheck && npm run notices && electron-vite build --mode release && electron-builder --win appx -c.directories.output=release/store",
     "postinstall": "electron-builder install-app-deps",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -106,6 +107,23 @@
       "language": "1025",
       "shortcutName": "ديوان",
       "createDesktopShortcut": true
+    },
+    "appx": {
+      "identityName": "00A7A2B3.567971BDBFFDA",
+      "publisher": "CN=6D9BF1FC-8700-4621-8506-3F8BBB2805DA",
+      "publisherDisplayName": "MADA TECH",
+      "displayName": "ديوان",
+      "applicationId": "Diwan",
+      "languages": [
+        "ar"
+      ],
+      "backgroundColor": "transparent",
+      "addAutoLaunchExtension": false,
+      "capabilities": [
+        "runFullTrust",
+        "webcam"
+      ],
+      "artifactName": "diwan-${version}-store.${ext}"
     }
   },
   "dependencies": {

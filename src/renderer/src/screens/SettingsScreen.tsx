@@ -29,7 +29,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
   const [settings, setSettings] = useState<OfficeSettings | null>(null);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [dirty, setDirty] = useState(false);
-  const [info, setInfo] = useState<{ version: string; dataDir: string } | null>(null);
+  const [info, setInfo] = useState<{ version: string; dataDir: string; store: boolean } | null>(null);
   const [toast, setToast] = useState<Toast>(null);
   const [about, setAbout] = useState(false);
   const timer = useRef<number | null>(null);
@@ -112,7 +112,7 @@ export default function SettingsScreen({ onChanged }: { onChanged?: () => void }
             <LicenseCard card={card} title={title('verified', 'التفعيل')} onChanged={() => onChanged?.()} />
 
             {/* ── التحديث «أ+» ────────────────────────────────────────── */}
-            <UpdateCard card={card} title={title('system_update_alt', 'التحديث')} version={info?.version ?? null} />
+            <UpdateCard card={card} title={title('system_update_alt', 'التحديث')} version={info?.version ?? null} store={info?.store ?? false} />
 
             {/* ── المكتب ─────────────────────────────────────────────── */}
             <OfficeCard

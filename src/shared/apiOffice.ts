@@ -206,8 +206,8 @@ export type OfficeApis = {
   ui: {
     /** يكبّر الواجهة كلّها في مكانها — والطباعة في نافذتها لا تتأثّر. */
     setZoom(factor: number): void;
-    /** رقم الإصدار من الحزمة، ومجلّد بيانات المكتب — لـ«الإعدادات» وحول البرنامج. */
-    info(): Promise<{ version: string; dataDir: string }>;
+    /** رقم الإصدار من الحزمة، ومجلّد بيانات المكتب — لـ«الإعدادات» وحول البرنامج؛ و`store` نسخة متجر مايكروسوفت (D242). */
+    info(): Promise<{ version: string; dataDir: string; store: boolean }>;
     /** النسخ واللصق بحافظة النظام — تعمل والنافذة في الخلف (بطاقة التعبئة فوق المتصفّح). */
     copyText(text: string): Promise<void>;
     pasteText(): Promise<string>;

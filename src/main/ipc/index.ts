@@ -6,7 +6,7 @@ import { registerDataLocationIpc } from './dataLocation';
 import { registerDataKeyIpc } from './dataKey';
 import { registerContentIpc } from './content';
 import { registerLicenseIpc } from './license';
-import { registerUpdateIpc } from './update';
+import { fromStore, registerUpdateIpc } from './update';
 import { registerSupportIpc } from './support';
 import { assertGateComplete, installProductiveGate } from './gate';
 import { installErrorTranslation } from './errors';
@@ -190,8 +190,8 @@ export function registerIpc(): void {
     learnGenders(getDb(), Array.isArray(answers) ? answers : [])
   );
 
-  // رقم الإصدار من package.json — لا نصًّا مكتوبًا في الشريط يتخلّف عن الحزمة.
-  ipcMain.handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir() }));
+  // رقم الإصدار من package.json — لا نصًّا مكتوبًا في الشريط يتخلّف عن الحزمة. و`store`: نسخة المتجر تتحدّث منه وحده (D242).
+  ipcMain.handle('app:info', () => ({ version: app.getVersion(), dataDir: dataDir(), store: fromStore() }));
 
   // الحافظة من النظام لا من واجهة المتصفّح: تلك ترفض الكتابة إن لم تكن النافذة في الأمام
   // («Document is not focused») — فبطاقة التعبئة فوق المتصفّح، والنسخ بعد حوار، يفشلان.
