@@ -50,6 +50,22 @@ export class KeyMissingError extends Error {
   }
 }
 
+/** تعذّرت حماية ويندوز نفسها (PowerShell مقيّدٌ أو غائب) — لا المفتاح ولا الرمز (D240). */
+export class ProtectorError extends Error {
+  constructor(cause: unknown) {
+    super(`تعذّرت حماية ويندوز (DPAPI) لمفتاح بيانات المكتب: ${cause instanceof Error ? cause.message : String(cause)}`);
+    this.name = 'ProtectorError';
+  }
+}
+
+function protect(protector: Protector, text: string): string {
+  try {
+    return protector.encrypt(text).toString('base64');
+  } catch (e) {
+    throw new ProtectorError(e);
+  }
+}
+
 export function seal(plain: Uint8Array, key: Buffer): Buffer {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
@@ -123,10 +139,13 @@ export function createKey(dir: string, protector: Protector): { key: Buffer; cod
   if (isSealed(dir)) throw new KeyMissingError();
   const key = randomBytes(32);
   const code = newRecoveryCode();
+  // التغليف قبل الكتابة: تعذُّر حماية ويندوز (ProtectorError) لا يترك keys.json ناقصًا.
+  const dpapiKey = protect(protector, key.toString('base64'));
+  const dpapiCode = protect(protector, code);
   writeKeys(dir, {
     v: 1,
-    dpapiKey: protector.encrypt(key.toString('base64')).toString('base64'),
-    dpapiCode: protector.encrypt(code).toString('base64'),
+    dpapiKey,
+    dpapiCode,
     recovery: wrapCode(key, code),
     check: seal(Buffer.from(CHECK), key).toString('base64'),
     acknowledged: false
@@ -155,11 +174,12 @@ export function unlockWithCode(dir: string, code: string, protector: Protector):
     throw new Error('رمز الاسترداد غير صحيح');
   }
   if (!isOfficeKey(keys, key)) throw new Error('رمز الاسترداد غير صحيح');
-  writeKeys(dir, {
-    ...keys,
-    dpapiKey: protector.encrypt(key.toString('base64')).toString('base64'),
-    dpapiCode: protector.encrypt(code).toString('base64')
-  });
+  // إعادة التغليف لحماية ويندوز الحاليّة جهدٌ لا شرط (D240): إن تعذّرت فُتحت البيانات وبقي الملفّ، ويُسأل الرمز في التشغيل التالي.
+  try {
+    writeKeys(dir, { ...keys, dpapiKey: protect(protector, key.toString('base64')), dpapiCode: protect(protector, code) });
+  } catch (e) {
+    if (!(e instanceof ProtectorError)) throw e;
+  }
   return key;
 }
 
@@ -177,7 +197,7 @@ export function renewCode(dir: string, key: Buffer, protector: Protector): strin
   const keys = readKeys(dir);
   if (!isOfficeKey(keys, key)) throw new Error('ليس مفتاح هذا المكتب');
   const code = newRecoveryCode();
-  writeKeys(dir, { ...keys, dpapiCode: protector.encrypt(code).toString('base64'), recovery: wrapCode(key, code), acknowledged: false });
+  writeKeys(dir, { ...keys, dpapiCode: protect(protector, code), recovery: wrapCode(key, code), acknowledged: false });
   return code;
 }
 

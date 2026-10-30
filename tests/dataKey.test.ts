@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   KeyMissingError,
+  ProtectorError,
   SEALED_NAME,
   acknowledge,
   createKey,
@@ -76,6 +77,25 @@ describe('المفتاح', () => {
     createKey(other, machine('pc1'));
     writeFileSync(join(other, 'keys.json'), '{"v":1');
     expect(() => unlockWithProtector(other, machine('pc1'))).toThrow(KeyMissingError);
+  });
+
+  it('تعذّر حماية ويندوز (D240): الإنشاء يرمي بنوعه ولا يكتب keys.json، والرمز الصحيح يفتح ولو تعذّرت إعادة التغليف', () => {
+    const broken: Protector = {
+      encrypt: () => {
+        throw new Error('PowerShell مقيّد');
+      },
+      decrypt: () => {
+        throw new Error('PowerShell مقيّد');
+      }
+    };
+    const dir = tmp();
+    expect(() => createKey(dir, broken)).toThrow(ProtectorError);
+    expect(hasKeys(dir)).toBe(false);
+    const other = tmp();
+    const { key, code } = createKey(other, machine('pc1'));
+    const before = readFileSync(join(other, 'keys.json'), 'utf8');
+    expect(unlockWithCode(other, code, broken).equals(key)).toBe(true);
+    expect(readFileSync(join(other, 'keys.json'), 'utf8')).toBe(before);
   });
 
   it('رمزٌ جديد يُبطل القديم ويُعرض حتى يُقرّ المكتب بحفظه', () => {

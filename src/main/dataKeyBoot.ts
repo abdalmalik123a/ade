@@ -17,7 +17,7 @@ import { rendererDevUrl } from './devUrl';
 import { logError } from './errorLog';
 import { hardenWindow } from './harden';
 import { handleChecked } from './ipc/checked';
-import { KeyMissingError, createKey, hasKeys, rememberKey, unlockWithCode, unlockWithProtector, type Protector } from './services/dataKey';
+import { KeyMissingError, ProtectorError, createKey, hasKeys, rememberKey, unlockWithCode, unlockWithProtector, type Protector } from './services/dataKey';
 
 /**
  * DPAPI ويندوز نفسها (`ProtectedData`، حساب المستخدم) عبر PowerShell — لا `safeStorage`: ذاك يحفظ مفتاحه في `Local State`
@@ -111,6 +111,12 @@ export async function ensureDataKey(): Promise<boolean> {
       return true;
     }
   } catch (e) {
+    if (e instanceof ProtectorError) {
+      // PowerShell مقيّدٌ أو غائب (D240): يفتح ديوان بلا مفتاح ولا يُشفَّر شيءٌ جديد، ويُحاول في التشغيل التالي.
+      logError('dataKey', e);
+      rememberKey(null);
+      return true;
+    }
     if (!(e instanceof KeyMissingError)) throw e;
     logError('dataKey', e);
     dialog.showErrorBox(
