@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import type { DataLocationChoice, DataLocationInfo } from '@shared/api';
 import { ask } from '../kit/ask';
 import { errorText } from '../lib/errors';
+import RecoveryCodePanel from './RecoveryCodePanel';
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} غ.ب`;
@@ -159,6 +160,7 @@ export default function DataLocationPanel() {
         </div>
       ))}
       {error && <span className="text-error font-label-sm text-label-sm">{error}</span>}
+      <RecoveryCodePanel />
     </div>
   );
 }

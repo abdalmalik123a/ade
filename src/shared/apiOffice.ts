@@ -313,6 +313,17 @@ export type OfficeApis = {
     restart(): Promise<boolean>;
     deleteAside(path: string): Promise<boolean>;
   };
+  /** مفتاح بيانات المكتب ورمز استرداده (D237): الرمز يُعرض حتى يُقرّ بحفظه، ويفتح المفتاح إن تعذّرت حماية ويندوز. */
+  dataKey: {
+    /** نافذة الرمز قبل القاعدة وحدها. */
+    unlock(code: string): Promise<{ ok: boolean; error?: string }>;
+    /** الرمز إن لم يقرّ المكتب بحفظه بعد — وإلا `null`. */
+    pending(): Promise<string | null>;
+    acknowledge(): Promise<boolean>;
+    show(): Promise<string | null>;
+    renew(): Promise<string>;
+    save(code: string): Promise<string | null>;
+  };
   /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
   update: {
     pick(): Promise<{ path: string; version: string; notes: string; size: number; issued: string; current: string } | null>;

@@ -122,6 +122,7 @@ describe('اختبار الهيكل (ز١)', () => {
       'DIWAN_TEST_CLOSE_ANSWER',
       'DIWAN_TEST_DAMAGED_DB',
       'DIWAN_TEST_DATA_CHOICE',
+      'DIWAN_TEST_DPAPI_FAIL',
       'DIWAN_TEST_FAKE_CAMERA',
       'DIWAN_TEST_INBOX',
       'DIWAN_TEST_LICENSE_PUBKEY',
@@ -161,7 +162,8 @@ describe('اختبار الهيكل (ز١)', () => {
   });
 
   it('٣ — النوافذ تُنشأ في ملفّاتٍ معروفة وحدها (وكلّها تمرّ بالتحصين)', () => {
-    const WINDOWS = ['src/main/fillCard.ts', 'src/main/index.ts', 'src/main/ipc/designs.ts', 'src/main/services/render.ts'];
+    // و`dataKeyBoot.ts` (D237): نافذة رمز الاسترداد قبل القاعدة.
+    const WINDOWS = ['src/main/fillCard.ts', 'src/main/index.ts', 'src/main/ipc/designs.ts', 'src/main/services/render.ts', 'src/main/dataKeyBoot.ts'];
     const bad = SOURCES.filter((s) => /new BrowserWindow\s*\(/.test(s.text) && !WINDOWS.includes(s.path)).map(
       (s) => `${s.path}: ينشئ نافذةً (new BrowserWindow) خارج الملفّات المعروفة — والنافذة تحتاج hardenWindow`
     );

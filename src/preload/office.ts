@@ -96,6 +96,14 @@ export const officeApi: OfficeApis = {
     restart: () => invoke('dataLocation:restart'),
     deleteAside: (path: string) => invoke('dataLocation:deleteAside', path)
   },
+  dataKey: {
+    unlock: (code: string) => invoke('dataKey:unlock', code),
+    pending: () => invoke('dataKey:pending'),
+    acknowledge: () => invoke('dataKey:acknowledge'),
+    show: () => invoke('dataKey:show'),
+    renew: () => invoke('dataKey:renew'),
+    save: (code: string) => invoke('dataKey:save', code)
+  },
   update: {
     pick: () => invoke('update:pick'),
     install: (path) => invoke('update:install', path),

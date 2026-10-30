@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import FillCard from './screens/FillCard';
+import UnlockScreen from './screens/UnlockScreen';
 import { loadFonts } from './lib/fonts';
 import './styles.css';
 
@@ -16,6 +17,13 @@ const printMode = params.get('mode') === 'print';
 
 if (printMode) {
   document.getElementById('root')?.remove();
+} else if (params.get('mode') === 'unlock') {
+  // رمز الاسترداد قبل أن تُفتح بيانات المكتب (D237): لا شيء من الواجهة يقرأ القاعدة هنا.
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <UnlockScreen />
+    </StrictMode>
+  );
 } else if (params.get('mode') === 'fillcard') {
   // بطاقة التعبئة (هـ٦): نافذتها الصغيرة فوق المتصفّح — بطاقة المواطن وحدها.
   createRoot(document.getElementById('root')!).render(

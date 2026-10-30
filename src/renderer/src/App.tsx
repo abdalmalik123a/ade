@@ -15,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ErrorBar from './components/ErrorBar';
 import { ToolNavProvider, useCustomerName } from './components/ToolFrame';
 import ResumePrintDialog from './components/ResumePrintDialog';
+import RecoveryCodeDialog from './components/RecoveryCodeDialog';
 import PrintChooser from './components/PrintChooser';
 import NotificationsBell from './components/NotificationsBell';
 import PageHelp from './components/PageHelp';
@@ -372,6 +373,7 @@ export default function App() {
 
       {/* دفعةٌ انقطعت طباعتها (الكهرباء) تُعرض في الإقلاع ليُستأنف منها. */}
       <ResumePrintDialog />
+      <RecoveryCodeDialog />
 
       {/* أسئلة «أتحذف؟» و«اترك بلا حفظ؟» من أيّ مكان (kit/ask.ts)، وكلمةٌ عابرة تبقى بعد مغادرة شاشتها (kit/notice.ts). */}
       <ConfirmHost />

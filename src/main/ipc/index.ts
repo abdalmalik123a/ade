@@ -3,6 +3,7 @@ import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
 import { registerDataLocationIpc } from './dataLocation';
+import { registerDataKeyIpc } from './dataKey';
 import { registerContentIpc } from './content';
 import { registerLicenseIpc } from './license';
 import { registerUpdateIpc } from './update';
@@ -174,6 +175,7 @@ export function registerIpc(): void {
   registerQuestionIpc();
   registerBackupIpc();
   registerDataLocationIpc();
+  registerDataKeyIpc();
   registerContentIpc();
   registerLicenseIpc();
   registerUpdateIpc();
