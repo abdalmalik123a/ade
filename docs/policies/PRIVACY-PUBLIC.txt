@@ -37,3 +37,47 @@
 المستمسكات والصور الشخصية وملفّات الكتب الصادرة يحفظها ديوان مشفّرةً بمفتاحٍ للمكتب تحميه حماية ويندوز لحساب المستخدم، ويفتحه رمز استرداد يُعطى للمكتب مرّةً واحدة ليحفظه بعيدًا عن الحاسوب. وقاعدة العمل نفسها (الأسماء وحقول المستمسكات والنصوص) مشفّرةٌ بالمفتاح نفسه. النسخ الاحتياطية تحمل القاعدة والملفّات مفكوكةً لتُسترجع على جهازٍ آخر، فاحمها بكلمة مرور؛ النسخة بلا كلمة ليست مشفرة. احم حساب ويندوز والقرص والوسائط، واقصر الوصول على من يحتاجه، واختر النسخة المشفرة عند نقل بيانات حساسة. لا ترسل كلمة النسخة الاحتياطية مع ملفها.
 
 طلب الاطلاع أو التصحيح أو إزالة بيانات مواطن محفوظة لدى مكتب يُوجه إلى ذلك المكتب؛ المطور لا يملك وصولًا عن بعد إلى سجل المكتب. طلبات ما أُرسل يدويًا إلى MADA TECH توجه إلى واتساب الدعم نفسه. أي تعديل جوهري في طريقة المعالجة يستلزم تحديث هذه السياسة وإبلاغ المستخدم بما يلزمه.
+
+────────────────────────────────────────
+
+Diwan Privacy Policy
+
+(English translation of the Arabic policy above. If the two differ, the Arabic text prevails.)
+
+Last updated: October 30, 2026
+
+Diwan is a program by MADA TECH for photocopy and printing offices. It processes the office's files on the computer. The office that enters its customers' data decides the purpose of the work and who may access that data, and it is responsible for informing the people concerned and obtaining any permissions its work requires. This policy explains how the program works; it does not replace the office's obligations toward its customers.
+
+Data and purpose
+
+An office may store customer names, contact details and addresses, identity-document fields, their images and recognized text, personal photos, letters, transactions, attachments and designs. This data is used to carry out the work the office chooses: searching its records, reopening, printing and exporting them. Identity documents may include children's data; the program is a tool for the office's staff and does not create accounts for children.
+
+The program also keeps office settings, printers, fonts, templates, an activity and error log, and trial and activation information. It derives a device code to verify the license, and stores signed keys and trial and verification dates locally. The program does not collect payment data and does not account for transaction fees.
+
+Where data is processed and stored
+
+The database, identity documents, photos and archive are kept in an office data folder that the office chooses at first launch, outside the program folders, so it is not erased if the program is uninstalled. Text recognition, image processing and background removal run with local resources. The program does not automatically upload office files or recognition results to the developer or to any cloud service, and it does not download updates from the internet; the current update is a signed local file selected by the office.
+
+An office may choose to save outputs or backups to a USB drive, a shared folder, or a folder synchronized by another service. Access to and protection of those copies follow the place and service the office chooses; Diwan does not manage that service's account.
+
+Sharing and support
+
+Exporting files, printing and copying to the clipboard are actions chosen by the staff member. The printer, the print system, or programs used to open files may keep copies according to their own settings.
+
+The "Report a problem" button saves a text file on the computer and does not send it automatically. It contains the staff member's description, the program, Windows and memory versions, the activation status and device code, diagnostics that may mention printers, fonts and disk space, and the latest error log. It does not automatically attach the citizens database or identity documents. It hides the Windows user name in "Users" paths, but it does not guarantee removal of all personal information from the description, an error message, or a file name. Review the report before sending it yourself, and delete anything not needed for support.
+
+Opening a support link or a social channel opens the external browser; that service may receive your contact data and what you send, according to its own policy. Do not send customers' identity documents to support without need and proper permission. Support is provided by MADA TECH via WhatsApp at ‎+964 781 915 4368‎ (the number shown in the program). Reports received are used only to solve the problem; the citizens database and identity documents are not requested; operational copies are deleted within 30 days of closing the report, except what must be kept under a legal obligation, which will be stated when it exists.
+
+Retention and control
+
+Archived data and recorded identity documents remain until the office deletes them with the available tools; there is no automatic, uniform-period purge. Staff can view, edit and export records, and delete a citizen's file and identity documents after confirmation. Issued letters remain in the archive when a citizen is deleted and are unlinked from that file; deleting a citizen's file alone therefore does not remove the name from every letter issued to them.
+
+Transient scans used by the paper tools are deleted when their dialog closes, leftovers in their folder are cleaned at the next launch, and they are excluded from backups. A scan saved in a citizen's file is different from a transient scan. Original files the office imported, outputs it exported, earlier backups, and the previous data folder kept during a restore remain independent. Deleting an original inside Diwan does not erase those copies and does not guarantee unrecoverable erasure from the disk.
+
+The error log rotates at about one megabyte for the current file plus one previous copy; there is no promise of deletion after a number of days. Automatic backups keep the number of snapshots the office sets. When the trial or subscription ends, access to the office's data and to non-blocked ways of exporting it remains; the production features described in the terms of use stop.
+
+Protection and requests from data subjects
+
+Identity documents, personal photos and files of issued letters are stored by Diwan encrypted with an office key protected by Windows protection for the user account, and recoverable with a recovery code given to the office once to keep away from the computer. The working database itself (names, identity-document fields and texts) is encrypted with the same key. Backups carry the database and files decrypted so they can be restored on another device, so protect them with a password; a backup without a password is not encrypted. Protect the Windows account, the disk and storage media, limit access to those who need it, and choose an encrypted backup when moving sensitive data. Do not send the backup password together with its file.
+
+Requests to access, correct or remove a citizen's data held by an office should be made to that office; the developer has no remote access to the office's records. Requests concerning what was sent manually to MADA TECH should be made through the same WhatsApp support. Any substantial change in how data is processed requires updating this policy and informing the user of what concerns them.
