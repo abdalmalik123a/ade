@@ -6,6 +6,14 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## 2026-10-30 10:40 — D238 🔄 الخطوة ١: جرد المخزن قبل أيّ تعديل · النموذج: Claude Opus 5.5
+- **يُشفَّر** (قد يحمل مستمسك مواطنٍ أو صورته أو كتابه): `attachments` (citizens، scanner، files `importFile`) · `photos` (photos ×٤، camera، inbox) ·
+  `documents` (PDF الكتاب الصادر، documents.ts؛ لا قارئ له إلا النسخ) · `tmp` (المسوح العابرة، scanner وtransient).
+- **يبقى واضحًا:** `images` (صور التصاميم والكتب الملصقة، وتنتقل في حزم المحتوى) وfonts وdesigns وelements وletterheads وlogos وsuits — أصول تصميمٍ لا بيانات زبون.
+- **القرّاء:** بروتوكول `diwan://store` (index.ts — كلّ ما تعرضه الواجهة) · citizens (`absolute`: قراءة المسح، OCR، nativeImage ×٢، تصدير المستمسكات) ·
+  pdf.ts (`createFromPath`) · صور Word (output.ts وtemplates.ts `storeFile`) · ocr `recognize(path)` · النسخ: backup (zip)، autoBackup (نسخٌ بأجزاء)، preUpdateBackup وrestoreSwap (نسخٌ خام بالمفتاح نفسه) ·
+  حزم المحتوى (contentPack: الكتابة والاستيراد). والعامل لا يقرأ المخزن (يأخذ البكسلات). وما يحتاج مسارًا يأخذ نسخةً مفكوكة في `store/tmp` تُكنس.
+
 ## 2026-10-30 10:30 — D237 ✅: مفتاح بيانات المكتب ورمز الاسترداد؛ التالي D238 · النموذج: Claude Opus 5.5
 - 3b6564d الخدمة · af8e76b الإقلاع ونافذة الرمز (`mode=unlock`) وحوار الرمز أوّل مرّة ولوحة الإعدادات · وإيداع الختم: DPAPI والمِقْود والسيناريو والوثيقة.
 - **واقعٌ خالف الأمر فحُسم بمقصد ر190 (مُجرَّب):** `safeStorage` يحفظ مفتاحه في `Local State` بمجلّد البرنامج ويكتبه Chromium متأخّرًا؛ فبرنامجٌ قُتل بعد إنشاء المفتاح
