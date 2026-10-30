@@ -109,7 +109,7 @@
     }
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "npm:better-sqlite3-multiple-ciphers@13.0.3",
     "docx": "^9.1.0",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
