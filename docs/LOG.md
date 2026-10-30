@@ -6,6 +6,13 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## 2026-10-30 08:55 — D234 🔄: نصوص الرخص والمولّد والحارس؛ التالي الوثائق ثم الفحص الختامي · النموذج: Claude Opus 5.5
+- بعد إخراج buffers بقيت ستّ حزم بلا ملفّ رخصة: hash.js وisarray (النصّ في README المثبت) وsaxes (LICENSE عند v5.0.1) وtr46 (لا ملفّ عند 0.0.3؛
+  MIT وauthor من package.json والنصّ من LICENSE.md لصاحبه في v1.0.0) وonnxruntime-common/node (LICENSE عند v1.30.0)؛ ومعها ThirdPartyNotices.txt لـv1.30.0 كما هو.
+- `tools/notices/<الاسم>@<الإصدار>.txt` (الإصدار في الاسم قرارٌ بر177 §٣: إصدارٌ جديد يُسقط الحارس حتى يُجلب نصّه)، والمولّد يقرؤها ويُلحق إشعارات onnxruntime.
+  ولا DLL لـDirectML/dxcompiler/dxil في المثبت (مستثناة في package.json). الناتج ثابت في تشغيلين بالبصمة (d121d8e0… وa9101e6d…)، والنصوص الكاملة ٦٩٢ ك.ب.
+- الحارس الجديد في notices.test: ١ ✗ و٥ ✓ بالناتج السابق، ثم ٦ ✓؛ repoHygiene وstructure ١٤ ✓.
+
 ## 2026-10-30 08:43 — D234 🔄: خرجت buffers بتحديث unzipper؛ التالي نصوص الرخص · النموذج: Claude Opus 5.5
 - `npm view`: أحدث unzipper 0.12.5 (٢١ حزيران ٢٠٢٦) واعتمادياتها bluebird وduplexer2 وfs-extra وgraceful-fs وnode-int64 — بلا binary ولا buffers ولا chainsaw.
 - `overrides.exceljs.unzipper = 0.12.5`: خرج من ملفّ القفل buffers وbinary وchainsaw وtraverse وfstream وbig-integer وغيرها (١٥)، ولم تتغيّر نسخة حزمةٍ قائمة؛

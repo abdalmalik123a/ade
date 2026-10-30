@@ -1,7 +1,8 @@
 /**
  * الإشعارات القانونية (خطة Production، ٦٫٥؛ R04، D187): ما في البرنامج من عمل غيرنا، باسمه وإصداره ورخصته —
  * **من ملفّ القفل كلّه** لا من التبعيّات المباشرة وحدها: كلّ حزمة تشغيلٍ فيه (ما يحزمه المثبّت)، وما تبنيه الواجهة في حزمتها
- * من أدوات التطوير مع ما تجرّه، وElectron نفسه. وتُقرأ رخصها من حزمها في node_modules فلا تتخلّف عن الإصدار المحزوم.
+ * من أدوات التطوير مع ما تجرّه، وElectron نفسه. وتُقرأ رخصها من حزمها في node_modules فلا تتخلّف عن الإصدار المحزوم،
+ * وما خلت حزمته من ملفّ رخصةٍ فنصّه من `tools/notices/` (D234).
  *
  *   node tools/make-notices.mjs   →   src/renderer/src/assets/notices.json («عن البرنامج»)
  *                                  →   resources/THIRD-PARTY-NOTICES.txt  (النصوص الكاملة، بجوار البرنامج في المثبّت)
@@ -67,6 +68,12 @@ const licenseOf = (lock, p) =>
   (lock.license ?? (typeof p.license === 'string' ? p.license : p.license?.type ?? (p.licenses ?? []).map((l) => l.type).join(' / '))) || 'غير مذكورة في الحزمة — انظر مستودعها';
 const homeOf = (p) => (p.homepage ?? (typeof p.repository === 'string' ? p.repository : p.repository?.url ?? '') ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
 const LICENSE_FILE = /^(licen[cs]e|copying|notice)([-._].*)?$/i;
+/** نصوص الرخص المكمَّلة (D234، ر188): لحزمةٍ بلا ملفّ رخصة، من مصدرها الأصليّ بسطر المصدر — `<الاسم>@<الإصدار>.txt`، فإصدارٌ جديد يحتاج نصّه. */
+const SUPPLEMENT = join(ROOT, 'tools', 'notices');
+const supplement = (name) => {
+  const file = join(SUPPLEMENT, `${name}.txt`);
+  return existsSync(file) ? readFileSync(file, 'utf8').replace(/\r\n?/g, '\n').trim() : '';
+};
 
 const items = [];
 const texts = [];
@@ -81,7 +88,8 @@ for (const at of PATHS) {
   const files = readdirSync(dir)
     .filter((f) => LICENSE_FILE.test(f))
     .sort();
-  const body = files.map((f) => readFileSync(join(dir, f), 'utf8').replace(/\r\n?/g, '\n').trim()).join('\n\n');
+  const body =
+    files.map((f) => readFileSync(join(dir, f), 'utf8').replace(/\r\n?/g, '\n').trim()).join('\n\n') || supplement(`${item.name}@${item.version}`);
   texts.push({ ...item, body: body || `(لا ملفّ رخصةٍ في الحزمة — رخصتها: ${item.license})` });
 }
 items.sort((a, b) => a.name.localeCompare(b.name, 'en') || a.version.localeCompare(b.version, 'en'));
@@ -102,12 +110,21 @@ writeFileSync(join(ROOT, 'src', 'renderer', 'src', 'assets', 'notices.json'), JS
 
 const RULE = '='.repeat(72);
 const models = readFileSync(join(ROOT, 'resources', 'models', 'NOTICE.md'), 'utf8').replace(/\r\n?/g, '\n').trim();
+// ومحرّك onnxruntime الأصليّ يحمل في ملفّاته عمل غيره: إشعاراته كما ينشرها صاحبه لإصداره.
+const ortVersion = LOCK['node_modules/onnxruntime-node'].version;
+const ort = supplement(`onnxruntime-ThirdPartyNotices@${ortVersion}`);
+if (!ort) throw new Error(`لا إشعارات onnxruntime ${ortVersion} في tools/notices — انسخ ThirdPartyNotices.txt من وسم إصداره`);
 const txt = [
   'الإشعارات القانونية — ديوان (MADA TECH)',
   'ما في البرنامج من عمل غيرنا: كلّ حزمةٍ باسمها وإصدارها ورخصتها ونصّ رخصتها كما في حزمتها.',
   'وإشعارات Chromium وNode.js التي يحملها Electron في LICENSES.chromium.html بجوار البرنامج.',
   '',
   ...texts.flatMap((t) => [RULE, `${t.name} ${t.version} — ${t.license}`, ...(t.home ? [t.home] : []), '', t.body, '']),
+  RULE,
+  `onnxruntime ${ortVersion} — إشعارات الأطراف الثالثة في محرّكه الأصليّ (onnxruntime.dll)`,
+  '',
+  ort,
+  '',
   RULE,
   'النماذج وبيانات القراءة (resources/models و resources/tessdata)',
   '',

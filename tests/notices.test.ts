@@ -47,4 +47,11 @@ describe('الإشعارات القانونية من ملفّ القفل كلّ�
     expect(text).toContain('Copyright (c) Electron contributors');
     expect(text).toContain('Copyright (c) Facebook, Inc. and its affiliates.');
   });
+
+  it('ولا حزمة بلا رخصةٍ أو بلا نصّها، وإشعارات onnxruntime معها (D234، ر188)', () => {
+    expect(notices.filter((n) => n.license === 'غير مذكورة في الحزمة — انظر مستودعها').map((n) => n.name)).toEqual([]);
+    expect(text).not.toContain('(لا ملفّ رخصةٍ في الحزمة');
+    expect(has('buffers')).toBe(false);
+    expect(text).toContain('THIRD PARTY SOFTWARE NOTICES AND INFORMATION');
+  });
 });
