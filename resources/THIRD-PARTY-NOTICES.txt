@@ -6824,7 +6824,7 @@ BiRefNet_lite-matting — فصل الأشياء عن خلفيّتها (resources
 YuNet — الوجه والذقن في «الصور الشخصية» (resources/models) 2023mar — MIT — Copyright (c) 2020 Shiqi Yu — https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
 RTMPose-t — نقطتا الكتفين في «القاط بضغطة» (resources/models) body7 256×192 — Apache-2.0 — https://github.com/open-mmlab/mmpose
 Tesseract — بيانات قراءة العربية والإنكليزية (resources/tessdata) 4.x — Apache-2.0 — https://github.com/tesseract-ocr/tessdata
-صور القاط في «الصور الشخصية» — — من مكتبةٍ مفتوحة المصدر — مسموحٌ استعمالها (قرار المالك)
+صور القاط في «الصور الشخصية» — — لا صور قاط مدمجة؛ قاط المكتب والحزم المستوردة وفق حقوق أصحابها
 
 # modnet-portrait-q8.onnx
 

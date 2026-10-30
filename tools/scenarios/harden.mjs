@@ -36,6 +36,7 @@ export default async function scenario(page, { shotsDir, profile }) {
   await wait(300);
   if (shotsDir) await page.shot(join(shotsDir, 'about.png'));
   const notices = await page.eval(`return [...document.querySelectorAll('[data-about-notices] li')].map((l) => l.innerText);`);
+  ok('إشعار القاط يصف غياب الصور المدمجة بلا ادعاء مصدر مفتوح', notices.some((n) => n.includes('لا صور قاط مدمجة')) && !notices.some((n) => n.includes('من مكتبةٍ مفتوحة المصدر')));
   ok(`والإشعارات القانونية لما فيه من عمل غيرنا (${notices.length})`, notices.length >= 20 && notices.some((n) => n.includes('electron')) && notices.some((n) => n.includes('OFL-1.1')));
   const aboutChannels = await page.eval(`return [...document.querySelectorAll('[data-about] [data-channel]')].map((a) => a.dataset.channel);`);
   ok('و«قنواتنا» الأربع فيه', aboutChannels.join() === 'telegram,youtube,whatsapp,facebook');

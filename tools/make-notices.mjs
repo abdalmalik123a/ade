@@ -94,7 +94,7 @@ const OTHERS = [
   { name: 'YuNet — الوجه والذقن في «الصور الشخصية» (resources/models)', version: '2023mar', license: 'MIT — Copyright (c) 2020 Shiqi Yu', home: 'https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet' },
   { name: 'RTMPose-t — نقطتا الكتفين في «القاط بضغطة» (resources/models)', version: 'body7 256×192', license: 'Apache-2.0', home: 'https://github.com/open-mmlab/mmpose' },
   { name: 'Tesseract — بيانات قراءة العربية والإنكليزية (resources/tessdata)', version: '4.x', license: 'Apache-2.0', home: 'https://github.com/tesseract-ocr/tessdata' },
-  { name: 'صور القاط في «الصور الشخصية»', version: '—', license: 'من مكتبةٍ مفتوحة المصدر — مسموحٌ استعمالها (قرار المالك)', home: '' }
+  { name: 'صور القاط في «الصور الشخصية»', version: '—', license: 'لا صور قاط مدمجة؛ قاط المكتب والحزم المستوردة وفق حقوق أصحابها', home: '' }
 ];
 items.push(...OTHERS);
 
