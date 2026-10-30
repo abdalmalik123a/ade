@@ -88,6 +88,14 @@ export const officeApi: OfficeApis = {
     listAsides: () => invoke('backup:listAsides'),
     deleteAside: (name: string) => invoke('backup:deleteAside', name)
   },
+  dataLocation: {
+    get: () => invoke('dataLocation:get'),
+    open: () => invoke('dataLocation:open'),
+    pick: () => invoke('dataLocation:pick'),
+    moveTo: (target: string) => invoke('dataLocation:moveTo', target),
+    restart: () => invoke('dataLocation:restart'),
+    deleteAside: (path: string) => invoke('dataLocation:deleteAside', path)
+  },
   update: {
     pick: () => invoke('update:pick'),
     install: (path) => invoke('update:install', path),

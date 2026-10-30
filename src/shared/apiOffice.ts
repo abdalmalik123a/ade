@@ -152,6 +152,10 @@ export type BackupSummary = {
 
 /** مجلّد بيانات نُقل جانبًا عند الاسترجاع قبل أن يُستبدل بالأصل. */
 export type BeforeRestoreAside = { name: string; at: string; bytes: number };
+/** مجلّد بيانات المكتب (D236): مكانه، وما بقي جانبًا بعد نقلٍ إلى قرصٍ آخر، ونقلٌ ينتظر الإقلاع التالي. */
+export type DataLocationInfo = { path: string; asides: { path: string; bytes: number }[]; pending: string | null };
+/** المكان المختار بعد فحصه: `target` حيث تُحفظ البيانات فعلًا، والخطأ يمنع، والتنبيه يُسأل عنه. */
+export type DataLocationChoice = { target: string; error?: string; warning?: string };
 
 /**
  * حال التفعيل على هذا الجهاز (خطة Production، ٦٫٢): مفعَّل مدى الحياة، أو في المدّة التجريبية بأيّامها،
@@ -299,6 +303,15 @@ export type OfficeApis = {
     /** مجلّدات ما نُقل جانبًا عند الاسترجاع (before-restore-*) لحذفها يدويًّا بتأكيد (A09 ب). */
     listAsides(): Promise<BeforeRestoreAside[]>;
     deleteAside(name: string): Promise<boolean>;
+  };
+  /** مجلّد بيانات المكتب يختاره المكتب خارج AppData (D236): يُعرض ويُفتح ويُنقل في الإقلاع التالي. */
+  dataLocation: {
+    get(): Promise<DataLocationInfo>;
+    open(): Promise<boolean>;
+    pick(): Promise<DataLocationChoice | null>;
+    moveTo(target: string): Promise<boolean>;
+    restart(): Promise<boolean>;
+    deleteAside(path: string): Promise<boolean>;
   };
   /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
   update: {

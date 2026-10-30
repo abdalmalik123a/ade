@@ -11,6 +11,7 @@ import { errorText } from '../lib/errors';
 import { BACKUP_PASSWORD_MIN, backupPasswordProblem } from '@shared/backupPassword';
 import BackupCreate from './BackupCreate';
 import BackupAsides from './BackupAsides';
+import DataLocationPanel from './DataLocationPanel';
 import { count } from '@shared/arabic';
 
 const nf = new Intl.NumberFormat('en-US');
@@ -176,6 +177,7 @@ export default function BackupPanel({
         onError={(text) => setNote({ text, tone: 'warn' })}
       />
 
+      <DataLocationPanel />
       {/* النسخة التلقائية عند الإغلاق */}
       {auto && (
         <div className="pt-space-sm border-t border-outline-variant/40 flex flex-col gap-space-xs" data-auto-backup={auto.dir ? 'on' : 'off'}>

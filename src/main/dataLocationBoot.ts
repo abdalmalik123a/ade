@@ -30,7 +30,7 @@ import {
 } from './services/dataLocation';
 
 /** أقراص الجهاز وأنواعها — مرّةً عند السؤال؛ وتعذُّرها لا يمنع الاختيار (يُقترح قرص النظام). */
-function listDisks(): Disk[] {
+export function listDisks(): Disk[] {
   if (process.platform !== 'win32') return [];
   try {
     const out = execFileSync(
@@ -199,11 +199,15 @@ export async function ensureDataLocation(): Promise<boolean> {
   const legacy = legacyDataDir(userData);
   const answer = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_DATA_CHOICE'] : undefined;
   let pointer = readPointer(userData);
-  if (!pointer) {
-    if (__DIWAN_TEST_DOORS__ && answer === undefined) {
+  if (!pointer && __DIWAN_TEST_DOORS__ && answer === undefined) {
+    // تحت المِقْود بلا جواب: المكان القديم بلا سؤال — ونقلٌ طُلب من الإعدادات يجري منه.
+    if (!readPendingMove(userData)) {
       setDataDir(legacy);
       return true;
     }
+    pointer = { path: legacy, asides: [] };
+  }
+  if (!pointer) {
     const target = askFirstPlace(userData, answer, hasData(legacy));
     if (!target) return false;
     pointer = await settle(userData, legacy, target, [], answer !== undefined);

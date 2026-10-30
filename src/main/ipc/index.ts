@@ -2,6 +2,7 @@ import { app, clipboard, ipcMain, BrowserWindow } from 'electron';
 import { dataDir, getDb } from '../db';
 import { registerLetterheadIpc } from './letterheads';
 import { lastAnyBackup, registerBackupIpc } from './backup';
+import { registerDataLocationIpc } from './dataLocation';
 import { registerContentIpc } from './content';
 import { registerLicenseIpc } from './license';
 import { registerUpdateIpc } from './update';
@@ -172,6 +173,7 @@ export function registerIpc(): void {
   registerPhotoIpc();
   registerQuestionIpc();
   registerBackupIpc();
+  registerDataLocationIpc();
   registerContentIpc();
   registerLicenseIpc();
   registerUpdateIpc();
