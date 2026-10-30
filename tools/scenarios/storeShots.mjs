@@ -4,7 +4,8 @@
  * كتابٌ من حزمة التربية بعد «راجع» لزبونةٍ مصنوعة (زينب علي حسن) · ورقة المستمسكات بجوازٍ ووطنيةٍ تُرسمان هنا ·
  * الصور الشخصية بالصورة المولَّدة (`tests/fixtures/portrait-generated.png`) · شهادةٌ من المعرض ممتلئة · المعرض نفسه · والسجلّ بأربعة كتب.
  * المقاس ١٣٦٦×٧٦٨ (شاشة المكاتب) بكثافة ٢، فتخرج ٢٧٣٢×١٥٣٦ PNG كما يطلب المتجر (١٣٦٦×٧٦٨ فأكبر).
- * وارد الشبّاك مجلّدٌ مؤقّت فيه ملفّان مصنوعان، فلا يظهر شيءٌ من ملفّات صاحب الجهاز.
+ * وارد الشبّاك مجلّدٌ مؤقّت تُكتب فيه الصور المصنوعة نفسها (الجواز والوطنية والصورة الشخصية)، فلا يظهر شيءٌ من ملفّات صاحب الجهاز؛
+ * و`KEEP_RUN=1` يُبقي الملف الشخصي والوارد فيُفتح عليهما ديوان للتصوير اليدويّ بالبيانات المختلَقة نفسها.
  *   SHOT_DIR=<مجلّد> node tools/drive.mjs tools/scenarios/storeShots.mjs
  */
 import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,8 +19,6 @@ const PORTRAIT = resolve('tests/fixtures/portrait-generated.png');
 export function prepare() {
   rmSync(DIR, { recursive: true, force: true });
   mkdirSync(INBOX, { recursive: true });
-  copyFileSync(PORTRAIT, join(INBOX, 'صورة زينب علي حسن.png'));
-  copyFileSync(resolve('tests/fixtures/passport-fake.png'), join(INBOX, 'جواز زينب علي حسن.png'));
   copyFileSync(PORTRAIT, OPEN);
   return { DIWAN_TEST_OPEN_FILE: OPEN, DIWAN_TEST_SCAN_FILE: OPEN, DIWAN_TEST_SAVE_DIR: DIR, DIWAN_TEST_INBOX: `downloads=${INBOX}` };
 }
@@ -99,7 +98,12 @@ export default async function scenario(page, { shotsDir }) {
       input.dispatchEvent(new Event('input', { bubbles: true }));
       return true;`);
   const photo = readFileSync(PORTRAIT).toString('base64');
-  const nextImage = async (kind) => writeFileSync(OPEN, Buffer.from(await page.eval(DOC(kind, photo)), 'base64'));
+  const NAMES = { passport: 'جواز سفر - زينب علي حسن.png', front: 'البطاقة الوطنية - الوجه.png', back: 'البطاقة الوطنية - الظهر.png', portrait: 'صورة شخصية - زينب علي حسن.png' };
+  const nextImage = async (kind) => {
+    const buf = Buffer.from(await page.eval(DOC(kind, photo)), 'base64');
+    writeFileSync(OPEN, buf);
+    writeFileSync(join(INBOX, NAMES[kind]), buf);
+  };
 
   await page.send('Emulation.setDeviceMetricsOverride', { width: 1366, height: 768, deviceScaleFactor: 2, mobile: false });
   // تنبيه «اضبط النسخ الاحتياطي» بعد أوّل كتاب يُعدّ مسؤولًا عنه: لا يغطّي اللقطات التالية.
@@ -216,6 +220,7 @@ export default async function scenario(page, { shotsDir }) {
     const c = document.createElement('canvas'); c.width = c.height = 1536; const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
     g.drawImage(img, 0, 0, 1536, 1536); return c.toDataURL('image/png').split(',')[1];`);
   writeFileSync(OPEN, Buffer.from(big, 'base64'));
+  writeFileSync(join(INBOX, NAMES.portrait), Buffer.from(big, 'base64'));
   await page.goto('passport-photos');
   await wait(800);
   await click('[data-act="open-photo"]');
