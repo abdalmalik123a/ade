@@ -6,6 +6,12 @@
 > الأقدم في `docs/legacy/LOG-*.md` (يُبحث فيه بـGrep). وحين يزيد الدفتر على ٢٠٠ ك.ب تُنقل قيود أقدم مرحلةٍ رُوجعت كاملةً بنصّها
 > إلى `docs/legacy/LOG-<التالي>.md` (يحرسه `tests/docsBudget.test.ts`).
 
+## 2026-10-30 08:43 — D234 🔄: خرجت buffers بتحديث unzipper؛ التالي نصوص الرخص · النموذج: Claude Opus 5.5
+- `npm view`: أحدث unzipper 0.12.5 (٢١ حزيران ٢٠٢٦) واعتمادياتها bluebird وduplexer2 وfs-extra وgraceful-fs وnode-int64 — بلا binary ولا buffers ولا chainsaw.
+- `overrides.exceljs.unzipper = 0.12.5`: خرج من ملفّ القفل buffers وbinary وchainsaw وtraverse وfstream وbig-integer وغيرها (١٥)، ولم تتغيّر نسخة حزمةٍ قائمة؛
+  وصارت تشغيلية bluebird 3.7.2 وjsonfile وnode-int64 وuniversalify وfs-extra 11.3.1 (كانت للتطوير). أُعيد CRLF لملفّ القفل. `npm ls buffers binary chainsaw` فارغ.
+- اختبارات الإكسل السبعة ٩٠ ✓. التالي ملفّات `tools/notices/` والمولّد.
+
 ## 2026-10-30 08:40 — المخطِّط: ر188 وأمر D234 (الرخص) ينفَّذ قبل الوقوف عند D233 · النموذج: Claude Opus 5.5
 - جواب المالك: حزم القاط وغيرها من صنعه وحقّها له وحده، وموافقته على تحديث unzipper داخل exceljs لإخراج buffers؛ سُجّل ر188 في DECISIONS.
 - كُتب D234 ⚙️ م وسطره في PLAN بعد D233: لا ينتظر 🛑، فيأخذه المنفّذ أوّلًا ثم يعود الوقوف عند D233 لإقرار النصوص.
