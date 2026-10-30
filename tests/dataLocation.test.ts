@@ -1,9 +1,9 @@
 /**
  * مجلّد بيانات المكتب يختاره المكتب (D236): المؤشّر، والمقترح، وفحص الاختيار، والنقل بلا فقد.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, parse } from 'node:path';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import {
@@ -136,6 +136,22 @@ describe('نقل البيانات بلا فقد', () => {
     const db = new Database(join(to, 'diwan.db'), { readonly: true });
     expect(db.prepare('SELECT name FROM citizens').pluck().get()).toBe('زينب علي حسن');
     db.close();
+  });
+
+  // المقترح دائمًا في جذر قرص («D:\DiwanData»)، وmkdir على الجذر يرمي EPERM في ويندوز ولو بـrecursive —
+  // فسقط أوّل نقلٍ في حزمة المتجر على جهاز المالك (D243). يُنشأ الهدف في جذر قرص المؤقّت ثم يُمحى.
+  it('هدفٌ في جذر القرص (مثل D:\\DiwanData) يُنقل إليه بلا EPERM', async () => {
+    const root = tmp('rootdisk');
+    const from = join(root, 'data');
+    const to = join(parse(root).root, `diwan-dataloc-root-${process.pid}-${Date.now()}`);
+    office(from);
+    try {
+      const out = await moveData(from, to, { sameDisk: false });
+      expect(out.moved).toBe(true);
+      expect(hasData(to)).toBe(true);
+    } finally {
+      rmSync(to, { recursive: true, force: true });
+    }
   });
 
   it('قاعدةٌ منسوخة لا تجتاز الفحص: يبقى المصدر، ولا يصير الهدف، ويُعاد النسخ من أوّله بعدها', async () => {

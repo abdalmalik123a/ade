@@ -197,7 +197,8 @@ export async function moveData(
     mkdirSync(to, { recursive: true });
     return { moved: false };
   }
-  mkdirSync(dirname(to), { recursive: true });
+  // جذر القرص («D:\» للمقترح D:\DiwanData) موجودٌ دائمًا، وmkdir عليه يرمي EPERM في ويندوز ولو بـrecursive (D243).
+  if (!existsSync(dirname(to))) mkdirSync(dirname(to), { recursive: true });
   const sameDisk = deps.sameDisk ?? parse(resolve(from)).root.toLowerCase() === parse(resolve(to)).root.toLowerCase();
   if (sameDisk) {
     try {
