@@ -118,7 +118,9 @@ export async function afterRestart(page, { profile }) {
     `const r = await window.diwan.citizens.list({}); return (Array.isArray(r) ? r : (r.rows ?? [])).map((c) => c.fullName).join('،');`
   );
   ok(`وبيانات المكتب كلّها حاضرة — لا قاعدةً فارغة (${live})`, live.includes('قبل النسخة') && live.includes('بعد النسخة'));
-  ok('والمخزن عاد بمستمسكه', existsSync(join(data, 'store', 'attachments', 'مستمسك.txt')) && readFileSync(join(data, 'store', 'attachments', 'مستمسك.txt'), 'utf8') === 'مستمسك المكتب');
+  // يُقرأ من ديوان لا من القرص: المستمسك يُشفَّر في مكانه بعد الإقلاع (D238).
+  const back = await page.eval(`return fetch('diwan://store/attachments/' + encodeURIComponent('مستمسك.txt')).then((r) => r.text());`);
+  ok('والمخزن عاد بمستمسكه', existsSync(join(data, 'store', 'attachments', 'مستمسك.txt')) && back === 'مستمسك المكتب');
   ok('وما جانبًا باقٍ لا يُحذف', existsSync(join(aside, 'current.db')) && existsSync(join(aside, 'diwan.db')));
   const work = join(data, 'restore-work');
   const left = existsSync(work) ? readdirSync(work) : null;
