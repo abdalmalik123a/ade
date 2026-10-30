@@ -9,6 +9,7 @@ package.json يحزم out والاعتمادات التشغيلية وملفات
 | الصنف المشحون | الدليل والرخصة المعلنة | ما يلزم عند التوزيع |
 |---|---|---|
 | حزم npm وElectron | package-lock.json وحزم node_modules، وإشعارات ١٥٥ حزمة؛ ونصوص الست التي خلت من ملف رخصة في tools/notices | إبقاء نصوص الرخص وحقوق أصحابها؛ LICENSES.chromium.html وLICENSE من Electron في الحزمة النهائية؛ فحص المثبت الفعلي عند الإصدار |
+| محرّك القاعدة: better-sqlite3-multiple-ciphers 13.0.3 باسم better-sqlite3 (ر191، D239) | LICENSE في حزمته (MIT: Mahesh Bandara Wijerathna وJoshua Wise)؛ وSQLite3 Multiple Ciphers 2.4.0 المبنيّ في ملحقه (MIT، Ulrich Telle) في tools/notices ملحقٌ بالنصوص الكاملة | تحديث نصّ SQLite3 Multiple Ciphers مع كلّ إصدارٍ للمحرّك (المولّد يتوقّف بغيابه) |
 | محرك onnxruntime الأصلي (onnxruntime-node 1.30.0: onnxruntime.dll وملحقه) | LICENSE لمايكروسوفت (MIT) وThirdPartyNotices.txt لإصداره كما هو في tools/notices، ملحق بالنصوص الكاملة؛ DirectML وdxcompiler وdxil مستثناة من المثبت في package.json | جلب إشعارات الإصدار الجديد مع كل تحديث لـonnxruntime؛ المولد يتوقف بغيابها |
 | عشرة خطوط Fontsource | Amiri، Aref Ruqaa، Cairo، El Messiri، IBM Plex Sans، IBM Plex Sans Arabic، Lalezar، Noto Kufi Arabic، Noto Naskh Arabic، Reem Kufi؛ لكل حزمة LICENSE وOFL-1.1 | حمل الإشعارات؛ لا بيع الخط وحده؛ احترام الأسماء المحجوزة عند تعديل الخط، دون فرض رخصة الخط على الورقة التي طُبعت به |
 | MODNet، ملف modnet-portrait-q8.onnx | resources/models/NOTICE.md وبصمته؛ Apache-2.0 في بطاقة Xenova/modnet | حفظ الرخصة ونسبة الأصل وبيان التحويل؛ المصدر أدناه |

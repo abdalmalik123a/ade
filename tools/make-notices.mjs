@@ -114,6 +114,10 @@ const models = readFileSync(join(ROOT, 'resources', 'models', 'NOTICE.md'), 'utf
 const ortVersion = LOCK['node_modules/onnxruntime-node'].version;
 const ort = supplement(`onnxruntime-ThirdPartyNotices@${ortVersion}`);
 if (!ort) throw new Error(`لا إشعارات onnxruntime ${ortVersion} في tools/notices — انسخ ThirdPartyNotices.txt من وسم إصداره`);
+// وتشفير القاعدة (D239): SQLite3 Multiple Ciphers مبنيٌّ داخل ملحق better-sqlite3-multiple-ciphers؛ ونسخته في README المحرّك.
+const SQLITE3MC = '2.4.0';
+const sqlite3mc = supplement(`sqlite3mc@${SQLITE3MC}`);
+if (!sqlite3mc) throw new Error(`لا رخصة SQLite3 Multiple Ciphers ${SQLITE3MC} في tools/notices`);
 const txt = [
   'الإشعارات القانونية — ديوان (MADA TECH)',
   'ما في البرنامج من عمل غيرنا: كلّ حزمةٍ باسمها وإصدارها ورخصتها ونصّ رخصتها كما في حزمتها.',
@@ -124,6 +128,11 @@ const txt = [
   `onnxruntime ${ortVersion} — إشعارات الأطراف الثالثة في محرّكه الأصليّ (onnxruntime.dll)`,
   '',
   ort,
+  '',
+  RULE,
+  `SQLite3 Multiple Ciphers ${SQLITE3MC} — تشفير القاعدة، مبنيٌّ داخل better-sqlite3-multiple-ciphers`,
+  '',
+  sqlite3mc,
   '',
   RULE,
   'النماذج وبيانات القراءة (resources/models و resources/tessdata)',

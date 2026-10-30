@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pipeline } from 'node:stream/promises';
 import Database from 'better-sqlite3';
+import { openDb } from '../db/dbKey';
 import type { BackupSummary } from '@shared/api';
 import { compareVersions } from '@shared/version';
 import { ZipWriter, extractEntry, fileSink, readZipIndex, safeInnerPath, type Sink, type ZipEntry } from './zip';
@@ -267,7 +268,7 @@ function higherVersion(a: string | null, b: string | null): string | null {
 export function inspectDbFile(file: string, files: number, meta: { appVersion: string; createdAt: string | null } | null, currentVersion: string): BackupSummary {
   let db: Database.Database | null = null;
   try {
-    db = new Database(file, { readonly: true, fileMustExist: true });
+    db = openDb(file, { readonly: true, fileMustExist: true });
     const integrity = (db.pragma('integrity_check', { simple: true }) as string) ?? '';
     const has = (table: string) =>
       Boolean(db!.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));

@@ -12,10 +12,13 @@ import type { Database } from 'better-sqlite3';
  * الكتاب الواحد من نحو ١٫٥ م.ث إلى ٢٫٦–٤٫٥، ودفعة مئة اسم بلا فرقٍ يُذكر. والقرص الدوّار يُقاس
  * على جهاز مكتب.
  */
-export function configureConnection(db: Database): void {
+export function configureConnection(db: Database, encrypted = false): void {
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = FULL');
   db.pragma('foreign_keys = ON');
   db.pragma('temp_store = MEMORY');
   db.pragma('mmap_size = 268435456');
+  // المشفّرة لا تُربط بالذاكرة (mmap) فتُفكّ صفحاتها عند كلّ قراءة: ذاكرة صفحاتٍ ٦٤ م.ب تُعيد المسح الكامل إلى سرعته
+  // (مقيس D239: ٥٠ ألف صفّ، عشرة مسوح ١٤١٥ م.ث ← ٢٢٢، والواضحة اليوم ٣٦٧). وتُملأ بما يُقرأ فعلًا لا دفعة.
+  if (encrypted) db.pragma('cache_size = -65536');
 }

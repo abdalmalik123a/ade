@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, protocol, dialog, ipcMain, screen } from 'electron';
-import { getDb, closeDb, dataDir, storeDir, DamagedDbError, acceptDamagedDb } from './db';
+import { getDb, closeDb, dataDir, storeDir, DamagedDbError, acceptDamagedDb, useOfficeDbKey } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
 import { clearWorkDir } from './services/backup';
@@ -269,6 +269,7 @@ app.whenReady().then(async () => {
     if (!(await ensureDataLocation())) return void app.quit();
     // ومفتاح بياناته (D237): حماية ويندوز، أو رمز الاسترداد قبل القاعدة.
     if (!(await ensureDataKey())) return void app.quit();
+    useOfficeDbKey();
     // استرجاعٌ تعثّر في الجلسة السابقة ولم تعد قاعدته إلى مكانها: تُعاد من مجلّد الأصل قبل أن يُفتح شيء —
     // فلا تُنشأ قاعدةٌ فارغة بدلها (مراجعة ٧ ت١).
     const recovery = recoverIncompleteRestore(dataDir());

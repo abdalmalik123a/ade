@@ -1,8 +1,10 @@
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { app } from 'electron';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import { configureConnection } from './pragmas';
+import { currentKey } from '../services/dataKey';
+import { dbKeyOf, encryptInPlace, isPlainDb, openDb, setDbKey } from './dbKey';
 
 let db: Database.Database | null = null;
 /**
@@ -30,6 +32,15 @@ export function acceptDamagedDb(): void {
 }
 
 let chosenDir: string | null = null;
+
+/**
+ * مفتاح القاعدة لهذه الجلسة بعد أن يُفتح مفتاح المكتب (D237، D239). وتحت المِقْود لا تشفير إلا بباب `DIWAN_TEST_DB_CRYPT`:
+ * السيناريوهات تقرأ القاعدة من القرص شاهدًا خارجيًّا؛ وبلا أبواب (الإصدار) تُشفَّر دائمًا.
+ */
+export function useOfficeDbKey(): void {
+  const door = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_DB_CRYPT'] : undefined;
+  setDbKey(__DIWAN_TEST_DOORS__ && !door ? null : currentKey());
+}
 
 /** المجلّد الذي حلّه الإقلاع (`main/dataLocationBoot.ts`، D236) — يُضبط قبل أن يُقرأ شيءٌ من بيانات المكتب. */
 export function setDataDir(dir: string): void {
@@ -71,9 +82,20 @@ export function getDb(): Database.Database {
   const file = join(dataDir(), 'diwan.db');
   mkdirSync(dirname(file), { recursive: true });
 
-  db = new Database(file);
-  configureConnection(db);
-  const check = db.pragma('quick_check(1)', { simple: true });
+  // قاعدةٌ واضحة (قبل D239، أو جاءت من نسخة) تُشفَّر في مكانها بمفتاح المكتب قبل أن تُفتح؛ والمحرّك يفعلها في معاملة.
+  const key = dbKeyOf();
+  if (key && isPlainDb(file)) encryptInPlace(file, key);
+  db = openDb(file);
+  configureConnection(db, Boolean(key));
+  let check: unknown;
+  try {
+    check = db.pragma('quick_check(1)', { simple: true });
+  } catch (e) {
+    db.close();
+    db = null;
+    if (/not a database/i.test(String(e))) throw new Error('قاعدة المكتب مشفّرةٌ بمفتاحٍ غير مفتاح هذا المكتب، أو تالفة — لم يُمسّ منها شيء');
+    throw e;
+  }
   if (check !== 'ok' && !acceptDamaged) {
     db.close();
     db = null;

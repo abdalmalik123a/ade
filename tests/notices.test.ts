@@ -53,5 +53,8 @@ describe('الإشعارات القانونية من ملفّ القفل كلّ�
     expect(text).not.toContain('(لا ملفّ رخصةٍ في الحزمة');
     expect(has('buffers')).toBe(false);
     expect(text).toContain('THIRD PARTY SOFTWARE NOTICES AND INFORMATION');
+    // ومحرّك القاعدة المشفّرة (D239): رخصته ورخصة التشفير المبنيّ فيه.
+    expect(text).toContain('Copyright (c) 2021 Mahesh Bandara Wijerathna');
+    expect(text).toContain('SQLite3 Multiple Ciphers 2.4.0');
   });
 });

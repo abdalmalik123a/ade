@@ -10,7 +10,8 @@
  */
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
+import { openDb } from '../db/dbKey';
 import { compareVersions } from '@shared/version';
 
 export type DataGuard =
@@ -21,7 +22,7 @@ export type DataGuard =
 
 /** رقم الإصدار المكتوب في القاعدة — و`null` لقاعدةٍ قبل أن يُكتب (قبل ١٫٠). */
 export function readDataVersion(file: string): string | null {
-  const db = new Database(file, { readonly: true, fileMustExist: true });
+  const db = openDb(file, { readonly: true, fileMustExist: true });
   try {
     const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'settings'").get();
     if (!has) return null;
@@ -43,7 +44,7 @@ export function guardDataVersion(opts: { file: string; current: string; snapshot
   mkdirSync(opts.snapshotDir, { recursive: true });
   const snapshot = join(opts.snapshotDir, `${from ?? 'قبل-1.0'}-الى-${opts.current}-${stamp(opts.now ?? new Date())}.db`);
   if (existsSync(snapshot)) rmSync(snapshot, { force: true });
-  const db = new Database(opts.file, { readonly: true, fileMustExist: true });
+  const db = openDb(opts.file, { readonly: true, fileMustExist: true });
   try {
     db.exec(`VACUUM INTO '${snapshot.replace(/'/g, "''")}'`);
   } finally {

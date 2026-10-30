@@ -131,6 +131,7 @@ describe('اختبار الهيكل (ز١)', () => {
       'DIWAN_TEST_CLOSE_ANSWER',
       'DIWAN_TEST_DAMAGED_DB',
       'DIWAN_TEST_DATA_CHOICE',
+      'DIWAN_TEST_DB_CRYPT',
       'DIWAN_TEST_DPAPI_FAIL',
       'DIWAN_TEST_FAKE_CAMERA',
       'DIWAN_TEST_INBOX',
@@ -338,7 +339,8 @@ describe('اختبار الهيكل (ز١)', () => {
     const CHANNELS = new Set(JSON.parse(readFileSync(CHANNELS_FILE, 'utf8')) as string[]);
     // `${}` في prepare/exec بسطرٍ أو أكثر (جرد D65، وD73): أسماء جداول وأعمدة وشروطٌ من قوائم ثابتة — والقيم كلّها تُربط بـ`?`.
     const SQL_TEMPLATES = new Set([
-      'src/main/ipc/backup.ts',
+      // `VACUUM INTO '<مسار>'` نُقل من ipc/backup.ts إلى db/dbKey.ts (D239) — المسار يُهرَّب، لا قيمة من المكتب.
+      'src/main/db/dbKey.ts',
       'src/main/services/backup.ts',
       'src/main/services/citizens.ts',
       'src/main/services/clients.ts',

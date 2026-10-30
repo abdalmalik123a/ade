@@ -10,7 +10,8 @@
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statfsSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
+import { openDb } from '../db/dbKey';
 import { compareVersions } from '@shared/version';
 import { walkStore } from './backup';
 import { readDataVersion } from './dataVersion';
@@ -88,7 +89,7 @@ export function verifyPreUpdateBackup(backupDir: string): BackupVerification {
 
   let db: Database.Database | null = null;
   try {
-    db = new Database(dbFile, { readonly: true, fileMustExist: true });
+    db = openDb(dbFile, { readonly: true, fileMustExist: true });
     const integrity = (db.pragma('integrity_check', { simple: true }) as string) ?? '';
     if (integrity !== 'ok') return { ok: false, reason: `فحص سلامة القاعدة فشل (${integrity})` };
     const hasTable = (name: string) => Boolean(db!.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
@@ -171,7 +172,7 @@ export async function createPreUpdateBackup(opts: {
   mkdirSync(targetStore, { recursive: true });
 
   try {
-    const db = new Database(dbFile, { readonly: true, fileMustExist: true });
+    const db = openDb(dbFile, { readonly: true, fileMustExist: true });
     try {
       db.exec(`VACUUM INTO '${targetDb.replace(/'/g, "''")}'`);
     } finally {
@@ -308,7 +309,7 @@ export function rollbackToPreUpdateBackup(opts: {
       }
     }
 
-    const testDb = new Database(currentDb, { readonly: true, fileMustExist: true });
+    const testDb = openDb(currentDb, { readonly: true, fileMustExist: true });
     try {
       const integrity = testDb.pragma('integrity_check', { simple: true });
       if (integrity !== 'ok') throw new Error(`integrity check failed: ${integrity}`);

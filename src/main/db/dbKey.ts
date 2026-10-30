@@ -8,7 +8,7 @@
  * - بلا مفتاح أو بمفتاحٍ آخر: «file is not a database».
  * - `VACUUM INTO` من اتّصالٍ مشفّر يكتب نسخةً مشفّرةً بالمفتاح نفسه؛ و`rekey` بمفتاحٍ فارغ يفكّها في مكانها.
  */
-import { closeSync, existsSync, openSync, readSync, statSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readSync, rmSync, statSync } from 'node:fs';
 import Database from 'better-sqlite3';
 
 const PLAIN_HEADER = Buffer.from('SQLite format 3\0', 'latin1');
@@ -62,6 +62,16 @@ export function encryptInPlace(file: string, key: Buffer): void {
   } finally {
     db.close();
   }
+}
+
+/**
+ * نسخةٌ متّسقة من القاعدة الجارية (`VACUUM INTO`) — ولو صدر كتابٌ لحظتها. مشفّرةٌ بمفتاح المكتب كالأصل (ما يُنقل جانبًا
+ * عند الاسترجاع)، و`plain`: مفكوكةٌ للنسخة الاحتياطية فتُسترجع على جهازٍ آخر بمفتاحٍ آخر، وكلمة النسخة تحميها.
+ */
+export function snapshotOffice(db: Database.Database, target: string, plain = false): void {
+  if (existsSync(target)) rmSync(target);
+  db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
+  if (plain && sessionKey) decryptInPlace(target, sessionKey);
 }
 
 /** نسخةٌ مشفّرة (من `VACUUM INTO`) تُفكّ في مكانها — لنسخةٍ احتياطية تُسترجع على جهازٍ آخر بمفتاحٍ آخر. */

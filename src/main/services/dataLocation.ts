@@ -12,7 +12,9 @@
 import { cp, rename, rm } from 'node:fs/promises';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, parse, relative, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import Database from 'better-sqlite3';
+import { isEncryptedDb } from '../db/dbKey';
 import { isInside } from './localPaths';
 
 export const POINTER_NAME = 'data-location.json';
@@ -150,7 +152,12 @@ function inventory(root: string): Map<string, number> {
   return out;
 }
 
-export function integrityOf(dbFile: string): string {
+/**
+ * سلامة القاعدة المنسوخة: `integrity_check` للواضحة؛ والمشفّرة (D239) تُنقل قبل أن يُفتح مفتاحها في الإقلاع،
+ * فتُطابق بصمتها بصمة الأصل — النسخ بايتٌ ببايت.
+ */
+export function integrityOf(dbFile: string, source?: string): string {
+  if (isEncryptedDb(dbFile)) return source && sha256(dbFile) === sha256(source) ? 'ok' : 'تختلف عن الأصل';
   const db = new Database(dbFile, { readonly: true, fileMustExist: true });
   try {
     return String(db.pragma('integrity_check', { simple: true }));
@@ -158,6 +165,8 @@ export function integrityOf(dbFile: string): string {
     db.close();
   }
 }
+
+const sha256 = (file: string): string => createHash('sha256').update(readFileSync(file)).digest('hex');
 
 export interface MoveResult {
   /** نُقل شيء (وإلا كان المصدر فارغًا فأُنشئ المجلّد وحده). */
@@ -178,7 +187,7 @@ const emptyDir = (dir: string): boolean => existsSync(dir) && readdirSync(dir).l
 export async function moveData(
   from: string,
   to: string,
-  deps: { integrity?: (dbFile: string) => string; now?: () => Date; sameDisk?: boolean } = {}
+  deps: { integrity?: (dbFile: string, source: string) => string; now?: () => Date; sameDisk?: boolean } = {}
 ): Promise<MoveResult> {
   const integrity = deps.integrity ?? integrityOf;
   if (resolve(from).toLowerCase() === resolve(to).toLowerCase()) return { moved: false };
@@ -207,7 +216,7 @@ export async function moveData(
   const missing = [...want].filter(([rel, size]) => got.get(rel) !== size).map(([rel]) => rel);
   if (missing.length > 0) throw new Error(`لم يُنسخ ${missing.length} ملفًّا كما هو (أوّلها ${missing[0]}) — بقيت البيانات في مكانها`);
   if (existsSync(join(partial, DB_NAME))) {
-    const check = integrity(join(partial, DB_NAME));
+    const check = integrity(join(partial, DB_NAME), join(from, DB_NAME));
     if (check !== 'ok') throw new Error(`القاعدة المنسوخة لا تجتاز فحص السلامة (${check}) — بقيت البيانات في مكانها`);
   }
   if (existsSync(to)) rmdirSync(to);

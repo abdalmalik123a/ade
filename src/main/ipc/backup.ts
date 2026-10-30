@@ -22,6 +22,7 @@ import { ForeignMirrorError, mirrorInfo, mirrorSnapshots, readMirror, runAutoBac
 import { stampDataVersion } from '../services/dataVersion';
 import { logAudit } from '../services/documents';
 import { currentKey } from '../services/dataKey';
+import { snapshotOffice } from '../db/dbKey';
 import { sealStore } from '../services/storeCrypt';
 import { runMigrations } from '../db/migrations';
 import { prepareSearch } from '../services/searchIndex';
@@ -57,12 +58,6 @@ async function openAndInspect(path: string, password: string | null): Promise<{ 
   }
 }
 
-/** نسخةٌ متّسقة من القاعدة الجارية — ولو صدر كتابٌ لحظتها. */
-function snapshotDb(target: string): void {
-  if (existsSync(target)) rmSync(target);
-  getDb().exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
-}
-
 function setting(key: string, value: string): void {
   getDb()
     .prepare(
@@ -95,7 +90,7 @@ export async function createBackup(
   if (!target) return null;
 
   const snapshot = join(dataDir(), `backup-${stamp()}.db`);
-  snapshotDb(snapshot);
+  snapshotOffice(getDb(), snapshot, true);
   let size: number;
   try {
     // ملفًّا ملفًّا من القرص — لا المخزن كلّه في الذاكرة (خطة Production، ٤٫١).
@@ -125,7 +120,7 @@ async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (stor
     await swapInBackup({
       dir,
       aside,
-      snapshot: snapshotDb,
+      snapshot: (file) => snapshotOffice(getDb(), file),
       close: closeDb,
       reopen,
       placeDb,
@@ -247,7 +242,7 @@ export function runConfiguredAutoBackup(): AutoBackupResult | null {
       storeRoot: join(dataDir(), 'store'),
       // نسخة القاعدة المؤقّتة بجانب القاعدة لا في `%TEMP%` (A08).
       tempDir: dataDir(),
-      snapshotDb,
+      snapshotDb: (file) => snapshotOffice(getDb(), file, true),
       password: autoPassword(),
       keep: status.keep,
       appVersion: app.getVersion(),
