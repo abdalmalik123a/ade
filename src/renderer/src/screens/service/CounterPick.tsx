@@ -246,7 +246,7 @@ export default function CounterPick({
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-space-sm">
         <SearchField
           inputRef={searchRef}
-          className="w-full h-10 ps-3 rounded-field bg-surface-container-low border border-outline-variant text-on-surface font-label-md text-label-md focus:outline-none focus:bg-surface-container-lowest focus:border-[#8CDCEB] focus:shadow-[0_0_0_4px_rgba(33,200,231,0.10)]"
+          className="w-full h-10 ps-3 input-field text-on-surface font-label-md text-label-md"
           data-counter-search=""
           placeholder="ابحث بما يقوله الزبون: تأييد، صور، PDF — وEnter تملأ"
           value={query}
@@ -272,7 +272,7 @@ export default function CounterPick({
             <button
               className={`px-3 py-1.5 rounded-chip font-label-sm text-label-sm shrink-0 transition-colors ${
                 activeCategory === null
-                  ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_#C6E3F0]'
+                  ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_rgb(var(--i-cyan)/.4)]'
                   : 'text-on-surface-variant hover:bg-surface-container-high'
               }`}
               type="button"
@@ -285,7 +285,7 @@ export default function CounterPick({
                 key={c.name}
                 className={`px-3 py-1.5 rounded-chip font-label-sm text-label-sm shrink-0 transition-colors ${
                   activeCategory === c.name
-                    ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_#C6E3F0]'
+                    ? 'bg-primary-fixed text-primary font-semibold shadow-[inset_0_0_0_1px_rgb(var(--i-cyan)/.4)]'
                     : 'text-on-surface-variant hover:bg-surface-container-high'
                 }`}
                 type="button"
@@ -313,7 +313,7 @@ export default function CounterPick({
                 key={t.id}
                 className={`relative rounded-card text-right flex flex-col gap-space-sm transition-all ${
                   on
-                    ? 'p-[15px] border-2 border-cyan bg-grad-sel shadow-sel -translate-y-[3px]'
+                    ? 'p-[15px] border-2 border-cyan bg-grad-sel shadow-sel'
                     : 'p-space-md border border-outline-variant bg-grad-surface shadow-soft hover:border-outline'
                 }`}
                 data-template-card={t.id}
@@ -322,7 +322,7 @@ export default function CounterPick({
               >
                 <span
                   className={`absolute top-2.5 left-2.5 w-[22px] h-[22px] rounded-[7px] flex items-center justify-center transition-colors ${
-                    on ? 'bg-grad-act text-on-primary shadow-act' : 'border-[1.5px] border-outline bg-surface-container-lowest'
+                    on ? 'bg-secondary-fixed-dim text-on-surface' : 'border-[1.5px] border-outline bg-surface-container-lowest'
                   }`}
                 >
                   {on && (

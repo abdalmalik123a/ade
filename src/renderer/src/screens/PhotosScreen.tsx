@@ -207,7 +207,7 @@ export default function PhotosScreen({ incoming = null }: { incoming?: PhotoInco
       <span className={`font-label-md text-label-md font-semibold ${later ? 'text-on-surface-variant' : 'text-on-surface'}`}>
         <span
           className={`inline-flex w-5 h-5 me-1 rounded-full items-center justify-center text-[11px] ${
-            later ? 'bg-surface-container-high text-on-surface-variant' : 'bg-grad-act text-on-primary shadow-act'
+            later ? 'bg-surface-container-high text-on-surface-variant' : 'bg-grad-act text-on-surface shadow-act'
           }`}
         >
           {toIndic(n)}

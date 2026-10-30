@@ -36,7 +36,7 @@ export default function DesignerHeader({ editing, initial, setTitle, setCode, se
   return (
     <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
       <div className="flex items-center gap-space-sm">
-        <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
+        <span className="p-1 rounded-ico bg-grad-act text-on-surface shadow-act">
           <span className="material-symbols-outlined text-[18px]">data_object</span>
         </span>
         <span className="font-headline-sm text-headline-sm text-on-surface">

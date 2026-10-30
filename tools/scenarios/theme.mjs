@@ -2,7 +2,7 @@
  * سيناريو: مظهر ديوان الواحد (ر067) — «ب٢» منذ ر175 (D156).
  *
  * مساحة العمل فاتحة بنصٍّ بلون الحبر؛ والسكّة لوحٌ أبيض بنصٍّ رماديّ، ورأسها رمز «ديوان» واسمه و«MADA TECH»،
- * والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض؛ و«املأ» بالتدرّج؛ ولا علامة مائية في الشبّاك؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
+ * والمحدَّد فيها بتدرّج العسلي ونصٍّ كحلي؛ و«املأ» بالتدرّج؛ ولا علامة مائية في الشبّاك؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
  * وتُلتقط الشاشات إن طُلبت (SHOT_DIR).
  */
 import { join } from 'node:path';
@@ -16,15 +16,15 @@ export default async function scenario(page, { shotsDir }) {
   await page.goto('service-counter');
   await wait(900);
   ok(`مساحة العمل فاتحة (${await style('body', 'backgroundColor')})`, (await style('body', 'backgroundColor')) === 'rgb(243, 245, 247)');
-  ok(`ونصّها بلون الحبر (${await style('body', 'color')})`, (await style('body', 'color')) === 'rgb(36, 52, 61)');
+  ok(`ونصّها بلون الحبر (${await style('body', 'color')})`, (await style('body', 'color')) === 'rgb(18, 50, 77)');
   ok(`والسكّة لوحٌ أبيض (${await style('[data-rail-panel]', 'backgroundImage')})`,
     ((await style('[data-rail-panel]', 'backgroundImage')) ?? '').includes('rgb(255, 255, 255)'));
   const muted = await style('[data-sidebar="rail"] [data-dest]:not([aria-current]) span:last-child', 'color');
-  ok(`ونصّ السكّة رماديّ (${muted})`, muted === 'rgb(86, 100, 110)');
+  ok(`ونصّ السكّة رماديّ (${muted})`, muted === 'rgb(88, 103, 117)');
   const head = await page.eval(`return document.querySelector('[data-act="sidebar-about"]')?.innerText ?? '';`);
   ok('رأس السكّة: شعار «ديوان» واسمه و«MADA TECH»', head.includes('ديوان') && head.includes('MADA TECH') && (await page.eval(`return Boolean(document.querySelector('[data-brand-mark] img'));`)));
-  ok('والمحدَّد فيها بتدرّج الفعل ونصٍّ أبيض',
-    ((await style('[data-dest][aria-current="page"]', 'backgroundImage')) ?? '').startsWith('linear-gradient') && (await style('[data-dest][aria-current="page"]', 'color')) === 'rgb(255, 255, 255)');
+  ok('والمحدَّد فيها بتدرّج العسلي ونصٍّ كحلي',
+    ((await style('[data-dest][aria-current="page"]', 'backgroundImage')) ?? '').startsWith('linear-gradient') && (await style('[data-dest][aria-current="page"]', 'color')) === 'rgb(18, 50, 77)');
   const fill = await page.eval(`const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim().startsWith('املأ')); return b ? getComputedStyle(b).backgroundImage : null;`);
   ok(`و«املأ» بالتدرّج${fill ? '' : ' (لا يظهر هنا — يُتخطّى)'}`, fill === null || fill.startsWith('linear-gradient'));
   ok('ولا علامة مائية في الشبّاك (أزالها «ب٢»، D157)', !(await page.eval(`return Boolean(document.querySelector('[data-watermark]'));`)));

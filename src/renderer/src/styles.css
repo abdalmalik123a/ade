@@ -1,3 +1,4 @@
+@import './interactions.css';
 /* الخطوط والأيقونات محليًا — لا اتصال بـ CDN. التطبيق يعمل مقطوعًا عن الإنترنت. */
 @import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
 @import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
@@ -41,8 +42,8 @@
    المتغيّرات من src/shared/theme.ts (themeCss) — يطابقها tests/theme.test.ts. مساحة العمل فاتحة،
    والسكّة لوحٌ أبيض بمتغيّراتها. والجذر بها: فنافذة الطباعة والأنماط المحفوظة يوم الإصدار كما هي. */
 /* theme:start */
-:root{color-scheme:light;--c-background:243 245 247;--c-on-background:36 52 61;--c-surface:243 245 247;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:233 237 240;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:36 52 61;--c-on-surface-variant:86 100 110;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:8 114 163;--c-inverse-surface:36 52 61;--c-inverse-on-surface:239 242 244;--c-inverse-primary:140 220 235;--c-primary:8 114 163;--c-on-primary:255 255 255;--c-primary-container:6 96 139;--c-on-primary-container:255 255 255;--c-primary-fixed:230 243 249;--c-primary-fixed-dim:198 227 240;--c-on-primary-fixed:4 66 95;--c-on-primary-fixed-variant:6 96 139;--c-secondary:6 106 152;--c-on-secondary:255 255 255;--c-secondary-container:8 114 163;--c-on-secondary-container:255 255 255;--c-secondary-fixed:231 249 252;--c-secondary-fixed-dim:189 234 244;--c-on-secondary-fixed:4 66 95;--c-on-secondary-fixed-variant:6 96 139;--c-tertiary:138 75 0;--c-on-tertiary:255 255 255;--c-tertiary-container:255 243 223;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 243 223;--c-tertiary-fixed-dim:255 215 154;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;}
-[data-sidebar="rail"]{--c-background:255 255 255;--c-on-background:36 52 61;--c-surface:255 255 255;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:231 249 252;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:36 52 61;--c-on-surface-variant:86 100 110;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:8 114 163;--c-inverse-surface:36 52 61;--c-inverse-on-surface:239 242 244;--c-inverse-primary:140 220 235;--c-primary:8 114 163;--c-on-primary:255 255 255;--c-primary-container:6 96 139;--c-on-primary-container:255 255 255;--c-primary-fixed:230 243 249;--c-primary-fixed-dim:198 227 240;--c-on-primary-fixed:4 66 95;--c-on-primary-fixed-variant:6 96 139;--c-secondary:6 106 152;--c-on-secondary:255 255 255;--c-secondary-container:8 114 163;--c-on-secondary-container:255 255 255;--c-secondary-fixed:231 249 252;--c-secondary-fixed-dim:189 234 244;--c-on-secondary-fixed:4 66 95;--c-on-secondary-fixed-variant:6 96 139;--c-tertiary:138 75 0;--c-on-tertiary:255 255 255;--c-tertiary-container:255 243 223;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 243 223;--c-tertiary-fixed-dim:255 215 154;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;}
+:root{color-scheme:light;--c-background:243 245 247;--c-on-background:18 50 77;--c-surface:243 245 247;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:233 237 240;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:18 50 77;--c-on-surface-variant:88 103 117;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:36 94 105;--c-inverse-surface:18 50 77;--c-inverse-on-surface:239 242 244;--c-inverse-primary:99 191 203;--c-primary:36 94 105;--c-on-primary:255 255 255;--c-primary-container:36 94 105;--c-on-primary-container:255 255 255;--c-primary-fixed:237 248 250;--c-primary-fixed-dim:223 242 245;--c-on-primary-fixed:18 50 77;--c-on-primary-fixed-variant:36 94 105;--c-secondary:36 94 105;--c-on-secondary:255 255 255;--c-secondary-container:36 94 105;--c-on-secondary-container:255 255 255;--c-secondary-fixed:237 248 250;--c-secondary-fixed-dim:223 242 245;--c-on-secondary-fixed:18 50 77;--c-on-secondary-fixed-variant:36 94 105;--c-tertiary:112 74 28;--c-on-tertiary:255 255 255;--c-tertiary-container:255 240 218;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 240 218;--c-tertiary-fixed-dim:245 184 102;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;--i-honey:239 160 74;--i-honey-light:245 184 102;--i-honey-hover:227 147 57;--i-honey-hover-light:241 173 86;--i-honey-pressed:246 183 106;--i-cyan:99 191 203;--i-disabled:230 232 230;--i-on-disabled:96 103 110;}
+[data-sidebar="rail"]{--c-background:255 255 255;--c-on-background:18 50 77;--c-surface:255 255 255;--c-surface-bright:250 251 252;--c-surface-dim:232 236 239;--c-surface-container-lowest:255 255 255;--c-surface-container-low:247 249 250;--c-surface-container:239 242 244;--c-surface-container-high:237 248 250;--c-surface-container-highest:226 231 234;--c-surface-variant:226 231 234;--c-on-surface:18 50 77;--c-on-surface-variant:88 103 117;--c-outline:122 136 146;--c-outline-variant:226 231 234;--c-surface-tint:36 94 105;--c-inverse-surface:18 50 77;--c-inverse-on-surface:239 242 244;--c-inverse-primary:99 191 203;--c-primary:36 94 105;--c-on-primary:255 255 255;--c-primary-container:36 94 105;--c-on-primary-container:255 255 255;--c-primary-fixed:237 248 250;--c-primary-fixed-dim:223 242 245;--c-on-primary-fixed:18 50 77;--c-on-primary-fixed-variant:36 94 105;--c-secondary:36 94 105;--c-on-secondary:255 255 255;--c-secondary-container:36 94 105;--c-on-secondary-container:255 255 255;--c-secondary-fixed:237 248 250;--c-secondary-fixed-dim:223 242 245;--c-on-secondary-fixed:18 50 77;--c-on-secondary-fixed-variant:36 94 105;--c-tertiary:112 74 28;--c-on-tertiary:255 255 255;--c-tertiary-container:255 240 218;--c-on-tertiary-container:107 58 0;--c-tertiary-fixed:255 240 218;--c-tertiary-fixed-dim:245 184 102;--c-on-tertiary-fixed:61 34 0;--c-on-tertiary-fixed-variant:107 58 0;--c-error:184 38 44;--c-on-error:255 255 255;--c-error-container:252 228 227;--c-on-error-container:138 21 25;--c-scrim:20 32 42;}
 /* theme:end */
 
 /* الورقة والصورة بيضاوان. */
@@ -59,12 +60,6 @@
 /* الحقل بحدٍّ رفيع حين لا حدّ له — فالحقل الفاتح على البطاقة البيضاء يُرى أين يُكتب. (و`.input-field` بحدّه وهالته، D164.) */
 :is(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), select, textarea):not([class~='border']):not([class*='border-']):not(.input-field) {
   box-shadow: inset 0 0 0 1px rgb(var(--c-outline-variant));
-}
-
-/* حلقة تركيز واضحة لعناصر التحكّم التفاعلية عند التنقّل بلوحة المفاتيح (A13 — D97) */
-:is(button, a, [role='button'], input[type='checkbox'], input[type='radio']):focus-visible {
-  outline: 2px solid rgb(var(--c-secondary));
-  outline-offset: 2px;
 }
 
 /* ── الطبقة الأساس: منقولة من <style> في ملفات التصميم ─────────────── */
@@ -113,51 +108,17 @@
 
 body {
   font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
-  background-color: #eef0ec;
-  color: #18211d;
-  /* أرضية «ب٢» (ر175) فوق لون السطح (`bg-surface` على body): ضوءٌ أبيض أعلى اليمين ولمسةٌ سماوية أسفل اليسار. */
-  background-image: theme('backgroundImage.ground');
+  background-color: rgb(var(--c-background));
+  color: rgb(var(--c-on-surface));
+  /* أرضية النموذج المعتمد (ر192): رمادي هادئ موحّد. */
+  background-image: none;
   background-attachment: fixed;
 }
 
-/* زرّ الإخراج (ر175): «املأ» و«راجع الأوراق» و«اطبع» و«شيءٌ آخر لنفس الزبون» — بتدرّج الفعل، والمرور هادئٌ بلا تغيير مقاس. */
+/* السطح المشترك؛ تفاعل الأزرار والحقول في interactions.css (D241) لتبقى الملفات صغيرة. */
 @layer components {
-  .btn-act {
-    @apply bg-grad-act text-on-primary shadow-act rounded-btn;
-    transition:
-      filter 180ms ease,
-      box-shadow 180ms ease;
-  }
-  .btn-act:hover:not(:disabled) {
-    filter: brightness(1.06);
-  }
-
-  /* أصناف «ب٢» المشتركة (D164) — وجدول ترجمتها في docs/UI.md §٨: */
-  /* اللوح: سطحٌ كبير أو نافذة — أبيض بتدرّجٍ خفيف، وزوايا «ورقة شجر»، وظلٌّ محايد، وحدٌّ أبيض. */
   .surface-panel {
     @apply bg-grad-surface rounded-frame shadow-card border border-white/90;
-  }
-  /* الخانة: سطحٌ باهت بحدٍّ فاتح، وبالتركيز بيضاء بحدٍّ وهالةٍ سماويّين — كبحث الرأس والشبّاك. */
-  .input-field {
-    @apply rounded-field bg-surface-container-low border border-outline-variant;
-    transition:
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      background-color 180ms ease;
-  }
-  .input-field:focus {
-    @apply bg-surface-container-lowest;
-    outline: none;
-    border-color: #8cdceb;
-    box-shadow: 0 0 0 4px rgba(33, 200, 231, 0.1);
-  }
-  /* الزرّ الثانويّ البارز (كـ.btn-s في «ب٢»): سماويٌّ باهت بنصّ الفعل، ومروره أغمق بنصٍّ أغمق (فالتباين فوق ٤٫٥). */
-  .btn-soft {
-    @apply rounded-btn bg-primary-fixed text-primary font-semibold;
-    transition: background-color 180ms ease;
-  }
-  .btn-soft:hover:not(:disabled) {
-    @apply bg-primary-fixed-dim text-on-primary-fixed;
   }
 }
 

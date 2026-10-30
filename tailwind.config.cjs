@@ -1,4 +1,4 @@
-/** توكنات التصميم — مظهر «ب٢» (ر175؛ وقبله «منتصف الليل»، خطّة الترقية، المرحلة ٦).
+/** توكنات التصميم — العسلي والسيان (ر192؛ D241).
  *  الألوان تُكتب يدويًّا في src/shared/theme.ts، وهنا أسماء أدوارها وحدها (يطابقها tests/theme.test.ts)، والتدرّجات والظلال والزوايا.
  *  وتوليدها من stitch_ توقّف. والمقاسات والخطوط كما كانت. */
 const ROLES = [
@@ -60,30 +60,29 @@ module.exports = {
           // الألوان أدوارٌ متغيّراتها في الصفحة (`src/shared/theme.ts`) — فالمظهر الليلي والنهاري بلا إعادة بناء.
           "colors": Object.fromEntries(ROLES.map((r) => [r, `rgb(var(--c-${r}) / <alpha-value>)`])),
           // وصبغتا «ب٢» (ر175) لا دوران — فليستا في `colors` (الأدوار وحدها، يطابقها tests/theme.test.ts):
-          // السماويّ حدٌّ للمختار (`border-cyan`)، والبرتقاليّ لأيقونةٍ أو نجمةٍ بجانب نصٍّ يحمل المعنى (`text-orange`).
-          "borderColor": { "cyan": { "DEFAULT": "#21C8E7" } },
-          "textColor": { "orange": { "DEFAULT": "#F89800" } },
-          // زوايا «ورقة شجر» (ر175، «ب٢»): أعلى اليمين وأسفل اليسار أكبر، وبعضها بيضويّ.
+          // السيان حد المختار؛ العسلي لأيقونة أو عدد بجانب نص يحمل المعنى، لا لنص على الأبيض.
+          "borderColor": { "cyan": { "DEFAULT": "rgb(var(--i-cyan))" } },
+          "textColor": { "orange": { "DEFAULT": "rgb(var(--i-honey))" } },
+          // زوايا منتظمة كما في النموذج المعتمد (ر192)، بلا تغيير المقاسات أو الحشو.
           "borderRadius": {
                 "DEFAULT": "0.125rem",
                 "lg": "0.25rem",
                 "xl": "0.5rem",
                 "full": "0.75rem",
-                "frame": "14px 28px 14px 28px / 14px 24px 14px 24px",
-                "card": "11px 22px 11px 22px / 11px 19px 11px 19px",
-                "field": "9px 16px 9px 16px",
-                "btn": "8px 16px 8px 16px",
-                "ico": "8px 15px 8px 15px",
-                "chip": "7px 14px 7px 14px"
+                "frame": "12px",
+                "card": "9px",
+                "field": "8px",
+                "btn": "8px",
+                "ico": "8px",
+                "chip": "7px"
           },
-          // تدرّجات «ب٢» (ر175): الفعل من السماويّ إلى الأزرق (والنصّ الأبيض يقع على الأزرق)، والبرتقاليّ صبغةً للشارة والعدد،
-          // والمختار والسطح الأبيض، والأرضية: ضوءٌ أبيض أعلى اليمين ولمسةٌ سماوية أسفل اليسار.
+          // العسلي للفعل بنص كحلي؛ السيان للتحديد؛ الأسطح بيضاء والأرضية موحّدة (ر192).
           "backgroundImage": {
-                "grad-act": "linear-gradient(135deg,#21C8E7 0%,#0872A3 32%,#06608B 100%)",
-                "grad-orange": "linear-gradient(145deg,#FFB126,#F89800)",
-                "grad-sel": "linear-gradient(145deg,#FFFFFF,#F0FBFD)",
-                "grad-surface": "linear-gradient(180deg,#FFFFFF,#FBFCFD)",
-                "ground": "radial-gradient(900px 520px at 100% 0%,#FFFFFF 0%,rgba(255,255,255,0) 70%),radial-gradient(760px 460px at 0% 100%,#E9F7FB 0%,rgba(233,247,251,0) 70%)"
+                "grad-act": "linear-gradient(165deg,rgb(var(--i-honey-light)),rgb(var(--i-honey)))",
+                "grad-orange": "linear-gradient(165deg,rgb(var(--i-honey-light)),rgb(var(--i-honey)))",
+                "grad-sel": "linear-gradient(145deg,#FFFFFF,#EDF8FA)",
+                "grad-surface": "linear-gradient(180deg,#FFFFFF,#FFFFFF)",
+                "ground": "linear-gradient(#F3F5F7,#F3F5F7)"
           },
           "spacing": {
                 "space-xs": "0.25rem",
@@ -246,14 +245,14 @@ module.exports = {
                 ]
           },
           // `shadow-xs` و`backdrop-blur-xs` من Tailwind 4 — وهنا Tailwind 3: بلا تعريفهما يُهملان صامتين.
-          // وظلال «ب٢»: محايدةٌ بلون الحبر، والفعل والمختار أزرقان خفيفان.
+          // ظلال قصيرة؛ دفء خفيف للفعل، وسيان هادئ للمختار (ر192).
           "boxShadow": {
                 "xs": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-                "card": "0 14px 32px rgba(36,52,61,.10),0 3px 8px rgba(36,52,61,.05)",
-                "soft": "0 8px 22px rgba(36,52,61,.08),inset 0 1px 0 rgba(255,255,255,.9)",
-                "low": "0 2px 6px rgba(36,52,61,.06),inset 0 1px 0 rgba(255,255,255,.9)",
-                "act": "0 10px 22px -8px rgba(8,114,163,.55),inset 0 1px 0 rgba(255,255,255,.28)",
-                "sel": "0 12px 28px rgba(8,104,152,.12),0 2px 6px rgba(8,104,152,.08)"
+                "card": "0 3px 10px rgb(18 50 77 / .06),0 1px 3px rgb(18 50 77 / .03)",
+                "soft": "0 2px 7px rgb(18 50 77 / .04),inset 0 1px 0 rgb(255 255 255 / .9)",
+                "low": "0 2px 4px rgb(18 50 77 / .03),inset 0 1px 0 rgb(255 255 255 / .9)",
+                "act": "inset 0 1px 0 rgb(255 255 255 / .5),0 3px 6px rgb(175 121 32 / .14)",
+                "sel": "0 2px 7px rgb(36 94 105 / .08)"
           },
           "backdropBlur": {
                 "xs": "4px"

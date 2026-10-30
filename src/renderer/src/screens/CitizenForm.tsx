@@ -124,7 +124,7 @@ export default function CitizenForm({
       <div className="w-[min(980px,94vw)] h-[min(760px,92vh)] surface-panel flex flex-col overflow-hidden">
         <div className="h-14 shrink-0 px-space-lg flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-space-sm">
-            <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
+            <span className="p-1 rounded-ico bg-grad-act text-on-surface shadow-act">
               <span className="material-symbols-outlined text-[18px]">badge</span>
             </span>
             <span className="font-headline-sm text-headline-sm text-on-surface">
@@ -243,6 +243,7 @@ export default function CitizenForm({
                         <input
                           className={f.mono ? `${inputCls} font-mono` : inputCls}
                           data-citizen-field={f.key}
+                          aria-invalid={f.key === 'fullName' && error === 'اسم المواطن مطلوب' || undefined}
                           dir={f.ltr ? 'ltr' : undefined}
                           list={f.options ? `citizen-${f.key}-options` : undefined}
                           placeholder={f.placeholder}

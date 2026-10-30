@@ -112,7 +112,7 @@ export default function Header({
             </span>
             <input
               ref={searchRef}
-              className="w-full h-10 pr-10 pl-16 rounded-field bg-surface-container-low border border-outline-variant text-on-surface placeholder:text-on-surface-variant text-label-md font-label-md focus:outline-none focus:bg-surface-container-lowest focus:border-[#8CDCEB] focus:shadow-[0_0_0_4px_rgba(33,200,231,0.10)]"
+              className="w-full h-10 pr-10 pl-16 input-field text-on-surface placeholder:text-on-surface-variant text-label-md font-label-md"
               data-global-search=""
               placeholder="بحث شامل: مواطن، رقم صادر، نموذج، كتاب…"
               type="text"

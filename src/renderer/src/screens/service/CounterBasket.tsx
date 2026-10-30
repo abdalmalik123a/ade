@@ -35,7 +35,7 @@ export default function CounterBasket({ picked, items, toggle, goFill, busy, par
           <span className="font-body-sm text-body-sm text-on-surface-variant">ما اختاره الزبون بترتيبه</span>
         </span>
         <span
-          className="ms-auto min-w-[28px] h-7 px-1.5 rounded-full bg-grad-orange text-on-surface font-label-lg text-label-lg font-bold flex items-center justify-center shadow-[0_6px_14px_-6px_rgba(248,152,0,0.6)]"
+          className="ms-auto min-w-[28px] h-7 px-1.5 rounded-full bg-grad-orange text-on-surface font-label-lg text-label-lg font-bold flex items-center justify-center shadow-low"
           data-basket-count=""
         >
           {toIndic(picked.length)}
@@ -75,7 +75,7 @@ export default function CounterBasket({ picked, items, toggle, goFill, busy, par
       </div>
 
       <div className="shrink-0 px-4 pt-3 pb-3.5 flex flex-col gap-2.5">
-        <p className="m-0 flex items-start gap-1.5 px-3 py-2 rounded-btn bg-secondary-fixed text-primary font-body-sm text-body-sm font-medium shadow-[inset_0_0_0_1px_#C9EEF6]">
+        <p className="m-0 flex items-start gap-1.5 px-3 py-2 rounded-btn bg-secondary-fixed text-primary font-body-sm text-body-sm font-medium shadow-[inset_0_0_0_1px_rgb(var(--i-cyan)/.4)]">
           <span className="material-symbols-outlined text-[17px]">info</span>
           بيانات الزبون تُكتب مرّةً واحدة لكلّ النماذج.
         </p>

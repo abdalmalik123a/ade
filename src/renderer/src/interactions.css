@@ -1,0 +1,82 @@
+/* العسلي والسيان (ر192، D241): الملمس مشترك؛ المقاسات والوظائف يملكها كل مكوّن. */
+@layer components {
+  .btn-act {
+    @apply bg-grad-act text-on-surface shadow-act rounded-btn;
+    transition: background 160ms ease, box-shadow 160ms ease;
+  }
+  .input-field {
+    @apply rounded-field bg-surface-container-lowest border border-outline-variant;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+  .input-field:focus {
+    border-color: rgb(var(--i-cyan));
+    outline: 2px solid rgb(var(--c-primary));
+    outline-offset: 1px;
+    box-shadow: 0 0 0 5px rgb(var(--i-cyan) / .16);
+  }
+  .btn-soft {
+    @apply rounded-btn bg-secondary-fixed text-on-secondary-fixed font-semibold;
+    box-shadow: inset 0 0 0 1px rgb(var(--i-cyan) / .45), 0 2px 4px rgb(var(--c-on-surface) / .03);
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+}
+
+@media screen {
+  /* الحلقة الداكنة تحفظ وضوح التركيز، والهالة تحمل السيان الهادئ الذي اختاره المالك. */
+  :is(button, a, [role='button'], input, select, textarea):focus-visible {
+    outline: 2px solid rgb(var(--c-primary));
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgb(var(--i-cyan) / .18);
+  }
+  @media (hover: hover) {
+    .btn-act:hover:not(:disabled) {
+      background-image: linear-gradient(165deg, rgb(var(--i-honey-hover-light)), rgb(var(--i-honey-hover)));
+      box-shadow: inset 0 1px 0 #ffffff70, 0 4px 9px rgb(175 121 32 / .17);
+    }
+    .btn-soft:hover:not(:disabled) {
+      background-color: rgb(var(--c-secondary-fixed-dim));
+      box-shadow: inset 0 0 0 1px rgb(var(--i-cyan) / .7), 0 3px 7px rgb(var(--c-primary) / .07);
+    }
+  }
+  .btn-act:active:not(:disabled) {
+    background-image: none;
+    background-color: rgb(var(--i-honey-pressed));
+    box-shadow: inset 2px 3px 5px rgb(157 101 21 / .18), inset -1px -1px 3px #ffffff70;
+  }
+  .btn-soft:active:not(:disabled) {
+    background-color: rgb(var(--c-secondary-fixed-dim));
+    box-shadow: inset 1px 2px 4px rgb(var(--c-primary) / .15);
+  }
+  button:is(.btn-act, .btn-soft):disabled {
+    background-image: none;
+    background-color: rgb(var(--i-disabled));
+    color: rgb(var(--i-on-disabled));
+    box-shadow: none;
+    opacity: 1;
+  }
+  /* نفس الخانة ونفس قواعد التحقق: الأحمر للعنوان والحد، لا للقيمة المكتوبة. */
+  .input-field[aria-invalid='true'] {
+    border-color: rgb(var(--c-error));
+    box-shadow: 0 0 0 3px rgb(var(--c-error) / .1);
+  }
+  div:has(> .input-field[aria-invalid='true']) > label {
+    color: rgb(var(--c-error));
+  }
+  [data-template-card], [data-favorite-card] {
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+  [data-basket-item] {
+    animation: basket-arrive 160ms ease-out;
+  }
+  @keyframes basket-arrive {
+    from { background-color: rgb(var(--c-secondary-fixed)); }
+    to { background-color: rgb(var(--c-surface-container-lowest)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0s !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

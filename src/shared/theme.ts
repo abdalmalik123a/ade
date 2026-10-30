@@ -1,11 +1,7 @@
 /**
- * مظهر ديوان — واحدٌ لا يُبدَّل (ر067)، وهو «ب٢» منذ ر175 (٢٤ تشرين الأول ٢٠٢٦، اعتمده المالك من لوحة «الشبّاك — الوجبة الثانية»):
- * أسطحٌ بيضاء على أرضيةٍ بيضاء مائلة للرمادي، ونصٌّ بلون الحبر، ولونُ فعلٍ أزرق، والسكّة والرأس لوحان أبيضان عائمان.
- * وتدرّج السماويّ إلى الأزرق (`bg-grad-act` في `tailwind.config.cjs`) لأفعال الإخراج والوجهة المحدّدة — يقع النصّ الأبيض على أزرقه.
- * والبرتقاليّ (#F89800، وتدرّجه `bg-grad-orange`) **صبغةٌ لا دور**: للشارة والعدد بنصٍّ بلون الحبر، ولا يُكتب به نصٌّ على الأبيض.
- *
- * التوكنات متغيّراتٌ في `styles.css` (يطابقها `tests/theme.test.ts`)، وTailwind يأخذها
- * `rgb(var(--c-…) / <alpha-value>)` في `tailwind.config.cjs`. وتُكتب هنا يدويًّا.
+ * مظهر ديوان الواحد: العسلي والسيان (ر192، D241) بعد اعتماد النموذج المستقل.
+ * الفعل عسلي بنص كحلي؛ primary نص سيان داكن للروابط والأيقونات، فلا يصير النص عسليًا على الأبيض.
+ * التوكنات مشتركة مع styles.css وTailwind؛ الورقة والطباعة ومقاساتهما كما هي.
  */
 
 /** أسماء الأدوار كما يستعملها الكود (`bg-surface-container-low`، `text-on-surface-variant`…). */
@@ -63,13 +59,10 @@ export const COLOR_ROLES = [
 export type ColorRole = (typeof COLOR_ROLES)[number];
 export type Palette = Record<ColorRole, string>;
 
-/**
- * مساحة العمل: كلّ ما سوى السكّة. وعن «ب٢» فرقان مقصودان: `on-surface-variant` و`secondary` أغمق قليلًا،
- * لأنّهما يُكتبان على أغمق الأسطح (`-highest`) أيضًا فيبقيان فوق ٤٫٥.
- */
+/** مساحة العمل: النصوص الداكنة واضحة حتى على أغمق سطح، والعسلي في INTERACTION لا في النصوص. */
 export const PALETTE: Palette = {
   background: '#F3F5F7',
-  'on-background': '#24343D',
+  'on-background': '#12324D',
   surface: '#F3F5F7',
   'surface-bright': '#FAFBFC',
   'surface-dim': '#E8ECEF',
@@ -79,36 +72,36 @@ export const PALETTE: Palette = {
   'surface-container-high': '#E9EDF0',
   'surface-container-highest': '#E2E7EA',
   'surface-variant': '#E2E7EA',
-  'on-surface': '#24343D',
-  'on-surface-variant': '#56646E',
+  'on-surface': '#12324D',
+  'on-surface-variant': '#586775',
   outline: '#7A8892',
   'outline-variant': '#E2E7EA',
-  'surface-tint': '#0872A3',
-  'inverse-surface': '#24343D',
+  'surface-tint': '#245E69',
+  'inverse-surface': '#12324D',
   'inverse-on-surface': '#EFF2F4',
-  'inverse-primary': '#8CDCEB',
-  primary: '#0872A3',
+  'inverse-primary': '#63BFCB',
+  primary: '#245E69',
   'on-primary': '#FFFFFF',
-  'primary-container': '#06608B',
+  'primary-container': '#245E69',
   'on-primary-container': '#FFFFFF',
-  'primary-fixed': '#E6F3F9',
-  'primary-fixed-dim': '#C6E3F0',
-  'on-primary-fixed': '#04425F',
-  'on-primary-fixed-variant': '#06608B',
-  secondary: '#066A98',
+  'primary-fixed': '#EDF8FA',
+  'primary-fixed-dim': '#DFF2F5',
+  'on-primary-fixed': '#12324D',
+  'on-primary-fixed-variant': '#245E69',
+  secondary: '#245E69',
   'on-secondary': '#FFFFFF',
-  'secondary-container': '#0872A3',
+  'secondary-container': '#245E69',
   'on-secondary-container': '#FFFFFF',
-  'secondary-fixed': '#E7F9FC',
-  'secondary-fixed-dim': '#BDEAF4',
-  'on-secondary-fixed': '#04425F',
-  'on-secondary-fixed-variant': '#06608B',
-  tertiary: '#8A4B00',
+  'secondary-fixed': '#EDF8FA',
+  'secondary-fixed-dim': '#DFF2F5',
+  'on-secondary-fixed': '#12324D',
+  'on-secondary-fixed-variant': '#245E69',
+  tertiary: '#704A1C',
   'on-tertiary': '#FFFFFF',
-  'tertiary-container': '#FFF3DF',
+  'tertiary-container': '#FFF0DA',
   'on-tertiary-container': '#6B3A00',
-  'tertiary-fixed': '#FFF3DF',
-  'tertiary-fixed-dim': '#FFD79A',
+  'tertiary-fixed': '#FFF0DA',
+  'tertiary-fixed-dim': '#F5B866',
   'on-tertiary-fixed': '#3D2200',
   'on-tertiary-fixed-variant': '#6B3A00',
   error: '#B8262C',
@@ -118,13 +111,25 @@ export const PALETTE: Palette = {
   scrim: '#14202A'
 };
 
+/** ألوان اللمس: لا تُستعمل درجات العسلي أو السيان الفاتحة لنص صغير على الأبيض. */
+export const INTERACTION = {
+  honey: '#EFA04A',
+  'honey-light': '#F5B866',
+  'honey-hover': '#E39339',
+  'honey-hover-light': '#F1AD56',
+  'honey-pressed': '#F6B76A',
+  cyan: '#63BFCB',
+  disabled: '#E6E8E6',
+  'on-disabled': '#60676E'
+} as const;
+
 /** السكّة: لوحٌ أبيض، والمرور فيها سماويٌّ باهت، والمحدَّد بالتدرّج (`Sidebar.tsx`). وما سوى ذلك كمساحة العمل. */
 export const RAIL: Palette = {
   ...PALETTE,
   background: '#FFFFFF',
   surface: '#FFFFFF',
   'surface-container-lowest': '#FFFFFF',
-  'surface-container-high': '#E7F9FC'
+  'surface-container-high': '#EDF8FA'
 };
 
 /** السكّة في الصفحة. */
@@ -135,7 +140,8 @@ const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 
 /** المتغيّرات كما تُكتب في `styles.css` (بين `theme:start` و`theme:end` — يطابقها الاختبار). */
 export function themeCss(): string {
   const block = (p: Palette) => COLOR_ROLES.map((r) => `--c-${r}:${rgb(p[r]).join(' ')};`).join('');
-  return `:root{color-scheme:light;${block(PALETTE)}}\n${RAIL_SELECTOR}{${block(RAIL)}}`;
+  const accents = Object.entries(INTERACTION).map(([name, hex]) => `--i-${name}:${rgb(hex).join(' ')};`).join('');
+  return `:root{color-scheme:light;${block(PALETTE)}${accents}}\n${RAIL_SELECTOR}{${block(RAIL)}}`;
 }
 
 /** نسبة التباين بين لونين (WCAG 2) — والمعيار ٤٫٥ للنصّ. */

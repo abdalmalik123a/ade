@@ -85,7 +85,7 @@ export default function UploadExportDialog({
               >
                 <img alt="" className="w-full aspect-[1.6/1] object-cover rounded bg-surface-container-high" src={`diwan://store/${a.filePath}`} />
                 <span className="font-label-sm text-label-sm truncate">{a.docType}</span>
-                {n >= 0 && <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-grad-act text-on-primary shadow-act text-[12px] flex items-center justify-center">{toIndic(n + 1)}</span>}
+                {n >= 0 && <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-grad-act text-on-surface shadow-act text-[12px] flex items-center justify-center">{toIndic(n + 1)}</span>}
               </button>
             );
           })}

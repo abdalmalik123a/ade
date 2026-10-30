@@ -30,7 +30,7 @@ export default function ClipsTab({ editingClipId, clipTitle, setClipTitle, clipC
       <div className="bg-surface-container-lowest p-space-md rounded-card shadow-xs space-y-space-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-ico bg-grad-act text-on-primary shadow-act">
+            <span className="p-1 rounded-ico bg-grad-act text-on-surface shadow-act">
               <span className="material-symbols-outlined text-[18px]">post_add</span>
             </span>
             <h3 className="font-headline-sm text-headline-sm text-on-surface">

@@ -18,7 +18,7 @@ import { destinationOf, DESTINATIONS, type Destination } from '../lib/destinatio
 const ITEM =
   'relative w-[62px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-card text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors';
 const ITEM_ON =
-  'relative w-[62px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-card bg-grad-act text-on-primary font-bold shadow-act';
+  'relative w-[62px] flex flex-col items-center gap-1 pt-2.5 pb-2 rounded-card bg-grad-act text-on-surface font-bold shadow-act';
 const SMALL =
   'relative w-[62px] flex flex-col items-center gap-0.5 pt-1.5 pb-1.5 rounded-card text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors';
 
@@ -49,7 +49,7 @@ export default function Sidebar({ active, onNavigate, counts, version, onAbout, 
     return (
       <span
         className={`absolute top-1 left-2 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold flex items-center justify-center ${
-          alert ? 'bg-error text-on-error' : 'bg-grad-orange text-on-surface shadow-[0_3px_8px_-2px_rgba(248,152,0,0.5)]'
+          alert ? 'bg-error text-on-error' : 'bg-grad-orange text-on-surface shadow-low'
         }`}
         data-badge={alert ? 'alert' : 'count'}
         title={`${overdue ? `متأخّر ${toIndic(overdue)} — ` : dueToday ? `موعده اليوم ${toIndic(dueToday)} — ` : ''}مفتوح ${toIndic(open)}: الطلبات والمعاملات المعلّقة، والمسودّات لا تُعدّ`}

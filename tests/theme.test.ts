@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { COLOR_ROLES, PALETTE, RAIL, contrast, themeCss, type ColorRole, type Palette } from '../src/shared/theme';
+import { COLOR_ROLES, INTERACTION, PALETTE, RAIL, contrast, themeCss, type ColorRole, type Palette } from '../src/shared/theme';
 
 const SURFACES: ColorRole[] = [
   'background',
@@ -17,7 +17,7 @@ const SURFACES: ColorRole[] = [
   'surface-container-highest'
 ];
 /** ألوانٌ تُكتب بها النصوص على السطوح مباشرة. */
-const TEXTS: ColorRole[] = ['on-surface', 'on-surface-variant', 'secondary', 'error', 'tertiary'];
+const TEXTS: ColorRole[] = ['on-surface', 'on-surface-variant', 'primary', 'secondary', 'error', 'tertiary'];
 
 function lowContrast(p: Palette, texts: ColorRole[]): string[] {
   const low: string[] = [];
@@ -33,6 +33,13 @@ function lowContrast(p: Palette, texts: ColorRole[]): string[] {
 }
 
 describe('تباين النصّ', () => {
+  it('العسلي بكل حالات الفعل يحمل نصًا كحليًا واضحًا، وحلقة التركيز واضحة على الأبيض (ر192)', () => {
+    for (const key of ['honey', 'honey-light', 'honey-hover', 'honey-hover-light', 'honey-pressed', 'cyan'] as const) {
+      expect(contrast(PALETTE['on-surface'], INTERACTION[key]), key).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(INTERACTION['on-disabled'], INTERACTION.disabled)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(PALETTE.primary, '#FFFFFF')).toBeGreaterThanOrEqual(3);
+  });
   it('مساحة العمل: كلّ لون نصٍّ على كلّ سطح، وكلّ «on-X» على «X» — ٤٫٥ فأكثر', () => {
     expect(lowContrast(PALETTE, TEXTS)).toEqual([]);
   });

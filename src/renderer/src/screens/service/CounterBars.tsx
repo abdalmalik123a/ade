@@ -25,12 +25,12 @@ export function StepsHeader({ step }: { step: Step }) {
           <div
             key={s.key}
             aria-current={step === s.key ? 'step' : undefined}
-            className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-card ${step === s.key ? 'bg-grad-sel shadow-[inset_0_0_0_1.5px_#21C8E7]' : ''}`}
+            className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-card ${step === s.key ? 'bg-grad-sel shadow-[inset_0_0_0_1.5px_rgb(var(--i-cyan))]' : ''}`}
           >
             <span
               className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center font-label-md text-label-md font-bold ${
                 step === s.key
-                  ? 'bg-grad-act text-on-primary shadow-act'
+                  ? 'bg-grad-act text-on-surface shadow-act'
                   : 'border-[1.5px] border-outline bg-surface-container-lowest text-on-surface-variant'
               }`}
             >
@@ -43,7 +43,7 @@ export function StepsHeader({ step }: { step: Step }) {
           </div>
         ))}
         <span className="absolute right-3 left-3 bottom-1 h-[3px] rounded-sm bg-outline-variant" data-steps-track="">
-          <i className="block h-full rounded-sm bg-[linear-gradient(270deg,#21C8E7,#0872A3)]" style={{ width: `${((at + 1) * 100) / STEPS.length}%` }} />
+          <i className="block h-full rounded-sm bg-primary" style={{ width: `${((at + 1) * 100) / STEPS.length}%` }} />
         </span>
       </div>
     </div>
