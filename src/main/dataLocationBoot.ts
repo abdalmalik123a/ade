@@ -20,9 +20,9 @@ import {
   dirBytes,
   hasData,
   legacyDataDir,
-  moveData,
   readPendingMove,
   readPointer,
+  relocate,
   suggestDataDir,
   writePointer,
   type Disk,
@@ -106,27 +106,22 @@ function askFirstPlace(userData: string, answer: string | undefined, carrying: b
 }
 
 /**
- * ينقل البيانات إلى `target` ويكتب المؤشّر بعد النجاح؛ ومجلّدٌ فيه بيانات ديوانٍ أصلًا يُفتح كما هو ولا يُنقل إليه شيء.
+ * `relocate` بحواراته: ينقل ثم يكتب المؤشّر بعد النجاح وحده؛ ومجلّدٌ فيه بيانات ديوانٍ أصلًا يُفتح كما هو.
  * وإن تعثّر النقل بقيت البيانات في مكانها وأُعيد `null`.
  */
 async function settle(userData: string, from: string, target: string, asides: string[], quiet: boolean): Promise<Pointer | null> {
-  if (hasData(target)) {
-    if (hasData(from) && !quiet) {
-      dialog.showMessageBoxSync({
-        type: 'info',
-        title: 'مكان بيانات المكتب',
-        message: 'في المجلّد المختار بيانات ديوان، فتُفتح هي.',
-        detail: `وما كان في المكان السابق بقي كما هو: ${from}`,
-        buttons: ['حسنًا'],
-        noLink: true
-      });
-    }
-    const pointer = { path: target, asides };
-    writePointer(userData, pointer);
-    return pointer;
+  if (hasData(target) && hasData(from) && !quiet) {
+    dialog.showMessageBoxSync({
+      type: 'info',
+      title: 'مكان بيانات المكتب',
+      message: 'في المجلّد المختار بيانات ديوان، فتُفتح هي.',
+      detail: `وما كان في المكان السابق بقي كما هو: ${from}`,
+      buttons: ['حسنًا'],
+      noLink: true
+    });
   }
   const abort = new AbortController();
-  if (hasData(from) && !quiet) {
+  if (!hasData(target) && hasData(from) && !quiet) {
     void dialog.showMessageBox({
       type: 'info',
       title: 'نقل بيانات المكتب',
@@ -138,10 +133,8 @@ async function settle(userData: string, from: string, target: string, asides: st
     });
   }
   try {
-    const moved = await moveData(from, target);
-    const pointer = { path: target, asides: moved.aside ? [...asides, moved.aside] : asides };
-    writePointer(userData, pointer);
-    return pointer;
+    const { path, asides: kept } = await relocate(userData, from, target, asides);
+    return { path, asides: kept };
   } catch (e) {
     logError('dataLocation:move', e);
     if (!quiet) {

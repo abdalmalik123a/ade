@@ -11,6 +11,8 @@ import { elementBox } from '../src/shared/design/elements';
 
 const root = mkdtempSync(join(tmpdir(), 'diwan-elements-'));
 vi.mock('electron', () => ({ app: { getPath: () => root } }));
+// مجلّد البيانات يحلّه الإقلاع (D236) — وهنا كما كان: `data` تحت المجلّد المؤقّت.
+(await import('../src/main/db')).setDataDir(join(root, 'data'));
 const { importElements, listElements, removeElement } = await import('../src/main/services/elements');
 
 const db = new Database(':memory:');

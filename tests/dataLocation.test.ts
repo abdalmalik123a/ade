@@ -14,6 +14,7 @@ import {
   moveData,
   readPendingMove,
   readPointer,
+  relocate,
   suggestDataDir,
   writePendingMove,
   writePointer,
@@ -148,6 +149,26 @@ describe('نقل البيانات بلا فقد', () => {
     const out = await moveData(from, to, { sameDisk: false });
     expect(out.moved).toBe(true);
     expect(existsSync(`${to}.partial`)).toBe(false);
+  });
+
+  it('المؤشّر يُكتب بعد نجاح النقل وحده، ومجلّدٌ فيه بيانات ديوان يُعتمد بلا نقل', async () => {
+    const root = tmp('relocate');
+    const userData = join(root, 'ud');
+    const from = join(root, 'data');
+    const to = join(root, 'other', 'DiwanData');
+    office(from);
+    await expect(relocate(userData, from, to, [], { sameDisk: false, integrity: () => 'malformed' })).rejects.toThrow();
+    expect(readPointer(userData)).toBeNull();
+    expect(hasData(from)).toBe(true);
+    const done = await relocate(userData, from, to, ['C:\\old'], { sameDisk: false });
+    expect(done.adopted).toBe(false);
+    expect(readPointer(userData)).toEqual({ path: to, asides: ['C:\\old', done.asides[1]] });
+    const elsewhere = join(root, 'elsewhere');
+    office(elsewhere);
+    const adopted = await relocate(userData, to, elsewhere, []);
+    expect(adopted.adopted).toBe(true);
+    expect(hasData(to)).toBe(true);
+    expect(readPointer(userData)?.path).toBe(elsewhere);
   });
 
   it('لا يُكتب فوق بيانات ديوانٍ في الهدف، والمصدر الفارغ يُنشئ الهدف وحده', async () => {

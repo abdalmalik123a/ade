@@ -261,8 +261,12 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
   child.stderr.on('data', (d) => logs.push(String(d)));
 
   try {
-    const targets = await fetchJson(`http://127.0.0.1:${PORT}/json/list`);
-    const target = targets.find((t) => t.type === 'page');
+    // المنفذ يجيب قبل النافذة؛ والإقلاع قد يعمل قبلها (نقل مجلّد البيانات، D236) — فتُنتظر الصفحة كما يُنتظر المنفذ.
+    let target;
+    for (let i = 0; i < 60 && !target; i++) {
+      target = (await fetchJson(`http://127.0.0.1:${PORT}/json/list`)).find((t) => t.type === 'page');
+      if (!target) await sleep(500);
+    }
     if (!target) throw new Error('لم تُفتح صفحة');
 
     const ws = new WebSocket(target.webSocketDebuggerUrl);

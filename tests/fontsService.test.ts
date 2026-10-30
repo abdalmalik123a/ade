@@ -16,6 +16,8 @@ vi.mock('electron', () => ({ app: { getPath: () => root } }));
 const windowsDir = join(root, 'windows-fonts');
 mkdirSync(windowsDir, { recursive: true });
 (process.env as Record<string, string>)['DIWAN_TEST_WINDOWS_FONTS'] = windowsDir;
+// مجلّد البيانات يحلّه الإقلاع (D236) — وهنا كما كان: `data` تحت المجلّد المؤقّت.
+(await import('../src/main/db')).setDataDir(join(root, 'data'));
 
 const { importFaces, importWindowsFamily, listFaces, removeFamily, windowsFamilies, importedFontCss } = await import('../src/main/services/fonts');
 

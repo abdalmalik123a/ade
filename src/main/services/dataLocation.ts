@@ -217,6 +217,27 @@ export async function moveData(
   return { moved: true, aside };
 }
 
+/**
+ * ينقل البيانات إلى `target` ثم يكتب المؤشّر — **بعد نجاح النقل وحده**: نقلٌ تعثّر يُبقي المؤشّر كما كان والبيانات في مكانها.
+ * ومجلّدٌ فيه بيانات ديوانٍ أصلًا يُعتمد كما هو ولا يُنقل إليه شيء.
+ */
+export async function relocate(
+  userData: string,
+  from: string,
+  target: string,
+  asides: string[],
+  deps: Parameters<typeof moveData>[2] = {}
+): Promise<Pointer & { adopted: boolean }> {
+  if (hasData(target)) {
+    writePointer(userData, { path: target, asides });
+    return { path: target, asides, adopted: true };
+  }
+  const moved = await moveData(from, target, deps);
+  const pointer = { path: target, asides: moved.aside ? [...asides, moved.aside] : asides };
+  writePointer(userData, pointer);
+  return { ...pointer, adopted: false };
+}
+
 /** حجم مجلّدٍ جانبيّ للعرض — وما تعذّرت قراءته صفر. */
 export function dirBytes(dir: string): number {
   try {

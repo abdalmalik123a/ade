@@ -54,6 +54,7 @@ onnxruntime-node ^1.30 · tesseract.js ^7 · vitest ^5.
   `src/renderer/src/designs/panels/` ولقطةٌ واختبار. والخدمات في `src/main/services/design/` (استيراد PSD وWord وPDF والصور والحزم).
 
 ### القاعدة وترقياتها
+- **مجلّد بيانات المكتب** (القاعدة والمخزن والترخيص) يختاره المكتب خارج AppData (D236): `dataDir()` يعيد ما حلّه الإقلاع (`main/dataLocationBoot.ts`) ويرمي قبله.
 - **SQLite** في `diwan.db` بمجلّد بيانات المكتب. `src/main/db/pragmas.ts`: WAL و`synchronous = FULL` (بـNORMAL قد يُلغي انقطاع الكهرباء قيدًا
   طُبعت ورقته فيعود رقمه لغيره) و`foreign_keys`. والمخطط `db/schema.sql` و`db/search.sql` يُنفَّذان بـ`IF NOT EXISTS` في معاملةٍ ذرّية عند أوّل اتصال (`db/index.ts`).
 - **الترقيات مرقّمة** (`db/migrations.ts`، D49): القاعدة تحمل مستواها في `PRAGMA user_version`، و`MIGRATIONS` قائمةٌ واحدة تجري خطواتها الناقصة
