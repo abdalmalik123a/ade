@@ -8,6 +8,7 @@ import { getDb, storeDir } from '../db';
 import * as svc from '../services/citizens';
 import { listScanners, removeStoreFile, scanDpi, scanPage } from '../services/scanner';
 import { printSheet } from '../services/render';
+import { readStore, writeStore } from '../services/storeCrypt';
 import { unreferenced } from '../services/storeRefs';
 import { ocrAvailable, recognize, recognizeLines } from '../services/ocr';
 import { readCardBack } from '../services/mrzRead';
@@ -162,7 +163,7 @@ export function registerCitizenIpc(): void {
     async (_e, citizenId: number, docType: string, dpi: number) => {
       // الدقّة رقمًا محصورًا عند حدّ القناة (و٢) — لا تمرّ إلى الماسح كما جاءت.
       const scan = await scanPage({ dpi: scanDpi(dpi) });
-      const bytes = await readFile(absolute(scan.relativePath));
+      const bytes = await readStore(absolute(scan.relativePath));
       return svc.addAttachment(getDb(), {
         citizenId,
         docType: docType || 'مستمسك ممسوح',
@@ -184,9 +185,8 @@ export function registerCitizenIpc(): void {
       // والملف الجاهز من «ملفات PDF» في ملفّ زبونه (المرحلة ٥) — كالمستمسك المستورد PDF.
       const ext = matches[1]?.includes('pdf') ? '.pdf' : matches[1]?.includes('png') ? '.png' : '.jpg';
       const name = `${hash}${ext}`;
-      const target = join(storeDir('attachments'), name);
-      await writeFile(target, buffer);
-      const relative = `attachments/${name}`;
+      // مستمسك: مشفّرٌ بمفتاح المكتب (D238).
+      const relative = await writeStore(`attachments/${name}`, buffer);
       return svc.addAttachment(getDb(), {
         citizenId,
         docType: docType || 'مستمسك معدل',
@@ -208,7 +208,7 @@ export function registerCitizenIpc(): void {
       | { p: string }
       | undefined;
     if (!row) throw new Error('المستمسك غير موجود');
-    const result = await recognize(absolute(row.p));
+    const result = await recognize(await readStore(absolute(row.p)));
     svc.setAttachmentOcr(db, id, result.text, result.confidence);
     return result;
   });
@@ -217,7 +217,7 @@ export function registerCitizenIpc(): void {
   ipcMain.handle('attachments:readMrz', async (_e, id: number) => {
     const row = getDb().prepare('SELECT file_path AS p FROM attachments WHERE id = ?').get(id) as { p: string } | undefined;
     if (!row) throw new Error('المستمسك غير موجود');
-    const img = nativeImage.createFromPath(absolute(row.p));
+    const img = nativeImage.createFromBuffer(await readStore(absolute(row.p)));
     if (img.isEmpty()) throw new Error('المستمسك ليس صورةً تُقرأ');
     const { width, height } = img.getSize();
     return readCardBack({ gray: grayOf(new Uint8Array(img.toBitmap()), width, height, 'bgra'), width, height }, recognizeLines);
@@ -251,7 +251,7 @@ export function registerCitizenIpc(): void {
       .prepare('SELECT file_path AS p FROM attachments WHERE id = ?')
       .get(id) as { p: string } | undefined;
     if (!row) return false;
-    const image = nativeImage.createFromPath(absolute(row.p));
+    const image = nativeImage.createFromBuffer(await readStore(absolute(row.p)));
     if (image.isEmpty()) return false;
     const blob = new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' });
     await clipboard.write([new ClipboardItem({ 'image/png': blob })]);
@@ -271,7 +271,7 @@ export function registerCitizenIpc(): void {
     const failed: ExportZipFailure[] = [];
     for (const [i, a] of citizen.attachments.entries()) {
       try {
-        const bytes = await readFile(absolute(a.filePath));
+        const bytes = await readStore(absolute(a.filePath));
         const ext = extname(a.filePath) || '.png';
         const safe = a.docType.replace(/[\\/:*?"<>|]/g, '-').slice(0, 50);
         entries[`${String(i + 1).padStart(2, '0')}-${safe}${ext}`] = new Uint8Array(bytes);

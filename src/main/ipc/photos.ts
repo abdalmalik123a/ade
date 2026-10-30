@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, clipboard, ipcMain } from 'electron';
 import { dataDir, getDb, storeDir } from '../db';
 import { workerHost } from '../services/workerHost';
+import { writeStore } from '../services/storeCrypt';
 import { removeStoreFile } from '../services/scanner';
 import { unreferenced } from '../services/storeRefs';
 import { importFile, pickOpenPath, pickSavePath } from './files';
@@ -113,8 +114,8 @@ export function registerPhotoIpc(): void {
       const blob = (await item.getType(type)) as Blob;
       const bytes = Buffer.from(await blob.arrayBuffer());
       const name = `${createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.${type === 'image/png' ? 'png' : 'jpg'}`;
-      await writeFile(join(storeDir('photos'), name), bytes);
-      return `photos/${name}`;
+      // صورةٌ شخصية: مشفّرةٌ بمفتاح المكتب (D238).
+      return writeStore(`photos/${name}`, bytes);
     }
     return null;
   });
@@ -263,8 +264,7 @@ export function registerPhotoIpc(): void {
     const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
     const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
     const name = `${hash}${ext}`;
-    await writeFile(join(storeDir('photos'), name), buffer);
-    return `photos/${name}`;
+    return writeStore(`photos/${name}`, buffer);
   });
 
   /** حفظ ورقة المراجعة المؤقتة للطباعة بمصادقة البوّابة. */
@@ -275,8 +275,7 @@ export function registerPhotoIpc(): void {
     const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
     const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
     const name = `${hash}${ext}`;
-    await writeFile(join(storeDir('photos'), name), buffer);
-    return `photos/${name}`;
+    return writeStore(`photos/${name}`, buffer);
   });
 
   /** حفظ الصورة الشخصية الناتجة في ملف خارجي. */
@@ -334,8 +333,7 @@ export function registerPhotoIpc(): void {
       const hash = createHash('sha256').update(buffer).digest('hex').slice(0, 32);
       const ext = matches[1]?.includes('png') ? '.png' : '.jpg';
       const name = `${hash}${ext}`;
-      await writeFile(join(storeDir('photos'), name), buffer);
-      const relative = `photos/${name}`;
+      const relative = await writeStore(`photos/${name}`, buffer);
 
       const db = getDb();
       const citizen = getCitizen(db, payload.citizenId);

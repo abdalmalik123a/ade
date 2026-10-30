@@ -1,9 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { getDb, storeDir } from '../db';
 import { storeFile } from '../services/localPaths';
+import { readStoreSync } from '../services/storeCrypt';
 import * as svc from '../services/templates';
 import { importTemplateFile } from '../services/import';
 import { letterheadImagePath } from '../services/letterheadImage';
@@ -265,7 +266,7 @@ export function registerTemplateIpc(): void {
     // صور الوثيقة من المخزن — ملفٌّ موجودٌ داخله وحده (`storeFile`)، كما في بروتوكول `diwan://`.
     const image = (src: string) => {
       const file = storeFile(storeDir(), src);
-      return file ? readFileSync(file) : null;
+      return file ? readStoreSync(file) : null;
     };
     await writeFile(result.filePath, await templateToDocx(t, letterhead, image));
     return result.filePath;

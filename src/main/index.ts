@@ -1,6 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, protocol, net, dialog, ipcMain, screen } from 'electron';
-import { pathToFileURL } from 'node:url';
+import { app, BrowserWindow, protocol, dialog, ipcMain, screen } from 'electron';
 import { getDb, closeDb, dataDir, storeDir, DamagedDbError, acceptDamagedDb } from './db';
 import { sweepTransient } from './services/transient';
 import { recoverIncompleteRestore } from './services/restoreSwap';
@@ -19,7 +18,7 @@ import { shutdownOcr } from './services/ocr';
 import { closeWorker } from './services/workerHost';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
-import { resolveStorePath } from './services/localPaths';
+import { registerStoreProtocol } from './storeProtocol';
 import { ensureDataLocation } from './dataLocationBoot';
 import { ensureDataKey } from './dataKeyBoot';
 import { PALETTE } from '@shared/theme';
@@ -260,27 +259,8 @@ app.whenReady().then(async () => {
   if (!primary) return;
   hardenSession();
 
-  // diwan://store/<relative-path> → ملف داخل مخزن التطبيق فقط
-  protocol.handle('diwan', (request) => {
-    const url = new URL(request.url);
-    if (url.hostname !== 'store') return new Response('not found', { status: 404 });
-    let rel: string;
-    try {
-      rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
-    } catch {
-      return new Response('forbidden', { status: 403 });
-    }
-    // محلولًا داخل المخزن (و٥): لا «..» ولا مسارٌ مطلق ولا مسار شبكة.
-    const file = resolveStorePath(storeDir(), rel);
-    if (!file) return new Response('forbidden', { status: 403 });
-    // رأس CORS: الواجهة تقرأ بكسلات الشعار لتستخرج لون الجهة، ولوحةٌ رُسمت عليها
-    // صورةٌ من أصلٍ آخر بلا هذا الرأس تُقفَل فلا تُقرأ. والمخزن محلّيٌّ للقراءة وحدها.
-    return net.fetch(pathToFileURL(file).toString()).then((res) => {
-      const headers = new Headers(res.headers);
-      headers.set('Access-Control-Allow-Origin', '*');
-      return new Response(res.body, { status: res.status, headers });
-    });
-  });
+  // diwan://store/<relative-path> → ملف داخل مخزن التطبيق فقط، والمشفَّر يُفكّ (D238).
+  registerStoreProtocol();
 
   // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.
   try {

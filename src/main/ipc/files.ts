@@ -8,6 +8,7 @@ import { storeDir } from '../db';
 import { imageMetaOf, type ImageMeta } from '../services/imageSize';
 import { sheetToText } from '../services/sheetRead';
 import { discardTransient } from '../services/transient';
+import { isPrivate, writeStore } from '../services/storeCrypt';
 import { isInside, pastedImagePath } from '../services/localPaths';
 
 /** حيث يضع Word صور ما يُنسخ منه (المجلّد المؤقّت)، والمخزن. */
@@ -162,6 +163,8 @@ export async function importFile(sourcePath: string, bucket: string): Promise<st
   const bytes = await readFile(sourcePath);
   const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 32);
   const name = `${hash}${extname(sourcePath).toLowerCase()}`;
+  // المستمسكات والصور الشخصية تُكتب مشفّرةً بمفتاح المكتب (D238)، وغيرها كما هو.
+  if (isPrivate(bucket)) return writeStore(`${bucket}/${name}`, bytes);
   const target = join(storeDir(bucket), name);
   await copyFile(sourcePath, target);
   return `${bucket}/${name}`;

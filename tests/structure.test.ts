@@ -284,7 +284,7 @@ describe('اختبار الهيكل (ز١)', () => {
     // اليوم بلا شبكة إلا ملفٌّ محلّيٌّ في بروتوكول diwan://store — وباب البوّابة (F01) يُضاف إلى هذه القوائم عمدًا حين يُبنى.
     const NET_MODULES = new Set(['http', 'https', 'http2', 'net', 'tls', 'dgram', 'dns']);
     const NET_APIS = /\b(XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/g;
-    const NET_FETCH = ['src/main/index.ts']; // net.fetch لملفّ المخزن في protocol.handle('diwan')
+    const NET_FETCH = ['src/main/storeProtocol.ts']; // net.fetch لملفّ المخزن في protocol.handle('diwan') — نُقل من index.ts (D238)
     const CONNECT_SRC = "'self' diwan:";
     const DEPENDENCIES = ['better-sqlite3', 'docx', 'exceljs', 'fflate', 'onnxruntime-node', 'pdf-lib', 'tesseract.js'];
     const LICENSE_SERVICE = ['src/main/ipc/license.ts']; // التوقيع وevaluate
@@ -298,7 +298,7 @@ describe('اختبار الهيكل (ز١)', () => {
         if (NET_MODULES.has(spec.replace(/^node:/, '').split('/')[0]!)) bad.push(`${s.path}: يستورد وحدة الشبكة «${spec}» — ديوان بلا إنترنت، وباب البوّابة ملفٌّ واحدٌ يُبنى مع F01`);
       }
       if (/(?<!\bnet\.)\bfetch\s*\(/.test(s.text)) bad.push(`${s.path}: ينادي fetch( — ديوان بلا إنترنت، والملفّ المحلّي يُقرأ من القرص`);
-      if (/\bnet\.(?:fetch|request)\s*\(/.test(s.text) && !NET_FETCH.includes(s.path)) bad.push(`${s.path}: ينادي net.fetch/net.request خارج src/main/index.ts — هو لملفّ المخزن في بروتوكول diwan:// وحده`);
+      if (/\bnet\.(?:fetch|request)\s*\(/.test(s.text) && !NET_FETCH.includes(s.path)) bad.push(`${s.path}: ينادي net.fetch/net.request خارج src/main/storeProtocol.ts — هو لملفّ المخزن في بروتوكول diwan:// وحده`);
       for (const m of s.text.matchAll(NET_APIS)) bad.push(`${s.path}: يستعمل ${m[1]} — ديوان بلا إنترنت`);
     }
 

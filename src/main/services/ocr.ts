@@ -52,12 +52,13 @@ export type OcrResult = { text: string; confidence: number };
  * يعيد النصّ ونسبة الثقة (0..1).
  * النسبة تُعرض للموظف ليقرّر: تحت 90% يراجع بنفسه قبل الاعتماد.
  */
-export async function recognize(imagePath: string): Promise<OcrResult> {
+export async function recognize(image: string | Buffer): Promise<OcrResult> {
   if (!ocrAvailable()) {
     throw new Error('بيانات التعرّف على النصوص غير مثبّتة مع التطبيق');
   }
   const w = await getWorker();
-  const { data } = await w.recognize(imagePath);
+  // بايتاتٌ لا مسار: المستمسك في المخزن مشفّر (D238) ويُفكّ قبل القراءة.
+  const { data } = await w.recognize(image);
   return {
     text: (data.text ?? '').replace(/\s+\n/g, '\n').trim(),
     confidence: Math.max(0, Math.min(1, (data.confidence ?? 0) / 100))

@@ -10,6 +10,7 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, extname, join, resolve } from 'node:path';
 import { BrowserWindow, ipcMain, nativeImage } from 'electron';
 import { storeDir } from '../db';
+import { readStore } from '../services/storeCrypt';
 import { buildPdf, formFields, imagesToPdf, inspectPdf, loadPdf, shrinkPdfImages, type JpegShrink, type PdfSource } from '../services/pdfEdit';
 import { renderLayerPdf } from '../services/render';
 import { toSheets } from '../services/pdfSheets';
@@ -78,7 +79,7 @@ async function openOne(path: string): Promise<PdfOpened> {
 async function openScan(): Promise<PdfOpened> {
   const { relativePath, dpi } = await scanPage({ dpi: SCAN_DPI });
   try {
-    const img = nativeImage.createFromPath(join(storeDir(), relativePath));
+    const img = nativeImage.createFromBuffer(await readStore(join(storeDir(), relativePath)));
     if (img.isEmpty()) throw new Error('لم يُقرأ ما مسحه الماسح — أعد المسح');
     const size = { ...img.getSize(), dpi };
     const bytes = new Uint8Array(img.toJPEG(90));

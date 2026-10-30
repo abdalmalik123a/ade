@@ -10,10 +10,10 @@
  */
 import { createHash } from 'node:crypto';
 import { watch, type FSWatcher } from 'node:fs';
-import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { BrowserWindow, ipcMain } from 'electron';
-import { storeDir } from '../db';
+import { writeStore } from '../services/storeCrypt';
 import { pickFolderPath } from './files';
 
 const IMAGE = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp']);
@@ -45,8 +45,8 @@ export function registerCameraIpc(): void {
     if (!m) throw new Error('صيغة اللقطة غير صالحة');
     const bytes = Buffer.from(m[2]!, 'base64');
     const name = `${createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.${m[1] === 'png' ? 'png' : 'jpg'}`;
-    await writeFile(join(storeDir('photos'), name), bytes);
-    return `photos/${name}`;
+    // صورةٌ شخصية: مشفّرةٌ بمفتاح المكتب (D238).
+    return writeStore(`photos/${name}`, bytes);
   });
 
   /**

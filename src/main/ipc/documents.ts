@@ -1,7 +1,8 @@
 import { join } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { BrowserWindow, ipcMain } from 'electron';
-import { getDb, storeDir } from '../db';
+import { getDb } from '../db';
+import { writeStore } from '../services/storeCrypt';
 import * as svc from '../services/documents';
 import { issueBatch, issueDocument, issueTransaction, linkTransactionCitizen } from '../services/issue';
 import { listDocuments, type ListOptions, periodStats } from '../services/documentList';
@@ -92,7 +93,8 @@ export function registerDocumentIpc(): void {
       try {
         const pdf = await renderPdf(issued.sheetHtml);
         const rel = join('documents', `${safeName(issued.serial)}.pdf`);
-        await writeFile(join(storeDir('documents'), `${safeName(issued.serial)}.pdf`), pdf);
+        // PDF الكتاب الصادر فيه اسم المواطن: مشفّرٌ بمفتاح المكتب (D238).
+        await writeStore(`documents/${safeName(issued.serial)}.pdf`, pdf);
         db.prepare('UPDATE documents SET rendered_path = ? WHERE id = ?').run(rel, issued.id);
         archivedPath = rel;
       } catch (e) {

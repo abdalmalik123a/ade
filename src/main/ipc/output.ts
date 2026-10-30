@@ -3,11 +3,11 @@
  * و`today:*` معها لأنّها تقرأ سجلّ الطباعة — جملٌ نُقلت من `registerDocumentIpc` في `documents.ts` كما هي (D80).
  */
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { app, ipcMain } from 'electron';
 import { isJobId, printJournal, runJob, type PrintJob } from '../services/printJobs';
 import { getDb, storeDir } from '../db';
 import { storeFile } from '../services/localPaths';
+import { readStoreSync } from '../services/storeCrypt';
 import * as svc from '../services/documents';
 import { addPrintedCopy, recordPrint } from '../services/printRecords';
 import { markWeekSeen, todayAgenda } from '../services/today';
@@ -208,7 +208,7 @@ export function registerOutputIpc(): void {
       // صور الوثيقة والترويسة من المخزن — ملفٌّ موجودٌ داخله وحده (`storeFile`)، كما في بروتوكول `diwan://`.
       const image = (src: string) => {
         const file = storeFile(storeDir(), src);
-        return file ? readFileSync(file) : null;
+        return file ? readStoreSync(file) : null;
       };
       const docx = await docToDocx(fillDoc(payload.doc, payload.values), {
         title: payload.title,

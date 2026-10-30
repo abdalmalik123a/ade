@@ -1,8 +1,9 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
-import { copyFile, unlink } from 'node:fs/promises';
+import { copyFile, readFile, unlink } from 'node:fs/promises';
 import { storeDir } from '../db';
+import { writeStore } from './storeCrypt';
 import { TRANSIENT_DIR } from './transient';
 import type { ScannerDevice } from '@shared/api';
 
@@ -186,6 +187,7 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
   if (scanFile === 'none') throw new Error('لا يوجد ماسح ضوئي موصول بهذا الجهاز');
   if (scanFile) {
     await copyFile(scanFile, target);
+    await writeStore(`${folder}/${name}`, await readFile(target));
     return { relativePath: `${folder}/${name}`, dpi, format: 'PNG' };
   }
 
@@ -211,6 +213,8 @@ export async function scanPage(options: ScanOptions = {}): Promise<ScanResult> {
     throw new Error('لم يكتمل المسح الضوئي');
   }
 
+  // الماسح يكتب الصورة واضحةً، فتُشفَّر في مكانها بمفتاح المكتب حالًا (D238).
+  await writeStore(`${folder}/${name}`, await readFile(target));
   return { relativePath: `${folder}/${name}`, dpi: Number(done[1]) || dpi, format: 'PNG' };
 }
 
