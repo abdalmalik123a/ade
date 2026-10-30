@@ -8,8 +8,9 @@
  *
  * وتحت المِقْود (`DIWAN_TEST_DPAPI_FAIL`): حماية ويندوز لا تفكّ شيئًا، كأنّ الحساب غير الحساب.
  */
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { app, BrowserWindow, dialog, ipcMain, safeStorage } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { text } from '@shared/bridgeGuards';
 import { dataDir } from './db';
 import { rendererDevUrl } from './devUrl';
@@ -18,14 +19,31 @@ import { hardenWindow } from './harden';
 import { handleChecked } from './ipc/checked';
 import { KeyMissingError, createKey, hasKeys, rememberKey, unlockWithCode, unlockWithProtector, type Protector } from './services/dataKey';
 
-/** حماية ويندوز (DPAPI) بـ`safeStorage`. */
+/**
+ * DPAPI ويندوز نفسها (`ProtectedData`، حساب المستخدم) عبر PowerShell — لا `safeStorage`: ذاك يحفظ مفتاحه في `Local State`
+ * بمجلّد البرنامج ويكتبه Chromium متأخّرًا، فبرنامجٌ قُتل في ثوانيه الأولى (أو حزمة MSIX أُعيد تثبيتها) يفقده (جُرّب في D237).
+ * والسرّ يمرّ في المدخل لا في سطر الأوامر. نحو ٠٫٤ ثانية للفكّ مرّةً في الإقلاع (قيس على جهاز التطوير).
+ */
+function dpapi(mode: 'Protect' | 'Unprotect', base64: string): string {
+  const script =
+    'Add-Type -AssemblyName System.Security; $b = [Convert]::FromBase64String([Console]::In.ReadToEnd().Trim()); ' +
+    `[Console]::Out.Write([Convert]::ToBase64String([Security.Cryptography.ProtectedData]::${mode}($b, $null, 'CurrentUser')))`;
+  return execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    input: base64,
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 20000
+  }).trim();
+}
+
+/** حماية ويندوز (DPAPI لحساب المستخدم). */
 export function windowsProtector(): Protector {
   const fail = __DIWAN_TEST_DOORS__ ? process.env['DIWAN_TEST_DPAPI_FAIL'] : undefined;
   return {
-    encrypt: (plain) => safeStorage.encryptString(plain),
+    encrypt: (plain) => Buffer.from(dpapi('Protect', Buffer.from(plain, 'utf8').toString('base64')), 'base64'),
     decrypt: (data) => {
       if (fail) throw new Error('حماية ويندوز لا تفكّ (المِقْود)');
-      return safeStorage.decryptString(data);
+      return Buffer.from(dpapi('Unprotect', data.toString('base64')), 'base64').toString('utf8');
     }
   };
 }
@@ -76,9 +94,8 @@ function askRecoveryCode(dir: string, protector: Protector): Promise<Buffer | nu
 /** يفتح مفتاح المكتب لهذه الجلسة — و`false`: أغلق ديوان. */
 export async function ensureDataKey(): Promise<boolean> {
   const dir = dataDir();
-  if (!safeStorage.isEncryptionAvailable()) {
-    // نادرٌ في ويندوز: يمضي بلا مفتاح، ولا يُشفَّر شيءٌ حتى تتاح (D238 يتحقّق).
-    logError('dataKey', new Error('حماية ويندوز غير متاحة — لا مفتاح في هذه الجلسة'));
+  if (process.platform !== 'win32') {
+    // DPAPI لويندوز وحده: غيره يمضي بلا مفتاح، ولا يُشفَّر شيءٌ (D238 يتحقّق).
     rememberKey(null);
     return true;
   }

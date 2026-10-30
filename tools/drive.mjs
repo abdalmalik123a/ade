@@ -235,7 +235,7 @@ class Page {
   }
 }
 
-export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false, keepProfile = false, appDir = '.', exe = EXE } = {}) {
+export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboarding = false, keepRecovery = false, keepProfile = false, appDir = '.', exe = EXE } = {}) {
   const profile = userDataDir ?? join(process.env.TEMP ?? '.', `diwan-drive-${Date.now()}`);
   if (!keepProfile) rmSync(profile, { recursive: true, force: true });
   mkdirSync(profile, { recursive: true });
@@ -289,6 +289,11 @@ export async function drive(scenario, { userDataDir, shotsDir, env, keepOnboardi
       await page.eval(`document.querySelector('[data-act="onboarding-skip"]')?.click(); return true;`);
       await page.until(`return !document.querySelector('[data-act="onboarding-skip"]');`, 3000);
     }
+    // ورمز الاسترداد يُعرض أوّل مرّةٍ على كلّ ملفٍّ جديد (D237) — ويُقَرّ به هنا إلا لسيناريو يفحصه هو. والقنوات تجري
+    // بترتيبها، فسؤال الحوار عن الرمز قد أُجيب حين يعود الإقرار؛ ثم يُغلق إن ظهر.
+    if (!keepRecovery && (await page.eval(`return Boolean(window.diwan?.dataKey);`))) {
+      await page.eval(`await window.diwan.dataKey.acknowledge().catch(() => false); await new Promise((r) => setTimeout(r, 100)); document.querySelector('[data-act="recovery-done"]')?.click(); return true;`);
+    }
 
     // `kill` يقتل البرنامج فورًا من خارج البروتوكول: والعملية الرئيسة مشغولةٌ بقيدٍ
     // متزامن لا تمرّر رسائل البروتوكول حتى تفرغ — فلا يُقتل «في منتصف القيد» من داخله.
@@ -337,12 +342,20 @@ if (process.argv[2]) {
       shotsDir: process.env.SHOT_DIR,
       env,
       keepOnboarding: mod.keepOnboarding === true,
+      keepRecovery: mod.keepRecovery === true,
       ...(mod.appDir ? { appDir: resolve(mod.appDir), exe: process.env.DIWAN_KEYTOOL_EXE ? resolve(process.env.DIWAN_KEYTOOL_EXE) : null } : {})
     });
     // «أُغلق فجأةً ثم فُتح»: الملف الشخصي نفسه، وتطبيقٌ قُتل لا أُغلق.
     if (mod.afterRestart) {
       if (mod.betweenRestarts) await mod.betweenRestarts({ profile });
-      const again = await drive(mod.afterRestart, { userDataDir: profile, keepProfile: true, shotsDir: process.env.SHOT_DIR, env, keepOnboarding: true });
+      const again = await drive(mod.afterRestart, {
+        userDataDir: profile,
+        keepProfile: true,
+        shotsDir: process.env.SHOT_DIR,
+        env,
+        keepOnboarding: true,
+        keepRecovery: mod.keepRecovery === true
+      });
       out = [out, again].filter((x) => typeof x === 'string').join('\n');
     }
     if (out !== undefined) console.log(out);

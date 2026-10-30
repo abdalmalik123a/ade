@@ -86,8 +86,17 @@ describe('اختبار الهيكل (ز١)', () => {
         if ((resolved(s, spec) ?? '').startsWith('src/main/ipc')) bad.push(`${s.path}: خدمةٌ تستورد قناةً «${spec}» — القنوات تنادي الخدمات لا العكس`);
       }
     }
-    // و`dataLocationBoot.ts` (D236): أقراص الجهاز وأنواعها مرّةً عند سؤال المكتب عن مجلّد بياناته.
-    const SPAWNERS = ['src/main/ipc/license.ts', 'src/main/ipc/update.ts', 'src/main/services/inbox.ts', 'src/main/services/scanner.ts', 'src/main/services/printers.ts', 'src/main/dataLocationBoot.ts'];
+    // و`dataLocationBoot.ts` (D236): أقراص الجهاز وأنواعها مرّةً عند سؤال المكتب عن مجلّد بياناته؛
+    // و`dataKeyBoot.ts` (D237): حماية ويندوز (DPAPI) لمفتاح بيانات المكتب.
+    const SPAWNERS = [
+      'src/main/ipc/license.ts',
+      'src/main/ipc/update.ts',
+      'src/main/services/inbox.ts',
+      'src/main/services/scanner.ts',
+      'src/main/services/printers.ts',
+      'src/main/dataLocationBoot.ts',
+      'src/main/dataKeyBoot.ts'
+    ];
     for (const s of SOURCES) {
       if (importsOf(s.text).some((spec) => spec === 'child_process' || spec === 'node:child_process') && !SPAWNERS.includes(s.path)) {
         bad.push(`${s.path}: يشغّل برامج (child_process) خارج الملفّات المعروفة — أضفه إلى القائمة عمدًا إن لزم`);
