@@ -29,11 +29,19 @@ export function acceptDamagedDb(): void {
   acceptDamaged = true;
 }
 
-/** مجلد بيانات المكتب. كل شيء يبقى على الجهاز — التطبيق «محلي». */
+let chosenDir: string | null = null;
+
+/** المجلّد الذي حلّه الإقلاع (`main/dataLocationBoot.ts`، D236) — يُضبط قبل أن يُقرأ شيءٌ من بيانات المكتب. */
+export function setDataDir(dir: string): void {
+  chosenDir = dir;
+}
+
+/** مجلد بيانات المكتب: يختاره المكتب خارج AppData (D236). كل شيء يبقى على الجهاز — التطبيق «محلي». */
 export function dataDir(): string {
-  const dir = join(app.getPath('userData'), 'data');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  return dir;
+  // لا رجوع صامت إلى `userData/data`: سجلٌّ يُفتح في مكانٍ غير الذي اختاره المكتب ينشطر عنه.
+  if (!chosenDir) throw new Error(`مجلّد بيانات المكتب لم يُحلّ بعد (${app.getPath('userData')})`);
+  if (!existsSync(chosenDir)) mkdirSync(chosenDir, { recursive: true });
+  return chosenDir;
 }
 
 /** مخزن الملفات: المستمسكات الممسوحة، الصور، الأختام، نسخ PDF المؤرشفة. */

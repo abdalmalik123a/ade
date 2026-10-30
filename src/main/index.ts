@@ -20,6 +20,7 @@ import { closeWorker } from './services/workerHost';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
 import { resolveStorePath } from './services/localPaths';
+import { ensureDataLocation } from './dataLocationBoot';
 import { PALETTE } from '@shared/theme';
 
 // قبل كلّ شيء: خطأٌ في الإقلاع نفسه يُسجَّل لا يُبلع.
@@ -282,6 +283,8 @@ app.whenReady().then(async () => {
 
   // خطأ في القاعدة أو في تسجيل القنوات كان يترك التطبيق بلا نافذة وبلا خبر.
   try {
+    // أين بيانات المكتب (D236): يختارها المكتب أوّل مرّة خارج AppData — قبل أن يُفتح منها شيء.
+    if (!(await ensureDataLocation())) return void app.quit();
     // استرجاعٌ تعثّر في الجلسة السابقة ولم تعد قاعدته إلى مكانها: تُعاد من مجلّد الأصل قبل أن يُفتح شيء —
     // فلا تُنشأ قاعدةٌ فارغة بدلها (مراجعة ٧ ت١).
     const recovery = recoverIncompleteRestore(dataDir());

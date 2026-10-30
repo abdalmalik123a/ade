@@ -86,7 +86,8 @@ describe('اختبار الهيكل (ز١)', () => {
         if ((resolved(s, spec) ?? '').startsWith('src/main/ipc')) bad.push(`${s.path}: خدمةٌ تستورد قناةً «${spec}» — القنوات تنادي الخدمات لا العكس`);
       }
     }
-    const SPAWNERS = ['src/main/ipc/license.ts', 'src/main/ipc/update.ts', 'src/main/services/inbox.ts', 'src/main/services/scanner.ts', 'src/main/services/printers.ts'];
+    // و`dataLocationBoot.ts` (D236): أقراص الجهاز وأنواعها مرّةً عند سؤال المكتب عن مجلّد بياناته.
+    const SPAWNERS = ['src/main/ipc/license.ts', 'src/main/ipc/update.ts', 'src/main/services/inbox.ts', 'src/main/services/scanner.ts', 'src/main/services/printers.ts', 'src/main/dataLocationBoot.ts'];
     for (const s of SOURCES) {
       if (importsOf(s.text).some((spec) => spec === 'child_process' || spec === 'node:child_process') && !SPAWNERS.includes(s.path)) {
         bad.push(`${s.path}: يشغّل برامج (child_process) خارج الملفّات المعروفة — أضفه إلى القائمة عمدًا إن لزم`);
@@ -120,6 +121,7 @@ describe('اختبار الهيكل (ز١)', () => {
       // أبواب الاختبار (المِقْود والسيناريوهات)
       'DIWAN_TEST_CLOSE_ANSWER',
       'DIWAN_TEST_DAMAGED_DB',
+      'DIWAN_TEST_DATA_CHOICE',
       'DIWAN_TEST_FAKE_CAMERA',
       'DIWAN_TEST_INBOX',
       'DIWAN_TEST_LICENSE_PUBKEY',
@@ -140,6 +142,8 @@ describe('اختبار الهيكل (ز١)', () => {
       // متغيّرات النظام وأداة البناء (WINDIR: مجلّد خطوط Windows — «خطوط ديوان»)
       'ELECTRON_RENDERER_URL',
       'LOCALAPPDATA',
+      // قرص النظام: يُقترح مجلّد البيانات على غيره إن وُجد (D236)
+      'SystemDrive',
       'WINDIR'
     ]);
     const bad: string[] = [];
