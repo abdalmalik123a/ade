@@ -21,6 +21,8 @@ import { assertRestorable, inspectDbBytes, inspectDbFile, isEncrypted, openBacku
 import { ForeignMirrorError, mirrorInfo, mirrorSnapshots, readMirror, runAutoBackup, type AutoBackupResult } from '../services/autoBackup';
 import { stampDataVersion } from '../services/dataVersion';
 import { logAudit } from '../services/documents';
+import { currentKey } from '../services/dataKey';
+import { sealStore } from '../services/storeCrypt';
 import { runMigrations } from '../db/migrations';
 import { prepareSearch } from '../services/searchIndex';
 import { deleteBeforeRestore, listBeforeRestore, swapInBackup, writeIncompleteMarker } from '../services/restoreSwap';
@@ -97,7 +99,7 @@ export async function createBackup(
   let size: number;
   try {
     // ملفًّا ملفًّا من القرص — لا المخزن كلّه في الذاكرة (خطة Production، ٤٫١).
-    size = (await writeBackup({ target, dbFile: snapshot, storeRoot: join(dataDir(), 'store'), password, appVersion: app.getVersion() })).bytes;
+    size = (await writeBackup({ target, dbFile: snapshot, storeRoot: join(dataDir(), 'store'), password, appVersion: app.getVersion(), officeKey: currentKey() })).bytes;
   } finally {
     if (existsSync(snapshot)) rmSync(snapshot);
   }
@@ -136,6 +138,7 @@ async function applyRestore(placeDb: (dbFile: string) => void, writeStore: (stor
     if (dbLocked()) relaunchAfterStuckRestore();
     throw e;
   }
+  await sealStore().catch(() => undefined); // ما جاء واضحًا يُشفَّر بمفتاح هذا المكتب (D238)، وتعثُّره يُعاد في الإقلاع
   return aside;
 }
 
@@ -248,6 +251,7 @@ export function runConfiguredAutoBackup(): AutoBackupResult | null {
       password: autoPassword(),
       keep: status.keep,
       appVersion: app.getVersion(),
+      officeKey: currentKey(),
       // قرصٌ غير الذي اعتُمد لا يُكتب عليه (مراجعة ٧ ت١)؛ ويُعتمد قرصٌ جديد بـ«اعتمد هذه الفلاشة».
       expectId: state.mirrorDir === status.dir ? state.mirrorId : null
     });

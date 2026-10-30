@@ -31,6 +31,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { TRANSIENT_DIR } from './transient';
+import { SEAL_OVERHEAD, isSealedFile, openBytes } from './storeSeal';
 
 /** اسم المجلّد داخل ما يختاره المكتب — لاتينيٌّ فلا يتعثّر في فلاشةٍ بنظام ملفّاتٍ قديم. */
 export const MIRROR = 'Diwan-Backup';
@@ -149,6 +150,13 @@ function copyInto(src: string, dest: string, key: Buffer | null): number {
   return bytes;
 }
 
+/** ملفٌّ مفكوكٌ في الذاكرة (مشفّرٌ في المخزن، D238) إلى المرآة — بكلمتها إن كانت، بالصيغة نفسها. */
+function copyBytesInto(plain: Buffer, dest: string, key: Buffer | null): number {
+  const body = key ? seal(plain, key) : plain;
+  writeAtomic(dest, (fd) => writeAll(fd, body));
+  return body.length;
+}
+
 /** المجلّد المرآة: ما اختاره المكتب، أو هو نفسه إن اختير «Diwan-Backup» مباشرة. */
 export function mirrorRoot(dir: string): string {
   return existsSync(join(dir, MANIFEST)) ? dir : join(dir, MIRROR);
@@ -235,6 +243,8 @@ export function runAutoBackup(opts: {
   appVersion?: string;
   /** هويّة المرآة التي اعتُمدت من قبل: ما لم يحملها القرص الموصول رُفض. وبلا قيمةٍ فهو اعتمادٌ أوّل. */
   expectId?: string | null;
+  /** مفتاح المكتب: ما في المخزن مشفّرًا (D238) يدخل المرآة مفكوكًا ثم بكلمتها إن اختارها المكتب، فتُسترجع على جهازٍ آخر. */
+  officeKey?: Buffer | null;
 }): AutoBackupResult {
   if (!existsSync(opts.target)) {
     throw new Error(`مجلّد النسخة التلقائية غير موجود: ${opts.target} — أهي فلاشةٌ غير موصولة؟`);
@@ -297,9 +307,10 @@ export function runAutoBackup(opts: {
   for (const rel of walk(opts.storeRoot)) {
     const src = join(opts.storeRoot, rel);
     const dest = join(root, 'store', key ? `${rel}${ENC}` : rel);
-    const size = statSync(src).size;
+    const sealed = isSealedFile(src);
+    const size = statSync(src).size - (sealed ? SEAL_OVERHEAD : 0);
     if (existsSync(dest) && statSync(dest).size === size + (key ? 28 : 0)) continue;
-    bytesCopied += copyInto(src, dest, key);
+    bytesCopied += sealed ? copyBytesInto(openBytes(readFileSync(src), opts.officeKey ?? null), dest, key) : copyInto(src, dest, key);
     filesCopied++;
   }
 

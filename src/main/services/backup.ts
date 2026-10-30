@@ -27,6 +27,7 @@ import type { BackupSummary } from '@shared/api';
 import { compareVersions } from '@shared/version';
 import { ZipWriter, extractEntry, fileSink, readZipIndex, safeInnerPath, type Sink, type ZipEntry } from './zip';
 import { TRANSIENT_DIR } from './transient';
+import { isSealedFile, openBytes } from './storeSeal';
 
 /** بداية النسخة المشفّرة — بها تُعرف قبل أن يُسأل عن كلمة مرورها. */
 const MAGIC = Buffer.from('DIWANENC', 'ascii');
@@ -109,6 +110,8 @@ export async function writeBackup(opts: {
   password: string | null;
   appVersion: string;
   now?: Date;
+  /** مفتاح المكتب: ما في المخزن مشفّرًا (D238) يدخل النسخة مفكوكًا، فتُسترجع على جهازٍ آخر بمفتاحٍ آخر؛ وكلمة النسخة تحميه. */
+  officeKey?: Buffer | null;
 }): Promise<{ bytes: number; files: number }> {
   const part = `${opts.target}.part`;
   const sink = opts.password ? await encryptingSink(part, opts.password) : await fileSink(part);
@@ -119,7 +122,11 @@ export async function writeBackup(opts: {
     await zip.addBuffer(META, Buffer.from(JSON.stringify(meta, null, 2)));
     // القاعدة تنضغط كثيرًا؛ والصور وPDF مضغوطةٌ أصلًا فتُخزَّن كما هي — أسرع ولا تكبر.
     await zip.addFile('diwan.db', opts.dbFile, true);
-    for (const rel of files) await zip.addFile(`store/${rel}`, join(opts.storeRoot, rel), false);
+    for (const rel of files) {
+      const file = join(opts.storeRoot, rel);
+      if (isSealedFile(file)) await zip.addBuffer(`store/${rel}`, openBytes(readFileSync(file), opts.officeKey ?? null), false);
+      else await zip.addFile(`store/${rel}`, file, false);
+    }
     await zip.finish();
     await sink.close();
   } catch (e) {

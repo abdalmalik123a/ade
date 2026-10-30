@@ -2,13 +2,11 @@
  * تشفير ملفّات المخزن الخاصّة (D238): ما يُشفَّر وما يبقى، والفكّ، والوسم المعطوب، والترحيل الذي يُستأنف.
  */
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('electron', () => ({ app: { getPath: () => tmpdir() } }));
-const { bytesFor, isPrivate, isSealedBytes, openBytes, sealBytes, sealExisting } = await import('../src/main/services/storeCrypt');
+import { describe, expect, it } from 'vitest';
+import { SEAL_OVERHEAD, bytesFor, isPrivate, isSealedBytes, isSealedFile, openBytes, sealBytes, sealExisting } from '../src/main/services/storeSeal';
 
 const KEY = randomBytes(32);
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), randomBytes(5000)]);
@@ -29,6 +27,7 @@ describe('الفكّ', () => {
     expect(sealed.subarray(0, 4).equals(PNG.subarray(0, 4))).toBe(false);
     expect(openBytes(sealed, KEY).equals(PNG)).toBe(true);
     expect(openBytes(PNG, null).equals(PNG)).toBe(true);
+    expect(sealed.length - PNG.length).toBe(SEAL_OVERHEAD);
   });
 
   it('وسمٌ معطوب أو مفتاحٌ آخر أو لا مفتاح: خطأٌ لا بايتاتٌ فاسدة', () => {
@@ -38,6 +37,33 @@ describe('الفكّ', () => {
     expect(() => openBytes(broken, KEY)).toThrow(/معطوب/);
     expect(() => openBytes(sealed, randomBytes(32))).toThrow(/معطوب/);
     expect(() => openBytes(sealed, null)).toThrow(/لا مفتاح/);
+  });
+});
+
+describe('حارس: لا قراءة ولا كتابة مباشرة لمجلّدٍ خاصّ', () => {
+  it('خارج storeCrypt لا storeDir للمجلّدات الخاصّة، ولا قراءةٌ أو صورةٌ من مسار مستمسكٍ بلا فكّ', () => {
+    const root = join(__dirname, '..', 'src', 'main');
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(dir, e.name));
+        else if (e.name.endsWith('.ts')) files.push(join(dir, e.name));
+      }
+    };
+    walk(root);
+    const RULES: [RegExp, string][] = [
+      [/storeDir\(\s*['"](?:attachments|photos|documents)['"]/, 'storeDir لمجلّدٍ خاصّ — اكتب بـwriteStore'],
+      [/(?:readFile|readFileSync|createReadStream)\(\s*absolute\(/, 'قراءة مستمسكٍ بلا فكّ — اقرأ بـreadStore'],
+      [/createFromPath\(\s*(?:absolute\(|join\(\s*storeDir\(\))/, 'nativeImage من مسار المخزن — خذ البايتات بـreadStore'],
+      [/readFileSync\(file\)\s*:\s*null/, 'صورة وثيقةٍ من المخزن بلا فكّ — اقرأ بـreadStoreSync']
+    ];
+    const bad: string[] = [];
+    for (const file of files) {
+      if (/storeCrypt\.ts$|storeSeal\.ts$/.test(file)) continue;
+      const text = readFileSync(file, 'utf8');
+      for (const [rx, why] of RULES) if (rx.test(text)) bad.push(`${file.slice(root.length + 1)}: ${why}`);
+    }
+    expect(bad).toEqual([]);
   });
 });
 
@@ -61,6 +87,8 @@ describe('ترحيل ما كُتب واضحًا', () => {
       expect(openBytes(data, KEY).equals(PNG), rel).toBe(true);
     }
     expect(readFileSync(join(root, 'images', 'logo.png')).equals(PNG)).toBe(true);
+    expect(isSealedFile(join(root, 'photos', 'face.png'))).toBe(true);
+    expect(isSealedFile(join(root, 'images', 'logo.png'))).toBe(false);
     expect(readFileSync(join(root, 'tmp', 'scan.png')).equals(PNG)).toBe(true);
     expect(existsSync(join(root, 'photos', 'face.png.sealing'))).toBe(false);
     expect(await sealExisting(root, KEY)).toEqual({ sealed: 0, skipped: 3 });

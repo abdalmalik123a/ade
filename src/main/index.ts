@@ -19,6 +19,7 @@ import { closeWorker } from './services/workerHost';
 import { hardenSession, hardenWindow } from './harden';
 import { rendererDevUrl } from './devUrl';
 import { registerStoreProtocol } from './storeProtocol';
+import { sealStore } from './services/storeCrypt';
 import { ensureDataLocation } from './dataLocationBoot';
 import { ensureDataKey } from './dataKeyBoot';
 import { PALETTE } from '@shared/theme';
@@ -360,6 +361,8 @@ ${e instanceof Error ? e.message : String(e)}`
     return;
   }
   createWindow();
+  // ما كُتب واضحًا قبل التشفير يُشفَّر في الخلفية والبرنامج يعمل (D238).
+  void sealStore().catch((e) => logError('storeSeal', e));
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

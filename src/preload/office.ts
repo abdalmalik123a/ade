@@ -102,7 +102,8 @@ export const officeApi: OfficeApis = {
     acknowledge: () => invoke('dataKey:acknowledge'),
     show: () => invoke('dataKey:show'),
     renew: () => invoke('dataKey:renew'),
-    save: (code: string) => invoke('dataKey:save', code)
+    save: (code: string) => invoke('dataKey:save', code),
+    sealProgress: () => invoke('dataKey:sealProgress')
   },
   update: {
     pick: () => invoke('update:pick'),

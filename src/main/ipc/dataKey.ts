@@ -9,6 +9,7 @@ import { dataDir, getDb } from '../db';
 import { windowsProtector } from '../dataKeyBoot';
 import { acknowledge, currentKey, hasKeys, needsAcknowledge, renewCode, storedCode } from '../services/dataKey';
 import { logAudit } from '../services/documents';
+import { sealProgress } from '../services/storeCrypt';
 import { handleChecked } from './checked';
 import { pickSavePath } from './files';
 
@@ -19,6 +20,8 @@ export function registerDataKeyIpc(): void {
     return true;
   });
   handleChecked('dataKey:show', {}, () => (hasKeys(dataDir()) ? storedCode(dataDir(), windowsProtector()) : null));
+  /** تقدّم تشفير ما كُتب قبل D238 — شريطٌ صغير في الواجهة ما دام جاريًا. */
+  handleChecked('dataKey:sealProgress', {}, () => sealProgress());
   handleChecked('dataKey:renew', {}, () => {
     const key = currentKey();
     if (!key) throw new Error('لا مفتاح لبيانات المكتب في هذه الجلسة');

@@ -323,6 +323,8 @@ export type OfficeApis = {
     show(): Promise<string | null>;
     renew(): Promise<string>;
     save(code: string): Promise<string | null>;
+    /** تشفير ما كُتب قبل D238 في الخلفية. */
+    sealProgress(): Promise<{ running: boolean; done: number; total: number }>;
   };
   /** التحديث «أ+»: ملفٌّ موقّعٌ من المطوّر — يُفحص ويُرى «ما الجديد» ثم يُثبَّت. ولا تحديث من الإنترنت. */
   update: {
