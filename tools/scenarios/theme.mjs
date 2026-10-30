@@ -1,5 +1,5 @@
 /**
- * سيناريو: مظهر ديوان الواحد (ر067) — «ب٢» منذ ر175 (D156).
+ * سيناريو: مظهر ديوان الواحد (ر067) — العسلي والسيان منذ ر192 (D241؛ وقبله «ب٢»، D156).
  *
  * مساحة العمل فاتحة بنصٍّ بلون الحبر؛ والسكّة لوحٌ أبيض بنصٍّ رماديّ، ورأسها رمز «ديوان» واسمه و«MADA TECH»،
  * والمحدَّد فيها بتدرّج العسلي ونصٍّ كحلي؛ و«املأ» بالتدرّج؛ ولا علامة مائية في الشبّاك؛ والورقة بيضاء؛ ولا اختيار للمظهر في الإعدادات.
@@ -25,8 +25,8 @@ export default async function scenario(page, { shotsDir }) {
   ok('رأس السكّة: شعار «ديوان» واسمه و«MADA TECH»', head.includes('ديوان') && head.includes('MADA TECH') && (await page.eval(`return Boolean(document.querySelector('[data-brand-mark] img'));`)));
   ok('والمحدَّد فيها بتدرّج العسلي ونصٍّ كحلي',
     ((await style('[data-dest][aria-current="page"]', 'backgroundImage')) ?? '').startsWith('linear-gradient') && (await style('[data-dest][aria-current="page"]', 'color')) === 'rgb(18, 50, 77)');
-  const fill = await page.eval(`const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim().startsWith('املأ')); return b ? getComputedStyle(b).backgroundImage : null;`);
-  ok(`و«املأ» بالتدرّج${fill ? '' : ' (لا يظهر هنا — يُتخطّى)'}`, fill === null || fill.startsWith('linear-gradient'));
+  const fill = await page.eval(`const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim().startsWith('املأ')); return b ? { image: getComputedStyle(b).backgroundImage, disabled: b.disabled } : null;`);
+  ok(`و«املأ» عسلي عند الإتاحة ورمادي عند التعطيل${fill ? '' : ' (لا يظهر هنا — يُتخطّى)'}`, fill === null || (fill.disabled ? fill.image === 'none' : fill.image.startsWith('linear-gradient')));
   ok('ولا علامة مائية في الشبّاك (أزالها «ب٢»، D157)', !(await page.eval(`return Boolean(document.querySelector('[data-watermark]'));`)));
   if (shotsDir) await page.shot(join(shotsDir, 'theme-counter.png'));
 
